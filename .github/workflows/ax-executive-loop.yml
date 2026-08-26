@@ -77,6 +77,10 @@ jobs:
           & powershell.exe -ExecutionPolicy Bypass -File "$env:GITHUB_WORKSPACE\AX_DECISION_ENGINE.ps1" -RegistryPath "$env:GITHUB_WORKSPACE\AX_TASK_REGISTRY.json"
 
           Write-Host ""
+          Write-Host "=== ACTION DISPATCHER ==="
+          & powershell.exe -ExecutionPolicy Bypass -File "$env:GITHUB_WORKSPACE\AX_ACTION_DISPATCHER.ps1" -RegistryPath "$env:GITHUB_WORKSPACE\AX_TASK_REGISTRY.json"
+
+          Write-Host ""
           Write-Host "=== PERMISSION ==="
           Write-Host "Live-money execution: DISABLED"
           Write-Host "Financial transactions: NOT PERMITTED"
@@ -86,6 +90,7 @@ jobs:
           Write-Host "Observed workflow data: RECEIVED"
           Write-Host "Task registry: LOADED"
           Write-Host "Decision engine: EXECUTED"
+          Write-Host "Action dispatcher: EXECUTED"
           Write-Host "Runner execution: VERIFIED by workflow execution"
           Write-Host ""
           Write-Host "=== AUDIT ==="
