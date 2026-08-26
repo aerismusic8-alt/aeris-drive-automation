@@ -1,5 +1,5 @@
 param(
-  [string]$StatusUrl = $(if (-not [string]::IsNullOrWhiteSpace($env:AX_AERIS_RUNTIME_URL)) { "$($env:AX_AERIS_RUNTIME_URL.TrimEnd('/'))/health" } else { 'https://aeris-execution-runtime.aerismusic8.workers.dev/health' }),
+  [string]$StatusUrl = $(if (-not [string]::IsNullOrWhiteSpace($env:AX_AERIS_RUNTIME_URL)) { "$($env:AX_AERIS_RUNTIME_URL.TrimEnd('/'))/health" } else { 'https://ax-control-runtime.aerismusic8.workers.dev/health' }),
   [int]$TimeoutSec = 15
 )
 $ErrorActionPreference = 'Stop'
