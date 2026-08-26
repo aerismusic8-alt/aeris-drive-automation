@@ -20,6 +20,16 @@ $repoRoot = (Get-Location).Path
 $repoRootFull = [System.IO.Path]::GetFullPath($repoRoot)
 
 # ============================================================
+# MUTATION ENABLEMENT
+# ============================================================
+
+if ($env:AX_REPOSITORY_MUTATION_ENABLED -ne 'true') {
+  throw 'REPOSITORY_MUTATION_DISABLED_BY_POLICY'
+}
+
+Write-Host 'Mutation capability: ENABLED'
+
+# ============================================================
 # PATH NORMALIZATION / SAFETY
 # ============================================================
 
@@ -70,12 +80,10 @@ $targetPath = [System.IO.Path]::GetFullPath(
 
 $repoPrefix = $repoRootFull.TrimEnd('\') + '\'
 
-if (
-  -not $targetPath.StartsWith(
-    $repoPrefix,
-    [System.StringComparison]::OrdinalIgnoreCase
-  )
-) {
+if (-not $targetPath.StartsWith(
+  $repoPrefix,
+  [System.StringComparison]::OrdinalIgnoreCase
+)) {
   throw 'REPOSITORY_MUTATION_BLOCKED_OUTSIDE_REPOSITORY'
 }
 
@@ -108,7 +116,7 @@ if (-not (Test-Path $targetDirectory)) {
 }
 
 # ============================================================
-# EXISTING FILE
+# WRITE
 # ============================================================
 
 if (Test-Path $targetPath) {
@@ -117,10 +125,6 @@ if (Test-Path $targetPath) {
 else {
   Write-Host "Creating new file: $normalizedPath"
 }
-
-# ============================================================
-# WRITE
-# ============================================================
 
 [System.IO.File]::WriteAllText(
   $targetPath,
@@ -158,9 +162,7 @@ Write-Host "Staged: $normalizedPath"
 # STAGED PATH VERIFICATION
 # ============================================================
 
-$staged = @(
-  git diff --cached --name-only
-)
+$staged = @(git diff --cached --name-only)
 
 if ($LASTEXITCODE -ne 0) {
   throw 'GIT_STAGED_FILE_CHECK_FAILED'
@@ -186,7 +188,7 @@ if ($LASTEXITCODE -ne 0) {
 Write-Host 'Commit: PASS'
 
 # ============================================================
-# COMMIT VERIFICATION
+# LOCAL COMMIT VERIFICATION
 # ============================================================
 
 $commitSha = (git rev-parse HEAD).Trim()
@@ -195,7 +197,7 @@ if ([string]::IsNullOrWhiteSpace($commitSha)) {
   throw 'COMMIT_SHA_VERIFICATION_FAILED'
 }
 
-Write-Host "Commit SHA: $commitSha"
+Write-Host "Local Commit SHA: $commitSha"
 
 # ============================================================
 # WORKING TREE VERIFICATION
@@ -208,6 +210,68 @@ if (-not [string]::IsNullOrWhiteSpace($workingTree)) {
 }
 
 Write-Host 'Working tree: CLEAN'
+
+# ============================================================
+# REMOTE PUSH
+# ============================================================
+
+Write-Host '=== REMOTE PUSH ==='
+
+$origin = (git remote get-url origin).Trim()
+
+if ($LASTEXITCODE -ne 0 -or [string]::IsNullOrWhiteSpace($origin)) {
+  throw 'GIT_ORIGIN_NOT_AVAILABLE'
+}
+
+Write-Host "Origin: $origin"
+Write-Host 'Push target: origin/main'
+
+git push origin "HEAD:main"
+
+if ($LASTEXITCODE -ne 0) {
+  throw 'REPOSITORY_MUTATION_PUSH_FAILED'
+}
+
+Write-Host 'Remote push: PASS'
+
+# ============================================================
+# REMOTE VERIFICATION
+# ============================================================
+
+Write-Host '=== REMOTE VERIFICATION ==='
+
+git fetch origin main --quiet
+
+if ($LASTEXITCODE -ne 0) {
+  throw 'REPOSITORY_MUTATION_REMOTE_FETCH_FAILED'
+}
+
+$remoteSha = (git rev-parse origin/main).Trim()
+
+if ([string]::IsNullOrWhiteSpace($remoteSha)) {
+  throw 'REMOTE_COMMIT_SHA_VERIFICATION_FAILED'
+}
+
+Write-Host "Remote Commit SHA: $remoteSha"
+
+if ($remoteSha -ne $commitSha) {
+  throw "REPOSITORY_MUTATION_REMOTE_SHA_MISMATCH:local=$commitSha remote=$remoteSha"
+}
+
+Write-Host 'Remote commit verification: PASS'
+
+# ============================================================
+# FINAL VERIFICATION
+# ============================================================
+
+$finalStatus = (git status --porcelain | Out-String).Trim()
+
+if (-not [string]::IsNullOrWhiteSpace($finalStatus)) {
+  throw 'REPOSITORY_NOT_CLEAN_AFTER_REMOTE_VERIFICATION'
+}
+
+Write-Host 'Final working tree: CLEAN'
 Write-Host 'Repository mutation: VERIFIED'
+Write-Host 'Remote persistence: VERIFIED'
 Write-Host 'Live financial execution: DISABLED'
 Write-Host '=== AX REPOSITORY MUTATION GATE COMPLETE ==='
