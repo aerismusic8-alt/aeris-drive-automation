@@ -1,9 +1,15 @@
 {
-  "version": "1.0",
+  "version": "1.1",
   "policy": {
     "terminal_states": ["COMPLETED", "BLOCKED", "PAUSED", "WAITING_K"],
     "live_trading_requires_k": true,
-    "financial_execution_enabled": false
+    "financial_execution_enabled": false,
+    "scheduler": {
+      "heartbeat_minutes": 5,
+      "event_driven_enabled": true,
+      "priority_precedence": true,
+      "dependency_enforcement": true
+    }
   },
   "tasks": [
     {
@@ -12,6 +18,8 @@
       "title": "Repair File ID persistence and complete E2E verification",
       "state": "BLOCKED",
       "priority": 100,
+      "depends_on": [],
+      "trigger": "event_or_heartbeat",
       "next_action": "Execute repair helper, verify persisted File ID, then run E2E"
     },
     {
@@ -20,15 +28,19 @@
       "title": "Build autonomous company execution loop",
       "state": "QUEUED",
       "priority": 80,
+      "depends_on": [],
+      "trigger": "immediate",
       "next_action": "Connect research, production, publishing, analytics and revenue tasks"
     },
     {
       "id": "AICS-PAPER-RISK-ENGINE",
       "domain": "AICS",
       "title": "Build paper-trading and risk decision engine",
-      "state": "ACTIVE",
+      "state": "COMPLETED",
       "priority": 90,
-      "next_action": "Define market-data inputs, signal evaluation, position sizing and verification"
+      "depends_on": [],
+      "trigger": "event_or_heartbeat",
+      "next_action": "Paper E2E verified; retain as completed foundation"
     },
     {
       "id": "AICS-LIVE-TRADING",
@@ -36,6 +48,8 @@
       "title": "Live-money execution",
       "state": "WAITING_K",
       "priority": 0,
+      "depends_on": ["AICS-PAPER-RISK-ENGINE"],
+      "trigger": "approval_event",
       "next_action": "Remain disabled until K explicitly approves live execution"
     },
     {
@@ -44,6 +58,8 @@
       "title": "Automated executive reporting",
       "state": "QUEUED",
       "priority": 70,
+      "depends_on": [],
+      "trigger": "event_or_heartbeat",
       "next_action": "Generate verified status summary from task and execution evidence"
     }
   ]
