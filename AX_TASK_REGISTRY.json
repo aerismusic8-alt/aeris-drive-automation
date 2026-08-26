@@ -1,0 +1,50 @@
+{
+  "version": "1.0",
+  "policy": {
+    "terminal_states": ["COMPLETED", "BLOCKED", "PAUSED", "WAITING_K"],
+    "live_trading_requires_k": true,
+    "financial_execution_enabled": false
+  },
+  "tasks": [
+    {
+      "id": "AERIS-FILE-ID-PERSISTENCE",
+      "domain": "AERIS",
+      "title": "Repair File ID persistence and complete E2E verification",
+      "state": "BLOCKED",
+      "priority": 100,
+      "next_action": "Execute repair helper, verify persisted File ID, then run E2E"
+    },
+    {
+      "id": "AERIS-AUTONOMOUS-COMPANY-ENGINE",
+      "domain": "AERIS",
+      "title": "Build autonomous company execution loop",
+      "state": "QUEUED",
+      "priority": 80,
+      "next_action": "Connect research, production, publishing, analytics and revenue tasks"
+    },
+    {
+      "id": "AICS-PAPER-RISK-ENGINE",
+      "domain": "AICS",
+      "title": "Build paper-trading and risk decision engine",
+      "state": "ACTIVE",
+      "priority": 90,
+      "next_action": "Define market-data inputs, signal evaluation, position sizing and verification"
+    },
+    {
+      "id": "AICS-LIVE-TRADING",
+      "domain": "AICS",
+      "title": "Live-money execution",
+      "state": "WAITING_K",
+      "priority": 0,
+      "next_action": "Remain disabled until K explicitly approves live execution"
+    },
+    {
+      "id": "AX-EXECUTIVE-REPORTING",
+      "domain": "AX",
+      "title": "Automated executive reporting",
+      "state": "QUEUED",
+      "priority": 70,
+      "next_action": "Generate verified status summary from task and execution evidence"
+    }
+  ]
+}
