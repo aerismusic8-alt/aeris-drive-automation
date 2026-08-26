@@ -24,7 +24,8 @@ jobs:
 
     env:
       CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-      AX_RUNTIME_URL: https://ax-control-runtime.aerismusic8.workers.dev
+      WORKER_NAME: aeris-execution-runtime
+      AX_RUNTIME_URL: https://aeris-execution-runtime.aerismusic8.workers.dev
       QUEUE_NAME: ax-execution-events
 
     steps:
@@ -86,8 +87,9 @@ jobs:
           $ErrorActionPreference = 'Stop'
 
           Write-Host '=== VALIDATE WORKER ==='
+          Write-Host "Worker: $env:WORKER_NAME"
 
-          npx wrangler@latest deploy --dry-run
+          npx wrangler@latest deploy --dry-run --name $env:WORKER_NAME
 
           if ($LASTEXITCODE -ne 0) {
             throw 'WRANGLER_DRY_RUN_FAILED'
@@ -100,8 +102,9 @@ jobs:
           $ErrorActionPreference = 'Stop'
 
           Write-Host '=== DEPLOY AX CLOUDFLARE RUNTIME ==='
+          Write-Host "Worker: $env:WORKER_NAME"
 
-          npx wrangler@latest deploy
+          npx wrangler@latest deploy --name $env:WORKER_NAME
 
           if ($LASTEXITCODE -ne 0) {
             throw 'WRANGLER_DEPLOY_FAILED'
@@ -144,6 +147,7 @@ jobs:
 
           Write-Host '=== AX CLOUDFLARE RUNTIME DEPLOYMENT COMPLETE ==='
           Write-Host "Runtime URL: $env:AX_RUNTIME_URL"
+          Write-Host "Worker: $env:WORKER_NAME"
           Write-Host "Queue: $env:QUEUE_NAME"
           Write-Host 'Execution mode: FREE_ONLY'
           Write-Host 'Live financial execution: DISABLED'
