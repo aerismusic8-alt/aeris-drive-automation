@@ -27,7 +27,7 @@ jobs:
 
     steps:
       - name: Checkout AX control state
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: AX Executive Cycle
         shell: powershell -ExecutionPolicy Bypass -File {0}
@@ -35,7 +35,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           AX_TRIGGER: ${{ github.event_name }}
           AX_TRIGGER_WORKFLOW: ${{ github.event.workflow_run.name }}
-          AX_CLOUDFLARE_RUNTIME_URL: https://ax-control-runtime.aerismusic8.workers.dev
+          AX_CLOUDFLARE_RUNTIME_URL: https://aeris-execution-runtime.aerismusic8.workers.dev
         run: |
           $ErrorActionPreference = 'Stop'
           $cycle = [guid]::NewGuid().ToString()
@@ -54,29 +54,46 @@ jobs:
 
           Write-Host '=== RECOVERY ==='
           & powershell.exe -ExecutionPolicy Bypass -File "$root\AX_RECOVERY_ENGINE.ps1"
-          if ($LASTEXITCODE -ne 0) { throw "AX_RECOVERY_ENGINE_FAILED:$LASTEXITCODE" }
+          if ($LASTEXITCODE -ne 0) {
+            throw "AX_RECOVERY_ENGINE_FAILED:$LASTEXITCODE"
+          }
 
           $headers = @{
             Authorization = "Bearer $env:GITHUB_TOKEN"
             Accept = 'application/vnd.github+json'
             'X-GitHub-Api-Version' = '2022-11-28'
           }
+
           $runsUrl = "https://api.github.com/repos/$repo/actions/runs?per_page=30"
           $runs = Invoke-RestMethod -Uri $runsUrl -Headers $headers -Method Get
-          $ax = $runs.workflow_runs | Where-Object { $_.name -eq 'AX Status Monitor' } | Select-Object -First 1
-          $smoke = $runs.workflow_runs | Where-Object { $_.name -eq 'PC Runner Smoke Test' } | Select-Object -First 1
+
+          $ax = $runs.workflow_runs |
+            Where-Object { $_.name -eq 'AX Status Monitor' } |
+            Select-Object -First 1
+
+          $smoke = $runs.workflow_runs |
+            Where-Object { $_.name -eq 'PC Runner Smoke Test' } |
+            Select-Object -First 1
 
           Write-Host '=== OBSERVE ==='
           Write-Host "AX Monitor: $($ax.status) / $($ax.conclusion)"
           Write-Host "PC Runner Smoke: $($smoke.status) / $($smoke.conclusion)"
 
           Write-Host '=== PRIORITY / DEPENDENCY DECISION ==='
-          & powershell.exe -ExecutionPolicy Bypass -File "$root\AX_DECISION_ENGINE.ps1" -RegistryPath "$root\AX_TASK_REGISTRY.json"
-          if ($LASTEXITCODE -ne 0) { throw "AX_DECISION_ENGINE_FAILED:$LASTEXITCODE" }
+          & powershell.exe -ExecutionPolicy Bypass -File "$root\AX_DECISION_ENGINE.ps1" `
+            -RegistryPath "$root\AX_TASK_REGISTRY.json"
+
+          if ($LASTEXITCODE -ne 0) {
+            throw "AX_DECISION_ENGINE_FAILED:$LASTEXITCODE"
+          }
 
           Write-Host '=== CONTROLLED ACTION DISPATCH ==='
-          & powershell.exe -ExecutionPolicy Bypass -File "$root\AX_ACTION_DISPATCHER.ps1" -RegistryPath "$root\AX_TASK_REGISTRY.json"
-          if ($LASTEXITCODE -ne 0) { throw "AX_ACTION_DISPATCHER_FAILED:$LASTEXITCODE" }
+          & powershell.exe -ExecutionPolicy Bypass -File "$root\AX_ACTION_DISPATCHER.ps1" `
+            -RegistryPath "$root\AX_TASK_REGISTRY.json"
+
+          if ($LASTEXITCODE -ne 0) {
+            throw "AX_ACTION_DISPATCHER_FAILED:$LASTEXITCODE"
+          }
 
           Write-Host '=== PERMISSION ==='
           Write-Host 'Live-money execution: DISABLED'
@@ -99,4 +116,5 @@ jobs:
           Write-Host "TriggerWorkflow=$env:AX_TRIGGER_WORKFLOW"
           Write-Host 'RecoveryEngine=EXECUTED'
           Write-Host 'LiveExecution=DISABLED'
+
           Write-Host '=== AX AUTONOMOUS EXECUTIVE CYCLE COMPLETE ==='
