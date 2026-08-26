@@ -1,4 +1,4 @@
-name: PC Runner Smoke Test
+﻿name: PC Runner Smoke Test
 
 on:
   push:
@@ -8,12 +8,10 @@ on:
 jobs:
   pc-runner-smoke:
     runs-on: [self-hosted, Windows, X64]
-
     steps:
       - name: Verify PC runner execution
-        shell: powershell
+        shell: 'powershell -ExecutionPolicy Bypass -File {0}'
         run: |
-          Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass
           Write-Host "=== AERIS PC RUNNER SMOKE TEST ==="
           Write-Host "Hostname: $env:COMPUTERNAME"
           Write-Host "User: $env:USERNAME"
