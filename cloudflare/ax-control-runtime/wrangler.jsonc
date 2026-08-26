@@ -1,6 +1,6 @@
 {
   "$schema": "https://unpkg.com/wrangler@latest/config-schema.json",
-  "name": "ax-control-runtime",
+  "name": "aeris-execution-runtime",
   "main": "src/index.ts",
   "compatibility_date": "2026-08-25",
   "limits": {
