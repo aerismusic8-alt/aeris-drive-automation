@@ -20,6 +20,11 @@ if (-not [string]::IsNullOrWhiteSpace($env:AX_CLOUDFLARE_RUNTIME_URL)) {
   try {
     $health = Invoke-RestMethod -Uri "$($env:AX_CLOUDFLARE_RUNTIME_URL)/health" -Method Get -TimeoutSec 10
     $runtimeHealthy = ($health.status -eq 'ONLINE' -and $health.mode -eq 'FREE_ONLY' -and $health.liveFinancialExecution -eq $false)
+    if ($runtimeHealthy) {
+      Write-Host 'Cloudflare Runtime Health: ONLINE / FREE_ONLY / LIVE_EXECUTION_DISABLED'
+    } else {
+      Write-Host 'Cloudflare Runtime Health: REJECTED_BY_HEALTH_POLICY'
+    }
   } catch {
     Write-Host "Cloudflare Runtime Health: UNAVAILABLE ($($_.Exception.Message))"
   }
@@ -38,6 +43,7 @@ switch ($selected.domain) {
     Write-Host 'Route: AERIS_EXECUTION_QUEUE'
     Write-Host 'Execution Gate: CONTROLLED'
     & powershell.exe -ExecutionPolicy Bypass -File "$PSScriptRoot\AX_AERIS_EXECUTION_ADAPTER.ps1"
+    if ($LASTEXITCODE -ne 0) { throw "AX_AERIS_EXECUTION_ADAPTER_FAILED:$LASTEXITCODE" }
   }
   'AICS' {
     Write-Host 'Route: AICS_RISK_ENGINE'
@@ -46,6 +52,7 @@ switch ($selected.domain) {
       Write-Host 'Reason: LIVE_FINANCIAL_EXECUTION_REQUIRES_K'
       if ($selected.id -eq 'AICS-PAPER-RISK-ENGINE') {
         & powershell.exe -ExecutionPolicy Bypass -File "$PSScriptRoot\AX_AICS_PAPER_RISK_ADAPTER.ps1" -TaskId $selected.id
+        if ($LASTEXITCODE -ne 0) { throw "AX_AICS_PAPER_RISK_ADAPTER_FAILED:$LASTEXITCODE" }
       } else { Write-Host 'Execution: NOT_PERFORMED' }
     } else { Write-Host 'Execution Gate: CONTROLLED'; Write-Host 'Execution: NOT_PERFORMED' }
   }
