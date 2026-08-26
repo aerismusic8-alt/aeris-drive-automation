@@ -1,7 +1,18 @@
 param(
-  [string]$StatusUrl = $(if (-not [string]::IsNullOrWhiteSpace($env:AX_AERIS_RUNTIME_URL)) { "$($env:AX_AERIS_RUNTIME_URL.TrimEnd('/'))/health" } else { 'https://ax-control-runtime.aerismusic8.workers.dev/health' }),
+  [string]$StatusUrl = $(
+    if (-not [string]::IsNullOrWhiteSpace($env:AX_CLOUDFLARE_RUNTIME_URL)) {
+      "$($env:AX_CLOUDFLARE_RUNTIME_URL.TrimEnd('/'))/health"
+    }
+    elseif (-not [string]::IsNullOrWhiteSpace($env:AX_AERIS_RUNTIME_URL)) {
+      "$($env:AX_AERIS_RUNTIME_URL.TrimEnd('/'))/health"
+    }
+    else {
+      'https://aeris-execution-runtime.aerismusic8.workers.dev/health'
+    }
+  ),
   [int]$TimeoutSec = 15
 )
+
 $ErrorActionPreference = 'Stop'
 
 Write-Host '=== AX AERIS EXECUTION ADAPTER ==='
@@ -11,7 +22,12 @@ Write-Host "Status URL: $StatusUrl"
 Write-Host "Timeout: ${TimeoutSec}s"
 
 try {
-  $response = Invoke-WebRequest -Uri $StatusUrl -Method Get -UseBasicParsing -TimeoutSec $TimeoutSec
+  $response = Invoke-WebRequest `
+    -Uri $StatusUrl `
+    -Method Get `
+    -UseBasicParsing `
+    -TimeoutSec $TimeoutSec
+
   Write-Host "HTTP Status: $($response.StatusCode)"
 
   if ($response.StatusCode -ne 200) {
@@ -24,8 +40,18 @@ try {
     throw 'AERIS_STATUS_NOT_ONLINE'
   }
 
+  if ($body.mode -ne 'FREE_ONLY') {
+    throw 'AERIS_RUNTIME_NOT_FREE_ONLY'
+  }
+
+  if ($body.liveFinancialExecution -ne $false) {
+    throw 'AERIS_LIVE_FINANCIAL_EXECUTION_ENABLED'
+  }
+
   Write-Host 'AERIS Endpoint: ONLINE'
   Write-Host 'AERIS Verification: PASSED'
+  Write-Host "AERIS Mode: $($body.mode)"
+  Write-Host 'Live Financial Execution: DISABLED'
   Write-Host 'Mutation: NOT_PERFORMED'
   Write-Host 'Execution Result: VERIFIED_STATUS_ONLY'
 }
