@@ -3,10 +3,6 @@
   "name": "ax-control-runtime",
   "main": "src/index.ts",
   "compatibility_date": "2026-08-25",
-  "limits": {
-    "cpu_ms": 10,
-    "subrequests": 10
-  },
   "queues": {
     "producers": [
       {
