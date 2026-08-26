@@ -1,4 +1,5 @@
-name: AX Cloudflare Runtime
+name: AX Cloudflare Control Runtime
+
 on:
   workflow_dispatch:
   push:
@@ -8,122 +9,261 @@ on:
       - '.github/workflows/cloudflare-runtime.yml'
       - 'AX_RESOURCE_GOVERNOR.json'
       - 'AX_CLOUDFLARE_DISPATCH_ADAPTER.ps1'
+
 permissions:
   contents: read
+
 concurrency:
-  group: ax-cloudflare-runtime
+  group: ax-cloudflare-control-runtime
   cancel-in-progress: false
+
 jobs:
   deploy:
     runs-on: self-hosted
     timeout-minutes: 10
-env:
-  CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-  WORKER_NAME: aeris-execution-runtime
-  AX_RUNTIME_URL: https://aeris-execution-runtime.aerismusic8.workers.dev
-  QUEUE_NAME: ax-execution-events
 
-steps:
-  - name: Checkout
-    uses: actions/checkout@v5
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
 
-  - name: Setup Node.js
-    uses: actions/setup-node@v5
-    with:
-      node-version: 24
-      check-latest: true
+      # IMPORTANT:
+      # This Worker is SEPARATE from the existing
+      # AERIS External Execution Runtime / Gate 3.3.2.
+      WORKER_NAME: ax-control-runtime
+      AX_CONTROL_RUNTIME_URL: https://ax-control-runtime.aerismusic8.workers.dev
+      QUEUE_NAME: ax-execution-events
 
-  - name: Verify Node and Wrangler
-    shell: powershell -ExecutionPolicy Bypass -File {0}
-    run: |
-      $ErrorActionPreference = 'Stop'
-      Write-Host '=== VERIFY NODE / WRANGLER ==='
-      node --version
-      npm --version
-      npx wrangler@latest --version
-      if ($LASTEXITCODE -ne 0) { throw 'WRANGLER_VERSION_CHECK_FAILED' }
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
 
-  - name: Ensure Free Queue exists
-    shell: powershell -ExecutionPolicy Bypass -File {0}
-    working-directory: cloudflare/ax-control-runtime
-    run: |
-      $ErrorActionPreference = 'Stop'
-      Write-Host '=== ENSURE FREE QUEUE ==='
-      Write-Host "Queue: $env:QUEUE_NAME"
+      - name: Setup Node.js
+        uses: actions/setup-node@v5
+        with:
+          node-version: 24
+          check-latest: true
 
-      $ErrorActionPreference = 'Continue'
-      npx wrangler@latest queues info $env:QUEUE_NAME 2>&1 | Out-Host
-      $queueInfoExitCode = $LASTEXITCODE
-      $ErrorActionPreference = 'Stop'
+      - name: Verify Node and Wrangler
+        shell: powershell -ExecutionPolicy Bypass -File {0}
+        run: |
+          $ErrorActionPreference = 'Stop'
 
-      if ($queueInfoExitCode -ne 0) {
-        Write-Host "Queue does not exist. Creating: $env:QUEUE_NAME"
-        npx wrangler@latest queues create $env:QUEUE_NAME --message-retention-period-secs 3600
-        if ($LASTEXITCODE -ne 0) { throw 'QUEUE_CREATE_FAILED' }
-      } else {
-        Write-Host "Queue exists: $env:QUEUE_NAME"
-      }
+          Write-Host '=== VERIFY NODE / WRANGLER ==='
 
-      npx wrangler@latest queues update $env:QUEUE_NAME --message-retention-period-secs 3600 --delivery-delay-secs 0
-      if ($LASTEXITCODE -ne 0) { throw 'QUEUE_UPDATE_FAILED' }
-      Write-Host "Queue ready: $env:QUEUE_NAME"
+          node --version
+          npm --version
 
-  - name: Validate Worker
-    shell: powershell -ExecutionPolicy Bypass -File {0}
-    working-directory: cloudflare/ax-control-runtime
-    run: |
-      $ErrorActionPreference = 'Stop'
-      Write-Host '=== VALIDATE WORKER ==='
-      Write-Host "Worker: $env:WORKER_NAME"
-      npx wrangler@latest deploy --dry-run --name $env:WORKER_NAME
-      if ($LASTEXITCODE -ne 0) { throw 'WRANGLER_DRY_RUN_FAILED' }
+          npx wrangler@latest --version
 
-  - name: Deploy Worker
-    shell: powershell -ExecutionPolicy Bypass -File {0}
-    working-directory: cloudflare/ax-control-runtime
-    run: |
-      $ErrorActionPreference = 'Stop'
-      Write-Host '=== DEPLOY AX CLOUDFLARE RUNTIME ==='
-      Write-Host "Worker: $env:WORKER_NAME"
-      npx wrangler@latest deploy --name $env:WORKER_NAME
-      if ($LASTEXITCODE -ne 0) { throw 'WRANGLER_DEPLOY_FAILED' }
-
-  - name: Verify Runtime Health
-    shell: powershell -ExecutionPolicy Bypass -File {0}
-    run: |
-      $ErrorActionPreference = 'Stop'
-      Write-Host '=== VERIFY AX RUNTIME HEALTH ==='
-      Write-Host "Runtime: $env:AX_RUNTIME_URL"
-
-      $verified = $false
-      for ($attempt = 1; $attempt -le 6; $attempt++) {
-        try {
-          Write-Host "Health attempt $attempt/6"
-          $r = Invoke-RestMethod -Uri "$env:AX_RUNTIME_URL/health" -Method Get -TimeoutSec 30
-          if ($r.status -eq 'ONLINE' -and $r.mode -eq 'FREE_ONLY' -and $r.liveFinancialExecution -eq $false) {
-            $verified = $true
-            Write-Host 'AX Cloudflare Runtime: ONLINE'
-            Write-Host 'Mode: FREE_ONLY'
-            Write-Host 'Live Financial Execution: DISABLED'
-            Write-Host "Queue: $($r.queue)"
-            break
+          if ($LASTEXITCODE -ne 0) {
+            throw 'WRANGLER_VERSION_CHECK_FAILED'
           }
-          Write-Host 'Health response failed policy validation.'
-        } catch {
-          Write-Host "Health probe failed: $($_.Exception.Message)"
-        }
-        if ($attempt -lt 6) { Start-Sleep -Seconds 5 }
-      }
 
-      if (-not $verified) { throw 'AX_RUNTIME_HEALTH_VERIFICATION_FAILED' }
+      - name: Ensure AX Queue exists
+        shell: powershell -ExecutionPolicy Bypass -File {0}
+        working-directory: cloudflare/ax-control-runtime
+        run: |
+          $ErrorActionPreference = 'Stop'
 
-  - name: Runtime Deployment Summary
-    shell: powershell -ExecutionPolicy Bypass -File {0}
-    run: |
-      $ErrorActionPreference = 'Stop'
-      Write-Host '=== AX CLOUDFLARE RUNTIME DEPLOYMENT COMPLETE ==='
-      Write-Host "Runtime URL: $env:AX_RUNTIME_URL"
-      Write-Host "Worker: $env:WORKER_NAME"
-      Write-Host "Queue: $env:QUEUE_NAME"
-      Write-Host 'Execution mode: FREE_ONLY'
-      Write-Host 'Live financial execution: DISABLED'
+          Write-Host '=== ENSURE AX CONTROL QUEUE ==='
+          Write-Host "Queue: $env:QUEUE_NAME"
+
+          $queueExists = $false
+
+          try {
+            $ErrorActionPreference = 'Continue'
+
+            npx wrangler@latest queues info $env:QUEUE_NAME 2>&1 |
+              Out-Host
+
+            $queueInfoExitCode = $LASTEXITCODE
+
+            $ErrorActionPreference = 'Stop'
+
+            if ($queueInfoExitCode -eq 0) {
+              $queueExists = $true
+            }
+          }
+          catch {
+            $ErrorActionPreference = 'Stop'
+            $queueExists = $false
+          }
+
+          if (-not $queueExists) {
+            Write-Host "Queue does not exist. Creating: $env:QUEUE_NAME"
+
+            npx wrangler@latest queues create $env:QUEUE_NAME `
+              --message-retention-period-secs 3600
+
+            if ($LASTEXITCODE -ne 0) {
+              throw 'QUEUE_CREATE_FAILED'
+            }
+          }
+          else {
+            Write-Host "Queue already exists: $env:QUEUE_NAME"
+          }
+
+          Write-Host '=== VERIFY QUEUE ==='
+
+          npx wrangler@latest queues info $env:QUEUE_NAME
+
+          if ($LASTEXITCODE -ne 0) {
+            throw 'QUEUE_VERIFY_FAILED'
+          }
+
+          Write-Host "AX Queue ready: $env:QUEUE_NAME"
+
+      - name: Validate AX Control Runtime
+        shell: powershell -ExecutionPolicy Bypass -File {0}
+        working-directory: cloudflare/ax-control-runtime
+        run: |
+          $ErrorActionPreference = 'Stop'
+
+          Write-Host '=== VALIDATE AX CONTROL RUNTIME ==='
+          Write-Host "Worker target: $env:WORKER_NAME"
+
+          npx wrangler@latest deploy `
+            --dry-run `
+            --name $env:WORKER_NAME
+
+          if ($LASTEXITCODE -ne 0) {
+            throw 'AX_CONTROL_RUNTIME_DRY_RUN_FAILED'
+          }
+
+      - name: Deploy AX Control Runtime
+        shell: powershell -ExecutionPolicy Bypass -File {0}
+        working-directory: cloudflare/ax-control-runtime
+        run: |
+          $ErrorActionPreference = 'Stop'
+
+          Write-Host '=== DEPLOY AX CONTROL RUNTIME ==='
+          Write-Host "Worker: $env:WORKER_NAME"
+
+          npx wrangler@latest deploy `
+            --name $env:WORKER_NAME
+
+          if ($LASTEXITCODE -ne 0) {
+            throw 'AX_CONTROL_RUNTIME_DEPLOY_FAILED'
+          }
+
+          Write-Host 'AX Control Runtime deployment command completed.'
+
+      - name: Verify AX Control Runtime Health
+        shell: powershell -ExecutionPolicy Bypass -File {0}
+        run: |
+          $ErrorActionPreference = 'Stop'
+
+          Write-Host '=== VERIFY AX CONTROL RUNTIME HEALTH ==='
+          Write-Host "Runtime: $env:AX_CONTROL_RUNTIME_URL"
+
+          $verified = $false
+
+          for ($attempt = 1; $attempt -le 8; $attempt++) {
+            try {
+              Write-Host "Health attempt $attempt/8"
+
+              $r = Invoke-RestMethod `
+                -Uri "$env:AX_CONTROL_RUNTIME_URL/health" `
+                -Method Get `
+                -TimeoutSec 30
+
+              Write-Host "Status: $($r.status)"
+              Write-Host "Mode: $($r.mode)"
+              Write-Host "Live Financial Execution: $($r.liveFinancialExecution)"
+              Write-Host "Queue: $($r.queue)"
+
+              if (
+                $r.status -eq 'ONLINE' -and
+                $r.mode -eq 'FREE_ONLY' -and
+                $r.liveFinancialExecution -eq $false -and
+                $r.queue -eq $env:QUEUE_NAME
+              ) {
+                $verified = $true
+
+                Write-Host 'AX Control Runtime: ONLINE'
+                Write-Host 'Mode: FREE_ONLY'
+                Write-Host 'Live Financial Execution: DISABLED'
+                Write-Host "Queue: $($r.queue)"
+
+                break
+              }
+
+              Write-Host 'Health response failed policy validation.'
+            }
+            catch {
+              Write-Host "Health probe failed: $($_.Exception.Message)"
+            }
+
+            if ($attempt -lt 8) {
+              Start-Sleep -Seconds 5
+            }
+          }
+
+          if (-not $verified) {
+            throw 'AX_CONTROL_RUNTIME_HEALTH_VERIFICATION_FAILED'
+          }
+
+      - name: Verify Existing AERIS External Runtime
+        shell: powershell -ExecutionPolicy Bypass -File {0}
+        run: |
+          $ErrorActionPreference = 'Stop'
+
+          Write-Host '=== VERIFY EXISTING AERIS EXTERNAL RUNTIME ==='
+
+          $externalRuntimeUrl =
+            'https://aeris-execution-runtime.aerismusic8.workers.dev'
+
+          Write-Host "Existing Runtime: $externalRuntimeUrl"
+
+          try {
+            $r = Invoke-RestMethod `
+              -Uri $externalRuntimeUrl `
+              -Method Get `
+              -TimeoutSec 30
+
+            Write-Host 'Existing AERIS External Runtime response:'
+
+            $r | ConvertTo-Json -Depth 10 | Write-Host
+
+            if (
+              $r.status -ne 'ONLINE'
+            ) {
+              throw 'EXISTING_AERIS_RUNTIME_NOT_ONLINE'
+            }
+
+            Write-Host 'Existing AERIS External Runtime: VERIFIED ONLINE'
+            Write-Host 'Gate 3.3.2 target was not replaced by this deployment.'
+          }
+          catch {
+            Write-Host "WARNING: Existing runtime verification failed: $($_.Exception.Message)"
+
+            # Do not fail the new AX Control Runtime deployment because
+            # the existing runtime has a different application contract.
+            Write-Host 'New AX Control Runtime remains independently deployed.'
+          }
+
+      - name: Deployment Summary
+        shell: powershell -ExecutionPolicy Bypass -File {0}
+        run: |
+          $ErrorActionPreference = 'Stop'
+
+          Write-Host '=== AX CONTROL RUNTIME DEPLOYMENT COMPLETE ==='
+
+          Write-Host "Control Worker: $env:WORKER_NAME"
+          Write-Host "Control Runtime: $env:AX_CONTROL_RUNTIME_URL"
+          Write-Host "Queue: $env:QUEUE_NAME"
+
+          Write-Host ''
+          Write-Host 'Architecture:'
+          Write-Host 'AX Control Runtime'
+          Write-Host "  -> $env:AX_CONTROL_RUNTIME_URL"
+          Write-Host "  -> Queue: $env:QUEUE_NAME"
+
+          Write-Host ''
+          Write-Host 'Existing AERIS External Execution Runtime'
+          Write-Host '  -> https://aeris-execution-runtime.aerismusic8.workers.dev'
+          Write-Host '  -> Gate 3.3.2'
+          Write-Host '  -> NOT TARGETED BY THIS WORKFLOW'
+
+          Write-Host ''
+          Write-Host 'Execution mode: FREE_ONLY'
+          Write-Host 'Live financial execution: DISABLED'
