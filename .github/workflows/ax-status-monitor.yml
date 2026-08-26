@@ -1,0 +1,22 @@
+name: AX Status Monitor
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "*/15 * * * *"
+
+jobs:
+  monitor:
+    runs-on: self-hosted
+
+    steps:
+      - name: AX Monitor
+        shell: powershell
+        run: |
+          Write-Host "=== AX STATUS MONITOR ==="
+          Write-Host "Time: $(Get-Date -Format o)"
+          Write-Host "Computer: $env:COMPUTERNAME"
+          Write-Host "Runner OS: $env:RUNNER_OS"
+          Write-Host "Runner Arch: $env:RUNNER_ARCH"
+          Write-Host "Runner Name: $env:RUNNER_NAME"
+          Write-Host "=== AX STATUS MONITOR COMPLETE ==="
