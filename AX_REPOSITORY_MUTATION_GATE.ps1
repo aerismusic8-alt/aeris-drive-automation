@@ -1,4 +1,3 @@
-```powershell
 param(
   [Parameter(Mandatory = $true)]
   [string]$FilePath,
@@ -13,18 +12,32 @@ $ErrorActionPreference = 'Stop'
 
 Write-Host '=== AX REPOSITORY MUTATION GATE ==='
 
-# ------------------------------------------------------------
-# SAFETY POLICY
-# ------------------------------------------------------------
+# ============================================================
+# REPOSITORY ROOT
+# ============================================================
 
 $repoRoot = (Get-Location).Path
+$repoRootFull = [System.IO.Path]::GetFullPath($repoRoot)
+
+# ============================================================
+# PATH NORMALIZATION / SAFETY
+# ============================================================
+
 $normalizedPath = $FilePath.Replace('\','/').TrimStart('/')
+
+if ([string]::IsNullOrWhiteSpace($normalizedPath)) {
+  throw 'REPOSITORY_MUTATION_INVALID_PATH'
+}
+
+if ($normalizedPath -match '(^|/)\.\.?(/|$)') {
+  throw 'REPOSITORY_MUTATION_BLOCKED_PATH_TRAVERSAL'
+}
 
 if ($normalizedPath -match '(^|/)\.git(/|$)') {
   throw 'REPOSITORY_MUTATION_BLOCKED_GIT_INTERNAL'
 }
 
-if ($normalizedPath -match '(^|/)(\.github/workflows/.*secrets|.*secret.*|.*credentials.*)$') {
+if ($normalizedPath -match '(^|/)(.*secret.*|.*credential.*|.*token.*)$') {
   throw 'REPOSITORY_MUTATION_BLOCKED_SENSITIVE_PATH'
 }
 
@@ -47,11 +60,32 @@ if ($extension -notin $allowedExtensions) {
   throw "REPOSITORY_MUTATION_BLOCKED_EXTENSION:$extension"
 }
 
-# ------------------------------------------------------------
-# MAIN-BRANCH SAFETY
-# ------------------------------------------------------------
+# ============================================================
+# TARGET PATH MUST REMAIN INSIDE REPOSITORY
+# ============================================================
 
-$branch = git branch --show-current
+$targetPath = [System.IO.Path]::GetFullPath(
+  (Join-Path $repoRootFull $normalizedPath)
+)
+
+$repoPrefix = $repoRootFull.TrimEnd('\') + '\'
+
+if (
+  -not $targetPath.StartsWith(
+    $repoPrefix,
+    [System.StringComparison]::OrdinalIgnoreCase
+  )
+) {
+  throw 'REPOSITORY_MUTATION_BLOCKED_OUTSIDE_REPOSITORY'
+}
+
+Write-Host "Target: $normalizedPath"
+
+# ============================================================
+# MAIN BRANCH SAFETY
+# ============================================================
+
+$branch = (git branch --show-current).Trim()
 
 if ($LASTEXITCODE -ne 0) {
   throw 'GIT_BRANCH_DETECTION_FAILED'
@@ -63,34 +97,30 @@ if ($branch -ne 'main') {
   throw "REPOSITORY_MUTATION_REQUIRES_MAIN:$branch"
 }
 
-# ------------------------------------------------------------
-# FILE PATH SAFETY
-# ------------------------------------------------------------
+# ============================================================
+# DIRECTORY
+# ============================================================
 
-$targetPath = Join-Path $repoRoot $normalizedPath
 $targetDirectory = Split-Path -Parent $targetPath
 
 if (-not (Test-Path $targetDirectory)) {
   New-Item -ItemType Directory -Path $targetDirectory -Force | Out-Null
 }
 
-# ------------------------------------------------------------
-# BACKUP EXISTING CONTENT
-# ------------------------------------------------------------
-
-$existing = $null
+# ============================================================
+# EXISTING FILE
+# ============================================================
 
 if (Test-Path $targetPath) {
-  $existing = Get-Content -Raw -Path $targetPath
   Write-Host "Existing file detected: $normalizedPath"
 }
 else {
   Write-Host "Creating new file: $normalizedPath"
 }
 
-# ------------------------------------------------------------
+# ============================================================
 # WRITE
-# ------------------------------------------------------------
+# ============================================================
 
 [System.IO.File]::WriteAllText(
   $targetPath,
@@ -100,9 +130,9 @@ else {
 
 Write-Host 'File write: PASS'
 
-# ------------------------------------------------------------
-# VERIFY CONTENT
-# ------------------------------------------------------------
+# ============================================================
+# CONTENT VERIFICATION
+# ============================================================
 
 $verifiedContent = Get-Content -Raw -Path $targetPath
 
@@ -112,19 +142,9 @@ if ($verifiedContent -ne $Content) {
 
 Write-Host 'Content verification: PASS'
 
-# ------------------------------------------------------------
-# GIT STATUS
-# ------------------------------------------------------------
-
-git status --short
-
-if ($LASTEXITCODE -ne 0) {
-  throw 'GIT_STATUS_FAILED'
-}
-
-# ------------------------------------------------------------
+# ============================================================
 # STAGE ONLY REQUESTED FILE
-# ------------------------------------------------------------
+# ============================================================
 
 git add -- $normalizedPath
 
@@ -134,34 +154,28 @@ if ($LASTEXITCODE -ne 0) {
 
 Write-Host "Staged: $normalizedPath"
 
-# ------------------------------------------------------------
-# VERIFY STAGED PATH
-# ------------------------------------------------------------
+# ============================================================
+# STAGED PATH VERIFICATION
+# ============================================================
 
-$staged = git diff --cached --name-only
+$staged = @(
+  git diff --cached --name-only
+)
 
 if ($LASTEXITCODE -ne 0) {
   throw 'GIT_STAGED_FILE_CHECK_FAILED'
 }
 
-if ($staged -notcontains $normalizedPath) {
-  throw 'REPOSITORY_MUTATION_STAGE_VERIFICATION_FAILED'
-}
-
-$unexpected = @(
-  $staged | Where-Object { $_ -ne $normalizedPath }
-)
-
-if ($unexpected.Count -gt 0) {
-  git reset
-  throw "REPOSITORY_MUTATION_UNEXPECTED_FILES:$($unexpected -join ',')"
+if ($staged.Count -ne 1 -or $staged[0] -ne $normalizedPath) {
+  git reset -- $normalizedPath
+  throw "REPOSITORY_MUTATION_UNEXPECTED_STAGED_FILES:$($staged -join ',')"
 }
 
 Write-Host 'Staged-path verification: PASS'
 
-# ------------------------------------------------------------
+# ============================================================
 # COMMIT
-# ------------------------------------------------------------
+# ============================================================
 
 git commit -m $CommitMessage
 
@@ -171,9 +185,9 @@ if ($LASTEXITCODE -ne 0) {
 
 Write-Host 'Commit: PASS'
 
-# ------------------------------------------------------------
-# FINAL VERIFICATION
-# ------------------------------------------------------------
+# ============================================================
+# COMMIT VERIFICATION
+# ============================================================
 
 $commitSha = (git rev-parse HEAD).Trim()
 
@@ -183,9 +197,13 @@ if ([string]::IsNullOrWhiteSpace($commitSha)) {
 
 Write-Host "Commit SHA: $commitSha"
 
-$workingTree = git status --porcelain
+# ============================================================
+# WORKING TREE VERIFICATION
+# ============================================================
 
-if (-not [string]::IsNullOrWhiteSpace(($workingTree | Out-String).Trim())) {
+$workingTree = (git status --porcelain | Out-String).Trim()
+
+if (-not [string]::IsNullOrWhiteSpace($workingTree)) {
   throw 'REPOSITORY_NOT_CLEAN_AFTER_MUTATION'
 }
 
@@ -193,4 +211,3 @@ Write-Host 'Working tree: CLEAN'
 Write-Host 'Repository mutation: VERIFIED'
 Write-Host 'Live financial execution: DISABLED'
 Write-Host '=== AX REPOSITORY MUTATION GATE COMPLETE ==='
-```
