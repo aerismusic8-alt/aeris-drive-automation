@@ -1,0 +1,86 @@
+name: AX Autonomous Executive Loop
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "*/5 * * * *"
+
+permissions:
+  actions: read
+  contents: read
+
+concurrency:
+  group: ax-executive-loop
+  cancel-in-progress: false
+
+jobs:
+  executive-loop:
+    runs-on: self-hosted
+    timeout-minutes: 5
+
+    steps:
+      - name: AX Executive Cycle
+        shell: powershell -ExecutionPolicy Bypass -File {0}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $cycle = [guid]::NewGuid().ToString()
+          $now = Get-Date -Format o
+          $repo = $env:GITHUB_REPOSITORY
+
+          Write-Host "=== AX AUTONOMOUS EXECUTIVE CYCLE ==="
+          Write-Host "Cycle: $cycle"
+          Write-Host "Time: $now"
+          Write-Host "Computer: $env:COMPUTERNAME"
+          Write-Host "Runner: $env:RUNNER_NAME"
+          Write-Host "Repository: $repo"
+
+          $headers = @{
+            Authorization = "Bearer $env:GITHUB_TOKEN"
+            Accept = 'application/vnd.github+json'
+            'X-GitHub-Api-Version' = '2022-11-28'
+          }
+
+          $runsUrl = "https://api.github.com/repos/$repo/actions/runs?per_page=30"
+          $runs = Invoke-RestMethod -Uri $runsUrl -Headers $headers -Method Get
+
+          $ax = $runs.workflow_runs | Where-Object { $_.name -eq 'AX Status Monitor' } | Select-Object -First 1
+          $smoke = $runs.workflow_runs | Where-Object { $_.name -eq 'PC Runner Smoke Test' } | Select-Object -First 1
+
+          Write-Host ""
+          Write-Host "=== OBSERVE ==="
+          Write-Host "AX Monitor: $($ax.status) / $($ax.conclusion)"
+          Write-Host "PC Runner Smoke: $($smoke.status) / $($smoke.conclusion)"
+
+          $decision = 'CONTINUE_MONITORING'
+          $nextState = 'ACTIVE'
+
+          if (-not $ax -or $ax.conclusion -ne 'success') {
+            $decision = 'INVESTIGATE_AX_MONITOR'
+            $nextState = 'BLOCKED'
+          } elseif (-not $smoke -or $smoke.conclusion -ne 'success') {
+            $decision = 'INVESTIGATE_PC_RUNNER'
+            $nextState = 'BLOCKED'
+          }
+
+          Write-Host ""
+          Write-Host "=== ANALYZE ==="
+          Write-Host "Decision: $decision"
+          Write-Host "Next State: $nextState"
+          Write-Host ""
+          Write-Host "=== PERMISSION ==="
+          Write-Host "Live-money execution: DISABLED"
+          Write-Host "Financial transactions: NOT PERMITTED"
+          Write-Host "Repository mutation: NOT PERFORMED BY THIS CYCLE"
+          Write-Host ""
+          Write-Host "=== VERIFY ==="
+          Write-Host "Observed workflow data: RECEIVED"
+          Write-Host "Runner execution: VERIFIED by workflow history when latest smoke run succeeded"
+          Write-Host ""
+          Write-Host "=== AUDIT ==="
+          Write-Host "CycleId=$cycle"
+          Write-Host "Timestamp=$now"
+          Write-Host "Decision=$decision"
+          Write-Host "NextState=$nextState"
+          Write-Host "=== AX AUTONOMOUS EXECUTIVE CYCLE COMPLETE ==="
