@@ -1,0 +1,19 @@
+name: AICS Paper E2E
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "*/15 * * * *"
+
+permissions:
+  contents: read
+
+jobs:
+  paper-e2e:
+    runs-on: self-hosted
+    steps:
+      - name: Run AICS Paper E2E
+        shell: powershell -ExecutionPolicy Bypass -File {0}
+        run: |
+          & "$env:GITHUB_WORKSPACE\AX_AICS_PAPER_E2E.ps1"
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
