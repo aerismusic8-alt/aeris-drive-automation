@@ -13,6 +13,15 @@ Write-Host "Task ID: $($selected.id)"
 Write-Host "Domain: $($selected.domain)"
 Write-Host "Priority: $($selected.priority)"
 Write-Host "Requested Action: $($selected.next_action)"
+
+if (-not [string]::IsNullOrWhiteSpace($env:AX_CLOUDFLARE_RUNTIME_URL)) {
+  Write-Host '=== CLOUDFLARE CONTROLLED DISPATCH ==='
+  & powershell.exe -ExecutionPolicy Bypass -File "$PSScriptRoot\AX_CLOUDFLARE_DISPATCH_ADAPTER.ps1" -TaskId $selected.id -Domain $selected.domain -Priority ([int]$selected.priority) -Action $selected.next_action
+  if ($LASTEXITCODE -ne 0) { throw "AX_CLOUDFLARE_DISPATCH_FAILED:$LASTEXITCODE" }
+} else {
+  Write-Host 'Cloudflare Runtime: NOT_CONFIGURED'
+}
+
 switch ($selected.domain) {
   'AERIS' {
     Write-Host 'Route: AERIS_EXECUTION_QUEUE'
