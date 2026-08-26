@@ -50,6 +50,10 @@ jobs:
           Write-Host "Computer: $env:COMPUTERNAME"
           Write-Host "Runner: $env:RUNNER_NAME"
 
+          Write-Host '=== RECOVERY ==='
+          & powershell.exe -ExecutionPolicy Bypass -File "$root\AX_RECOVERY_ENGINE.ps1"
+          if ($LASTEXITCODE -ne 0) { throw "AX_RECOVERY_ENGINE_FAILED:$LASTEXITCODE" }
+
           $headers = @{
             Authorization = "Bearer $env:GITHUB_TOKEN"
             Accept = 'application/vnd.github+json'
@@ -78,6 +82,7 @@ jobs:
           Write-Host 'Repository mutation: NOT PERFORMED BY THIS CYCLE'
 
           Write-Host '=== VERIFY ==='
+          Write-Host 'Recovery engine: EXECUTED'
           Write-Host 'Priority selection: EXECUTED'
           Write-Host 'Dependency gate: EXECUTED'
           Write-Host 'Action dispatcher: EXECUTED'
@@ -89,5 +94,6 @@ jobs:
           Write-Host "Timestamp=$now"
           Write-Host "Trigger=$env:AX_TRIGGER"
           Write-Host "TriggerWorkflow=$env:AX_TRIGGER_WORKFLOW"
+          Write-Host 'RecoveryEngine=EXECUTED'
           Write-Host 'LiveExecution=DISABLED'
           Write-Host '=== AX AUTONOMOUS EXECUTIVE CYCLE COMPLETE ==='
