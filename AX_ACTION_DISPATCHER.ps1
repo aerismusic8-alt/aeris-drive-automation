@@ -1,9 +1,24 @@
-
 param(
   [string]$RegistryPath = "$PSScriptRoot\AX_TASK_REGISTRY.json"
 )
 
 $ErrorActionPreference = 'Stop'
+
+# ============================================================
+# AX ACTION DISPATCHER
+# ARCHITECTURE:
+#
+# AX Control Runtime
+#   -> ax-control-runtime
+#   -> ax-execution-events
+#
+# AERIS External Execution Runtime
+#   -> aeris-execution-runtime
+#   -> Gate 3.3.2 / Gemini / Apps Script
+#
+# IMPORTANT:
+# These two runtimes MUST remain separate.
+# ============================================================
 
 if (-not (Test-Path $RegistryPath)) {
   throw "AX_TASK_REGISTRY_NOT_FOUND: $RegistryPath"
@@ -38,37 +53,55 @@ Write-Host "Priority: $($selected.priority)"
 Write-Host "Requested Action: $($selected.next_action)"
 
 # ============================================================
-# CANONICAL AERIS EXECUTION RUNTIME
+# RUNTIME DEFINITIONS
 # ============================================================
 
-$canonicalRuntimeUrl = 'https://aeris-execution-runtime.aerismusic8.workers.dev'
-$runtimeUrl = $canonicalRuntimeUrl
+$controlRuntimeUrl =
+  'https://ax-control-runtime.aerismusic8.workers.dev'
 
-if (-not [string]::IsNullOrWhiteSpace($env:AX_CLOUDFLARE_RUNTIME_URL)) {
-  $candidateRuntimeUrl = $env:AX_CLOUDFLARE_RUNTIME_URL.TrimEnd('/')
+$externalRuntimeUrl =
+  'https://aeris-execution-runtime.aerismusic8.workers.dev'
 
-  if ($candidateRuntimeUrl -eq $canonicalRuntimeUrl) {
+Write-Host "AX Control Runtime: $controlRuntimeUrl"
+Write-Host "AERIS External Runtime: $externalRuntimeUrl"
+
+# ============================================================
+# CONTROL RUNTIME SELECTION
+# ============================================================
+
+$runtimeUrl = $controlRuntimeUrl
+
+if (-not [string]::IsNullOrWhiteSpace($env:AX_CONTROL_RUNTIME_URL)) {
+
+  $candidateRuntimeUrl =
+    $env:AX_CONTROL_RUNTIME_URL.TrimEnd('/')
+
+  if (
+    $candidateRuntimeUrl -eq $controlRuntimeUrl
+  ) {
     $runtimeUrl = $candidateRuntimeUrl
   }
   else {
-    Write-Host "Runtime environment override rejected: $candidateRuntimeUrl"
-    Write-Host "Using canonical runtime: $canonicalRuntimeUrl"
+    Write-Host "Control runtime override rejected: $candidateRuntimeUrl"
+    Write-Host "Using canonical AX Control Runtime: $controlRuntimeUrl"
   }
 }
 
-Write-Host "Canonical Runtime: $canonicalRuntimeUrl"
-Write-Host "Selected Runtime: $runtimeUrl"
+Write-Host "Selected Control Runtime: $runtimeUrl"
 
 # ============================================================
-# CLOUDFLARE CONTROLLED DISPATCH
+# CONTROL RUNTIME HEALTH
 # ============================================================
 
 $runtimeHealthy = $false
 
-Write-Host '=== CLOUDFLARE CONTROLLED DISPATCH ==='
+Write-Host '=== AX CONTROL RUNTIME HEALTH ==='
 
 try {
-  $healthUrl = "$($runtimeUrl.TrimEnd('/'))/health"
+
+  $healthUrl =
+    "$($runtimeUrl.TrimEnd('/'))/health"
+
   Write-Host "Health URL: $healthUrl"
 
   $health = Invoke-RestMethod `
@@ -76,40 +109,45 @@ try {
     -Method Get `
     -TimeoutSec 15
 
+  Write-Host "Status: $($health.status)"
+  Write-Host "Mode: $($health.mode)"
+  Write-Host "Queue: $($health.queue)"
+  Write-Host "Live Financial Execution: $($health.liveFinancialExecution)"
+
   $runtimeHealthy = (
     $health.status -eq 'ONLINE' -and
-    (
-      $health.mode -eq 'REAL_GEMINI_DISPATCH' -or
-      $health.mode -eq 'FREE_ONLY'
-    ) -and
-    $health.liveFinancialExecution -ne $true
+    $health.mode -eq 'FREE_ONLY' -and
+    $health.liveFinancialExecution -eq $false -and
+    $health.queue -eq 'ax-execution-events'
   )
 
   if ($runtimeHealthy) {
-    Write-Host 'Cloudflare Runtime Health: ONLINE'
-    Write-Host "Runtime Status: $($health.status)"
-    Write-Host "Runtime Mode: $($health.mode)"
-    Write-Host "Gemini: $($health.gemini)"
-    Write-Host "Apps Script: $($health.appsScript)"
-    Write-Host "Token Storage: $($health.tokenStorage)"
+
+    Write-Host 'AX Control Runtime Health: ONLINE'
+    Write-Host 'Mode: FREE_ONLY'
     Write-Host 'Live Financial Execution: DISABLED'
+    Write-Host 'Queue: ax-execution-events'
+
   }
   else {
-    Write-Host 'Cloudflare Runtime Health: REJECTED_BY_HEALTH_POLICY'
-    Write-Host "Status: $($health.status)"
-    Write-Host "Mode: $($health.mode)"
+
+    Write-Host 'AX Control Runtime Health: REJECTED_BY_HEALTH_POLICY'
   }
+
 }
 catch {
-  Write-Host "Cloudflare Runtime Health: UNAVAILABLE ($($_.Exception.Message))"
+
+  Write-Host `
+    "AX Control Runtime Health: UNAVAILABLE ($($_.Exception.Message))"
 }
 
 # ============================================================
-# CONTROLLED CLOUDFLARE DISPATCH ADAPTER
+# CONTROLLED DISPATCH
 # ============================================================
 
 if ($runtimeHealthy) {
 
+  Write-Host '=== CONTROLLED CLOUDFLARE DISPATCH ==='
   Write-Host 'Runtime Gate: READY'
   Write-Host 'Execution Gate: CONTROLLED'
 
@@ -129,7 +167,8 @@ if ($runtimeHealthy) {
 }
 else {
 
-  Write-Host 'Cloudflare Runtime: NOT_READY'
+  Write-Host '=== CONTROLLED CLOUDFLARE DISPATCH ==='
+  Write-Host 'Runtime Gate: NOT_READY'
   Write-Host 'Controlled execution deferred'
   Write-Host 'Mutation: NOT_PERFORMED'
 }
@@ -140,34 +179,86 @@ else {
 
 switch ($selected.domain) {
 
+  # ----------------------------------------------------------
+  # AERIS
+  # ----------------------------------------------------------
+
   'AERIS' {
 
+    Write-Host '=== AERIS DOMAIN ROUTING ==='
+
     Write-Host 'Route: AERIS_EXECUTION_QUEUE'
+    Write-Host 'External Runtime: aeris-execution-runtime'
     Write-Host 'Execution Gate: CONTROLLED'
 
-    if ($runtimeHealthy) {
+    # AERIS execution belongs to the existing
+    # Gate 3.3.2 External Execution Runtime.
+    #
+    # IMPORTANT:
+    # Do NOT send the AERIS execution adapter through
+    # ax-control-runtime.
 
-      Write-Host '=== AX AERIS EXECUTION ADAPTER ==='
+    try {
 
-      & powershell.exe `
-        -ExecutionPolicy Bypass `
-        -File "$PSScriptRoot\AX_AERIS_EXECUTION_ADAPTER.ps1" `
-        -StatusUrl "$($runtimeUrl.TrimEnd('/'))/health"
+      $externalHealthUrl =
+        "$($externalRuntimeUrl.TrimEnd('/'))/health"
 
-      if ($LASTEXITCODE -ne 0) {
-        throw "AX_AERIS_EXECUTION_ADAPTER_FAILED:$LASTEXITCODE"
+      Write-Host "External Runtime Health: $externalHealthUrl"
+
+      $externalHealth = Invoke-RestMethod `
+        -Uri $externalHealthUrl `
+        -Method Get `
+        -TimeoutSec 15
+
+      Write-Host "External Runtime Status: $($externalHealth.status)"
+      Write-Host "External Runtime Mode: $($externalHealth.mode)"
+
+      $externalHealthy = (
+        $externalHealth.status -eq 'ONLINE' -and
+        $externalHealth.liveFinancialExecution -ne $true
+      )
+
+      if ($externalHealthy) {
+
+        Write-Host 'AERIS External Runtime: ONLINE'
+
+        Write-Host '=== AX AERIS EXECUTION ADAPTER ==='
+
+        & powershell.exe `
+          -ExecutionPolicy Bypass `
+          -File "$PSScriptRoot\AX_AERIS_EXECUTION_ADAPTER.ps1" `
+          -StatusUrl $externalHealthUrl
+
+        if ($LASTEXITCODE -ne 0) {
+          throw "AX_AERIS_EXECUTION_ADAPTER_FAILED:$LASTEXITCODE"
+        }
+
+      }
+      else {
+
+        Write-Host 'AERIS External Runtime: REJECTED_BY_HEALTH_POLICY'
+        Write-Host 'Execution: DEFERRED'
+        Write-Host 'Mutation: NOT_PERFORMED'
       }
 
     }
-    else {
+    catch {
 
-      Write-Host 'Execution: DEFERRED — Cloudflare Runtime health gate not ready'
+      Write-Host `
+        "AERIS External Runtime: UNAVAILABLE ($($_.Exception.Message))"
+
+      Write-Host 'Execution: DEFERRED'
       Write-Host 'Mutation: NOT_PERFORMED'
     }
   }
 
+  # ----------------------------------------------------------
+  # AICS
+  # ----------------------------------------------------------
+
   'AICS' {
 
+    Write-Host '=== AICS DOMAIN ROUTING ==='
     Write-Host 'Route: AICS_RISK_ENGINE'
 
     if (
@@ -179,6 +270,8 @@ switch ($selected.domain) {
       Write-Host 'Reason: LIVE_FINANCIAL_EXECUTION_REQUIRES_K'
 
       if ($selected.id -eq 'AICS-PAPER-RISK-ENGINE') {
+
+        Write-Host 'Paper Risk Engine: CONTROLLED'
 
         & powershell.exe `
           -ExecutionPolicy Bypass `
@@ -203,12 +296,21 @@ switch ($selected.domain) {
     }
   }
 
+  # ----------------------------------------------------------
+  # AX
+  # ----------------------------------------------------------
+
   'AX' {
 
+    Write-Host '=== AX INTERNAL ROUTING ==='
     Write-Host 'Route: AX_INTERNAL_EXECUTION'
     Write-Host 'Execution Gate: CONTROLLED'
     Write-Host 'Execution: NOT_PERFORMED'
   }
+
+  # ----------------------------------------------------------
+  # UNKNOWN
+  # ----------------------------------------------------------
 
   default {
 
@@ -218,4 +320,12 @@ switch ($selected.domain) {
   }
 }
 
+# ============================================================
+# FINAL
+# ============================================================
+
+Write-Host ''
 Write-Host '=== AX ACTION DISPATCHER COMPLETE ==='
+Write-Host "Control Runtime: $runtimeUrl"
+Write-Host "External Runtime: $externalRuntimeUrl"
+Write-Host 'Live Financial Execution: DISABLED'
