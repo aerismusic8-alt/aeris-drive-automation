@@ -1,0 +1,21 @@
+name: PC Runner Smoke Test
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  pc-runner-smoke:
+    runs-on: [self-hosted, Windows, X64]
+    steps:
+      - name: Verify PC runner execution
+        shell: powershell
+        run: |
+          Write-Host "=== AERIS PC RUNNER SMOKE TEST ==="
+          Write-Host "Hostname: $env:COMPUTERNAME"
+          Write-Host "User: $env:USERNAME"
+          Write-Host "Runner OS: $env:RUNNER_OS"
+          Write-Host "Runner Arch: $env:RUNNER_ARCH"
+          git --version
+          Write-Host "=== SMOKE TEST COMPLETE ==="
