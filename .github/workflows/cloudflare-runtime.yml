@@ -30,14 +30,14 @@ jobs:
         uses: actions/checkout@v5
 
       - name: Verify Node and Wrangler
-        shell: powershell
+        shell: powershell -ExecutionPolicy Bypass -Command ". '{0}'"
         run: |
           $ErrorActionPreference = 'Stop'
           node --version
           npx wrangler@latest --version
 
       - name: Ensure Free Queue exists
-        shell: powershell
+        shell: powershell -ExecutionPolicy Bypass -Command ". '{0}'"
         working-directory: cloudflare/ax-control-runtime
         run: |
           $ErrorActionPreference = 'Stop'
@@ -53,7 +53,7 @@ jobs:
           if ($LASTEXITCODE -ne 0) { throw 'QUEUE_UPDATE_FAILED' }
 
       - name: Validate Worker
-        shell: powershell
+        shell: powershell -ExecutionPolicy Bypass -Command ". '{0}'"
         working-directory: cloudflare/ax-control-runtime
         run: |
           $ErrorActionPreference = 'Stop'
@@ -61,7 +61,7 @@ jobs:
           if ($LASTEXITCODE -ne 0) { throw 'WRANGLER_DRY_RUN_FAILED' }
 
       - name: Deploy Worker
-        shell: powershell
+        shell: powershell -ExecutionPolicy Bypass -Command ". '{0}'"
         working-directory: cloudflare/ax-control-runtime
         run: |
           $ErrorActionPreference = 'Stop'
@@ -69,7 +69,7 @@ jobs:
           if ($LASTEXITCODE -ne 0) { throw 'WRANGLER_DEPLOY_FAILED' }
 
       - name: Verify Runtime Health
-        shell: powershell
+        shell: powershell -ExecutionPolicy Bypass -Command ". '{0}'"
         run: |
           $ErrorActionPreference = 'Stop'
           $r = Invoke-RestMethod -Uri "$env:AX_RUNTIME_URL/health" -Method Get -TimeoutSec 30
