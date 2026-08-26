@@ -11,7 +11,7 @@ jobs:
 
     steps:
       - name: AX Monitor
-        shell: powershell
+        shell: powershell -ExecutionPolicy Bypass
         run: |
           Write-Host "=== AX STATUS MONITOR ==="
           Write-Host "Time: $(Get-Date -Format o)"
