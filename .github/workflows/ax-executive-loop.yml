@@ -13,7 +13,7 @@ on:
 
 permissions:
   actions: read
-  contents: read
+  contents: write
 
 concurrency:
   group: ax-executive-loop
@@ -28,6 +28,9 @@ jobs:
     steps:
       - name: Checkout AX control state
         uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+          persist-credentials: true
 
       - name: AX Executive Cycle
         shell: powershell -ExecutionPolicy Bypass -File {0}
@@ -36,6 +39,7 @@ jobs:
           AX_TRIGGER: ${{ github.event_name }}
           AX_TRIGGER_WORKFLOW: ${{ github.event.workflow_run.name }}
           AX_CLOUDFLARE_RUNTIME_URL: https://aeris-execution-runtime.aerismusic8.workers.dev
+          AX_REPOSITORY_MUTATION_ENABLED: 'true'
         run: |
           $ErrorActionPreference = 'Stop'
           $cycle = [guid]::NewGuid().ToString()
@@ -98,7 +102,7 @@ jobs:
           Write-Host '=== PERMISSION ==='
           Write-Host 'Live-money execution: DISABLED'
           Write-Host 'Financial transactions: NOT PERMITTED'
-          Write-Host 'Repository mutation: NOT_PERFORMED_BY_THIS_CYCLE'
+          Write-Host "Repository mutation capability: $env:AX_REPOSITORY_MUTATION_ENABLED"
 
           Write-Host '=== VERIFY ==='
           Write-Host 'Recovery engine: EXECUTED'
