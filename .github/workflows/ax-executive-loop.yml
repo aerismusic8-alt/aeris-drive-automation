@@ -31,6 +31,7 @@ jobs:
           $cycle = [guid]::NewGuid().ToString()
           $now = Get-Date -Format o
           $repo = $env:GITHUB_REPOSITORY
+          $root = $env:GITHUB_WORKSPACE
 
           Write-Host "=== AX AUTONOMOUS EXECUTIVE CYCLE ==="
           Write-Host "Cycle: $cycle"
@@ -51,51 +52,51 @@ jobs:
           $ax = $runs.workflow_runs | Where-Object { $_.name -eq 'AX Status Monitor' } | Select-Object -First 1
           $smoke = $runs.workflow_runs | Where-Object { $_.name -eq 'PC Runner Smoke Test' } | Select-Object -First 1
 
-          Write-Host ""
           Write-Host "=== OBSERVE ==="
           Write-Host "AX Monitor: $($ax.status) / $($ax.conclusion)"
           Write-Host "PC Runner Smoke: $($smoke.status) / $($smoke.conclusion)"
 
           $decision = 'CONTINUE_MONITORING'
           $nextState = 'ACTIVE'
-
           if (-not $ax -or $ax.conclusion -ne 'success') {
-            $decision = 'INVESTIGATE_AX_MONITOR'
-            $nextState = 'BLOCKED'
+            $decision = 'INVESTIGATE_AX_MONITOR'; $nextState = 'BLOCKED'
           } elseif (-not $smoke -or $smoke.conclusion -ne 'success') {
-            $decision = 'INVESTIGATE_PC_RUNNER'
-            $nextState = 'BLOCKED'
+            $decision = 'INVESTIGATE_PC_RUNNER'; $nextState = 'BLOCKED'
           }
 
-          Write-Host ""
           Write-Host "=== ANALYZE ==="
           Write-Host "Decision: $decision"
           Write-Host "Next State: $nextState"
 
-          Write-Host ""
           Write-Host "=== TASK REGISTRY / DECISION ENGINE ==="
-          & powershell.exe -ExecutionPolicy Bypass -File "$env:GITHUB_WORKSPACE\AX_DECISION_ENGINE.ps1" -RegistryPath "$env:GITHUB_WORKSPACE\AX_TASK_REGISTRY.json"
+          & powershell.exe -ExecutionPolicy Bypass -File "$root\AX_DECISION_ENGINE.ps1" -RegistryPath "$root\AX_TASK_REGISTRY.json"
+          if ($LASTEXITCODE -ne 0) { throw "AX_DECISION_ENGINE_FAILED:$LASTEXITCODE" }
 
-          Write-Host ""
           Write-Host "=== ACTION DISPATCHER ==="
-          & powershell.exe -ExecutionPolicy Bypass -File "$env:GITHUB_WORKSPACE\AX_ACTION_DISPATCHER.ps1" -RegistryPath "$env:GITHUB_WORKSPACE\AX_TASK_REGISTRY.json"
+          & powershell.exe -ExecutionPolicy Bypass -File "$root\AX_ACTION_DISPATCHER.ps1" -RegistryPath "$root\AX_TASK_REGISTRY.json"
+          if ($LASTEXITCODE -ne 0) { throw "AX_ACTION_DISPATCHER_FAILED:$LASTEXITCODE" }
 
-          Write-Host ""
+          Write-Host "=== AICS PAPER E2E ==="
+          & powershell.exe -ExecutionPolicy Bypass -File "$root\AX_AICS_PAPER_E2E.ps1" -Symbol 'BTC-USD' -EntryPrice 100000 -ReferencePrice 98000 -Capital 1000
+          if ($LASTEXITCODE -ne 0) { throw "AICS_PAPER_E2E_FAILED:$LASTEXITCODE" }
+
           Write-Host "=== PERMISSION ==="
           Write-Host "Live-money execution: DISABLED"
           Write-Host "Financial transactions: NOT PERMITTED"
           Write-Host "Repository mutation: NOT PERFORMED BY THIS CYCLE"
-          Write-Host ""
+
           Write-Host "=== VERIFY ==="
           Write-Host "Observed workflow data: RECEIVED"
           Write-Host "Task registry: LOADED"
           Write-Host "Decision engine: EXECUTED"
           Write-Host "Action dispatcher: EXECUTED"
+          Write-Host "AICS Paper E2E: EXECUTED"
           Write-Host "Runner execution: VERIFIED by workflow execution"
-          Write-Host ""
+
           Write-Host "=== AUDIT ==="
           Write-Host "CycleId=$cycle"
           Write-Host "Timestamp=$now"
           Write-Host "Decision=$decision"
           Write-Host "NextState=$nextState"
+          Write-Host "AICS=AICS_PAPER_E2E_VERIFIED"
           Write-Host "=== AX AUTONOMOUS EXECUTIVE CYCLE COMPLETE ==="
