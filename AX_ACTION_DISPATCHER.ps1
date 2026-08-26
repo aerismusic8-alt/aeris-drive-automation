@@ -1,4 +1,4 @@
-```powershell
+
 param(
   [string]$RegistryPath = "$PSScriptRoot\AX_TASK_REGISTRY.json"
 )
@@ -38,21 +38,19 @@ Write-Host "Priority: $($selected.priority)"
 Write-Host "Requested Action: $($selected.next_action)"
 
 # ============================================================
-# AX CLOUDFLARE RUNTIME
-# Canonical runtime URL
+# CANONICAL AERIS EXECUTION RUNTIME
 # ============================================================
 
 $canonicalRuntimeUrl = 'https://aeris-execution-runtime.aerismusic8.workers.dev'
-
 $runtimeUrl = $canonicalRuntimeUrl
 
 if (-not [string]::IsNullOrWhiteSpace($env:AX_CLOUDFLARE_RUNTIME_URL)) {
   $candidateRuntimeUrl = $env:AX_CLOUDFLARE_RUNTIME_URL.TrimEnd('/')
 
-  # Prevent legacy / incorrect runtime endpoints from being used.
   if ($candidateRuntimeUrl -eq $canonicalRuntimeUrl) {
     $runtimeUrl = $candidateRuntimeUrl
-  } else {
+  }
+  else {
     Write-Host "Runtime environment override rejected: $candidateRuntimeUrl"
     Write-Host "Using canonical runtime: $canonicalRuntimeUrl"
   }
@@ -80,7 +78,10 @@ try {
 
   $runtimeHealthy = (
     $health.status -eq 'ONLINE' -and
-    $health.mode -eq 'REAL_GEMINI_DISPATCH' -and
+    (
+      $health.mode -eq 'REAL_GEMINI_DISPATCH' -or
+      $health.mode -eq 'FREE_ONLY'
+    ) -and
     $health.liveFinancialExecution -ne $true
   )
 
@@ -92,18 +93,19 @@ try {
     Write-Host "Apps Script: $($health.appsScript)"
     Write-Host "Token Storage: $($health.tokenStorage)"
     Write-Host 'Live Financial Execution: DISABLED'
-  } else {
+  }
+  else {
     Write-Host 'Cloudflare Runtime Health: REJECTED_BY_HEALTH_POLICY'
     Write-Host "Status: $($health.status)"
     Write-Host "Mode: $($health.mode)"
   }
-
-} catch {
+}
+catch {
   Write-Host "Cloudflare Runtime Health: UNAVAILABLE ($($_.Exception.Message))"
 }
 
 # ============================================================
-# CONTROLLED DISPATCH
+# CONTROLLED CLOUDFLARE DISPATCH ADAPTER
 # ============================================================
 
 if ($runtimeHealthy) {
@@ -124,7 +126,8 @@ if ($runtimeHealthy) {
     throw "AX_CLOUDFLARE_DISPATCH_FAILED:$LASTEXITCODE"
   }
 
-} else {
+}
+else {
 
   Write-Host 'Cloudflare Runtime: NOT_READY'
   Write-Host 'Controlled execution deferred'
@@ -155,7 +158,8 @@ switch ($selected.domain) {
         throw "AX_AERIS_EXECUTION_ADAPTER_FAILED:$LASTEXITCODE"
       }
 
-    } else {
+    }
+    else {
 
       Write-Host 'Execution: DEFERRED — Cloudflare Runtime health gate not ready'
       Write-Host 'Mutation: NOT_PERFORMED'
@@ -185,12 +189,14 @@ switch ($selected.domain) {
           throw "AX_AICS_PAPER_RISK_ADAPTER_FAILED:$LASTEXITCODE"
         }
 
-      } else {
+      }
+      else {
 
         Write-Host 'Execution: NOT_PERFORMED'
       }
 
-    } else {
+    }
+    else {
 
       Write-Host 'Execution Gate: CONTROLLED'
       Write-Host 'Execution: NOT_PERFORMED'
@@ -213,4 +219,3 @@ switch ($selected.domain) {
 }
 
 Write-Host '=== AX ACTION DISPATCHER COMPLETE ==='
-```
