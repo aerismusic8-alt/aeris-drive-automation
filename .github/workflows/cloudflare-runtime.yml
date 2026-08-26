@@ -32,6 +32,12 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v5
 
+      - name: Setup Node.js
+        uses: actions/setup-node@v5
+        with:
+          node-version: 24
+          check-latest: true
+
       - name: Verify Node and Wrangler
         shell: powershell -ExecutionPolicy Bypass -File {0}
         run: |
@@ -40,7 +46,7 @@ jobs:
           Write-Host '=== VERIFY NODE / WRANGLER ==='
 
           node --version
-
+          npm --version
           npx wrangler@latest --version
 
           if ($LASTEXITCODE -ne 0) {
