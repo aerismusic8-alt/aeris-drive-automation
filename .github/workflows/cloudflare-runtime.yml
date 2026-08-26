@@ -42,115 +42,90 @@ jobs:
         shell: powershell -ExecutionPolicy Bypass -File {0}
         run: |
           $ErrorActionPreference = 'Stop'
-
           Write-Host '=== VERIFY NODE / WRANGLER ==='
-
           node --version
           npm --version
           npx wrangler@latest --version
-
-          if ($LASTEXITCODE -ne 0) {
-            throw 'WRANGLER_VERSION_CHECK_FAILED'
-          }
+          if ($LASTEXITCODE -ne 0) { throw 'WRANGLER_VERSION_CHECK_FAILED' }
 
       - name: Ensure Free Queue exists
         shell: powershell -ExecutionPolicy Bypass -File {0}
         working-directory: cloudflare/ax-control-runtime
         run: |
           $ErrorActionPreference = 'Stop'
-
           Write-Host '=== ENSURE FREE QUEUE ==='
           Write-Host "Queue: $env:QUEUE_NAME"
 
-          npx wrangler@latest queues info $env:QUEUE_NAME *> $null
+          $ErrorActionPreference = 'Continue'
+          npx wrangler@latest queues info $env:QUEUE_NAME 2>&1 | Out-Host
+          $queueInfoExitCode = $LASTEXITCODE
+          $ErrorActionPreference = 'Stop'
 
-          if ($LASTEXITCODE -ne 0) {
-            Write-Host "Creating queue $env:QUEUE_NAME"
-
-            npx wrangler@latest queues create $env:QUEUE_NAME `
-              --message-retention-period-secs 3600
-
-            if ($LASTEXITCODE -ne 0) {
-              throw 'QUEUE_CREATE_FAILED'
-            }
-          }
-          else {
+          if ($queueInfoExitCode -ne 0) {
+            Write-Host "Queue does not exist. Creating: $env:QUEUE_NAME"
+            npx wrangler@latest queues create $env:QUEUE_NAME --message-retention-period-secs 3600
+            if ($LASTEXITCODE -ne 0) { throw 'QUEUE_CREATE_FAILED' }
+          } else {
             Write-Host "Queue exists: $env:QUEUE_NAME"
           }
 
-          npx wrangler@latest queues update $env:QUEUE_NAME `
-            --message-retention-period-secs 3600 `
-            --delivery-delay-secs 0
-
-          if ($LASTEXITCODE -ne 0) {
-            throw 'QUEUE_UPDATE_FAILED'
-          }
+          npx wrangler@latest queues update $env:QUEUE_NAME --message-retention-period-secs 3600 --delivery-delay-secs 0
+          if ($LASTEXITCODE -ne 0) { throw 'QUEUE_UPDATE_FAILED' }
+          Write-Host "Queue ready: $env:QUEUE_NAME"
 
       - name: Validate Worker
         shell: powershell -ExecutionPolicy Bypass -File {0}
         working-directory: cloudflare/ax-control-runtime
         run: |
           $ErrorActionPreference = 'Stop'
-
           Write-Host '=== VALIDATE WORKER ==='
           Write-Host "Worker: $env:WORKER_NAME"
-
           npx wrangler@latest deploy --dry-run --name $env:WORKER_NAME
-
-          if ($LASTEXITCODE -ne 0) {
-            throw 'WRANGLER_DRY_RUN_FAILED'
-          }
+          if ($LASTEXITCODE -ne 0) { throw 'WRANGLER_DRY_RUN_FAILED' }
 
       - name: Deploy Worker
         shell: powershell -ExecutionPolicy Bypass -File {0}
         working-directory: cloudflare/ax-control-runtime
         run: |
           $ErrorActionPreference = 'Stop'
-
           Write-Host '=== DEPLOY AX CLOUDFLARE RUNTIME ==='
           Write-Host "Worker: $env:WORKER_NAME"
-
           npx wrangler@latest deploy --name $env:WORKER_NAME
-
-          if ($LASTEXITCODE -ne 0) {
-            throw 'WRANGLER_DEPLOY_FAILED'
-          }
+          if ($LASTEXITCODE -ne 0) { throw 'WRANGLER_DEPLOY_FAILED' }
 
       - name: Verify Runtime Health
         shell: powershell -ExecutionPolicy Bypass -File {0}
         run: |
           $ErrorActionPreference = 'Stop'
-
           Write-Host '=== VERIFY AX RUNTIME HEALTH ==='
           Write-Host "Runtime: $env:AX_RUNTIME_URL"
 
-          $r = Invoke-RestMethod `
-            -Uri "$env:AX_RUNTIME_URL/health" `
-            -Method Get `
-            -TimeoutSec 30
-
-          if ($r.status -ne 'ONLINE') {
-            throw 'AX_RUNTIME_STATUS_NOT_ONLINE'
+          $verified = $false
+          for ($attempt = 1; $attempt -le 6; $attempt++) {
+            try {
+              Write-Host "Health attempt $attempt/6"
+              $r = Invoke-RestMethod -Uri "$env:AX_RUNTIME_URL/health" -Method Get -TimeoutSec 30
+              if ($r.status -eq 'ONLINE' -and $r.mode -eq 'FREE_ONLY' -and $r.liveFinancialExecution -eq $false) {
+                $verified = $true
+                Write-Host 'AX Cloudflare Runtime: ONLINE'
+                Write-Host 'Mode: FREE_ONLY'
+                Write-Host 'Live Financial Execution: DISABLED'
+                Write-Host "Queue: $($r.queue)"
+                break
+              }
+              Write-Host 'Health response failed policy validation.'
+            } catch {
+              Write-Host "Health probe failed: $($_.Exception.Message)"
+            }
+            if ($attempt -lt 6) { Start-Sleep -Seconds 5 }
           }
 
-          if ($r.mode -ne 'FREE_ONLY') {
-            throw 'AX_RUNTIME_NOT_FREE_ONLY'
-          }
-
-          if ($r.liveFinancialExecution -ne $false) {
-            throw 'AX_RUNTIME_LIVE_FINANCIAL_EXECUTION_ENABLED'
-          }
-
-          Write-Host 'AX Cloudflare Runtime: ONLINE'
-          Write-Host 'Mode: FREE_ONLY'
-          Write-Host 'Live Financial Execution: DISABLED'
-          Write-Host "Queue: $($r.queue)"
+          if (-not $verified) { throw 'AX_RUNTIME_HEALTH_VERIFICATION_FAILED' }
 
       - name: Runtime Deployment Summary
         shell: powershell -ExecutionPolicy Bypass -File {0}
         run: |
           $ErrorActionPreference = 'Stop'
-
           Write-Host '=== AX CLOUDFLARE RUNTIME DEPLOYMENT COMPLETE ==='
           Write-Host "Runtime URL: $env:AX_RUNTIME_URL"
           Write-Host "Worker: $env:WORKER_NAME"
