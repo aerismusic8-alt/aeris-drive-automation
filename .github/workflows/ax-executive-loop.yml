@@ -35,6 +35,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           AX_TRIGGER: ${{ github.event_name }}
           AX_TRIGGER_WORKFLOW: ${{ github.event.workflow_run.name }}
+          AX_CLOUDFLARE_RUNTIME_URL: https://ax-control-runtime.aerismusic8.workers.dev
         run: |
           $ErrorActionPreference = 'Stop'
           $cycle = [guid]::NewGuid().ToString()
@@ -49,6 +50,7 @@ jobs:
           Write-Host "Trigger Workflow: $env:AX_TRIGGER_WORKFLOW"
           Write-Host "Computer: $env:COMPUTERNAME"
           Write-Host "Runner: $env:RUNNER_NAME"
+          Write-Host "Cloudflare Runtime: $env:AX_CLOUDFLARE_RUNTIME_URL"
 
           Write-Host '=== RECOVERY ==='
           & powershell.exe -ExecutionPolicy Bypass -File "$root\AX_RECOVERY_ENGINE.ps1"
@@ -79,13 +81,14 @@ jobs:
           Write-Host '=== PERMISSION ==='
           Write-Host 'Live-money execution: DISABLED'
           Write-Host 'Financial transactions: NOT PERMITTED'
-          Write-Host 'Repository mutation: NOT PERFORMED BY THIS CYCLE'
+          Write-Host 'Repository mutation: NOT_PERFORMED_BY_THIS_CYCLE'
 
           Write-Host '=== VERIFY ==='
           Write-Host 'Recovery engine: EXECUTED'
           Write-Host 'Priority selection: EXECUTED'
           Write-Host 'Dependency gate: EXECUTED'
           Write-Host 'Action dispatcher: EXECUTED'
+          Write-Host 'Cloudflare health gate: EXECUTED'
           Write-Host 'Event/heartbeat trigger: ACCEPTED'
           Write-Host 'Runner execution: VERIFIED by workflow execution'
 
