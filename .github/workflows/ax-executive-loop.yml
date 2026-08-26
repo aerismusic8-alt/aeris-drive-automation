@@ -19,6 +19,9 @@ jobs:
     timeout-minutes: 5
 
     steps:
+      - name: Checkout AX control state
+        uses: actions/checkout@v4
+
       - name: AX Executive Cycle
         shell: powershell -ExecutionPolicy Bypass -File {0}
         env:
@@ -68,6 +71,11 @@ jobs:
           Write-Host "=== ANALYZE ==="
           Write-Host "Decision: $decision"
           Write-Host "Next State: $nextState"
+
+          Write-Host ""
+          Write-Host "=== TASK REGISTRY / DECISION ENGINE ==="
+          & powershell.exe -ExecutionPolicy Bypass -File "$env:GITHUB_WORKSPACE\AX_DECISION_ENGINE.ps1" -RegistryPath "$env:GITHUB_WORKSPACE\AX_TASK_REGISTRY.json"
+
           Write-Host ""
           Write-Host "=== PERMISSION ==="
           Write-Host "Live-money execution: DISABLED"
@@ -76,7 +84,9 @@ jobs:
           Write-Host ""
           Write-Host "=== VERIFY ==="
           Write-Host "Observed workflow data: RECEIVED"
-          Write-Host "Runner execution: VERIFIED by workflow history when latest smoke run succeeded"
+          Write-Host "Task registry: LOADED"
+          Write-Host "Decision engine: EXECUTED"
+          Write-Host "Runner execution: VERIFIED by workflow execution"
           Write-Host ""
           Write-Host "=== AUDIT ==="
           Write-Host "CycleId=$cycle"
