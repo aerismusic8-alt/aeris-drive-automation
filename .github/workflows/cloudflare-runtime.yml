@@ -27,7 +27,7 @@ jobs:
       QUEUE_NAME: ax-execution-events
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Verify Node and Wrangler
         shell: powershell
