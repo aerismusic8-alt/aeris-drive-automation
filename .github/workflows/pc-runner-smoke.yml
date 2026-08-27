@@ -10,13 +10,12 @@ jobs:
     runs-on: [self-hosted, Windows, X64]
     steps:
       - name: Verify PC runner execution
-        shell: 'powershell.exe -NoProfile -ExecutionPolicy Bypass -Command "& ''{0}''"'
+        shell: cmd
         run: |
-          $ErrorActionPreference = 'Stop'
-          Write-Host "=== AERIS PC RUNNER SMOKE TEST ==="
-          Write-Host "Hostname: $env:COMPUTERNAME"
-          Write-Host "User: $env:USERNAME"
-          Write-Host "Runner OS: $env:RUNNER_OS"
-          Write-Host "Runner Arch: $env:RUNNER_ARCH"
+          echo === AERIS PC RUNNER SMOKE TEST ===
+          echo Hostname: %COMPUTERNAME%
+          echo User: %USERNAME%
+          echo Runner OS: %RUNNER_OS%
+          echo Runner Arch: %RUNNER_ARCH%
           git --version
-          Write-Host "=== SMOKE TEST COMPLETE ==="
+          echo === SMOKE TEST COMPLETE ===
