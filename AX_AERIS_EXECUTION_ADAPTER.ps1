@@ -52,8 +52,21 @@ try {
   Write-Host 'AERIS Verification: PASSED'
 
   # Real unattended runner action: create, read back, and verify an execution artifact.
+  # RUNNER_TEMP exists inside GitHub Actions but may be absent during direct/local execution.
+  $tempRoot = if (-not [string]::IsNullOrWhiteSpace($env:RUNNER_TEMP)) {
+    $env:RUNNER_TEMP
+  } elseif (-not [string]::IsNullOrWhiteSpace($env:TEMP)) {
+    $env:TEMP
+  } else {
+    [System.IO.Path]::GetTempPath()
+  }
+
+  if (-not (Test-Path $tempRoot)) {
+    New-Item -ItemType Directory -Path $tempRoot -Force | Out-Null
+  }
+
   $cycleId = [guid]::NewGuid().ToString()
-  $proofPath = Join-Path $env:RUNNER_TEMP "AX_AERIS_ACTION_$cycleId.json"
+  $proofPath = Join-Path $tempRoot "AX_AERIS_ACTION_$cycleId.json"
   $proof = @{
     cycleId = $cycleId
     action = 'CREATE_AND_VERIFY_RUNTIME_ARTIFACT'
