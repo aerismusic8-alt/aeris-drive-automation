@@ -20,9 +20,11 @@ on:
 permissions:
   contents: read
 
+# Persistence must never be cancelled by a newer trigger.
+# A newer trigger is queued behind the active save so that state cannot be lost.
 concurrency:
   group: aics-persistence-autosave
-  cancel-in-progress: true
+  cancel-in-progress: false
 
 jobs:
   autosave:
