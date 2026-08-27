@@ -31,7 +31,7 @@ jobs:
     timeout-minutes: 5
     steps:
       - name: Auto-save AX/AICS state to Google Drive
-        shell: powershell
+        shell: 'powershell.exe -NoProfile -ExecutionPolicy Bypass -Command "& ''{0}''"'
         env:
           AERIS_WEB_APP_URL: https://script.google.com/macros/s/AKfycbwz6F8EWTD7YwnGkyu4Mq_JHtBkk6nOwl9TYjWDsMsQTtS5EVj3I6hmakuW6yP_YGQH/exec
         run: |
