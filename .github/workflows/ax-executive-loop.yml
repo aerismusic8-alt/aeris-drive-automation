@@ -40,6 +40,7 @@ jobs:
           AX_TRIGGER_WORKFLOW: ${{ github.event.workflow_run.name }}
           AX_CLOUDFLARE_RUNTIME_URL: https://aeris-execution-runtime.aerismusic8.workers.dev
           AX_REPOSITORY_MUTATION_ENABLED: 'true'
+          AERIS_WEB_APP_URL: https://script.google.com/macros/s/AKfycbwz6F8EWTD7YwnGkyu4Mq_JHtBkk6nOwl9TYjWDsMsQTtS5EVj3I6hmakuW6yP_YGQH/exec
         run: |
           $ErrorActionPreference = 'Stop'
           $cycle = [guid]::NewGuid().ToString()
@@ -58,9 +59,7 @@ jobs:
 
           Write-Host '=== RECOVERY ==='
           & powershell.exe -ExecutionPolicy Bypass -File "$root\AX_RECOVERY_ENGINE.ps1"
-          if ($LASTEXITCODE -ne 0) {
-            throw "AX_RECOVERY_ENGINE_FAILED:$LASTEXITCODE"
-          }
+          if ($LASTEXITCODE -ne 0) { throw "AX_RECOVERY_ENGINE_FAILED:$LASTEXITCODE" }
 
           $headers = @{
             Authorization = "Bearer $env:GITHUB_TOKEN"
@@ -71,38 +70,56 @@ jobs:
           $runsUrl = "https://api.github.com/repos/$repo/actions/runs?per_page=30"
           $runs = Invoke-RestMethod -Uri $runsUrl -Headers $headers -Method Get
 
-          $ax = $runs.workflow_runs |
-            Where-Object { $_.name -eq 'AX Status Monitor' } |
-            Select-Object -First 1
-
-          $smoke = $runs.workflow_runs |
-            Where-Object { $_.name -eq 'PC Runner Smoke Test' } |
-            Select-Object -First 1
+          $ax = $runs.workflow_runs | Where-Object { $_.name -eq 'AX Status Monitor' } | Select-Object -First 1
+          $smoke = $runs.workflow_runs | Where-Object { $_.name -eq 'PC Runner Smoke Test' } | Select-Object -First 1
 
           Write-Host '=== OBSERVE ==='
           Write-Host "AX Monitor: $($ax.status) / $($ax.conclusion)"
           Write-Host "PC Runner Smoke: $($smoke.status) / $($smoke.conclusion)"
 
           Write-Host '=== PRIORITY / DEPENDENCY DECISION ==='
-          & powershell.exe -ExecutionPolicy Bypass -File "$root\AX_DECISION_ENGINE.ps1" `
-            -RegistryPath "$root\AX_TASK_REGISTRY.json"
-
-          if ($LASTEXITCODE -ne 0) {
-            throw "AX_DECISION_ENGINE_FAILED:$LASTEXITCODE"
-          }
+          & powershell.exe -ExecutionPolicy Bypass -File "$root\AX_DECISION_ENGINE.ps1" -RegistryPath "$root\AX_TASK_REGISTRY.json"
+          if ($LASTEXITCODE -ne 0) { throw "AX_DECISION_ENGINE_FAILED:$LASTEXITCODE" }
 
           Write-Host '=== CONTROLLED ACTION DISPATCH ==='
-          & powershell.exe -ExecutionPolicy Bypass -File "$root\AX_ACTION_DISPATCHER.ps1" `
-            -RegistryPath "$root\AX_TASK_REGISTRY.json"
-
-          if ($LASTEXITCODE -ne 0) {
-            throw "AX_ACTION_DISPATCHER_FAILED:$LASTEXITCODE"
-          }
+          & powershell.exe -ExecutionPolicy Bypass -File "$root\AX_ACTION_DISPATCHER.ps1" -RegistryPath "$root\AX_TASK_REGISTRY.json"
+          if ($LASTEXITCODE -ne 0) { throw "AX_ACTION_DISPATCHER_FAILED:$LASTEXITCODE" }
 
           Write-Host '=== PERMISSION ==='
           Write-Host 'Live-money execution: DISABLED'
           Write-Host 'Financial transactions: NOT PERMITTED'
           Write-Host "Repository mutation capability: $env:AX_REPOSITORY_MUTATION_ENABLED"
+
+          Write-Host '=== PERSISTENCE GATE ==='
+          $payload = @{
+            command = 'SAVE_STATE'
+            approved = $true
+            source = 'AX_AUTONOMOUS_EXECUTIVE_LOOP'
+            cycleId = $cycle
+            timestamp = $now
+          } | ConvertTo-Json -Compress
+
+          try {
+            $saveResponse = Invoke-RestMethod `
+              -Uri $env:AERIS_WEB_APP_URL `
+              -Method Post `
+              -ContentType 'application/json' `
+              -Body $payload `
+              -TimeoutSec 30
+
+            Write-Host '=== SAVE_STATE RESPONSE ==='
+            Write-Host ($saveResponse | ConvertTo-Json -Depth 20)
+
+            if ($saveResponse.success -ne $true) { throw 'AX_PERSISTENCE_SAVE_REJECTED' }
+            if ($null -eq $saveResponse.result) { throw 'AX_PERSISTENCE_RESULT_MISSING' }
+            if ($saveResponse.result.verified -ne $true) { throw 'AX_PERSISTENCE_NOT_VERIFIED' }
+
+            Write-Host 'Drive persistence: VERIFIED'
+          }
+          catch {
+            Write-Host "Persistence failure: $($_.Exception.Message)"
+            throw
+          }
 
           Write-Host '=== VERIFY ==='
           Write-Host 'Recovery engine: EXECUTED'
@@ -112,6 +129,7 @@ jobs:
           Write-Host 'Cloudflare health gate: EXECUTED'
           Write-Host 'Event/heartbeat trigger: ACCEPTED'
           Write-Host 'Runner execution: VERIFIED by workflow execution'
+          Write-Host 'Drive persistence: VERIFIED'
 
           Write-Host '=== AUDIT ==='
           Write-Host "CycleId=$cycle"
@@ -120,5 +138,6 @@ jobs:
           Write-Host "TriggerWorkflow=$env:AX_TRIGGER_WORKFLOW"
           Write-Host 'RecoveryEngine=EXECUTED'
           Write-Host 'LiveExecution=DISABLED'
+          Write-Host 'Persistence=VERIFIED'
 
           Write-Host '=== AX AUTONOMOUS EXECUTIVE CYCLE COMPLETE ==='
