@@ -33,7 +33,7 @@ jobs:
           persist-credentials: true
 
       - name: AX Executive Cycle
-        shell: pwsh
+        shell: powershell
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           AX_TRIGGER: ${{ github.event_name }}
@@ -58,7 +58,7 @@ jobs:
           Write-Host "Cloudflare Runtime: $env:AX_CLOUDFLARE_RUNTIME_URL"
 
           Write-Host '=== RECOVERY ==='
-          & powershell.exe -ExecutionPolicy Bypass -File "$root\AX_RECOVERY_ENGINE.ps1"
+          & powershell.exe -NoProfile -ExecutionPolicy Bypass -File "$root\AX_RECOVERY_ENGINE.ps1"
           if ($LASTEXITCODE -ne 0) { throw "AX_RECOVERY_ENGINE_FAILED:$LASTEXITCODE" }
 
           $headers = @{
@@ -78,11 +78,11 @@ jobs:
           Write-Host "PC Runner Smoke: $($smoke.status) / $($smoke.conclusion)"
 
           Write-Host '=== PRIORITY / DEPENDENCY DECISION ==='
-          & powershell.exe -ExecutionPolicy Bypass -File "$root\AX_DECISION_ENGINE.ps1" -RegistryPath "$root\AX_TASK_REGISTRY.json"
+          & powershell.exe -NoProfile -ExecutionPolicy Bypass -File "$root\AX_DECISION_ENGINE.ps1" -RegistryPath "$root\AX_TASK_REGISTRY.json"
           if ($LASTEXITCODE -ne 0) { throw "AX_DECISION_ENGINE_FAILED:$LASTEXITCODE" }
 
           Write-Host '=== CONTROLLED ACTION DISPATCH ==='
-          & powershell.exe -ExecutionPolicy Bypass -File "$root\AX_ACTION_DISPATCHER.ps1" -RegistryPath "$root\AX_TASK_REGISTRY.json"
+          & powershell.exe -NoProfile -ExecutionPolicy Bypass -File "$root\AX_ACTION_DISPATCHER.ps1" -RegistryPath "$root\AX_TASK_REGISTRY.json"
           if ($LASTEXITCODE -ne 0) { throw "AX_ACTION_DISPATCHER_FAILED:$LASTEXITCODE" }
 
           Write-Host '=== PERMISSION ==='
