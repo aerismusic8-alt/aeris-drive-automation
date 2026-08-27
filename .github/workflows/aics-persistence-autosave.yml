@@ -28,8 +28,9 @@ concurrency:
 
 jobs:
   autosave:
-    if: >-
-      ${{ github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success' }}
+    # A completed upstream workflow must not be allowed to suppress persistence.
+    # The autosave job performs its own SAVE_STATE + verification gate.
+    if: ${{ github.event_name != 'workflow_run' || github.event.workflow_run.conclusion != 'cancelled' }}
     runs-on: self-hosted
     timeout-minutes: 5
     steps:
