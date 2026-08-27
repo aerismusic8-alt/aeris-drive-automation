@@ -199,6 +199,26 @@ function doPost(e) {
         e.postData.contents
       );
 
+    const action =
+      String(payload.action || "")
+        .trim()
+        .toLowerCase();
+
+    /*
+     * Node protocol is explicitly namespaced. Requests without a node_ action
+     * retain the original command-queue behavior unchanged.
+     */
+    if (action.indexOf("node_") === 0) {
+      const nodeResult =
+        routeAERISNodeRequest(payload);
+
+      return jsonResponse({
+        success: true,
+        version: AERIS_VERSION,
+        result: nodeResult
+      });
+    }
+
     const result =
       bridgeCreateJob({
 
