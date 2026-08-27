@@ -35,6 +35,7 @@ jobs:
         env:
           AERIS_WEB_APP_URL: https://script.google.com/macros/s/AKfycbwz6F8EWTD7YwnGkyu4Mq_JHtBkk6nOwl9TYjWDsMsQTtS5EVj3I6hmakuW6yP_YGQH/exec
         run: |
+          # AX execution gate: use patched runner shell with explicit policy bypass.
           $ErrorActionPreference = 'Stop'
           $payload = @{ command = 'SAVE_STATE'; approved = $true } | ConvertTo-Json -Compress
           Write-Host '=== AICS PERSISTENCE AUTO-SAVE ==='
