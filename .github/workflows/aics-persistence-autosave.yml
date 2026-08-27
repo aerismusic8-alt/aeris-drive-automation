@@ -2,11 +2,18 @@ name: AICS Persistence Auto-Save
 
 on:
   workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/aics-persistence-autosave.yml'
+      - 'AX_AERIS_EXECUTION_ADAPTER.ps1'
+      - 'aics/**'
   schedule:
     - cron: "*/5 * * * *"
   workflow_run:
     workflows:
       - AX Autonomous Executive Loop
+      - PC Runner Smoke Test
     types:
       - completed
 
@@ -15,42 +22,27 @@ permissions:
 
 concurrency:
   group: aics-persistence-autosave
-  cancel-in-progress: false
+  cancel-in-progress: true
 
 jobs:
   autosave:
-    if: ${{ github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success' }}
+    if: >-
+      ${{ github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success' }}
     runs-on: self-hosted
     timeout-minutes: 5
     steps:
       - name: Auto-save AX/AICS state to Google Drive
-        shell: powershell -ExecutionPolicy Bypass -File {0}
+        shell: powershell
         env:
           AERIS_WEB_APP_URL: https://script.google.com/macros/s/AKfycbwz6F8EWTD7YwnGkyu4Mq_JHtBkk6nOwl9TYjWDsMsQTtS5EVj3I6hmakuW6yP_YGQH/exec
         run: |
           $ErrorActionPreference = 'Stop'
-          $payload = @{
-            command = 'SAVE_STATE'
-            approved = $true
-          } | ConvertTo-Json -Compress
-
-          $response = Invoke-RestMethod `
-            -Uri $env:AERIS_WEB_APP_URL `
-            -Method Post `
-            -ContentType 'application/json' `
-            -Body $payload
-
+          $payload = @{ command = 'SAVE_STATE'; approved = $true } | ConvertTo-Json -Compress
+          $response = Invoke-RestMethod -Uri $env:AERIS_WEB_APP_URL -Method Post -ContentType 'application/json' -Body $payload
           Write-Host '=== AICS PERSISTENCE AUTO-SAVE ==='
           Write-Host ($response | ConvertTo-Json -Depth 20)
-
-          if ($response.success -ne $true) {
-            throw "AICS_AUTOSAVE_REJECTED"
-          }
-
+          if ($response.success -ne $true) { throw 'AICS_AUTOSAVE_REJECTED' }
           $result = $response.result
-          if ($null -eq $result -or $result.verified -ne $true) {
-            throw "AICS_AUTOSAVE_NOT_VERIFIED"
-          }
-
+          if ($null -eq $result -or $result.verified -ne $true) { throw 'AICS_AUTOSAVE_NOT_VERIFIED' }
           Write-Host 'Drive persistence: VERIFIED'
           Write-Host '=== AICS PERSISTENCE AUTO-SAVE COMPLETE ==='
