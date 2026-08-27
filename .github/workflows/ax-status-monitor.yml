@@ -15,7 +15,7 @@ jobs:
 
     steps:
       - name: AX Live Status Check
-        shell: powershell -ExecutionPolicy Bypass -File {0}
+        shell: pwsh
         run: |
           Write-Host "=== AX LIVE STATUS MONITOR ==="
           Write-Host "Time: $(Get-Date -Format o)"
@@ -39,35 +39,20 @@ jobs:
           $url = "https://api.github.com/repos/$repo/actions/runs?per_page=10"
 
           try {
-            $response = Invoke-RestMethod `
-              -Uri $url `
-              -Headers $headers `
-              -Method Get
-
+            $response = Invoke-RestMethod -Uri $url -Headers $headers -Method Get
             Write-Host "=== RECENT WORKFLOW STATUS ==="
-
             foreach ($run in $response.workflow_runs) {
-              Write-Host (
-                "{0} | {1} | status={2} | conclusion={3} | branch={4}" -f `
-                $run.id,
-                $run.name,
-                $run.status,
-                $run.conclusion,
-                $run.head_branch
-              )
+              Write-Host ("{0} | {1} | status={2} | conclusion={3} | branch={4}" -f $run.id,$run.name,$run.status,$run.conclusion,$run.head_branch)
             }
-
             Write-Host ""
             Write-Host "=== AX MONITOR RESULT ==="
             Write-Host "GitHub API: ONLINE"
             Write-Host "Workflow Data: RECEIVED"
             Write-Host "Runner Execution: VERIFIED"
             Write-Host "=== AX LIVE STATUS MONITOR COMPLETE ==="
-
           } catch {
             Write-Error "AX_STATUS_CHECK_FAILED: $($_.Exception.Message)"
             exit 1
           }
-
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
