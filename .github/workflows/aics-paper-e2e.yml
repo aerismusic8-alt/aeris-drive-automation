@@ -2,11 +2,22 @@ name: AICS Paper E2E
 
 on:
   workflow_dispatch:
+  push:
+    branches:
+      - main
+    paths:
+      - 'AX_AICS_*.ps1'
+      - '.github/workflows/aics-paper-e2e.yml'
   schedule:
-    - cron: "*/15 * * * *"
+    # Fast feedback during development/testing. GitHub Actions minimum schedule granularity is 5 minutes.
+    - cron: "*/5 * * * *"
 
 permissions:
   contents: read
+
+concurrency:
+  group: aics-paper-e2e
+  cancel-in-progress: true
 
 jobs:
   paper-e2e:
