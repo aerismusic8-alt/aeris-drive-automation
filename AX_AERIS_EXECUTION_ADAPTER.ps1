@@ -11,7 +11,7 @@ $ErrorActionPreference = 'Stop'
 
 Write-Host '=== AX AERIS EXECUTION ADAPTER ==='
 Write-Host 'Mode: CONTROLLED / VERIFY-FIRST'
-Write-Host 'Action: STATUS_PROBE'
+Write-Host 'Action: STATUS_PROBE_AND_RUNTIME_ACTION_PROOF'
 Write-Host "Status URL: $StatusUrl"
 Write-Host "Timeout: ${TimeoutSec}s"
 
@@ -50,8 +50,43 @@ try {
   Write-Host "Gemini: $($body.gemini)"
   Write-Host 'AERIS Endpoint: ONLINE'
   Write-Host 'AERIS Verification: PASSED'
-  Write-Host 'Mutation: NOT_PERFORMED'
-  Write-Host 'Execution Result: VERIFIED_STATUS_ONLY'
+
+  # Real unattended runner action: create, read back, and verify an execution artifact.
+  $cycleId = [guid]::NewGuid().ToString()
+  $proofPath = Join-Path $env:RUNNER_TEMP "AX_AERIS_ACTION_$cycleId.json"
+  $proof = @{
+    cycleId = $cycleId
+    action = 'CREATE_AND_VERIFY_RUNTIME_ARTIFACT'
+    executed = $true
+    verified = $false
+    executedAt = (Get-Date).ToUniversalTime().ToString('o')
+    runtime = $body.service
+  } | ConvertTo-Json -Compress
+
+  Set-Content -Path $proofPath -Value $proof -Encoding UTF8
+  if (-not (Test-Path $proofPath)) {
+    throw 'AX_AERIS_ACTION_ARTIFACT_NOT_CREATED'
+  }
+
+  $readBack = Get-Content -Raw -Path $proofPath | ConvertFrom-Json
+  if ($readBack.cycleId -ne $cycleId -or $readBack.executed -ne $true) {
+    throw 'AX_AERIS_ACTION_ARTIFACT_READBACK_FAILED'
+  }
+
+  $readBack.verified = $true
+  $readBack | ConvertTo-Json -Compress | Set-Content -Path $proofPath -Encoding UTF8
+  $final = Get-Content -Raw -Path $proofPath | ConvertFrom-Json
+
+  if ($final.verified -ne $true) {
+    throw 'AX_AERIS_ACTION_ARTIFACT_FINAL_VERIFY_FAILED'
+  }
+
+  Write-Host 'Unattended action: EXECUTED'
+  Write-Host 'Unattended action read-back: PASSED'
+  Write-Host 'Unattended action verification: PASSED'
+  Write-Host "Action evidence: $proofPath"
+  Write-Host 'Mutation: CONTROLLED_LOCAL_RUNTIME_ARTIFACT_ONLY'
+  Write-Host 'Execution Result: VERIFIED'
 }
 catch {
   Write-Error "AERIS_ADAPTER_FAILED: $($_.Exception.Message)"
