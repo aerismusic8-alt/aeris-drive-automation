@@ -1,0 +1,31 @@
+Add these branches inside the existing doGet(e), before the default response:
+
+const workerAction = e && e.parameter ? String(e.parameter.action || '').trim().toLowerCase() : '';
+const workerId = e && e.parameter ? String(e.parameter.workerId || '').trim() : '';
+
+if (workerAction === 'worker_pull') {
+  try { return jsonResponse(aerisWorkerPull_(workerId)); }
+  catch (err) { return jsonResponse({success:false,error:String(err && err.message ? err.message : err)}); }
+}
+
+if (workerAction === 'worker_heartbeat') {
+  try { return jsonResponse(aerisWorkerHeartbeat_(workerId, e.parameter.jobId || '')); }
+  catch (err) { return jsonResponse({success:false,error:String(err && err.message ? err.message : err)}); }
+}
+
+Add these branches at the start of doPost(e), immediately after JSON.parse(e.postData.contents):
+
+if (payload.action === 'worker_claim') {
+  try { return jsonResponse(aerisWorkerClaim_(payload.workerId, payload.jobId, payload.claimToken)); }
+  catch (err) { return jsonResponse({success:false,claimed:false,error:String(err && err.message ? err.message : err)}); }
+}
+
+if (payload.action === 'worker_result') {
+  try {
+    return jsonResponse(aerisWorkerResult_(payload.workerId, payload.jobId, payload.status, payload.result, payload.error, payload.verified === true, payload.executed === true));
+  } catch (err) {
+    return jsonResponse({success:false,recorded:false,error:String(err && err.message ? err.message : err)});
+  }
+}
+
+The existing bridgeCreateJob path remains unchanged for all other POST requests.
