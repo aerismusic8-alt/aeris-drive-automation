@@ -33,7 +33,7 @@ jobs:
           persist-credentials: true
 
       - name: AX Executive Cycle
-        shell: powershell -ExecutionPolicy Bypass -File {0}
+        shell: pwsh
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           AX_TRIGGER: ${{ github.event_name }}
@@ -100,20 +100,12 @@ jobs:
           } | ConvertTo-Json -Compress
 
           try {
-            $saveResponse = Invoke-RestMethod `
-              -Uri $env:AERIS_WEB_APP_URL `
-              -Method Post `
-              -ContentType 'application/json' `
-              -Body $payload `
-              -TimeoutSec 30
-
+            $saveResponse = Invoke-RestMethod -Uri $env:AERIS_WEB_APP_URL -Method Post -ContentType 'application/json' -Body $payload -TimeoutSec 30
             Write-Host '=== SAVE_STATE RESPONSE ==='
             Write-Host ($saveResponse | ConvertTo-Json -Depth 20)
-
             if ($saveResponse.success -ne $true) { throw 'AX_PERSISTENCE_SAVE_REJECTED' }
             if ($null -eq $saveResponse.result) { throw 'AX_PERSISTENCE_RESULT_MISSING' }
             if ($saveResponse.result.verified -ne $true) { throw 'AX_PERSISTENCE_NOT_VERIFIED' }
-
             Write-Host 'Drive persistence: VERIFIED'
           }
           catch {
