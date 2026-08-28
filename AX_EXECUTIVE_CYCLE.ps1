@@ -19,10 +19,10 @@ function Invoke-PhaseWithRetry {
     try {
       & $Action
       if ($LASTEXITCODE -ne 0) { throw "${Name}_EXIT_$LASTEXITCODE" }
-      Write-Host "$Name: PASS"
+      Write-Host "${Name}: PASS"
       return $true
     } catch {
-      Write-Host "$Name: FAIL - $($_.Exception.Message)"
+      Write-Host "${Name}: FAIL - $($_.Exception.Message)"
       if ($i -lt $Attempts) { Start-Sleep -Seconds 1 }
     }
   }
@@ -126,3 +126,4 @@ Write-Host 'Live-money execution: DISABLED'
 Write-Host '=== AX AUTONOMOUS EXECUTIVE CYCLE COMPLETE ==='
 
 
+
