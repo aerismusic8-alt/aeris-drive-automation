@@ -1,0 +1,46 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>AX Executive Dashboard</title>
+<style>
+body{font-family:system-ui,-apple-system,Segoe UI,sans-serif;margin:0;background:#0b1020;color:#eef2ff}
+main{max-width:1100px;margin:auto;padding:28px}.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:14px}.card{background:#151c33;border:1px solid #2a3558;border-radius:14px;padding:18px}.value{font-size:28px;font-weight:700;margin-top:8px}.ok{color:#7ee787}.bad{color:#ff7b72}.warn{color:#d2a8ff}.muted{color:#9da7c0}h1{margin:0 0 6px}.wide{grid-column:1/-1}button{padding:9px 13px;border-radius:8px;border:1px solid #44517a;background:#202a49;color:#fff;cursor:pointer}pre{white-space:pre-wrap;word-break:break-word}.small{font-size:13px}.row{display:flex;justify-content:space-between;gap:12px}
+</style>
+</head>
+<body><main>
+<div class="row"><div><h1>AX Executive Dashboard</h1><div class="muted">Live read-only operational view</div></div><button onclick="load()">Refresh</button></div>
+<div class="grid" style="margin-top:18px">
+<div class="card"><div class="muted">Autonomous Loop</div><div id="loop" class="value">—</div><div id="looptime" class="small muted">—</div></div>
+<div class="card"><div class="muted">PC Runner</div><div id="runner" class="value">—</div><div id="runnertime" class="small muted">—</div></div>
+<div class="card"><div class="muted">Repository</div><div id="repo" class="value">—</div><div id="commit" class="small muted">—</div></div>
+<div class="card"><div class="muted">Test Window</div><div id="window" class="value">45:00</div><div id="t0" class="small muted">T0: 2026-08-28 10:44:26 +07</div></div>
+<div class="card wide"><h2>Current State</h2><pre id="state">Loading…</pre></div>
+<div class="card wide"><h2>Latest Workflow Runs</h2><pre id="runs">Loading…</pre></div>
+</div></main>
+<script>
+const owner='aerismusic8-alt',repo='aeris-drive-automation';
+const T0=new Date('2026-08-28T10:44:26+07:00');
+const deadline=new Date(T0.getTime()+45*60000);
+const api=`https://api.github.com/repos/${owner}/${repo}`;
+function fmt(d){return d?new Date(d).toLocaleString(): '—'}
+function cls(x){return x==='success'?'ok':(x==='failure'||x==='cancelled'?'bad':'warn')}
+async function load(){
+ try{
+  const [runsR,repoR]=await Promise.all([fetch(api+'/actions/runs?per_page=30'),fetch(api)]);
+  const runs=(await runsR.json()).workflow_runs||[]; const r=await repoR.json();
+  const loop=runs.find(x=>x.name==='AX Autonomous Executive Loop');
+  const smoke=runs.find(x=>x.name==='PC Runner Smoke Test');
+  document.getElementById('loop').textContent=loop?.conclusion||loop?.status||'NO RUN';document.getElementById('loop').className='value '+cls(loop?.conclusion);
+  document.getElementById('looptime').textContent=fmt(loop?.updated_at);
+  document.getElementById('runner').textContent=smoke?.conclusion||smoke?.status||'NO RUN';document.getElementById('runner').className='value '+cls(smoke?.conclusion);
+  document.getElementById('runnertime').textContent=fmt(smoke?.updated_at);
+  document.getElementById('repo').textContent=r.default_branch||'main';document.getElementById('commit').textContent='HEAD: '+(r.default_branch||'main');
+  const lines=runs.slice(0,12).map(x=>`${x.name} | ${x.status}/${x.conclusion||'—'} | ${fmt(x.updated_at)} | #${x.run_number}`).join('\n');document.getElementById('runs').textContent=lines||'No runs';
+  document.getElementById('state').textContent=JSON.stringify({repository:r.full_name,branch:r.default_branch,latestCommit:r.pushed_at,autonomousLoop:loop?{status:loop.status,conclusion:loop.conclusion,updated:loop.updated_at}:null,pcRunner:smoke?{status:smoke.status,conclusion:smoke.conclusion,updated:smoke.updated_at}:null},null,2);
+ }catch(e){document.getElementById('state').textContent='Dashboard fetch error: '+e.message}
+}
+function tick(){const n=new Date(),left=deadline-n;document.getElementById('window').textContent=left>0?new Date(left).toISOString().substr(11,8):'EXPIRED'}
+load();tick();setInterval(load,30000);setInterval(tick,1000);
+</script></body></html>
