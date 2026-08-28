@@ -52,10 +52,8 @@ jobs:
           Write-Host "Cycle: $cycle"
           Write-Host "Time: $now"
           Write-Host "Trigger: $env:AX_TRIGGER"
-          Write-Host "Trigger Workflow: $env:AX_TRIGGER_WORKFLOW"
           Write-Host "Computer: $env:COMPUTERNAME"
           Write-Host "Runner: $env:RUNNER_NAME"
-          Write-Host "Cloudflare Runtime: $env:AX_CLOUDFLARE_RUNTIME_URL"
 
           Write-Host '=== RECOVERY ==='
           & powershell.exe -NoProfile -ExecutionPolicy Bypass -File "$root\AX_RECOVERY_ENGINE.ps1"
@@ -66,10 +64,8 @@ jobs:
             Accept = 'application/vnd.github+json'
             'X-GitHub-Api-Version' = '2022-11-28'
           }
-
           $runsUrl = "https://api.github.com/repos/$repo/actions/runs?per_page=30"
           $runs = Invoke-RestMethod -Uri $runsUrl -Headers $headers -Method Get
-
           $ax = $runs.workflow_runs | Where-Object { $_.name -eq 'AX Status Monitor' } | Select-Object -First 1
           $smoke = $runs.workflow_runs | Where-Object { $_.name -eq 'PC Runner Smoke Test' } | Select-Object -First 1
 
@@ -85,51 +81,60 @@ jobs:
           & powershell.exe -NoProfile -ExecutionPolicy Bypass -File "$root\AX_ACTION_DISPATCHER.ps1" -RegistryPath "$root\AX_TASK_REGISTRY.json"
           if ($LASTEXITCODE -ne 0) { throw "AX_ACTION_DISPATCHER_FAILED:$LASTEXITCODE" }
 
-          Write-Host '=== PERMISSION ==='
-          Write-Host 'Live-money execution: DISABLED'
-          Write-Host 'Financial transactions: NOT PERMITTED'
-          Write-Host "Repository mutation capability: $env:AX_REPOSITORY_MUTATION_ENABLED"
-
           Write-Host '=== PERSISTENCE GATE ==='
-          $payload = @{
-            command = 'SAVE_STATE'
-            approved = $true
-            source = 'AX_AUTONOMOUS_EXECUTIVE_LOOP'
-            cycleId = $cycle
-            timestamp = $now
-          } | ConvertTo-Json -Compress
-
-          try {
-            $saveResponse = Invoke-RestMethod -Uri $env:AERIS_WEB_APP_URL -Method Post -ContentType 'application/json' -Body $payload -TimeoutSec 30
-            Write-Host '=== SAVE_STATE RESPONSE ==='
-            Write-Host ($saveResponse | ConvertTo-Json -Depth 20)
-            if ($saveResponse.success -ne $true) { throw 'AX_PERSISTENCE_SAVE_REJECTED' }
-            if ($null -eq $saveResponse.result) { throw 'AX_PERSISTENCE_RESULT_MISSING' }
-            if ($saveResponse.result.verified -ne $true) { throw 'AX_PERSISTENCE_NOT_VERIFIED' }
-            Write-Host 'Drive persistence: VERIFIED'
-          }
-          catch {
-            Write-Host "Persistence failure: $($_.Exception.Message)"
-            throw
-          }
-
-          Write-Host '=== VERIFY ==='
-          Write-Host 'Recovery engine: EXECUTED'
-          Write-Host 'Priority selection: EXECUTED'
-          Write-Host 'Dependency gate: EXECUTED'
-          Write-Host 'Action dispatcher: EXECUTED'
-          Write-Host 'Cloudflare health gate: EXECUTED'
-          Write-Host 'Event/heartbeat trigger: ACCEPTED'
-          Write-Host 'Runner execution: VERIFIED by workflow execution'
+          $payload = @{ command='SAVE_STATE'; approved=$true; source='AX_AUTONOMOUS_EXECUTIVE_LOOP'; cycleId=$cycle; timestamp=$now } | ConvertTo-Json -Compress
+          $saveResponse = Invoke-RestMethod -Uri $env:AERIS_WEB_APP_URL -Method Post -ContentType 'application/json' -Body $payload -TimeoutSec 30
+          if ($saveResponse.success -ne $true -or $null -eq $saveResponse.result -or $saveResponse.result.verified -ne $true) { throw 'AX_PERSISTENCE_NOT_VERIFIED' }
           Write-Host 'Drive persistence: VERIFIED'
 
-          Write-Host '=== AUDIT ==='
-          Write-Host "CycleId=$cycle"
-          Write-Host "Timestamp=$now"
-          Write-Host "Trigger=$env:AX_TRIGGER"
-          Write-Host "TriggerWorkflow=$env:AX_TRIGGER_WORKFLOW"
-          Write-Host 'RecoveryEngine=EXECUTED'
-          Write-Host 'LiveExecution=DISABLED'
-          Write-Host 'Persistence=VERIFIED'
+          Write-Host '=== AUTONOMOUS DASHBOARD MUTATION ==='
+          $registry = Get-Content -Raw -Path "$root\AX_TASK_REGISTRY.json" | ConvertFrom-Json
+          $selected = @($registry.tasks) | Where-Object { $_.state -notin $registry.policy.terminal_states -and $_.state -ne 'WAITING_K' } | Sort-Object -Property @{Expression={[int]$_.priority};Descending=$true} | Select-Object -First 1
+          $status = [ordered]@{
+            system='ONLINE'
+            runner='VERIFIED'
+            mutation=$true
+            persistence=$true
+            cycleId=$cycle
+            timestamp=$now
+            computer=$env:COMPUTERNAME
+            runnerName=$env:RUNNER_NAME
+            trigger=$env:AX_TRIGGER
+            taskId=if($selected){[string]$selected.id}else{'NONE'}
+            taskState=if($selected){[string]$selected.state}else{'NONE'}
+            taskAction=if($selected){[string]$selected.next_action}else{'NONE'}
+            monitorStatus=if($ax){[string]$ax.status}else{'UNKNOWN'}
+            monitorConclusion=if($ax){[string]$ax.conclusion}else{'UNKNOWN'}
+            smokeStatus=if($smoke){[string]$smoke.status}else{'UNKNOWN'}
+            smokeConclusion=if($smoke){[string]$smoke.conclusion}else{'UNKNOWN'}
+            liveFinancialExecution=$false
+          }
+          New-Item -ItemType Directory -Force -Path "$root\dashboard" | Out-Null
+          $status | ConvertTo-Json -Depth 10 | Set-Content -Encoding utf8 "$root\dashboard\status.json"
+          if (-not (Test-Path "$root\dashboard\status.json")) { throw 'AX_DASHBOARD_STATUS_CREATE_FAILED' }
+          Get-Content "$root\dashboard\status.json" | Out-Host
 
+          git config user.name 'aerismusic8-alt'
+          git config user.email 'aerismusic8-alt@users.noreply.github.com'
+          git add dashboard/status.json
+          git diff --cached --quiet
+          if ($LASTEXITCODE -eq 0) { throw 'AX_DASHBOARD_MUTATION_NOT_DETECTED' }
+          git commit -m "chore: autonomous AX dashboard status"
+          if ($LASTEXITCODE -ne 0) { throw 'AX_DASHBOARD_COMMIT_FAILED' }
+          git push origin main
+          if ($LASTEXITCODE -ne 0) { throw 'AX_DASHBOARD_PUSH_FAILED' }
+
+          $localSha = (git rev-parse HEAD).Trim()
+          $remoteSha = (git ls-remote origin refs/heads/main).Split("`t")[0].Trim()
+          if ($localSha -ne $remoteSha) { throw "AX_DASHBOARD_REMOTE_VERIFY_FAILED:$localSha/$remoteSha" }
+          if ((git status --short).Trim()) { throw 'AX_DASHBOARD_WORKTREE_NOT_CLEAN' }
+
+          Write-Host '=== VERIFY ==='
+          Write-Host 'Dashboard file: CREATED'
+          Write-Host 'Repository mutation: VERIFIED'
+          Write-Host 'Commit push: VERIFIED'
+          Write-Host "Remote HEAD: $remoteSha"
+          Write-Host 'Runner execution: VERIFIED'
+          Write-Host 'Drive persistence: VERIFIED'
+          Write-Host 'Live-money execution: DISABLED'
           Write-Host '=== AX AUTONOMOUS EXECUTIVE CYCLE COMPLETE ==='
