@@ -1,8 +1,17 @@
 $ErrorActionPreference = 'Stop'
 $cycle = [guid]::NewGuid().ToString()
 $now = Get-Date -Format o
+$scriptPath = $MyInvocation.MyCommand.Path
 $repo = $env:GITHUB_REPOSITORY
+if ([string]::IsNullOrWhiteSpace($repo)) {
+  $origin = (git remote get-url origin).Trim()
+  $repo = ($origin -replace '^https://github.com/','') -replace '\.git$',''
+}
 $root = $env:GITHUB_WORKSPACE
+if ([string]::IsNullOrWhiteSpace($root)) { $root = Split-Path -Parent $scriptPath }
+if ([string]::IsNullOrWhiteSpace($env:AERIS_WEB_APP_URL)) {
+  $env:AERIS_WEB_APP_URL = 'https://script.google.com/macros/s/AKfycbwdK1NVd0_ZUVS_fRto6xRIWzUOkFi8BV90UxxKrujQYfYWvcaIlWNDXKxI9Ree7Zqx/exec'
+}
 
 Write-Host '=== AX AUTONOMOUS EXECUTIVE CYCLE ==='
 Write-Host "Cycle: $cycle"
@@ -11,6 +20,9 @@ Write-Host "Trigger: $env:AX_TRIGGER"
 Write-Host "Trigger Workflow: $env:AX_TRIGGER_WORKFLOW"
 Write-Host "Computer: $env:COMPUTERNAME"
 Write-Host "Runner: $env:RUNNER_NAME"
+Write-Host "Repo: $repo"
+Write-Host "Root: $root"
+Write-Host "Persistence URL: CONFIGURED"
 
 function Invoke-PhaseWithRetry {
   param([string]$Name,[scriptblock]$Action,[int]$Attempts=3)
@@ -74,104 +86,75 @@ $selected = @($registry.tasks) | Where-Object { $_.state -notin $registry.policy
 $overall = if ($recoveryOk -and $decisionOk -and $dispatchOk -and $persistenceOk) {'PASS'} else {'DEGRADED'}
 $status = [ordered]@{
   system='ONLINE'
-  overall=$overall
-  cycleId=$cycle
+  cycle=$cycle
   timestamp=$now
-  computer=$env:COMPUTERNAME
-  runnerName=$env:RUNNER_NAME
-  trigger=$env:AX_TRIGGER
+  overall=$overall
   recovery=if($recoveryOk){'PASS'}else{'FAIL'}
   decision=if($decisionOk){'PASS'}else{'FAIL'}
   dispatch=if($dispatchOk){'PASS'}else{'FAIL'}
   persistence=if($persistenceOk){'VERIFIED'}else{'NOT_VERIFIED'}
   runner='VERIFIED'
   mutation='PENDING'
-  taskId=if($selected){[string]$selected.id}else{'NONE'}
-  taskState=if($selected){[string]$selected.state}else{'NONE'}
-  taskAction=if($selected){[string]$selected.next_action}else{'NONE'}
-  liveFinancialExecution=$false
+  selectedTask=if($selected){$selected.id}else{$null}
 }
 New-Item -ItemType Directory -Force -Path "$root\dashboard" | Out-Null
 $status | ConvertTo-Json -Depth 10 | Set-Content -Encoding utf8 "$root\dashboard\status.json"
 if (-not (Test-Path "$root\dashboard\status.json")) { throw 'AX_DASHBOARD_STATUS_CREATE_FAILED' }
 
-# Self-hosted runner runs as NETWORK SERVICE while the checkout may be owned by Administrators.
-# Dashboard heartbeat uses fetch/reset/retry instead of rebase to tolerate concurrent AX cycles.
-
+# Self-hosted runner may execute concurrently with another AX cycle.
 git config --global --add safe.directory "$root"
 Push-Location $root
 try {
   git config user.name 'aerismusic8-alt'
   git config user.email 'aerismusic8-alt@users.noreply.github.com'
-
   $dashboardCommitted = $false
-
   for ($attempt = 1; $attempt -le 5; $attempt++) {
     Write-Host "=== DASHBOARD GIT ATTEMPT $attempt/5 ==="
-
     git fetch origin main
     if ($LASTEXITCODE -ne 0) { throw 'AX_DASHBOARD_FETCH_FAILED' }
-
-    # Move index/HEAD to latest remote without destroying the freshly generated
-    # dashboard/status.json in the working tree.
     git reset --mixed origin/main
     if ($LASTEXITCODE -ne 0) { throw 'AX_DASHBOARD_SYNC_FAILED' }
-
     git add dashboard/status.json
     if ($LASTEXITCODE -ne 0) { throw 'AX_DASHBOARD_ADD_FAILED' }
-
     git diff --cached --quiet
     if ($LASTEXITCODE -eq 0) {
       Write-Host 'Dashboard mutation: NO_CHANGE'
       $dashboardCommitted = $true
       break
     }
-
-    git commit -m "chore: autonomous AX dashboard heartbeat"
+    git commit -m 'chore: autonomous AX dashboard heartbeat'
     if ($LASTEXITCODE -ne 0) {
       Write-Host "Dashboard commit failed on attempt $attempt"
       if ($attempt -lt 5) { Start-Sleep -Seconds 1 }
       continue
     }
-
     git push origin HEAD:main
     if ($LASTEXITCODE -eq 0) {
       Write-Host 'Dashboard push: PASS'
       $dashboardCommitted = $true
       break
     }
-
     Write-Host "Dashboard push race on attempt $attempt - retrying against latest origin/main"
-
-    if ($attempt -lt 5) {
-      Start-Sleep -Seconds 1
-    }
+    if ($attempt -lt 5) { Start-Sleep -Seconds 1 }
   }
-
-  if (-not $dashboardCommitted) {
-    throw 'AX_DASHBOARD_PUSH_FAILED_AFTER_RETRIES'
-  }
-
+  if (-not $dashboardCommitted) { throw 'AX_DASHBOARD_PUSH_FAILED_AFTER_RETRIES' }
   $localSha = (git rev-parse HEAD).Trim()
   $remoteSha = (git ls-remote origin refs/heads/main).Split("`t")[0].Trim()
-
   Write-Host "LOCAL : $localSha"
   Write-Host "REMOTE: $remoteSha"
-
-  if ($localSha -ne $remoteSha) {
-    throw "AX_REMOTE_VERIFY_FAILED:$localSha/$remoteSha"
-  }
-
+  if ($localSha -ne $remoteSha) { throw "AX_REMOTE_VERIFY_FAILED:$localSha/$remoteSha" }
   $worktree = git status --short
   if ($worktree) {
+    Write-Host "Worktree after dashboard commit:"
+    $worktree | ForEach-Object { Write-Host $_ }
     throw 'AX_WORKTREE_NOT_CLEAN'
   }
-
   Write-Host 'Dashboard repository mutation: VERIFIED'
   Write-Host 'Remote HEAD: VERIFIED'
 } finally {
   Pop-Location
 }
+
 Write-Host '=== VERIFY ==='
 Write-Host "Overall: $overall"
 Write-Host "Recovery: $recoveryOk"
@@ -180,7 +163,6 @@ Write-Host "Dispatch: $dispatchOk"
 Write-Host "Persistence: $persistenceOk"
 Write-Host 'Dashboard status: CREATED/VERIFIED'
 Write-Host 'Repository mutation: VERIFIED'
-Write-Host 'Remote HEAD: VERIFIED'
 Write-Host 'Runner execution: VERIFIED'
 Write-Host 'Live-money execution: DISABLED'
 Write-Host '=== AX AUTONOMOUS EXECUTIVE CYCLE COMPLETE ==='
