@@ -40,6 +40,5 @@ jobs:
           AX_TRIGGER_WORKFLOW: ${{ github.event.workflow_run.name }}
           AX_CLOUDFLARE_RUNTIME_URL: https://aeris-execution-runtime.aerismusic8.workers.dev
           AX_REPOSITORY_MUTATION_ENABLED: 'true'
-          AERIS_WEB_APP_URL: https://script.google.com/macros/s/AKfycbwz6F8EWTD7YwnGkyu4Mq_JHtBkk6nOwl9TYjWDsMsQTtS5EVj3I6hmakuW6yP_YGQH/exec
+          AERIS_WEB_APP_URL: https://script.google.com/macros/s/AKfycbwdK1NVd0_ZUVS_fRto6xRIWzUOkFi8BV90UxxKrujQYfYWvcaIlWNDXKxI9Ree7Zqx/exec
         run: powershell.exe -NoProfile -ExecutionPolicy Bypass -File "%GITHUB_WORKSPACE%\AX_EXECUTIVE_CYCLE.ps1"
-
