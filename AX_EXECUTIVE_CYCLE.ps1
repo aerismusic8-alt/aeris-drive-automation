@@ -51,14 +51,22 @@ $headers = @{
   'X-GitHub-Api-Version' = '2022-11-28'
 }
 $runsUrl = "https://api.github.com/repos/$repo/actions/runs?per_page=30"
-$runs = Invoke-RestMethod -Uri $runsUrl -Headers $headers -Method Get
-$ax = $runs.workflow_runs | Where-Object { $_.name -eq 'AX Status Monitor' } | Select-Object -First 1
-$smoke = $runs.workflow_runs | Where-Object { $_.name -eq 'PC Runner Smoke Test' } | Select-Object -First 1
+$runs = $null
+$ax = $null
+$smoke = $null
 
 Write-Host '=== OBSERVE ==='
-Write-Host "AX Monitor: $($ax.status) / $($ax.conclusion)"
-Write-Host "PC Runner Smoke: $($smoke.status) / $($smoke.conclusion)"
-
+try {
+  $runs = Invoke-RestMethod -Uri $runsUrl -Headers $headers -Method Get -ErrorAction Stop
+  $ax = $runs.workflow_runs | Where-Object { $_.name -eq 'AX Status Monitor' } | Select-Object -First 1
+  $smoke = $runs.workflow_runs | Where-Object { $_.name -eq 'PC Runner Smoke Test' } | Select-Object -First 1
+  Write-Host "AX Monitor: $($ax.status) / $($ax.conclusion)"
+  Write-Host "PC Runner Smoke: $($smoke.status) / $($smoke.conclusion)"
+  Write-Host 'Observation: PASS'
+} catch {
+  Write-Host "Observation: DEGRADED - $($_.Exception.Message)"
+  Write-Host 'Observation is non-blocking; continuing Executive Cycle.'
+}
 $decisionOk = Invoke-PhaseWithRetry -Name 'DECISION' -Action {
   & powershell.exe -NoProfile -ExecutionPolicy Bypass -File "$root\AX_DECISION_ENGINE.ps1" -RegistryPath "$root\AX_TASK_REGISTRY.json"
 }
@@ -169,5 +177,7 @@ if ($overall -ne 'PASS') {
   throw "AX_EXECUTIVE_CYCLE_DEGRADED:$overall"
 }
 Write-Host '=== AX AUTONOMOUS EXECUTIVE CYCLE COMPLETE ==='
+
+
 
 
