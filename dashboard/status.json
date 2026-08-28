@@ -1,19 +1,13 @@
 ﻿{
     "system":  "ONLINE",
+    "cycle":  "e70ced24-1a3a-407e-8b3d-e6181afa4f64",
+    "timestamp":  "2026-08-28T16:06:47.8842276+07:00",
     "overall":  "PASS",
-    "cycleId":  "c84731a1-c06b-48d8-be54-14794f6186ce",
-    "timestamp":  "2026-08-28T16:04:21.7077764+07:00",
-    "computer":  "DESKTOP-RGK6JKB",
-    "runnerName":  "DESKTOP-RGK6JKB",
-    "trigger":  "workflow_run",
     "recovery":  "PASS",
     "decision":  "PASS",
     "dispatch":  "PASS",
     "persistence":  "VERIFIED",
     "runner":  "VERIFIED",
     "mutation":  "PENDING",
-    "taskId":  "AERIS-AUTONOMOUS-COMPANY-ENGINE",
-    "taskState":  "QUEUED",
-    "taskAction":  "Connect research, production, publishing, analytics and revenue tasks",
-    "liveFinancialExecution":  false
+    "selectedTask":  "AERIS-AUTONOMOUS-COMPANY-ENGINE"
 }
