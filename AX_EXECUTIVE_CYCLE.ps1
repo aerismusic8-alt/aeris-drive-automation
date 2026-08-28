@@ -96,31 +96,82 @@ $status | ConvertTo-Json -Depth 10 | Set-Content -Encoding utf8 "$root\dashboard
 if (-not (Test-Path "$root\dashboard\status.json")) { throw 'AX_DASHBOARD_STATUS_CREATE_FAILED' }
 
 # Self-hosted runner runs as NETWORK SERVICE while the checkout may be owned by Administrators.
-# Register the exact checkout as a trusted Git directory before any repository operation.
+# Dashboard heartbeat uses fetch/reset/retry instead of rebase to tolerate concurrent AX cycles.
+
 git config --global --add safe.directory "$root"
 Push-Location $root
 try {
   git config user.name 'aerismusic8-alt'
   git config user.email 'aerismusic8-alt@users.noreply.github.com'
-  git add dashboard/status.json
-  git diff --cached --quiet
-  if ($LASTEXITCODE -eq 0) {
-    Write-Host 'Dashboard mutation: NO_CHANGE'
-  } else {
+
+  $dashboardCommitted = $false
+
+  for ($attempt = 1; $attempt -le 5; $attempt++) {
+    Write-Host "=== DASHBOARD GIT ATTEMPT $attempt/5 ==="
+
+    git fetch origin main
+    if ($LASTEXITCODE -ne 0) { throw 'AX_DASHBOARD_FETCH_FAILED' }
+
+    # Move index/HEAD to latest remote without destroying the freshly generated
+    # dashboard/status.json in the working tree.
+    git reset --mixed origin/main
+    if ($LASTEXITCODE -ne 0) { throw 'AX_DASHBOARD_SYNC_FAILED' }
+
+    git add dashboard/status.json
+    if ($LASTEXITCODE -ne 0) { throw 'AX_DASHBOARD_ADD_FAILED' }
+
+    git diff --cached --quiet
+    if ($LASTEXITCODE -eq 0) {
+      Write-Host 'Dashboard mutation: NO_CHANGE'
+      $dashboardCommitted = $true
+      break
+    }
+
     git commit -m "chore: autonomous AX dashboard heartbeat"
-    if ($LASTEXITCODE -ne 0) { throw 'AX_DASHBOARD_COMMIT_FAILED' }
-    git push origin main
-    if ($LASTEXITCODE -ne 0) { throw 'AX_DASHBOARD_PUSH_FAILED' }
+    if ($LASTEXITCODE -ne 0) {
+      Write-Host "Dashboard commit failed on attempt $attempt"
+      if ($attempt -lt 5) { Start-Sleep -Seconds 1 }
+      continue
+    }
+
+    git push origin HEAD:main
+    if ($LASTEXITCODE -eq 0) {
+      Write-Host 'Dashboard push: PASS'
+      $dashboardCommitted = $true
+      break
+    }
+
+    Write-Host "Dashboard push race on attempt $attempt - retrying against latest origin/main"
+
+    if ($attempt -lt 5) {
+      Start-Sleep -Seconds 1
+    }
+  }
+
+  if (-not $dashboardCommitted) {
+    throw 'AX_DASHBOARD_PUSH_FAILED_AFTER_RETRIES'
   }
 
   $localSha = (git rev-parse HEAD).Trim()
   $remoteSha = (git ls-remote origin refs/heads/main).Split("`t")[0].Trim()
-  if ($localSha -ne $remoteSha) { throw "AX_REMOTE_VERIFY_FAILED:$localSha/$remoteSha" }
-  if ((git status --short).Trim()) { throw 'AX_WORKTREE_NOT_CLEAN' }
+
+  Write-Host "LOCAL : $localSha"
+  Write-Host "REMOTE: $remoteSha"
+
+  if ($localSha -ne $remoteSha) {
+    throw "AX_REMOTE_VERIFY_FAILED:$localSha/$remoteSha"
+  }
+
+  $worktree = git status --short
+  if ($worktree) {
+    throw 'AX_WORKTREE_NOT_CLEAN'
+  }
+
+  Write-Host 'Dashboard repository mutation: VERIFIED'
+  Write-Host 'Remote HEAD: VERIFIED'
 } finally {
   Pop-Location
 }
-
 Write-Host '=== VERIFY ==='
 Write-Host "Overall: $overall"
 Write-Host "Recovery: $recoveryOk"
