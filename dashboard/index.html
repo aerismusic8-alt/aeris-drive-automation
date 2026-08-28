@@ -1,5 +1,114 @@
 <!doctype html>
-<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>AX Executive Dashboard</title><style>body{font-family:system-ui,sans-serif;margin:0;padding:24px;background:#0b1020;color:#eef2ff}main{max-width:1100px;margin:auto}.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:14px}.card{background:#151c33;border:1px solid #293354;border-radius:14px;padding:18px}.value{font-size:1.35rem;font-weight:700;margin-top:8px}.ok{color:#63e6be}.warn{color:#ffd166}.bad{color:#ff7b7b}small,.muted{color:#aeb8d4}pre{white-space:pre-wrap;word-break:break-word}h1{margin-bottom:4px}button{padding:8px 12px;border-radius:8px;border:1px solid #44517a;background:#202a49;color:#fff}</style></head>
-<body><main><div style="display:flex;justify-content:space-between;align-items:center"><div><h1>AX Executive Dashboard</h1><div class="muted">Autonomous execution status · local status feed</div></div><button onclick="load()">Refresh</button></div>
-<div class="grid" style="margin-top:18px"><div class="card"><small>System</small><div id="system" class="value">Loading…</div></div><div class="card"><small>Runner</small><div id="runner" class="value">Loading…</div></div><div class="card"><small>Current Task</small><div id="task" class="value">Loading…</div></div><div class="card"><small>Last Cycle</small><div id="time" class="value">Loading…</div></div><div class="card"><small>Mutation</small><div id="mutation" class="value">Loading…</div></div><div class="card"><small>Persistence</small><div id="persistence" class="value">Loading…</div></div><div class="card" style="grid-column:1/-1"><small>Evidence</small><pre id="evidence">Loading…</pre></div></div></main>
-<script>async function load(){try{const r=await fetch('status.json?ts='+Date.now(),{cache:'no-store'});if(!r.ok)throw new Error('HTTP '+r.status);const s=await r.json();const set=(id,v,c)=>{const e=document.getElementById(id);e.textContent=v;e.className='value '+c};set('system',s.system||'UNKNOWN',s.system==='ONLINE'?'ok':'warn');set('runner',s.runner||'UNKNOWN',s.runner==='VERIFIED'?'ok':'warn');set('task',(s.taskId||'NONE')+' · '+(s.taskState||'UNKNOWN'),'');set('time',s.timestamp||'UNKNOWN','');set('mutation',s.mutation?'VERIFIED':'NOT VERIFIED',s.mutation?'ok':'bad');set('persistence',s.persistence?'VERIFIED':'NOT VERIFIED',s.persistence?'ok':'bad');document.getElementById('evidence').textContent=JSON.stringify(s,null,2)}catch(e){set('system','DASHBOARD DATA UNAVAILABLE','bad');document.getElementById('evidence').textContent=e.message}}function set(id,v,c){const e=document.getElementById(id);e.textContent=v;e.className='value '+c}load();setInterval(load,10000)</script></body></html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>AX Executive Dashboard</title>
+<style>
+body{font-family:system-ui,sans-serif;margin:0;padding:24px;background:#0b1020;color:#eef2ff}
+main{max-width:1200px;margin:auto}.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:12px}
+.card{background:#151c33;border:1px solid #293354;border-radius:14px;padding:16px}.value{font-size:1.25rem;font-weight:700;margin-top:7px}
+.ok{color:#63e6be}.warn{color:#ffd166}.bad{color:#ff7b7b}.muted{color:#aeb8d4}
+pre{white-space:pre-wrap;word-break:break-word;font-size:.85rem;line-height:1.45}
+h1{margin:0 0 4px}button{padding:8px 12px;border-radius:8px;border:1px solid #44517a;background:#202a49;color:#fff;cursor:pointer}
+.progress{height:10px;background:#252d48;border-radius:8px;overflow:hidden;margin-top:10px}.bar{height:100%;width:0%;background:#63e6be;transition:width .25s}
+.live{display:inline-flex;align-items:center;gap:7px}.dot{width:9px;height:9px;border-radius:50%;background:#ffd166}.dot.ok{background:#63e6be}.dot.bad{background:#ff7b7b}
+</style>
+</head>
+<body>
+<main>
+<div style="display:flex;justify-content:space-between;align-items:center;gap:12px">
+  <div><h1>AX Executive Dashboard</h1><div class="muted">Runner / Job live-state monitor</div></div>
+  <button onclick="load(true)">Refresh</button>
+</div>
+
+<div class="grid" style="margin-top:18px">
+  <div class="card"><small>System</small><div id="system" class="value">Loading…</div></div>
+  <div class="card"><small>Runner</small><div id="runner" class="value">Loading…</div></div>
+  <div class="card"><small>Job</small><div id="job" class="value">Loading…</div></div>
+  <div class="card"><small>Job State</small><div id="jobState" class="value">Loading…</div></div>
+  <div class="card"><small>Last Update</small><div id="updated" class="value">Loading…</div></div>
+  <div class="card"><small>Feed</small><div id="feed" class="value">Loading…</div></div>
+</div>
+
+<div class="card" style="margin-top:12px">
+  <div style="display:flex;justify-content:space-between"><b>JOB PROGRESS</b><span id="progressText">0%</span></div>
+  <div class="progress"><div id="bar" class="bar"></div></div>
+</div>
+
+<div class="grid" style="margin-top:12px">
+  <div class="card"><small>Mutation</small><div id="mutation" class="value">Loading…</div></div>
+  <div class="card"><small>Persistence</small><div id="persistence" class="value">Loading…</div></div>
+  <div class="card"><small>Dispatch</small><div id="dispatch" class="value">Loading…</div></div>
+  <div class="card"><small>Recovery</small><div id="recovery" class="value">Loading…</div></div>
+</div>
+
+<div class="card" style="margin-top:12px"><small>LIVE EVIDENCE</small><pre id="evidence">Loading…</pre></div>
+</main>
+
+<script>
+const POLL_MS=2000;
+const STALE_MS=10000;
+
+function setValue(id,value,cls=''){
+  const e=document.getElementById(id); e.textContent=value; e.className='value '+cls;
+}
+function statusClass(value){
+  const s=String(value||'').toUpperCase();
+  if(['ONLINE','VERIFIED','PASS','COMPLETED','RUNNING'].includes(s)) return 'ok';
+  if(['PENDING','QUEUED','WAITING_K','STALE','UNKNOWN'].includes(s)) return 'warn';
+  return 'bad';
+}
+function formatAge(ms){
+  if(!Number.isFinite(ms)) return 'UNKNOWN';
+  if(ms<1000) return 'just now';
+  return Math.round(ms/100)/10+'s ago';
+}
+async function load(manual=false){
+  try{
+    const r=await fetch('status.json?ts='+Date.now(),{cache:'no-store'});
+    if(!r.ok) throw new Error('HTTP '+r.status);
+    const s=await r.json();
+    const ts=s.timestamp ? new Date(s.timestamp).getTime() : 0;
+    const age=ts ? Date.now()-ts : Infinity;
+    const feedLive=age<=STALE_MS;
+
+    setValue('system',s.system||'UNKNOWN',statusClass(s.system));
+    setValue('runner',s.runner||'UNKNOWN',statusClass(s.runner));
+    setValue('job',s.selectedTask||s.taskId||'NONE','');
+    setValue('jobState',s.taskState||s.jobState||s.overall||'UNKNOWN',statusClass(s.taskState||s.jobState||s.overall));
+    setValue('updated',formatAge(age),feedLive?'ok':'warn');
+    setValue('feed',feedLive?'LIVE':'STALE',feedLive?'ok':'warn');
+
+    const p=Math.max(0,Math.min(100,Number(s.progress||0)));
+    document.getElementById('progressText').textContent=p+'%';
+    document.getElementById('bar').style.width=p+'%';
+
+    setValue('mutation',s.mutation||'NOT VERIFIED',statusClass(s.mutation));
+    setValue('persistence',s.persistence||'NOT VERIFIED',statusClass(s.persistence));
+    setValue('dispatch',s.dispatch||'UNKNOWN',statusClass(s.dispatch));
+    setValue('recovery',s.recovery||'UNKNOWN',statusClass(s.recovery));
+
+    document.getElementById('evidence').textContent=JSON.stringify({
+      source:'dashboard/status.json',
+      polledAt:new Date().toISOString(),
+      sourceTimestamp:s.timestamp||null,
+      sourceAgeMs:Number.isFinite(age)?age:null,
+      feed:feedLive?'LIVE':'STALE',
+      runner:s.runner||null,
+      taskId:s.taskId||null,
+      taskState:s.taskState||null,
+      progress:p,
+      raw:s
+    },null,2);
+  }catch(e){
+    setValue('system','DASHBOARD DATA UNAVAILABLE','bad');
+    setValue('feed','OFFLINE','bad');
+    document.getElementById('evidence').textContent=e.message;
+  }
+}
+load();
+setInterval(()=>load(false),POLL_MS);
+</script>
+</body>
+</html>
