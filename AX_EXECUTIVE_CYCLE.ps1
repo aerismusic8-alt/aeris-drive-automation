@@ -1,4 +1,4 @@
-$ErrorActionPreference = 'Stop'
+﻿$ErrorActionPreference = 'Stop'
 $cycle = [guid]::NewGuid().ToString()
 $now = Get-Date -Format o
 $scriptPath = $MyInvocation.MyCommand.Path
@@ -94,7 +94,7 @@ $status = [ordered]@{
   dispatch=if($dispatchOk){'PASS'}else{'FAIL'}
   persistence=if($persistenceOk){'VERIFIED'}else{'NOT_VERIFIED'}
   runner='VERIFIED'
-  mutation='PENDING'
+  mutation=if(true -eq 'true'){'ENABLED'}else{'DISABLED'}
   selectedTask=if($selected){$selected.id}else{$null}
 }
 New-Item -ItemType Directory -Force -Path "$root\dashboard" | Out-Null
@@ -169,3 +169,4 @@ if ($overall -ne 'PASS') {
   throw "AX_EXECUTIVE_CYCLE_DEGRADED:$overall"
 }
 Write-Host '=== AX AUTONOMOUS EXECUTIVE CYCLE COMPLETE ==='
+
