@@ -1,4 +1,4 @@
-﻿$ErrorActionPreference = 'Stop'
+$ErrorActionPreference = 'Stop'
 $cycle = [guid]::NewGuid().ToString()
 $now = Get-Date -Format o
 $repo = $env:GITHUB_REPOSITORY
@@ -60,6 +60,7 @@ Write-Host '=== PERSISTENCE GATE ==='
 try {
   $payload = @{ command='SAVE_STATE'; approved=$true; source='AX_AUTONOMOUS_EXECUTIVE_LOOP'; cycleId=$cycle; timestamp=$now } | ConvertTo-Json -Compress
   $saveResponse = Invoke-RestMethod -Uri $env:AERIS_WEB_APP_URL -Method Post -ContentType 'application/json' -Body $payload -TimeoutSec 30
+  Write-Host ('Persistence response: ' + ($saveResponse | ConvertTo-Json -Depth 12 -Compress))
   if ($saveResponse.success -ne $true -or $null -eq $saveResponse.result -or $saveResponse.result.verified -ne $true) { throw 'AX_PERSISTENCE_NOT_VERIFIED' }
   $persistenceOk = $true
   Write-Host 'Drive persistence: VERIFIED'
@@ -94,23 +95,31 @@ New-Item -ItemType Directory -Force -Path "$root\dashboard" | Out-Null
 $status | ConvertTo-Json -Depth 10 | Set-Content -Encoding utf8 "$root\dashboard\status.json"
 if (-not (Test-Path "$root\dashboard\status.json")) { throw 'AX_DASHBOARD_STATUS_CREATE_FAILED' }
 
-git config user.name 'aerismusic8-alt'
-git config user.email 'aerismusic8-alt@users.noreply.github.com'
-git add dashboard/status.json
-git diff --cached --quiet
-if ($LASTEXITCODE -eq 0) {
-  Write-Host 'Dashboard mutation: NO_CHANGE'
-} else {
-  git commit -m "chore: autonomous AX dashboard heartbeat"
-  if ($LASTEXITCODE -ne 0) { throw 'AX_DASHBOARD_COMMIT_FAILED' }
-  git push origin main
-  if ($LASTEXITCODE -ne 0) { throw 'AX_DASHBOARD_PUSH_FAILED' }
-}
+# Self-hosted runner runs as NETWORK SERVICE while the checkout may be owned by Administrators.
+# Register the exact checkout as a trusted Git directory before any repository operation.
+git config --global --add safe.directory "$root"
+Push-Location $root
+try {
+  git config user.name 'aerismusic8-alt'
+  git config user.email 'aerismusic8-alt@users.noreply.github.com'
+  git add dashboard/status.json
+  git diff --cached --quiet
+  if ($LASTEXITCODE -eq 0) {
+    Write-Host 'Dashboard mutation: NO_CHANGE'
+  } else {
+    git commit -m "chore: autonomous AX dashboard heartbeat"
+    if ($LASTEXITCODE -ne 0) { throw 'AX_DASHBOARD_COMMIT_FAILED' }
+    git push origin main
+    if ($LASTEXITCODE -ne 0) { throw 'AX_DASHBOARD_PUSH_FAILED' }
+  }
 
-$localSha = (git rev-parse HEAD).Trim()
-$remoteSha = (git ls-remote origin refs/heads/main).Split("`t")[0].Trim()
-if ($localSha -ne $remoteSha) { throw "AX_REMOTE_VERIFY_FAILED:$localSha/$remoteSha" }
-if ((git status --short).Trim()) { throw 'AX_WORKTREE_NOT_CLEAN' }
+  $localSha = (git rev-parse HEAD).Trim()
+  $remoteSha = (git ls-remote origin refs/heads/main).Split("`t")[0].Trim()
+  if ($localSha -ne $remoteSha) { throw "AX_REMOTE_VERIFY_FAILED:$localSha/$remoteSha" }
+  if ((git status --short).Trim()) { throw 'AX_WORKTREE_NOT_CLEAN' }
+} finally {
+  Pop-Location
+}
 
 Write-Host '=== VERIFY ==='
 Write-Host "Overall: $overall"
@@ -124,6 +133,3 @@ Write-Host 'Remote HEAD: VERIFIED'
 Write-Host 'Runner execution: VERIFIED'
 Write-Host 'Live-money execution: DISABLED'
 Write-Host '=== AX AUTONOMOUS EXECUTIVE CYCLE COMPLETE ==='
-
-
-
