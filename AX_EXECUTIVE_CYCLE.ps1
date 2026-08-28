@@ -145,7 +145,7 @@ try {
   if ($localSha -ne $remoteSha) { throw "AX_REMOTE_VERIFY_FAILED:$localSha/$remoteSha" }
   $worktree = git status --short
   if ($worktree) {
-    Write-Host "Worktree after dashboard commit:"
+    Write-Host 'Worktree after dashboard commit:'
     $worktree | ForEach-Object { Write-Host $_ }
     throw 'AX_WORKTREE_NOT_CLEAN'
   }
@@ -165,4 +165,7 @@ Write-Host 'Dashboard status: CREATED/VERIFIED'
 Write-Host 'Repository mutation: VERIFIED'
 Write-Host 'Runner execution: VERIFIED'
 Write-Host 'Live-money execution: DISABLED'
+if ($overall -ne 'PASS') {
+  throw "AX_EXECUTIVE_CYCLE_DEGRADED:$overall"
+}
 Write-Host '=== AX AUTONOMOUS EXECUTIVE CYCLE COMPLETE ==='
