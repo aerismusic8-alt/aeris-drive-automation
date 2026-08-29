@@ -1,114 +1,39 @@
 <!doctype html>
-<html lang="en">
+<html lang="th">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>AX Executive Dashboard</title>
 <style>
-body{font-family:system-ui,sans-serif;margin:0;padding:24px;background:#0b1020;color:#eef2ff}
-main{max-width:1200px;margin:auto}.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:12px}
-.card{background:#151c33;border:1px solid #293354;border-radius:14px;padding:16px}.value{font-size:1.25rem;font-weight:700;margin-top:7px}
-.ok{color:#63e6be}.warn{color:#ffd166}.bad{color:#ff7b7b}.muted{color:#aeb8d4}
-pre{white-space:pre-wrap;word-break:break-word;font-size:.85rem;line-height:1.45}
-h1{margin:0 0 4px}button{padding:8px 12px;border-radius:8px;border:1px solid #44517a;background:#202a49;color:#fff;cursor:pointer}
-.progress{height:10px;background:#252d48;border-radius:8px;overflow:hidden;margin-top:10px}.bar{height:100%;width:0%;background:#63e6be;transition:width .25s}
-.live{display:inline-flex;align-items:center;gap:7px}.dot{width:9px;height:9px;border-radius:50%;background:#ffd166}.dot.ok{background:#63e6be}.dot.bad{background:#ff7b7b}
+body{font-family:system-ui,sans-serif;margin:0;padding:20px;background:#0b1020;color:#eef2ff}main{max-width:1280px;margin:auto}.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:10px}.card{background:#151c33;border:1px solid #293354;border-radius:12px;padding:14px}.value{font-size:1.12rem;font-weight:700;margin-top:6px}.ok{color:#63e6be}.warn{color:#ffd166}.bad{color:#ff7b7b}.muted{color:#aeb8d4}pre{white-space:pre-wrap;word-break:break-word;font-size:.8rem;line-height:1.4}h1{margin:0 0 3px}button{padding:8px 12px;border-radius:8px;border:1px solid #44517a;background:#202a49;color:#fff;cursor:pointer}.progress{height:9px;background:#252d48;border-radius:8px;overflow:hidden;margin-top:9px}.bar{height:100%;width:0%;background:#63e6be;transition:width .25s}.hero{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:14px}.badge{padding:5px 9px;border-radius:999px;background:#202a49}.section{margin-top:10px}
 </style>
 </head>
-<body>
-<main>
-<div style="display:flex;justify-content:space-between;align-items:center;gap:12px">
-  <div><h1>AX Executive Dashboard</h1><div class="muted">Runner / Job live-state monitor</div></div>
-  <button onclick="load(true)">Refresh</button>
+<body><main>
+<div class="hero"><div><h1>AX Executive Dashboard</h1><div class="muted">Real-time Executive Cycle / Runner / Persistence Monitor</div></div><div><span id="feed" class="badge">LOADING</span> <button onclick="load()">Refresh</button></div></div>
+<div class="grid">
+<div class="card"><small>System</small><div id="system" class="value">—</div></div>
+<div class="card"><small>Overall</small><div id="overall" class="value">—</div></div>
+<div class="card"><small>Runner</small><div id="runner" class="value">—</div></div>
+<div class="card"><small>Cycle</small><div id="cycle" class="value">—</div></div>
+<div class="card"><small>Selected Task</small><div id="job" class="value">—</div></div>
+<div class="card"><small>Last Update</small><div id="updated" class="value">—</div></div>
 </div>
-
-<div class="grid" style="margin-top:18px">
-  <div class="card"><small>System</small><div id="system" class="value">Loading…</div></div>
-  <div class="card"><small>Runner</small><div id="runner" class="value">Loading…</div></div>
-  <div class="card"><small>Job</small><div id="job" class="value">Loading…</div></div>
-  <div class="card"><small>Job State</small><div id="jobState" class="value">Loading…</div></div>
-  <div class="card"><small>Last Update</small><div id="updated" class="value">Loading…</div></div>
-  <div class="card"><small>Feed</small><div id="feed" class="value">Loading…</div></div>
+<div class="card section"><div style="display:flex;justify-content:space-between"><b>EXECUTIVE PIPELINE</b><span id="pipeline">—</span></div><div class="progress"><div id="bar" class="bar"></div></div></div>
+<div class="grid section">
+<div class="card"><small>Recovery</small><div id="recovery" class="value">—</div></div>
+<div class="card"><small>Decision</small><div id="decision" class="value">—</div></div>
+<div class="card"><small>Dispatch</small><div id="dispatch" class="value">—</div></div>
+<div class="card"><small>Persistence</small><div id="persistence" class="value">—</div></div>
+<div class="card"><small>Mutation</small><div id="mutation" class="value">—</div></div>
 </div>
-
-<div class="card" style="margin-top:12px">
-  <div style="display:flex;justify-content:space-between"><b>JOB PROGRESS</b><span id="progressText">0%</span></div>
-  <div class="progress"><div id="bar" class="bar"></div></div>
-</div>
-
-<div class="grid" style="margin-top:12px">
-  <div class="card"><small>Mutation</small><div id="mutation" class="value">Loading…</div></div>
-  <div class="card"><small>Persistence</small><div id="persistence" class="value">Loading…</div></div>
-  <div class="card"><small>Dispatch</small><div id="dispatch" class="value">Loading…</div></div>
-  <div class="card"><small>Recovery</small><div id="recovery" class="value">Loading…</div></div>
-</div>
-
-<div class="card" style="margin-top:12px"><small>LIVE EVIDENCE</small><pre id="evidence">Loading…</pre></div>
+<div class="card section"><small>LIVE EVIDENCE</small><pre id="evidence">Loading…</pre></div>
 </main>
-
 <script>
-const POLL_MS=2000;
-const STALE_MS=10000;
-
-function setValue(id,value,cls=''){
-  const e=document.getElementById(id); e.textContent=value; e.className='value '+cls;
-}
-function statusClass(value){
-  const s=String(value||'').toUpperCase();
-  if(['ONLINE','VERIFIED','PASS','COMPLETED','RUNNING'].includes(s)) return 'ok';
-  if(['PENDING','QUEUED','WAITING_K','STALE','UNKNOWN'].includes(s)) return 'warn';
-  return 'bad';
-}
-function formatAge(ms){
-  if(!Number.isFinite(ms)) return 'UNKNOWN';
-  if(ms<1000) return 'just now';
-  return Math.round(ms/100)/10+'s ago';
-}
-async function load(manual=false){
-  try{
-    const r=await fetch('status.json?ts='+Date.now(),{cache:'no-store'});
-    if(!r.ok) throw new Error('HTTP '+r.status);
-    const s=await r.json();
-    const ts=s.timestamp ? new Date(s.timestamp).getTime() : 0;
-    const age=ts ? Date.now()-ts : Infinity;
-    const feedLive=age<=STALE_MS;
-
-    setValue('system',s.system||'UNKNOWN',statusClass(s.system));
-    setValue('runner',s.runner||'UNKNOWN',statusClass(s.runner));
-    setValue('job',s.selectedTask||s.taskId||'NONE','');
-    setValue('jobState',s.taskState||s.jobState||s.overall||'UNKNOWN',statusClass(s.taskState||s.jobState||s.overall));
-    setValue('updated',formatAge(age),feedLive?'ok':'warn');
-    setValue('feed',feedLive?'LIVE':'STALE',feedLive?'ok':'warn');
-
-    const p=Math.max(0,Math.min(100,Number(s.progress||0)));
-    document.getElementById('progressText').textContent=p+'%';
-    document.getElementById('bar').style.width=p+'%';
-
-    setValue('mutation',s.mutation||'NOT VERIFIED',statusClass(s.mutation));
-    setValue('persistence',s.persistence||'NOT VERIFIED',statusClass(s.persistence));
-    setValue('dispatch',s.dispatch||'UNKNOWN',statusClass(s.dispatch));
-    setValue('recovery',s.recovery||'UNKNOWN',statusClass(s.recovery));
-
-    document.getElementById('evidence').textContent=JSON.stringify({
-      source:'dashboard/status.json',
-      polledAt:new Date().toISOString(),
-      sourceTimestamp:s.timestamp||null,
-      sourceAgeMs:Number.isFinite(age)?age:null,
-      feed:feedLive?'LIVE':'STALE',
-      runner:s.runner||null,
-      taskId:s.taskId||null,
-      taskState:s.taskState||null,
-      progress:p,
-      raw:s
-    },null,2);
-  }catch(e){
-    setValue('system','DASHBOARD DATA UNAVAILABLE','bad');
-    setValue('feed','OFFLINE','bad');
-    document.getElementById('evidence').textContent=e.message;
-  }
-}
-load();
-setInterval(()=>load(false),POLL_MS);
-</script>
-</body>
-</html>
+const POLL_MS=2000,STALE_MS=10000;
+const $=id=>document.getElementById(id);
+function cls(v){let s=String(v||'').toUpperCase();return ['ONLINE','VERIFIED','PASS','COMPLETED','RUNNING','ENABLED'].includes(s)?'ok':['PENDING','QUEUED','WAITING_K','STALE','UNKNOWN'].includes(s)?'warn':'bad'}
+function put(id,v){$(id).textContent=v??'—';$(id).className='value '+cls(v)}
+function age(ms){if(!Number.isFinite(ms))return'UNKNOWN';if(ms<1000)return'just now';return Math.round(ms/100)/10+'s ago'}
+async function load(){try{let r=await fetch('status.json?ts='+Date.now(),{cache:'no-store'});if(!r.ok)throw Error('HTTP '+r.status);let s=await r.json(),t=s.timestamp?Date.parse(s.timestamp):0,a=t?Date.now()-t:Infinity,live=a<=STALE_MS;let stages=[s.recovery,s.decision,s.dispatch,s.persistence],done=stages.filter(x=>['PASS','VERIFIED','COMPLETED'].includes(String(x).toUpperCase())).length,p=Math.round(done/stages.length*100);put('system',s.system);put('overall',s.overall);put('runner',s.runner);put('cycle',s.cycle||'—');put('job',s.selectedTask||s.taskId||'NONE');put('updated',age(a));put('recovery',s.recovery);put('decision',s.decision);put('dispatch',s.dispatch);put('persistence',s.persistence);put('mutation',s.mutation);$('feed').textContent=live?'LIVE':'STALE';$('feed').className='badge '+(live?'ok':'warn');$('pipeline').textContent=p+'%';$('bar').style.width=p+'%';$('evidence').textContent=JSON.stringify({source:'dashboard/status.json',polledAt:new Date().toISOString(),sourceTimestamp:s.timestamp||null,sourceAgeMs:Number.isFinite(a)?a:null,feed:live?'LIVE':'STALE',pipelineProgress:p,raw:s},null,2)}catch(e){$('feed').textContent='OFFLINE';$('feed').className='badge bad';put('system','DASHBOARD DATA UNAVAILABLE');$('evidence').textContent=e.message}}
+load();setInterval(load,POLL_MS);
+</script></body></html>
