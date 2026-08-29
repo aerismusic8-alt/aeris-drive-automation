@@ -1,0 +1,48 @@
+name: AX Dashboard Sync
+on:
+  workflow_dispatch:
+    inputs:
+      event:
+        required: false
+        default: manual
+      job_id:
+        required: false
+        default: ''
+  push:
+    paths:
+      - 'dashboard/status.json'
+      - 'AX_TRIGGER_REGISTRY.json'
+      - 'AX_DASHBOARD_SYNC.ps1'
+      - '.github/workflows/ax-dashboard-sync.yml'
+  schedule:
+    - cron: '*/2 * * * *'
+permissions:
+  contents: write
+jobs:
+  sync:
+    runs-on: self-hosted
+    timeout-minutes: 3
+    steps:
+      - uses: actions/checkout@v5
+      - name: Sync AX runtime state to dashboard
+        shell: powershell
+        run: |
+          $event='push'
+          $job=''
+          if('${{ github.event_name }}' -eq 'workflow_dispatch'){$event='${{ inputs.event }}';$job='${{ inputs.job_id }}'}
+          & "$PWD\AX_DASHBOARD_SYNC.ps1" -Event $event -JobId $job
+      - name: Verify sync evidence
+        shell: powershell
+        run: |
+          $p='dashboard/ax-sync.json'
+          if(!(Test-Path $p)){throw 'DASHBOARD_SYNC_EVIDENCE_MISSING'}
+          $x=Get-Content -Raw $p|ConvertFrom-Json
+          if($x.schema -ne 'AX_DASHBOARD_SYNC_V1' -or $x.stateVerified -ne $true){throw 'DASHBOARD_SYNC_VERIFY_FAILED'}
+          Write-Host "AX_DASHBOARD_SYNC PASS triggerCount=$($x.triggerCount)"
+      - name: Persist sync state
+        shell: powershell
+        run: |
+          git config user.name 'AX Dashboard Sync'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add dashboard/ax-sync.json
+          if(git diff --cached --quiet){Write-Host 'No sync mutation'}else{git commit -m 'chore: update AX dashboard sync state';git push}
