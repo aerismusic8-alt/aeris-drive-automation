@@ -10,10 +10,10 @@ permissions:
 
 jobs:
   pc2-runtime-recovery:
-    runs-on: [self-hosted, Windows, X64]
+    runs-on: [self-hosted, Windows, X64, PC2-CODING-EXECUTOR]
     timeout-minutes: 5
     env:
-      AX_EXPECTED_PC2: DESKTOP-RGK6JKB
+      AX_EXPECTED_PC2: DESKTOP-O0AUKHG
     steps:
       - name: Checkout
         uses: actions/checkout@v5
@@ -25,8 +25,7 @@ jobs:
           Write-Host "COMPUTERNAME=$env:COMPUTERNAME"
           Write-Host "RUNNER_NAME=$env:RUNNER_NAME"
           if ($env:COMPUTERNAME -ne $env:AX_EXPECTED_PC2) {
-            Write-Host 'THIS_RUNNER_IS_NOT_PC2'
-            exit 0
+            throw "PC2_EXECUTOR_IDENTITY_MISMATCH: expected=$env:AX_EXPECTED_PC2 actual=$env:COMPUTERNAME"
           }
           $runtime = 'C:\AX-Runtime\AX_PC2_WORKER_V2.ps1'
           if (-not (Test-Path $runtime)) { throw 'PC2_WORKER_RUNTIME_FILE_MISSING' }
@@ -46,7 +45,7 @@ jobs:
         shell: powershell
         run: |
           $ErrorActionPreference = 'Stop'
-          if ($env:COMPUTERNAME -ne $env:AX_EXPECTED_PC2) { Write-Host 'SKIP_NOT_PC2'; exit 0 }
+          if ($env:COMPUTERNAME -ne $env:AX_EXPECTED_PC2) { throw 'PC2_EXECUTOR_IDENTITY_MISMATCH' }
           $worker = 'C:\AX-Runtime\AX_PC2_WORKER_V2.ps1'
           powershell.exe -NoProfile -ExecutionPolicy Bypass -File $worker -Once
           $state = Get-Content 'C:\AX-Runtime\AX-PC2-Worker-State.json' -Raw | ConvertFrom-Json
@@ -58,7 +57,7 @@ jobs:
         shell: powershell
         run: |
           $ErrorActionPreference = 'Stop'
-          if ($env:COMPUTERNAME -ne $env:AX_EXPECTED_PC2) { Write-Host 'SKIP_NOT_PC2'; exit 0 }
+          if ($env:COMPUTERNAME -ne $env:AX_EXPECTED_PC2) { throw 'PC2_EXECUTOR_IDENTITY_MISMATCH' }
           $log = Get-Content 'C:\AX-Runtime\AX-PC2-Worker-V2.log' -Tail 30
           $log | ForEach-Object { Write-Host $_ }
           $proof = Get-ChildItem 'C:\AX-Runtime\proof' -File -ErrorAction SilentlyContinue | Sort-Object LastWriteTime -Descending | Select-Object -First 1
