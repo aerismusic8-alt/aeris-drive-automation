@@ -22,11 +22,11 @@ jobs:
         with:
           fetch-depth: 0
       - name: Create and verify local storage layout
-        shell: powershell
+        shell: powershell -NoProfile -ExecutionPolicy Bypass -File {0}
         run: |
           & "$PWD\AX_STORAGE_MANAGER.ps1"
       - name: Storage safety report
-        shell: powershell
+        shell: powershell -NoProfile -ExecutionPolicy Bypass -File {0}
         run: |
           $root='C:\AERIS\AX'
           $free=(Get-PSDrive -Name C).Free
