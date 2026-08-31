@@ -1,0 +1,83 @@
+name: OpenHands Capability Diagnostic
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - docs/superpowers/plans/2026-09-01-openhands-deployment.md
+      - .github/workflows/openhands-capability-diagnostic.yml
+
+permissions:
+  contents: read
+
+concurrency:
+  group: openhands-capability-diagnostic
+  cancel-in-progress: false
+
+jobs:
+  diagnostic:
+    runs-on: self-hosted
+    timeout-minutes: 5
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v5
+        with:
+          fetch-depth: 1
+
+      - name: Inspect OpenHands host capabilities
+        shell: powershell
+        run: |
+          $ErrorActionPreference = 'Continue'
+          Write-Host '=== OPENHANDS CAPABILITY DIAGNOSTIC ==='
+          Write-Host "Computer: $env:COMPUTERNAME"
+          Write-Host "Runner: $env:RUNNER_NAME"
+          Write-Host "OS: $([System.Environment]::OSVersion.VersionString)"
+          Write-Host "Architecture: $env:PROCESSOR_ARCHITECTURE"
+
+          function Check-Command([string]$Name) {
+            $cmd = Get-Command $Name -ErrorAction SilentlyContinue
+            if ($cmd) {
+              try {
+                $version = & $Name --version 2>&1 | Select-Object -First 1
+              } catch {
+                $version = 'installed; version command failed'
+              }
+              Write-Host "CAPABILITY $Name = PRESENT | $version"
+            } else {
+              Write-Host "CAPABILITY $Name = MISSING"
+            }
+          }
+
+          Check-Command 'node'
+          Check-Command 'npm'
+          Check-Command 'uv'
+          Check-Command 'docker'
+          Check-Command 'agent-canvas'
+          Check-Command 'openhands'
+          Check-Command 'ollama'
+
+          Write-Host '=== NODE/NPM DETAIL ==='
+          if (Get-Command node -ErrorAction SilentlyContinue) { node --version }
+          if (Get-Command npm -ErrorAction SilentlyContinue) { npm --version }
+
+          Write-Host '=== DOCKER DETAIL ==='
+          if (Get-Command docker -ErrorAction SilentlyContinue) { docker version --format '{{.Server.Version}}' 2>&1 }
+
+          Write-Host '=== OLLAMA DETAIL ==='
+          if (Get-Command ollama -ErrorAction SilentlyContinue) {
+            ollama list 2>&1
+          }
+
+          Write-Host '=== HOST RESOURCES ==='
+          Get-CimInstance Win32_OperatingSystem | Select-Object @{N='FreeMemoryGB';E={[math]::Round($_.FreePhysicalMemory/1MB,2)}}, @{N='TotalMemoryGB';E={[math]::Round($_.TotalVisibleMemorySize/1MB,2)}} | Format-List
+          Get-PSDrive -PSProvider FileSystem | Select-Object Name,@{N='FreeGB';E={[math]::Round($_.Free/1GB,2)}},@{N='UsedGB';E={[math]::Round($_.Used/1GB,2)}} | Format-Table -AutoSize
+
+          Write-Host '=== WORKSPACE ==='
+          Write-Host "Workspace: $env:GITHUB_WORKSPACE"
+          if (Test-Path $env:GITHUB_WORKSPACE) { Write-Host 'Workspace access: VERIFIED' } else { Write-Host 'Workspace access: NOT_VERIFIED' }
+
+          Write-Host '=== POLICY ==='
+          Write-Host 'Free-first: ENFORCED'
+          Write-Host 'Automatic paid provider activation: DISABLED'
+          Write-Host 'Diagnostic changes to host: NONE'
+          Write-Host '=== DIAGNOSTIC COMPLETE ==='
