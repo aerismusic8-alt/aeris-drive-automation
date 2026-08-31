@@ -12,17 +12,17 @@ jobs:
     steps:
       - uses: actions/checkout@v5
       - name: Record runtime heartbeat
-        shell: powershell
+        shell: powershell -NoProfile -ExecutionPolicy Bypass -File {0}
         run: |
           & "$PWD\AX_ACTIVE_EXECUTIONS.ps1" -TriggerId "ax-active-execution-monitor" -JobId "${{ github.run_id }}" -Status "ACTIVE" -Runner "$env:COMPUTERNAME" -Result "monitor_heartbeat"
       - name: Verify active execution registry
-        shell: powershell
+        shell: powershell -NoProfile -ExecutionPolicy Bypass -File {0}
         run: |
           $x=Get-Content -Raw AX_ACTIVE_EXECUTIONS.json|ConvertFrom-Json
           if($x.schema -ne 'AX_ACTIVE_EXECUTIONS_V1'){throw 'ACTIVE_EXECUTIONS_SCHEMA_FAIL'}
           Write-Host "ACTIVE_EXECUTIONS PASS active=$($x.activeCount) stale=$($x.staleCount)"
       - name: Persist registry
-        shell: powershell
+        shell: powershell -NoProfile -ExecutionPolicy Bypass -File {0}
         run: |
           git config user.name 'AX Active Execution Monitor'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
