@@ -1,0 +1,19 @@
+﻿{
+    "schema":  "AX_TRIGGER_REGISTRY_V1",
+    "updatedAt":  "2026-09-01T03:11:04.7949081Z",
+    "heartbeatTimeoutSeconds":  120,
+    "triggerCount":  1,
+    "triggers":  [
+                     {
+                         "triggerId":  "github-trigger-registry",
+                         "source":  "github-actions-self-hosted",
+                         "lastSeen":  "2026-09-01T03:11:04.7949081Z",
+                         "lastEvent":  "heartbeat",
+                         "status":  "ACTIVE",
+                         "executionCount":  1,
+                         "successCount":  1,
+                         "failureCount":  0,
+                         "lastResult":  "heartbeat_ok"
+                     }
+                 ]
+}
