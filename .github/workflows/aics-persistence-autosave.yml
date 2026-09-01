@@ -34,6 +34,6 @@ jobs:
       - name: Auto-save AX/AICS state to Google Drive
         shell: cmd
         env:
-          AERIS_WEB_APP_URL: https://script.google.com/macros/s/AKfycbwz6F8EWTD7YwnGkyu4Mq_JHtBkk6nOwl9TYjWDsMsQTtS5EVj3I6hmakuW6yP_YGQH/exec
+          AERIS_WEB_APP_URL: https://script.google.com/macros/s/AKfycbwdK1NVd0_ZUVS_fRto6xRIWzUOkFi8BV90UxxKrujQYfYWvcaIlWNDXKxI9Ree7Zqx/exec
         run: |
           powershell.exe -NoProfile -ExecutionPolicy Bypass -Command "$ErrorActionPreference = 'Stop'; $payload = @{ command = 'CREATE_SAVEPOINT'; approved = $true } | ConvertTo-Json -Compress; Write-Host '=== AICS PERSISTENCE AUTO-SAVE ==='; Write-Host ('Payload: ' + $payload); $response = Invoke-RestMethod -Uri $env:AERIS_WEB_APP_URL -Method Post -ContentType 'application/json' -Body $payload -TimeoutSec 30; Write-Host ($response | ConvertTo-Json -Depth 20); if ($response.success -ne $true) { throw ('AICS_AUTOSAVE_REJECTED: ' + $response.error) }; $result = $response.result; if ($null -eq $result -or $result.verified -ne $true) { throw 'AICS_AUTOSAVE_NOT_VERIFIED' }; Write-Host 'Drive persistence: VERIFIED'; Write-Host '=== AICS PERSISTENCE AUTO-SAVE COMPLETE ==='"
