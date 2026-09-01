@@ -1,0 +1,24 @@
+﻿{
+    "schema":  "AX_CANONICAL_STATE_V1",
+    "generatedAt":  "2026-09-01T10:26:36.5831427+07:00",
+    "windowHours":  24,
+    "windowStart":  "2026-08-31T10:26:36.5831427+07:00",
+    "eventCount":  0,
+    "channels":  [
+
+                 ],
+    "events":  [
+
+               ],
+    "continuity":  {
+                       "previousStateGeneratedAt":  null,
+                       "previousStateSchema":  null,
+                       "bootstrapRequired":  true,
+                       "bootstrapReason":  "CONTEXT_SYNC_OR_CHANNEL_CHANGE"
+                   },
+    "integrity":  {
+                      "source":  "AX_CONTEXT_SYNC",
+                      "verified":  true,
+                      "verificationRule":  "schema+timestamp+window+event_count"
+                  }
+}
