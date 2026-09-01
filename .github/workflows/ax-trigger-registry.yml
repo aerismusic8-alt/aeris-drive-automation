@@ -16,17 +16,15 @@ jobs:
     steps:
       - uses: actions/checkout@v5
       - name: Register AX runtime heartbeat
-        shell: powershell
-        run: |
-          powershell.exe -NoProfile -NonInteractive -ExecutionPolicy Bypass -File "$PWD\AX_TRIGGER_REGISTRY.ps1" -TriggerId "github-trigger-registry" -Source "github-actions-self-hosted" -Event "heartbeat" -Status "ACTIVE" -Result "heartbeat_ok"
+        shell: cmd
+        run: powershell.exe -NoProfile -NonInteractive -ExecutionPolicy Bypass -File "%CD%\AX_TRIGGER_REGISTRY.ps1" -TriggerId "github-trigger-registry" -Source "github-actions-self-hosted" -Event "heartbeat" -Status "ACTIVE" -Result "heartbeat_ok"
       - name: Verify registry
-        shell: powershell
-        run: |
-          powershell.exe -NoProfile -NonInteractive -ExecutionPolicy Bypass -Command "$x=Get-Content -Raw '$PWD\AX_TRIGGER_REGISTRY.json'|ConvertFrom-Json; if($x.schema -ne 'AX_TRIGGER_REGISTRY_V1'){throw 'REGISTRY_SCHEMA_FAIL'}; if([int]$x.triggerCount -lt 1){throw 'REGISTRY_EMPTY'}; Write-Host ('TRIGGER_REGISTRY PASS count=' + $x.triggerCount)"
+        shell: cmd
+        run: powershell.exe -NoProfile -NonInteractive -ExecutionPolicy Bypass -Command "$x=Get-Content -Raw '%CD%\AX_TRIGGER_REGISTRY.json'|ConvertFrom-Json; if($x.schema -ne 'AX_TRIGGER_REGISTRY_V1'){throw 'REGISTRY_SCHEMA_FAIL'}; if([int]$x.triggerCount -lt 1){throw 'REGISTRY_EMPTY'}; Write-Host ('TRIGGER_REGISTRY PASS count=' + $x.triggerCount)"
       - name: Persist registry
-        shell: powershell
+        shell: cmd
         run: |
-          git config user.name 'AX Trigger Registry'
-          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git config user.name "AX Trigger Registry"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add AX_TRIGGER_REGISTRY.json
-          if(git diff --cached --quiet){Write-Host 'No registry mutation'}else{git commit -m 'chore: persist AX trigger heartbeat';git push}
+          git diff --cached --quiet || (git commit -m "chore: persist AX trigger heartbeat" && git push)
