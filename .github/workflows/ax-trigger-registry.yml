@@ -18,14 +18,11 @@ jobs:
       - name: Register AX runtime heartbeat
         shell: powershell
         run: |
-          & "$PWD\AX_TRIGGER_REGISTRY.ps1" -TriggerId "github-trigger-registry" -Source "github-actions-self-hosted" -Event "heartbeat" -Status "ACTIVE" -Result "heartbeat_ok"
+          powershell.exe -NoProfile -NonInteractive -ExecutionPolicy Bypass -File "$PWD\AX_TRIGGER_REGISTRY.ps1" -TriggerId "github-trigger-registry" -Source "github-actions-self-hosted" -Event "heartbeat" -Status "ACTIVE" -Result "heartbeat_ok"
       - name: Verify registry
         shell: powershell
         run: |
-          $x=Get-Content -Raw "$PWD\AX_TRIGGER_REGISTRY.json"|ConvertFrom-Json
-          if($x.schema -ne 'AX_TRIGGER_REGISTRY_V1'){throw 'REGISTRY_SCHEMA_FAIL'}
-          if([int]$x.triggerCount -lt 1){throw 'REGISTRY_EMPTY'}
-          Write-Host "TRIGGER_REGISTRY PASS count=$($x.triggerCount)"
+          powershell.exe -NoProfile -NonInteractive -ExecutionPolicy Bypass -Command "$x=Get-Content -Raw '$PWD\AX_TRIGGER_REGISTRY.json'|ConvertFrom-Json; if($x.schema -ne 'AX_TRIGGER_REGISTRY_V1'){throw 'REGISTRY_SCHEMA_FAIL'}; if([int]$x.triggerCount -lt 1){throw 'REGISTRY_EMPTY'}; Write-Host ('TRIGGER_REGISTRY PASS count=' + $x.triggerCount)"
       - name: Persist registry
         shell: powershell
         run: |
