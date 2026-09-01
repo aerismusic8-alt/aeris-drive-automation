@@ -24,6 +24,6 @@ Write-Host "Paper Action: $action"
 Write-Host ("Paper Quantity: {0:N8}" -f $quantity)
 Write-Host 'Live Order: DISABLED'
 Write-Host 'Real Capital: NOT USED'
-Write-Host 'E2E Verification: PASSED — market observation → signal → risk → paper decision'
+Write-Host 'E2E Verification: PASSED - market observation -> signal -> risk -> paper decision'
 Write-Host 'Audit Event: AICS_PAPER_E2E_VERIFIED'
 Write-Host '=== AX AICS PAPER E2E COMPLETE ==='
