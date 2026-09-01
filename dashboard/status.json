@@ -1,12 +1,12 @@
 ﻿{
     "system":  "ONLINE",
-    "cycle":  "8f98f072-fc42-42bd-be26-6d26c9cb3ddd",
-    "timestamp":  "2026-09-01T20:21:55.6491054+07:00",
-    "overall":  "PASS",
+    "cycle":  "361ef917-9f00-4390-bc8e-35762e84fdf5",
+    "timestamp":  "2026-09-01T20:33:34.7456790+07:00",
+    "overall":  "DEGRADED",
     "recovery":  "PASS",
     "decision":  "PASS",
     "dispatch":  "PASS",
-    "persistence":  "VERIFIED",
+    "persistence":  "NOT_VERIFIED",
     "runner":  "VERIFIED",
     "mutation":  "ENABLED",
     "selectedTask":  "AERIS-AUTONOMOUS-COMPANY-ENGINE"
