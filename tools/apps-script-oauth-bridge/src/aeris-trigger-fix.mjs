@@ -23,25 +23,23 @@ export function repairDelegationQueueTrigger(content) {
       return file;
     }
 
-    if (!file.source.includes("function AERIS_DELEGATION_QUEUE_TRIGGER")) {
-      return file;
-    }
+    const triggerAt = file.source.indexOf("function AERIS_DELEGATION_QUEUE_TRIGGER");
+    if (triggerAt < 0) return file;
 
     const source = file.source;
-    const marker = ACTIVE_STATUS_BLOCK;
-    const markerAt = source.indexOf(marker, source.indexOf("function AERIS_DELEGATION_QUEUE_TRIGGER"));
+    const markerAt = source.indexOf(ACTIVE_STATUS_BLOCK, triggerAt);
     if (markerAt < 0) throw new Error("AERIS_TRIGGER_ACTIVE_STATUS_BLOCK_NOT_FOUND");
 
     const loopAt = source.indexOf(BROKEN_LOOP, markerAt);
     if (loopAt < 0) throw new Error("AERIS_TRIGGER_BROKEN_SCOPE_NOT_FOUND");
 
-    const replacement = `for (let r = 1; r < delegationData.length; r++) {\n  const rowStatus =\n    String(delegationData[r][delegationIndex["status"]] || "")`;
+    const triggerData = `const triggerData = getAERISDelegationTriggerData_();\nconst delegationData = triggerData.delegationData;\nconst delegationIndex = triggerData.delegationIndex;\n\n`;
+    const replacement = triggerData + `for (let r = 1; r < delegationData.length; r++) {\n  const rowStatus =\n    String(delegationData[r][delegationIndex["status"]] || "")`;
     const nextSource = source.slice(0, loopAt) + replacement + source.slice(loopAt + BROKEN_LOOP.length);
 
     const helper = `\n\nfunction getAERISDelegationTriggerData_() {\n  const sheet = getAERISDelegationSheet();\n  const values = sheet.getDataRange().getValues();\n  const headers = values.length ? values[0] : [];\n  const delegationIndex = {};\n  headers.forEach(function(header, i) {\n    delegationIndex[String(header).trim().toLowerCase()] = i;\n  });\n  return { sheet: sheet, delegationData: values, delegationIndex: delegationIndex };\n}\n`;
 
-    const helperAlreadyPresent = source.includes("function getAERISDelegationTriggerData_()");
-    const finalSource = helperAlreadyPresent ? nextSource : nextSource + helper;
+    const finalSource = source.includes("function getAERISDelegationTriggerData_()") ? nextSource : nextSource + helper;
     changed = true;
     return { ...file, source: finalSource };
   });
