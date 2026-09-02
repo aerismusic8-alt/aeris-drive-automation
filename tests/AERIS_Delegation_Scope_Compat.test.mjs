@@ -5,18 +5,23 @@ import fs from "node:fs";
 const source = fs.readFileSync("AERIS_Delegation_Scope_Compat.gs", "utf8");
 
 test("delegation scope compatibility shim is present", () => {
-  assert.match(source, /var AERIS_TRIGGER_SCOPE_SNAPSHOT_\s*=\s*null/);
-  assert.match(source, /function getAERISDelegationTriggerScopeSnapshot_\(\)/);
-  assert.match(source, /var data = new Proxy\(\{\}, \{/);
-  assert.match(source, /var index = new Proxy\(\{\}, \{/);
-  assert.match(source, /getAERISDelegationSheet\(\)/);
-  assert.match(source, /property === "length"/);
-  assert.match(source, /statusIndex: index\["status"\]/);
+  const requiredFragments = [
+    "var AERIS_TRIGGER_SCOPE_SNAPSHOT_ = null;",
+    "function getAERISDelegationTriggerScopeSnapshot_()",
+    "var data = new Proxy({},",
+    "var index = new Proxy({},",
+    "getAERISDelegationSheet()",
+    "property === \"length\"",
+    "statusIndex: index[\"status\"]"
+  ];
+
+  for (const fragment of requiredFragments) {
+    assert.ok(source.includes(fragment), `missing required fragment: ${fragment}`);
+  }
 });
 
-test("shim exposes the exact legacy names required by the failing trigger", () => {
-  const requiredNames = ["data", "index", "getAERISDelegationTriggerScopeSnapshot_"];
-  for (const name of requiredNames) {
-    assert.match(source, new RegExp(`\\b${name}\\b`));
+test("shim preserves the exact legacy names used by the failing trigger", () => {
+  for (const name of ["data", "index"]) {
+    assert.ok(source.includes(`var ${name} = new Proxy`), `missing legacy global: ${name}`);
   }
 });
