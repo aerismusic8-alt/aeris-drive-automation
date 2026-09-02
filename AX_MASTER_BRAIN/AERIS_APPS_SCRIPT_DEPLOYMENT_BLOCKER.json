@@ -1,0 +1,32 @@
+{
+  "schema_version": "1.0",
+  "system": "AERIS_APPS_SCRIPT_DEPLOYMENT",
+  "authority": "K_FINAL_AUTHORITY",
+  "status": "BLOCKED_BEFORE_CLASP_AUTH",
+  "last_verified_utc": "2026-09-03T00:00:00Z",
+  "canonical_script_id": "1TYdTy1uorI5cyTlEamp13ZDI0kgStdRFUYuXpia29W4iFN3BNtpjAt4h",
+  "canonical_script_id_source": "AERIS SAVEPOINT / Library evidence",
+  "production_web_app_url_recorded": true,
+  "verified_deployment_workflow": {
+    "workflow": ".github/workflows/apps-script-deploy.yml",
+    "workflow_started": true,
+    "last_observed_stage": "SCRIPT_ID_CHECK",
+    "last_observed_status": "FAILED",
+    "evidence_commit": "9f565e8742250b7b4dd3f5e2f6b34b878ce6fdb3",
+    "evidence_file": "ops/apps-script-deploy-sentinel.json",
+    "failure": "AERIS_APPS_SCRIPT_ID secret was absent"
+  },
+  "repair_ready": {
+    "scope_shim": "AERIS_Delegation_Scope_Compat.gs",
+    "behavioral_regression_test": "tests/AERIS_Delegation_Scope_Compat.test.mjs",
+    "local_behavioral_test": "PASS"
+  },
+  "production_status": {
+    "source_read_verified": false,
+    "source_write_verified": false,
+    "trigger_post_repair_verified": false,
+    "reference_error_removed_verified": false
+  },
+  "next_gate": "Provide a working Google OAuth/clasp credential path to the deployment workflow, or use an already-authorized AERIS runtime control path.",
+  "policy": "DO_NOT_CLAIM_PRODUCTION_FIX_WITHOUT_EXECUTION_EVIDENCE"
+}
