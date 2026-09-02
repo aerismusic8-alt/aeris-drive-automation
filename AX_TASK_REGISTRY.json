@@ -1,51 +1,20 @@
 {
-  "version": "1.3",
+  "version": "1.4",
   "policy": {
     "terminal_states": ["COMPLETED", "BLOCKED", "PAUSED", "WAITING_K"],
     "live_trading_requires_k": true,
     "financial_execution_enabled": false,
-    "language": {
-      "primary": "th-TH",
-      "technical_terms_allowed": true,
-      "thai_explanation_required": true
-    },
-    "structure_rule": {
-      "when_k_says_add_to_ax_structure": "รับเป็นโครงสร้างบริษัททันที และต้องนำไปทำให้เกิดผลในระบบที่เกี่ยวข้องตามลำดับ โดยห้ามทำให้ความหมายของกฎเปลี่ยนไปในระหว่างการนำไปใช้",
-      "violation_protocol": "PCSEV",
-      "experience_record_required": true
-    },
-    "execution_tracking": {
-      "target_time_required": true,
-      "actual_start_required": true,
-      "actual_end_required": true,
-      "pause_resume_supported": true,
-      "batch_start_is_not_task_start": true,
-      "no_actual_time_without_evidence": true
-    },
-    "workload_capacity": {
-      "active_tasks_tracking": true,
-      "queue_depth_tracking": true,
-      "incoming_rate_tracking": true,
-      "completion_rate_tracking": true,
-      "backlog_tracking": true,
-      "capacity_utilization_tracking": true,
-      "headroom_tracking": true,
-      "bottleneck_detection": true,
-      "forecasting": true,
-      "capacity_from_actual_data_only": true
-    },
-    "scheduler": {
-      "heartbeat_minutes": 5,
-      "event_driven_enabled": true,
-      "priority_precedence": true,
-      "dependency_enforcement": true
-    }
+    "language": {"primary":"th-TH","technical_terms_allowed":true,"thai_explanation_required":true},
+    "structure_rule": {"when_k_says_add_to_ax_structure":"รับเป็นโครงสร้างบริษัททันที และต้องนำไปทำให้เกิดผลในระบบที่เกี่ยวข้องตามลำดับ โดยห้ามทำให้ความหมายของกฎเปลี่ยนไปในระหว่างการนำไปใช้","violation_protocol":"PCSEV","experience_record_required":true},
+    "execution_tracking": {"target_time_required":true,"actual_start_required":true,"actual_end_required":true,"pause_resume_supported":true,"batch_start_is_not_task_start":true,"no_actual_time_without_evidence":true},
+    "workload_capacity": {"active_tasks_tracking":true,"queue_depth_tracking":true,"incoming_rate_tracking":true,"completion_rate_tracking":true,"backlog_tracking":true,"capacity_utilization_tracking":true,"headroom_tracking":true,"bottleneck_detection":true,"forecasting":true,"capacity_from_actual_data_only":true},
+    "scheduler": {"heartbeat_minutes":5,"event_driven_enabled":true,"priority_precedence":true,"dependency_enforcement":true}
   },
   "tasks": [
     {"id":"AERIS-FILE-ID-PERSISTENCE","domain":"AERIS","title":"Repair File ID persistence and complete E2E verification","state":"BLOCKED","priority":100,"depends_on":[],"trigger":"event_or_heartbeat","next_action":"Execute repair helper, verify persisted File ID, then run E2E"},
     {"id":"AERIS-AUTONOMOUS-COMPANY-ENGINE","domain":"AERIS","title":"Build autonomous company execution loop","state":"QUEUED","priority":80,"depends_on":[],"trigger":"immediate","next_action":"Connect research, production, publishing, analytics and revenue tasks"},
     {"id":"AICS-PAPER-RISK-ENGINE","domain":"AICS","title":"Build paper-trading and risk decision engine","state":"COMPLETED","priority":90,"depends_on":[],"trigger":"event_or_heartbeat","next_action":"Paper E2E verified; retain as completed foundation"},
-    {"id":"AICS-LIVE-TRADING","domain":"AICS","title":"Live-money execution","state":"WAITING_K","priority":0,"depends_on":["AICS-PAPER-RISK-ENGINE"],"trigger":"approval_event","next_action":"Remain disabled until K explicitly approves live execution"},
+    {"id":"AICS-LIVE-TRADING","domain":"AICS","title":"Live-money execution","state":"APPROVED","priority":0,"depends_on":["AICS-PAPER-RISK-ENGINE"],"trigger":"approval_event","approval":{"approved_by":"K","approved_at":"2026-09-02","note":"K explicitly approved live trading in chat; approval is recorded, but financial execution remains disabled until required technical, security and compliance gates are verified"},"next_action":"Complete required technical, security and compliance gates before any live-money execution"},
     {"id":"AX-EXECUTIVE-REPORTING","domain":"AX","title":"Automated executive reporting","state":"QUEUED","priority":70,"depends_on":[],"trigger":"event_or_heartbeat","next_action":"Generate verified status summary from task and execution evidence"},
     {"id":"AX-RECOVERED-001","domain":"AX","title":"Dashboard Mobile / Product-ready","state":"REPROCESS_QUEUED","priority":80,"depends_on":[],"trigger":"reprocess_queue","next_action":"Re-verify product-ready deployment and E2E evidence","timing":{"target_minutes":45,"actual_start":null,"actual_end":null}},
     {"id":"AX-RECOVERED-002","domain":"AX","title":"Cloud Migration","state":"REPROCESS_QUEUED","priority":80,"depends_on":[],"trigger":"reprocess_queue","next_action":"Verify current cloud deployment, health and runtime evidence","timing":{"target_minutes":90,"actual_start":null,"actual_end":null}},
