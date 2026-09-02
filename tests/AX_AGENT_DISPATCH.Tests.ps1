@@ -8,5 +8,7 @@ foreach ($agent in @('GEMINI','COPILOT')) {
 $gate = Get-Content -Raw "$root/AX_AGENT_ROUTE_GATE.ps1"
 if ($gate -notmatch 'execution_enabled -ne \$true') { throw 'ROUTE_GATE_MISSING_EXECUTION_CHECK' }
 $dispatch = Get-Content -Raw "$root/AX_AGENT_DISPATCH.ps1"
+if ($dispatch -notmatch 'executable_connector') { throw 'EXECUTABLE_CONNECTOR_CHECK_MISSING' }
+if ($dispatch -notmatch 'AGENT_TASK_ACCEPTED') { throw 'REAL_TASK_ACCEPTANCE_GUARD_MISSING' }
 if ($dispatch -notmatch 'AGENT_ROUTE_NONE_VERIFIED') { throw 'NO_VERIFIED_ROUTE_GUARD_MISSING' }
 Write-Host 'AX_AGENT_DISPATCH_TESTS: PASS'
