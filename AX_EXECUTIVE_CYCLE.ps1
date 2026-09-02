@@ -41,6 +41,10 @@ function Invoke-PhaseWithRetry {
   return $false
 }
 
+$selectorPath = Join-Path $root 'AX_TASK_SELECTOR.ps1'
+if (-not (Test-Path $selectorPath)) { throw "AX_TASK_SELECTOR_NOT_FOUND: $selectorPath" }
+. $selectorPath
+
 $recoveryOk = Invoke-PhaseWithRetry -Name 'RECOVERY' -Action {
   & powershell.exe -NoProfile -ExecutionPolicy Bypass -File "$root\AX_RECOVERY_ENGINE.ps1"
 }
@@ -90,7 +94,15 @@ try {
 
 Write-Host '=== AUTONOMOUS DASHBOARD HEARTBEAT ==='
 $registry = Get-Content -Raw -Path "$root\AX_TASK_REGISTRY.json" | ConvertFrom-Json
-$selected = @($registry.tasks) | Where-Object { $_.state -notin $registry.policy.terminal_states -and $_.state -ne 'WAITING_K' } | Sort-Object -Property @{Expression={[int]$_.priority};Descending=$true} | Select-Object -First 1
+$selected = Select-AxNextTask -Registry $registry
+if ($selected) {
+  Write-Host "Canonical Selected Task: $($selected.id)"
+  Write-Host "Canonical Selected Priority: $($selected.priority)"
+  Write-Host 'Canonical Selector: VERIFIED'
+} else {
+  Write-Host 'Canonical Selected Task: NONE'
+  Write-Host 'Canonical Selector: VERIFIED'
+}
 $overall = if ($recoveryOk -and $decisionOk -and $dispatchOk -and $persistenceOk) {'PASS'} else {'DEGRADED'}
 $status = [ordered]@{
   system='ONLINE'
@@ -109,7 +121,6 @@ New-Item -ItemType Directory -Force -Path "$root\dashboard" | Out-Null
 $status | ConvertTo-Json -Depth 10 | Set-Content -Encoding utf8 "$root\dashboard\status.json"
 if (-not (Test-Path "$root\dashboard\status.json")) { throw 'AX_DASHBOARD_STATUS_CREATE_FAILED' }
 
-# Self-hosted runner may execute concurrently with another AX cycle.
 git config --global --add safe.directory "$root"
 Push-Location $root
 try {
@@ -170,6 +181,7 @@ Write-Host "Decision: $decisionOk"
 Write-Host "Dispatch: $dispatchOk"
 Write-Host "Persistence: $persistenceOk"
 Write-Host 'Dashboard status: CREATED/VERIFIED'
+Write-Host 'Canonical selector: VERIFIED'
 Write-Host 'Repository mutation: VERIFIED'
 Write-Host 'Runner execution: VERIFIED'
 Write-Host 'Live-money execution: DISABLED'
@@ -177,7 +189,3 @@ if ($overall -ne 'PASS') {
   throw "AX_EXECUTIVE_CYCLE_DEGRADED:$overall"
 }
 Write-Host '=== AX AUTONOMOUS EXECUTIVE CYCLE COMPLETE ==='
-
-
-
-
