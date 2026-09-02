@@ -1,5 +1,5 @@
 {
-  "version": "1.4",
+  "version": "1.5",
   "policy": {
     "terminal_states": ["COMPLETED", "BLOCKED", "PAUSED", "WAITING_K"],
     "live_trading_requires_k": true,
@@ -7,6 +7,7 @@
     "language": {"primary":"th-TH","technical_terms_allowed":true,"thai_explanation_required":true},
     "structure_rule": {"when_k_says_add_to_ax_structure":"รับเป็นโครงสร้างบริษัททันที และต้องนำไปทำให้เกิดผลในระบบที่เกี่ยวข้องตามลำดับ โดยห้ามทำให้ความหมายของกฎเปลี่ยนไปในระหว่างการนำไปใช้","violation_protocol":"PCSEV","experience_record_required":true},
     "execution_tracking": {"target_time_required":true,"actual_start_required":true,"actual_end_required":true,"pause_resume_supported":true,"batch_start_is_not_task_start":true,"no_actual_time_without_evidence":true},
+    "time_truth_model": {"enabled":true,"rule":"เวลาต้องอ้างอิงจากแหล่งเวลาในคลาวด์ และเหตุการณ์ที่ถือว่าเกิดขึ้นจริงต้องมีทั้งเวลาและหลักฐานการปฏิบัติงาน","cloud_time_authority": {"enabled":true,"endpoint":"https://ax-control-runtime.aerismusic8.workers.dev/time","source":"Cloudflare Worker runtime","storage_timezone":"UTC","display_timezone":"Asia/Bangkok","local_pc_clock_is_truth_source":false},"required_events":["START","END","PAUSE","RESUME","STATUS_CHANGE"],"required_fields":["task_id","event_type","timestamp_utc","epoch_ms","time_authority","evidence_type","evidence_reference"],"retrospective_audit":true,"timestamp_without_execution_evidence_is_not_proof":true},
     "workload_capacity": {"active_tasks_tracking":true,"queue_depth_tracking":true,"incoming_rate_tracking":true,"completion_rate_tracking":true,"backlog_tracking":true,"capacity_utilization_tracking":true,"headroom_tracking":true,"bottleneck_detection":true,"forecasting":true,"capacity_from_actual_data_only":true},
     "scheduler": {"heartbeat_minutes":5,"event_driven_enabled":true,"priority_precedence":true,"dependency_enforcement":true}
   },
