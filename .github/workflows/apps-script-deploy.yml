@@ -21,6 +21,9 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Run AERIS scope regression
+        run: node --test tests/AERIS_Delegation_Scope_Compat.test.mjs
+
       - name: Prepare clasp project
         shell: bash
         run: |
