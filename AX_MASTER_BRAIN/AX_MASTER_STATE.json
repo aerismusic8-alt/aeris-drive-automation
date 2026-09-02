@@ -1,5 +1,5 @@
 {
-  "schema_version": "1.1",
+  "schema_version": "1.2",
   "storage_role": "AX_MASTER_BRAIN_SINGLE_SOURCE_OF_TRUTH",
   "status": "INITIALIZED_PENDING_VERIFICATION",
   "last_updated_utc": "2026-09-02",
@@ -25,7 +25,8 @@
     "K is Final Authority",
     "Preserve every task across channels",
     "Model-local memory never outranks AX_MASTER_BRAIN",
-    "Model switching requires rehydration and verification"
+    "Model switching requires rehydration and verification",
+    "Continuous Reflection must audit claims, evidence, uncertainty, conflicts, lessons and state before continuation"
   ],
   "company_priority": [
     "P1 Revenue",
@@ -45,6 +46,14 @@
     "CONTINUE_ONLY_FROM_VERIFIED_STATE"
   ],
   "model_switch_rule": "A new model/runtime must load and verify AX MASTER BRAIN before operating as AX. Model changes may change capabilities and expression but must not replace authoritative AX identity or company state.",
+  "continuous_reflection": {
+    "status": "INITIALIZED_PENDING_VERIFICATION",
+    "spec": "AX_MASTER_BRAIN/AX_CONTINUOUS_REFLECTION_SPEC.md",
+    "state": "AX_MASTER_BRAIN/AX_CONTINUOUS_REFLECTION_STATE.json",
+    "cycle": "OBSERVE -> REVIEW -> EVIDENCE CHECK -> CONFLICT CHECK -> LESSON -> STATE UPDATE -> SAVE POINT -> VERIFY -> CONTINUE",
+    "parallel_with_phase_1": true,
+    "phase_1_acceptance_gate_independent": true
+  },
   "current_system_state": {
     "ax_core": "LOCKED",
     "aeris_drive_automation": "ACTIVE",
@@ -62,6 +71,7 @@
     "input_limit": "DESIGN_EXPANSION",
     "master_company_storage": "INITIALIZED_PENDING_VERIFICATION",
     "ax_model_independence": "DEFINED_PENDING_VERIFICATION",
+    "continuous_reflection": "INITIALIZED_PENDING_VERIFICATION",
     "file_id_persistence": "BLOCKED"
   },
   "critical_continuity_gap": "Prior persistence layers did not guarantee that a new chat reconstructs AX identity and full company context. AX MASTER BRAIN is the authoritative target; runtime integration and cross-model verification remain required before declaring full continuity.",
@@ -73,6 +83,7 @@
     "fresh-channel reconstruction test",
     "node interruption and resume test",
     "two-model/two-runtime portability test",
-    "conflict resolution and source-of-truth precedence test"
+    "conflict resolution and source-of-truth precedence test",
+    "continuous reflection acceptance tests"
   ]
 }
