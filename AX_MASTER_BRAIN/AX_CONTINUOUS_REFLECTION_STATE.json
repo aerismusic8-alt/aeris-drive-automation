@@ -1,0 +1,53 @@
+{
+  "schema_version": "1.0",
+  "state_role": "AX_CONTINUOUS_REFLECTION_STATE",
+  "status": "INITIALIZED_PENDING_VERIFICATION",
+  "authority": "K_FINAL_AUTHORITY",
+  "reflection_engine": "AX_CONTINUOUS_REFLECTION",
+  "cycle": [
+    "OBSERVE",
+    "REVIEW",
+    "EVIDENCE_CHECK",
+    "CONFLICT_CHECK",
+    "LESSON",
+    "STATE_UPDATE",
+    "SAVE_POINT",
+    "VERIFY",
+    "CONTINUE"
+  ],
+  "rules": {
+    "evidence_outranks_inference": true,
+    "master_brain_outranks_model_local_memory": true,
+    "heartbeat_is_not_business_execution": true,
+    "completed_requires_verification": true,
+    "executing_requires_actual_start_trusted_timestamp_and_evidence": true,
+    "missing_timestamp": "NOT RECORDED — ห้ามเดาเวลา"
+  },
+  "trigger_policy": {
+    "periodic_active_runtime": true,
+    "task_status_transition": true,
+    "execution_start_end": true,
+    "failure_recovery": true,
+    "new_evidence_or_verification": true,
+    "important_k_decision": true,
+    "before_model_runtime_node_or_channel_change": true,
+    "material_contradiction_or_uncertainty": true
+  },
+  "current_reflection": {
+    "reflection_id": null,
+    "timestamp_utc": null,
+    "timestamp_local": null,
+    "trigger": "INITIALIZATION",
+    "observed_state": "Layer initialized; runtime integration and acceptance tests pending.",
+    "claims_reviewed": [],
+    "evidence_checked": [],
+    "conflicts_found": [],
+    "corrections_made": [],
+    "lessons": [],
+    "state_changes": [],
+    "save_point_id": null,
+    "verification_status": "PENDING",
+    "provenance": []
+  },
+  "acceptance_gate": "NEW CHAT MASTER BRAIN ACCEPTANCE REMAINS INDEPENDENT AND MUST PASS BEFORE PHASE 1 IS DECLARED PASSED"
+}
