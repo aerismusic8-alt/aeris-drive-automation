@@ -1,0 +1,10 @@
+{
+  "status": "FAILED",
+  "verified": false,
+  "error": "GOOGLE_ACCESS_TOKEN_REFRESH_FAILED",
+  "httpStatus": 400,
+  "details": {
+    "error": "invalid_grant",
+    "error_description": "Token has been expired or revoked."
+  }
+}
