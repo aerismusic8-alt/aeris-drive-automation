@@ -13,13 +13,32 @@ on:
       - '.clasp.json'
       - '.github/workflows/apps-script-deploy.yml'
 
+permissions:
+  contents: write
+
 jobs:
   deploy:
     runs-on: ubuntu-latest
-    permissions:
-      contents: read
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
+
+      - name: Record deployment start
+        shell: bash
+        run: |
+          mkdir -p ops
+          cat > ops/apps-script-deploy-sentinel.json <<EOF
+          {
+            "workflow": "apps-script-deploy",
+            "stage": "STARTED",
+            "commit": "${GITHUB_SHA}",
+            "timestamp_utc": "$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+          }
+          EOF
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add ops/apps-script-deploy-sentinel.json
+          git commit -m 'ci: record Apps Script deployment start' || true
+          git push
 
       - name: Run AERIS scope regression
         run: node --test tests/AERIS_Delegation_Scope_Compat.test.mjs
@@ -39,7 +58,6 @@ jobs:
         shell: bash
         run: |
           test -n "$CLASP_CREDENTIALS" || { echo 'CLASP_CREDENTIALS secret is required'; exit 1; }
-          mkdir -p "$HOME/.clasprc.json.d"
           printf '%s' "$CLASP_CREDENTIALS" > "$HOME/.clasprc.json"
         env:
           CLASP_CREDENTIALS: ${{ secrets.CLASPRC_JSON }}
@@ -49,3 +67,21 @@ jobs:
 
       - name: Verify project content
         run: clasp status
+
+      - name: Record deployment success
+        if: ${{ success() }}
+        shell: bash
+        run: |
+          cat > ops/apps-script-deploy-sentinel.json <<EOF
+          {
+            "workflow": "apps-script-deploy",
+            "stage": "COMPLETED",
+            "commit": "${GITHUB_SHA}",
+            "timestamp_utc": "$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+          }
+          EOF
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add ops/apps-script-deploy-sentinel.json
+          git commit -m 'ci: record Apps Script deployment success'
+          git push
