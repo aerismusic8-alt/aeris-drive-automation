@@ -36,10 +36,15 @@ async function exchangeCode(code, verifier) {
   return body;
 }
 
+export function browserLaunchSpec(url, platform = process.platform) {
+  if (platform === "win32") return { command: "explorer.exe", args: [url] };
+  if (platform === "darwin") return { command: "open", args: [url] };
+  return { command: "xdg-open", args: [url] };
+}
+
 function openBrowser(url) {
-  if (process.platform === "win32") spawn("cmd", ["/c", "start", "", url], { detached: true, stdio: "ignore" }).unref();
-  else if (process.platform === "darwin") spawn("open", [url], { detached: true, stdio: "ignore" }).unref();
-  else spawn("xdg-open", [url], { detached: true, stdio: "ignore" }).unref();
+  const { command, args } = browserLaunchSpec(url);
+  spawn(command, args, { detached: true, stdio: "ignore" }).unref();
 }
 
 export function startOAuthServer() {
