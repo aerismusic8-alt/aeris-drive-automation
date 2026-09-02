@@ -1,4 +1,3 @@
-
 param(
   [string]$RegistryPath = "$PSScriptRoot\AX_TASK_REGISTRY.json"
 )
@@ -16,20 +15,17 @@ if (-not (Test-Path $RegistryPath)) {
   throw "AX_TASK_REGISTRY_NOT_FOUND: $RegistryPath"
 }
 
+$selectorPath = Join-Path $PSScriptRoot 'AX_TASK_SELECTOR.ps1'
+if (-not (Test-Path $selectorPath)) {
+  throw "AX_TASK_SELECTOR_NOT_FOUND: $selectorPath"
+}
+. $selectorPath
+
 $registry = Get-Content -Raw -Path $RegistryPath | ConvertFrom-Json
 $tasks = @($registry.tasks)
 
-$eligible = $tasks |
-  Where-Object {
-    $_.state -notin $registry.policy.terminal_states -and
-    $_.state -ne 'WAITING_K'
-  } |
-  Sort-Object -Property @{
-    Expression = { [int]$_.priority }
-    Descending = $true
-  }
-
-$selected = $eligible | Select-Object -First 1
+# Canonical selector: dependencies are enforced before priority.
+$selected = Select-AxNextTask -Registry $registry
 
 Write-Host '=== AX ACTION DISPATCHER ==='
 
@@ -39,10 +35,16 @@ if ($null -eq $selected) {
   exit 0
 }
 
+# Defense-in-depth: revalidate the selected task immediately before dispatch.
+if (-not (Test-AxTaskDependencies -Registry $registry -Task $selected)) {
+  throw "AX_DEPENDENCY_GATE_REJECTED:$($selected.id)"
+}
+
 Write-Host "Task ID: $($selected.id)"
 Write-Host "Domain: $($selected.domain)"
 Write-Host "Priority: $($selected.priority)"
 Write-Host "Requested Action: $($selected.next_action)"
+Write-Host 'Dependency Gate: PASSED'
 
 # ============================================================
 # CANONICAL RUNTIMES
@@ -182,10 +184,6 @@ if ($controlRuntimeHealthy -and $aerisRuntimeHealthy) {
   Write-Host 'Execution Gate: CONTROLLED'
   Write-Host 'Health Verification: PASSED'
 
-  # ----------------------------------------------------------
-  # First use the AX Control Runtime queue.
-  # ----------------------------------------------------------
-
   Write-Host '=== AX CONTROL QUEUE DISPATCH ==='
   Write-Host "Task: $($selected.id)"
   Write-Host "Action: $($selected.next_action)"
@@ -231,10 +229,6 @@ if ($controlRuntimeHealthy -and $aerisRuntimeHealthy) {
     throw
   }
 
-  # ----------------------------------------------------------
-  # AERIS DOMAIN
-  # ----------------------------------------------------------
-
   if ($selected.domain -eq 'AERIS') {
 
     Write-Host '=== AERIS DOMAIN ROUTING ==='
@@ -243,20 +237,11 @@ if ($controlRuntimeHealthy -and $aerisRuntimeHealthy) {
     Write-Host 'Execution Gate: CONTROLLED'
     Write-Host 'External Runtime Health: VERIFIED'
 
-    # --------------------------------------------------------
-    # Existing AERIS execution adapter.
-    # --------------------------------------------------------
-
     $aerisAdapter = "$PSScriptRoot\AX_AERIS_EXECUTION_ADAPTER.ps1"
 
     if (Test-Path $aerisAdapter) {
 
       Write-Host '=== AX AERIS EXECUTION ADAPTER ==='
-
-      # IMPORTANT:
-      # The adapter receives the verified ROOT endpoint.
-      # It must not be given /health because the AERIS
-      # External Runtime does not expose /health.
 
       & powershell.exe `
         -ExecutionPolicy Bypass `
@@ -274,10 +259,6 @@ if ($controlRuntimeHealthy -and $aerisRuntimeHealthy) {
       Write-Host 'Execution: QUEUED_TO_CONTROL_RUNTIME'
     }
   }
-
-  # ----------------------------------------------------------
-  # AICS DOMAIN
-  # ----------------------------------------------------------
 
   elseif ($selected.domain -eq 'AICS') {
 
@@ -324,10 +305,6 @@ if ($controlRuntimeHealthy -and $aerisRuntimeHealthy) {
     }
   }
 
-  # ----------------------------------------------------------
-  # AX DOMAIN
-  # ----------------------------------------------------------
-
   elseif ($selected.domain -eq 'AX') {
 
     Write-Host '=== AX INTERNAL ROUTING ==='
@@ -351,18 +328,10 @@ else {
   Write-Host 'Mutation: NOT_PERFORMED'
 }
 
-# ============================================================
-# PERMISSION / SAFETY
-# ============================================================
-
 Write-Host '=== PERMISSION ==='
 Write-Host 'Live-money execution: DISABLED'
 Write-Host 'Financial transactions: NOT PERMITTED'
 Write-Host 'Repository mutation: NOT_PERFORMED_BY_THIS_CYCLE'
-
-# ============================================================
-# FINAL STATUS
-# ============================================================
 
 Write-Host '=== AX ACTION DISPATCHER COMPLETE ==='
 Write-Host "Control Runtime: $controlRuntimeUrl"
