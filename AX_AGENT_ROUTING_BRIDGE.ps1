@@ -20,8 +20,8 @@ if ($Candidates.Count -eq 0) {
 }
 
 # Capability metadata alone never grants execution ownership.
-# A helper must have execution_enabled=true, an executable connector,
-# and a connector response explicitly accepting the task.
+# A helper is eligible only when its executable connector exists and
+# completes the full execution/evidence/write-back contract.
 foreach ($agent in $Candidates) {
   $cap = $registry.agents.$agent
   if ($null -eq $cap) { continue }
@@ -32,9 +32,15 @@ foreach ($agent in $Candidates) {
 
   try {
     $route = & powershell.exe -ExecutionPolicy Bypass -File $dispatch -TaskId $TaskId -Candidates @($agent) 2>&1
-    if ($LASTEXITCODE -eq 0 -and (($route | Out-String) -match 'AGENT_TASK_ACCEPTED')) {
-      Write-Output ($route | Out-String).Trim()
-      Write-Output "AGENT_ROUTING=VERIFIED_EXECUTOR_ACCEPTED agent=$agent task=$TaskId"
+    $routeText = ($route | Out-String).Trim()
+    if ($LASTEXITCODE -eq 0 -and
+        $routeText -match 'AGENT_TASK_ACCEPTED' -and
+        $routeText -match 'AGENT_TASK_EXECUTING' -and
+        $routeText -match 'AGENT_TASK_RESULT' -and
+        $routeText -match 'AGENT_EVIDENCE_VERIFIED' -and
+        $routeText -match 'AGENT_WRITE_BACK_VERIFIED') {
+      Write-Output $routeText
+      Write-Output "AGENT_ROUTING=VERIFIED_EXECUTION_CONTRACT agent=$agent task=$TaskId"
       Write-Output 'TASK_COMPLETION=NOT_CLAIMED'
       exit 0
     }
@@ -42,5 +48,5 @@ foreach ($agent in $Candidates) {
 }
 
 Write-Output "AGENT_ROUTING=FALLBACK_TO_CANONICAL_RUNTIME task=$TaskId"
-Write-Output 'AGENT_ROUTING_REASON=NO_VERIFIED_EXECUTABLE_ACCEPTANCE'
+Write-Output 'AGENT_ROUTING_REASON=NO_VERIFIED_FULL_EXECUTION_CONTRACT'
 exit 10
