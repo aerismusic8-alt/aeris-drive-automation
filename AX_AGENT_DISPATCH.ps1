@@ -9,6 +9,14 @@ if (-not (Test-Path $gate)) { throw "AX_AGENT_ROUTE_GATE_NOT_FOUND:$gate" }
 if (-not (Test-Path $registryPath)) { throw "AX_AGENT_CAPABILITY_REGISTRY_NOT_FOUND:$registryPath" }
 $registry = Get-Content -Raw $registryPath | ConvertFrom-Json
 
+$requiredContract = @(
+  'AGENT_TASK_ACCEPTED',
+  'AGENT_TASK_EXECUTING',
+  'AGENT_TASK_RESULT',
+  'AGENT_EVIDENCE_VERIFIED',
+  'AGENT_WRITE_BACK_VERIFIED'
+)
+
 foreach ($agent in $Candidates) {
   try {
     $cap = $registry.agents.$agent
@@ -24,16 +32,20 @@ foreach ($agent in $Candidates) {
     $connectorResult = & powershell.exe -ExecutionPolicy Bypass -File $connector -TaskId $TaskId 2>&1
     if ($LASTEXITCODE -ne 0) { continue }
     $connectorText = ($connectorResult | Out-String).Trim()
-    if ($connectorText -notmatch 'AGENT_TASK_ACCEPTED') { continue }
+
+    $contractSatisfied = $true
+    foreach ($token in $requiredContract) {
+      if ($connectorText -notmatch [regex]::Escape($token)) { $contractSatisfied = $false; break }
+    }
+    if (-not $contractSatisfied) { continue }
 
     Write-Output $connectorText
     Write-Output "AGENT_ROUTE_SELECTED agent=$agent task=$TaskId"
-    Write-Output 'AGENT_TASK_ACCEPTED'
-    Write-Output 'TASK_COMPLETION=NOT_CLAIMED'
+    Write-Output 'TASK_COMPLETION=NOT_CLAIMED_BY_DISPATCHER'
     exit 0
   } catch { continue }
 }
 
 Write-Output "AGENT_ROUTE_NONE_VERIFIED task=$TaskId"
-Write-Output 'AGENT_ROUTE_REASON=NO_EXECUTABLE_CONNECTOR_ACCEPTED'
+Write-Output 'AGENT_ROUTE_REASON=NO_EXECUTABLE_CONNECTOR_FULL_CONTRACT'
 exit 2
