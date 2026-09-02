@@ -8,6 +8,7 @@ on:
       - 'apps-script/**'
       - 'AX_UNIVERSAL_INPUT_GATEWAY.gs'
       - 'AERIS_Code.gs'
+      - 'AERIS_Delegation_Scope_Compat.gs'
       - 'appsscript.json'
       - '.clasp.json'
       - '.github/workflows/apps-script-deploy.yml'
