@@ -1,4 +1,16 @@
 {
   "schema": "AX_MISSION_INPUT_V1",
-  "events": []
+  "events": [
+    {
+      "missionId": "AXM-EBB5CC73992B1F5D1E69",
+      "timestamp": "2026-09-02T05:00:00+07:00",
+      "channel": "chat-current",
+      "type": "mission.create",
+      "eventType": "mission.create",
+      "objective": "Implement AX Durable Mission Memory so K's assigned work never disappears and latest task conversation/state remains recoverable across channels/sessions.",
+      "content": "Implement AX Durable Mission Memory so K's assigned work never disappears and latest task conversation/state remains recoverable across channels/sessions.",
+      "sourceId": "chat-2026-09-02-durable-memory",
+      "actor": "K/AX"
+    }
+  ]
 }
