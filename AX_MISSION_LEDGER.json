@@ -1,0 +1,18 @@
+{
+  "schema": "AX_MISSION_LEDGER_V1",
+  "generatedAt": "2026-09-02T00:00:00.0000000Z",
+  "missions": [],
+  "events": [],
+  "index": {
+    "missionCount": 0,
+    "eventCount": 0,
+    "lastMissionId": null,
+    "lastEventId": null
+  },
+  "integrity": {
+    "verified": false,
+    "verificationRule": "schema+unique_ids+valid_status+projection+timestamps",
+    "lastVerifiedAt": null,
+    "errors": []
+  }
+}
