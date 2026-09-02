@@ -10,13 +10,19 @@ export function generateState() {
   return crypto.randomBytes(32).toString("hex");
 }
 
+export function generatePkce() {
+  const verifier = crypto.randomBytes(48).toString("base64url");
+  const challenge = crypto.createHash("sha256").update(verifier).digest("base64url");
+  return { verifier, challenge };
+}
+
 export function validateState(expected, received) {
   if (!expected || !received || expected.length !== received.length) return false;
   return crypto.timingSafeEqual(Buffer.from(expected), Buffer.from(received));
 }
 
-export function buildAuthorizationUrl({ clientId, redirectUri, state, scopes = DEFAULT_SCOPES }) {
-  if (!clientId || !redirectUri || !state) throw new Error("OAUTH_CONFIGURATION_REQUIRED");
+export function buildAuthorizationUrl({ clientId, redirectUri, state, codeChallenge, scopes = DEFAULT_SCOPES }) {
+  if (!clientId || !redirectUri || !state || !codeChallenge) throw new Error("OAUTH_CONFIGURATION_REQUIRED");
 
   const url = new URL(AUTH_ENDPOINT);
   url.searchParams.set("client_id", clientId);
@@ -25,6 +31,8 @@ export function buildAuthorizationUrl({ clientId, redirectUri, state, scopes = D
   url.searchParams.set("scope", scopes.join(" "));
   url.searchParams.set("access_type", "offline");
   url.searchParams.set("prompt", "consent");
+  url.searchParams.set("code_challenge", codeChallenge);
+  url.searchParams.set("code_challenge_method", "S256");
   url.searchParams.set("state", state);
   return url.toString();
 }
