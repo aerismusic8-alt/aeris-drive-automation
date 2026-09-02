@@ -16,6 +16,9 @@ on:
 permissions:
   contents: write
 
+env:
+  AERIS_SCRIPT_ID: '1TYdTy1uorI5cyTlEamp13ZDI0kgStdRFUYuXpia29W4iFN3BNtpjAt4h'
+
 jobs:
   deploy:
     runs-on: ubuntu-latest
@@ -62,9 +65,8 @@ jobs:
           STAGE="SCOPE_REGRESSION"
           node --test tests/AERIS_Delegation_Scope_Compat.test.mjs
 
-          STAGE="SCRIPT_ID_CHECK"
-          test -n "${{ secrets.AERIS_APPS_SCRIPT_ID }}" || { echo 'SCRIPT_ID secret is required'; exit 1; }
-          printf '{"scriptId":"%s","rootDir":"."}\n' "${{ secrets.AERIS_APPS_SCRIPT_ID }}" > .clasp.json
+          STAGE="PREPARE_CLASP"
+          printf '{"scriptId":"%s","rootDir":"."}\n' "$AERIS_SCRIPT_ID" > .clasp.json
 
           STAGE="CLASP_INSTALL"
           npm install --global @google/clasp
