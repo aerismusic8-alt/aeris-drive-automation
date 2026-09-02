@@ -16,7 +16,6 @@ const SERVICE = 'AX CONTROL RUNTIME';
 const MODE = 'FREE_ONLY';
 const QUEUE_NAME = 'ax-execution-events';
 const REPO = 'aerismusic8-alt/aeris-drive-automation';
-const AERIS_EXECUTION_URL = 'https://aeris-execution-runtime.aerismusic8.workers.dev/execute';
 const MAX_PAYLOAD_BYTES = 16_000;
 
 function json(body: unknown, status = 200): Response {
@@ -40,18 +39,32 @@ async function verifyGitHubToken(token: string): Promise<boolean> {
         'User-Agent': 'AX-AERIS-Control-Runtime',
       },
     });
-
     return response.ok;
   } catch {
     return false;
   }
 }
 
+function cloudTimeResponse(request: Request): Response {
+  const now = new Date();
+  const requestId = crypto.randomUUID();
+  return json({
+    source: 'AX_CLOUD_TIME_AUTHORITY',
+    authority: 'Cloudflare Worker runtime',
+    requestId,
+    timestampUtc: now.toISOString(),
+    epochMs: now.getTime(),
+    timezoneDisplay: 'Asia/Bangkok',
+    timestampThailand: now.toLocaleString('sv-SE', { timeZone: 'Asia/Bangkok' }).replace(' ', 'T') + '+07:00',
+    method: request.method,
+  });
+}
+
 function healthResponse(): Response {
   return json({
     service: SERVICE,
     status: 'ONLINE',
-    version: 'control-runtime-1.1.0',
+    version: 'control-runtime-1.2.0',
     gate: 'CONTROLLED',
     mode: MODE,
     liveFinancialExecution: false,
@@ -59,9 +72,17 @@ function healthResponse(): Response {
     repositoryMutation: false,
     queue: QUEUE_NAME,
     repository: REPO,
+    cloudTimeAuthority: {
+      enabled: true,
+      endpoint: '/time',
+      source: 'Cloudflare Worker runtime',
+      storageTimezone: 'UTC',
+      displayTimezone: 'Asia/Bangkok',
+    },
     endpoints: [
       'GET /',
       'GET /health',
+      'GET /time',
       'POST /enqueue',
     ],
   });
@@ -71,102 +92,57 @@ function rootResponse(): Response {
   return json({
     service: SERVICE,
     status: 'ONLINE',
-    version: 'control-runtime-1.1.0',
+    version: 'control-runtime-1.2.0',
     gate: 'CONTROLLED',
     mode: MODE,
     liveFinancialExecution: false,
     queue: QUEUE_NAME,
+    cloudTimeAuthority: true,
     endpoints: [
       'GET /',
       'GET /health',
+      'GET /time',
       'POST /enqueue',
     ],
   });
 }
 
 export default {
-  async fetch(
-    request: Request,
-    env: Env,
-  ): Promise<Response> {
+  async fetch(request: Request, env: Env): Promise<Response> {
     const url = new URL(request.url);
 
-    if (request.method === 'GET' && url.pathname === '/') {
-      return rootResponse();
-    }
-
-    if (request.method === 'GET' && url.pathname === '/health') {
-      return healthResponse();
-    }
+    if (request.method === 'GET' && url.pathname === '/') return rootResponse();
+    if (request.method === 'GET' && url.pathname === '/health') return healthResponse();
+    if (request.method === 'GET' && url.pathname === '/time') return cloudTimeResponse(request);
 
     if (request.method === 'POST' && url.pathname === '/enqueue') {
       const auth = request.headers.get('Authorization') || '';
-
-      if (!auth.startsWith('Bearer ')) {
-        return json({ error: 'AUTH_REQUIRED' }, 401);
-      }
-
+      if (!auth.startsWith('Bearer ')) return json({ error: 'AUTH_REQUIRED' }, 401);
       const token = auth.slice(7).trim();
-
-      if (!token || token.length > 512) {
-        return json({ error: 'AUTH_INVALID' }, 401);
-      }
+      if (!token || token.length > 512) return json({ error: 'AUTH_INVALID' }, 401);
 
       const repoHeader = request.headers.get('X-AERIS-REPOSITORY') || '';
+      if (repoHeader !== REPO) return json({ error: 'REPOSITORY_NOT_ALLOWED', expected: REPO }, 403);
+      if (!(await verifyGitHubToken(token))) return json({ error: 'GITHUB_TOKEN_REJECTED' }, 403);
 
-      if (repoHeader !== REPO) {
-        return json({
-          error: 'REPOSITORY_NOT_ALLOWED',
-          expected: REPO,
-        }, 403);
-      }
-
-      const tokenValid = await verifyGitHubToken(token);
-
-      if (!tokenValid) {
-        return json({ error: 'GITHUB_TOKEN_REJECTED' }, 403);
-      }
-
-      const contentLength = Number(
-        request.headers.get('content-length') || '0',
-      );
-
+      const contentLength = Number(request.headers.get('content-length') || '0');
       if (Number.isFinite(contentLength) && contentLength > MAX_PAYLOAD_BYTES) {
-        return json({
-          error: 'PAYLOAD_TOO_LARGE',
-          maxBytes: MAX_PAYLOAD_BYTES,
-        }, 413);
+        return json({ error: 'PAYLOAD_TOO_LARGE', maxBytes: MAX_PAYLOAD_BYTES }, 413);
       }
 
       let event: AxEvent;
-
       try {
         const rawBody = await request.text();
-
         if (new TextEncoder().encode(rawBody).byteLength > MAX_PAYLOAD_BYTES) {
-          return json({
-            error: 'PAYLOAD_TOO_LARGE',
-            maxBytes: MAX_PAYLOAD_BYTES,
-          }, 413);
+          return json({ error: 'PAYLOAD_TOO_LARGE', maxBytes: MAX_PAYLOAD_BYTES }, 413);
         }
-
         event = JSON.parse(rawBody) as AxEvent;
       } catch {
         return json({ error: 'INVALID_JSON' }, 400);
       }
 
-      if (
-        !event ||
-        typeof event !== 'object' ||
-        !event.id ||
-        !event.taskId ||
-        !event.domain ||
-        !event.action
-      ) {
-        return json({
-          error: 'EVENT_SCHEMA_INVALID',
-          required: ['id', 'taskId', 'domain', 'action'],
-        }, 422);
+      if (!event || typeof event !== 'object' || !event.id || !event.taskId || !event.domain || !event.action) {
+        return json({ error: 'EVENT_SCHEMA_INVALID', required: ['id', 'taskId', 'domain', 'action'] }, 422);
       }
 
       const normalizedEvent: AxEvent = {
@@ -180,7 +156,6 @@ export default {
       };
 
       await env.AX_EXECUTION_QUEUE.send(normalizedEvent);
-
       return json({
         accepted: true,
         queued: true,
@@ -192,18 +167,12 @@ export default {
       });
     }
 
-    return json({
-      error: 'NOT_FOUND',
-      service: SERVICE,
-      status: 'ONLINE',
-      endpoints: ['GET /', 'GET /health', 'POST /enqueue'],
-    }, 404);
+    return json({ error: 'NOT_FOUND', service: SERVICE, status: 'ONLINE' }, 404);
   },
 
   async queue(batch: MessageBatch<AxEvent>): Promise<void> {
     for (const message of batch.messages) {
       const event = message.body;
-
       console.log(JSON.stringify({
         event: 'AX_EXECUTION_EVENT_RECEIVED',
         queue: batch.queue,
@@ -213,72 +182,29 @@ export default {
       }));
 
       if (event.domain !== 'AERIS') {
-        console.log(JSON.stringify({
-          event: 'AX_EXECUTION_EVENT_DEFERRED',
-          reason: 'DOMAIN_EXECUTOR_NOT_IMPLEMENTED',
-          taskId: event.taskId,
-          domain: event.domain,
-        }));
+        console.log(JSON.stringify({ event: 'AX_EXECUTION_EVENT_DEFERRED', reason: 'DOMAIN_EXECUTOR_NOT_IMPLEMENTED', taskId: event.taskId, domain: event.domain }));
         message.ack();
         continue;
       }
 
-      const payload = JSON.stringify({
-        jobId: event.id,
-        command: event.action,
-      });
-
-      console.log(JSON.stringify({
-        event: 'AERIS_EXECUTION_DISPATCH',
-        taskId: event.taskId,
-        jobId: event.id,
-        url: AERIS_EXECUTION_URL,
-        command: event.action,
-      }));
-
-      const response = await fetch(AERIS_EXECUTION_URL, {
+      const payload = JSON.stringify({ jobId: event.id, command: event.action });
+      const response = await fetch('https://aeris-execution-runtime.aerismusic8.workers.dev/execute', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Accept: 'application/json',
-          'User-Agent': 'AX-Control-Runtime/1.1.0',
-        },
+        headers: { 'Content-Type': 'application/json', Accept: 'application/json', 'User-Agent': 'AX-Control-Runtime/1.2.0' },
         body: payload,
       });
 
       const rawResponse = await response.text();
       let result: any = null;
+      try { result = rawResponse ? JSON.parse(rawResponse) : null; } catch { result = null; }
 
-      try {
-        result = rawResponse ? JSON.parse(rawResponse) : null;
-      } catch {
-        result = null;
-      }
+      console.log(JSON.stringify({ event: 'AERIS_EXECUTION_RESULT', taskId: event.taskId, jobId: event.id, httpStatus: response.status, response: result ?? rawResponse }));
 
-      console.log(JSON.stringify({
-        event: 'AERIS_EXECUTION_RESULT',
-        taskId: event.taskId,
-        jobId: event.id,
-        httpStatus: response.status,
-        response: result ?? rawResponse,
-      }));
-
-      if (
-        !response.ok ||
-        result?.accepted !== true ||
-        result?.verified !== true ||
-        result?.executed !== true
-      ) {
+      if (!response.ok || result?.accepted !== true || result?.verified !== true || result?.executed !== true) {
         throw new Error(`AERIS_EXECUTION_NOT_VERIFIED:${response.status}`);
       }
 
-      console.log(JSON.stringify({
-        event: 'AX_EXECUTION_VERIFIED',
-        taskId: event.taskId,
-        jobId: event.id,
-        status: result.status || 'VERIFIED',
-      }));
-
+      console.log(JSON.stringify({ event: 'AX_EXECUTION_VERIFIED', taskId: event.taskId, jobId: event.id, status: result.status || 'VERIFIED' }));
       message.ack();
     }
   },
