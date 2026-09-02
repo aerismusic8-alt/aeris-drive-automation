@@ -1,7 +1,7 @@
 {
   "workflow": "apps-script-deploy",
   "stage": "FAILED",
-  "last_stage": "SCRIPT_ID_CHECK",
-  "commit": "9f565e8742250b7b4dd3f5e2f6b34b878ce6fdb3",
-  "timestamp_utc": "2026-09-02T18:58:44Z"
+  "last_stage": "OAUTH_CREDENTIAL_CHECK",
+  "commit": "b109e2203d4c4a50166dfeac85d174be34c3c976",
+  "timestamp_utc": "2026-09-02T19:00:52Z"
 }
