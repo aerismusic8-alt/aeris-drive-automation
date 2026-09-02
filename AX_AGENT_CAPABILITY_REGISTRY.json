@@ -1,17 +1,19 @@
 {
-  "schema_version":"1.0",
+  "schema_version":"1.1",
   "authority":"A_MASTER_BRAIN",
   "policy":"UNVERIFIED_CONNECTORS_DISABLED",
   "agents":{
     "GEMINI":{
       "status":"AVAILABLE_FOR_REVIEW",
       "execution_enabled":false,
+      "executable_connector":null,
       "capabilities":["research","analysis","google_ecosystem","qc","revenue_hypothesis"],
       "evidence_required":["executable_connector","accepted_task","execution_result","business_evidence","verification","write_back"]
     },
     "COPILOT":{
       "status":"AVAILABLE_FOR_REVIEW",
       "execution_enabled":false,
+      "executable_connector":null,
       "capabilities":["microsoft_ecosystem","coding","review","qc","revenue_hypothesis"],
       "evidence_required":["executable_connector","accepted_task","execution_result","business_evidence","verification","write_back"]
     }
