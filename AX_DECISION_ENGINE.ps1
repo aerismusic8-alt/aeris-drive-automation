@@ -3,21 +3,12 @@ param(
 )
 $ErrorActionPreference = 'Stop'
 if (-not (Test-Path $RegistryPath)) { throw "AX_TASK_REGISTRY_NOT_FOUND: $RegistryPath" }
+$selectorPath = Join-Path $PSScriptRoot 'AX_TASK_SELECTOR.ps1'
+if (-not (Test-Path $selectorPath)) { throw "AX_TASK_SELECTOR_NOT_FOUND: $selectorPath" }
+. $selectorPath
 $registry = Get-Content -Raw -Path $RegistryPath | ConvertFrom-Json
 $tasks = @($registry.tasks)
-$byId = @{}
-foreach ($task in $tasks) { $byId[$task.id] = $task }
-
-$eligible = foreach ($task in $tasks) {
-  if ($task.state -in $registry.policy.terminal_states -or $task.state -eq 'WAITING_K') { continue }
-  $deps = @($task.depends_on)
-  $depsReady = $true
-  foreach ($dep in $deps) {
-    if (-not $byId.ContainsKey($dep) -or $byId[$dep].state -ne 'COMPLETED') { $depsReady = $false; break }
-  }
-  if ($depsReady) { $task }
-}
-$selected = $eligible | Sort-Object -Property @{Expression={[int]$_.priority};Descending=$true} | Select-Object -First 1
+$selected = Select-AxNextTask -Registry $registry
 
 Write-Host '=== AX DECISION ENGINE ==='
 Write-Host "Registry: $RegistryPath"
