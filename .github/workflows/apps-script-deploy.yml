@@ -1,0 +1,47 @@
+name: Deploy Apps Script via clasp
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - 'apps-script/**'
+      - 'AX_UNIVERSAL_INPUT_GATEWAY.gs'
+      - 'AERIS_Code.gs'
+      - 'appsscript.json'
+      - '.clasp.json'
+      - '.github/workflows/apps-script-deploy.yml'
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Prepare clasp project
+        shell: bash
+        run: |
+          test -n "$SCRIPT_ID" || { echo 'SCRIPT_ID secret is required'; exit 1; }
+          printf '{"scriptId":"%s","rootDir":"."}\n' "$SCRIPT_ID" > .clasp.json
+        env:
+          SCRIPT_ID: ${{ secrets.AERIS_APPS_SCRIPT_ID }}
+
+      - name: Install clasp
+        run: npm install --global @google/clasp
+
+      - name: Authenticate clasp
+        shell: bash
+        run: |
+          test -n "$CLASP_CREDENTIALS" || { echo 'CLASP_CREDENTIALS secret is required'; exit 1; }
+          mkdir -p "$HOME/.clasprc.json.d"
+          printf '%s' "$CLASP_CREDENTIALS" > "$HOME/.clasprc.json"
+        env:
+          CLASP_CREDENTIALS: ${{ secrets.CLASPRC_JSON }}
+
+      - name: Push source to Apps Script
+        run: clasp push --force
+
+      - name: Verify project content
+        run: clasp status
