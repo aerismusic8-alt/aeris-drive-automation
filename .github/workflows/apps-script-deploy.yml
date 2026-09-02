@@ -18,6 +18,7 @@ permissions:
 
 env:
   AERIS_SCRIPT_ID: '1TYdTy1uorI5cyTlEamp13ZDI0kgStdRFUYuXpia29W4iFN3BNtpjAt4h'
+  AERIS_RUNTIME_URL: 'https://aeris-execution-runtime.aerismusic8.workers.dev'
 
 jobs:
   deploy:
@@ -67,6 +68,20 @@ jobs:
 
           STAGE="PREPARE_CLASP"
           printf '{"scriptId":"%s","rootDir":"."}\n' "$AERIS_SCRIPT_ID" > .clasp.json
+
+          STAGE="RUNTIME_OAUTH_PROBE"
+          runtime_json="$(curl --fail-with-body --silent --show-error --max-time 30 "$AERIS_RUNTIME_URL/apps-script/test")"
+          printf '%s\n' "$runtime_json" > ops/apps-script-runtime-probe.json
+          node --input-type=module <<'NODE'
+          import fs from 'node:fs';
+          const raw = fs.readFileSync('ops/apps-script-runtime-probe.json', 'utf8');
+          let value;
+          try { value = JSON.parse(raw); } catch { throw new Error('RUNTIME_PROBE_INVALID_JSON'); }
+          const verified = value?.verified === true || value?.result?.verified === true;
+          const success = value?.status === 'OK' || value?.status === 'READY' || value?.success === true || verified;
+          if (!success) throw new Error('RUNTIME_OAUTH_PROBE_NOT_READY:' + raw);
+          console.log('RUNTIME_OAUTH_PROBE: PASS');
+          NODE
 
           STAGE="CLASP_INSTALL"
           npm install --global @google/clasp
