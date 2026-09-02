@@ -2,21 +2,22 @@
  * AERIS Delegation Trigger Scope Compatibility Fix
  *
  * Purpose:
- *   The production AERIS_DELEGATION_QUEUE_TRIGGER() references `data` and
- *   `index`, but those variables are local to another function scope.
- *   This shim provides execution-local-compatible globals for the trigger
- *   without rewriting the large AERIS_Code.gs file through updateContent.
+ *   AERIS_DELEGATION_QUEUE_TRIGGER() references `data` and `index`, while
+ *   those names were previously local to another function scope.
  *
  * Safety:
- *   - Reads only the AERIS_DELEGATION_QUEUE sheet.
- *   - Does not mutate queue rows.
- *   - Rebuilds values/index on every Apps Script execution.
- *   - Must be verified by a real trigger execution before being considered fixed.
+ *   - Read-only against AERIS_DELEGATION_QUEUE.
+ *   - Uses the known queue spreadsheet ID rather than active-spreadsheet state.
+ *   - Rebuilds values/index for each Apps Script execution.
+ *   - Production fix is not considered verified until a real trigger run
+ *     completes without ReferenceError: data is not defined.
  */
 
 var data = (function () {
   try {
-    var ss = SpreadsheetApp.getActiveSpreadsheet();
+    var ss = SpreadsheetApp.openById(
+      "1OBJ_f4WiMDhk_WxcvDE8_5WB91V5xotsP34uUueQSnM"
+    );
     var sheet = ss.getSheetByName("AERIS_DELEGATION_QUEUE");
     if (!sheet || sheet.getLastRow() === 0 || sheet.getLastColumn() === 0) {
       return [];
