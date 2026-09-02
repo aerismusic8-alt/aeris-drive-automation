@@ -8,6 +8,7 @@ import {
   validateState,
   parseCallback,
 } from "../src/oauth.mjs";
+import { browserLaunchSpec } from "../src/server.mjs";
 
 test("authorization URL requests Apps Script project and deployment scopes", () => {
   const { challenge } = generatePkce();
@@ -28,6 +29,14 @@ test("authorization URL requests Apps Script project and deployment scopes", () 
   assert.equal(parsed.searchParams.get("prompt"), "consent");
   assert.equal(parsed.searchParams.get("code_challenge"), challenge);
   assert.equal(parsed.searchParams.get("code_challenge_method"), "S256");
+});
+
+test("Windows browser launcher preserves OAuth query string as one URL argument", () => {
+  const url = "https://accounts.google.com/o/oauth2/v2/auth?client_id=x&response_type=code&scope=a%20b&state=s";
+  assert.deepEqual(browserLaunchSpec(url, "win32"), {
+    command: "explorer.exe",
+    args: [url],
+  });
 });
 
 test("state validation accepts only the expected value", () => {
