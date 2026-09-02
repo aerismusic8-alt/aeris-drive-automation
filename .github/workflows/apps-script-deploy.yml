@@ -8,6 +8,7 @@ on:
       - 'apps-script/**'
       - 'AX_UNIVERSAL_INPUT_GATEWAY.gs'
       - 'AERIS_Code.gs'
+      - 'AERIS_Delegation_Trigger_Scope_Fix.gs'
       - 'appsscript.json'
       - '.clasp.json'
       - '.github/workflows/apps-script-deploy.yml'
@@ -35,7 +36,6 @@ jobs:
         shell: bash
         run: |
           test -n "$CLASP_CREDENTIALS" || { echo 'CLASP_CREDENTIALS secret is required'; exit 1; }
-          mkdir -p "$HOME/.clasprc.json.d"
           printf '%s' "$CLASP_CREDENTIALS" > "$HOME/.clasprc.json"
         env:
           CLASP_CREDENTIALS: ${{ secrets.CLASPRC_JSON }}
