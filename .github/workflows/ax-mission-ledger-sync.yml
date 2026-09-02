@@ -17,6 +17,7 @@ on:
       - 'AX_MISSION_LEDGER.ps1'
       - 'AX_CONTEXT_SYNC.ps1'
       - 'docs/AX_MISSION_MEMORY_PROTOCOL_V1.md'
+      - '.github/workflows/ax-mission-ledger-sync.yml'
 
 permissions:
   contents: write
