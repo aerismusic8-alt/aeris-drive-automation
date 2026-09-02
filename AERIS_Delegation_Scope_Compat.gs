@@ -49,7 +49,7 @@ var data = new Proxy({}, {
       return snapshot.data.length;
     }
 
-    if (/^\\d+$/.test(String(property))) {
+    if (/^\d+$/.test(String(property))) {
       return snapshot.data[Number(property)];
     }
 
@@ -72,6 +72,7 @@ function TEST_AERIS_DELEGATION_SCOPE_COMPAT() {
     rows: snapshot.data.length,
     headers: Object.keys(snapshot.index),
     dataLength: data.length,
+    firstDataRowAccessible: data.length > 1 ? Array.isArray(data[1]) : null,
     statusIndex: index["status"],
     verified: true,
     timestamp: new Date().toISOString()
