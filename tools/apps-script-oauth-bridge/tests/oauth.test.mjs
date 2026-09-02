@@ -3,16 +3,19 @@ import assert from "node:assert/strict";
 
 import {
   buildAuthorizationUrl,
+  generatePkce,
   generateState,
   validateState,
   parseCallback,
 } from "../src/oauth.mjs";
 
 test("authorization URL requests Apps Script project and deployment scopes", () => {
+  const { challenge } = generatePkce();
   const url = buildAuthorizationUrl({
     clientId: "client-id",
     redirectUri: "http://127.0.0.1:8765/oauth/callback",
     state: "state-123",
+    codeChallenge: challenge,
   });
 
   const parsed = new URL(url);
@@ -23,6 +26,8 @@ test("authorization URL requests Apps Script project and deployment scopes", () 
   assert.match(parsed.searchParams.get("scope"), /script\.deployments/);
   assert.equal(parsed.searchParams.get("access_type"), "offline");
   assert.equal(parsed.searchParams.get("prompt"), "consent");
+  assert.equal(parsed.searchParams.get("code_challenge"), challenge);
+  assert.equal(parsed.searchParams.get("code_challenge_method"), "S256");
 });
 
 test("state validation accepts only the expected value", () => {
