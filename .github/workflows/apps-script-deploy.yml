@@ -56,7 +56,7 @@ jobs:
             fi
             git config user.name 'github-actions[bot]'
             git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-            git add ops/apps-script-deploy-sentinel.json
+            git add ops/apps-script-deploy-sentinel.json ops/aeris-runtime-probe.json ops/aeris-runtime-probe-status.txt ops/aeris-runtime-probe-response.txt || true
             git commit -m "ci: record Apps Script deploy ${STAGE}" || true
             git push || true
             exit "$rc"
@@ -70,16 +70,27 @@ jobs:
           printf '{"scriptId":"%s","rootDir":"."}\n' "$AERIS_SCRIPT_ID" > .clasp.json
 
           STAGE="RUNTIME_OAUTH_PROBE"
-          runtime_json="$(curl --fail-with-body --silent --show-error --max-time 30 "$AERIS_RUNTIME_URL/apps-script/test")"
-          printf '%s\n' "$runtime_json" > ops/apps-script-runtime-probe.json
+          set +e
+          curl --silent --show-error --max-time 30 -o ops/aeris-runtime-probe-response.txt -w '%{http_code}' "$AERIS_RUNTIME_URL/apps-script/test" > ops/aeris-runtime-probe-status.txt
+          curl_rc=$?
+          set -e
+          printf 'curl_rc=%s\n' "$curl_rc" >> ops/aeris-runtime-probe-status.txt
+          if [ "$curl_rc" -ne 0 ]; then
+            echo 'RUNTIME_PROBE_TRANSPORT_FAILED'
+            exit 1
+          fi
+          cp ops/aeris-runtime-probe-response.txt ops/aeris-runtime-probe.json
           node --input-type=module <<'NODE'
           import fs from 'node:fs';
-          const raw = fs.readFileSync('ops/apps-script-runtime-probe.json', 'utf8');
+          const raw = fs.readFileSync('ops/aeris-runtime-probe-response.txt', 'utf8');
+          const status = fs.readFileSync('ops/aeris-runtime-probe-status.txt', 'utf8').trim();
           let value;
-          try { value = JSON.parse(raw); } catch { throw new Error('RUNTIME_PROBE_INVALID_JSON'); }
+          try { value = JSON.parse(raw); } catch { throw new Error('RUNTIME_PROBE_INVALID_JSON:' + raw); }
+          const httpStatus = Number(status.split('\n')[0]);
           const verified = value?.verified === true || value?.result?.verified === true;
           const success = value?.status === 'OK' || value?.status === 'READY' || value?.success === true || verified;
-          if (!success) throw new Error('RUNTIME_OAUTH_PROBE_NOT_READY:' + raw);
+          console.log(JSON.stringify({ httpStatus, response: value }, null, 2));
+          if (!success) throw new Error(`RUNTIME_OAUTH_PROBE_NOT_READY:http=${httpStatus}`);
           console.log('RUNTIME_OAUTH_PROBE: PASS');
           NODE
 
