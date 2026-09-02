@@ -22,66 +22,61 @@ jobs:
     steps:
       - uses: actions/checkout@v5
 
-      - name: Record deployment start
+      - name: Deploy with diagnostic stages
         shell: bash
         run: |
+          set -Eeuo pipefail
           mkdir -p ops
-          cat > ops/apps-script-deploy-sentinel.json <<EOF
+          STAGE="CHECKOUT"
+
+          write_sentinel() {
+            local stage="$1"
+            local status="$2"
+            cat > ops/apps-script-deploy-sentinel.json <<EOF
           {
             "workflow": "apps-script-deploy",
-            "stage": "STARTED",
+            "stage": "${status}",
+            "last_stage": "${stage}",
             "commit": "${GITHUB_SHA}",
             "timestamp_utc": "$(date -u +%Y-%m-%dT%H:%M:%SZ)"
           }
           EOF
-          git config user.name 'github-actions[bot]'
-          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git add ops/apps-script-deploy-sentinel.json
-          git commit -m 'ci: record Apps Script deployment start' || true
-          git push
-
-      - name: Run AERIS scope regression
-        run: node --test tests/AERIS_Delegation_Scope_Compat.test.mjs
-
-      - name: Prepare clasp project
-        shell: bash
-        run: |
-          test -n "$SCRIPT_ID" || { echo 'SCRIPT_ID secret is required'; exit 1; }
-          printf '{"scriptId":"%s","rootDir":"."}\n' "$SCRIPT_ID" > .clasp.json
-        env:
-          SCRIPT_ID: ${{ secrets.AERIS_APPS_SCRIPT_ID }}
-
-      - name: Install clasp
-        run: npm install --global @google/clasp
-
-      - name: Authenticate clasp
-        shell: bash
-        run: |
-          test -n "$CLASP_CREDENTIALS" || { echo 'CLASP_CREDENTIALS secret is required'; exit 1; }
-          printf '%s' "$CLASP_CREDENTIALS" > "$HOME/.clasprc.json"
-        env:
-          CLASP_CREDENTIALS: ${{ secrets.CLASPRC_JSON }}
-
-      - name: Push source to Apps Script
-        run: clasp push --force
-
-      - name: Verify project content
-        run: clasp status
-
-      - name: Record deployment success
-        if: ${{ success() }}
-        shell: bash
-        run: |
-          cat > ops/apps-script-deploy-sentinel.json <<EOF
-          {
-            "workflow": "apps-script-deploy",
-            "stage": "COMPLETED",
-            "commit": "${GITHUB_SHA}",
-            "timestamp_utc": "$(date -u +%Y-%m-%dT%H:%M:%SZ)"
           }
-          EOF
-          git config user.name 'github-actions[bot]'
-          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git add ops/apps-script-deploy-sentinel.json
-          git commit -m 'ci: record Apps Script deployment success'
-          git push
+
+          finalize_sentinel() {
+            local rc=$?
+            if [ "$rc" -eq 0 ]; then
+              write_sentinel "$STAGE" "COMPLETED"
+            else
+              write_sentinel "$STAGE" "FAILED"
+            fi
+            git config user.name 'github-actions[bot]'
+            git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+            git add ops/apps-script-deploy-sentinel.json
+            git commit -m "ci: record Apps Script deploy ${STAGE}" || true
+            git push || true
+            exit "$rc"
+          }
+          trap finalize_sentinel EXIT
+
+          STAGE="SCOPE_REGRESSION"
+          node --test tests/AERIS_Delegation_Scope_Compat.test.mjs
+
+          STAGE="SCRIPT_ID_CHECK"
+          test -n "${{ secrets.AERIS_APPS_SCRIPT_ID }}" || { echo 'SCRIPT_ID secret is required'; exit 1; }
+          printf '{"scriptId":"%s","rootDir":"."}\n' "${{ secrets.AERIS_APPS_SCRIPT_ID }}" > .clasp.json
+
+          STAGE="CLASP_INSTALL"
+          npm install --global @google/clasp
+
+          STAGE="OAUTH_CREDENTIAL_CHECK"
+          test -n "${{ secrets.CLASPRC_JSON }}" || { echo 'CLASPRC_CREDENTIALS secret is required'; exit 1; }
+          printf '%s' "${{ secrets.CLASPRC_JSON }}" > "$HOME/.clasprc.json"
+
+          STAGE="CLASP_PUSH"
+          clasp push --force
+
+          STAGE="CLASP_STATUS"
+          clasp status
+
+          STAGE="PRODUCTION_DEPLOYMENT_VERIFIED"
