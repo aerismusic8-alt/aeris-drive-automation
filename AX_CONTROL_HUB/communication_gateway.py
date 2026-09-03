@@ -79,6 +79,7 @@ class CommunicationGateway:
             'identity_under_test': 'A',
             'authority': state.get('authority'),
             'master_status': state.get('status'),
+            'state_version': state.get('state_version'),
             'rehydration_status': challenge['status'],
             'model_independence': state.get('model_independence') is True,
             'runtime_profile': challenge.get('runtime_profile'),
