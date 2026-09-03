@@ -5,7 +5,7 @@ import base64, hashlib, hmac, json, os, secrets, threading, time
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from urllib.parse import urlparse
-ROOT=Path(os.getenv("AX_CONTROL_HUB_ROOT",Path(__file__).resolve().parent.parent)); MASTER_DIR=Path(os.getenv("AX_MASTER_BRAIN_DIR",ROOT/"AX_MASTER_BRAIN")); STATE_PATH=Path(os.getenv("AX_MASTER_STATE_PATH",MASTER_DIR/"AX_MASTER_STATE.json")); TASK_PATH=Path(os.getenv("AX_MASTER_TASK_REGISTRY_PATH",MASTER_DIR/"AX_MASTER_TASK_REGISTRY_v2.json")); CONTRACT_PATH=MASTER_DIR/"AX_REHYDRATION_ADAPTER_SPEC.md"; EVIDENCE_DIR=Path(os.getenv("AX_CONTROL_HUB_EVIDENCE_DIR",MASTER_DIR/"evidence")); HOST=os.getenv("AX_CONTROL_HUB_HOST","127.0.0.1"); PORT=int(os.getenv("AX_CONTROL_HUB_PORT","8787")); RUNTIME_PROFILE=os.getenv("AX_RUNTIME_PROFILE","default")
+ROOT=Path(os.getenv("AX_CONTROL_HUB_ROOT",Path(__file__).resolve().parent.parent)); MASTER_DIR=Path(os.getenv("AX_MASTER_BRAIN_DIR",ROOT/"AX_MASTER_BRAIN")); STATE_PATH=Path(os.getenv("AX_MASTER_STATE_PATH",MASTER_DIR/"AX_MASTER_STATE.json")); TASK_PATH=Path(os.getenv("AX_MASTER_TASK_REGISTRY_PATH",MASTER_DIR/"AX_MASTER_TASK_REGISTRY_v2.json")); CONTRACT_PATH=Path(os.getenv("AX_REHYDRATION_CONTRACT_PATH",MASTER_DIR/"AX_REHYDRATION_ADAPTER_SPEC.md")); EVIDENCE_DIR=Path(os.getenv("AX_CONTROL_HUB_EVIDENCE_DIR",MASTER_DIR/"evidence")); HOST=os.getenv("AX_CONTROL_HUB_HOST","127.0.0.1"); PORT=int(os.getenv("AX_CONTROL_HUB_PORT","8787")); RUNTIME_PROFILE=os.getenv("AX_RUNTIME_PROFILE","default")
 def now_utc(): return time.strftime("%Y-%m-%dT%H:%M:%SZ",time.gmtime())
 class MasterBrainStore:
     def __init__(self,state_path,task_path): self.state_path=Path(state_path); self.task_path=Path(task_path); self._lock=threading.Lock()
