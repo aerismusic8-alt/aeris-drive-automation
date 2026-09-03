@@ -9,7 +9,7 @@ function Assert-Literal([string]$Text, [string]$Needle, [string]$ErrorCode) {
 Assert-Literal $runtime 'result?.accepted === true' 'ACCEPTANCE_GATE_MISSING'
 Assert-Literal $runtime 'result?.executed === true' 'EXECUTION_GATE_MISSING'
 Assert-Literal $runtime 'result?.verified === true' 'VERIFICATION_GATE_MISSING'
-Assert-Literal $runtime 'result?.taskId === event.taskId' 'TASK_ID_BINDING_MISSING'
+Assert-Literal $runtime 'const responseTaskMatches = result?.taskId === event.taskId' 'TASK_ID_BINDING_MISSING'
 Assert-Literal $runtime 'hasValidBusinessEvidence(result, event.taskId)' 'BUSINESS_EVIDENCE_GATE_MISSING'
 Assert-Literal $runtime 'result.evidence?.taskId' 'EVIDENCE_TASK_ID_BINDING_MISSING'
 Assert-Literal $runtime 'hasVerifiedWriteBack(result)' 'WRITE_BACK_VERIFICATION_GATE_MISSING'
