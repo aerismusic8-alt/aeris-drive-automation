@@ -1,0 +1,42 @@
+name: AKATH Autonomous Runtime
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "*/5 * * * *"
+
+permissions:
+  contents: read
+
+jobs:
+  runtime:
+    runs-on: self-hosted
+    timeout-minutes: 5
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Run AKATH worker in probe mode
+        shell: pwsh
+        env:
+          AKATH_RUNTIME_ID: akath-primary
+          AKATH_PROBE_MODE: "true"
+        run: |
+          $ErrorActionPreference = 'Stop'
+          & "$env:GITHUB_WORKSPACE/AKATH/runtime/akath_worker.ps1" -ProbeMode
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Verify persisted runtime state
+        shell: pwsh
+        run: |
+          $stateDir = if ($env:AKATH_STATE_DIR) { $env:AKATH_STATE_DIR } else { Join-Path $HOME '.akath/runtime' }
+          $statePath = Join-Path $stateDir 'runtime-state.json'
+          if (-not (Test-Path -LiteralPath $statePath)) { throw 'AKATH_STATE_MISSING' }
+          $state = Get-Content -Raw -LiteralPath $statePath | ConvertFrom-Json
+          if ($state.state -ne 'VERIFIED') { throw "AKATH_STATE_NOT_VERIFIED:$($state.state)" }
+          if ($state.verification_status -ne 'VERIFIED') { throw 'AKATH_VERIFICATION_MISSING' }
+          if ([string]::IsNullOrWhiteSpace($state.evidence_ref)) { throw 'AKATH_EVIDENCE_REF_MISSING' }
+          "AKATH_STATE=$($state.state)" | Out-File -FilePath $env:GITHUB_STEP_SUMMARY -Append
+          "AKATH_RUN_ID=$($state.run_id)" | Out-File -FilePath $env:GITHUB_STEP_SUMMARY -Append
+          "AKATH_JOB_ID=$($state.job_id)" | Out-File -FilePath $env:GITHUB_STEP_SUMMARY -Append
+          "AKATH_EVIDENCE=$($state.evidence_ref)" | Out-File -FilePath $env:GITHUB_STEP_SUMMARY -Append
