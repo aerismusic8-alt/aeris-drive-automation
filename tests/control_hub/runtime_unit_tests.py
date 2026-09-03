@@ -1,10 +1,11 @@
 import json
-import os
+import sys
 import tempfile
 import unittest
 from pathlib import Path
 
-# The implementation is intentionally imported only after the test contract exists.
+ROOT = Path(__file__).resolve().parents[2]
+sys.path.insert(0, str(ROOT / 'AX_CONTROL_HUB'))
 from ax_control_hub_server import MasterBrainStore, AuthStore, CommandLedger
 
 
@@ -14,10 +15,13 @@ class RuntimeContractTests(unittest.TestCase):
         root = Path(self.tmp.name)
         self.state = root / 'AX_MASTER_STATE.json'
         self.tasks = root / 'AX_MASTER_TASK_REGISTRY_v2.json'
+        contract = root / 'AX_REHYDRATION_ADAPTER_SPEC.md'
+        contract.write_text('contract', encoding='utf-8')
         self.state.write_text(json.dumps({
             'status': 'INITIALIZED_PENDING_VERIFICATION',
             'authority': 'K_FINAL_AUTHORITY',
             'identity_authority': 'A_MASTER_BRAIN',
+            'storage_role': 'A_MASTER_BRAIN_SINGLE_SOURCE_OF_TRUTH',
             'model_independence': True,
             'identity': {'name': 'A', 'role': 'AI Executive Orchestrator Master Brain'},
             'support_agent': {'name': 'M'},
