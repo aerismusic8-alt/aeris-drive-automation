@@ -24,8 +24,6 @@ jobs:
 
     env:
       CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-      AX_MOBILE_INGRESS_SECRET: ${{ secrets.AX_MOBILE_INGRESS_SECRET }}
-      AX_PC_PULL_SECRET: ${{ secrets.AX_PC_PULL_SECRET }}
       WORKER_NAME: ax-control-runtime
       AX_CONTROL_RUNTIME_URL: https://ax-control-runtime.aerismusic8.workers.dev
       QUEUE_NAME: ax-execution-events
@@ -47,16 +45,6 @@ jobs:
           node --version
           npm --version
           npx wrangler@latest --version
-
-      - name: Verify ingress secrets configured
-        shell: bash
-        run: |
-          set -euo pipefail
-          if [[ -z "${AX_MOBILE_INGRESS_SECRET}" ]]; then exit 1; fi
-          if [[ -z "${AX_PC_PULL_SECRET}" ]]; then exit 1; fi
-          if (( ${#AX_MOBILE_INGRESS_SECRET} < 32 )); then exit 1; fi
-          if (( ${#AX_PC_PULL_SECRET} < 32 )); then exit 1; fi
-          echo 'Ingress secrets are configured and length policy passed. Values are never printed.'
 
       - name: Ensure AX Queue exists
         shell: bash
@@ -81,14 +69,6 @@ jobs:
         run: |
           set -euo pipefail
           npx wrangler@latest deploy --name "$WORKER_NAME"
-
-      - name: Configure Worker ingress secrets
-        shell: bash
-        working-directory: cloudflare/ax-control-runtime
-        run: |
-          set -euo pipefail
-          printf '%s' "$AX_MOBILE_INGRESS_SECRET" | npx wrangler@latest secret put AX_MOBILE_INGRESS_SECRET --name "$WORKER_NAME"
-          printf '%s' "$AX_PC_PULL_SECRET" | npx wrangler@latest secret put AX_PC_PULL_SECRET --name "$WORKER_NAME"
 
       - name: Verify AX Control Runtime Health
         shell: bash
@@ -143,8 +123,7 @@ jobs:
           echo 'AX CONTROL RUNTIME DEPLOYMENT VERIFIED'
           echo "Control Worker: $WORKER_NAME"
           echo "Control Runtime: $AX_CONTROL_RUNTIME_URL"
-          echo 'Mobile ingress: authenticated'
-          echo 'PC pull/ack: authenticated'
+          echo 'Ingress auth verified by deployed Worker health endpoint.'
           echo 'Transport store: AX_GATEWAY_INBOX'
           echo 'Execution mode: FREE_ONLY'
           echo 'Live financial execution: DISABLED'
