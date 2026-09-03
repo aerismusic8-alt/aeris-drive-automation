@@ -27,4 +27,4 @@ jobs:
         with:
           node-version: 24
       - name: Run mobile ingress contract
-        run: node --experimental-transform-types tests/cloudflare/ax_mobile_ingress_contract_test_v2.mjs
+        run: node --experimental-transform-types tests/cloudflare/ax_mobile_ingress_contract_test_v3.mjs
