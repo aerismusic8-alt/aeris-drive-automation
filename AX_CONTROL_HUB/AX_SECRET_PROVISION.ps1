@@ -1,18 +1,50 @@
 param(
-  [string]$WorkerName = 'ax-control-runtime'
+  [string]$WorkerName = 'ax-control-runtime',
+  [string]$RuntimeUrl = 'https://ax-control-runtime.aerismusic8.workers.dev'
 )
 
 $ErrorActionPreference = 'Stop'
 
-Write-Host "AX Secret Provisioning: $WorkerName"
-Write-Host "Enter a unique high-entropy value for AX_MOBILE_INGRESS_SECRET. It will be sent only to Cloudflare Wrangler."
-npx wrangler@latest secret put AX_MOBILE_INGRESS_SECRET --name $WorkerName
+function New-HighEntropySecret {
+  param([int]$Length = 48)
+  $bytes = New-Object byte[] $Length
+  [System.Security.Cryptography.RandomNumberGenerator]::Fill($bytes)
+  return ([Convert]::ToBase64String($bytes) -replace '[^A-Za-z0-9]', '').Substring(0, $Length)
+}
 
-Write-Host "Enter a unique high-entropy value for AX_PC_PULL_SECRET. It will be sent only to Cloudflare Wrangler."
-npx wrangler@latest secret put AX_PC_PULL_SECRET --name $WorkerName
+function Set-WorkerSecret {
+  param(
+    [Parameter(Mandatory=$true)][string]$Name,
+    [Parameter(Mandatory=$true)][string]$Value
+  )
+  Write-Host "Provisioning $Name (value is never printed)..."
+  $Value | npx wrangler@latest secret put $Name --name $WorkerName
+  if ($LASTEXITCODE -ne 0) { throw "WRANGLER_SECRET_PUT_FAILED:$Name" }
+}
 
-Write-Host "Checking boolean auth status only (secret values are never printed)."
-$health = Invoke-RestMethod -Uri "https://ax-control-runtime.aerismusic8.workers.dev/health" -Method Get
+Write-Host "=== AX CONTROL RUNTIME SECRET PROVISIONING ==="
+Write-Host "Worker: $WorkerName"
+Write-Host "Runtime: $RuntimeUrl"
+Write-Host "Security: generated in memory; never committed, displayed, or written to disk."
+
+# Wrangler must already be authenticated to the target Cloudflare account.
+npx wrangler@latest whoami
+if ($LASTEXITCODE -ne 0) { throw 'CLOUDFLARE_WRANGLER_AUTH_REQUIRED' }
+
+$mobileSecret = New-HighEntropySecret
+$pcSecret = New-HighEntropySecret
+
+try {
+  Set-WorkerSecret -Name 'AX_MOBILE_INGRESS_SECRET' -Value $mobileSecret
+  Set-WorkerSecret -Name 'AX_PC_PULL_SECRET' -Value $pcSecret
+}
+finally {
+  $mobileSecret = $null
+  $pcSecret = $null
+}
+
+Write-Host 'Checking deployed health booleans only...'
+$health = Invoke-RestMethod -Uri "$RuntimeUrl/health" -Method Get -TimeoutSec 30
 [pscustomobject]@{
   status = $health.status
   mode = $health.mode
@@ -32,3 +64,4 @@ if ($health.status -ne 'ONLINE' -or
 }
 
 Write-Host 'AX_AUTH_CONFIGURATION_VERIFIED'
+Write-Host 'Secret values were not displayed or persisted.'
