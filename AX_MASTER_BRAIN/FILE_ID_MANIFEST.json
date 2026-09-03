@@ -1,5 +1,31 @@
 {
   "schema_version": "1.0",
   "registry_role": "A_MASTER_BRAIN_FILE_ID_PERSISTENCE",
-  "entries": []
+  "entries": [
+    {
+      "file_id": "b1067fa5-f905-4d06-af72-f38b55756d16",
+      "path": "AX_MASTER_BRAIN/AX_MASTER_BRAIN_SPEC.md",
+      "content_sha256": "f4499b479ece3d92283b30e4124bd9cd164769e1"
+    },
+    {
+      "file_id": "709185f3-f09d-4852-b182-476ea055c9c2",
+      "path": "AX_MASTER_BRAIN/AX_MASTER_STATE.json",
+      "content_sha256": "531d8c157dd74a80fa8409371d0b235daddf554d"
+    },
+    {
+      "file_id": "a726d3b7-12ed-4118-9869-c29595cc2412",
+      "path": "AX_MASTER_BRAIN/AX_MASTER_TASK_REGISTRY_v2.json",
+      "content_sha256": "37720e44cbc1f69cfe1fdac73106ab42c40777a9"
+    },
+    {
+      "file_id": "e0e5655d-172f-4d22-a353-617c9322ef8d",
+      "path": "AX_MASTER_BRAIN/AX_REHYDRATION_ADAPTER_SPEC.md",
+      "content_sha256": "e265d4d7befc40e8797fddead980b93b6b95f4e2"
+    },
+    {
+      "file_id": "3ec3e3ca-84e4-4a76-81f3-f024c0be44e8",
+      "path": "AX_MASTER_BRAIN/M_A_IDENTITY_CHALLENGE_KEY.md",
+      "content_sha256": "3b8bb6e4a88c779a2d1b335b0780c4912f03bb27"
+    }
+  ]
 }
