@@ -12,10 +12,11 @@ _MAX_INPUT_LENGTH = 1_048_576
 class CommunicationGateway:
     """Transport-only gateway over the existing A Master Brain stores."""
 
-    def __init__(self, store: Any, ledger: Any, token_validator: Callable[[str], bool], max_input_length: int = _MAX_INPUT_LENGTH):
+    def __init__(self, store: Any, ledger: Any, token_validator: Callable[[str], bool], input_queue: Any, max_input_length: int = _MAX_INPUT_LENGTH):
         self.store = store
         self.ledger = ledger
         self.token_validator = token_validator
+        self.input_queue = input_queue
         self.max_input_length = max_input_length
 
     def _auth(self, token: str) -> None:
@@ -55,19 +56,35 @@ class CommunicationGateway:
         request_id = str(payload.get('request_id') or secrets.token_urlsafe(16))
         task_id = str(payload.get('task_id') or secrets.token_urlsafe(12))
         attachments = [dict(item) for item in payload.get('attachments', [])]
-        return {
+        record = {
             'request_id': request_id,
             'task_id': task_id,
             'status': 'RECEIVED',
             'source_channel': str(payload['source_channel']),
             'content_type': str(payload['content_type']),
+            'content': payload.get('content'),
             'rehydration_status': challenge['status'],
             'evidence_status': 'PENDING',
             'verification_status': 'PENDING',
             'attachments': attachments,
             'source_of_truth': 'A_MASTER_BRAIN',
+            'transport_store': 'GATEWAY_INPUT_INBOX',
             'runtime_profile': challenge.get('runtime_profile'),
         }
+        try:
+            self.input_queue.put(record)
+        except ValueError as exc:
+            if str(exc) == 'REQUEST_ID_CONFLICT':
+                raise ValueError('REQUEST_ID_CONFLICT') from exc
+            raise
+        return record
+
+    def get_input(self, request_id: str, auth_token: str) -> dict[str, Any]:
+        self._auth(auth_token)
+        record = self.input_queue.get(request_id)
+        if record is None:
+            raise LookupError('INPUT_UNAVAILABLE')
+        return record
 
     def get_state(self, auth_token: str) -> dict[str, Any]:
         self._auth(auth_token)
