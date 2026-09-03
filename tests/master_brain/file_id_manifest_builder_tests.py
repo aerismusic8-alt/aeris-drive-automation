@@ -31,12 +31,14 @@ def main() -> None:
         assert all(ids_first.values())
         assert all(entry["content_sha256"] for entry in loaded["entries"])
 
-        second = FileIdManifestBuilder.generate(root, list(ids_first))
+        # Persistence is explicit: regeneration reuses the persisted manifest IDs.
+        second = FileIdManifestBuilder.generate(root, list(ids_first), existing_manifest=manifest)
         ids_second = {entry["path"]: entry["file_id"] for entry in second["entries"]}
         assert ids_second == ids_first, "logical IDs must persist across regeneration"
 
+        # Content changes must update integrity hash without changing logical ID.
         (brain / "AX_MASTER_STATE.json").write_text('{"identity_authority":"A_MASTER_BRAIN","v":2}\n', encoding="utf-8")
-        third = FileIdManifestBuilder.generate(root, list(ids_first))
+        third = FileIdManifestBuilder.generate(root, list(ids_first), existing_manifest=manifest)
         by_path = {entry["path"]: entry for entry in third["entries"]}
         assert by_path["AX_MASTER_BRAIN/AX_MASTER_STATE.json"]["file_id"] == ids_first["AX_MASTER_BRAIN/AX_MASTER_STATE.json"]
         assert by_path["AX_MASTER_BRAIN/AX_MASTER_STATE.json"]["content_sha256"] != loaded["entries"][0]["content_sha256"]
