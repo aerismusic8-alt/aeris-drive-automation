@@ -5,7 +5,7 @@ import base64, hashlib, hmac, json, os, secrets, threading, time
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from urllib.parse import urlparse
-ROOT=Path(os.getenv("AX_CONTROL_HUB_ROOT",Path(__file__).resolve().parent.parent)); MASTER_DIR=Path(os.getenv("AX_MASTER_BRAIN_DIR",ROOT/"AX_MASTER_BRAIN")); STATE_PATH=Path(os.getenv("AX_MASTER_STATE_PATH",MASTER_DIR/"AX_MASTER_STATE.json")); TASK_PATH=Path(os.getenv("AX_MASTER_TASK_REGISTRY_PATH",MASTER_DIR/"AX_MASTER_TASK_REGISTRY_v2.json")); CONTRACT_PATH=MASTER_DIR/"AX_REHYDRATION_ADAPTER_SPEC.md"; EVIDENCE_DIR=Path(os.getenv("AX_CONTROL_HUB_EVIDENCE_DIR",MASTER_DIR/"evidence")); HOST=os.getenv("AX_CONTROL_HUB_HOST","127.0.0.1"); PORT=int(os.getenv("AX_CONTROL_HUB_PORT","8787"))
+ROOT=Path(os.getenv("AX_CONTROL_HUB_ROOT",Path(__file__).resolve().parent.parent)); MASTER_DIR=Path(os.getenv("AX_MASTER_BRAIN_DIR",ROOT/"AX_MASTER_BRAIN")); STATE_PATH=Path(os.getenv("AX_MASTER_STATE_PATH",MASTER_DIR/"AX_MASTER_STATE.json")); TASK_PATH=Path(os.getenv("AX_MASTER_TASK_REGISTRY_PATH",MASTER_DIR/"AX_MASTER_TASK_REGISTRY_v2.json")); CONTRACT_PATH=MASTER_DIR/"AX_REHYDRATION_ADAPTER_SPEC.md"; EVIDENCE_DIR=Path(os.getenv("AX_CONTROL_HUB_EVIDENCE_DIR",MASTER_DIR/"evidence")); HOST=os.getenv("AX_CONTROL_HUB_HOST","127.0.0.1"); PORT=int(os.getenv("AX_CONTROL_HUB_PORT","8787")); RUNTIME_PROFILE=os.getenv("AX_RUNTIME_PROFILE","default")
 def now_utc(): return time.strftime("%Y-%m-%dT%H:%M:%SZ",time.gmtime())
 class MasterBrainStore:
     def __init__(self,state_path,task_path): self.state_path=Path(state_path); self.task_path=Path(task_path); self._lock=threading.Lock()
@@ -17,7 +17,7 @@ class MasterBrainStore:
     def challenge(self):
         state=self.read_state(); tasks=self.read_tasks(); required=[self.state_path,self.task_path,CONTRACT_PATH]; missing=[str(p) for p in required if not p.exists()]
         checks={"state_loaded":True,"tasks_loaded":True,"rehydration_contract_present":CONTRACT_PATH.exists(),"identity_is_A":state.get("identity",{}).get("name")=="A","identity_authority":state.get("identity_authority")=="A_MASTER_BRAIN","authority_is_K":state.get("authority")=="K_FINAL_AUTHORITY","model_independence":state.get("model_independence") is True,"task_registry_v2":str(tasks.get("schema_version"))=="2.0","source_precedence":state.get("storage_role")=="A_MASTER_BRAIN_SINGLE_SOURCE_OF_TRUTH"}; passed=not missing and all(checks.values())
-        return {"status":"VERIFIED" if passed else "PENDING_VERIFICATION","verified":passed,"source":"A_MASTER_BRAIN","agent":"M","identity_under_test":"A","checks":checks,"missing":missing,"verified_at":now_utc() if passed else None}
+        return {"status":"VERIFIED" if passed else "PENDING_VERIFICATION","verified":passed,"source":"A_MASTER_BRAIN","agent":"M","identity_under_test":"A","runtime_profile":RUNTIME_PROFILE,"checks":checks,"missing":missing,"verified_at":now_utc() if passed else None}
     def write_command_audit(self,request_id,idempotency_key,actor,verification_status,expected_version=None):
         with self._lock:
             state=self.read_state(); current=int(state.get("state_version",0))
@@ -106,12 +106,12 @@ class Handler(BaseHTTPRequestHandler):
         return True
     def do_GET(self):
         path=urlparse(self.path).path
-        if path=="/health": self.send_json(200,{"ok":True,"service":"AX_CONTROL_HUB","health_status":"HEALTHY","execution_status":"UNKNOWN"}); return
+        if path=="/health": self.send_json(200,{"ok":True,"service":"AX_CONTROL_HUB","health_status":"HEALTHY","execution_status":"UNKNOWN","runtime_profile":RUNTIME_PROFILE}); return
         if not self.protected(): return
         try:
             if path=="/state":
-                state=STORE.read_state(); challenge=STORE.challenge(); self.send_json(200,{"source":"A_MASTER_BRAIN","identity":state.get("identity",{}).get("name"),"authority":state.get("authority"),"master_status":state.get("status"),"state_version":state.get("state_version",0),"rehydration_status":challenge["status"],"last_verified_evidence":state.get("last_command")})
-            elif path=="/tasks": self.send_json(200,{"source":"A_MASTER_BRAIN","tasks":STORE.read_tasks().get("tasks",[])})
+                state=STORE.read_state(); challenge=STORE.challenge(); self.send_json(200,{"source":"A_MASTER_BRAIN","identity":state.get("identity",{}).get("name"),"authority":state.get("authority"),"master_status":state.get("status"),"state_version":state.get("state_version",0),"rehydration_status":challenge["status"],"last_verified_evidence":state.get("last_command"),"runtime_profile":RUNTIME_PROFILE})
+            elif path=="/tasks": self.send_json(200,{"source":"A_MASTER_BRAIN","tasks":STORE.read_tasks().get("tasks",[]),"runtime_profile":RUNTIME_PROFILE})
             elif path.startswith("/evidence/"):
                 request_id=path.split("/",2)[2]; record=LEDGER.get(request_id)
                 if record is None: self.send_json(404,{"error_code":"EVIDENCE_UNAVAILABLE","request_id":request_id})
@@ -154,5 +154,5 @@ def main():
     if not STATE_PATH.exists() or not TASK_PATH.exists(): raise SystemExit("A_MASTER_BRAIN source files are unavailable; refusing to start.")
     try: LEDGER.recover_pending(STORE)
     except (OSError,json.JSONDecodeError,ValueError) as exc: raise SystemExit(f"Pending command recovery failed closed: {exc}")
-    httpd=ThreadingHTTPServer((HOST,PORT),Handler); print(f"AX_CONTROL_HUB listening on http://{HOST}:{PORT}"); httpd.serve_forever()
+    httpd=ThreadingHTTPServer((HOST,PORT),Handler); print(f"AX_CONTROL_HUB listening on http://{HOST}:{PORT} profile={RUNTIME_PROFILE}"); httpd.serve_forever()
 if __name__=="__main__": main()
