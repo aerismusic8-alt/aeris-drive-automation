@@ -1,7 +1,8 @@
 name: AX Cloudflare Control Runtime
 
 # POST-MERGE VERIFICATION TRIGGER: this workflow is intentionally push-enabled on main.
-# A source change under this workflow file causes a real deployment execution path.
+# Cloudflare deployment runs on GitHub-hosted Linux; PC execution remains on the
+# existing self-hosted Windows runner workflows and is verified separately.
 
 on:
   workflow_dispatch:
@@ -22,7 +23,7 @@ concurrency:
 
 jobs:
   deploy:
-    runs-on: self-hosted
+    runs-on: ubuntu-latest
     timeout-minutes: 10
 
     env:
@@ -44,118 +45,111 @@ jobs:
           check-latest: true
 
       - name: Verify Node and Wrangler
-        shell: powershell -ExecutionPolicy Bypass -File {0}
+        shell: bash
         run: |
-          $ErrorActionPreference = 'Stop'
+          set -euo pipefail
           node --version
           npm --version
           npx wrangler@latest --version
-          if ($LASTEXITCODE -ne 0) { throw 'WRANGLER_VERSION_CHECK_FAILED' }
 
       - name: Verify ingress secrets configured
-        shell: powershell -ExecutionPolicy Bypass -File {0}
+        shell: bash
         run: |
-          $ErrorActionPreference = 'Stop'
-          if ([string]::IsNullOrWhiteSpace($env:AX_MOBILE_INGRESS_SECRET)) { throw 'AX_MOBILE_INGRESS_SECRET_NOT_CONFIGURED' }
-          if ([string]::IsNullOrWhiteSpace($env:AX_PC_PULL_SECRET)) { throw 'AX_PC_PULL_SECRET_NOT_CONFIGURED' }
-          if ($env:AX_MOBILE_INGRESS_SECRET.Length -lt 32) { throw 'AX_MOBILE_INGRESS_SECRET_TOO_SHORT' }
-          if ($env:AX_PC_PULL_SECRET.Length -lt 32) { throw 'AX_PC_PULL_SECRET_TOO_SHORT' }
-          Write-Host 'Ingress secrets are configured and length policy passed. Values are never printed.'
+          set -euo pipefail
+          if [[ -z "${AX_MOBILE_INGRESS_SECRET}" ]]; then exit 1; fi
+          if [[ -z "${AX_PC_PULL_SECRET}" ]]; then exit 1; fi
+          if (( ${#AX_MOBILE_INGRESS_SECRET} < 32 )); then exit 1; fi
+          if (( ${#AX_PC_PULL_SECRET} < 32 )); then exit 1; fi
+          echo 'Ingress secrets are configured and length policy passed. Values are never printed.'
 
       - name: Ensure AX Queue exists
-        shell: powershell -ExecutionPolicy Bypass -File {0}
+        shell: bash
         working-directory: cloudflare/ax-control-runtime
         run: |
-          $ErrorActionPreference = 'Stop'
-          $queueExists = $false
-          try {
-            $ErrorActionPreference = 'Continue'
-            npx wrangler@latest queues info $env:QUEUE_NAME 2>&1 | Out-Host
-            $queueInfoExitCode = $LASTEXITCODE
-            $ErrorActionPreference = 'Stop'
-            if ($queueInfoExitCode -eq 0) { $queueExists = $true }
-          } catch { $ErrorActionPreference = 'Stop'; $queueExists = $false }
-          if (-not $queueExists) {
-            npx wrangler@latest queues create $env:QUEUE_NAME --message-retention-period-secs 3600
-            if ($LASTEXITCODE -ne 0) { throw 'QUEUE_CREATE_FAILED' }
-          }
-          npx wrangler@latest queues info $env:QUEUE_NAME
-          if ($LASTEXITCODE -ne 0) { throw 'QUEUE_VERIFY_FAILED' }
+          set -euo pipefail
+          if ! npx wrangler@latest queues info "$QUEUE_NAME" >/tmp/ax-queue-info.txt 2>&1; then
+            npx wrangler@latest queues create "$QUEUE_NAME" --message-retention-period-secs 3600
+          fi
+          npx wrangler@latest queues info "$QUEUE_NAME"
 
       - name: Validate AX Control Runtime
-        shell: powershell -ExecutionPolicy Bypass -File {0}
+        shell: bash
         working-directory: cloudflare/ax-control-runtime
         run: |
-          $ErrorActionPreference = 'Stop'
-          npx wrangler@latest deploy --dry-run --name $env:WORKER_NAME
-          if ($LASTEXITCODE -ne 0) { throw 'AX_CONTROL_RUNTIME_DRY_RUN_FAILED' }
+          set -euo pipefail
+          npx wrangler@latest deploy --dry-run --name "$WORKER_NAME"
 
       - name: Deploy AX Control Runtime
-        shell: powershell -ExecutionPolicy Bypass -File {0}
+        shell: bash
         working-directory: cloudflare/ax-control-runtime
         run: |
-          $ErrorActionPreference = 'Stop'
-          npx wrangler@latest deploy --name $env:WORKER_NAME
-          if ($LASTEXITCODE -ne 0) { throw 'AX_CONTROL_RUNTIME_DEPLOY_FAILED' }
+          set -euo pipefail
+          npx wrangler@latest deploy --name "$WORKER_NAME"
 
       - name: Configure Worker ingress secrets
-        shell: powershell -ExecutionPolicy Bypass -File {0}
+        shell: bash
         working-directory: cloudflare/ax-control-runtime
         run: |
-          $ErrorActionPreference = 'Stop'
-          $env:AX_MOBILE_INGRESS_SECRET | npx wrangler@latest secret put AX_MOBILE_INGRESS_SECRET --name $env:WORKER_NAME
-          if ($LASTEXITCODE -ne 0) { throw 'AX_MOBILE_INGRESS_SECRET_PUT_FAILED' }
-          $env:AX_PC_PULL_SECRET | npx wrangler@latest secret put AX_PC_PULL_SECRET --name $env:WORKER_NAME
-          if ($LASTEXITCODE -ne 0) { throw 'AX_PC_PULL_SECRET_PUT_FAILED' }
+          set -euo pipefail
+          printf '%s' "$AX_MOBILE_INGRESS_SECRET" | npx wrangler@latest secret put AX_MOBILE_INGRESS_SECRET --name "$WORKER_NAME"
+          printf '%s' "$AX_PC_PULL_SECRET" | npx wrangler@latest secret put AX_PC_PULL_SECRET --name "$WORKER_NAME"
 
       - name: Verify AX Control Runtime Health
-        shell: powershell -ExecutionPolicy Bypass -File {0}
+        shell: bash
         run: |
-          $ErrorActionPreference = 'Stop'
-          $verified = $false
-          for ($attempt = 1; $attempt -le 8; $attempt++) {
-            try {
-              $r = Invoke-RestMethod -Uri "$env:AX_CONTROL_RUNTIME_URL/health" -Method Get -TimeoutSec 30
-              Write-Host "Status: $($r.status)"
-              Write-Host "Mode: $($r.mode)"
-              Write-Host "Live Financial Execution: $($r.liveFinancialExecution)"
-              Write-Host "Mobile Ingress Auth Configured: $($r.mobileIngressAuthConfigured)"
-              Write-Host "PC Pull Auth Configured: $($r.pcPullAuthConfigured)"
-              if ($r.status -eq 'ONLINE' -and $r.mode -eq 'FREE_ONLY' -and $r.liveFinancialExecution -eq $false -and $r.mobileIngressAuthConfigured -eq $true -and $r.pcPullAuthConfigured -eq $true -and $r.gatewayInbox -eq 'AX_GATEWAY_INBOX') { $verified = $true; break }
-            } catch { Write-Host "Health probe failed: $($_.Exception.Message)" }
-            if ($attempt -lt 8) { Start-Sleep -Seconds 5 }
-          }
-          if (-not $verified) { throw 'AX_CONTROL_RUNTIME_HEALTH_VERIFICATION_FAILED' }
-          Write-Host 'AX Control Runtime: ONLINE'
-          Write-Host 'Mobile HTTPS ingress: AUTHENTICATED'
-          Write-Host 'PC pull: AUTHENTICATED'
-          Write-Host 'Mode: FREE_ONLY'
-          Write-Host 'Live Financial Execution: DISABLED'
+          set -euo pipefail
+          for attempt in {1..8}; do
+            if node <<'NODE'
+          const url = process.env.AX_CONTROL_RUNTIME_URL + '/health';
+          const response = await fetch(url);
+          if (!response.ok) process.exit(1);
+          const r = await response.json();
+          console.log('Status:', r.status);
+          console.log('Mode:', r.mode);
+          console.log('Live Financial Execution:', r.liveFinancialExecution);
+          console.log('Mobile Ingress Auth Configured:', r.mobileIngressAuthConfigured);
+          console.log('PC Pull Auth Configured:', r.pcPullAuthConfigured);
+          const ok = r.status === 'ONLINE' && r.mode === 'FREE_ONLY' && r.liveFinancialExecution === false && r.mobileIngressAuthConfigured === true && r.pcPullAuthConfigured === true && r.gatewayInbox === 'AX_GATEWAY_INBOX';
+          if (!ok) process.exit(1);
+          NODE
+            then
+              echo 'AX Control Runtime health verification passed.'
+              break
+            fi
+            if [[ "$attempt" -eq 8 ]]; then
+              echo 'AX_CONTROL_RUNTIME_HEALTH_VERIFICATION_FAILED'
+              exit 1
+            fi
+            sleep 5
+          done
 
       - name: Verify Existing AERIS External Runtime
-        shell: powershell -ExecutionPolicy Bypass -File {0}
+        shell: bash
         run: |
-          $ErrorActionPreference = 'Stop'
-          $externalRuntimeUrl = 'https://aeris-execution-runtime.aerismusic8.workers.dev'
+          set -euo pipefail
+          node <<'NODE'
+          const url = 'https://aeris-execution-runtime.aerismusic8.workers.dev';
           try {
-            $r = Invoke-RestMethod -Uri $externalRuntimeUrl -Method Get -TimeoutSec 30
-            if ($r.status -ne 'ONLINE') { throw 'EXISTING_AERIS_RUNTIME_NOT_ONLINE' }
-            Write-Host 'Existing AERIS External Runtime: VERIFIED ONLINE'
-          } catch {
-            Write-Host "WARNING: Existing runtime verification failed: $($_.Exception.Message)"
-            Write-Host 'New AX Control Runtime remains independently deployed.'
+            const response = await fetch(url);
+            const r = await response.json();
+            if (r.status !== 'ONLINE') throw new Error('EXISTING_AERIS_RUNTIME_NOT_ONLINE');
+            console.log('Existing AERIS External Runtime: VERIFIED ONLINE');
+          } catch (error) {
+            console.log(`WARNING: Existing runtime verification failed: ${error.message}`);
+            console.log('New AX Control Runtime remains independently deployed.');
           }
+          NODE
 
       - name: Deployment Summary
-        shell: powershell -ExecutionPolicy Bypass -File {0}
+        shell: bash
         run: |
-          $ErrorActionPreference = 'Stop'
-          Write-Host 'AX CONTROL RUNTIME DEPLOYMENT VERIFIED'
-          Write-Host "Control Worker: $env:WORKER_NAME"
-          Write-Host "Control Runtime: $env:AX_CONTROL_RUNTIME_URL"
-          Write-Host 'Mobile ingress: authenticated'
-          Write-Host 'PC pull/ack: authenticated'
-          Write-Host 'Transport store: AX_GATEWAY_INBOX'
-          Write-Host 'Execution mode: FREE_ONLY'
-          Write-Host 'Live financial execution: DISABLED'
-          Write-Host 'Existing AERIS External Execution Runtime remains a separate boundary.'
+          set -euo pipefail
+          echo 'AX CONTROL RUNTIME DEPLOYMENT VERIFIED'
+          echo "Control Worker: $WORKER_NAME"
+          echo "Control Runtime: $AX_CONTROL_RUNTIME_URL"
+          echo 'Mobile ingress: authenticated'
+          echo 'PC pull/ack: authenticated'
+          echo 'Transport store: AX_GATEWAY_INBOX'
+          echo 'Execution mode: FREE_ONLY'
+          echo 'Live financial execution: DISABLED'
+          echo 'Existing AERIS External Execution Runtime remains a separate boundary.'
