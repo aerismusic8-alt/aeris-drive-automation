@@ -38,6 +38,14 @@ jobs:
         run: python tests/control_hub/state_writeback_tests.py
       - name: Run interruption resume acceptance
         run: python tests/control_hub/interruption_resume_tests.py
+      - name: Run communication gateway contract tests
+        run: python tests/control_hub/communication_gateway_contract_tests.py
+      - name: Run communication gateway behavior tests
+        run: python tests/control_hub/communication_gateway_tests.py
+      - name: Run PC mobile operations surface tests
+        run: python tests/control_hub/operations_surface_tests.py
+      - name: Run communication gateway E2E acceptance
+        run: python tests/control_hub/communication_gateway_e2e_tests.py
 
   windows-prerequisite-check:
     runs-on: windows-latest
