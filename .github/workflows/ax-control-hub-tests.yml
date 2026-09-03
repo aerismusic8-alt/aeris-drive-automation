@@ -46,3 +46,6 @@ jobs:
       - name: Run PowerShell runtime prerequisite check
         shell: pwsh
         run: .\AX_CONTROL_HUB\PC_RUNTIME_CHECK.ps1
+      - name: Run revenue execution evidence regression
+        shell: pwsh
+        run: .\tests\AX_AERIS_EXECUTION_EVIDENCE.Tests.ps1
