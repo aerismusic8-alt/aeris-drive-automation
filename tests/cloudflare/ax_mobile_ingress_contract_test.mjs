@@ -6,11 +6,13 @@ const inbox = {
   idFromName: () => 'gateway',
   get: () => ({
     fetch: async (input) => {
-      const body = await input.json();
-      if (body.op === 'put') {
+      const request = input instanceof Request ? input : new Request(String(input));
+      const url = new URL(request.url);
+      const body = await request.json().catch(() => ({}));
+      if (url.pathname === '/put') {
         return new Response(JSON.stringify({ ok: true, requestId: body.record.request_id }), { status: 201 });
       }
-      if (body.op === 'pull') {
+      if (url.pathname === '/pull') {
         return new Response(JSON.stringify({ ok: true, item: null }), { status: 200 });
       }
       return new Response(JSON.stringify({ ok: false }), { status: 400 });
