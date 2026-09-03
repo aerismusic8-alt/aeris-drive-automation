@@ -58,6 +58,17 @@ class FileIdRegistry:
             raise FileIdPersistenceError("FILE_CONTENT_TAMPERED")
         return candidate
 
+    def verification_evidence(self, file_id: str, root: Path) -> dict[str, str]:
+        """Resolve and hash-check a file, returning auditable verification evidence."""
+        candidate = self.resolve(file_id, root)
+        entry = self.entries[file_id]
+        return {
+            "file_id": file_id,
+            "path": entry["path"],
+            "content_sha256": entry["content_sha256"],
+            "verification_status": "VERIFIED",
+        }
+
     def verify_all(self, root: Path) -> None:
         for file_id in self.entries:
             self.resolve(file_id, root)
