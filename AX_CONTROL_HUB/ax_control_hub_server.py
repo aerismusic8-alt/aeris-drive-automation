@@ -33,7 +33,19 @@ class AuthStore:
         item=self.sessions.get(token); return item is not None and time.time()-item["created"]<3600
     def logout(self,token): self.sessions.pop(token,None)
 class CommandLedger:
-    def __init__(self,evidence_dir=None): self._lock=threading.Lock(); self.keys=set(); self.records={}; self.evidence_dir=Path(evidence_dir) if evidence_dir else None
+    def __init__(self,evidence_dir=None):
+        self._lock=threading.Lock(); self.keys=set(); self.records={}; self.evidence_dir=Path(evidence_dir) if evidence_dir else None
+        self._load_durable_records()
+    def _load_durable_records(self):
+        if self.evidence_dir is None or not self.evidence_dir.exists(): return
+        for target in self.evidence_dir.glob("*.json"):
+            try:
+                with target.open("r",encoding="utf-8") as f: record=json.load(f)
+                key=record.get("idempotency_key"); request_id=record.get("request_id")
+                if key and request_id:
+                    self.keys.add(key); self.records[request_id]=record
+            except (OSError,json.JSONDecodeError):
+                continue
     def reserve(self,key,request_id=None,command=None,actor=None,args=None,requested_at=None):
         with self._lock:
             if key in self.keys: return False
