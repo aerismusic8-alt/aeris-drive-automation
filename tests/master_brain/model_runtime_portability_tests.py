@@ -32,7 +32,7 @@ def run_profile(tmp, port, profile):
     tasks.write_text(TASKS.read_text(encoding="utf-8"), encoding="utf-8")
     contract.write_text(CONTRACT.read_text(encoding="utf-8"), encoding="utf-8")
     env = os.environ.copy()
-    env.update({"AX_CONTROL_HUB_HOST":"127.0.0.1","AX_CONTROL_HUB_PORT":str(port),"AX_MASTER_BRAIN_DIR":str(runtime_root),"AX_MASTER_STATE_PATH":str(state),"AX_MASTER_TASK_REGISTRY_PATH":str(tasks),"AX_CONTROL_HUB_EVIDENCE_DIR":str(runtime_root/"evidence"),"AX_CONTROL_HUB_USERNAME":"portability-test","AX_CONTROL_HUB_PASSWORD":"portability-test-password","AX_RUNTIME_PROFILE":profile})
+    env.update({"AX_CONTROL_HUB_HOST":"127.0.0.1","AX_CONTROL_HUB_PORT":str(port),"AX_MASTER_BRAIN_DIR":str(runtime_root),"AX_MASTER_STATE_PATH":str(state),"AX_MASTER_TASK_REGISTRY_PATH":str(tasks),"AX_REHYDRATION_CONTRACT_PATH":str(contract),"AX_CONTROL_HUB_EVIDENCE_DIR":str(runtime_root/"evidence"),"AX_CONTROL_HUB_USERNAME":"portability-test","AX_CONTROL_HUB_PASSWORD":"portability-test-password","AX_RUNTIME_PROFILE":profile})
     proc = subprocess.Popen([sys.executable, str(SERVER)], cwd=str(ROOT), env=env, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
     base = f"http://127.0.0.1:{port}"
     try:
@@ -52,14 +52,15 @@ def main():
         proc_b, state_b, tasks_b, challenge_b = run_profile(tmp,18789,"MODEL_RUNTIME_B")
         try:
             for state_payload, tasks_payload, challenge in ((state_a,tasks_a,challenge_a),(state_b,tasks_b,challenge_b)):
-                assert state_payload["identity"] == "A"
-                assert state_payload["authority"] == "K_FINAL_AUTHORITY"
-                assert state_payload["source"] == "A_MASTER_BRAIN"
-                assert state_payload["rehydration_status"] == "VERIFIED"
-                assert len(tasks_payload["tasks"]) == 12
-                assert challenge["identity_under_test"] == "A"
-                assert challenge["verified"] is True
-                assert challenge["checks"]["model_independence"] is True
+                diagnostic = json.dumps({"state":state_payload,"challenge":challenge}, ensure_ascii=False)
+                assert state_payload["identity"] == "A", diagnostic
+                assert state_payload["authority"] == "K_FINAL_AUTHORITY", diagnostic
+                assert state_payload["source"] == "A_MASTER_BRAIN", diagnostic
+                assert state_payload["rehydration_status"] == "VERIFIED", diagnostic
+                assert len(tasks_payload["tasks"]) == 12, json.dumps(tasks_payload, ensure_ascii=False)
+                assert challenge["identity_under_test"] == "A", diagnostic
+                assert challenge["verified"] is True, diagnostic
+                assert challenge["checks"]["model_independence"] is True, diagnostic
             assert state_a["runtime_profile"] != state_b["runtime_profile"]
             assert challenge_a["runtime_profile"] != challenge_b["runtime_profile"]
             assert challenge_a["checks"] == challenge_b["checks"]
