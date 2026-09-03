@@ -111,6 +111,9 @@ class CommandLedger:
                 transition={"previous_state_version":int(state.get("state_version",0))-1,"state_version":int(state.get("state_version",0))}
             else:
                 transition=store.write_command_audit(record["request_id"],record["idempotency_key"],record["actor"],"VERIFIED")
+            recovered_state=store.read_state()
+            if recovered_state.get("last_verified_evidence",{}).get("request_id")!=request_id:
+                store.write_command_audit(record["request_id"],record["idempotency_key"],record["actor"],"VERIFIED",int(recovered_state.get("state_version",0)))
             record["state_writeback"]=transition; record["lifecycle_status"]="COMPLETED"; record["verification_status"]="VERIFIED"; self._persist(record)
 
 STORE=MasterBrainStore(STATE_PATH,TASK_PATH)
