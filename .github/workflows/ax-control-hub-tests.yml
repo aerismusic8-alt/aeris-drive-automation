@@ -22,6 +22,8 @@ jobs:
         run: python tests/master_brain/fresh_channel_rehydration_tests.py
       - name: Run File ID Persistence acceptance
         run: python tests/master_brain/file_id_persistence_tests.py
+      - name: Run File ID Manifest Builder acceptance
+        run: python tests/master_brain/file_id_manifest_builder_tests.py
       - name: Run evidence write-back tests
         run: python tests/control_hub/evidence_writeback_tests.py
       - name: Run restart recovery tests
