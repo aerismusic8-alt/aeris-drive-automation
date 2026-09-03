@@ -12,6 +12,7 @@ class ReflectionError(ValueError):
 
 class ContinuousReflection:
     MISSING_TIMESTAMP = "NOT RECORDED — ห้ามเดาเวลา"
+    VALID_CLASSIFICATIONS = {"FACT", "INFERENCE", "PLAN", "EXECUTED_RESULT"}
 
     def __init__(self, state_path: Path):
         self.state_path = Path(state_path)
@@ -32,6 +33,12 @@ class ContinuousReflection:
         if not isinstance(current, dict):
             raise ReflectionError("REFLECTION_STATE_MISSING")
         return current
+
+    def load_history(self) -> list[dict]:
+        history = self._load().get("reflection_history", [])
+        if not isinstance(history, list) or any(not isinstance(item, dict) for item in history):
+            raise ReflectionError("REFLECTION_HISTORY_INVALID")
+        return history
 
     @staticmethod
     def _claim_is_verified(claim: dict) -> bool:
@@ -56,9 +63,16 @@ class ContinuousReflection:
         for claim in claims_reviewed:
             if not isinstance(claim, dict):
                 raise ReflectionError("REFLECTION_CLAIM_INVALID")
+            classification = claim.get("classification")
+            if classification not in self.VALID_CLASSIFICATIONS:
+                raise ReflectionError("REFLECTION_CLASSIFICATION_INVALID")
             kind = claim.get("kind")
-            if kind == "COMPLETED" and not self._claim_is_verified(claim):
-                raise ReflectionError("COMPLETED_REQUIRES_VERIFICATION")
+            if kind in {"COMPLETED", "EXECUTED_RESULT"}:
+                if classification != "EXECUTED_RESULT" or not self._claim_is_verified(claim):
+                    raise ReflectionError("COMPLETED_REQUIRES_VERIFICATION")
+
+        if state_changes and not save_point_id:
+            raise ReflectionError("STATE_CHANGE_REQUIRES_SAVE_POINT")
 
         all_supported = all(self._claim_is_verified(c) for c in claims_reviewed)
         evidence_verified = all(
@@ -87,6 +101,13 @@ class ContinuousReflection:
         document["schema_version"] = document.get("schema_version", "1.0")
         document["state_role"] = "AX_CONTINUOUS_REFLECTION_STATE"
         document["authority"] = "K_FINAL_AUTHORITY"
+        history = document.get("reflection_history", [])
+        if not isinstance(history, list):
+            raise ReflectionError("REFLECTION_HISTORY_INVALID")
+        previous = document.get("current_reflection")
+        if isinstance(previous, dict):
+            history.append(previous)
+        document["reflection_history"] = history
         document["current_reflection"] = record
         self.state_path.parent.mkdir(parents=True, exist_ok=True)
         temporary = self.state_path.with_suffix(self.state_path.suffix + ".tmp")
