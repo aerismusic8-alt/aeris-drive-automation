@@ -1,0 +1,117 @@
+name: AX Control Runtime Acceptance
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - 'cloudflare/ax-control-runtime/**'
+      - 'tests/cloudflare/**'
+      - 'tests/AX_PC_MOBILE_BRIDGE.Tests.ps1'
+      - 'AX_CONTROL_HUB/AX_SECRET_PROVISION.ps1'
+      - '.github/workflows/ax-control-runtime-acceptance.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  provision-and-mobile-e2e:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      AX_MOBILE_INGRESS_SECRET: ${{ secrets.AX_MOBILE_INGRESS_SECRET }}
+      AX_PC_PULL_SECRET: ${{ secrets.AX_PC_PULL_SECRET }}
+      RUNTIME_URL: https://ax-control-runtime.aerismusic8.workers.dev
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 24
+      - name: Validate required secrets are provisioned
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "$CLOUDFLARE_API_TOKEN" || { echo 'CLOUDFLARE_API_TOKEN_MISSING'; exit 1; }
+          test -n "$AX_MOBILE_INGRESS_SECRET" || { echo 'AX_MOBILE_INGRESS_SECRET_MISSING'; exit 1; }
+          test -n "$AX_PC_PULL_SECRET" || { echo 'AX_PC_PULL_SECRET_MISSING'; exit 1; }
+          test "${#AX_MOBILE_INGRESS_SECRET}" -ge 32 || { echo 'AX_MOBILE_INGRESS_SECRET_TOO_SHORT'; exit 1; }
+          test "${#AX_PC_PULL_SECRET}" -ge 32 || { echo 'AX_PC_PULL_SECRET_TOO_SHORT'; exit 1; }
+      - name: Provision Worker secrets
+        shell: bash
+        working-directory: cloudflare/ax-control-runtime
+        run: |
+          set -euo pipefail
+          printf '%s' "$AX_MOBILE_INGRESS_SECRET" | npx wrangler@latest secret put AX_MOBILE_INGRESS_SECRET --name ax-control-runtime
+          printf '%s' "$AX_PC_PULL_SECRET" | npx wrangler@latest secret put AX_PC_PULL_SECRET --name ax-control-runtime
+      - name: Verify deployed health gate
+        shell: bash
+        run: |
+          set -euo pipefail
+          node <<'NODE'
+          const url = process.env.RUNTIME_URL + '/health';
+          const response = await fetch(url);
+          if (!response.ok) throw new Error(`HEALTH_HTTP_${response.status}`);
+          const r = await response.json();
+          console.log(JSON.stringify({
+            status:r.status,
+            mode:r.mode,
+            liveFinancialExecution:r.liveFinancialExecution,
+            mobileIngressAuthConfigured:r.mobileIngressAuthConfigured,
+            pcPullAuthConfigured:r.pcPullAuthConfigured,
+            gatewayInbox:r.gatewayInbox
+          }));
+          if (r.status !== 'ONLINE' || r.mode !== 'FREE_ONLY' || r.liveFinancialExecution !== false || r.mobileIngressAuthConfigured !== true || r.pcPullAuthConfigured !== true || r.gatewayInbox !== 'AX_GATEWAY_INBOX') process.exit(1);
+          NODE
+      - name: Verify mobile ingress E2E contract
+        shell: bash
+        run: |
+          set -euo pipefail
+          node <<'NODE'
+          const url = process.env.RUNTIME_URL + '/mobile/input';
+          const requestId = `ACCEPT-MOBILE-${crypto.randomUUID()}`;
+          const body = {
+            request_id: requestId,
+            task_id: `TASK-${crypto.randomUUID().slice(0,8)}`,
+            source_channel: 'MOBILE',
+            content_type: 'text',
+            content: 'AX_CONTROL_RUNTIME_ACCEPTANCE_TEST',
+            attachments: []
+          };
+          const response = await fetch(url, {
+            method:'POST',
+            headers:{Authorization:`Bearer ${process.env.AX_MOBILE_INGRESS_SECRET}`,'Content-Type':'application/json'},
+            body:JSON.stringify(body)
+          });
+          const r = await response.json();
+          console.log(JSON.stringify({status:response.status,accepted:r.accepted,queued:r.queued,requestId:r.requestId,taskId:r.taskId}));
+          if (response.status !== 201 || r.accepted !== true || r.queued !== true || r.requestId !== requestId) process.exit(1);
+          NODE
+
+  pc-e2e:
+    needs: provision-and-mobile-e2e
+    runs-on: [self-hosted, Windows, X64]
+    timeout-minutes: 10
+    env:
+      AX_PC_PULL_SECRET: ${{ secrets.AX_PC_PULL_SECRET }}
+      RUNTIME_URL: https://ax-control-runtime.aerismusic8.workers.dev
+    steps:
+      - uses: actions/checkout@v5
+      - name: Verify PC pull authentication
+        shell: powershell
+        run: |
+          $ErrorActionPreference = 'Stop'
+          if ([string]::IsNullOrWhiteSpace($env:AX_PC_PULL_SECRET)) { throw 'AX_PC_PULL_SECRET_MISSING' }
+          if ($env:AX_PC_PULL_SECRET.Length -lt 32) { throw 'AX_PC_PULL_SECRET_TOO_SHORT' }
+          $headers = @{ Authorization = "Bearer $env:AX_PC_PULL_SECRET" }
+          $r = Invoke-RestMethod -Uri "$env:RUNTIME_URL/pc/pull" -Method Post -Headers $headers -TimeoutSec 30
+          $r | ConvertTo-Json -Depth 10 | Write-Host
+          if ($null -eq $r.ok) { throw 'PC_PULL_RESPONSE_INVALID' }
+          Write-Host 'AX_PC_PULL_AUTHENTICATION_VERIFIED'
+      - name: Record runner identity without secrets
+        shell: powershell
+        run: |
+          Write-Host "Runner=$env:COMPUTERNAME"
+          Write-Host "OS=$env:RUNNER_OS"
+          Write-Host "Arch=$env:RUNNER_ARCH"
+          Write-Host 'PC secret value was not printed.'
