@@ -1,25 +1,16 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import fs from 'node:fs';
 import { normalizeDashboardState } from '../dashboard/dashboard-data.mjs';
 
 const baseStatus = {
-  system: 'ONLINE',
-  overall: 'PASS',
-  recovery: 'PASS',
-  decision: 'PASS',
-  dispatch: 'PASS',
-  persistence: 'VERIFIED',
-  runner: 'VERIFIED',
-  mutation: 'ENABLED',
-  selectedTask: 'AX-RECOVERED-005',
-  timestamp: '2026-09-03T10:13:12.348Z'
+  system: 'ONLINE', overall: 'PASS', recovery: 'PASS', decision: 'PASS', dispatch: 'PASS',
+  persistence: 'VERIFIED', runner: 'VERIFIED', mutation: 'ENABLED',
+  selectedTask: 'AX-RECOVERED-005', timestamp: '2026-09-03T10:13:12.348Z'
 };
-
 const verifiedSync = {
-  schema: 'AX_DASHBOARD_SYNC_V1',
-  syncAt: '2026-09-03T10:13:10.000Z',
-  sourceState: 'dashboard/status.json',
-  stateVerified: true
+  schema: 'AX_DASHBOARD_SYNC_V1', syncAt: '2026-09-03T10:13:10.000Z',
+  sourceState: 'dashboard/status.json', stateVerified: true
 };
 
 test('normalizes verified executive state and computes full pipeline progress', () => {
@@ -52,4 +43,11 @@ test('rejects malformed dashboard state instead of fabricating status', () => {
     () => normalizeDashboardState(null, verifiedSync, {}, Date.parse('2026-09-03T10:13:13.000Z'), 10000),
     /status must be an object/
   );
+});
+
+test('dashboard HTML contains the mobile operations hub contract', () => {
+  const html = fs.readFileSync(new URL('../dashboard/index.html', import.meta.url), 'utf8');
+  for (const id of ['taskQueue', 'activityFeed', 'taskDetail', 'agentStatus', 'syncState', 'staleState']) {
+    assert.match(html, new RegExp(`id=["']${id}["']`));
+  }
 });
