@@ -1,0 +1,30 @@
+name: AX Mobile HTTPS Ingress Tests
+
+on:
+  push:
+    branches:
+      - feat/mobile-https-ingress
+    paths:
+      - 'cloudflare/ax-control-runtime/**'
+      - 'tests/cloudflare/**'
+      - '.github/workflows/ax-mobile-ingress-tests.yml'
+  pull_request:
+    paths:
+      - 'cloudflare/ax-control-runtime/**'
+      - 'tests/cloudflare/**'
+      - '.github/workflows/ax-mobile-ingress-tests.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  contract:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - name: Run mobile ingress contract
+        run: node --experimental-strip-types tests/cloudflare/ax_mobile_ingress_contract_test.mjs
