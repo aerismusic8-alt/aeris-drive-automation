@@ -8,7 +8,7 @@ from urllib.parse import urlparse
 ROOT=Path(os.getenv("AX_CONTROL_HUB_ROOT",Path(__file__).resolve().parent.parent)); MASTER_DIR=Path(os.getenv("AX_MASTER_BRAIN_DIR",ROOT/"AX_MASTER_BRAIN")); STATE_PATH=Path(os.getenv("AX_MASTER_STATE_PATH",MASTER_DIR/"AX_MASTER_STATE.json")); TASK_PATH=Path(os.getenv("AX_MASTER_TASK_REGISTRY_PATH",MASTER_DIR/"AX_MASTER_TASK_REGISTRY_v2.json")); CONTRACT_PATH=MASTER_DIR/"AX_REHYDRATION_ADAPTER_SPEC.md"; EVIDENCE_DIR=Path(os.getenv("AX_CONTROL_HUB_EVIDENCE_DIR",MASTER_DIR/"evidence")); HOST=os.getenv("AX_CONTROL_HUB_HOST","127.0.0.1"); PORT=int(os.getenv("AX_CONTROL_HUB_PORT","8787"))
 def now_utc(): return time.strftime("%Y-%m-%dT%H:%M:%SZ",time.gmtime())
 class MasterBrainStore:
-    def __init__(self,state_path,task_path): self.state_path=Path(state_path); self.task_path=Path(task_path)
+    def __init__(self,state_path,task_path): self.state_path=Path(state_path); self.task_path=Path(task_path); self._lock=threading.Lock()
     @staticmethod
     def _load(path):
         with path.open("r",encoding="utf-8") as f: return json.load(f)
@@ -18,6 +18,16 @@ class MasterBrainStore:
         state=self.read_state(); tasks=self.read_tasks(); required=[self.state_path,self.task_path,CONTRACT_PATH]; missing=[str(p) for p in required if not p.exists()]
         checks={"state_loaded":True,"tasks_loaded":True,"rehydration_contract_present":CONTRACT_PATH.exists(),"identity_is_A":state.get("identity",{}).get("name")=="A","identity_authority":state.get("identity_authority")=="A_MASTER_BRAIN","authority_is_K":state.get("authority")=="K_FINAL_AUTHORITY","model_independence":state.get("model_independence") is True,"task_registry_v2":str(tasks.get("schema_version"))=="2.0","source_precedence":state.get("storage_role")=="A_MASTER_BRAIN_SINGLE_SOURCE_OF_TRUTH"}; passed=not missing and all(checks.values())
         return {"status":"VERIFIED" if passed else "PENDING_VERIFICATION","verified":passed,"source":"A_MASTER_BRAIN","agent":"M","identity_under_test":"A","checks":checks,"missing":missing,"verified_at":now_utc() if passed else None}
+    def write_command_audit(self,request_id,idempotency_key,actor,verification_status,expected_version=None):
+        with self._lock:
+            state=self.read_state(); current=int(state.get("state_version",0))
+            if expected_version is not None and int(expected_version)!=current: raise ValueError("STATE_VERSION_CONFLICT")
+            required={"identity_authority":"A_MASTER_BRAIN","authority":"K_FINAL_AUTHORITY","storage_role":"A_MASTER_BRAIN_SINGLE_SOURCE_OF_TRUTH","model_independence":True}
+            if any(state.get(k)!=v for k,v in required.items()) or state.get("identity",{}).get("name")!="A": raise ValueError("STATE_INTEGRITY_FAILURE")
+            new_state=dict(state); new_state["state_version"]=current+1
+            new_state["last_command"]={"request_id":request_id,"idempotency_key":idempotency_key,"actor":actor,"verification_status":verification_status,"recorded_at":now_utc(),"source":"AX_CONTROL_HUB"}
+            tmp=self.state_path.with_suffix(".json.tmp"); tmp.write_text(json.dumps(new_state,ensure_ascii=False,indent=2)+"\n",encoding="utf-8"); os.replace(tmp,self.state_path)
+            return {"previous_state_version":current,"state_version":current+1}
 class AuthStore:
     def __init__(self,iterations=210000): self.iterations=int(iterations); self.sessions={}
     def create_user(self,username,password):
@@ -33,26 +43,20 @@ class AuthStore:
         item=self.sessions.get(token); return item is not None and time.time()-item["created"]<3600
     def logout(self,token): self.sessions.pop(token,None)
 class CommandLedger:
-    def __init__(self,evidence_dir=None):
-        self._lock=threading.Lock(); self.keys=set(); self.records={}; self.evidence_dir=Path(evidence_dir) if evidence_dir else None
-        self._load_durable_records()
+    def __init__(self,evidence_dir=None): self._lock=threading.Lock(); self.keys=set(); self.records={}; self.evidence_dir=Path(evidence_dir) if evidence_dir else None; self._load_durable_records()
     def _load_durable_records(self):
         if self.evidence_dir is None or not self.evidence_dir.exists(): return
         for target in self.evidence_dir.glob("*.json"):
             try:
-                with target.open("r",encoding="utf-8") as f: record=json.load(f)
-                key=record.get("idempotency_key"); request_id=record.get("request_id")
-                if key and request_id:
-                    self.keys.add(key); self.records[request_id]=record
-            except (OSError,json.JSONDecodeError):
-                continue
+                record=json.loads(target.read_text(encoding="utf-8")); key=record.get("idempotency_key"); request_id=record.get("request_id")
+                if key and request_id: self.keys.add(key); self.records[request_id]=record
+            except (OSError,json.JSONDecodeError): continue
     def reserve(self,key,request_id=None,command=None,actor=None,args=None,requested_at=None):
         with self._lock:
             if key in self.keys: return False
             self.keys.add(key)
             if request_id is None: return True
-            recorded=now_utc(); evidence=[{"request_id":request_id,"observed_at":recorded,"result":"health_check executed by local allowlisted runtime"}]
-            record={"request_id":request_id,"idempotency_key":key,"actor":actor,"command":command,"args":args if isinstance(args,dict) else {},"requested_at":requested_at,"recorded_at":recorded,"execution_status":"EXECUTED","verification_status":"VERIFIED","evidence":evidence,"verification":{"method":"SAFE_LOCAL_COMMAND_EXECUTION","command_allowlist":True,"financial_live_execution":False}}
+            recorded=now_utc(); record={"request_id":request_id,"idempotency_key":key,"actor":actor,"command":command,"args":args if isinstance(args,dict) else {},"requested_at":requested_at,"recorded_at":recorded,"execution_status":"EXECUTED","verification_status":"VERIFIED","evidence":[{"request_id":request_id,"observed_at":recorded,"result":"health_check executed by local allowlisted runtime"}],"verification":{"method":"SAFE_LOCAL_COMMAND_EXECUTION","command_allowlist":True,"financial_live_execution":False}}
             self.records[request_id]=record
             if self.evidence_dir is not None:
                 self.evidence_dir.mkdir(parents=True,exist_ok=True); target=self.evidence_dir/f"{request_id}.json"; tmp=target.with_suffix(".json.tmp"); tmp.write_text(json.dumps(record,ensure_ascii=False,indent=2),encoding="utf-8"); os.replace(tmp,target)
@@ -63,13 +67,12 @@ class CommandLedger:
         if self.evidence_dir is None: return None
         target=self.evidence_dir/f"{request_id}.json"
         if not target.exists(): return None
-        try:
-            with target.open("r",encoding="utf-8") as f: return json.load(f)
+        try: return json.loads(target.read_text(encoding="utf-8"))
         except (OSError,json.JSONDecodeError): return None
 STORE=MasterBrainStore(STATE_PATH,TASK_PATH); AUTH=AuthStore(); LEDGER=CommandLedger(EVIDENCE_DIR)
 def json_bytes(obj): return json.dumps(obj,ensure_ascii=False).encode("utf-8")
 class Handler(BaseHTTPRequestHandler):
-    server_version="AXControlHub/0.3"
+    server_version="AXControlHub/0.4"
     def log_message(self,fmt,*args): return
     def send_json(self,status,obj):
         data=json_bytes(obj); self.send_response(status); self.send_header("Content-Type","application/json; charset=utf-8"); self.send_header("Content-Length",str(len(data))); self.end_headers(); self.wfile.write(data)
@@ -88,7 +91,7 @@ class Handler(BaseHTTPRequestHandler):
         if not self.protected(): return
         try:
             if path=="/state":
-                state=STORE.read_state(); challenge=STORE.challenge(); self.send_json(200,{"source":"A_MASTER_BRAIN","identity":state.get("identity",{}).get("name"),"authority":state.get("authority"),"master_status":state.get("status"),"rehydration_status":challenge["status"],"last_verified_evidence":None})
+                state=STORE.read_state(); challenge=STORE.challenge(); self.send_json(200,{"source":"A_MASTER_BRAIN","identity":state.get("identity",{}).get("name"),"authority":state.get("authority"),"master_status":state.get("status"),"state_version":state.get("state_version",0),"rehydration_status":challenge["status"],"last_verified_evidence":state.get("last_command")})
             elif path=="/tasks": self.send_json(200,{"source":"A_MASTER_BRAIN","tasks":STORE.read_tasks().get("tasks",[])})
             elif path.startswith("/evidence/"):
                 request_id=path.split("/",2)[2]; record=LEDGER.get(request_id)
@@ -115,7 +118,14 @@ class Handler(BaseHTTPRequestHandler):
             request_id=data.get("request_id"); idem=data.get("idempotency_key"); actor=data.get("actor"); command=data.get("command")
             if not request_id or not idem or actor!="K" or command not in {"health_check"}: self.send_json(400,{"error_code":"INVALID_REQUEST"}); return
             if not LEDGER.reserve(idem,request_id,command,actor,data.get("args",{}),data.get("requested_at")): self.send_json(409,{"error_code":"DUPLICATE_REQUEST","request_id":request_id}); return
-            self.send_json(200,{"request_id":request_id,"status":"EXECUTED","evidence_status":"RECORDED","verification_status":"VERIFIED"}); return
+            try: transition=STORE.write_command_audit(request_id,idem,actor,"VERIFIED",data.get("expected_state_version"))
+            except ValueError as exc: self.send_json(409,{"error_code":str(exc)}); return
+            record=LEDGER.get(request_id)
+            if record is not None:
+                record["state_writeback"]=transition
+                if EVIDENCE_DIR is not None:
+                    EVIDENCE_DIR.mkdir(parents=True,exist_ok=True); target=EVIDENCE_DIR/f"{request_id}.json"; tmp=target.with_suffix(".json.tmp"); tmp.write_text(json.dumps(record,ensure_ascii=False,indent=2),encoding="utf-8"); os.replace(tmp,target)
+            self.send_json(200,{"request_id":request_id,"status":"EXECUTED","evidence_status":"RECORDED","verification_status":"VERIFIED","state_writeback":transition}); return
         self.send_json(404,{"error_code":"INVALID_REQUEST"})
 def main():
     if HOST not in {"127.0.0.1","localhost","::1"} and os.getenv("AX_CONTROL_HUB_ALLOW_REMOTE")!="1": raise SystemExit("Remote binding is disabled by default; use an authenticated HTTPS gateway.")
