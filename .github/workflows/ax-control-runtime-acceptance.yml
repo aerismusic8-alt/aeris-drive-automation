@@ -2,6 +2,14 @@ name: AX Control Runtime Acceptance
 
 on:
   workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - 'cloudflare/ax-control-runtime/**'
+      - 'tests/cloudflare/**'
+      - 'tests/AX_PC_MOBILE_BRIDGE.Tests.ps1'
+      - 'AX_CONTROL_HUB/AX_SECRET_PROVISION.ps1'
+      - '.github/workflows/ax-control-runtime-acceptance.yml'
 
 permissions:
   contents: read
