@@ -13,6 +13,7 @@ $lockPath = Join-Path $StateDir 'runtime.lock'
 $runtimeId = if ($env:AKATH_RUNTIME_ID) { $env:AKATH_RUNTIME_ID } else { 'akath-primary' }
 $runId = [guid]::NewGuid().ToString()
 $started = [DateTime]::UtcNow
+$ownsLock = $false
 
 function Write-State {
   param(
@@ -51,8 +52,8 @@ $lock = $null
 try {
   try {
     $lock = [System.IO.File]::Open($lockPath, [System.IO.FileMode]::CreateNew, [System.IO.FileAccess]::Write, [System.IO.FileShare]::None)
+    $ownsLock = $true
   } catch {
-    Write-State 'WAITING' '' 'UNVERIFIED' '' 'LOCK_HELD' 'another runtime cycle is active' 0
     Write-Output 'AKATH_RUNTIME=WAITING'
     Write-Output 'AKATH_REASON=LOCK_HELD'
     exit 0
@@ -99,5 +100,7 @@ catch {
 }
 finally {
   if ($lock) { $lock.Dispose() }
-  Remove-Item -LiteralPath $lockPath -Force -ErrorAction SilentlyContinue
+  if ($ownsLock) {
+    Remove-Item -LiteralPath $lockPath -Force -ErrorAction SilentlyContinue
+  }
 }
