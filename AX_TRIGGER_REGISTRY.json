@@ -1,17 +1,17 @@
 ﻿{
     "schema":  "AX_TRIGGER_REGISTRY_V1",
-    "updatedAt":  "2026-09-03T11:56:02.7446076Z",
+    "updatedAt":  "2026-09-03T12:08:02.5701482Z",
     "heartbeatTimeoutSeconds":  120,
     "triggerCount":  1,
     "triggers":  [
                      {
                          "triggerId":  "github-trigger-registry",
                          "source":  "github-actions-self-hosted",
-                         "lastSeen":  "2026-09-03T11:56:02.7446076Z",
+                         "lastSeen":  "2026-09-03T12:08:02.5701482Z",
                          "lastEvent":  "heartbeat",
                          "status":  "ACTIVE",
-                         "executionCount":  128,
-                         "successCount":  128,
+                         "executionCount":  129,
+                         "successCount":  129,
                          "failureCount":  0,
                          "lastResult":  "heartbeat_ok"
                      }
