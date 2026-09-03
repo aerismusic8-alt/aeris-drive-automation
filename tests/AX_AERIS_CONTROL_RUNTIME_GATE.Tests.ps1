@@ -17,4 +17,5 @@ Assert-Literal $runtime 'writeBackVerified' 'WRITE_BACK_FLAG_REFERENCE_MISSING'
 Assert-Literal $runtime 'result.evidence?.taskId' 'EVIDENCE_TASK_ID_BINDING_MISSING'
 Assert-Literal $runtime 'AERIS_EXECUTION_NOT_VERIFIED' 'FAIL_CLOSED_EXECUTION_GATE_MISSING'
 
+# Full verification retrigger marker: gateway change must run the regression again.
 Write-Host 'AX_AERIS_CONTROL_RUNTIME_GATE_TESTS: PASS'
