@@ -91,13 +91,16 @@ def main():
             request_id = "integration-001"
             command = {"request_id": request_id, "idempotency_key": "integration-key-001", "actor": "K", "command": "health_check", "args": {}}
             status, body = request(base, "POST", "/command", command, token=token)
-            assert status == 200 and body["request_id"] == request_id and body["evidence_status"] == "PENDING"  # I7
+            assert status == 200 and body["request_id"] == request_id and body["evidence_status"] == "RECORDED"  # I7
+            assert body["verification_status"] == "VERIFIED"
 
             status, body = request(base, "POST", "/command", command, token=token)
             assert status == 409 and body["error_code"] == "DUPLICATE_REQUEST"  # I8
 
             status, body = request(base, "GET", f"/evidence/{request_id}", token=token)
-            assert status == 200 and body["verification_status"] == "PENDING"  # I9
+            assert status == 200 and body["verification_status"] == "VERIFIED"  # I9
+            assert body["request_id"] == request_id and body["evidence"]
+            assert body["verification"]["financial_live_execution"] is False
 
             status, body = request(base, "POST", "/auth/logout", token=token)
             assert status == 200 and body["logged_out"] is True  # I10
