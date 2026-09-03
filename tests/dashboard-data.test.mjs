@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
-import { normalizeDashboardState } from '../dashboard/dashboard-data.mjs';
+import { normalizeDashboardState, countTaskStatuses } from '../dashboard/dashboard-data.mjs';
 
 const baseStatus = {
   system: 'ONLINE', overall: 'PASS', recovery: 'PASS', decision: 'PASS', dispatch: 'PASS',
@@ -50,4 +50,11 @@ test('dashboard HTML contains the mobile operations hub contract', () => {
   for (const id of ['taskQueue', 'activityFeed', 'taskDetail', 'agentStatus', 'syncState', 'staleState']) {
     assert.match(html, new RegExp(`id=["']${id}["']`));
   }
+});
+
+test('classifies BLOCKED and WAITING_K as need-action tasks', () => {
+  assert.deepEqual(countTaskStatuses([
+    {status:'RUNNING'}, {status:'QUEUED'}, {status:'REPROCESS_QUEUED'},
+    {status:'BLOCKED'}, {status:'WAITING_K'}, {status:'COMPLETED'}, {status:'FAILED'}
+  ]), {running:1, queued:2, failed:3, completed:1});
 });
