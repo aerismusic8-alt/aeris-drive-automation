@@ -43,20 +43,32 @@ def main() -> None:
             }]
         }), encoding="utf-8")
 
-        # Production registry must load and resolve by stable logical ID.
         registry = FileIdRegistry.load(manifest)
         resolved = registry.resolve("a-master-state-immutable-001", root)
         assert resolved == source.resolve()
 
+        # Verification evidence must preserve the logical ID independently of content hash.
+        evidence = registry.verification_evidence("a-master-state-immutable-001", root)
+        assert evidence["file_id"] == "a-master-state-immutable-001"
+        assert evidence["verification_status"] == "VERIFIED"
+        assert evidence["path"] == "AX_MASTER_STATE.json"
+        assert evidence["content_sha256"] == digest
+
         # Stable logical ID must survive a fresh process and point to the same file.
         fresh_registry = FileIdRegistry.load(manifest)
         assert fresh_registry.resolve("a-master-state-immutable-001", root) == source.resolve()
+        fresh_evidence = fresh_registry.verification_evidence("a-master-state-immutable-001", root)
+        assert fresh_evidence["file_id"] == evidence["file_id"]
 
         # Content tampering must fail verification rather than silently preserve trust.
         source.write_text(source.read_text(encoding="utf-8") + "\nTAMPER", encoding="utf-8")
         expect_error(
             "FILE_CONTENT_TAMPERED",
             lambda: fresh_registry.resolve("a-master-state-immutable-001", root),
+        )
+        expect_error(
+            "FILE_CONTENT_TAMPERED",
+            lambda: fresh_registry.verification_evidence("a-master-state-immutable-001", root),
         )
 
         # Duplicate logical IDs must fail closed during manifest load.
@@ -76,7 +88,7 @@ def main() -> None:
         # Missing manifest must fail closed.
         expect_error("FILE_ID_MANIFEST_MISSING", lambda: FileIdRegistry.load(root / "missing.json"))
 
-    print("FILE_ID_PERSISTENCE_PASS stable_id, fresh_process, tamper_detection, duplicate_detection, path_guard, missing_manifest")
+    print("FILE_ID_PERSISTENCE_PASS stable_id, fresh_process, evidence_identity, tamper_detection, duplicate_detection, path_guard, missing_manifest")
 
 
 if __name__ == "__main__":
