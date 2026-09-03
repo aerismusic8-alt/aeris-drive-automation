@@ -1,6 +1,11 @@
 name: AKATH Autonomous Runtime
 
 on:
+  push:
+    branches: [main]
+    paths:
+      - 'AKATH/**'
+      - '.github/workflows/akath-runtime.yml'
   workflow_dispatch:
   schedule:
     - cron: "*/5 * * * *"
