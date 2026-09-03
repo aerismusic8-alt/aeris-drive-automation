@@ -66,6 +66,7 @@ class CommunicationGateway:
             'verification_status': 'PENDING',
             'attachments': attachments,
             'source_of_truth': 'A_MASTER_BRAIN',
+            'runtime_profile': challenge.get('runtime_profile'),
         }
 
     def get_state(self, auth_token: str) -> dict[str, Any]:
@@ -80,6 +81,7 @@ class CommunicationGateway:
             'master_status': state.get('status'),
             'rehydration_status': challenge['status'],
             'model_independence': state.get('model_independence') is True,
+            'runtime_profile': challenge.get('runtime_profile'),
         }
 
     def get_tasks(self, auth_token: str) -> dict[str, Any]:
@@ -109,5 +111,6 @@ class CommunicationGateway:
             'authority': state.get('authority'),
             'source': 'A_MASTER_BRAIN',
             'm_is_a': False,
+            'runtime_profile': challenge.get('runtime_profile'),
             'checks': challenge.get('checks', {}),
         }
