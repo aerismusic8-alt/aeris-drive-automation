@@ -1,7 +1,14 @@
 ﻿{
     "schema":  "AX_ACTIVITY_V1",
-    "updatedAt":  "2026-09-03T14:08:15.5478793Z",
+    "updatedAt":  "2026-09-03T14:22:54.6978936Z",
     "events":  [
+                   {
+                       "id":  "2026-09-03T14:22:54.6978936Z-push-",
+                       "type":  "DASHBOARD_SYNC",
+                       "message":  "System=ONLINE Overall=DEGRADED SelectedTask=AX-RECOVERED-005",
+                       "status":  "DEGRADED",
+                       "timestamp":  "2026-09-03T14:22:54.6978936Z"
+                   },
                    {
                        "id":  "2026-09-03T14:08:15.5478793Z-push-",
                        "type":  "DASHBOARD_SYNC",
