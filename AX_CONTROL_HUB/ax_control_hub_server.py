@@ -5,7 +5,10 @@ import base64, hashlib, hmac, json, os, secrets, threading, time
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from urllib.parse import urlparse
-from AX_CONTROL_HUB.communication_gateway import CommunicationGateway
+try:
+    from AX_CONTROL_HUB.communication_gateway import CommunicationGateway
+except ImportError:
+    from communication_gateway import CommunicationGateway
 
 ROOT=Path(os.getenv("AX_CONTROL_HUB_ROOT",Path(__file__).resolve().parent.parent))
 MASTER_DIR=Path(os.getenv("AX_MASTER_BRAIN_DIR",ROOT/"AX_MASTER_BRAIN"))
@@ -114,7 +117,7 @@ GATEWAY=CommunicationGateway(STORE,LEDGER,AUTH.valid)
 def json_bytes(obj): return json.dumps(obj,ensure_ascii=False).encode("utf-8")
 
 class Handler(BaseHTTPRequestHandler):
-    server_version="AXControlHub/0.7"
+    server_version="AXControlHub/0.8"
     def log_message(self,fmt,*args): return
     def send_json(self,status,obj):
         data=json_bytes(obj); self.send_response(status); self.send_header("Content-Type","application/json; charset=utf-8"); self.send_header("Content-Length",str(len(data))); self.end_headers(); self.wfile.write(data)
@@ -127,33 +130,27 @@ class Handler(BaseHTTPRequestHandler):
     def protected(self):
         if not AUTH.valid(self.token()): self.send_json(401,{"error_code":"AUTH_REQUIRED"}); return False
         return True
+    def serve_file(self, path, content_type, error_code):
+        try: data=path.read_bytes()
+        except OSError: self.send_json(404,{"error_code":error_code}); return
+        self.send_response(200); self.send_header("Content-Type",content_type); self.send_header("Content-Length",str(len(data))); self.end_headers(); self.wfile.write(data)
     def do_GET(self):
         path=urlparse(self.path).path
         if path=="/health": self.send_json(200,{"ok":True,"service":"AX_CONTROL_HUB","health_status":"HEALTHY","execution_status":"UNKNOWN","runtime_profile":RUNTIME_PROFILE}); return
-        if path=="/operations":
-            page=ROOT/"AX_CONTROL_HUB"/"operations.html"
-            try:
-                data=page.read_bytes()
-            except OSError:
-                self.send_json(404,{"error_code":"OPERATIONS_SURFACE_UNAVAILABLE"}); return
-            self.send_response(200); self.send_header("Content-Type","text/html; charset=utf-8"); self.send_header("Content-Length",str(len(data))); self.end_headers(); self.wfile.write(data); return
-        if path=="/operations_client.js":
-            page=ROOT/"AX_CONTROL_HUB"/"operations_client.js"
-            try:
-                data=page.read_bytes()
-            except OSError:
-                self.send_json(404,{"error_code":"OPERATIONS_CLIENT_UNAVAILABLE"}); return
-            self.send_response(200); self.send_header("Content-Type","application/javascript; charset=utf-8"); self.send_header("Content-Length",str(len(data))); self.end_headers(); self.wfile.write(data); return
+        if path=="/operations": self.serve_file(ROOT/"AX_CONTROL_HUB"/"operations.html","text/html; charset=utf-8","OPERATIONS_SURFACE_UNAVAILABLE"); return
+        if path=="/operations_client.js": self.serve_file(ROOT/"AX_CONTROL_HUB"/"operations_client.js","application/javascript; charset=utf-8","OPERATIONS_CLIENT_UNAVAILABLE"); return
         if not self.protected(): return
         try:
-            if path=="/state": self.send_json(200,GATEWAY.get_state(self.token()))
-            elif path=="/tasks": self.send_json(200,GATEWAY.get_tasks(self.token()))
+            if path in {"/state","/gateway/state"}: self.send_json(200,GATEWAY.get_state(self.token()))
+            elif path in {"/tasks","/gateway/tasks"}: self.send_json(200,GATEWAY.get_tasks(self.token()))
             elif path.startswith("/evidence/"):
                 request_id=path.split("/",2)[2]
                 try: self.send_json(200,GATEWAY.get_evidence(request_id,self.token()))
                 except LookupError: self.send_json(404,{"error_code":"EVIDENCE_UNAVAILABLE","request_id":request_id})
-            elif path=="/gateway/state": self.send_json(200,GATEWAY.get_state(self.token()))
-            elif path=="/gateway/tasks": self.send_json(200,GATEWAY.get_tasks(self.token()))
+            elif path.startswith("/gateway/evidence/"):
+                request_id=path.split("/",2)[2]
+                try: self.send_json(200,GATEWAY.get_evidence(request_id,self.token()))
+                except LookupError: self.send_json(404,{"error_code":"EVIDENCE_UNAVAILABLE","request_id":request_id})
             else: self.send_json(404,{"error_code":"INVALID_REQUEST"})
         except (FileNotFoundError,json.JSONDecodeError): self.send_json(503,{"error_code":"SOURCE_STATE_UNAVAILABLE"})
     def do_POST(self):
@@ -167,11 +164,7 @@ class Handler(BaseHTTPRequestHandler):
         if not self.protected(): return
         token=self.token()
         if path=="/auth/logout": AUTH.logout(token); self.send_json(200,{"logged_out":True}); return
-        if path=="/m-a-check":
-            try: self.send_json(200,STORE.challenge())
-            except (FileNotFoundError,json.JSONDecodeError): self.send_json(503,{"error_code":"SOURCE_STATE_UNAVAILABLE"})
-            return
-        if path=="/gateway/m-a-check":
+        if path in {"/m-a-check","/gateway/m-a-check"}:
             try: self.send_json(200,GATEWAY.m_a_check(token))
             except (FileNotFoundError,json.JSONDecodeError): self.send_json(503,{"error_code":"SOURCE_STATE_UNAVAILABLE"})
             return
