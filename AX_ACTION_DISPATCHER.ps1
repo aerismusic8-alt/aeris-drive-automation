@@ -105,9 +105,9 @@ if ($controlRuntimeHealthy -and $aerisRuntimeHealthy) {
   Write-Host "Event ID: $eventId"
   Write-Host "Queued: $($enqueueResponse.queued)"
   if ($selected.domain -eq 'AERIS') {
-    $aerisAdapter = "$PSScriptRoot\AX_AERIS_EXECUTION_ADAPTER.ps1"
-    if (Test-Path $aerisAdapter) { & powershell.exe -ExecutionPolicy Bypass -File $aerisAdapter -StatusUrl "$($aerisRuntimeUrl.TrimEnd('/'))/"; if ($LASTEXITCODE -ne 0) { throw "AX_AERIS_EXECUTION_ADAPTER_FAILED:$LASTEXITCODE" }; Write-Host 'AERIS Execution Adapter: COMPLETED' }
-    else { Write-Host 'Execution: QUEUED_TO_CONTROL_RUNTIME' }
+    Write-Host 'AERIS Execution: QUEUED_TO_CONTROL_RUNTIME_QUEUE_CONSUMER'
+    Write-Host 'Business Execution: NOT_CLAIMED_BY_DISPATCHER'
+    Write-Host 'Business Completion: NOT_CLAIMED_BY_DISPATCHER'
   }
   elseif ($selected.domain -eq 'AICS') {
     Write-Host '=== AICS DOMAIN ROUTING ==='

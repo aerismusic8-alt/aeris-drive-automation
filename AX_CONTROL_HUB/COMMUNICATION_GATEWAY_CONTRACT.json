@@ -1,0 +1,31 @@
+{
+  "schema_version": "1.0",
+  "source_of_truth": "A_MASTER_BRAIN",
+  "source_channels": ["GPT", "PC", "MOBILE", "SYSTEM"],
+  "content_types": ["text", "file", "image", "event", "command"],
+  "request": {
+    "required": ["request_id", "source_channel", "content_type"],
+    "fields": {
+      "request_id": "string",
+      "task_id": "string|null",
+      "source_channel": "string",
+      "content_type": "string",
+      "content": "string|null",
+      "attachments": "array",
+      "requested_at": "string|null"
+    },
+    "attachment": ["attachment_id", "kind", "name", "media_type", "reference"]
+  },
+  "response": {
+    "required": ["request_id", "status", "rehydration_status", "verification_status"],
+    "statuses": ["RECEIVED", "QUEUED", "EXECUTING", "SUCCEEDED", "FAILED", "INTERRUPTED", "VERIFIED"],
+    "rehydration_statuses": ["VERIFIED", "PENDING_VERIFICATION"],
+    "verification_statuses": ["PENDING", "VERIFIED", "REJECTED"]
+  },
+  "security": {
+    "protected_routes_require_authentication": true,
+    "max_request_bytes": 1048576,
+    "raw_binary_in_master_state": false,
+    "live_financial_execution": false
+  }
+}

@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>AERIS / AX Operations Hub</title>
+<style>
+body{font-family:system-ui,sans-serif;max-width:960px;margin:auto;padding:16px;line-height:1.4}
+section{margin:16px 0;padding:16px;border:1px solid #ccc;border-radius:10px}
+textarea{width:100%;min-height:130px;box-sizing:border-box}
+button,input{font:inherit;padding:10px;margin:4px 0}
+pre{white-space:pre-wrap;overflow-wrap:anywhere}
+</style>
+</head>
+<body>
+<h1>AERIS / AX Operations Hub</h1>
+<section>
+<label>Username <input id="username" autocomplete="username"></label>
+<label>Password <input id="password" type="password" autocomplete="current-password"></label>
+<button id="login">Login</button>
+<button id="check">M-A-CHECK</button>
+<pre id="state"></pre>
+</section>
+<section>
+<textarea id="message" placeholder="ข้อความ / task input"></textarea>
+<input id="file" type="file" multiple>
+<button id="send">Send</button>
+<pre id="result"></pre>
+</section>
+<script src="operations_client.js"></script>
+</body>
+</html>
