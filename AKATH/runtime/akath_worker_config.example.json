@@ -1,0 +1,6 @@
+{
+  "runtime_id": "akath-primary",
+  "state_dir": "${USERPROFILE}/.akath/runtime",
+  "probe_mode": true,
+  "stale_seconds": 900
+}
