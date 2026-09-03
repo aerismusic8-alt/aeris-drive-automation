@@ -49,3 +49,6 @@ jobs:
       - name: Run revenue execution evidence regression
         shell: pwsh
         run: .\tests\AX_AERIS_EXECUTION_EVIDENCE.Tests.ps1
+      - name: Run AERIS control runtime evidence gate regression
+        shell: pwsh
+        run: .\tests\AX_AERIS_CONTROL_RUNTIME_GATE.Tests.ps1
