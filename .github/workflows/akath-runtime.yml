@@ -13,6 +13,10 @@ on:
 permissions:
   contents: read
 
+concurrency:
+  group: akath-runtime
+  cancel-in-progress: false
+
 jobs:
   runtime:
     runs-on: self-hosted
