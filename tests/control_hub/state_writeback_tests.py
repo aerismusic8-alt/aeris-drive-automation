@@ -51,8 +51,13 @@ def main():
             status,integrity=request(base,"POST","/command",protected,token)
             assert status==409 and integrity["error_code"]=="STATE_INTEGRITY_FAILURE"
 
+            state_path.write_text(json.dumps(after),encoding="utf-8")
+            status,retry=request(base,"POST","/command",protected,token)
+            assert status==200 and retry["verification_status"]=="VERIFIED", "failed write-back must not consume the idempotency key"
+            assert json.loads(state_path.read_text()).get("state_version")==2
+
             status,dup=request(base,"POST","/command",payload,token); assert status==409 and dup["error_code"]=="DUPLICATE_REQUEST"
-            print("STATE_WRITEBACK_PASS authoritative state changed, version conflict and integrity guard enforced")
+            print("STATE_WRITEBACK_PASS authoritative state changed, version conflict, integrity guard, and rollback enforced")
         finally:
             p.terminate(); p.wait(timeout=5)
 
