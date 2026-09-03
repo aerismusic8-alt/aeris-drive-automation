@@ -61,6 +61,14 @@ class CommandLedger:
             if self.evidence_dir is not None:
                 self.evidence_dir.mkdir(parents=True,exist_ok=True); target=self.evidence_dir/f"{request_id}.json"; tmp=target.with_suffix(".json.tmp"); tmp.write_text(json.dumps(record,ensure_ascii=False,indent=2),encoding="utf-8"); os.replace(tmp,target)
             return True
+    def release(self,key,request_id=None):
+        with self._lock:
+            self.keys.discard(key)
+            if request_id is not None: self.records.pop(request_id,None)
+            if self.evidence_dir is not None and request_id is not None:
+                target=self.evidence_dir/f"{request_id}.json"
+                try: target.unlink()
+                except FileNotFoundError: pass
     def get(self,request_id):
         with self._lock: record=self.records.get(request_id)
         if record is not None: return record
@@ -72,7 +80,7 @@ class CommandLedger:
 STORE=MasterBrainStore(STATE_PATH,TASK_PATH); AUTH=AuthStore(); LEDGER=CommandLedger(EVIDENCE_DIR)
 def json_bytes(obj): return json.dumps(obj,ensure_ascii=False).encode("utf-8")
 class Handler(BaseHTTPRequestHandler):
-    server_version="AXControlHub/0.4"
+    server_version="AXControlHub/0.5"
     def log_message(self,fmt,*args): return
     def send_json(self,status,obj):
         data=json_bytes(obj); self.send_response(status); self.send_header("Content-Type","application/json; charset=utf-8"); self.send_header("Content-Length",str(len(data))); self.end_headers(); self.wfile.write(data)
@@ -119,7 +127,12 @@ class Handler(BaseHTTPRequestHandler):
             if not request_id or not idem or actor!="K" or command not in {"health_check"}: self.send_json(400,{"error_code":"INVALID_REQUEST"}); return
             if not LEDGER.reserve(idem,request_id,command,actor,data.get("args",{}),data.get("requested_at")): self.send_json(409,{"error_code":"DUPLICATE_REQUEST","request_id":request_id}); return
             try: transition=STORE.write_command_audit(request_id,idem,actor,"VERIFIED",data.get("expected_state_version"))
-            except ValueError as exc: self.send_json(409,{"error_code":str(exc)}); return
+            except ValueError as exc:
+                LEDGER.release(idem,request_id)
+                self.send_json(409,{"error_code":str(exc)}); return
+            except (OSError,json.JSONDecodeError):
+                LEDGER.release(idem,request_id)
+                self.send_json(503,{"error_code":"SOURCE_STATE_UNAVAILABLE"}); return
             record=LEDGER.get(request_id)
             if record is not None:
                 record["state_writeback"]=transition
