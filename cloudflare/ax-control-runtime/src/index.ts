@@ -8,6 +8,22 @@ type AxEvent = {
   source: string;
 };
 
+type AxBusinessEvidence = {
+  taskId: string;
+  [key: string]: unknown;
+};
+
+type AxExecutionResult = {
+  accepted?: boolean;
+  executed?: boolean;
+  verified?: boolean;
+  taskId?: string;
+  evidence?: AxBusinessEvidence | null;
+  writeBackVerified?: boolean;
+  status?: string;
+  [key: string]: unknown;
+};
+
 type Env = {
   AX_EXECUTION_QUEUE: Queue<AxEvent>;
 };
@@ -107,6 +123,17 @@ function rootResponse(): Response {
   });
 }
 
+function hasValidBusinessEvidence(result: AxExecutionResult, expectedTaskId: string): boolean {
+  const evidence = result.evidence;
+  return !!evidence &&
+    typeof evidence === 'object' &&
+    String(evidence.taskId || '') === expectedTaskId;
+}
+
+function hasVerifiedWriteBack(result: AxExecutionResult): boolean {
+  return result.writeBackVerified === true;
+}
+
 export default {
   async fetch(request: Request, env: Env): Promise<Response> {
     const url = new URL(request.url);
@@ -195,16 +222,33 @@ export default {
       });
 
       const rawResponse = await response.text();
-      let result: any = null;
-      try { result = rawResponse ? JSON.parse(rawResponse) : null; } catch { result = null; }
+      let result: AxExecutionResult | null = null;
+      try { result = rawResponse ? JSON.parse(rawResponse) as AxExecutionResult : null; } catch { result = null; }
 
       console.log(JSON.stringify({ event: 'AERIS_EXECUTION_RESULT', taskId: event.taskId, jobId: event.id, httpStatus: response.status, response: result ?? rawResponse }));
 
-      if (!response.ok || result?.accepted !== true || result?.verified !== true || result?.executed !== true) {
+      const responseTaskMatches = result?.taskId === event.taskId;
+      const businessEvidenceValid = result ? hasValidBusinessEvidence(result, event.taskId) : false;
+      const writeBackVerified = result ? hasVerifiedWriteBack(result) : false;
+
+      if (!response.ok ||
+          result?.accepted !== true ||
+          result?.verified !== true ||
+          result?.executed !== true ||
+          !responseTaskMatches ||
+          !businessEvidenceValid ||
+          !writeBackVerified) {
         throw new Error(`AERIS_EXECUTION_NOT_VERIFIED:${response.status}`);
       }
 
-      console.log(JSON.stringify({ event: 'AX_EXECUTION_VERIFIED', taskId: event.taskId, jobId: event.id, status: result.status || 'VERIFIED' }));
+      console.log(JSON.stringify({
+        event: 'AX_EXECUTION_VERIFIED',
+        taskId: event.taskId,
+        jobId: event.id,
+        status: result.status || 'VERIFIED',
+        evidenceTaskId: result.evidence?.taskId,
+        writeBackVerified: result.writeBackVerified,
+      }));
       message.ack();
     }
   },
