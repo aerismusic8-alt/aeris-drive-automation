@@ -26,6 +26,8 @@ jobs:
         run: python tests/control_hub/restart_recovery_tests.py
       - name: Run authoritative state write-back acceptance
         run: python tests/control_hub/state_writeback_tests.py
+      - name: Run interruption resume acceptance
+        run: python tests/control_hub/interruption_resume_tests.py
 
   windows-prerequisite-check:
     runs-on: windows-latest
