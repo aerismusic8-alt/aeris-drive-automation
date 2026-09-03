@@ -178,7 +178,6 @@ export default {
     if (request.method === 'GET' && url.pathname === '/time') { const now = new Date(); return json({ source: 'AX_CLOUD_TIME_AUTHORITY', authority: 'Cloudflare Worker runtime', requestId: crypto.randomUUID(), timestampUtc: now.toISOString(), epochMs: now.getTime(), timezoneDisplay: 'Asia/Bangkok', timestampThailand: now.toLocaleString('sv-SE', { timeZone: 'Asia/Bangkok' }).replace(' ', 'T') + '+07:00', method: request.method }); }
     if (request.method === 'GET' && url.pathname === '/mobile') return mobilePage();
     if (request.method === 'GET' && url.pathname === '/mobile/config') return json({ service: SERVICE, mobileIngress: true, pcPull: true, executionMode: MODE, liveFinancialExecution: false, transportStore: INBOX_NAME, endpoint: '/mobile/input', pcPullEndpoint: '/pc/pull', pcAckEndpoint: '/pc/ack' });
-
     if (request.method === 'POST' && url.pathname === '/mobile/input') {
       if (!secretAccepted(bearerSecret(request), env.AX_MOBILE_INGRESS_SECRET)) return json({ error: 'AUTH_REQUIRED' }, 401);
       const raw = await request.text();
@@ -192,24 +191,17 @@ export default {
       if (content !== null && new TextEncoder().encode(content).byteLength > MAX_PAYLOAD_BYTES) return json({ error: 'REQUEST_TOO_LARGE' }, 413);
       const attachments = body.attachments ?? [];
       if (hasRawBinary(attachments)) return json({ error: 'RAW_BINARY_NOT_ALLOWED' }, 422);
-      const record: AxGatewayInput = {
-        request_id: String(body.requestId ?? body.request_id ?? makeRequestId()), task_id: String(body.taskId ?? body.task_id ?? makeTaskId()), status: 'RECEIVED',
-        source_channel: 'MOBILE', content_type: contentType as AxGatewayInput['content_type'], content,
-        evidence_status: 'PENDING', verification_status: 'PENDING', attachments: attachments as Array<Record<string, unknown>>,
-        source_of_truth: 'A_MASTER_BRAIN', transport_store: INBOX_NAME, received_at: new Date().toISOString(),
-      };
+      const record: AxGatewayInput = { request_id: String(body.requestId ?? body.request_id ?? makeRequestId()), task_id: String(body.taskId ?? body.task_id ?? makeTaskId()), status: 'RECEIVED', source_channel: 'MOBILE', content_type: contentType as AxGatewayInput['content_type'], content, evidence_status: 'PENDING', verification_status: 'PENDING', attachments: attachments as Array<Record<string, unknown>>, source_of_truth: 'A_MASTER_BRAIN', transport_store: INBOX_NAME, received_at: new Date().toISOString() };
       const inboxResponse = await gatewayInboxCall(env, 'put', { record });
       const inboxBody = await inboxResponse.json();
       if (!inboxResponse.ok) return json(inboxBody, inboxResponse.status);
       return json({ accepted: true, queued: true, requestId: record.request_id, taskId: record.task_id, sourceChannel: record.source_channel, transportStore: INBOX_NAME, status: record.status, evidenceStatus: record.evidence_status, executionStatus: 'NOT_EXECUTED', liveFinancialExecution: false }, 201);
     }
-
     if (request.method === 'POST' && url.pathname === '/pc/pull') {
       if (!secretAccepted(bearerSecret(request), env.AX_PC_PULL_SECRET)) return json({ error: 'AUTH_REQUIRED' }, 401);
       const inboxResponse = await gatewayInboxCall(env, 'pull');
       return json(await inboxResponse.json(), inboxResponse.status);
     }
-
     if (request.method === 'POST' && url.pathname === '/pc/ack') {
       if (!secretAccepted(bearerSecret(request), env.AX_PC_PULL_SECRET)) return json({ error: 'AUTH_REQUIRED' }, 401);
       const body = await request.json().catch(() => null) as { request_id?: string; requestId?: string } | null;
@@ -218,7 +210,6 @@ export default {
       const inboxResponse = await gatewayInboxCall(env, 'ack', { request_id: requestId });
       return json(await inboxResponse.json(), inboxResponse.status);
     }
-
     if (request.method === 'POST' && url.pathname === '/enqueue') {
       const token = bearerSecret(request);
       if (!token) return json({ error: 'AUTH_REQUIRED' }, 401);
@@ -231,10 +222,8 @@ export default {
       await env.AX_EXECUTION_QUEUE.send(normalizedEvent);
       return json({ accepted: true, queued: true, eventId: normalizedEvent.id, taskId: normalizedEvent.taskId, queue: QUEUE_NAME, executionGate: 'CONTROLLED', liveFinancialExecution: false });
     }
-
     return json({ error: 'NOT_FOUND', service: SERVICE, status: 'ONLINE' }, 404);
   },
-
   async queue(batch: MessageBatch<AxEvent>): Promise<void> {
     for (const message of batch.messages) {
       const event = message.body;
