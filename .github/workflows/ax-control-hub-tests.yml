@@ -20,6 +20,8 @@ jobs:
         run: python tests/control_hub/runtime_integration_tests.py
       - name: Run fresh-process rehydration tests
         run: python tests/master_brain/fresh_channel_rehydration_tests.py
+      - name: Run evidence write-back tests
+        run: python tests/control_hub/evidence_writeback_tests.py
 
   windows-prerequisite-check:
     runs-on: windows-latest
