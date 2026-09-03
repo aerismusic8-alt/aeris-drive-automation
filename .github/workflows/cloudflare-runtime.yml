@@ -17,10 +17,6 @@ on:
 permissions:
   contents: read
 
-concurrency:
-  group: ax-cloudflare-control-runtime
-  cancel-in-progress: false
-
 jobs:
   deploy:
     runs-on: ubuntu-latest
