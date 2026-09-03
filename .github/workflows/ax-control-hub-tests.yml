@@ -22,6 +22,8 @@ jobs:
         run: python tests/master_brain/fresh_channel_rehydration_tests.py
       - name: Run two-runtime portability acceptance
         run: python tests/master_brain/model_runtime_portability_tests.py
+      - name: Run source-of-truth conflict acceptance
+        run: python tests/master_brain/source_of_truth_conflict_tests.py
       - name: Run File ID Persistence acceptance
         run: python tests/master_brain/file_id_persistence_tests.py
       - name: Run File ID Manifest Builder acceptance
