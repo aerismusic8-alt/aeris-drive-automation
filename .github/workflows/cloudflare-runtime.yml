@@ -1,5 +1,8 @@
 name: AX Cloudflare Control Runtime
 
+# POST-MERGE VERIFICATION TRIGGER: this workflow is intentionally push-enabled on main.
+# A source change under this workflow file causes a real deployment execution path.
+
 on:
   workflow_dispatch:
   push:
