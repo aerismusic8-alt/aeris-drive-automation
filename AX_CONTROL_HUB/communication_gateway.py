@@ -75,9 +75,11 @@ class CommunicationGateway:
         return {
             'source': 'A_MASTER_BRAIN',
             'identity': state.get('identity', {}).get('name'),
+            'identity_under_test': 'A',
             'authority': state.get('authority'),
             'master_status': state.get('status'),
             'rehydration_status': challenge['status'],
+            'model_independence': state.get('model_independence') is True,
         }
 
     def get_tasks(self, auth_token: str) -> dict[str, Any]:
@@ -101,6 +103,7 @@ class CommunicationGateway:
         return {
             'rehydration_status': challenge['status'],
             'identity': state.get('identity', {}).get('name'),
+            'identity_under_test': 'A',
             'authority': state.get('authority'),
             'source': 'A_MASTER_BRAIN',
             'm_is_a': False,
