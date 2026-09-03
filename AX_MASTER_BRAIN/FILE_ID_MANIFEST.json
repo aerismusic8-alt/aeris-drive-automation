@@ -10,12 +10,12 @@
     {
       "file_id": "709185f3-f09d-4852-b182-476ea055c9c2",
       "path": "AX_MASTER_BRAIN/AX_MASTER_STATE.json",
-      "content_sha256": "265aa0052628dd6f68189ca30b28bcce184fd45e211e8da277bb100681ca92e4"
+      "content_sha256": "5ee12b55cf389b99dc12fb79269584b2805dbd3f6748942f907eaa95dac4d7d4"
     },
     {
       "file_id": "a726d3b7-12ed-4118-9869-c29595cc2412",
       "path": "AX_MASTER_BRAIN/AX_MASTER_TASK_REGISTRY_v2.json",
-      "content_sha256": "c3e061c067d36c29f9a4dc85ad56b22fa62b39badc7c714a1f5d78fa74fe3033"
+      "content_sha256": "59bf83bda14643c59d7f4377a834609bf53580e9af28140fb099240d88b7ca03"
     },
     {
       "file_id": "e0e5655d-172f-4d22-a353-617c9322ef8d",
