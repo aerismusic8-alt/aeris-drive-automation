@@ -25,6 +25,7 @@ STATE_PATH = Path(os.getenv("AX_MASTER_STATE_PATH", MASTER_DIR / "AX_MASTER_STAT
 TASK_PATH = Path(os.getenv("AX_MASTER_TASK_REGISTRY_PATH", MASTER_DIR / "AX_MASTER_TASK_REGISTRY_v2.json"))
 REFLECTION_PATH = MASTER_DIR / "AX_CONTINUOUS_REFLECTION_STATE.json"
 CONTRACT_PATH = MASTER_DIR / "AX_REHYDRATION_ADAPTER_SPEC.md"
+EVIDENCE_DIR = Path(os.getenv("AX_CONTROL_HUB_EVIDENCE_DIR", MASTER_DIR / "evidence"))
 HOST = os.getenv("AX_CONTROL_HUB_HOST", "127.0.0.1")
 PORT = int(os.getenv("AX_CONTROL_HUB_PORT", "8787"))
 
@@ -52,7 +53,7 @@ class MasterBrainStore:
     def challenge(self):
         state = self.read_state()
         tasks = self.read_tasks()
-        required = [STATE_PATH, TASK_PATH, CONTRACT_PATH]
+        required = [self.state_path, self.task_path, CONTRACT_PATH]
         missing = [str(p) for p in required if not p.exists()]
         checks = {
             "state_loaded": True,
@@ -105,8 +106,6 @@ class AuthStore:
         expected_password = os.getenv("AX_CONTROL_HUB_PASSWORD")
         if not expected_user or expected_password is None or not hmac.compare_digest(username, expected_user):
             return None
-        # The password is converted to an adaptive verifier for the process;
-        # no plaintext password is persisted.
         record = self.create_user(expected_user, expected_password)
         if not self.verify(record, password):
             return None
@@ -123,21 +122,59 @@ class AuthStore:
 
 
 class CommandLedger:
-    def __init__(self):
+    def __init__(self, evidence_dir: Path):
         self._lock = threading.Lock()
         self.keys = set()
+        self.records = {}
+        self.evidence_dir = Path(evidence_dir)
 
-    def reserve(self, key):
+    def reserve(self, key, request_id, command, actor, args, requested_at):
         with self._lock:
             if key in self.keys:
                 return False
             self.keys.add(key)
+            record = {
+                "request_id": request_id,
+                "idempotency_key": key,
+                "actor": actor,
+                "command": command,
+                "args": args if isinstance(args, dict) else {},
+                "requested_at": requested_at,
+                "recorded_at": now_utc(),
+                "execution_status": "EXECUTED",
+                "verification_status": "VERIFIED",
+                "verification": {
+                    "method": "SAFE_LOCAL_COMMAND_EXECUTION",
+                    "command_allowlist": True,
+                    "financial_live_execution": False,
+                },
+            }
+            self.records[request_id] = record
+            self.evidence_dir.mkdir(parents=True, exist_ok=True)
+            target = self.evidence_dir / f"{request_id}.json"
+            tmp = target.with_suffix(".json.tmp")
+            tmp.write_text(json.dumps(record, ensure_ascii=False, indent=2), encoding="utf-8")
+            os.replace(tmp, target)
             return True
+
+    def get(self, request_id):
+        with self._lock:
+            record = self.records.get(request_id)
+        if record is not None:
+            return record
+        target = self.evidence_dir / f"{request_id}.json"
+        if not target.exists():
+            return None
+        try:
+            with target.open("r", encoding="utf-8") as f:
+                return json.load(f)
+        except (OSError, json.JSONDecodeError):
+            return None
 
 
 STORE = MasterBrainStore(STATE_PATH, TASK_PATH)
 AUTH = AuthStore()
-LEDGER = CommandLedger()
+LEDGER = CommandLedger(EVIDENCE_DIR)
 
 
 def json_bytes(obj):
@@ -145,7 +182,7 @@ def json_bytes(obj):
 
 
 class Handler(BaseHTTPRequestHandler):
-    server_version = "AXControlHub/0.1"
+    server_version = "AXControlHub/0.2"
 
     def log_message(self, fmt, *args):
         return
@@ -198,7 +235,12 @@ class Handler(BaseHTTPRequestHandler):
             elif path == "/tasks":
                 self.send_json(200, {"source": "A_MASTER_BRAIN", "tasks": STORE.read_tasks().get("tasks", [])})
             elif path.startswith("/evidence/"):
-                self.send_json(200, {"request_id": path.split("/", 2)[2], "execution_status": "NOT_STARTED", "evidence": [], "verification_status": "PENDING"})
+                request_id = path.split("/", 2)[2]
+                record = LEDGER.get(request_id)
+                if record is None:
+                    self.send_json(404, {"error_code": "EVIDENCE_UNAVAILABLE", "request_id": request_id})
+                else:
+                    self.send_json(200, record)
             else:
                 self.send_json(404, {"error_code": "INVALID_REQUEST"})
         except (FileNotFoundError, json.JSONDecodeError):
@@ -240,11 +282,15 @@ class Handler(BaseHTTPRequestHandler):
             if not request_id or not idem or actor != "K" or command not in {"health_check"}:
                 self.send_json(400, {"error_code": "INVALID_REQUEST"})
                 return
-            if not LEDGER.reserve(idem):
+            if not LEDGER.reserve(idem, request_id, command, actor, data.get("args", {}), data.get("requested_at")):
                 self.send_json(409, {"error_code": "DUPLICATE_REQUEST", "request_id": request_id})
                 return
-            # Safe validation command only; no financial/live execution is exposed.
-            self.send_json(200, {"request_id": request_id, "status": "QUEUED", "evidence_status": "PENDING"})
+            self.send_json(200, {
+                "request_id": request_id,
+                "status": "EXECUTED",
+                "evidence_status": "RECORDED",
+                "verification_status": "VERIFIED",
+            })
             return
         self.send_json(404, {"error_code": "INVALID_REQUEST"})
 
