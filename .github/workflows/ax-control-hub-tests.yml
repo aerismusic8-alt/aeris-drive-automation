@@ -18,3 +18,11 @@ jobs:
         run: python tests/control_hub/runtime_unit_tests.py
       - name: Run runtime integration tests
         run: python tests/control_hub/runtime_integration_tests.py
+
+  windows-prerequisite-check:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Run PowerShell runtime prerequisite check
+        shell: pwsh
+        run: .\AX_CONTROL_HUB\PC_RUNTIME_CHECK.ps1
