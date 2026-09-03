@@ -1,5 +1,7 @@
 {
   "schema": "AX_ACTIVITY_V1",
-  "updatedAt": null,
-  "events": []
+  "updatedAt": "2026-09-03T10:13:12.3482239+07:00",
+  "events": [
+    {"id":"2026-09-03T10:13:12.3482239+07:00-status","type":"STATUS_SNAPSHOT","message":"System=ONLINE Overall=PASS SelectedTask=AX-RECOVERED-005","status":"PASS","timestamp":"2026-09-03T10:13:12.3482239+07:00"}
+  ]
 }
