@@ -16,3 +16,5 @@ jobs:
           python-version: '3.11'
       - name: Run runtime unit tests
         run: python tests/control_hub/runtime_unit_tests.py
+      - name: Run runtime integration tests
+        run: python tests/control_hub/runtime_integration_tests.py
