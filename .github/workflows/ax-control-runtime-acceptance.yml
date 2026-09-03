@@ -2,14 +2,6 @@ name: AX Control Runtime Acceptance
 
 on:
   workflow_dispatch:
-  push:
-    branches: [main]
-    paths:
-      - 'cloudflare/ax-control-runtime/**'
-      - 'tests/cloudflare/**'
-      - 'tests/AX_PC_MOBILE_BRIDGE.Tests.ps1'
-      - 'AX_CONTROL_HUB/AX_SECRET_PROVISION.ps1'
-      - '.github/workflows/ax-control-runtime-acceptance.yml'
 
 permissions:
   contents: read
@@ -105,7 +97,6 @@ jobs:
           if ($env:AX_PC_PULL_SECRET.Length -lt 32) { throw 'AX_PC_PULL_SECRET_TOO_SHORT' }
           $headers = @{ Authorization = "Bearer $env:AX_PC_PULL_SECRET" }
           $r = Invoke-RestMethod -Uri "$env:RUNTIME_URL/pc/pull" -Method Post -Headers $headers -TimeoutSec 30
-          $r | ConvertTo-Json -Depth 10 | Write-Host
           if ($null -eq $r.ok) { throw 'PC_PULL_RESPONSE_INVALID' }
           Write-Host 'AX_PC_PULL_AUTHENTICATION_VERIFIED'
       - name: Record runner identity without secrets
