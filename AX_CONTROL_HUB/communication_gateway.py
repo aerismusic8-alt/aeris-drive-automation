@@ -97,6 +97,7 @@ class CommunicationGateway:
             'authority': state.get('authority'),
             'master_status': state.get('status'),
             'state_version': int(state.get('state_version', 0)),
+            'last_verified_evidence': state.get('last_verified_evidence'),
             'rehydration_status': challenge['status'],
             'model_independence': state.get('model_independence') is True,
             'runtime_profile': challenge.get('runtime_profile'),
