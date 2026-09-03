@@ -104,6 +104,7 @@ class CommunicationGateway:
             'rehydration_status': challenge['status'],
             'identity': state.get('identity', {}).get('name'),
             'identity_under_test': 'A',
+            'agent': 'M',
             'authority': state.get('authority'),
             'source': 'A_MASTER_BRAIN',
             'm_is_a': False,
