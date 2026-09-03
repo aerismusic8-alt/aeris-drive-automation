@@ -2,7 +2,7 @@ name: AX Control Hub Tests
 
 on:
   push:
-    branches: ["feat/ax-control-hub-foundation"]
+    branches: ["feat/ax-control-hub-foundation", "feat/ax-file-id-persistence"]
   pull_request:
     branches: ["main"]
 
@@ -20,6 +20,8 @@ jobs:
         run: python tests/control_hub/runtime_integration_tests.py
       - name: Run fresh-process rehydration tests
         run: python tests/master_brain/fresh_channel_rehydration_tests.py
+      - name: Run File ID Persistence acceptance
+        run: python tests/master_brain/file_id_persistence_tests.py
       - name: Run evidence write-back tests
         run: python tests/control_hub/evidence_writeback_tests.py
       - name: Run restart recovery tests
