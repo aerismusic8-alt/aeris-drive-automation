@@ -7,8 +7,10 @@ from pathlib import Path
 from urllib.parse import urlparse
 try:
     from AX_CONTROL_HUB.communication_gateway import CommunicationGateway
+    from AX_CONTROL_HUB.gateway_input_queue import GatewayInputQueue
 except ImportError:
     from communication_gateway import CommunicationGateway
+    from gateway_input_queue import GatewayInputQueue
 
 ROOT=Path(os.getenv("AX_CONTROL_HUB_ROOT",Path(__file__).resolve().parent.parent))
 MASTER_DIR=Path(os.getenv("AX_MASTER_BRAIN_DIR",ROOT/"AX_MASTER_BRAIN"))
@@ -16,6 +18,7 @@ STATE_PATH=Path(os.getenv("AX_MASTER_STATE_PATH",MASTER_DIR/"AX_MASTER_STATE.jso
 TASK_PATH=Path(os.getenv("AX_MASTER_TASK_REGISTRY_PATH",MASTER_DIR/"AX_MASTER_TASK_REGISTRY_v2.json"))
 CONTRACT_PATH=Path(os.getenv("AX_REHYDRATION_CONTRACT_PATH",MASTER_DIR/"AX_REHYDRATION_ADAPTER_SPEC.md"))
 EVIDENCE_DIR=Path(os.getenv("AX_CONTROL_HUB_EVIDENCE_DIR",MASTER_DIR/"evidence"))
+INPUT_QUEUE_DIR=Path(os.getenv("AX_CONTROL_HUB_INPUT_QUEUE_DIR",MASTER_DIR/"gateway_input"))
 HOST=os.getenv("AX_CONTROL_HUB_HOST","127.0.0.1")
 PORT=int(os.getenv("AX_CONTROL_HUB_PORT","8787"))
 RUNTIME_PROFILE=os.getenv("AX_RUNTIME_PROFILE","default")
@@ -111,13 +114,14 @@ class CommandLedger:
 STORE=MasterBrainStore(STATE_PATH,TASK_PATH)
 AUTH=AuthStore()
 LEDGER=CommandLedger(EVIDENCE_DIR)
-GATEWAY=CommunicationGateway(STORE,LEDGER,AUTH.valid)
+INPUT_QUEUE=GatewayInputQueue(INPUT_QUEUE_DIR)
+GATEWAY=CommunicationGateway(STORE,LEDGER,AUTH.valid,INPUT_QUEUE)
 
 
 def json_bytes(obj): return json.dumps(obj,ensure_ascii=False).encode("utf-8")
 
 class Handler(BaseHTTPRequestHandler):
-    server_version="AXControlHub/0.8"
+    server_version="AXControlHub/0.9"
     def log_message(self,fmt,*args): return
     def send_json(self,status,obj):
         data=json_bytes(obj); self.send_response(status); self.send_header("Content-Type","application/json; charset=utf-8"); self.send_header("Content-Length",str(len(data))); self.end_headers(); self.wfile.write(data)
@@ -151,6 +155,10 @@ class Handler(BaseHTTPRequestHandler):
                 request_id=path.split("/",2)[2]
                 try: self.send_json(200,GATEWAY.get_evidence(request_id,self.token()))
                 except LookupError: self.send_json(404,{"error_code":"EVIDENCE_UNAVAILABLE","request_id":request_id})
+            elif path.startswith("/gateway/input/"):
+                request_id=path.split("/",3)[3]
+                try: self.send_json(200,GATEWAY.get_input(request_id,self.token()))
+                except LookupError: self.send_json(404,{"error_code":"INPUT_UNAVAILABLE","request_id":request_id})
             else: self.send_json(404,{"error_code":"INVALID_REQUEST"})
         except (FileNotFoundError,json.JSONDecodeError): self.send_json(503,{"error_code":"SOURCE_STATE_UNAVAILABLE"})
     def do_POST(self):
@@ -171,7 +179,7 @@ class Handler(BaseHTTPRequestHandler):
         if path=="/gateway/input":
             try: self.send_json(200,GATEWAY.handle_input(data,token))
             except PermissionError: self.send_json(401,{"error_code":"AUTH_REQUIRED"})
-            except ValueError as exc: self.send_json(400,{"error_code":str(exc)})
+            except ValueError as exc: self.send_json(409 if str(exc)=="REQUEST_ID_CONFLICT" else 400,{"error_code":str(exc)})
             return
         if path=="/command":
             request_id=data.get("request_id"); idem=data.get("idempotency_key"); actor=data.get("actor"); command=data.get("command")
