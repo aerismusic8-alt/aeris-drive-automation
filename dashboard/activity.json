@@ -1,7 +1,20 @@
-{
-  "schema": "AX_ACTIVITY_V1",
-  "updatedAt": "2026-09-03T10:13:12.3482239+07:00",
-  "events": [
-    {"id":"2026-09-03T10:13:12.3482239+07:00-status","type":"STATUS_SNAPSHOT","message":"System=ONLINE Overall=PASS SelectedTask=AX-RECOVERED-005","status":"PASS","timestamp":"2026-09-03T10:13:12.3482239+07:00"}
-  ]
+﻿{
+    "schema":  "AX_ACTIVITY_V1",
+    "updatedAt":  "2026-09-03T11:21:04.6600463Z",
+    "events":  [
+                   {
+                       "id":  "2026-09-03T11:21:04.6600463Z-push-",
+                       "type":  "DASHBOARD_SYNC",
+                       "message":  "System=ONLINE Overall=PASS SelectedTask=AX-RECOVERED-005",
+                       "status":  "PASS",
+                       "timestamp":  "2026-09-03T11:21:04.6600463Z"
+                   },
+                   {
+                       "id":  "2026-09-03T10:13:12.3482239+07:00-status",
+                       "type":  "STATUS_SNAPSHOT",
+                       "message":  "System=ONLINE Overall=PASS SelectedTask=AX-RECOVERED-005",
+                       "status":  "PASS",
+                       "timestamp":  "2026-09-03T10:13:12.3482239+07:00"
+                   }
+               ]
 }
