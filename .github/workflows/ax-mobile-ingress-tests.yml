@@ -41,3 +41,15 @@ jobs:
       - name: Run PC mobile bridge contract
         shell: pwsh
         run: .\tests\AX_PC_MOBILE_BRIDGE.Tests.ps1
+
+  cloudflare-config:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - name: Validate Worker configuration and TypeScript
+        working-directory: cloudflare/ax-control-runtime
+        run: npx wrangler@latest deploy --dry-run --name ax-control-runtime
