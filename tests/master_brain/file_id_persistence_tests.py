@@ -4,13 +4,26 @@ import hashlib
 import json
 import tempfile
 from pathlib import Path
+import sys
 
 
 ROOT = Path(__file__).resolve().parents[2]
+sys.path.insert(0, str(ROOT))
+
+from AX_CONTROL_HUB.file_id_registry import FileIdPersistenceError, FileIdRegistry
 
 
 def sha256_file(path: Path) -> str:
     return hashlib.sha256(path.read_bytes()).hexdigest()
+
+
+def expect_error(code: str, fn) -> None:
+    try:
+        fn()
+    except FileIdPersistenceError as exc:
+        assert str(exc) == code, f"expected {code}, got {exc}"
+    else:
+        raise AssertionError(f"expected FileIdPersistenceError({code})")
 
 
 def main() -> None:
@@ -30,26 +43,40 @@ def main() -> None:
             }]
         }), encoding="utf-8")
 
-        data = json.loads(manifest.read_text(encoding="utf-8"))
-        entry = data["entries"][0]
-        assert entry["file_id"] == "a-master-state-immutable-001"
-        assert entry["content_sha256"] == sha256_file(source)
+        # Production registry must load and resolve by stable logical ID.
+        registry = FileIdRegistry.load(manifest)
+        resolved = registry.resolve("a-master-state-immutable-001", root)
+        assert resolved == source.resolve()
 
-        # Stable logical ID must survive a fresh process and point to the same path.
-        fresh = json.loads(manifest.read_text(encoding="utf-8"))
-        assert fresh["entries"][0]["file_id"] == entry["file_id"]
+        # Stable logical ID must survive a fresh process and point to the same file.
+        fresh_registry = FileIdRegistry.load(manifest)
+        assert fresh_registry.resolve("a-master-state-immutable-001", root) == source.resolve()
 
         # Content tampering must fail verification rather than silently preserve trust.
         source.write_text(source.read_text(encoding="utf-8") + "\nTAMPER", encoding="utf-8")
-        assert sha256_file(source) != entry["content_sha256"]
+        expect_error(
+            "FILE_CONTENT_TAMPERED",
+            lambda: fresh_registry.resolve("a-master-state-immutable-001", root),
+        )
 
-        # Duplicate logical IDs must fail closed.
-        duplicate = dict(entry)
-        data["entries"].append(duplicate)
-        ids = [e["file_id"] for e in data["entries"]]
-        assert len(ids) != len(set(ids))
+        # Duplicate logical IDs must fail closed during manifest load.
+        tampered_manifest = root / "DUPLICATE_FILE_ID_MANIFEST.json"
+        entry = json.loads(manifest.read_text(encoding="utf-8"))["entries"][0]
+        tampered_manifest.write_text(json.dumps({"schema_version": "1.0", "entries": [entry, entry]}), encoding="utf-8")
+        expect_error("DUPLICATE_FILE_ID", lambda: FileIdRegistry.load(tampered_manifest))
 
-    print("FILE_ID_PERSISTENCE_RED contract: stable_id, fresh_process, tamper_detection, duplicate_detection")
+        # Path traversal must fail closed.
+        escape_manifest = root / "ESCAPE_MANIFEST.json"
+        escape_manifest.write_text(json.dumps({
+            "schema_version": "1.0",
+            "entries": [{"file_id": "escape-001", "path": "../outside.txt", "content_sha256": digest}],
+        }), encoding="utf-8")
+        expect_error("FILE_PATH_ESCAPES_ROOT", lambda: FileIdRegistry.load(escape_manifest).resolve("escape-001", root))
+
+        # Missing manifest must fail closed.
+        expect_error("FILE_ID_MANIFEST_MISSING", lambda: FileIdRegistry.load(root / "missing.json"))
+
+    print("FILE_ID_PERSISTENCE_PASS stable_id, fresh_process, tamper_detection, duplicate_detection, path_guard, missing_manifest")
 
 
 if __name__ == "__main__":
