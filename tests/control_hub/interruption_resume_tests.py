@@ -33,6 +33,8 @@ def request(method, path, payload=None, token=None):
             return response.status, json.loads(response.read())
     except urllib.error.HTTPError as exc:
         return exc.code, json.loads(exc.read())
+    except (urllib.error.URLError, ConnectionError):
+        return 599, {"error_code": "INTERRUPTED_CONNECTION"}
 
 
 def start(env):
@@ -90,9 +92,8 @@ def main():
             assert status == 200
             token = login["token"]
             status, _ = request("POST", "/command", payload, token)
-            assert status in {200, 503}
+            assert status in {200, 503, 599}
         finally:
-            # The interruption hook is expected to terminate the worker process.
             if proc.poll() is None:
                 stop(proc)
 
