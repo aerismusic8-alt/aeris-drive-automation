@@ -46,6 +46,8 @@ class MasterBrainStore:
             if any(state.get(k)!=v for k,v in required.items()) or state.get("identity",{}).get("name")!="A": raise ValueError("STATE_INTEGRITY_FAILURE")
             new_state=dict(state); new_state["state_version"]=current+1
             new_state["last_command"]={"request_id":request_id,"idempotency_key":idempotency_key,"actor":actor,"verification_status":verification_status,"recorded_at":now_utc(),"source":"AX_CONTROL_HUB"}
+            if verification_status == "VERIFIED":
+                new_state["last_verified_evidence"]={"request_id":request_id,"verification_status":"VERIFIED","source":"AX_CONTROL_HUB"}
             tmp=self.state_path.with_suffix(".json.tmp"); tmp.write_text(json.dumps(new_state,ensure_ascii=False,indent=2)+"\n",encoding="utf-8"); os.replace(tmp,self.state_path)
             return {"previous_state_version":current,"state_version":current+1}
 
