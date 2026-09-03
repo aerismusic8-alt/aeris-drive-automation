@@ -1,23 +1,11 @@
 #!/usr/bin/env python3
-"""Minimal local AX Control Hub runtime.
-
-The hub is a transport boundary. A_MASTER_BRAIN files remain authoritative;
-this service does not synthesize or silently rewrite master state.
-"""
+"""Minimal local AX Control Hub runtime."""
 from __future__ import annotations
 import base64, hashlib, hmac, json, os, secrets, threading, time
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from urllib.parse import urlparse
-ROOT=Path(os.getenv("AX_CONTROL_HUB_ROOT",Path(__file__).resolve().parent.parent))
-MASTER_DIR=Path(os.getenv("AX_MASTER_BRAIN_DIR",ROOT/"AX_MASTER_BRAIN"))
-STATE_PATH=Path(os.getenv("AX_MASTER_STATE_PATH",MASTER_DIR/"AX_MASTER_STATE.json"))
-TASK_PATH=Path(os.getenv("AX_MASTER_TASK_REGISTRY_PATH",MASTER_DIR/"AX_MASTER_TASK_REGISTRY_v2.json"))
-REFLECTION_PATH=MASTER_DIR/"AX_CONTINUOUS_REFLECTION_STATE.json"
-CONTRACT_PATH=MASTER_DIR/"AX_REHYDRATION_ADAPTER_SPEC.md"
-EVIDENCE_DIR=Path(os.getenv("AX_CONTROL_HUB_EVIDENCE_DIR",MASTER_DIR/"evidence"))
-HOST=os.getenv("AX_CONTROL_HUB_HOST","127.0.0.1")
-PORT=int(os.getenv("AX_CONTROL_HUB_PORT","8787"))
+ROOT=Path(os.getenv("AX_CONTROL_HUB_ROOT",Path(__file__).resolve().parent.parent)); MASTER_DIR=Path(os.getenv("AX_MASTER_BRAIN_DIR",ROOT/"AX_MASTER_BRAIN")); STATE_PATH=Path(os.getenv("AX_MASTER_STATE_PATH",MASTER_DIR/"AX_MASTER_STATE.json")); TASK_PATH=Path(os.getenv("AX_MASTER_TASK_REGISTRY_PATH",MASTER_DIR/"AX_MASTER_TASK_REGISTRY_v2.json")); CONTRACT_PATH=MASTER_DIR/"AX_REHYDRATION_ADAPTER_SPEC.md"; EVIDENCE_DIR=Path(os.getenv("AX_CONTROL_HUB_EVIDENCE_DIR",MASTER_DIR/"evidence")); HOST=os.getenv("AX_CONTROL_HUB_HOST","127.0.0.1"); PORT=int(os.getenv("AX_CONTROL_HUB_PORT","8787"))
 def now_utc(): return time.strftime("%Y-%m-%dT%H:%M:%SZ",time.gmtime())
 class MasterBrainStore:
     def __init__(self,state_path,task_path): self.state_path=Path(state_path); self.task_path=Path(task_path)
@@ -27,16 +15,13 @@ class MasterBrainStore:
     def read_state(self): return self._load(self.state_path)
     def read_tasks(self): return self._load(self.task_path)
     def challenge(self):
-        state=self.read_state(); tasks=self.read_tasks(); required=[self.state_path,self.task_path,CONTRACT_PATH]
-        missing=[str(p) for p in required if not p.exists()]
-        checks={"state_loaded":True,"tasks_loaded":True,"rehydration_contract_present":CONTRACT_PATH.exists(),"identity_is_A":state.get("identity",{}).get("name")=="A","identity_authority":state.get("identity_authority")=="A_MASTER_BRAIN","authority_is_K":state.get("authority")=="K_FINAL_AUTHORITY","model_independence":state.get("model_independence") is True,"task_registry_v2":str(tasks.get("schema_version"))=="2.0","source_precedence":state.get("storage_role")=="A_MASTER_BRAIN_SINGLE_SOURCE_OF_TRUTH"}
-        passed=not missing and all(checks.values())
+        state=self.read_state(); tasks=self.read_tasks(); required=[self.state_path,self.task_path,CONTRACT_PATH]; missing=[str(p) for p in required if not p.exists()]
+        checks={"state_loaded":True,"tasks_loaded":True,"rehydration_contract_present":CONTRACT_PATH.exists(),"identity_is_A":state.get("identity",{}).get("name")=="A","identity_authority":state.get("identity_authority")=="A_MASTER_BRAIN","authority_is_K":state.get("authority")=="K_FINAL_AUTHORITY","model_independence":state.get("model_independence") is True,"task_registry_v2":str(tasks.get("schema_version"))=="2.0","source_precedence":state.get("storage_role")=="A_MASTER_BRAIN_SINGLE_SOURCE_OF_TRUTH"}; passed=not missing and all(checks.values())
         return {"status":"VERIFIED" if passed else "PENDING_VERIFICATION","verified":passed,"source":"A_MASTER_BRAIN","agent":"M","identity_under_test":"A","checks":checks,"missing":missing,"verified_at":now_utc() if passed else None}
 class AuthStore:
     def __init__(self,iterations=210000): self.iterations=int(iterations); self.sessions={}
     def create_user(self,username,password):
-        salt=secrets.token_bytes(16); digest=hashlib.pbkdf2_hmac("sha256",password.encode(),salt,self.iterations)
-        return {"username":username,"algorithm":"PBKDF2-HMAC-SHA256","iterations":self.iterations,"salt":base64.b64encode(salt).decode(),"digest":base64.b64encode(digest).decode()}
+        salt=secrets.token_bytes(16); digest=hashlib.pbkdf2_hmac("sha256",password.encode(),salt,self.iterations); return {"username":username,"algorithm":"PBKDF2-HMAC-SHA256","iterations":self.iterations,"salt":base64.b64encode(salt).decode(),"digest":base64.b64encode(digest).decode()}
     def verify(self,record,password):
         salt=base64.b64decode(record["salt"]); expected=base64.b64decode(record["digest"]); actual=hashlib.pbkdf2_hmac("sha256",password.encode(),salt,int(record["iterations"])); return hmac.compare_digest(actual,expected)
     def login(self,username,password):
@@ -48,18 +33,22 @@ class AuthStore:
         item=self.sessions.get(token); return item is not None and time.time()-item["created"]<3600
     def logout(self,token): self.sessions.pop(token,None)
 class CommandLedger:
-    def __init__(self,evidence_dir): self._lock=threading.Lock(); self.keys=set(); self.records={}; self.evidence_dir=Path(evidence_dir)
-    def reserve(self,key,request_id,command,actor,args,requested_at):
+    def __init__(self,evidence_dir=None): self._lock=threading.Lock(); self.keys=set(); self.records={}; self.evidence_dir=Path(evidence_dir) if evidence_dir else None
+    def reserve(self,key,request_id=None,command=None,actor=None,args=None,requested_at=None):
         with self._lock:
             if key in self.keys: return False
             self.keys.add(key)
-            recorded=now_utc()
-            evidence=[{"request_id":request_id,"observed_at":recorded,"result":"health_check executed by local allowlisted runtime"}]
+            if request_id is None: return True
+            recorded=now_utc(); evidence=[{"request_id":request_id,"observed_at":recorded,"result":"health_check executed by local allowlisted runtime"}]
             record={"request_id":request_id,"idempotency_key":key,"actor":actor,"command":command,"args":args if isinstance(args,dict) else {},"requested_at":requested_at,"recorded_at":recorded,"execution_status":"EXECUTED","verification_status":"VERIFIED","evidence":evidence,"verification":{"method":"SAFE_LOCAL_COMMAND_EXECUTION","command_allowlist":True,"financial_live_execution":False}}
-            self.records[request_id]=record; self.evidence_dir.mkdir(parents=True,exist_ok=True); target=self.evidence_dir/f"{request_id}.json"; tmp=target.with_suffix(".json.tmp"); tmp.write_text(json.dumps(record,ensure_ascii=False,indent=2),encoding="utf-8"); os.replace(tmp,target); return True
+            self.records[request_id]=record
+            if self.evidence_dir is not None:
+                self.evidence_dir.mkdir(parents=True,exist_ok=True); target=self.evidence_dir/f"{request_id}.json"; tmp=target.with_suffix(".json.tmp"); tmp.write_text(json.dumps(record,ensure_ascii=False,indent=2),encoding="utf-8"); os.replace(tmp,target)
+            return True
     def get(self,request_id):
         with self._lock: record=self.records.get(request_id)
         if record is not None: return record
+        if self.evidence_dir is None: return None
         target=self.evidence_dir/f"{request_id}.json"
         if not target.exists(): return None
         try:
@@ -73,7 +62,7 @@ class Handler(BaseHTTPRequestHandler):
     def send_json(self,status,obj):
         data=json_bytes(obj); self.send_response(status); self.send_header("Content-Type","application/json; charset=utf-8"); self.send_header("Content-Length",str(len(data))); self.end_headers(); self.wfile.write(data)
     def body(self):
-        length=int(self.headers.get("Content-Length","0"))
+        length=int(self.headers.get("Content-Length","0"));
         if length>1024*1024: raise ValueError("request too large")
         raw=self.rfile.read(length); return json.loads(raw.decode("utf-8")) if raw else {}
     def token(self):
