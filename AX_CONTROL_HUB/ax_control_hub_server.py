@@ -44,6 +44,9 @@ class AuthStore:
     def logout(self,token): self.sessions.pop(token,None)
 class CommandLedger:
     def __init__(self,evidence_dir=None): self._lock=threading.Lock(); self.keys=set(); self.records={}; self.evidence_dir=Path(evidence_dir) if evidence_dir else None; self._load_durable_records()
+    def _persist(self,record):
+        if self.evidence_dir is None: return
+        self.evidence_dir.mkdir(parents=True,exist_ok=True); target=self.evidence_dir/f"{record['request_id']}.json"; tmp=target.with_suffix(".json.tmp"); tmp.write_text(json.dumps(record,ensure_ascii=False,indent=2),encoding="utf-8"); os.replace(tmp,target)
     def _load_durable_records(self):
         if self.evidence_dir is None or not self.evidence_dir.exists(): return
         for target in self.evidence_dir.glob("*.json"):
@@ -56,10 +59,9 @@ class CommandLedger:
             if key in self.keys: return False
             self.keys.add(key)
             if request_id is None: return True
-            recorded=now_utc(); record={"request_id":request_id,"idempotency_key":key,"actor":actor,"command":command,"args":args if isinstance(args,dict) else {},"requested_at":requested_at,"recorded_at":recorded,"execution_status":"EXECUTED","verification_status":"VERIFIED","evidence":[{"request_id":request_id,"observed_at":recorded,"result":"health_check executed by local allowlisted runtime"}],"verification":{"method":"SAFE_LOCAL_COMMAND_EXECUTION","command_allowlist":True,"financial_live_execution":False}}
-            self.records[request_id]=record
-            if self.evidence_dir is not None:
-                self.evidence_dir.mkdir(parents=True,exist_ok=True); target=self.evidence_dir/f"{request_id}.json"; tmp=target.with_suffix(".json.tmp"); tmp.write_text(json.dumps(record,ensure_ascii=False,indent=2),encoding="utf-8"); os.replace(tmp,target)
+            recorded=now_utc(); record={"request_id":request_id,"idempotency_key":key,"actor":actor,"command":command,"args":args if isinstance(args,dict) else {},"requested_at":requested_at,"recorded_at":recorded,"lifecycle_status":"PENDING_STATE_WRITEBACK","execution_status":"EXECUTED","verification_status":"VERIFIED","evidence":[{"request_id":request_id,"observed_at":recorded,"result":"health_check executed by local allowlisted runtime"}],"verification":{"method":"SAFE_LOCAL_COMMAND_EXECUTION","command_allowlist":True,"financial_live_execution":False}}
+            self.records[request_id]=record; self._persist(record)
+            if os.getenv("AX_CONTROL_HUB_INTERRUPT_AFTER_EVIDENCE")=="1": os._exit(70)
             return True
     def release(self,key,request_id=None):
         with self._lock:
@@ -77,10 +79,19 @@ class CommandLedger:
         if not target.exists(): return None
         try: return json.loads(target.read_text(encoding="utf-8"))
         except (OSError,json.JSONDecodeError): return None
+    def recover_pending(self,store):
+        for request_id, record in list(self.records.items()):
+            if record.get("lifecycle_status")!="PENDING_STATE_WRITEBACK": continue
+            state=store.read_state()
+            if state.get("last_command",{}).get("idempotency_key")==record.get("idempotency_key"):
+                transition={"previous_state_version":int(state.get("state_version",0))-1,"state_version":int(state.get("state_version",0))}
+            else:
+                transition=store.write_command_audit(record["request_id"],record["idempotency_key"],record["actor"],"VERIFIED")
+            record["state_writeback"]=transition; record["lifecycle_status"]="COMPLETED"; record["verification_status"]="VERIFIED"; self._persist(record)
 STORE=MasterBrainStore(STATE_PATH,TASK_PATH); AUTH=AuthStore(); LEDGER=CommandLedger(EVIDENCE_DIR)
 def json_bytes(obj): return json.dumps(obj,ensure_ascii=False).encode("utf-8")
 class Handler(BaseHTTPRequestHandler):
-    server_version="AXControlHub/0.5"
+    server_version="AXControlHub/0.6"
     def log_message(self,fmt,*args): return
     def send_json(self,status,obj):
         data=json_bytes(obj); self.send_response(status); self.send_header("Content-Type","application/json; charset=utf-8"); self.send_header("Content-Length",str(len(data))); self.end_headers(); self.wfile.write(data)
@@ -135,13 +146,13 @@ class Handler(BaseHTTPRequestHandler):
                 self.send_json(503,{"error_code":"SOURCE_STATE_UNAVAILABLE"}); return
             record=LEDGER.get(request_id)
             if record is not None:
-                record["state_writeback"]=transition
-                if EVIDENCE_DIR is not None:
-                    EVIDENCE_DIR.mkdir(parents=True,exist_ok=True); target=EVIDENCE_DIR/f"{request_id}.json"; tmp=target.with_suffix(".json.tmp"); tmp.write_text(json.dumps(record,ensure_ascii=False,indent=2),encoding="utf-8"); os.replace(tmp,target)
+                record["state_writeback"]=transition; record["lifecycle_status"]="COMPLETED"; LEDGER._persist(record)
             self.send_json(200,{"request_id":request_id,"status":"EXECUTED","evidence_status":"RECORDED","verification_status":"VERIFIED","state_writeback":transition}); return
         self.send_json(404,{"error_code":"INVALID_REQUEST"})
 def main():
     if HOST not in {"127.0.0.1","localhost","::1"} and os.getenv("AX_CONTROL_HUB_ALLOW_REMOTE")!="1": raise SystemExit("Remote binding is disabled by default; use an authenticated HTTPS gateway.")
     if not STATE_PATH.exists() or not TASK_PATH.exists(): raise SystemExit("A_MASTER_BRAIN source files are unavailable; refusing to start.")
+    try: LEDGER.recover_pending(STORE)
+    except (OSError,json.JSONDecodeError,ValueError) as exc: raise SystemExit(f"Pending command recovery failed closed: {exc}")
     httpd=ThreadingHTTPServer((HOST,PORT),Handler); print(f"AX_CONTROL_HUB listening on http://{HOST}:{PORT}"); httpd.serve_forever()
 if __name__=="__main__": main()
