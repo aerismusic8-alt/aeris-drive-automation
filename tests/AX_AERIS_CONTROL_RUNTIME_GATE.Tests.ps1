@@ -10,12 +10,10 @@ Assert-Literal $runtime 'result?.accepted !== true' 'ACCEPTANCE_GATE_MISSING'
 Assert-Literal $runtime 'result?.executed !== true' 'EXECUTION_GATE_MISSING'
 Assert-Literal $runtime 'result?.verified !== true' 'VERIFICATION_GATE_MISSING'
 Assert-Literal $runtime 'const responseTaskMatches = result?.taskId === event.taskId' 'TASK_ID_BINDING_MISSING'
-Assert-Literal $runtime 'result?.evidence' 'BUSINESS_EVIDENCE_REFERENCE_MISSING'
-Assert-Literal $runtime 'String(result.evidence.taskId || '') === event.taskId' 'BUSINESS_EVIDENCE_GATE_MISSING'
+Assert-Literal $runtime 'const businessEvidenceValid = !!result?.evidence && String(result.evidence.taskId || '') === event.taskId' 'BUSINESS_EVIDENCE_GATE_MISSING'
 Assert-Literal $runtime 'writeBackVerified !== true' 'WRITE_BACK_VERIFICATION_GATE_MISSING'
 Assert-Literal $runtime 'writeBackVerified' 'WRITE_BACK_FLAG_REFERENCE_MISSING'
 Assert-Literal $runtime 'result.evidence?.taskId' 'EVIDENCE_TASK_ID_BINDING_MISSING'
 Assert-Literal $runtime 'AERIS_EXECUTION_NOT_VERIFIED' 'FAIL_CLOSED_EXECUTION_GATE_MISSING'
 
-# Full verification retrigger marker: gateway change must run the regression again.
 Write-Host 'AX_AERIS_CONTROL_RUNTIME_GATE_TESTS: PASS'
