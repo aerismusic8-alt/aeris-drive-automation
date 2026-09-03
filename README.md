@@ -1,6 +1,37 @@
-# AERIS / AX OPERATIONS HUB
+# AKATH / AERIS / AX OPERATIONS HUB
 
-> Mobile-first entry point for operating, monitoring, and reviewing the AERIS / AX system.
+> **AKATH — Autonomous AI Company**. This repository is the current execution substrate for the AKATH autonomous operating system. A MASTER BRAIN remains authoritative; AX is the executive orchestrator; ChatGPT is a K-facing control/observation channel and is not required for ordinary runtime continuation.
+
+## AKATH IDENTITY
+
+```text
+AKATH — Autonomous AI Company
+        │
+        ▼
+A MASTER BRAIN
+        │
+        ▼
+AX — Executive Orchestrator
+        │
+        ▼
+AI Workforce + Autonomous Runtime
+        │
+        ▼
+Execute → Verify → Log → Continue
+```
+
+The first AKATH acceptance test is GPT-independent continuous operation. The system must advance ordinary jobs without requiring a new ChatGPT message between cycles.
+
+## AKATH RUNTIME
+
+- Runtime contract: `AKATH/RUNTIME_CONTRACT.md`
+- Current status: `AKATH/STATUS.md`
+- Autonomous worker: `AKATH/runtime/akath_worker.ps1`
+- Watchdog: `AKATH/runtime/akath_watchdog.ps1`
+- E2E probe: `AKATH/probes/akath_e2e_probe.ps1`
+- GitHub Actions runtime: `.github/workflows/akath-runtime.yml`
+
+**24/7 verification status:** NOT VERIFIED until direct workflow evidence demonstrates multiple successive autonomous verified cycles without ChatGPT intervention.
 
 ## CLIENT ENTRY POINT
 
@@ -47,6 +78,8 @@ Only verified GitHub destinations are linked here until runtime endpoints are co
 ## REPOSITORY DOCUMENTATION
 
 - [AX Control Hub API Contract](https://github.com/aerismusic8-alt/aeris-drive-automation/blob/main/AX_CONTROL_HUB/API_CONTRACT.md) — gateway, authentication, state, task, and evidence semantics.
+- [AKATH Runtime Contract](https://github.com/aerismusic8-alt/aeris-drive-automation/blob/main/AKATH/RUNTIME_CONTRACT.md) — autonomous runtime state and invariants.
+- [AKATH Status](https://github.com/aerismusic8-alt/aeris-drive-automation/blob/main/AKATH/STATUS.md) — current implementation and verification status.
 - [Workflow files](https://github.com/aerismusic8-alt/aeris-drive-automation/tree/main/.github/workflows) — automation definitions.
 - [Repository](https://github.com/aerismusic8-alt/aeris-drive-automation/tree/main) — complete source tree.
 
