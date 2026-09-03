@@ -2,13 +2,25 @@
 
 > Mobile-first entry point for operating, monitoring, and reviewing the AERIS / AX system.
 
+## CLIENT ENTRY POINT
+
+The same gateway contract is used from GPT, PC, and Mobile. The client is a transport/view layer; A MASTER BRAIN remains the authoritative source of truth.
+
+- **Operations Hub:** `/operations` when the local Control Hub is running
+- **M-A-CHECK:** `/gateway/m-a-check`
+- **Input:** `/gateway/input`
+- **State:** `/gateway/state`
+- **Tasks:** `/gateway/tasks`
+- **Evidence:** `/gateway/evidence/{request_id}`
+
+Supported logical input types include text, file references, image references, events, and commands. Raw binary content is not written into A MASTER BRAIN state.
+
 ## LIVE CONTROL & STATUS
 
 | Area | Open |
 |---|---|
 | Repository | [AERIS Drive Automation](https://github.com/aerismusic8-alt/aeris-drive-automation) |
 | GitHub Actions | [Workflows & runs](https://github.com/aerismusic8-alt/aeris-drive-automation/actions) |
-| Pull Request #2 | [PR #2](https://github.com/aerismusic8-alt/aeris-drive-automation/pull/2) |
 | Issues | [Issues](https://github.com/aerismusic8-alt/aeris-drive-automation/issues) |
 | Copilot | [GitHub Copilot](https://github.com/copilot) |
 | Code | [Repository files](https://github.com/aerismusic8-alt/aeris-drive-automation/tree/main) |
@@ -27,16 +39,15 @@ PC1 and PC2 are execution nodes. Their live machine status is not exposed by a v
 
 ## AERIS MONITOR / JOBS
 
-Only verified GitHub destinations are linked here until the runtime endpoints are confirmed from the repository configuration.
+Only verified GitHub destinations are linked here until runtime endpoints are confirmed from repository configuration.
 
 - [Actions / runtime history](https://github.com/aerismusic8-alt/aeris-drive-automation/actions)
 - [Issues / operational incidents](https://github.com/aerismusic8-alt/aeris-drive-automation/issues)
-- [Pull Request #2 / current development work](https://github.com/aerismusic8-alt/aeris-drive-automation/pull/2)
 
 ## REPOSITORY DOCUMENTATION
 
-- [SCRIPT_ERROR_FIXES.md](https://github.com/aerismusic8-alt/aeris-drive-automation/blob/main/SCRIPT_ERROR_FIXES.md) — consolidated script/workflow error diagnosis and repair recommendations.
-- [Workflows](https://github.com/aerismusic8-alt/aeris-drive-automation/tree/main/.github/workflows) — automation definitions.
+- [AX Control Hub API Contract](https://github.com/aerismusic8-alt/aeris-drive-automation/blob/main/AX_CONTROL_HUB/API_CONTRACT.md) — gateway, authentication, state, task, and evidence semantics.
+- [Workflow files](https://github.com/aerismusic8-alt/aeris-drive-automation/tree/main/.github/workflows) — automation definitions.
 - [Repository](https://github.com/aerismusic8-alt/aeris-drive-automation/tree/main) — complete source tree.
 
 ## CURRENT OPERATING PRIORITY
@@ -50,11 +61,8 @@ Only verified GitHub destinations are linked here until the runtime endpoints ar
 
 ## MOBILE USE
 
-**Recommended:** open this README as the AERIS operations home page and add the repository page to the mobile browser home screen/favorites.
-
-**GitHub repository:**
-https://github.com/aerismusic8-alt/aeris-drive-automation
+Open `/operations` from the running Control Hub in a mobile browser for the responsive client surface. The same gateway is used from desktop browsers; the UI does not create a second master state.
 
 ## LINK INTEGRITY RULE
 
-This page intentionally contains only destinations that are known from the repository/GitHub structure. Runtime URLs for AERIS Monitor, Job Log, Delegation Queue, PC1, and PC2 will be added only after their actual endpoints are verified.
+This page intentionally avoids unverified runtime URLs. Runtime endpoints for PC1, PC2, AERIS Monitor, Job Log, and Delegation Queue will be added only after their actual endpoints are verified.
