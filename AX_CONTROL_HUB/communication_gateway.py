@@ -102,6 +102,7 @@ class CommunicationGateway:
         challenge = self.store.challenge()
         return {
             'rehydration_status': challenge['status'],
+            'verified': challenge['verified'],
             'identity': state.get('identity', {}).get('name'),
             'identity_under_test': 'A',
             'agent': 'M',
