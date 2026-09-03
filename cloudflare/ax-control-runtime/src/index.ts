@@ -51,13 +51,7 @@ const LEASE_MS = 60_000;
 const ALLOWED_CONTENT_TYPES = new Set(['text', 'file', 'image', 'event', 'command']);
 
 function json(body: unknown, status = 200): Response {
-  return Response.json(body, {
-    status,
-    headers: {
-      'Cache-Control': 'no-store',
-      'Content-Type': 'application/json; charset=utf-8',
-    },
-  });
+  return Response.json(body, { status, headers: { 'Cache-Control': 'no-store', 'Content-Type': 'application/json; charset=utf-8' } });
 }
 
 function constantTimeEqual(left: string, right: string): boolean {
@@ -108,7 +102,8 @@ export class AxGatewayInbox {
       if (!record?.request_id) return json({ error: 'INPUT_SCHEMA_INVALID' }, 422);
       const existing = current.find((item) => item.request_id === record.request_id);
       if (existing) {
-        return json(existing === record ? { ok: true, requestId: record.request_id } : { error: 'REQUEST_ID_CONFLICT' }, existing === record ? 200 : 409);
+        const same = JSON.stringify(existing) === JSON.stringify(record);
+        return json(same ? { ok: true, requestId: record.request_id } : { error: 'REQUEST_ID_CONFLICT' }, same ? 200 : 409);
       }
       current.push(record);
       await this.state.storage.put('items', current);
@@ -148,37 +143,22 @@ export class AxGatewayInbox {
 
 async function gatewayInboxCall(env: Env, operation: 'put' | 'pull' | 'ack', payload?: unknown): Promise<Response> {
   const stub = env.AX_GATEWAY_INBOX.get(env.AX_GATEWAY_INBOX.idFromName('AERIS-K-GATEWAY'));
-  return stub.fetch(`https://gateway.local/${operation}`, {
-    method: 'POST',
-    headers: { 'content-type': 'application/json' },
-    body: JSON.stringify(payload || {}),
-  });
+  return stub.fetch(`https://gateway.local/${operation}`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(payload || {}) });
 }
 
 async function verifyGitHubToken(token: string): Promise<boolean> {
   try {
-    const response = await fetch(`https://api.github.com/repos/${REPO}`, {
-      method: 'GET',
-      headers: { Accept: 'application/vnd.github+json', Authorization: `Bearer ${token}`, 'X-GitHub-Api-Version': '2026-03-10', 'User-Agent': 'AX-AERIS-Control-Runtime' },
-    });
+    const response = await fetch(`https://api.github.com/repos/${REPO}`, { method: 'GET', headers: { Accept: 'application/vnd.github+json', Authorization: `Bearer ${token}`, 'X-GitHub-Api-Version': '2026-03-10', 'User-Agent': 'AX-AERIS-Control-Runtime' } });
     return response.ok;
   } catch { return false; }
 }
 
-function healthResponse(): Response {
+function healthResponse(env: Env): Response {
   return json({
-    service: SERVICE,
-    status: 'ONLINE',
-    version: 'control-runtime-1.3.0',
-    gate: 'CONTROLLED',
-    mode: MODE,
-    liveFinancialExecution: false,
-    financialTransactions: false,
-    repositoryMutation: false,
-    queue: QUEUE_NAME,
-    gatewayInbox: INBOX_NAME,
-    mobileIngress: true,
-    pcPull: true,
+    service: SERVICE, status: 'ONLINE', version: 'control-runtime-1.3.0', gate: 'CONTROLLED', mode: MODE,
+    liveFinancialExecution: false, financialTransactions: false, repositoryMutation: false, queue: QUEUE_NAME,
+    gatewayInbox: INBOX_NAME, mobileIngress: true, pcPull: true,
+    mobileIngressAuthConfigured: Boolean(env.AX_MOBILE_INGRESS_SECRET), pcPullAuthConfigured: Boolean(env.AX_PC_PULL_SECRET),
     repository: REPO,
     cloudTimeAuthority: { enabled: true, endpoint: '/time', source: 'Cloudflare Worker runtime', storageTimezone: 'UTC', displayTimezone: 'Asia/Bangkok' },
     endpoints: ['GET /', 'GET /health', 'GET /time', 'GET /mobile', 'GET /mobile/config', 'POST /mobile/input', 'POST /pc/pull', 'POST /pc/ack', 'POST /enqueue'],
@@ -193,19 +173,14 @@ function mobilePage(): Response {
 export default {
   async fetch(request: Request, env: Env): Promise<Response> {
     const url = new URL(request.url);
-    if (request.method === 'GET' && url.pathname === '/') return json({ ...JSON.parse(await healthResponse().text()), mobile: '/mobile' });
-    if (request.method === 'GET' && url.pathname === '/health') return healthResponse();
-    if (request.method === 'GET' && url.pathname === '/time') {
-      const now = new Date();
-      return json({ source: 'AX_CLOUD_TIME_AUTHORITY', authority: 'Cloudflare Worker runtime', requestId: crypto.randomUUID(), timestampUtc: now.toISOString(), epochMs: now.getTime(), timezoneDisplay: 'Asia/Bangkok', timestampThailand: now.toLocaleString('sv-SE', { timeZone: 'Asia/Bangkok' }).replace(' ', 'T') + '+07:00', method: request.method });
-    }
+    if (request.method === 'GET' && url.pathname === '/') return healthResponse(env);
+    if (request.method === 'GET' && url.pathname === '/health') return healthResponse(env);
+    if (request.method === 'GET' && url.pathname === '/time') { const now = new Date(); return json({ source: 'AX_CLOUD_TIME_AUTHORITY', authority: 'Cloudflare Worker runtime', requestId: crypto.randomUUID(), timestampUtc: now.toISOString(), epochMs: now.getTime(), timezoneDisplay: 'Asia/Bangkok', timestampThailand: now.toLocaleString('sv-SE', { timeZone: 'Asia/Bangkok' }).replace(' ', 'T') + '+07:00', method: request.method }); }
     if (request.method === 'GET' && url.pathname === '/mobile') return mobilePage();
     if (request.method === 'GET' && url.pathname === '/mobile/config') return json({ service: SERVICE, mobileIngress: true, pcPull: true, executionMode: MODE, liveFinancialExecution: false, transportStore: INBOX_NAME, endpoint: '/mobile/input', pcPullEndpoint: '/pc/pull', pcAckEndpoint: '/pc/ack' });
 
     if (request.method === 'POST' && url.pathname === '/mobile/input') {
       if (!secretAccepted(bearerSecret(request), env.AX_MOBILE_INGRESS_SECRET)) return json({ error: 'AUTH_REQUIRED' }, 401);
-      const contentLength = Number(request.headers.get('content-length') || '0');
-      if (Number.isFinite(contentLength) && contentLength > MAX_PAYLOAD_BYTES) return json({ error: 'PAYLOAD_TOO_LARGE', maxBytes: MAX_PAYLOAD_BYTES }, 413);
       const raw = await request.text();
       if (new TextEncoder().encode(raw).byteLength > MAX_PAYLOAD_BYTES) return json({ error: 'PAYLOAD_TOO_LARGE', maxBytes: MAX_PAYLOAD_BYTES }, 413);
       const body = readJsonObject(raw);
@@ -218,9 +193,8 @@ export default {
       const attachments = body.attachments ?? [];
       if (hasRawBinary(attachments)) return json({ error: 'RAW_BINARY_NOT_ALLOWED' }, 422);
       const record: AxGatewayInput = {
-        request_id: String(body.requestId ?? body.request_id ?? makeRequestId()),
-        task_id: String(body.taskId ?? body.task_id ?? makeTaskId()),
-        status: 'RECEIVED', source_channel: 'MOBILE', content_type: contentType as AxGatewayInput['content_type'], content,
+        request_id: String(body.requestId ?? body.request_id ?? makeRequestId()), task_id: String(body.taskId ?? body.task_id ?? makeTaskId()), status: 'RECEIVED',
+        source_channel: 'MOBILE', content_type: contentType as AxGatewayInput['content_type'], content,
         evidence_status: 'PENDING', verification_status: 'PENDING', attachments: attachments as Array<Record<string, unknown>>,
         source_of_truth: 'A_MASTER_BRAIN', transport_store: INBOX_NAME, received_at: new Date().toISOString(),
       };
@@ -251,8 +225,7 @@ export default {
       const repoHeader = request.headers.get('X-AERIS-REPOSITORY') || '';
       if (repoHeader !== REPO) return json({ error: 'REPOSITORY_NOT_ALLOWED', expected: REPO }, 403);
       if (!(await verifyGitHubToken(token))) return json({ error: 'GITHUB_TOKEN_REJECTED' }, 403);
-      let event: AxEvent;
-      try { event = JSON.parse(await request.text()) as AxEvent; } catch { return json({ error: 'INVALID_JSON' }, 400); }
+      let event: AxEvent; try { event = JSON.parse(await request.text()) as AxEvent; } catch { return json({ error: 'INVALID_JSON' }, 400); }
       if (!event || typeof event !== 'object' || !event.id || !event.taskId || !event.domain || !event.action) return json({ error: 'EVENT_SCHEMA_INVALID', required: ['id', 'taskId', 'domain', 'action'] }, 422);
       const normalizedEvent: AxEvent = { id: String(event.id), taskId: String(event.taskId), domain: String(event.domain), priority: Number(event.priority || 0), action: String(event.action), createdAt: event.createdAt || new Date().toISOString(), source: event.source || 'AX_CONTROL_RUNTIME' };
       await env.AX_EXECUTION_QUEUE.send(normalizedEvent);
@@ -268,9 +241,7 @@ export default {
       console.log(JSON.stringify({ event: 'AX_EXECUTION_EVENT_RECEIVED', queue: batch.queue, messageId: message.id, body: event, receivedAt: new Date().toISOString() }));
       if (event.domain !== 'AERIS') { console.log(JSON.stringify({ event: 'AX_EXECUTION_EVENT_DEFERRED', reason: 'DOMAIN_EXECUTOR_NOT_IMPLEMENTED', taskId: event.taskId, domain: event.domain })); message.ack(); continue; }
       const response = await fetch('https://aeris-execution-runtime.aerismusic8.workers.dev/execute', { method: 'POST', headers: { 'Content-Type': 'application/json', Accept: 'application/json', 'User-Agent': 'AX-Control-Runtime/1.3.0' }, body: JSON.stringify({ jobId: event.id, command: event.action }) });
-      const rawResponse = await response.text();
-      let result: AxExecutionResult | null = null;
-      try { result = rawResponse ? JSON.parse(rawResponse) as AxExecutionResult : null; } catch { result = null; }
+      const rawResponse = await response.text(); let result: AxExecutionResult | null = null; try { result = rawResponse ? JSON.parse(rawResponse) as AxExecutionResult : null; } catch { result = null; }
       const responseTaskMatches = result?.taskId === event.taskId;
       const businessEvidenceValid = !!result?.evidence && String(result.evidence.taskId || '') === event.taskId;
       if (!response.ok || result?.accepted !== true || result?.verified !== true || result?.executed !== true || !responseTaskMatches || !businessEvidenceValid || result?.writeBackVerified !== true) throw new Error(`AERIS_EXECUTION_NOT_VERIFIED:${response.status}`);
