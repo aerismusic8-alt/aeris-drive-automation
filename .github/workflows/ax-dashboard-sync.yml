@@ -12,6 +12,8 @@ on:
     paths:
       - 'dashboard/status.json'
       - 'AX_TRIGGER_REGISTRY.json'
+      - 'AX_TASK_REGISTRY.json'
+      - 'AX_ACTIVE_EXECUTIONS.json'
       - 'AX_DASHBOARD_SYNC.ps1'
       - '.github/workflows/ax-dashboard-sync.yml'
   schedule:
@@ -31,18 +33,22 @@ jobs:
           $job=''
           if('${{ github.event_name }}' -eq 'workflow_dispatch'){$event='${{ inputs.event }}';$job='${{ inputs.job_id }}'}
           & "$PWD\AX_DASHBOARD_SYNC.ps1" -Event $event -JobId $job
-      - name: Verify sync evidence
+      - name: Verify dashboard contracts
         shell: powershell -NoProfile -ExecutionPolicy Bypass -File {0}
         run: |
-          $p='dashboard/ax-sync.json'
-          if(!(Test-Path $p)){throw 'DASHBOARD_SYNC_EVIDENCE_MISSING'}
-          $x=Get-Content -Raw $p|ConvertFrom-Json
-          if($x.schema -ne 'AX_DASHBOARD_SYNC_V1' -or $x.stateVerified -ne $true){throw 'DASHBOARD_SYNC_VERIFY_FAILED'}
-          Write-Host "AX_DASHBOARD_SYNC PASS triggerCount=$($x.triggerCount)"
-      - name: Persist sync state
+          $sync=Get-Content -Raw 'dashboard/ax-sync.json'|ConvertFrom-Json
+          if($sync.schema -ne 'AX_DASHBOARD_SYNC_V1' -or $sync.stateVerified -ne $true){throw 'DASHBOARD_SYNC_VERIFY_FAILED'}
+          $queue=Get-Content -Raw 'dashboard/task-queue.json'|ConvertFrom-Json
+          if($queue.schema -ne 'AX_TASK_QUEUE_V1' -or $queue.tasks -eq $null){throw 'DASHBOARD_QUEUE_CONTRACT_FAILED'}
+          $activity=Get-Content -Raw 'dashboard/activity.json'|ConvertFrom-Json
+          if($activity.schema -ne 'AX_ACTIVITY_V1' -or $activity.events -eq $null){throw 'DASHBOARD_ACTIVITY_CONTRACT_FAILED'}
+          $agents=Get-Content -Raw 'dashboard/agents.json'|ConvertFrom-Json
+          if($agents.schema -ne 'AX_AGENTS_V1' -or $agents.agents -eq $null){throw 'DASHBOARD_AGENT_CONTRACT_FAILED'}
+          Write-Host "AX_DASHBOARD_CONTRACTS PASS tasks=$($queue.tasks.Count) events=$($activity.events.Count) agents=$($agents.agents.Count)"
+      - name: Persist dashboard state
         shell: powershell -NoProfile -ExecutionPolicy Bypass -File {0}
         run: |
           git config user.name 'AX Dashboard Sync'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git add dashboard/ax-sync.json
-          if(git diff --cached --quiet){Write-Host 'No sync mutation'}else{git commit -m 'chore: update AX dashboard sync state';git push}
+          git add dashboard/ax-sync.json dashboard/task-queue.json dashboard/activity.json dashboard/agents.json
+          if(git diff --cached --quiet){Write-Host 'No dashboard mutation'}else{git commit -m 'chore: update AX dashboard state';git push}
