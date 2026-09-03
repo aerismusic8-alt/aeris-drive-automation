@@ -7,17 +7,21 @@ param(
 $ErrorActionPreference = 'Stop'
 
 # ============================================================
-# AX SUPERVISOR TRIGGER
+# M ACTING EXECUTIVE SUPERVISOR
 # Purpose:
-#   Wake the AX execution loop on a heartbeat.
+#   M temporarily owns the AX operational/control-plane duties
+#   until AX runtime identity is verified.
+#   AX remains the master-brain/intelligence layer only.
+#
+# Loop:
 #   Observe -> Analyze/Route -> Dispatch -> record evidence.
 #
-# This script is intentionally ONE-SHOT. Windows Task Scheduler
-# should invoke it every minute during the test phase.
-# It must never create another scheduler trigger itself.
+# This script is ONE-SHOT. Windows Task Scheduler invokes it on
+# the existing heartbeat. It never creates another trigger.
 # ============================================================
 
 $started = Get-Date
+$modePath = Join-Path $PSScriptRoot 'M_ACTING_EXECUTIVE_MODE.json'
 
 function Write-SupervisorLog([string]$Message) {
   $line = "[{0}] {1}" -f (Get-Date).ToUniversalTime().ToString('o'), $Message
@@ -25,7 +29,7 @@ function Write-SupervisorLog([string]$Message) {
   Write-Host $line
 }
 
-Write-SupervisorLog '=== AX SUPERVISOR CYCLE START ==='
+Write-SupervisorLog '=== M ACTING EXECUTIVE CYCLE START ==='
 
 if (-not (Test-Path $RegistryPath)) {
   Write-SupervisorLog "REGISTRY_NOT_FOUND: $RegistryPath"
@@ -37,16 +41,27 @@ if (-not (Test-Path $DispatcherPath)) {
   exit 11
 }
 
+if (-not (Test-Path $modePath)) {
+  Write-SupervisorLog "M_MODE_POLICY_NOT_FOUND: $modePath"
+  exit 12
+}
+
 # Prevent overlapping supervisor cycles when a previous cycle is still running.
-$mutexName = 'Global\AERIS_AX_SUPERVISOR_CYCLE'
+$mutexName = 'Global\AERIS_M_ACTING_EXECUTIVE_CYCLE'
 $mutex = New-Object System.Threading.Mutex($false, $mutexName)
 $lockAcquired = $false
 
 try {
   $lockAcquired = $mutex.WaitOne(0)
   if (-not $lockAcquired) {
-    Write-SupervisorLog 'CYCLE_SKIPPED: PREVIOUS_CYCLE_STILL_RUNNING'
+    Write-SupervisorLog 'CYCLE_SKIPPED: PREVIOUS_M_CYCLE_STILL_RUNNING'
     exit 0
+  }
+
+  $mode = Get-Content -Raw -Path $modePath | ConvertFrom-Json
+  if ($mode.mode -ne 'M_ACTING_EXECUTIVE' -or $mode.status -ne 'ACTIVE_PENDING_RUNTIME_VERIFICATION') {
+    Write-SupervisorLog 'M_MODE_GATE_REJECTED'
+    exit 13
   }
 
   $registry = Get-Content -Raw -Path $RegistryPath | ConvertFrom-Json
@@ -62,10 +77,13 @@ try {
   }
 
   $selected = $eligible[0]
+  Write-SupervisorLog 'OPERATOR: M_ACTING_EXECUTIVE'
+  Write-SupervisorLog 'MASTER_BRAIN: AX_INTELLIGENCE_ONLY_UNTIL_IDENTITY_VERIFIED'
   Write-SupervisorLog "OBSERVE: TASK=$($selected.id) STATE=$($selected.state) PRIORITY=$($selected.priority)"
   Write-SupervisorLog "DECISION: ACTION=$($selected.next_action)"
 
-  # The dispatcher performs runtime health gates and controlled routing.
+  # The existing dispatcher remains the canonical execution path.
+  # M owns invocation/supervision; dispatcher owns runtime gates and routing.
   & powershell.exe -NoProfile -ExecutionPolicy Bypass -File $DispatcherPath -RegistryPath $RegistryPath
   $exitCode = $LASTEXITCODE
 
@@ -77,7 +95,7 @@ try {
   }
 
   Write-SupervisorLog "CYCLE_DURATION_SECONDS=$([math]::Round(((Get-Date)-$started).TotalSeconds,2))"
-  Write-SupervisorLog '=== AX SUPERVISOR CYCLE END ==='
+  Write-SupervisorLog '=== M ACTING EXECUTIVE CYCLE END ==='
   exit $exitCode
 }
 catch {
