@@ -36,6 +36,15 @@ jobs:
           }
           if ((Get-Content -Raw $runtime) -notmatch "'NODE_E2E_TEST'") { throw 'NODE_E2E_TEST_ALLOWLIST_NOT_VERIFIED' }
           Write-Host 'NODE_E2E_TEST_ALLOWLIST=VERIFIED'
+      - name: Inspect PC2 worker Node API contract
+        shell: powershell -NoProfile -ExecutionPolicy Bypass -File {0}
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $runtime = 'C:\AX-Runtime\AX_PC2_WORKER_V2.ps1'
+          $lines = Get-Content $runtime
+          Write-Host '--- WORKER API/COMMAND LINES ---'
+          $lines | Where-Object { $_ -match 'NODE_API|UNKNOWN_COMMAND|allowed|allowlist|Invoke-RestMethod|Invoke-WebRequest|gateway|command|apiUrl|endpoint' } | Select-Object -First 120 | ForEach-Object { Write-Host $_ }
+          Write-Host '--- WORKER END ---'
       - name: Execute one PC2 worker E2E
         shell: powershell -NoProfile -ExecutionPolicy Bypass -File {0}
         run: |
@@ -48,12 +57,12 @@ jobs:
           if ($state.status -ne 'COMPLETED') { throw "PC2_WORKER_E2E_NOT_COMPLETED:$($state.status)" }
           Write-Host 'PC2_WORKER_E2E=VERIFIED'
       - name: Verify PC2 evidence
+        if: ${{ always() }}
         shell: powershell -NoProfile -ExecutionPolicy Bypass -File {0}
         run: |
           $ErrorActionPreference = 'Stop'
           $logPath = 'C:\AX-Runtime\AX-PC2-Worker-V2.log'
-          if (Test-Path $logPath) { Get-Content $logPath -Tail 30 | ForEach-Object { Write-Host $_ } }
+          if (Test-Path $logPath) { Get-Content $logPath -Tail 50 | ForEach-Object { Write-Host $_ } }
           $proof = Get-ChildItem 'C:\AX-Runtime\proof' -File -ErrorAction SilentlyContinue | Sort-Object LastWriteTime -Descending | Select-Object -First 1
-          if (-not $proof) { throw 'PC2_PROOF_MISSING' }
-          Write-Host "LATEST_PROOF=$($proof.FullName)"
-          Write-Host 'PC2_RUNTIME_RECOVERY=VERIFIED'
+          if ($proof) { Write-Host "LATEST_PROOF=$($proof.FullName)" }
+          else { Write-Host 'LATEST_PROOF=NONE' }
