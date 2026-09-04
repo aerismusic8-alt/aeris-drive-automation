@@ -17,5 +17,7 @@ const webChatEnd = source.indexOf('\n}\n\nexport default', webChatStart);
 assert(webChatStart >= 0 && webChatEnd > webChatStart, 'webChatPage source block must be present');
 const webChatSource = source.slice(webChatStart, webChatEnd);
 assert(webChatSource.includes('<script>const NL=String.fromCharCode(10);const $=id=>document.getElementById(id);'), 'web chat browser script must declare NL in its own scope');
+assert(/\$\('message'\)\.addEventListener\('keydown',/.test(webChatSource), 'web chat message box must have a keydown handler');
+assert(/e\.key==='Enter'/.test(webChatSource), 'web chat keydown handler must detect Enter');
 
 console.log('AX web chat source regression checks passed.');
