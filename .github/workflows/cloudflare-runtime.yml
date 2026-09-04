@@ -3,6 +3,7 @@ name: AX Cloudflare Control Runtime
 # POST-MERGE VERIFICATION TRIGGER: this workflow is intentionally push-enabled on main.
 # Cloudflare deployment runs on GitHub-hosted Linux; PC execution remains on the
 # existing self-hosted Windows runner workflows and is verified separately.
+# Browser-scoped NL hotfix is now part of the deployed main source.
 
 on:
   workflow_dispatch:
