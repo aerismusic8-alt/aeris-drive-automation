@@ -62,6 +62,11 @@ def test_raw_attachment_data_is_rejected(tmp_path):
     except ValueError as exc: assert str(exc)=='RAW_BINARY_NOT_ALLOWED'; return
     raise AssertionError('expected raw binary rejection')
 
+def test_path_traversal_request_id_is_rejected(tmp_path):
+    try: gateway(tmp_path).handle_input({'request_id':'../escape','source_channel':'WEB','content_type':'text','idempotency_key':'safe-1','content':'x'},'K_TOKEN')
+    except ValueError as exc: assert str(exc)=='INVALID_REQUEST_ID'; return
+    raise AssertionError('expected request id validation rejection')
+
 def test_web_chat_surface_is_ax_not_aeris():
     root=Path(__file__).resolve().parents[2]; html=root.joinpath('AX_CONTROL_HUB','operations.html').read_text(encoding='utf-8'); js=root.joinpath('AX_CONTROL_HUB','operations_client.js').read_text(encoding='utf-8'); assert '<title>AX Web Chat</title>' in html and 'AERIS' not in html and '/gateway/session' in js and '/gateway/tasks' in js
 
@@ -72,5 +77,5 @@ if __name__=='__main__':
     import tempfile
     with tempfile.TemporaryDirectory() as td:
         p=Path(td)
-        for test in [test_new_session_rehydrates_authoritative_context,test_service_and_read_only_capabilities_are_distinct,test_idempotency_key_rejects_duplicate_input,test_real_queue_rejects_racing_idempotency_key,test_unverified_rehydration_blocks_control_input,test_read_only_cannot_submit_input,test_raw_attachment_data_is_rejected]: test(p)
+        for test in [test_new_session_rehydrates_authoritative_context,test_service_and_read_only_capabilities_are_distinct,test_idempotency_key_rejects_duplicate_input,test_real_queue_rejects_racing_idempotency_key,test_unverified_rehydration_blocks_control_input,test_read_only_cannot_submit_input,test_raw_attachment_data_is_rejected,test_path_traversal_request_id_is_rejected]: test(p)
     test_web_chat_surface_is_ax_not_aeris(); test_contract_is_provider_neutral(); print('AX_INDEPENDENT_CHAT_GATEWAY_TESTS: PASS')
