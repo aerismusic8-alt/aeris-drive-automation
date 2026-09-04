@@ -31,7 +31,7 @@ jobs:
           fetch-depth: 0
 
       - name: Build canonical 24h state
-        shell: powershell
+        shell: powershell -NoProfile -ExecutionPolicy Bypass -File {0}
         run: |
           if ('${{ github.event.inputs.context_payload }}' -ne '') {
             '${{ github.event.inputs.context_payload }}' | Set-Content -Path AX_CONTEXT_INPUT.json -Encoding UTF8
@@ -39,7 +39,7 @@ jobs:
           & .\AX_CONTEXT_SYNC.ps1 -ContextPath .\AX_CONTEXT_INPUT.json -StatePath .\AX_CANONICAL_STATE.json -WindowHours 24
 
       - name: Verify canonical state
-        shell: powershell
+        shell: powershell -NoProfile -ExecutionPolicy Bypass -File {0}
         run: |
           $s = Get-Content -Raw .\AX_CANONICAL_STATE.json | ConvertFrom-Json
           if ($s.schema -ne 'AX_CANONICAL_STATE_V1') { throw 'AX_CONTEXT_SYNC_SCHEMA_FAIL' }
@@ -47,7 +47,7 @@ jobs:
           Write-Host "Canonical state verified: events=$($s.eventCount)"
 
       - name: Persist state
-        shell: powershell
+        shell: powershell -NoProfile -ExecutionPolicy Bypass -File {0}
         run: |
           git config user.name 'aerismusic8-alt'
           git config user.email 'aerismusic8-alt@users.noreply.github.com'
@@ -55,10 +55,12 @@ jobs:
           git diff --cached --quiet
           if ($LASTEXITCODE -eq 0) { Write-Host 'State persistence: NO_CHANGE'; exit 0 }
           git commit -m 'chore: persist AX canonical 24h context state'
+          git fetch origin main
+          git rebase origin/main
           git push origin HEAD:main
 
       - name: State bootstrap marker
-        shell: powershell
+        shell: powershell -NoProfile -ExecutionPolicy Bypass -File {0}
         run: |
           $s = Get-Content -Raw .\AX_CANONICAL_STATE.json | ConvertFrom-Json
           Write-Host 'AX_BOOTSTRAP=READY'
