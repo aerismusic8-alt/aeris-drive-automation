@@ -1,7 +1,5 @@
 import json
-import os
 from pathlib import Path
-
 from AX_CONTROL_HUB.communication_gateway import CommunicationGateway
 from AX_CONTROL_HUB.gateway_input_queue import GatewayInputQueue
 
@@ -65,13 +63,10 @@ def test_raw_attachment_data_is_rejected(tmp_path):
     raise AssertionError('expected raw binary rejection')
 
 def test_web_chat_surface_is_ax_not_aeris():
-    html=Path(__file__).resolve().parents[2].joinpath('AX_CONTROL_HUB','operations.html').read_text(encoding='utf-8'); assert '<title>AX Web Chat</title>' in html and 'AERIS' not in html
+    root=Path(__file__).resolve().parents[2]; html=root.joinpath('AX_CONTROL_HUB','operations.html').read_text(encoding='utf-8'); js=root.joinpath('AX_CONTROL_HUB','operations_client.js').read_text(encoding='utf-8'); assert '<title>AX Web Chat</title>' in html and 'AERIS' not in html and '/gateway/session' in js and '/gateway/tasks' in js
 
 def test_contract_is_provider_neutral():
-    contract=json.loads(Path(__file__).resolve().parents[2].joinpath('AX_CONTROL_HUB','COMMUNICATION_GATEWAY_CONTRACT.json').read_text(encoding='utf-8'))
-    assert contract['security']['external_ai_direct_master_brain_access'] is False
-    assert set(contract['identities']['SERVICE']) >= {'read_state','read_tasks','read_evidence','submit_input'}
-    assert 'submit_input' not in contract['identities']['READ_ONLY']
+    contract=json.loads(Path(__file__).resolve().parents[2].joinpath('AX_CONTROL_HUB','COMMUNICATION_GATEWAY_CONTRACT.json').read_text(encoding='utf-8')); assert contract['security']['external_ai_direct_master_brain_access'] is False; assert set(contract['identities']['SERVICE']) >= {'read_state','read_tasks','read_evidence','submit_input'}; assert 'submit_input' not in contract['identities']['READ_ONLY']
 
 if __name__=='__main__':
     import tempfile
