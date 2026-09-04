@@ -32,10 +32,11 @@ while ($true) {
         }
 
         $item = $pulled.item
+        $sourceChannel = if ([string]::IsNullOrWhiteSpace([string]$item.source_channel)) { 'MOBILE' } else { [string]$item.source_channel }
         $gatewayPayload = @{
             request_id = $item.request_id
             task_id = $item.task_id
-            source_channel = 'WEB'
+            source_channel = $sourceChannel
             content_type = $item.content_type
             content = $item.content
             attachments = $item.attachments
@@ -57,7 +58,7 @@ while ($true) {
         $ack = Invoke-Json "$remoteBase/pc/ack" 'POST' $remoteAuth @{ request_id = $item.request_id }
         if (-not $ack.ok) { throw "REMOTE_ACK_FAILED:$($item.request_id)" }
 
-        Write-Host "BRIDGE_ACCEPTED request_id=$($item.request_id) task_id=$($item.task_id) result_returned=true"
+        Write-Host "BRIDGE_ACCEPTED request_id=$($item.request_id) task_id=$($item.task_id) source_channel=$sourceChannel result_returned=true"
     }
     catch {
         Write-Warning "AX PC/MOBILE bridge cycle failed: $($_.Exception.Message)"
