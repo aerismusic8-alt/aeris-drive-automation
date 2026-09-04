@@ -35,28 +35,11 @@ jobs:
           path = Path('cloudflare/ax-control-runtime/src/index.ts')
           source = path.read_text(encoding='utf-8')
 
-          old = '<button id="login">Start session</button></div>'
-          new = '<button id="login">Start session</button><div id="loginStatus" class="muted" role="status" aria-live="polite"></div></div>'
+          old = "$('send').onclick=async()=>{try{const message=$('message').value.trim();if(!message&&!$('file').files.length)throw new Error('MESSAGE_REQUIRED');const r=await submit(message);$('messages').textContent+=NL+NL+'[RECEIVED] '+r.requestId+NL+(message||'[attachment]');$('result').className='muted';$('result').textContent='Waiting for Local Hub result…';const result=await poll(r.requestId);$('messages').textContent+=NL+'[LOCAL HUB RESULT]'+NL+JSON.stringify(result.result||result,null,2);$('result').textContent='Completed';$('message').value='';$('file').value=''}catch(e){$('result').className='err';$('result').textContent=e.message}};"
+          new = "$('send').onclick=async()=>{try{const message=$('message').value.trim();if(!message&&!$('file').files.length)throw new Error('MESSAGE_REQUIRED');const r=await submit(message);$('messages').textContent+=NL+NL+'[RECEIVED] '+r.requestId+NL+(message||'[attachment]');$('message').value='';$('file').value='';$('result').className='muted';$('result').textContent='Waiting for Local Hub result…';const result=await poll(r.requestId);$('messages').textContent+=NL+'[LOCAL HUB RESULT]'+NL+JSON.stringify(result.result||result,null,2);$('result').textContent='Completed'}catch(e){$('result').className='err';$('result').textContent=e.message}};"
           if old not in source:
-              raise SystemExit('REPAIR_LOGIN_MARKER_NOT_FOUND')
+              raise SystemExit('REPAIR_CURRENT_SEND_HANDLER_NOT_FOUND')
           source = source.replace(old, new, 1)
-
-          old = "async function login(){try{const secret=$('secret').value;const r=await fetch('/web/session',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({secret})});const j=await r.json();if(!r.ok)throw new Error(j.error||'AUTH_FAILED');setSession(j.sessionToken);$('secret').value='';logged();await refresh()}catch(e){$('session').textContent=e.message}}"
-          new = "async function login(){const status=$('loginStatus');status.className='muted';status.textContent='Connecting…';try{const secret=$('secret').value.trim();if(!secret)throw new Error('SECRET_REQUIRED');const r=await fetch('/web/session',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({secret})});const j=await r.json().catch(()=>({}));if(!r.ok)throw new Error(j.error||'AUTH_FAILED');if(!j.sessionToken)throw new Error('SESSION_TOKEN_MISSING');setSession(j.sessionToken);$('secret').value='';status.textContent='';logged();await refresh()}catch(e){status.className='err';status.textContent=e.message||'AUTH_FAILED';}}"
-          if old not in source:
-              raise SystemExit('REPAIR_LOGIN_FUNCTION_NOT_FOUND')
-          source = source.replace(old, new, 1)
-
-          old = "$('send').onclick=async()=>{try{const r=await submit($('message').value);$('messages').textContent+='\\n\\n[RECEIVED] '+r.requestId+'\\n'+($('message').value||'');$('result').className='muted';$('result').textContent='Waiting for Local Hub result…';const result=await poll(r.requestId);$('messages').textContent+='\\n[LOCAL HUB RESULT]\\n'+JSON.stringify(result.result||result,null,2);$('result').textContent='Completed';$('message').value='';$('file').value=''}catch(e){$('result').className='err';$('result').textContent=e.message}};if(session()){logged();refresh().catch(()=>{})}"
-          new = "$('send').onclick=async()=>{try{const message=$('message').value.trim();if(!message && !$('file').files.length)throw new Error('MESSAGE_REQUIRED');const r=await submit(message);$('messages').textContent+='\\n\\n[RECEIVED] '+r.requestId+'\\n'+(message||'[attachment]');$('result').className='muted';$('result').textContent='Waiting for Local Hub result…';const result=await poll(r.requestId);$('messages').textContent+='\\n[LOCAL HUB RESULT]\\n'+JSON.stringify(result.result||result,null,2);$('result').textContent='Completed';$('message').value='';$('file').value=''}catch(e){$('result').className='err';$('result').textContent=e.message}};if(session()){logged();refresh().catch(()=>{})}"
-          if old not in source:
-              raise SystemExit('REPAIR_SEND_HANDLER_NOT_FOUND')
-          source = source.replace(old, new, 1)
-
-          old = "$('macheck').onclick=async()=>{try{const r=await submit('M-A-CHECK');$('messages').textContent+='\\n\\n[REQUESTED] '+r.requestId+'\\nM-A-CHECK';const result=await poll(r.requestId);$('messages').textContent+='\\n[RESULT]\\n'+JSON.stringify(result.result||result,null,2)}catch(e){$('result').className='err';$('result').textContent=e.message}};"
-          if old not in source:
-              raise SystemExit('REPAIR_MCHECK_HANDLER_NOT_FOUND')
-
           path.write_text(source, encoding='utf-8')
           PY
 
@@ -75,5 +58,5 @@ jobs:
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
           git add cloudflare/ax-control-runtime/src/index.ts
-          git commit -m 'fix: repair AX web chat browser interactions'
+          git commit -m 'fix: clear AX web chat composer after acceptance'
           git push --set-upstream origin "${{ steps.branch.outputs.branch }}"
