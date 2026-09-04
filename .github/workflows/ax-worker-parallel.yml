@@ -15,14 +15,14 @@ jobs:
     timeout-minutes: 5
     steps:
       - name: AX Worker identity
-        shell: powershell
+        shell: powershell -NoProfile -ExecutionPolicy Bypass -File {0}
         run: |
           Write-Host "AX_WORKER=ONLINE"
           Write-Host "PC=$env:COMPUTERNAME"
           Write-Host "TIME=$([DateTime]::UtcNow.ToString('o'))"
 
       - name: AX Worker execution proof
-        shell: powershell
+        shell: powershell -NoProfile -ExecutionPolicy Bypass -File {0}
         run: |
           $root = 'C:\AERIS\AX\workers'
           New-Item -ItemType Directory -Path $root -Force | Out-Null
