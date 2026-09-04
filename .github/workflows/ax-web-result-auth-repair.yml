@@ -29,152 +29,134 @@ jobs:
           node-version: 24
           check-latest: true
 
-      - name: Patch AX web result boundary and mobile dashboard
+      - name: Patch AX runtime
         shell: bash
         run: |
           set -euo pipefail
           python3 - <<'PY'
           from pathlib import Path
           import re
-
           src = Path('cloudflare/ax-control-runtime/src/index.ts')
           text = src.read_text(encoding='utf-8')
 
-          # 1) Result polling: request-id capability is sufficient after authenticated gateway acceptance.
           result_pattern = r"if \(request\.method === 'GET' && url\.pathname\.startsWith\('/web/result/'\)\) \{.*?\n\}"
-          result_replacement = """if (request.method === 'GET' && url.pathname.startsWith('/web/result/')) {
+          result_new = """if (request.method === 'GET' && url.pathname.startsWith('/web/result/')) {
   const requestId = decodeURIComponent(url.pathname.slice('/web/result/'.length));
   if (!/^[0-9a-f]{8}-[0-9a-f-]{27}$/i.test(requestId)) return json({ error: 'REQUEST_ID_INVALID' }, 422);
   const resultResponse = await gatewayInboxCall(env, 'result-get/', undefined, requestId);
   return json(await resultResponse.json(), resultResponse.status);
 }"""
-          text, count = re.subn(result_pattern, result_replacement, text, count=1, flags=re.S)
-          if count != 1:
-              raise SystemExit('web result route not found')
+          text, n = re.subn(result_pattern, result_new, text, count=1, flags=re.S)
+          if n != 1: raise SystemExit('web result route not found')
 
-          # 2) Durable Object dashboard snapshot.
-          stats_block = """
+          snapshot = """
     if (path === '/dashboard' && request.method === 'GET') {
       const now = Date.now();
-      const items = current.map((item) => {
+      const items = current.slice(-100).reverse().map((item) => {
         const meta = item as AxGatewayInput & { _status?: string; _leaseUntil?: number };
-        return {
-          request_id: item.request_id,
-          task_id: item.task_id,
-          source_channel: item.source_channel,
-          content_type: item.content_type,
-          status: meta._status || 'PENDING',
-          received_at: item.received_at,
-          lease_active: Boolean(meta._leaseUntil && meta._leaseUntil > now),
-        };
-      }).slice(-100).reverse();
+        return { request_id: item.request_id, task_id: item.task_id, source_channel: item.source_channel, content_type: item.content_type, status: meta._status || 'PENDING', received_at: item.received_at, lease_active: Boolean(meta._leaseUntil && meta._leaseUntil > now) };
+      });
       const resultEntries = await this.state.storage.list<AxWebResult>({ prefix: 'result:' });
-      const results = [...resultEntries.values()].slice(-100).reverse().map((record) => ({
-        request_id: record.request_id,
-        task_id: record.task_id,
-        received_at: record.received_at,
-        status: record.result && typeof record.result === 'object' ? String((record.result as Record<string, unknown>).status || 'RESULT') : 'RESULT',
-      }));
-      const counts = {
-        total: current.length,
-        pending: current.filter((item) => !(item as AxGatewayInput & { _status?: string })._status || (item as AxGatewayInput & { _status?: string })._status === 'PENDING').length,
-        claimed: current.filter((item) => (item as AxGatewayInput & { _status?: string })._status === 'CLAIMED').length,
-        acked: current.filter((item) => (item as AxGatewayInput & { _status?: string })._status === 'ACKED').length,
-        results: resultEntries.size,
-      };
-      return json({ ok: true, counts, items, results, generated_at: new Date().toISOString() });
+      const results = [...resultEntries.values()].slice(-100).reverse().map((record) => ({ request_id: record.request_id, task_id: record.task_id, received_at: record.received_at, status: record.result && typeof record.result === 'object' ? String((record.result as Record<string, unknown>).status || 'RESULT') : 'RESULT' }));
+      const pending = current.filter((item) => !((item as AxGatewayInput & { _status?: string })._status) || (item as AxGatewayInput & { _status?: string })._status === 'PENDING').length;
+      const claimed = current.filter((item) => (item as AxGatewayInput & { _status?: string })._status === 'CLAIMED').length;
+      const acked = current.filter((item) => (item as AxGatewayInput & { _status?: string })._status === 'ACKED').length;
+      return json({ ok: true, counts: { total: current.length, pending, claimed, acked, results: resultEntries.size }, items, results, generated_at: new Date().toISOString() });
     }
 """
           marker = "    if (path === '/result-put' && payload && typeof payload === 'object') {"
           if "if (path === '/dashboard' && request.method === 'GET')" not in text:
-              if marker not in text: raise SystemExit('dashboard insertion marker not found')
-              text = text.replace(marker, stats_block + marker, 1)
+              if marker not in text: raise SystemExit('dashboard DO marker not found')
+              text = text.replace(marker, snapshot + marker, 1)
 
-          # 3) Extend gateway operation type.
-          old_type = "operation: 'put' | 'pull' | 'ack' | 'result-put' | 'result-get/'"
-          new_type = "operation: 'put' | 'pull' | 'ack' | 'result-put' | 'result-get/' | 'dashboard'"
-          if old_type not in text: raise SystemExit('gateway operation type marker not found')
-          text = text.replace(old_type, new_type, 1)
-          old_path = "const path = operation === 'result-get/' ? `${operation}${encodeURIComponent(requestId || '')}` : operation;"
-          new_path = "const path = operation === 'result-get/' ? `${operation}${encodeURIComponent(requestId || '')}` : operation;"
-          # No path rewrite is needed for dashboard; the operation name maps directly to /dashboard.
+          old_gateway_type = "operation: 'put' | 'pull' | 'ack' | 'result-put' | 'result-get/'"
+          if old_gateway_type not in text: raise SystemExit('gateway operation type marker not found')
+          text = text.replace(old_gateway_type, "operation: 'put' | 'pull' | 'ack' | 'result-put' | 'result-get/' | 'dashboard'", 1)
 
-          old_worker = """    if (request.method === 'GET' && url.pathname.startsWith('/web/result/')) {
-  const requestId = decodeURIComponent(url.pathname.slice('/web/result/'.length));
-  if (!/^[0-9a-f]{8}-[0-9a-f-]{27}$/i.test(requestId)) return json({ error: 'REQUEST_ID_INVALID' }, 422);
-  const resultResponse = await gatewayInboxCall(env, 'result-get/', undefined, requestId);
-  return json(await resultResponse.json(), resultResponse.status);
-}
-"""
-          dashboard_route = old_worker + """    if (request.method === 'GET' && url.pathname === '/dashboard') {
-      const denied = await requireWebSession(request, env); if (denied) return denied;
-      const dashboardResponse = await gatewayInboxCall(env, 'dashboard');
-      return json(await dashboardResponse.json(), dashboardResponse.status);
-    }
-    if (request.method === 'GET' && url.pathname === '/web/dashboard-data') {
-      const denied = await requireWebSession(request, env); if (denied) return denied;
-      const dashboardResponse = await gatewayInboxCall(env, 'dashboard');
-      return json(await dashboardResponse.json(), dashboardResponse.status);
-    }
-"""
-          if old_worker not in text:
-              raise SystemExit('patched web result route marker not found after replacement')
-          text = text.replace(old_worker, dashboard_route, 1)
+          old_gateway = """  const path = operation === 'result-get/' ? `${operation}${encodeURIComponent(requestId || '')}` : operation;
+  return stub.fetch(`https://gateway.local/${path}`, {
+    method: operation === 'result-get/' ? 'GET' : 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: operation === 'result-get/' ? undefined : JSON.stringify(payload || {}),
+  });"""
+          new_gateway = """  const isGet = operation === 'result-get/' || operation === 'dashboard';
+  const path = operation === 'result-get/' ? `${operation}${encodeURIComponent(requestId || '')}` : operation;
+  return stub.fetch(`https://gateway.local/${path}`, {
+    method: isGet ? 'GET' : 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: isGet ? undefined : JSON.stringify(payload || {}),
+  });"""
+          if old_gateway not in text: raise SystemExit('gateway call block not found')
+          text = text.replace(old_gateway, new_gateway, 1)
 
-          # 4) Add a responsive dashboard page before export default.
-          page_marker = "\nexport default {"
-          dashboard_page = r'''
+          page = r'''
 function dashboardPage(): Response {
-  const html = `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="color-scheme" content="light"><title>AX Operations Dashboard</title><style>:root{font-family:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;color:#18202a;background:#f4f6f8}*{box-sizing:border-box}body{margin:0}.app{max-width:1100px;margin:auto;padding:12px}.top{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap}.muted{color:#667085;font-size:.88rem}.grid{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:8px;margin:12px 0}.card,.panel{background:#fff;border:1px solid #d9dee7;border-radius:12px;padding:12px}.card b{display:block;font-size:1.35rem;margin-top:3px}.panel{margin:10px 0;overflow:auto}.toolbar{display:flex;gap:8px;flex-wrap:wrap}.toolbar button{flex:0 0 auto}button{border:1px solid #c9d0db;background:#fff;border-radius:9px;padding:9px 12px;cursor:pointer;font:inherit}.ok{padding:8px;border-radius:8px;background:#eef7ee}.err{padding:8px;border-radius:8px;background:#fdecec}.table{width:100%;border-collapse:collapse;font-size:.88rem}.table th,.table td{text-align:left;padding:8px;border-bottom:1px solid #edf0f4;white-space:nowrap}.pill{display:inline-block;padding:2px 7px;border-radius:999px;background:#eef2f6}@media(max-width:800px){.grid{grid-template-columns:repeat(2,minmax(0,1fr))}.table{font-size:.8rem}.app{padding:8px}}@media(max-width:430px){.grid{grid-template-columns:1fr 1fr}.card b{font-size:1.1rem}}</style></head><body><main class="app"><div class="top"><div><h1 style="margin:0">AX Operations Dashboard</h1><div class="muted">WEB → PC → HUB · A_MASTER_BRAIN · FREE_ONLY</div></div><div class="toolbar"><button id="refresh">Refresh</button><button id="chat">Open Chat</button><button id="logout">Logout</button></div></div><div id="status" class="muted" style="margin-top:8px"></div><section class="grid"><div class="card">Total<b id="total">—</b></div><div class="card">Pending<b id="pending">—</b></div><div class="card">Claimed<b id="claimed">—</b></div><div class="card">Acked<b id="acked">—</b></div><div class="card">Results<b id="results">—</b></div></section><section class="panel"><h2 style="margin-top:0">Queue / Recent Work</h2><table class="table"><thead><tr><th>Status</th><th>Task</th><th>Request</th><th>Channel</th><th>Type</th><th>Received</th></tr></thead><tbody id="items"><tr><td colspan="6">Loading…</td></tr></tbody></table></section><section class="panel"><h2 style="margin-top:0">Recent Results</h2><table class="table"><thead><tr><th>Status</th><th>Task</th><th>Request</th><th>Received</th></tr></thead><tbody id="resultRows"><tr><td colspan="4">Loading…</td></tr></tbody></table></section></main><script>const $=id=>document.getElementById(id);const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));async function load(){try{const h=await fetch('/health',{cache:'no-store'});const health=await h.json();$('status').textContent='Runtime '+health.status+' · '+health.version+' · updated '+new Date().toLocaleTimeString();const r=await fetch('/web/dashboard-data',{headers:{Authorization:'Bearer '+(sessionStorage.getItem('ax_web_session')||'')},cache:'no-store'});const j=await r.json();if(!r.ok)throw new Error(j.error||'DASHBOARD_HTTP_'+r.status);$('total').textContent=j.counts.total;$('pending').textContent=j.counts.pending;$('claimed').textContent=j.counts.claimed;$('acked').textContent=j.counts.acked;$('results').textContent=j.counts.results;$('items').innerHTML=j.items.length?j.items.map(x=>'<tr><td><span class="pill">'+esc(x.status)+'</span></td><td>'+esc(x.task_id)+'</td><td>'+esc(x.request_id)+'</td><td>'+esc(x.source_channel)+'</td><td>'+esc(x.content_type)+'</td><td>'+esc(new Date(x.received_at).toLocaleString())+'</td></tr>').join(''):'<tr><td colspan="6">No queue items</td></tr>';$('resultRows').innerHTML=j.results.length?j.results.map(x=>'<tr><td><span class="pill">'+esc(x.status)+'</span></td><td>'+esc(x.task_id)+'</td><td>'+esc(x.request_id)+'</td><td>'+esc(new Date(x.received_at).toLocaleString())+'</td></tr>').join(''):'<tr><td colspan="4">No results yet</td></tr>';}catch(e){$('status').className='err';$('status').textContent=e.message}}$('refresh').onclick=load;$('chat').onclick=()=>location.href='/chat';$('logout').onclick=()=>{sessionStorage.removeItem('ax_web_session');location.href='/chat'};load();setInterval(load,5000);</script></body></html>`;
+  const html = `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>AX Operations Dashboard</title><style>:root{font-family:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;color:#18202a;background:#f4f6f8}*{box-sizing:border-box}body{margin:0}.app{max-width:1100px;margin:auto;padding:12px}.top{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap}.muted{color:#667085;font-size:.88rem}.grid{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:8px;margin:12px 0}.card,.panel{background:#fff;border:1px solid #d9dee7;border-radius:12px;padding:12px}.card b{display:block;font-size:1.35rem;margin-top:3px}.panel{margin:10px 0;overflow:auto}.toolbar{display:flex;gap:8px;flex-wrap:wrap}.toolbar button{flex:0 0 auto}button{border:1px solid #c9d0db;background:#fff;border-radius:9px;padding:9px 12px;cursor:pointer;font:inherit}.err{padding:8px;border-radius:8px;background:#fdecec}.table{width:100%;border-collapse:collapse;font-size:.88rem}.table th,.table td{text-align:left;padding:8px;border-bottom:1px solid #edf0f4;white-space:nowrap}.pill{display:inline-block;padding:2px 7px;border-radius:999px;background:#eef2f6}@media(max-width:800px){.grid{grid-template-columns:repeat(2,minmax(0,1fr))}.table{font-size:.8rem}.app{padding:8px}}</style></head><body><main class="app"><div class="top"><div><h1 style="margin:0">AX Operations Dashboard</h1><div class="muted">WEB → PC → HUB · A_MASTER_BRAIN · FREE_ONLY</div></div><div class="toolbar"><button id="refresh">Refresh</button><button id="chat">Open Chat</button><button id="logout">Logout</button></div></div><div id="status" class="muted" style="margin-top:8px"></div><section class="grid"><div class="card">Total<b id="total">—</b></div><div class="card">Pending<b id="pending">—</b></div><div class="card">Claimed<b id="claimed">—</b></div><div class="card">Acked<b id="acked">—</b></div><div class="card">Results<b id="results">—</b></div></section><section class="panel"><h2 style="margin-top:0">Queue / Recent Work</h2><table class="table"><thead><tr><th>Status</th><th>Task</th><th>Request</th><th>Channel</th><th>Type</th><th>Received</th></tr></thead><tbody id="items"></tbody></table></section><section class="panel"><h2 style="margin-top:0">Recent Results</h2><table class="table"><thead><tr><th>Status</th><th>Task</th><th>Request</th><th>Received</th></tr></thead><tbody id="resultRows"></tbody></table></section></main><script>const $=id=>document.getElementById(id);const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));async function load(){try{const h=await fetch('/health',{cache:'no-store'});const health=await h.json();$('status').textContent='Runtime '+health.status+' · '+health.version+' · '+new Date().toLocaleTimeString();const token=sessionStorage.getItem('ax_web_session')||'';if(!token)throw new Error('AUTH_REQUIRED_OPEN_CHAT_FIRST');const r=await fetch('/web/dashboard-data',{headers:{Authorization:'Bearer '+token},cache:'no-store'});const j=await r.json();if(!r.ok)throw new Error(j.error||'DASHBOARD_HTTP_'+r.status);$('total').textContent=j.counts.total;$('pending').textContent=j.counts.pending;$('claimed').textContent=j.counts.claimed;$('acked').textContent=j.counts.acked;$('results').textContent=j.counts.results;$('items').innerHTML=j.items.length?j.items.map(x=>'<tr><td><span class="pill">'+esc(x.status)+'</span></td><td>'+esc(x.task_id)+'</td><td>'+esc(x.request_id)+'</td><td>'+esc(x.source_channel)+'</td><td>'+esc(x.content_type)+'</td><td>'+esc(new Date(x.received_at).toLocaleString())+'</td></tr>').join(''):'<tr><td colspan="6">No queue items</td></tr>';$('resultRows').innerHTML=j.results.length?j.results.map(x=>'<tr><td><span class="pill">'+esc(x.status)+'</span></td><td>'+esc(x.task_id)+'</td><td>'+esc(x.request_id)+'</td><td>'+esc(new Date(x.received_at).toLocaleString())+'</td></tr>').join(''):'<tr><td colspan="4">No results yet</td></tr>';}catch(e){$('status').className='err';$('status').textContent=e.message}}$('refresh').onclick=load;$('chat').onclick=()=>location.href='/chat';$('logout').onclick=()=>{sessionStorage.removeItem('ax_web_session');location.href='/chat'};load();setInterval(load,5000);</script></body></html>`;
   return new Response(html, { headers: { 'content-type': 'text/html; charset=utf-8', 'cache-control': 'no-store' } });
 }
 '''
           if 'function dashboardPage(): Response' not in text:
-              text = text.replace(page_marker, dashboard_page + page_marker, 1)
+              text = text.replace('\nexport default {', page + '\nexport default {', 1)
 
-          # 5) Route dashboard page.
           route_marker = "    if (request.method === 'GET' && url.pathname === '/chat') return webChatPage();"
-          route_add = route_marker + "\n    if (request.method === 'GET' && url.pathname === '/dashboard') {\n      return dashboardPage();\n    }"
-          if "if (request.method === 'GET' && url.pathname === '/dashboard')" not in text.split("    if (request.method === 'GET' && url.pathname === '/chat')",1)[0]:
-              text = text.replace(route_marker, route_add, 1)
+          if "url.pathname === '/dashboard') return dashboardPage()" not in text:
+              if route_marker not in text: raise SystemExit('dashboard route marker not found')
+              text = text.replace(route_marker, route_marker + "\n    if (request.method === 'GET' && url.pathname === '/dashboard') return dashboardPage();", 1)
+
+          data_route = "    if (request.method === 'GET' && url.pathname === '/web/dashboard-data') {\n      const denied = await requireWebSession(request, env); if (denied) return denied;\n      const dashboardResponse = await gatewayInboxCall(env, 'dashboard');\n      return json(await dashboardResponse.json(), dashboardResponse.status);\n    }\n"
+          if "url.pathname === '/web/dashboard-data'" not in text:
+              anchor = "    if (request.method === 'GET' && url.pathname.startsWith('/web/result/')) {"
+              if anchor not in text: raise SystemExit('dashboard data route anchor not found')
+              text = text.replace(anchor, data_route + anchor, 1)
 
           src.write_text(text, encoding='utf-8')
-          print('repair patch prepared')
+          print('runtime patch completed')
           PY
 
-      - name: Run AX web chat regression guard
+      - name: Run web chat regression guard
         run: node cloudflare/ax-control-runtime/tests/web-chat-source.test.mjs
 
-      - name: Persist self-healing repair
+      - name: Persist repaired source
         shell: bash
         run: |
           set -euo pipefail
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          rm -f .github/workflows/ax-web-result-auth-repair.yml
-          git add cloudflare/ax-control-runtime/src/index.ts cloudflare/ax-control-runtime/tests/web-chat-source.test.mjs .github/workflows/ax-web-result-auth-repair.yml
-          if git diff --cached --quiet; then
-            echo 'No source changes required.'
-          else
-            git commit -m "fix: harden web result polling and add operations dashboard"
-            git push
-          fi
+          git add cloudflare/ax-control-runtime/src/index.ts
+          if git diff --cached --quiet; then exit 0; fi
+          git commit -m "fix: add real operations dashboard and harden web results"
+          git push
 
-      - name: Deploy repaired AX Control Runtime
+      - name: Deploy repaired runtime
         shell: bash
         working-directory: cloudflare/ax-control-runtime
-        run: |
-          set -euo pipefail
-          npx wrangler@latest deploy --name "$WORKER_NAME"
+        run: npx wrangler@latest deploy --name "$WORKER_NAME"
 
-      - name: Verify deployed health
+      - name: Verify dashboard and health
         shell: bash
         run: |
           set -euo pipefail
           node <<'NODE'
-          const response = await fetch(process.env.AX_CONTROL_RUNTIME_URL + '/health');
-          if (!response.ok) throw new Error('HEALTH_HTTP_'+response.status);
-          const r = await response.json();
-          console.log(JSON.stringify({status:r.status,version:r.version,mode:r.mode,webChat:r.webChat,webChatAuthConfigured:r.webChatAuthConfigured},null,2));
-          if (r.status !== 'ONLINE' || r.mode !== 'FREE_ONLY' || r.webChat !== true || r.webChatAuthConfigured !== true) process.exit(1);
+          const base = process.env.AX_CONTROL_RUNTIME_URL;
+          const health = await (await fetch(base+'/health',{cache:'no-store'})).json();
+          if (health.status !== 'ONLINE' || health.webChat !== true) throw new Error('HEALTH_CONTRACT_FAILED');
+          const dash = await fetch(base+'/dashboard',{cache:'no-store'});
+          if (!dash.ok) throw new Error('DASHBOARD_HTTP_'+dash.status);
+          const html = await dash.text();
+          if (!html.includes('AX Operations Dashboard')) throw new Error('DASHBOARD_PAGE_MISSING');
+          console.log('HEALTH_OK',health.version,health.mode);
+          console.log('DASHBOARD_ROUTE_OK');
           NODE
+
+      - name: Remove one-shot repair workflow
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          if [[ -f .github/workflows/ax-web-result-auth-repair.yml ]]; then
+            rm .github/workflows/ax-web-result-auth-repair.yml
+            git add .github/workflows/ax-web-result-auth-repair.yml
+            git commit -m "chore: remove one-shot repair workflow"
+            git push
+          fi
