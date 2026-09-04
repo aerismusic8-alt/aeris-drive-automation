@@ -20,7 +20,7 @@ concurrency:
 
 jobs:
   runtime:
-    runs-on: self-hosted
+    runs-on: [self-hosted, Windows, X64, PC2-CODING-EXECUTOR]
     timeout-minutes: 5
     steps:
       - name: Checkout
