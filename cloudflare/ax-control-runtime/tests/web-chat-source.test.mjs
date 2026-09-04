@@ -32,4 +32,11 @@ const pollIndex = sendHandler.indexOf("const result=await poll(r.requestId);");
 assert(acceptedIndex >= 0, 'web chat send handler must await gateway acceptance');
 assert(clearIndex > acceptedIndex && clearIndex < pollIndex, 'web chat composer must clear immediately after gateway acceptance and before polling');
 
+// Regression guard: the entire file-picker field must be clickable, not only the native button.
+assert(webChatSource.includes('<label id="filePicker" class="filePicker">'), 'web chat file picker must use a full-area clickable label');
+assert(webChatSource.includes('<span id="fileLabel">Choose File</span>'), 'web chat file picker must expose a visible Choose File label');
+assert(webChatSource.includes('<input id="file" type="file" multiple>'), 'web chat file input must remain available inside the full-area picker');
+assert(webChatSource.includes('.filePicker{'), 'web chat file picker must define full-area label styling');
+assert(webChatSource.includes("$('file').addEventListener('change'"), 'web chat file picker must react to file selection');
+
 console.log('AX web chat source regression checks passed.');
