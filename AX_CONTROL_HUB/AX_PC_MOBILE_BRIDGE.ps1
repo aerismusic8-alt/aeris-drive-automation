@@ -36,6 +36,7 @@ while ($true) {
         $gatewayPayload = @{
             request_id = $item.request_id
             task_id = $item.task_id
+            idempotency_key = "AX-EXT-$($item.request_id)"
             source_channel = $sourceChannel
             content_type = $item.content_type
             content = $item.content
