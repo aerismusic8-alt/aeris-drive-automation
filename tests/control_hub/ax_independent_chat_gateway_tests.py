@@ -75,7 +75,8 @@ def test_contract_is_provider_neutral():
 
 if __name__=='__main__':
     import tempfile
-    with tempfile.TemporaryDirectory() as td:
-        p=Path(td)
-        for test in [test_new_session_rehydrates_authoritative_context,test_service_and_read_only_capabilities_are_distinct,test_idempotency_key_rejects_duplicate_input,test_real_queue_rejects_racing_idempotency_key,test_unverified_rehydration_blocks_control_input,test_read_only_cannot_submit_input,test_raw_attachment_data_is_rejected,test_path_traversal_request_id_is_rejected]: test(p)
+    tests=[test_new_session_rehydrates_authoritative_context,test_service_and_read_only_capabilities_are_distinct,test_idempotency_key_rejects_duplicate_input,test_real_queue_rejects_racing_idempotency_key,test_unverified_rehydration_blocks_control_input,test_read_only_cannot_submit_input,test_raw_attachment_data_is_rejected,test_path_traversal_request_id_is_rejected]
+    for test in tests:
+        with tempfile.TemporaryDirectory() as td:
+            test(Path(td))
     test_web_chat_surface_is_ax_not_aeris(); test_contract_is_provider_neutral(); print('AX_INDEPENDENT_CHAT_GATEWAY_TESTS: PASS')
