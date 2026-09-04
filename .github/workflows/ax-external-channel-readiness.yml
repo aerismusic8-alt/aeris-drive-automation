@@ -128,7 +128,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          REQUEST_ID=$(cat web-request-id.txt)
+          export REQUEST_ID=$(cat web-request-id.txt)
           for attempt in {1..6}; do
             status=$(curl --silent --show-error -o web-pull.json -w '%{http_code}' \
               -X POST "$AX_CONTROL_RUNTIME_URL/pc/pull" \
