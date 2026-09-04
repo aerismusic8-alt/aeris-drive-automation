@@ -35,12 +35,6 @@ type AxExecutionResult = {
   [key: string]: unknown;
 };
 
-type AxWebSessionEnvelope = {
-  issuedAt: number;
-  nonce: string;
-  signature: string;
-};
-
 type AxWebResult = {
   request_id: string;
   task_id: string;
@@ -65,9 +59,16 @@ const MAX_PAYLOAD_BYTES = 16_000;
 const LEASE_MS = 60_000;
 const WEB_SESSION_TTL_MS = 30 * 60 * 1000;
 const ALLOWED_CONTENT_TYPES = new Set(['text', 'file', 'image', 'event', 'command']);
+const NL = String.fromCharCode(10);
 
 function json(body: unknown, status = 200): Response {
-  return Response.json(body, { status, headers: { 'Cache-Control': 'no-store', 'Content-Type': 'application/json; charset=utf-8' } });
+  return Response.json(body, {
+    status,
+    headers: {
+      'Cache-Control': 'no-store',
+      'Content-Type': 'application/json; charset=utf-8',
+    },
+  });
 }
 
 function constantTimeEqual(left: string, right: string): boolean {
@@ -101,13 +102,6 @@ function base64UrlEncode(bytes: Uint8Array): string {
   let binary = '';
   for (const byte of bytes) binary += String.fromCharCode(byte);
   return btoa(binary).replaceAll('+', '-').replaceAll('/', '_').replaceAll('=', '');
-}
-
-function base64UrlDecode(value: string): Uint8Array {
-  const normalized = value.replaceAll('-', '+').replaceAll('_', '/');
-  const padded = normalized + '='.repeat((4 - normalized.length % 4) % 4);
-  const binary = atob(padded);
-  return Uint8Array.from(binary, (char) => char.charCodeAt(0));
 }
 
 async function signWebSession(issuedAt: number, nonce: string, secret: string): Promise<string> {
@@ -236,38 +230,70 @@ export class AxGatewayInbox {
   }
 }
 
-async function gatewayInboxCall(env: Env, operation: 'put' | 'pull' | 'ack' | 'result-put' | 'result-get/' , payload?: unknown, requestId?: string): Promise<Response> {
+async function gatewayInboxCall(env: Env, operation: 'put' | 'pull' | 'ack' | 'result-put' | 'result-get/', payload?: unknown, requestId?: string): Promise<Response> {
   const stub = env.AX_GATEWAY_INBOX.get(env.AX_GATEWAY_INBOX.idFromName('AERIS-K-GATEWAY'));
   const path = operation === 'result-get/' ? `${operation}${encodeURIComponent(requestId || '')}` : operation;
-  return stub.fetch(`https://gateway.local/${path}`, { method: operation === 'result-get/' ? 'GET' : 'POST', headers: { 'content-type': 'application/json' }, body: operation === 'result-get/' ? undefined : JSON.stringify(payload || {}) });
+  return stub.fetch(`https://gateway.local/${path}`, {
+    method: operation === 'result-get/' ? 'GET' : 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: operation === 'result-get/' ? undefined : JSON.stringify(payload || {}),
+  });
 }
 
 async function verifyGitHubToken(token: string): Promise<boolean> {
   try {
-    const response = await fetch(`https://api.github.com/repos/${REPO}`, { method: 'GET', headers: { Accept: 'application/vnd.github+json', Authorization: `Bearer ${token}`, 'X-GitHub-Api-Version': '2026-03-10', 'User-Agent': 'AX-AERIS-Control-Runtime' } });
+    const response = await fetch(`https://api.github.com/repos/${REPO}`, {
+      method: 'GET',
+      headers: {
+        Accept: 'application/vnd.github+json',
+        Authorization: `Bearer ${token}`,
+        'X-GitHub-Api-Version': '2026-03-10',
+        'User-Agent': 'AX-Control-Runtime',
+      },
+    });
     return response.ok;
-  } catch { return false; }
+  } catch {
+    return false;
+  }
 }
 
 function healthResponse(env: Env): Response {
   return json({
-    service: SERVICE, status: 'ONLINE', version: 'control-runtime-1.4.0', gate: 'CONTROLLED', mode: MODE,
-    liveFinancialExecution: false, financialTransactions: false, repositoryMutation: false, queue: QUEUE_NAME,
-    gatewayInbox: INBOX_NAME, mobileIngress: true, pcPull: true, webChat: true,
-    mobileIngressAuthConfigured: Boolean(env.AX_MOBILE_INGRESS_SECRET), pcPullAuthConfigured: Boolean(env.AX_PC_PULL_SECRET), webChatAuthConfigured: Boolean(env.AX_MOBILE_INGRESS_SECRET),
+    service: SERVICE,
+    status: 'ONLINE',
+    version: 'control-runtime-1.5.0',
+    gate: 'CONTROLLED',
+    mode: MODE,
+    liveFinancialExecution: false,
+    financialTransactions: false,
+    repositoryMutation: false,
+    queue: QUEUE_NAME,
+    gatewayInbox: INBOX_NAME,
+    mobileIngress: true,
+    pcPull: true,
+    webChat: true,
+    mobileIngressAuthConfigured: Boolean(env.AX_MOBILE_INGRESS_SECRET),
+    pcPullAuthConfigured: Boolean(env.AX_PC_PULL_SECRET),
+    webChatAuthConfigured: Boolean(env.AX_MOBILE_INGRESS_SECRET),
     repository: REPO,
-    cloudTimeAuthority: { enabled: true, endpoint: '/time', source: 'Cloudflare Worker runtime', storageTimezone: 'UTC', displayTimezone: 'Asia/Bangkok' },
-    endpoints: ['GET /', 'GET /health', 'GET /time', 'GET /mobile', 'GET /mobile/config', 'POST /mobile/input', 'GET /chat', 'POST /web/session', 'POST /web/input', 'GET /web/result/{request_id}', 'POST /pc/pull', 'POST /pc/result', 'POST /pc/ack', 'POST /enqueue'],
+    cloudTimeAuthority: {
+      enabled: true,
+      endpoint: '/time',
+      source: 'Cloudflare Worker runtime',
+      storageTimezone: 'UTC',
+      displayTimezone: 'Asia/Bangkok',
+    },
+    endpoints: ['GET /', 'GET /health', 'GET /time', 'GET /mobile', 'GET /mobile/config', 'POST /mobile/input', 'GET /chat', 'POST /web/session', 'GET /web/context', 'POST /web/input', 'GET /web/result/{request_id}', 'POST /pc/pull', 'POST /pc/result', 'POST /pc/ack', 'POST /enqueue'],
   });
 }
 
 function mobilePage(): Response {
-  const html = `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>AX Mobile Gateway</title><style>body{font-family:system-ui,sans-serif;max-width:680px;margin:24px auto;padding:0 16px}textarea,input,button{width:100%;box-sizing:border-box;margin:8px 0;padding:12px;font-size:16px}button{cursor:pointer}.ok{padding:10px;background:#eef7ee}.err{padding:10px;background:#fdecec}small{color:#666}a{display:inline-block;margin:8px 0}</style></head><body><h1>AX Mobile Gateway</h1><small>Transport only · A Master Brain remains the source of truth · FREE_ONLY</small><a href="/chat">Open AX Web Chat</a><input id="token" type="password" placeholder="Mobile gateway token" autocomplete="off"><input id="task" placeholder="Task ID (optional)"><textarea id="content" rows="8" placeholder="Send work to A Master Brain"></textarea><button id="send">Send</button><div id="result"></div><script>const $=id=>document.getElementById(id);$('token').value=sessionStorage.getItem('ax_mobile_token')||'';$('send').onclick=async()=>{const token=$('token').value.trim();sessionStorage.setItem('ax_mobile_token',token);const body={task_id:$('task').value.trim()||undefined,source_channel:'MOBILE',content_type:'text',content:$('content').value};try{const r=await fetch('/mobile/input',{method:'POST',headers:{Authorization:'Bearer '+token,'Content-Type':'application/json'},body:JSON.stringify(body)});const j=await r.json();$('result').className=r.ok?'ok':'err';$('result').textContent=JSON.stringify(j,null,2);}catch(e){$('result').className='err';$('result').textContent=String(e);}}</script></body></html>`;
+  const html = `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>AX Mobile Gateway</title><style>body{font-family:system-ui,sans-serif;max-width:680px;margin:24px auto;padding:0 16px}textarea,input,button{width:100%;box-sizing:border-box;margin:8px 0;padding:12px;font-size:16px}button{cursor:pointer}.ok{padding:10px;background:#eef7ee}.err{padding:10px;background:#fdecec}small{color:#666}a{display:inline-block;margin:8px 0}</style></head><body><h1>AX Mobile Gateway</h1><small>Transport only · A Master Brain remains the source of truth · FREE_ONLY</small><a href="/chat">Open AX Web Chat</a><input id="token" type="password" placeholder="Mobile gateway token" autocomplete="off"><input id="task" placeholder="Task ID (optional)"><textarea id="content" rows="8" placeholder="Send work to A Master Brain"></textarea><button id="send">Send</button><div id="result"></div><script>const $=id=>document.getElementById(id);$('token').value=sessionStorage.getItem('ax_mobile_token')||'';$('send').onclick=async()=>{const token=$('token').value.trim();sessionStorage.setItem('ax_mobile_token',token);const body={task_id:$('task').value.trim()||undefined,source_channel:'MOBILE',content_type:'text',content:$('content').value};try{const r=await fetch('/mobile/input',{method:'POST',headers:{Authorization:'Bearer '+token,'Content-Type':'application/json'},body:JSON.stringify(body)});const j=await r.json();$('result').className=r.ok?'ok':'err';$('result').textContent=JSON.stringify(j,null,2)}catch(e){$('result').className='err';$('result').textContent=String(e)}};</script></body></html>`;
   return new Response(html, { headers: { 'content-type': 'text/html; charset=utf-8', 'cache-control': 'no-store' } });
 }
 
 function webChatPage(): Response {
-  const html = `<!doctype html><html lang="th"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>AX Web Chat</title><style>:root{font-family:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;color:#18202a;background:#f5f7fa}*{box-sizing:border-box}body{margin:0}.app{max-width:980px;margin:auto;padding:14px}.panel{background:#fff;border:1px solid #d9dee7;border-radius:14px;padding:16px;margin:12px 0;box-shadow:0 2px 8px rgba(0,0,0,.04)}h1{margin:0 0 4px;font-size:1.5rem}.muted{color:#667085;font-size:.9rem}.row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}.row>*{flex:1}input,textarea,button{font:inherit;padding:11px;border:1px solid #c9d0db;border-radius:9px}textarea{width:100%;min-height:130px;resize:vertical}button{cursor:pointer;background:#fff;flex:0 0 auto}.hidden{display:none}.chat{min-height:220px;white-space:pre-wrap;overflow-wrap:anywhere;background:#101828;color:#f8fafc;border-radius:10px;padding:14px}.status{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px}.status div{padding:10px;border:1px solid #e2e8f0;border-radius:9px}.ok{padding:10px;background:#eef7ee;border-radius:9px}.err{padding:10px;background:#fdecec;border-radius:9px}@media(max-width:700px){.app{padding:8px}.status{grid-template-columns:1fr 1fr}.row>*{width:100%;flex-basis:100%}.status div{font-size:.9rem}}</style></head><body><main class="app"><section class="panel"><h1>AX Web Chat</h1><div class="muted">Independent external channel • A_MASTER_BRAIN remains authoritative • FREE_ONLY</div><div id="loginPanel"><input id="secret" type="password" autocomplete="off" placeholder="AX Web access secret"><button id="login">Start session</button></div><div id="sessionPanel" class="hidden"><div class="row"><button id="refresh">Refresh</button><button id="macheck">M-A-CHECK</button><button id="logout">Logout</button></div><div class="status" style="margin-top:12px"><div><b>Session</b><br><span id="session">AUTHENTICATED</span></div><div><b>Channel</b><br><span>WEB → PC → HUB</span></div><div><b>Source</b><br><span>A_MASTER_BRAIN</span></div><div><b>Mode</b><br><span>FREE_ONLY</span></div></div><pre id="context" class="muted"></pre></div></section><section id="chatPanel" class="panel hidden"><div id="messages" class="chat">AX Web Chat ready.</div><textarea id="message" placeholder="ส่งข้อความถึง AX"></textarea><div class="row"><input id="file" type="file" multiple><button id="send">Send</button></div><div id="result" class="muted"></div></section></main><script>const $=id=>document.getElementById(id);const key='ax_web_session';const session=()=>sessionStorage.getItem(key)||'';const setSession=v=>v?sessionStorage.setItem(key,v):sessionStorage.removeItem(key);async function api(path,opts={}){const headers={...(opts.headers||{})};if(opts.body&&!headers['Content-Type'])headers['Content-Type']='application/json';if(session())headers.Authorization='Bearer '+session();const r=await fetch(path,{...opts,headers});const j=await r.json().catch(()=>({}));if(!r.ok)throw new Error(j.error||j.error_code||'HTTP_'+r.status);return j}function logged(){ $('loginPanel').classList.add('hidden');$('sessionPanel').classList.remove('hidden');$('chatPanel').classList.remove('hidden') }async function login(){try{const secret=$('secret').value;const r=await fetch('/web/session',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({secret})});const j=await r.json();if(!r.ok)throw new Error(j.error||'AUTH_FAILED');setSession(j.sessionToken);$('secret').value='';logged();await refresh()}catch(e){$('session').textContent=e.message}}async function refresh(){try{$('context').textContent=JSON.stringify(await api('/web/context'),null,2)}catch(e){$('context').textContent=e.message}}async function submit(content){const files=[...$('file').files].map(f=>({attachment_id:crypto.randomUUID(),kind:f.type.startsWith('image/')?'image':'file',name:f.name,media_type:f.type||'application/octet-stream',reference:'browser:'+crypto.randomUUID()}));const body={request_id:crypto.randomUUID(),task_id:'TASK-WEB-'+crypto.randomUUID().slice(0,8),source_channel:'WEB',content_type:files.length?(files.some(x=>x.kind==='image')?'image':'file'):'text',content,attachments:files};return api('/web/input',{method:'POST',body:JSON.stringify(body)})}async function poll(requestId){for(let i=0;i<30;i++){try{const r=await api('/web/result/'+encodeURIComponent(requestId));return r.result}catch(e){if(!String(e.message).includes('RESULT_UNAVAILABLE'))throw e}await new Promise(r=>setTimeout(r,2000))}throw new Error('RESULT_TIMEOUT')}$('login').onclick=login;$('refresh').onclick=refresh;$('macheck').onclick=async()=>{try{const r=await submit('M-A-CHECK');$('messages').textContent+='\n\n[REQUESTED] '+r.requestId+'\nM-A-CHECK';const result=await poll(r.requestId);$('messages').textContent+='\n[RESULT]\n'+JSON.stringify(result.result||result,null,2)}catch(e){$('result').className='err';$('result').textContent=e.message}};$('logout').onclick=()=>{setSession('');location.reload()};$('send').onclick=async()=>{try{const r=await submit($('message').value);$('messages').textContent+='\n\n[RECEIVED] '+r.requestId+'\n'+($('message').value||'');$('result').className='muted';$('result').textContent='Waiting for Local Hub result…';const result=await poll(r.requestId);$('messages').textContent+='\n[LOCAL HUB RESULT]\n'+JSON.stringify(result.result||result,null,2);$('result').textContent='Completed';$('message').value='';$('file').value=''}catch(e){$('result').className='err';$('result').textContent=e.message}};if(session()){logged();refresh().catch(()=>{})}</script></body></html>`;
+  const html = `<!doctype html><html lang="th"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>AX Web Chat</title><style>:root{font-family:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;color:#18202a;background:#f5f7fa}*{box-sizing:border-box}body{margin:0}.app{max-width:980px;margin:auto;padding:14px}.panel{background:#fff;border:1px solid #d9dee7;border-radius:14px;padding:16px;margin:12px 0;box-shadow:0 2px 8px rgba(0,0,0,.04)}h1{margin:0 0 4px;font-size:1.5rem}.muted{color:#667085;font-size:.9rem}.row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}.row>*{flex:1}input,textarea,button{font:inherit;padding:11px;border:1px solid #c9d0db;border-radius:9px}textarea{width:100%;min-height:130px;resize:vertical}button{cursor:pointer;background:#fff;flex:0 0 auto}.hidden{display:none}.chat{min-height:220px;white-space:pre-wrap;overflow-wrap:anywhere;background:#101828;color:#f8fafc;border-radius:10px;padding:14px}.status{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px}.status div{padding:10px;border:1px solid #e2e8f0;border-radius:9px}.ok{padding:10px;background:#eef7ee;border-radius:9px}.err{padding:10px;background:#fdecec;border-radius:9px}@media(max-width:700px){.app{padding:8px}.status{grid-template-columns:1fr 1fr}.row>*{width:100%;flex-basis:100%}.status div{font-size:.9rem}}</style></head><body><main class="app"><section class="panel"><h1>AX Web Chat</h1><div class="muted">Independent external channel · A_MASTER_BRAIN remains authoritative · FREE_ONLY</div><div id="loginPanel"><input id="secret" type="password" autocomplete="off" placeholder="AX Web access secret"><button id="login">Start session</button><div id="loginStatus" class="muted" role="status" aria-live="polite"></div></div><div id="sessionPanel" class="hidden"><div class="row"><button id="refresh">Refresh</button><button id="macheck">M-A-CHECK</button><button id="logout">Logout</button></div><div class="status" style="margin-top:12px"><div><b>Session</b><br><span id="session">AUTHENTICATED</span></div><div><b>Channel</b><br><span>WEB → PC → HUB</span></div><div><b>Source</b><br><span>A_MASTER_BRAIN</span></div><div><b>Mode</b><br><span>FREE_ONLY</span></div></div><pre id="context" class="muted"></pre></div></section><section id="chatPanel" class="panel hidden"><div id="messages" class="chat">AX Web Chat ready.</div><textarea id="message" placeholder="ส่งข้อความถึง AX"></textarea><div class="row"><input id="file" type="file" multiple><button id="send">Send</button></div><div id="result" class="muted" role="status" aria-live="polite"></div></section></main><script>const $=id=>document.getElementById(id);const key='ax_web_session';const session=()=>sessionStorage.getItem(key)||'';const setSession=v=>v?sessionStorage.setItem(key,v):sessionStorage.removeItem(key);async function api(path,opts={}){const headers={...(opts.headers||{})};if(opts.body&&!headers['Content-Type'])headers['Content-Type']='application/json';if(session())headers.Authorization='Bearer '+session();const r=await fetch(path,{...opts,headers});const j=await r.json().catch(()=>({}));if(!r.ok)throw new Error(j.error||j.error_code||'HTTP_'+r.status);return j}function logged(){ $('loginPanel').classList.add('hidden');$('sessionPanel').classList.remove('hidden');$('chatPanel').classList.remove('hidden') }async function login(){const status=$('loginStatus');status.className='muted';status.textContent='Connecting…';try{const secret=$('secret').value.trim();if(!secret)throw new Error('SECRET_REQUIRED');const r=await fetch('/web/session',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({secret})});const j=await r.json().catch(()=>({}));if(!r.ok)throw new Error(j.error||'AUTH_FAILED');if(!j.sessionToken)throw new Error('SESSION_TOKEN_MISSING');setSession(j.sessionToken);$('secret').value='';status.textContent='';logged();await refresh()}catch(e){status.className='err';$('loginStatus').textContent=e.message;status.textContent=e.message||'AUTH_FAILED';}}async function refresh(){try{$('context').textContent=JSON.stringify(await api('/web/context'),null,2)}catch(e){$('context').textContent=e.message}}async function submit(content){const files=[...$('file').files].map(f=>({attachment_id:crypto.randomUUID(),kind:f.type.startsWith('image/')?'image':'file',name:f.name,media_type:f.type||'application/octet-stream',reference:'browser:'+crypto.randomUUID()}));const body={request_id:crypto.randomUUID(),task_id:'TASK-WEB-'+crypto.randomUUID().slice(0,8),source_channel:'WEB',content_type:files.length?(files.some(x=>x.kind==='image')?'image':'file'):'text',content,attachments:files};return api('/web/input',{method:'POST',body:JSON.stringify(body)})}async function poll(requestId){for(let i=0;i<30;i++){try{const r=await api('/web/result/'+encodeURIComponent(requestId));return r.result}catch(e){if(!String(e.message).includes('RESULT_UNAVAILABLE'))throw e}await new Promise(r=>setTimeout(r,2000))}throw new Error('RESULT_TIMEOUT')}$('login').onclick=login;$('refresh').onclick=refresh;$('macheck').onclick=async()=>{try{const r=await submit('M-A-CHECK');$('messages').textContent+=NL+'[REQUESTED] '+r.requestId+NL+'M-A-CHECK';const result=await poll(r.requestId);$('messages').textContent+=NL+'[RESULT]'+NL+JSON.stringify(result.result||result,null,2)}catch(e){$('result').className='err';$('result').textContent=e.message}};$('logout').onclick=()=>{setSession('');location.reload()};$('send').onclick=async()=>{try{const message=$('message').value.trim();if(!message&&!$('file').files.length)throw new Error('MESSAGE_REQUIRED');const r=await submit(message);$('messages').textContent+=NL+NL+'[RECEIVED] '+r.requestId+NL+(message||'[attachment]');$('result').className='muted';$('result').textContent='Waiting for Local Hub result…';const result=await poll(r.requestId);$('messages').textContent+=NL+'[LOCAL HUB RESULT]'+NL+JSON.stringify(result.result||result,null,2);$('result').textContent='Completed';$('message').value='';$('file').value=''}catch(e){$('result').className='err';$('result').textContent=e.message}};if(session()){logged();refresh().catch(()=>{})}</script></body></html>`;
   return new Response(html, { headers: { 'content-type': 'text/html; charset=utf-8', 'cache-control': 'no-store' } });
 }
 
@@ -276,14 +302,17 @@ export default {
     const url = new URL(request.url);
     if (request.method === 'GET' && url.pathname === '/') return healthResponse(env);
     if (request.method === 'GET' && url.pathname === '/health') return healthResponse(env);
-    if (request.method === 'GET' && url.pathname === '/time') { const now = new Date(); return json({ source: 'AX_CLOUD_TIME_AUTHORITY', authority: 'Cloudflare Worker runtime', requestId: crypto.randomUUID(), timestampUtc: now.toISOString(), epochMs: now.getTime(), timezoneDisplay: 'Asia/Bangkok', timestampThailand: now.toLocaleString('sv-SE', { timeZone: 'Asia/Bangkok' }).replace(' ', 'T') + '+07:00', method: request.method }); }
+    if (request.method === 'GET' && url.pathname === '/time') {
+      const now = new Date();
+      return json({ source: 'AX_CLOUD_TIME_AUTHORITY', authority: 'Cloudflare Worker runtime', requestId: crypto.randomUUID(), timestampUtc: now.toISOString(), epochMs: now.getTime(), timezoneDisplay: 'Asia/Bangkok', timestampThailand: now.toLocaleString('sv-SE', { timeZone: 'Asia/Bangkok' }).replace(' ', 'T') + '+07:00', method: request.method });
+    }
     if (request.method === 'GET' && url.pathname === '/mobile') return mobilePage();
     if (request.method === 'GET' && url.pathname === '/mobile/config') return json({ service: SERVICE, mobileIngress: true, pcPull: true, webChat: true, executionMode: MODE, liveFinancialExecution: false, transportStore: INBOX_NAME, endpoint: '/mobile/input', webEndpoint: '/web/input', pcPullEndpoint: '/pc/pull', pcAckEndpoint: '/pc/ack' });
     if (request.method === 'GET' && url.pathname === '/chat') return webChatPage();
     if (request.method === 'POST' && url.pathname === '/web/session') {
       const body = await request.json().catch(() => null) as { secret?: unknown } | null;
       if (!secretAccepted(String(body?.secret || ''), env.AX_MOBILE_INGRESS_SECRET)) return json({ error: 'AUTH_FAILED' }, 401);
-      return json({ authenticated: true, sessionToken: await createWebSession(env.AX_MOBILE_INGRESS_SECRET as string), expiresInMs: WEB_SESSION_TTL_MS, mode: MODE, liveFinancialExecution: false }, 200);
+      return json({ authenticated: true, sessionToken: await createWebSession(env.AX_MOBILE_INGRESS_SECRET as string), expiresInMs: WEB_SESSION_TTL_MS, mode: MODE, liveFinancialExecution: false });
     }
     if (request.method === 'GET' && url.pathname === '/web/context') {
       const denied = await requireWebSession(request, env); if (denied) return denied;
@@ -296,8 +325,7 @@ export default {
       const body = readJsonObject(raw); if (!body) return json({ error: 'INVALID_JSON' }, 400);
       if (String(body.sourceChannel ?? body.source_channel ?? 'WEB') !== 'WEB') return json({ error: 'SOURCE_CHANNEL_MUST_BE_WEB' }, 422);
       const record = normalizeGatewayBody(body, 'WEB'); if (record instanceof Response) return record;
-      const inboxResponse = await gatewayInboxCall(env, 'put', { record });
-      const inboxBody = await inboxResponse.json(); if (!inboxResponse.ok) return json(inboxBody, inboxResponse.status);
+      const inboxResponse = await gatewayInboxCall(env, 'put', { record }); const inboxBody = await inboxResponse.json(); if (!inboxResponse.ok) return json(inboxBody, inboxResponse.status);
       return json({ accepted: true, queued: true, requestId: record.request_id, taskId: record.task_id, sourceChannel: 'WEB', transportStore: INBOX_NAME, status: record.status, evidenceStatus: record.evidence_status, executionStatus: 'NOT_EXECUTED', liveFinancialExecution: false }, 201);
     }
     if (request.method === 'GET' && url.pathname.startsWith('/web/result/')) {
@@ -323,7 +351,8 @@ export default {
     if (request.method === 'POST' && url.pathname === '/pc/result') {
       if (!secretAccepted(bearerSecret(request), env.AX_PC_PULL_SECRET)) return json({ error: 'AUTH_REQUIRED' }, 401);
       const body = await request.json().catch(() => null) as { request_id?: string; task_id?: string; result?: AxExecutionResult | Record<string, unknown> } | null;
-      const requestId = String(body?.request_id || ''); const taskId = String(body?.task_id || ''); if (!requestId || !taskId || !body?.result) return json({ error: 'RESULT_SCHEMA_INVALID' }, 422);
+      const requestId = String(body?.request_id || ''); const taskId = String(body?.task_id || '');
+      if (!requestId || !taskId || !body?.result) return json({ error: 'RESULT_SCHEMA_INVALID' }, 422);
       const record: AxWebResult = { request_id: requestId, task_id: taskId, received_at: new Date().toISOString(), source: 'LOCAL_CONTROL_HUB', result: body.result };
       const inboxResponse = await gatewayInboxCall(env, 'result-put', { record }); return json(await inboxResponse.json(), inboxResponse.status);
     }
@@ -337,10 +366,12 @@ export default {
       const token = bearerSecret(request); if (!token) return json({ error: 'AUTH_REQUIRED' }, 401);
       const repoHeader = request.headers.get('X-AERIS-REPOSITORY') || ''; if (repoHeader !== REPO) return json({ error: 'REPOSITORY_NOT_ALLOWED', expected: REPO }, 403);
       if (!(await verifyGitHubToken(token))) return json({ error: 'GITHUB_TOKEN_REJECTED' }, 403);
-      let event: AxEvent; try { event = JSON.parse(await request.text()) as AxEvent; } catch { return json({ error: 'INVALID_JSON' }, 400); }
+      let event: AxEvent;
+      try { event = JSON.parse(await request.text()) as AxEvent; } catch { return json({ error: 'INVALID_JSON' }, 400); }
       if (!event || typeof event !== 'object' || !event.id || !event.taskId || !event.domain || !event.action) return json({ error: 'EVENT_SCHEMA_INVALID', required: ['id', 'taskId', 'domain', 'action'] }, 422);
       const normalizedEvent: AxEvent = { id: String(event.id), taskId: String(event.taskId), domain: String(event.domain), priority: Number(event.priority || 0), action: String(event.action), createdAt: event.createdAt || new Date().toISOString(), source: event.source || 'AX_CONTROL_RUNTIME' };
-      await env.AX_EXECUTION_QUEUE.send(normalizedEvent); return json({ accepted: true, queued: true, eventId: normalizedEvent.id, taskId: normalizedEvent.taskId, queue: QUEUE_NAME, executionGate: 'CONTROLLED', liveFinancialExecution: false });
+      await env.AX_EXECUTION_QUEUE.send(normalizedEvent);
+      return json({ accepted: true, queued: true, eventId: normalizedEvent.id, taskId: normalizedEvent.taskId, queue: QUEUE_NAME, executionGate: 'CONTROLLED', liveFinancialExecution: false });
     }
     return json({ error: 'NOT_FOUND', service: SERVICE, status: 'ONLINE' }, 404);
   },
@@ -348,9 +379,19 @@ export default {
     for (const message of batch.messages) {
       const event = message.body;
       console.log(JSON.stringify({ event: 'AX_EXECUTION_EVENT_RECEIVED', queue: batch.queue, messageId: message.id, body: event, receivedAt: new Date().toISOString() }));
-      if (event.domain !== 'AERIS') { console.log(JSON.stringify({ event: 'AX_EXECUTION_EVENT_DEFERRED', reason: 'DOMAIN_EXECUTOR_NOT_IMPLEMENTED', taskId: event.taskId, domain: event.domain })); message.ack(); continue; }
-      const response = await fetch('https://aeris-execution-runtime.aerismusic8.workers.dev/execute', { method: 'POST', headers: { 'Content-Type': 'application/json', Accept: 'application/json', 'User-Agent': 'AX-Control-Runtime/1.3.0' }, body: JSON.stringify({ jobId: event.id, command: event.action }) });
-      const rawResponse = await response.text(); let result: AxExecutionResult | null = null; try { result = rawResponse ? JSON.parse(rawResponse) as AxExecutionResult : null; } catch { result = null; }
+      if (event.domain !== 'AERIS') {
+        console.log(JSON.stringify({ event: 'AX_EXECUTION_EVENT_DEFERRED', reason: 'DOMAIN_EXECUTOR_NOT_IMPLEMENTED', taskId: event.taskId, domain: event.domain }));
+        message.ack();
+        continue;
+      }
+      const response = await fetch('https://aeris-execution-runtime.aerismusic8.workers.dev/execute', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Accept: 'application/json', 'User-Agent': 'AX-Control-Runtime/1.5.0' },
+        body: JSON.stringify({ jobId: event.id, command: event.action }),
+      });
+      const rawResponse = await response.text();
+      let result: AxExecutionResult | null = null;
+      try { result = rawResponse ? JSON.parse(rawResponse) as AxExecutionResult : null; } catch { result = null; }
       const responseTaskMatches = result?.taskId === event.taskId;
       const businessEvidenceValid = !!result?.evidence && String(result.evidence.taskId || '') === event.taskId;
       if (!response.ok || result?.accepted !== true || result?.verified !== true || result?.executed !== true || !responseTaskMatches || !businessEvidenceValid || result?.writeBackVerified !== true) throw new Error(`AERIS_EXECUTION_NOT_VERIFIED:${response.status}`);
