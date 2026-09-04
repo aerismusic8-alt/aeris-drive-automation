@@ -1,14 +1,14 @@
 ﻿{
     "schema":  "AX_AGENTS_V1",
-    "updatedAt":  "2026-09-04T19:42:51.1026486Z",
+    "updatedAt":  "2026-09-04T19:48:43.6231411Z",
     "agents":  [
                    {
                        "id":  "ax-active-execution-monitor",
                        "name":  "ax-active-execution-monitor",
                        "status":  "ACTIVE",
                        "role":  "AX runtime execution",
-                       "route":  "DESKTOP-O0AUKHG",
-                       "timestamp":  "2026-09-04T19:20:14.5190625Z"
+                       "route":  "DESKTOP-RGK6JKB",
+                       "timestamp":  "2026-09-04T19:44:11.2324620Z"
                    }
                ]
 }
