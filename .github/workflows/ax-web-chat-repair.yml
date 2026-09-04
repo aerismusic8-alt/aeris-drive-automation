@@ -2,11 +2,12 @@ name: AX Web Chat Repair
 
 on:
   push:
-    branches: [main]
+    branches:
+      - main
     paths:
-      - 'cloudflare/ax-control-runtime/src/index.ts'
-      - 'cloudflare/ax-control-runtime/tests/web-chat-source.test.mjs'
-      - '.github/workflows/ax-web-chat-repair.yml'
+      - cloudflare/ax-control-runtime/src/index.ts
+      - cloudflare/ax-control-runtime/tests/web-chat-source.test.mjs
+      - .github/workflows/ax-web-chat-repair.yml
   workflow_dispatch:
 
 permissions:
@@ -15,77 +16,64 @@ permissions:
 jobs:
   repair:
     runs-on: ubuntu-latest
-    timeout-minutes: 10
     steps:
       - name: Checkout
         uses: actions/checkout@v5
 
-      - name: Verify failing regression test before repair
-        shell: bash
+      - name: Confirm regression test is red
         run: |
           set +e
           node cloudflare/ax-control-runtime/tests/web-chat-source.test.mjs
           status=$?
           set -e
-          if [[ "$status" -eq 0 ]]; then
-            echo 'EXPECTED_RED_TEST_DID_NOT_FAIL'
-            exit 1
-          fi
-          echo 'RED_TEST_CONFIRMED'
+          test "$status" -ne 0
 
-      - name: Repair web chat browser script
-        shell: python
+      - name: Apply deterministic repair
         run: |
+          python3 - <<'PY'
           from pathlib import Path
-
           path = Path('cloudflare/ax-control-runtime/src/index.ts')
           source = path.read_text(encoding='utf-8')
 
-          replacements = [
-              (
-                  '<button id="login">Start session</button></div>',
-                  '<button id="login">Start session</button><div id="loginStatus" class="muted" role="status" aria-live="polite"></div></div>',
-              ),
-              (
-                  "async function login(){try{const secret=$('secret').value;const r=await fetch('/web/session',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({secret})});const j=await r.json();if(!r.ok)throw new Error(j.error||'AUTH_FAILED');setSession(j.sessionToken);$('secret').value='';logged();await refresh()}catch(e){$('session').textContent=e.message}}",
-                  "async function login(){const status=$('loginStatus');status.className='muted';status.textContent='Connecting…';try{const secret=$('secret').value.trim();if(!secret)throw new Error('SECRET_REQUIRED');const r=await fetch('/web/session',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({secret})});const j=await r.json().catch(()=>({}));if(!r.ok)throw new Error(j.error||'AUTH_FAILED');if(!j.sessionToken)throw new Error('SESSION_TOKEN_MISSING');setSession(j.sessionToken);$('secret').value='';status.textContent='';logged();await refresh()}catch(e){status.className='err';status.textContent=e.message||'AUTH_FAILED';}}",
-              ),
-              (
-                  "$('send').onclick=async()=>{try{const r=await submit($('message').value);$('messages').textContent+='\\n\\n[RECEIVED] '+r.requestId+'\\n'+($('message').value||'');$('result').className='muted';$('result').textContent='Waiting for Local Hub result…';const result=await poll(r.requestId);$('messages').textContent+='\\n[LOCAL HUB RESULT]\\n'+JSON.stringify(result.result||result,null,2);$('result').textContent='Completed';$('message').value='';$('file').value=''}catch(e){$('result').className='err';$('result').textContent=e.message}};if(session()){logged();refresh().catch(()=>{})}",
-                  "$('send').onclick=async()=>{try{const message=$('message').value.trim();if(!message && !$('file').files.length)throw new Error('MESSAGE_REQUIRED');const r=await submit(message);$('messages').textContent+='\\n\\n[RECEIVED] '+r.requestId+'\\n'+(message||'[attachment]');$('result').className='muted';$('result').textContent='Waiting for Local Hub result…';const result=await poll(r.requestId);$('messages').textContent+='\\n[LOCAL HUB RESULT]\\n'+JSON.stringify(result.result||result,null,2);$('result').textContent='Completed';$('message').value='';$('file').value=''}catch(e){$('result').className='err';$('result').textContent=e.message}};if(session()){logged();refresh().catch(()=>{})}",
-              ),
-          ]
+          old = '<button id="login">Start session</button></div>'
+          new = '<button id="login">Start session</button><div id="loginStatus" class="muted" role="status" aria-live="polite"></div></div>'
+          if old not in source:
+              raise SystemExit('REPAIR_LOGIN_MARKER_NOT_FOUND')
+          source = source.replace(old, new, 1)
 
-          for index, (old, new) in enumerate(replacements, start=1):
-              if old not in source:
-                  raise SystemExit(f'REPAIR_MATCH_FAILED_{index}')
-              source = source.replace(old, new, 1)
+          old = "async function login(){try{const secret=$('secret').value;const r=await fetch('/web/session',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({secret})});const j=await r.json();if(!r.ok)throw new Error(j.error||'AUTH_FAILED');setSession(j.sessionToken);$('secret').value='';logged();await refresh()}catch(e){$('session').textContent=e.message}}"
+          new = "async function login(){const status=$('loginStatus');status.className='muted';status.textContent='Connecting…';try{const secret=$('secret').value.trim();if(!secret)throw new Error('SECRET_REQUIRED');const r=await fetch('/web/session',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({secret})});const j=await r.json().catch(()=>({}));if(!r.ok)throw new Error(j.error||'AUTH_FAILED');if(!j.sessionToken)throw new Error('SESSION_TOKEN_MISSING');setSession(j.sessionToken);$('secret').value='';status.textContent='';logged();await refresh()}catch(e){status.className='err';status.textContent=e.message||'AUTH_FAILED';}}"
+          if old not in source:
+              raise SystemExit('REPAIR_LOGIN_FUNCTION_NOT_FOUND')
+          source = source.replace(old, new, 1)
+
+          old = "$('send').onclick=async()=>{try{const r=await submit($('message').value);$('messages').textContent+='\\n\\n[RECEIVED] '+r.requestId+'\\n'+($('message').value||'');$('result').className='muted';$('result').textContent='Waiting for Local Hub result…';const result=await poll(r.requestId);$('messages').textContent+='\\n[LOCAL HUB RESULT]\\n'+JSON.stringify(result.result||result,null,2);$('result').textContent='Completed';$('message').value='';$('file').value=''}catch(e){$('result').className='err';$('result').textContent=e.message}};if(session()){logged();refresh().catch(()=>{})}"
+          new = "$('send').onclick=async()=>{try{const message=$('message').value.trim();if(!message && !$('file').files.length)throw new Error('MESSAGE_REQUIRED');const r=await submit(message);$('messages').textContent+='\\n\\n[RECEIVED] '+r.requestId+'\\n'+(message||'[attachment]');$('result').className='muted';$('result').textContent='Waiting for Local Hub result…';const result=await poll(r.requestId);$('messages').textContent+='\\n[LOCAL HUB RESULT]\\n'+JSON.stringify(result.result||result,null,2);$('result').textContent='Completed';$('message').value='';$('file').value=''}catch(e){$('result').className='err';$('result').textContent=e.message}};if(session()){logged();refresh().catch(()=>{})}"
+          if old not in source:
+              raise SystemExit('REPAIR_SEND_HANDLER_NOT_FOUND')
+          source = source.replace(old, new, 1)
+
+          old = "$('macheck').onclick=async()=>{try{const r=await submit('M-A-CHECK');$('messages').textContent+='\\n\\n[REQUESTED] '+r.requestId+'\\nM-A-CHECK';const result=await poll(r.requestId);$('messages').textContent+='\\n[RESULT]\\n'+JSON.stringify(result.result||result,null,2)}catch(e){$('result').className='err';$('result').textContent=e.message}};"
+          if old not in source:
+              raise SystemExit('REPAIR_MCHECK_HANDLER_NOT_FOUND')
 
           path.write_text(source, encoding='utf-8')
+          PY
 
-      - name: Verify repaired regression test
-        shell: bash
+      - name: Verify repair
         run: node cloudflare/ax-control-runtime/tests/web-chat-source.test.mjs
 
       - name: Create repair branch
         id: branch
-        shell: bash
         run: |
-          set -euo pipefail
           branch="repair/ax-web-chat-${GITHUB_RUN_ID}"
           git switch -c "$branch"
           echo "branch=$branch" >> "$GITHUB_OUTPUT"
 
-      - name: Commit repair branch
-        shell: bash
+      - name: Push repair branch
         run: |
-          set -euo pipefail
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
           git add cloudflare/ax-control-runtime/src/index.ts
           git commit -m 'fix: repair AX web chat browser interactions'
           git push --set-upstream origin "${{ steps.branch.outputs.branch }}"
-
-      - name: Publish branch name
-        shell: bash
-        run: echo "Repair branch: ${{ steps.branch.outputs.branch }}" >> "$GITHUB_STEP_SUMMARY"
