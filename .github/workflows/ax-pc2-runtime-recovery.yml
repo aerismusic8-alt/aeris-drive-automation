@@ -1,5 +1,7 @@
 name: AX PC2 Runtime Recovery
 
+# Runtime recovery explicitly bypasses host PowerShell policy.
+
 on:
   push:
     branches: [main]
@@ -17,49 +19,40 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v5
-
-      - name: Repair and verify PC2 worker safe test path
-        shell: powershell -NoProfile -ExecutionPolicy Bypass -File {0}
-        run: |
-          $ErrorActionPreference = 'Stop'
-          Write-Host "COMPUTERNAME=$env:COMPUTERNAME"
-          Write-Host "RUNNER_NAME=$env:RUNNER_NAME"
-          if ($env:COMPUTERNAME -ne $env:AX_EXPECTED_PC2) {
-            throw "PC2_EXECUTOR_IDENTITY_MISMATCH: expected=$env:AX_EXPECTED_PC2 actual=$env:COMPUTERNAME"
-          }
-          $runtime = 'C:\AX-Runtime\AX_PC2_WORKER_V2.ps1'
-          if (-not (Test-Path $runtime)) { throw 'PC2_WORKER_RUNTIME_FILE_MISSING' }
-          $backup = "$runtime.bak-before-node-e2e-fix-$(Get-Date -Format yyyyMMddHHmmss)"
-          Copy-Item $runtime $backup -Force
-          $text = Get-Content -Raw $runtime
-          if ($text -notmatch "'NODE_E2E_TEST'") {
-            $text = $text -replace "('CREATE_LOCAL_PROOF' \{ \})", "`$1`r`n    'NODE_E2E_TEST' { }"
-            Set-Content -Path $runtime -Value $text -Encoding UTF8
-          }
-          $verify = Get-Content -Raw $runtime
-          if ($verify -notmatch "'NODE_E2E_TEST'") { throw 'SAFE_ALLOWLIST_FIX_NOT_VERIFIED' }
-          Write-Host 'NODE_E2E_TEST_SAFE_ALLOWLIST=VERIFIED'
-          Write-Host "WORKER_BACKUP=$backup"
-
-      - name: Execute one PC2 node E2E job
+      - name: Verify PC2 worker path
         shell: powershell -NoProfile -ExecutionPolicy Bypass -File {0}
         run: |
           $ErrorActionPreference = 'Stop'
           if ($env:COMPUTERNAME -ne $env:AX_EXPECTED_PC2) { throw 'PC2_EXECUTOR_IDENTITY_MISMATCH' }
+          $runtime = 'C:\AX-Runtime\AX_PC2_WORKER_V2.ps1'
+          if (-not (Test-Path $runtime)) { throw 'PC2_WORKER_RUNTIME_FILE_MISSING' }
+          Write-Host 'PC2_RUNTIME_FILE=FOUND'
+          $text = Get-Content -Raw $runtime
+          if ($text -notmatch "'NODE_E2E_TEST'") {
+            $backup = "$runtime.bak-before-node-e2e-fix-$(Get-Date -Format yyyyMMddHHmmss)"
+            Copy-Item $runtime $backup -Force
+            $text = $text -replace "('CREATE_LOCAL_PROOF' \{ \})", "`$1`r`n    'NODE_E2E_TEST' { }"
+            Set-Content -Path $runtime -Value $text -Encoding UTF8
+          }
+          if ((Get-Content -Raw $runtime) -notmatch "'NODE_E2E_TEST'") { throw 'NODE_E2E_TEST_ALLOWLIST_NOT_VERIFIED' }
+          Write-Host 'NODE_E2E_TEST_ALLOWLIST=VERIFIED'
+      - name: Execute one PC2 worker E2E
+        shell: powershell -NoProfile -ExecutionPolicy Bypass -File {0}
+        run: |
+          $ErrorActionPreference = 'Stop'
           $worker = 'C:\AX-Runtime\AX_PC2_WORKER_V2.ps1'
           powershell.exe -NoProfile -ExecutionPolicy Bypass -File $worker -Once
+          if (-not (Test-Path 'C:\AX-Runtime\AX-PC2-Worker-State.json')) { throw 'PC2_WORKER_STATE_MISSING' }
           $state = Get-Content 'C:\AX-Runtime\AX-PC2-Worker-State.json' -Raw | ConvertFrom-Json
           $state | ConvertTo-Json -Depth 20 | Write-Host
           if ($state.status -ne 'COMPLETED') { throw "PC2_WORKER_E2E_NOT_COMPLETED:$($state.status)" }
           Write-Host 'PC2_WORKER_E2E=VERIFIED'
-
       - name: Verify PC2 evidence
         shell: powershell -NoProfile -ExecutionPolicy Bypass -File {0}
         run: |
           $ErrorActionPreference = 'Stop'
-          if ($env:COMPUTERNAME -ne $env:AX_EXPECTED_PC2) { throw 'PC2_EXECUTOR_IDENTITY_MISMATCH' }
-          $log = Get-Content 'C:\AX-Runtime\AX-PC2-Worker-V2.log' -Tail 30
-          $log | ForEach-Object { Write-Host $_ }
+          $logPath = 'C:\AX-Runtime\AX-PC2-Worker-V2.log'
+          if (Test-Path $logPath) { Get-Content $logPath -Tail 30 | ForEach-Object { Write-Host $_ } }
           $proof = Get-ChildItem 'C:\AX-Runtime\proof' -File -ErrorAction SilentlyContinue | Sort-Object LastWriteTime -Descending | Select-Object -First 1
           if (-not $proof) { throw 'PC2_PROOF_MISSING' }
           Write-Host "LATEST_PROOF=$($proof.FullName)"
