@@ -7,7 +7,7 @@ function assert(condition, message) {
 }
 
 // Regression guard: browser JS strings inside webChatPage must not contain literal newlines.
-assert(!$('\n') && !/\$\('messages'\)\.textContent\+='[\r\n]/.test(source), 'web chat contains a literal newline inside a JavaScript string');
+assert(!/\$\('messages'\)\.textContent\+='[\r\n]/.test(source), 'web chat contains a literal newline inside a JavaScript string');
 assert(source.includes('id="loginStatus"'), 'web chat must expose a visible login status element');
 assert(source.includes("$('loginStatus').textContent=e.message"), 'web chat login errors must be visible in loginStatus');
 assert(source.includes("status.textContent='Connecting…'"), 'web chat login must show connecting state');
