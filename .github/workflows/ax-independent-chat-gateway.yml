@@ -1,0 +1,22 @@
+name: AX Independent Chat Gateway
+
+on:
+  push:
+    paths:
+      - 'AX_CONTROL_HUB/**'
+      - 'tests/control_hub/ax_independent_chat_gateway_tests.py'
+      - '.github/workflows/ax-independent-chat-gateway.yml'
+  pull_request:
+    paths:
+      - 'AX_CONTROL_HUB/**'
+      - 'tests/control_hub/ax_independent_chat_gateway_tests.py'
+      - '.github/workflows/ax-independent-chat-gateway.yml'
+  workflow_dispatch:
+
+jobs:
+  control-hub-acceptance:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Run AX independent chat gateway acceptance tests
+        run: python3 tests/control_hub/ax_independent_chat_gateway_tests.py
