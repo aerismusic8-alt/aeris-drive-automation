@@ -39,4 +39,6 @@ assert(webChatSource.includes('<input id="file" type="file" multiple>'), 'web ch
 assert(webChatSource.includes('.filePicker{'), 'web chat file picker must define full-area label styling');
 assert(webChatSource.includes("$('file').addEventListener('change'"), 'web chat file picker must react to file selection');
 
+// Deployment trigger marker: source change above is intentionally followed by this no-op comment.
+
 console.log('AX web chat source regression checks passed.');
