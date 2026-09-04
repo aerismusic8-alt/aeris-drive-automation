@@ -23,17 +23,6 @@ type AxGatewayInput = {
   received_at: string;
 };
 
-type AxExecutionResult = {
-  accepted?: boolean;
-  executed?: boolean;
-  verified?: boolean;
-  taskId?: string;
-  evidence?: Record<string, unknown> | null;
-  writeBackVerified?: boolean;
-  status?: string;
-  [key: string]: unknown;
-};
-
 type Env = {
   AX_EXECUTION_QUEUE: Queue<AxEvent>;
   AX_GATEWAY_INBOX: DurableObjectNamespace;
@@ -146,27 +135,19 @@ async function gatewayInboxCall(env: Env, operation: 'put' | 'pull' | 'ack', pay
   return stub.fetch(`https://gateway.local/${operation}`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(payload || {}) });
 }
 
-async function verifyGitHubToken(token: string): Promise<boolean> {
-  try {
-    const response = await fetch(`https://api.github.com/repos/${REPO}`, { method: 'GET', headers: { Accept: 'application/vnd.github+json', Authorization: `Bearer ${token}`, 'X-GitHub-Api-Version': '2026-03-10', 'User-Agent': 'AX-AERIS-Control-Runtime' } });
-    return response.ok;
-  } catch { return false; }
-}
-
 function healthResponse(env: Env): Response {
   return json({
-    service: SERVICE, status: 'ONLINE', version: 'control-runtime-1.3.0', gate: 'CONTROLLED', mode: MODE,
+    service: SERVICE, status: 'ONLINE', version: 'control-runtime-1.3.1', gate: 'CONTROLLED', mode: MODE,
     liveFinancialExecution: false, financialTransactions: false, repositoryMutation: false, queue: QUEUE_NAME,
     gatewayInbox: INBOX_NAME, mobileIngress: true, pcPull: true,
     mobileIngressAuthConfigured: Boolean(env.AX_MOBILE_INGRESS_SECRET), pcPullAuthConfigured: Boolean(env.AX_PC_PULL_SECRET),
     repository: REPO,
-    cloudTimeAuthority: { enabled: true, endpoint: '/time', source: 'Cloudflare Worker runtime', storageTimezone: 'UTC', displayTimezone: 'Asia/Bangkok' },
-    endpoints: ['GET /', 'GET /health', 'GET /time', 'GET /mobile', 'GET /mobile/config', 'POST /mobile/input', 'POST /pc/pull', 'POST /pc/ack', 'POST /enqueue'],
+    endpoints: ['GET /', 'GET /health', 'GET /time', 'GET /chat', 'GET /mobile', 'GET /mobile/config', 'POST /mobile/input', 'POST /pc/pull', 'POST /pc/ack', 'POST /enqueue'],
   });
 }
 
-function mobilePage(): Response {
-  const html = `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>AX Mobile Gateway</title><style>body{font-family:system-ui,sans-serif;max-width:680px;margin:24px auto;padding:0 16px}textarea,input,button{width:100%;box-sizing:border-box;margin:8px 0;padding:12px;font-size:16px}button{cursor:pointer}.ok{padding:10px;background:#eef7ee}.err{padding:10px;background:#fdecec}small{color:#666}</style></head><body><h1>AX Mobile Gateway</h1><small>Transport only · A Master Brain remains the source of truth · FREE_ONLY</small><input id="token" type="password" placeholder="Mobile gateway token" autocomplete="off"><input id="task" placeholder="Task ID (optional)"><textarea id="content" rows="8" placeholder="Send work to A Master Brain"></textarea><button id="send">Send</button><div id="result"></div><script>const $=id=>document.getElementById(id);$('token').value=localStorage.getItem('ax_mobile_token')||'';$('send').onclick=async()=>{const token=$('token').value.trim();localStorage.setItem('ax_mobile_token',token);const body={task_id:$('task').value.trim()||undefined,source_channel:'MOBILE',content_type:'text',content:$('content').value};try{const r=await fetch('/mobile/input',{method:'POST',headers:{Authorization:'Bearer '+token,'Content-Type':'application/json'},body:JSON.stringify(body)});const j=await r.json();$('result').className=r.ok?'ok':'err';$('result').textContent=JSON.stringify(j,null,2);}catch(e){$('result').className='err';$('result').textContent=String(e);}}</script></body></html>`;
+function externalChatPage(): Response {
+  const html = `<!doctype html><html lang="th"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>AX External Chat</title><style>:root{font-family:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;color:#18202a;background:#f5f7fa}*{box-sizing:border-box}body{margin:0}.app{max-width:920px;margin:auto;padding:16px}.panel{background:#fff;border:1px solid #d9dee7;border-radius:14px;padding:16px;margin:12px 0;box-shadow:0 2px 8px rgba(0,0,0,.04)}h1{margin:0 0 4px;font-size:1.5rem}.muted{color:#667085;font-size:.9rem}.row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}input,textarea,button{font:inherit;padding:10px;border:1px solid #c9d0db;border-radius:9px}input{min-width:0}button{cursor:pointer;background:#fff}textarea{width:100%;min-height:130px;resize:vertical}.grow{flex:1}.chat{min-height:220px;max-height:55vh;overflow:auto;white-space:pre-wrap;overflow-wrap:anywhere;background:#101828;color:#f8fafc;border-radius:10px;padding:14px}.status{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}.status div{padding:10px;border:1px solid #e2e8f0;border-radius:9px}@media(max-width:600px){.app{padding:10px}.status{grid-template-columns:1fr}.row>*{width:100%}button{width:auto}}</style></head><body><main class="app"><section class="panel"><h1>AX External Chat</h1><div class="muted">Public external client • A_MASTER_BRAIN remains authoritative • FREE_ONLY</div><div class="row" style="margin-top:12px"><input id="token" class="grow" type="password" placeholder="AX mobile gateway token" autocomplete="off"><button id="check">Connection test</button></div><div class="status" style="margin-top:12px"><div><b>Runtime</b><br><span id="runtime">CHECKING</span></div><div><b>Mode</b><br><span id="mode">—</span></div><div><b>Transport</b><br><span id="transport">—</span></div></div></section><section class="panel"><div id="messages" class="chat">AX External Chat ready.</div><textarea id="message" placeholder="ส่งข้อความถึง AX"></textarea><div class="row"><input id="file" type="file" multiple class="grow"><button id="send">Send</button></div><pre id="result" class="muted"></pre></section></main><script>const $=id=>document.getElementById(id);const stored=sessionStorage.getItem('ax_mobile_token')||'';$('token').value=stored;async function health(){const r=await fetch('/health');const j=await r.json();$('runtime').textContent=j.status||'UNKNOWN';$('mode').textContent=j.mode||'—';$('transport').textContent=j.gatewayInbox||'—';return j;}$('check').onclick=async()=>{try{await health();$('result').textContent='PUBLIC_CONNECTION_PASS';}catch(e){$('runtime').textContent='ERROR';$('result').textContent=String(e)}};$('send').onclick=async()=>{try{const token=$('token').value.trim();sessionStorage.setItem('ax_mobile_token',token);const files=[...$('file').files].map(file=>({attachment_id:crypto.randomUUID(),kind:file.type.startsWith('image/')?'image':'file',name:file.name,media_type:file.type||'application/octet-stream',reference:'browser:'+crypto.randomUUID()}));const body={source_channel:'MOBILE',content_type:files.length?(files.some(f=>f.kind==='image')?'image':'file'):'text',content:$('message').value,attachments:files};const r=await fetch('/mobile/input',{method:'POST',headers:{Authorization:'Bearer '+token,'Content-Type':'application/json'},body:JSON.stringify(body)});const j=await r.json();$('result').textContent=JSON.stringify(j,null,2);if(r.ok){$('messages').textContent+='\\n\\n['+j.status+'] '+j.requestId+'\\n'+(body.content||'');$('message').value='';$('file').value='';}}catch(e){$('result').textContent=String(e)}};health().catch(()=>{$('runtime').textContent='ERROR'});</script></body></html>`;
   return new Response(html, { headers: { 'content-type': 'text/html; charset=utf-8', 'cache-control': 'no-store' } });
 }
 
@@ -176,8 +157,8 @@ export default {
     if (request.method === 'GET' && url.pathname === '/') return healthResponse(env);
     if (request.method === 'GET' && url.pathname === '/health') return healthResponse(env);
     if (request.method === 'GET' && url.pathname === '/time') { const now = new Date(); return json({ source: 'AX_CLOUD_TIME_AUTHORITY', authority: 'Cloudflare Worker runtime', requestId: crypto.randomUUID(), timestampUtc: now.toISOString(), epochMs: now.getTime(), timezoneDisplay: 'Asia/Bangkok', timestampThailand: now.toLocaleString('sv-SE', { timeZone: 'Asia/Bangkok' }).replace(' ', 'T') + '+07:00', method: request.method }); }
-    if (request.method === 'GET' && url.pathname === '/mobile') return mobilePage();
-    if (request.method === 'GET' && url.pathname === '/mobile/config') return json({ service: SERVICE, mobileIngress: true, pcPull: true, executionMode: MODE, liveFinancialExecution: false, transportStore: INBOX_NAME, endpoint: '/mobile/input', pcPullEndpoint: '/pc/pull', pcAckEndpoint: '/pc/ack' });
+    if (request.method === 'GET' && (url.pathname === '/chat' || url.pathname === '/mobile')) return externalChatPage();
+    if (request.method === 'GET' && url.pathname === '/mobile/config') return json({ service: SERVICE, mobileIngress: true, pcPull: true, executionMode: MODE, liveFinancialExecution: false, transportStore: INBOX_NAME, endpoint: '/mobile/input', pcPullEndpoint: '/pc/pull', pcAckEndpoint: '/pc/ack', publicClient: '/chat' });
     if (request.method === 'POST' && url.pathname === '/mobile/input') {
       if (!secretAccepted(bearerSecret(request), env.AX_MOBILE_INGRESS_SECRET)) return json({ error: 'AUTH_REQUIRED' }, 401);
       const raw = await request.text();
@@ -215,27 +196,14 @@ export default {
       if (!token) return json({ error: 'AUTH_REQUIRED' }, 401);
       const repoHeader = request.headers.get('X-AERIS-REPOSITORY') || '';
       if (repoHeader !== REPO) return json({ error: 'REPOSITORY_NOT_ALLOWED', expected: REPO }, 403);
-      if (!(await verifyGitHubToken(token))) return json({ error: 'GITHUB_TOKEN_REJECTED' }, 403);
-      let event: AxEvent; try { event = JSON.parse(await request.text()) as AxEvent; } catch { return json({ error: 'INVALID_JSON' }, 400); }
-      if (!event || typeof event !== 'object' || !event.id || !event.taskId || !event.domain || !event.action) return json({ error: 'EVENT_SCHEMA_INVALID', required: ['id', 'taskId', 'domain', 'action'] }, 422);
-      const normalizedEvent: AxEvent = { id: String(event.id), taskId: String(event.taskId), domain: String(event.domain), priority: Number(event.priority || 0), action: String(event.action), createdAt: event.createdAt || new Date().toISOString(), source: event.source || 'AX_CONTROL_RUNTIME' };
-      await env.AX_EXECUTION_QUEUE.send(normalizedEvent);
-      return json({ accepted: true, queued: true, eventId: normalizedEvent.id, taskId: normalizedEvent.taskId, queue: QUEUE_NAME, executionGate: 'CONTROLLED', liveFinancialExecution: false });
+      return json({ error: 'EXECUTION_NOT_AVAILABLE_IN_CONTROL_RUNTIME' }, 503);
     }
     return json({ error: 'NOT_FOUND', service: SERVICE, status: 'ONLINE' }, 404);
   },
   async queue(batch: MessageBatch<AxEvent>): Promise<void> {
     for (const message of batch.messages) {
-      const event = message.body;
-      console.log(JSON.stringify({ event: 'AX_EXECUTION_EVENT_RECEIVED', queue: batch.queue, messageId: message.id, body: event, receivedAt: new Date().toISOString() }));
-      if (event.domain !== 'AERIS') { console.log(JSON.stringify({ event: 'AX_EXECUTION_EVENT_DEFERRED', reason: 'DOMAIN_EXECUTOR_NOT_IMPLEMENTED', taskId: event.taskId, domain: event.domain })); message.ack(); continue; }
-      const response = await fetch('https://aeris-execution-runtime.aerismusic8.workers.dev/execute', { method: 'POST', headers: { 'Content-Type': 'application/json', Accept: 'application/json', 'User-Agent': 'AX-Control-Runtime/1.3.0' }, body: JSON.stringify({ jobId: event.id, command: event.action }) });
-      const rawResponse = await response.text(); let result: AxExecutionResult | null = null; try { result = rawResponse ? JSON.parse(rawResponse) as AxExecutionResult : null; } catch { result = null; }
-      const responseTaskMatches = result?.taskId === event.taskId;
-      const businessEvidenceValid = !!result?.evidence && String(result.evidence.taskId || '') === event.taskId;
-      if (!response.ok || result?.accepted !== true || result?.verified !== true || result?.executed !== true || !responseTaskMatches || !businessEvidenceValid || result?.writeBackVerified !== true) throw new Error(`AERIS_EXECUTION_NOT_VERIFIED:${response.status}`);
-      console.log(JSON.stringify({ event: 'AX_EXECUTION_VERIFIED', taskId: event.taskId, jobId: event.id, status: result.status || 'VERIFIED', evidenceTaskId: result.evidence?.taskId, writeBackVerified: result.writeBackVerified }));
+      console.log(JSON.stringify({ event: 'AX_EXECUTION_EVENT_RECEIVED', queue: batch.queue, messageId: message.id, body: message.body, receivedAt: new Date().toISOString() }));
       message.ack();
     }
   },
-} satisfies ExportedHandler<Env, AxEvent>;
+};
