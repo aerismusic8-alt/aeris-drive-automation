@@ -7,6 +7,7 @@ on:
     paths:
       - 'cloudflare/ax-control-runtime/**'
       - '.github/workflows/ax-external-channel-readiness.yml'
+      - 'AX_CONTROL_HUB/AX_PC_MOBILE_BRIDGE.ps1'
 
 permissions:
   contents: read
@@ -27,14 +28,10 @@ jobs:
           const fs = require('fs');
           const r = JSON.parse(fs.readFileSync('health.json', 'utf8'));
           const required = {
-            status: 'ONLINE',
-            mode: 'FREE_ONLY',
-            liveFinancialExecution: false,
-            gatewayInbox: 'AX_GATEWAY_INBOX',
-            mobileIngress: true,
-            pcPull: true,
-            mobileIngressAuthConfigured: true,
-            pcPullAuthConfigured: true,
+            status: 'ONLINE', mode: 'FREE_ONLY', liveFinancialExecution: false,
+            gatewayInbox: 'AX_GATEWAY_INBOX', mobileIngress: true, pcPull: true,
+            webChat: true, mobileIngressAuthConfigured: true,
+            pcPullAuthConfigured: true, webChatAuthConfigured: true,
           };
           for (const [key, value] of Object.entries(required)) {
             if (r[key] !== value) throw new Error(`HEALTH_CONTRACT_FAILED:${key}=${r[key]}`);
@@ -42,14 +39,17 @@ jobs:
           console.log('PUBLIC_HEALTH_PASS', JSON.stringify(required));
           NODE
 
-      - name: Verify public mobile surface
+      - name: Verify public mobile and web surfaces
         shell: bash
         run: |
           set -euo pipefail
           curl --fail --silent --show-error "$AX_CONTROL_RUNTIME_URL/mobile" | grep -F "AX Mobile Gateway" >/dev/null
-          curl --fail --silent --show-error "$AX_CONTROL_RUNTIME_URL/mobile/config" | node -e "let s='';process.stdin.on('data',d=>s+=d).on('end',()=>{const r=JSON.parse(s);if(r.mobileIngress!==true||r.pcPull!==true||r.executionMode!=='FREE_ONLY'||r.transportStore!=='AX_GATEWAY_INBOX')process.exit(1);console.log('PUBLIC_MOBILE_SURFACE_PASS')})"
+          curl --fail --silent --show-error "$AX_CONTROL_RUNTIME_URL/mobile/config" | node -e "let s='';process.stdin.on('data',d=>s+=d).on('end',()=>{const r=JSON.parse(s);if(r.mobileIngress!==true||r.pcPull!==true||r.webChat!==true||r.executionMode!=='FREE_ONLY'||r.transportStore!=='AX_GATEWAY_INBOX')process.exit(1);console.log('PUBLIC_MOBILE_SURFACE_PASS')})"
+          curl --fail --silent --show-error "$AX_CONTROL_RUNTIME_URL/chat" | grep -F "AX Web Chat" >/dev/null
+          curl --fail --silent --show-error "$AX_CONTROL_RUNTIME_URL/chat" | grep -F "M-A-CHECK" >/dev/null
+          echo 'PUBLIC_WEB_CHAT_SURFACE_PASS'
 
-      - name: Verify unauthenticated input is blocked
+      - name: Verify unauthenticated protected surfaces are blocked
         shell: bash
         run: |
           set -euo pipefail
@@ -59,6 +59,12 @@ jobs:
             --data '{"source_channel":"MOBILE","content_type":"text","content":"unauthorized readiness probe"}')
           test "$status" = "401"
           grep -F 'AUTH_REQUIRED' /tmp/unauth.json >/dev/null
+          web_status=$(curl --silent --show-error -o /tmp/web-unauth.json -w '%{http_code}' \
+            -X POST "$AX_CONTROL_RUNTIME_URL/web/input" \
+            -H 'Content-Type: application/json' \
+            --data '{"source_channel":"WEB","content_type":"text","content":"unauthorized web probe","attachments":[]}')
+          test "$web_status" = "401"
+          grep -F 'AUTH_REQUIRED' /tmp/web-unauth.json >/dev/null
           echo 'UNAUTH_INPUT_BLOCK_PASS'
 
   authenticated-e2e:
@@ -78,79 +84,113 @@ jobs:
           test -n "$AX_PC_PULL_SECRET"
           echo 'READINESS_SECRETS_PRESENT'
 
-      - name: Submit external mobile request
+      - name: Open short-lived web session
         shell: bash
         run: |
           set -euo pipefail
-          export REQUEST_ID="EXT-READINESS-$(date -u +%Y%m%dT%H%M%SZ)-$RANDOM"
-          export TASK_ID="TASK-EXT-READINESS-$RANDOM"
-          cat >request.json <<JSON
-          {"request_id":"$REQUEST_ID","task_id":"$TASK_ID","source_channel":"MOBILE","content_type":"text","content":"AX external channel readiness probe","attachments":[]}
-          JSON
-          status=$(curl --silent --show-error -o response.json -w '%{http_code}' \
-            -X POST "$AX_CONTROL_RUNTIME_URL/mobile/input" \
-            -H "Authorization: Bearer $AX_MOBILE_INGRESS_SECRET" \
+          curl --fail --silent --show-error \
+            -X POST "$AX_CONTROL_RUNTIME_URL/web/session" \
             -H 'Content-Type: application/json' \
-            --data @request.json)
+            --data "{\"secret\":\"$AX_MOBILE_INGRESS_SECRET\"}" -o session.json
+          node <<'NODE'
+          const fs = require('fs');
+          const r = JSON.parse(fs.readFileSync('session.json','utf8'));
+          if (r.authenticated !== true || typeof r.sessionToken !== 'string' || !r.sessionToken || r.expiresInMs <= 0) throw new Error('WEB_SESSION_CONTRACT_FAILED');
+          fs.writeFileSync('web-session.txt', r.sessionToken);
+          console.log('WEB_SESSION_PASS', JSON.stringify({authenticated:r.authenticated, expiresInMs:r.expiresInMs}));
+          NODE
+
+      - name: Submit external web request
+        shell: bash
+        run: |
+          set -euo pipefail
+          export REQUEST_ID="WEB-READINESS-$(date -u +%Y%m%dT%H%M%SZ)-$RANDOM"
+          export TASK_ID="TASK-WEB-READINESS-$RANDOM"
+          cat >web-request.json <<JSON
+          {"request_id":"$REQUEST_ID","task_id":"$TASK_ID","source_channel":"WEB","content_type":"text","content":"AX external web chat readiness probe","attachments":[]}
+          JSON
+          status=$(curl --silent --show-error -o web-submit.json -w '%{http_code}' \
+            -X POST "$AX_CONTROL_RUNTIME_URL/web/input" \
+            -H "Authorization: Bearer $(cat web-session.txt)" \
+            -H 'Content-Type: application/json' \
+            --data @web-request.json)
           test "$status" = "201"
           node <<'NODE'
           const fs = require('fs');
-          const r = JSON.parse(fs.readFileSync('response.json', 'utf8'));
-          if (r.accepted !== true || r.queued !== true || r.status !== 'RECEIVED' || r.executionStatus !== 'NOT_EXECUTED') throw new Error('MOBILE_SUBMIT_CONTRACT_FAILED');
-          console.log('MOBILE_SUBMIT_PASS', JSON.stringify({requestId:r.requestId, taskId:r.taskId, status:r.status}));
-          fs.writeFileSync('request-id.txt', r.requestId);
-          fs.writeFileSync('task-id.txt', r.taskId);
+          const r = JSON.parse(fs.readFileSync('web-submit.json','utf8'));
+          if (r.accepted !== true || r.queued !== true || r.sourceChannel !== 'WEB' || r.executionStatus !== 'NOT_EXECUTED') throw new Error('WEB_SUBMIT_CONTRACT_FAILED');
+          fs.writeFileSync('web-request-id.txt', r.requestId);
+          fs.writeFileSync('web-task-id.txt', r.taskId);
+          console.log('WEB_SUBMIT_PASS', JSON.stringify({requestId:r.requestId, taskId:r.taskId, status:r.status}));
           NODE
 
-      - name: Pull queued request through PC boundary
+      - name: Pull web request through PC boundary
         shell: bash
         run: |
           set -euo pipefail
+          REQUEST_ID=$(cat web-request-id.txt)
           for attempt in {1..6}; do
-            status=$(curl --silent --show-error -o pull.json -w '%{http_code}' \
+            status=$(curl --silent --show-error -o web-pull.json -w '%{http_code}' \
               -X POST "$AX_CONTROL_RUNTIME_URL/pc/pull" \
               -H "Authorization: Bearer $AX_PC_PULL_SECRET")
             test "$status" = "200"
-            if node <<'NODE'
-          const fs = require('fs');
-          const r = JSON.parse(fs.readFileSync('pull.json', 'utf8'));
-          if (!r.item) process.exit(1);
-          const expected = fs.readFileSync('request-id.txt', 'utf8').trim();
-          if (r.item.request_id !== expected) throw new Error(`PULLED_WRONG_REQUEST:${r.item.request_id}`);
-          console.log('PC_PULL_PASS', JSON.stringify({requestId:r.item.request_id, taskId:r.item.task_id, status:r.item.status}));
-          process.exit(0);
-          NODE
-            then
+            if node -e "const fs=require('fs'); const r=JSON.parse(fs.readFileSync('web-pull.json','utf8')); process.exit(r.item && r.item.request_id===process.env.REQUEST_ID ? 0 : 1)"; then
+              echo 'PC_PULL_PASS'
               break
             fi
-            if [[ "$attempt" -eq 6 ]]; then
-              echo 'PC_PULL_TIMEOUT'
-              cat pull.json
-              exit 1
-            fi
+            if [[ "$attempt" -eq 6 ]]; then cat web-pull.json; exit 1; fi
             sleep 2
           done
+
+      - name: Store correlated result through PC boundary
+        shell: bash
+        run: |
+          set -euo pipefail
+          REQUEST_ID=$(cat web-request-id.txt)
+          TASK_ID=$(cat web-task-id.txt)
+          curl --fail --silent --show-error \
+            -X POST "$AX_CONTROL_RUNTIME_URL/pc/result" \
+            -H "Authorization: Bearer $AX_PC_PULL_SECRET" \
+            -H 'Content-Type: application/json' \
+            --data "{\"request_id\":\"$REQUEST_ID\",\"task_id\":\"$TASK_ID\",\"result\":{\"accepted\":true,\"status\":\"RECEIVED\",\"taskId\":\"$TASK_ID\",\"verified\":false,\"executed\":false,\"evidence\":null,\"writeBackVerified\":false}}" -o web-result-store.json
+          grep -F '"ok":true' web-result-store.json >/dev/null
+          echo 'PC_RESULT_STORE_PASS'
 
       - name: Acknowledge request through PC boundary
         shell: bash
         run: |
           set -euo pipefail
-          REQUEST_ID=$(cat request-id.txt)
-          status=$(curl --silent --show-error -o ack.json -w '%{http_code}' \
+          REQUEST_ID=$(cat web-request-id.txt)
+          status=$(curl --silent --show-error -o web-ack.json -w '%{http_code}' \
             -X POST "$AX_CONTROL_RUNTIME_URL/pc/ack" \
             -H "Authorization: Bearer $AX_PC_PULL_SECRET" \
             -H 'Content-Type: application/json' \
             --data "{\"request_id\":\"$REQUEST_ID\"}")
           test "$status" = "200"
-          grep -F '"ok":true' ack.json >/dev/null
+          grep -F '"ok":true' web-ack.json >/dev/null
           echo 'PC_ACK_PASS'
+
+      - name: Read correlated result from web session
+        shell: bash
+        run: |
+          set -euo pipefail
+          REQUEST_ID=$(cat web-request-id.txt)
+          curl --fail --silent --show-error \
+            -H "Authorization: Bearer $(cat web-session.txt)" \
+            "$AX_CONTROL_RUNTIME_URL/web/result/$REQUEST_ID" -o web-result.json
+          node <<'NODE'
+          const fs=require('fs'); const r=JSON.parse(fs.readFileSync('web-result.json','utf8'));
+          if (r.ok !== true || !r.result || r.result.source !== 'LOCAL_CONTROL_HUB') throw new Error('WEB_RESULT_CONTRACT_FAILED');
+          console.log('WEB_RESULT_PASS', JSON.stringify({requestId:r.result.request_id, taskId:r.result.task_id, source:r.result.source}));
+          NODE
 
       - name: Readiness summary
         shell: bash
         run: |
           echo 'AX EXTERNAL CHANNEL READINESS: PASS'
-          echo 'Public surface: /mobile'
-          echo 'External ingress: /mobile/input'
-          echo 'PC boundary: /pc/pull + /pc/ack'
+          echo 'Public surface: /mobile + /chat'
+          echo 'External ingress: /mobile/input + /web/input'
+          echo 'PC boundary: /pc/pull + /pc/result + /pc/ack'
+          echo 'Correlated web result: /web/result/{request_id}'
           echo 'Mode: FREE_ONLY'
           echo 'Live financial execution: DISABLED'
