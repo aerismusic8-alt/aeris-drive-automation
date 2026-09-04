@@ -11,6 +11,11 @@ assert(!/\$\('messages'\)\.textContent\+='[\r\n]/.test(source), 'web chat contai
 assert(source.includes('id="loginStatus"'), 'web chat must expose a visible login status element');
 assert(source.includes("$('loginStatus').textContent=e.message"), 'web chat login errors must be visible in loginStatus');
 assert(source.includes("status.textContent='Connecting…'"), 'web chat login must show connecting state');
-assert(source.includes("const NL = String.fromCharCode(10)"), 'web chat must use a safe newline constant');
+
+const webChatStart = source.indexOf('function webChatPage(): Response {');
+const webChatEnd = source.indexOf('\n}\n\nexport default', webChatStart);
+assert(webChatStart >= 0 && webChatEnd > webChatStart, 'webChatPage source block must be present');
+const webChatSource = source.slice(webChatStart, webChatEnd);
+assert(webChatSource.includes('<script>const NL=String.fromCharCode(10);const $=id=>document.getElementById(id);'), 'web chat browser script must declare NL in its own scope');
 
 console.log('AX web chat source regression checks passed.');
