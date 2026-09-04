@@ -19,7 +19,7 @@ jobs:
         uses: actions/checkout@v5
 
       - name: Repair and verify PC2 worker safe test path
-        shell: powershell
+        shell: powershell -NoProfile -ExecutionPolicy Bypass -File {0}
         run: |
           $ErrorActionPreference = 'Stop'
           Write-Host "COMPUTERNAME=$env:COMPUTERNAME"
@@ -42,7 +42,7 @@ jobs:
           Write-Host "WORKER_BACKUP=$backup"
 
       - name: Execute one PC2 node E2E job
-        shell: powershell
+        shell: powershell -NoProfile -ExecutionPolicy Bypass -File {0}
         run: |
           $ErrorActionPreference = 'Stop'
           if ($env:COMPUTERNAME -ne $env:AX_EXPECTED_PC2) { throw 'PC2_EXECUTOR_IDENTITY_MISMATCH' }
@@ -54,7 +54,7 @@ jobs:
           Write-Host 'PC2_WORKER_E2E=VERIFIED'
 
       - name: Verify PC2 evidence
-        shell: powershell
+        shell: powershell -NoProfile -ExecutionPolicy Bypass -File {0}
         run: |
           $ErrorActionPreference = 'Stop'
           if ($env:COMPUTERNAME -ne $env:AX_EXPECTED_PC2) { throw 'PC2_EXECUTOR_IDENTITY_MISMATCH' }
