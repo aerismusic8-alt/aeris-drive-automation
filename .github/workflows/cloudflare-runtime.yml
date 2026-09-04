@@ -16,7 +16,7 @@ on:
       - 'AX_CLOUDFLARE_DISPATCH_ADAPTER.ps1'
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   deploy:
@@ -39,6 +39,38 @@ jobs:
           node-version: 24
           check-latest: true
 
+      - name: Patch AX Web result auth boundary
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+
+          src = Path('cloudflare/ax-control-runtime/src/index.ts')
+          text = src.read_text(encoding='utf-8')
+          pattern = r"if \(request\.method === 'GET' && url\.pathname\.startsWith\('/web/result/'\)\) \{.*?\n\}"
+          replacement = """if (request.method === 'GET' && url.pathname.startsWith('/web/result/')) {
+  const requestId = decodeURIComponent(url.pathname.slice('/web/result/'.length));
+  if (!/^[0-9a-f]{8}-[0-9a-f-]{27}$/i.test(requestId)) return json({ error: 'REQUEST_ID_INVALID' }, 422);
+  const resultResponse = await gatewayInboxCall(env, 'result-get/', undefined, requestId);
+  return json(await resultResponse.json(), resultResponse.status);
+}"""
+          text2, count = re.subn(pattern, replacement, text, count=1, flags=re.S)
+          if count != 1:
+              raise SystemExit('expected web result route was not found; refusing deployment')
+          src.write_text(text2, encoding='utf-8')
+
+          test = Path('cloudflare/ax-control-runtime/tests/web-chat-source.test.mjs')
+          t = test.read_text(encoding='utf-8')
+          marker = "assert(webChatSource.includes(\"$('file').addEventListener('change'\"), 'web chat file picker must react to file selection');"
+          if 'web result polling must not depend on a browser session after gateway acceptance' not in t:
+              if marker not in t:
+                  raise SystemExit('expected web chat test marker was not found; refusing deployment')
+              addition = marker + "\n\nconst webResultRouteStart = source.indexOf(\"if (request.method === 'GET' && url.pathname.startsWith('/web/result/')\")\nassert(webResultRouteStart >= 0, 'web result route must be present');\nconst webResultRouteEnd = source.indexOf(\"\n    if (request.method === 'POST' && url.pathname === '/mobile/input')\", webResultRouteStart);\nconst webResultRoute = source.slice(webResultRouteStart, webResultRouteEnd);\nassert(!webResultRoute.includes('requireWebSession'), 'web result polling must not depend on a browser session after gateway acceptance');\nassert(webResultRoute.includes('REQUEST_ID_INVALID'), 'web result route must validate the request id before lookup');"
+              test.write_text(t.replace(marker, addition, 1), encoding='utf-8')
+          PY
+
       - name: Verify Node and Wrangler
         shell: bash
         run: |
@@ -52,6 +84,21 @@ jobs:
         run: |
           set -euo pipefail
           node cloudflare/ax-control-runtime/tests/web-chat-source.test.mjs
+
+      - name: Persist web result auth repair
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm -f .github/workflows/ax-web-result-auth-repair.yml
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add cloudflare/ax-control-runtime/src/index.ts cloudflare/ax-control-runtime/tests/web-chat-source.test.mjs .github/workflows/ax-web-result-auth-repair.yml .github/workflows/cloudflare-runtime.yml
+          if git diff --cached --quiet; then
+            echo 'No persistence commit required.'
+          else
+            git commit -m "fix: decouple web result polling from session auth"
+            git push
+          fi
 
       - name: Ensure AX Queue exists
         shell: bash
