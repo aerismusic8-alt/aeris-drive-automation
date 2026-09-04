@@ -7,9 +7,15 @@ on:
       - '.github/workflows/ax-request-correlation-fix.yml'
       - 'cloudflare/ax-control-runtime/src/index.ts'
   workflow_dispatch:
+  schedule:
+    - cron: "*/5 * * * *"
 
 permissions:
   contents: write
+
+concurrency:
+  group: ax-request-correlation-fix
+  cancel-in-progress: false
 
 jobs:
   fix-and-deploy:
