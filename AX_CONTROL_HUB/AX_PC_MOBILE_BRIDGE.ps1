@@ -35,7 +35,7 @@ while ($true) {
         $gatewayPayload = @{
             request_id = $item.request_id
             task_id = $item.task_id
-            source_channel = 'MOBILE'
+            source_channel = 'WEB'
             content_type = $item.content_type
             content = $item.content
             attachments = $item.attachments
@@ -46,10 +46,18 @@ while ($true) {
             throw "LOCAL_REQUEST_ID_MISMATCH:$($item.request_id)"
         }
 
+        $resultPayload = @{
+            request_id = $item.request_id
+            task_id = $item.task_id
+            result = $accepted
+        }
+        $stored = Invoke-Json "$remoteBase/pc/result" 'POST' $remoteAuth $resultPayload
+        if (-not $stored.ok) { throw "REMOTE_RESULT_STORE_FAILED:$($item.request_id)" }
+
         $ack = Invoke-Json "$remoteBase/pc/ack" 'POST' $remoteAuth @{ request_id = $item.request_id }
         if (-not $ack.ok) { throw "REMOTE_ACK_FAILED:$($item.request_id)" }
 
-        Write-Host "BRIDGE_ACCEPTED request_id=$($item.request_id) task_id=$($item.task_id)"
+        Write-Host "BRIDGE_ACCEPTED request_id=$($item.request_id) task_id=$($item.task_id) result_returned=true"
     }
     catch {
         Write-Warning "AX PC/MOBILE bridge cycle failed: $($_.Exception.Message)"
