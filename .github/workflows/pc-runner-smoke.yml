@@ -7,15 +7,16 @@ on:
 
 jobs:
   pc-runner-smoke:
-    runs-on: [self-hosted, Windows, X64]
+    runs-on: [self-hosted, Windows, X64, PC2-CODING-EXECUTOR]
     steps:
-      - name: Verify PC runner execution
+      - name: Verify PC2 runner execution
         shell: cmd
         run: |
-          echo === AERIS PC RUNNER SMOKE TEST ===
+          echo === PC2 RUNNER SMOKE TEST ===
           echo Hostname: %COMPUTERNAME%
           echo User: %USERNAME%
           echo Runner OS: %RUNNER_OS%
           echo Runner Arch: %RUNNER_ARCH%
+          echo Runner Name: %RUNNER_NAME%
           git --version
-          echo === SMOKE TEST COMPLETE ===
+          echo === PC2 SMOKE TEST COMPLETE ===
