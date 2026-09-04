@@ -20,12 +20,18 @@ on:
     - cron: '*/2 * * * *'
 permissions:
   contents: write
+concurrency:
+  group: ax-dashboard-sync-main
+  cancel-in-progress: false
 jobs:
   sync:
     runs-on: self-hosted
-    timeout-minutes: 3
+    timeout-minutes: 5
     steps:
       - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+          ref: main
       - name: Sync AX runtime state to dashboard
         shell: powershell -NoProfile -ExecutionPolicy Bypass -File {0}
         run: |
@@ -48,7 +54,35 @@ jobs:
       - name: Persist dashboard state
         shell: powershell -NoProfile -ExecutionPolicy Bypass -File {0}
         run: |
+          $ErrorActionPreference='Stop'
           git config user.name 'AX Dashboard Sync'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
           git add dashboard/ax-sync.json dashboard/task-queue.json dashboard/activity.json dashboard/agents.json
-          if(git diff --cached --quiet){Write-Host 'No dashboard mutation'}else{git commit -m 'chore: update AX dashboard state';git push}
+          if(git diff --cached --quiet){Write-Host 'No dashboard mutation'; exit 0}
+
+          git stash push -u -m 'ax-dashboard-sync-generated-state'
+          git fetch origin main
+          git rebase origin/main
+          git stash pop
+
+          if(git status --porcelain --untracked-files=no){
+            git add dashboard/ax-sync.json dashboard/task-queue.json dashboard/activity.json dashboard/agents.json
+          }
+
+          if(git diff --name-only --diff-filter=U){
+            git checkout --theirs -- dashboard/ax-sync.json dashboard/task-queue.json dashboard/activity.json dashboard/agents.json 2>$null
+            git add dashboard/ax-sync.json dashboard/task-queue.json dashboard/activity.json dashboard/agents.json
+          }
+
+          if(git diff --cached --quiet){Write-Host 'No dashboard mutation after rebase'; exit 0}
+          git commit -m 'chore: update AX dashboard state'
+
+          for($attempt=1;$attempt -le 3;$attempt++){
+            git fetch origin main
+            $behind = git rev-list --count HEAD..origin/main
+            if([int]$behind -gt 0){ git rebase origin/main }
+            git push origin HEAD:main
+            if($LASTEXITCODE -eq 0){ Write-Host "AX_DASHBOARD_PUSH=PASS attempt=$attempt"; exit 0 }
+            if($attempt -eq 3){ throw 'AX_DASHBOARD_PUSH_FAILED_AFTER_RETRIES' }
+            Start-Sleep -Seconds 2
+          }
