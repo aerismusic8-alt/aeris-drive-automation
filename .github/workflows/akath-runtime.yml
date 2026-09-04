@@ -26,12 +26,33 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v5
 
-      - name: Ensure Python runtime
-        uses: actions/setup-python@v5
-        with:
-          python-version: '3.x'
-          architecture: 'x64'
-          cache: 'pip'
+      - name: Discover existing Python runtime
+        shell: powershell -NoProfile -ExecutionPolicy Bypass -File {0}
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $candidates = @(
+            (Get-Command py.exe -ErrorAction SilentlyContinue).Source,
+            (Get-Command python.exe -ErrorAction SilentlyContinue).Source,
+            "$env:LOCALAPPDATA\Programs\Python\Python313\python.exe",
+            "$env:LOCALAPPDATA\Programs\Python\Python312\python.exe",
+            "$env:LOCALAPPDATA\Programs\Python\Python311\python.exe",
+            "$env:LOCALAPPDATA\Programs\Python\Python310\python.exe",
+            "$env:USERPROFILE\.local\bin\python.exe",
+            "C:\Python313\python.exe",
+            "C:\Python312\python.exe",
+            "C:\Python311\python.exe",
+            "C:\Python310\python.exe"
+          ) | Where-Object { $_ -and (Test-Path -LiteralPath $_) }
+          $python = $candidates | Select-Object -First 1
+          if (-not $python) {
+            $python = Get-ChildItem -Path @("$env:LOCALAPPDATA\Programs\Python", "$env:USERPROFILE\AppData\Local\Programs\Python", "C:\Python") -Filter python.exe -Recurse -File -ErrorAction SilentlyContinue | Select-Object -ExpandProperty FullName -First 1
+          }
+          if (-not $python) { throw 'PYTHON_RUNTIME_NOT_FOUND' }
+          $pythonDir = Split-Path -Parent $python
+          $pythonDir | Out-File -FilePath $env:GITHUB_PATH -Append -Encoding utf8
+          "PYTHON_EXE=$python" | Out-File -FilePath $env:GITHUB_STEP_SUMMARY -Append -Encoding utf8
+          & $python --version
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
       - name: Run AKATH worker with canonical Brain rehydration
         shell: powershell -NoProfile -ExecutionPolicy Bypass -File {0}
