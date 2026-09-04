@@ -7,6 +7,8 @@ param(
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
 
+$RepoRoot = Split-Path -Parent (Split-Path -Parent $PSScriptRoot)
+$Adapter = Join-Path $PSScriptRoot 'ax_rehydration_adapter.py'
 New-Item -ItemType Directory -Force -Path $StateDir | Out-Null
 $statePath = Join-Path $StateDir 'runtime-state.json'
 $lockPath = Join-Path $StateDir 'runtime.lock'
@@ -38,14 +40,31 @@ function Write-State {
     error_class = $ErrorClass
     next_action = $NextAction
   }
-  $record | ConvertTo-Json -Depth 5 | Set-Content -Encoding UTF8 -Path $statePath
+  $record | ConvertTo-Json -Depth 8 | Set-Content -Encoding UTF8 -Path $statePath
 }
 
 function Write-Evidence {
   param([hashtable]$Data)
   $evidencePath = Join-Path $StateDir ("evidence-$runId.json")
-  $Data | ConvertTo-Json -Depth 10 | Set-Content -Encoding UTF8 -Path $evidencePath
+  $Data | ConvertTo-Json -Depth 12 | Set-Content -Encoding UTF8 -Path $evidencePath
   return $evidencePath
+}
+
+function Invoke-Rehydration {
+  if (-not (Test-Path -LiteralPath $Adapter)) { throw 'REHYDRATION_ADAPTER_MISSING' }
+  $output = & python $Adapter rehydrate 2>&1
+  if ($LASTEXITCODE -ne 0) {
+    $text = ($output -join "`n").Trim()
+    if ($text) {
+      try { return ($text | ConvertFrom-Json) } catch { throw "REHYDRATION_FAILED:$text" }
+    }
+    throw 'REHYDRATION_FAILED'
+  }
+  $text = ($output -join "`n").Trim()
+  if (-not $text) { throw 'REHYDRATION_EMPTY_RESULT' }
+  $result = $text | ConvertFrom-Json
+  if ($result.rehydration_status -ne 'VERIFIED') { throw 'REHYDRATION_NOT_VERIFIED' }
+  return $result
 }
 
 $lock = $null
@@ -59,40 +78,40 @@ try {
     exit 0
   }
 
-  Write-State 'RUNNING' '' 'UNVERIFIED' '' '' 'select authoritative next job' 1
+  Write-State 'RUNNING' '' 'UNVERIFIED' '' '' 'rehydrate authoritative A MASTER BRAIN' 1
+  $rehydration = Invoke-Rehydration
 
-  # Probe mode deliberately avoids financial/public side effects. It proves
-  # autonomous wake-up, persistence, verification, and continuation semantics.
-  if ($ProbeMode -or $env:AKATH_PROBE_MODE -eq 'true') {
-    $jobId = "AKATH-PROBE-$([DateTime]::UtcNow.ToString('yyyyMMdd-HHmmss'))"
-    $evidence = Write-Evidence @{
-      runtime_id = $runtimeId
-      run_id = $runId
-      job_id = $jobId
-      started_at = $started.ToString('o')
-      completed_at = [DateTime]::UtcNow.ToString('o')
-      probe = $true
-      side_effects = 'none'
-      verification_status = 'VERIFIED'
-      next_job_ready = $true
-    }
-    Write-State 'VERIFIED' $jobId 'VERIFIED' $evidence '' 'wake for next job' 1
-    Write-Output 'AKATH_RUNTIME=VERIFIED'
-    Write-Output "AKATH_RUN_ID=$runId"
-    Write-Output "AKATH_JOB_ID=$jobId"
-    Write-Output "AKATH_EVIDENCE=$evidence"
-    exit 0
+  # Probe mode remains side-effect free. Production mode now proves that the
+  # runtime can reconstruct A from the authoritative Brain before any cycle.
+  $jobId = if ($ProbeMode -or $env:AKATH_PROBE_MODE -eq 'true') {
+    "AKATH-PROBE-$([DateTime]::UtcNow.ToString('yyyyMMdd-HHmmss'))"
+  } else {
+    "AKATH-REHYDRATION-$([DateTime]::UtcNow.ToString('yyyyMMdd-HHmmss'))"
   }
 
-  # Production integration is intentionally fail-closed until an authoritative
-  # queue adapter is configured. Never invent a successful execution result.
-  Write-State 'BLOCKED' '' 'UNVERIFIED' '' 'SOURCE_STATE_UNAVAILABLE' 'configure authoritative queue adapter' 1
-  Write-Output 'AKATH_RUNTIME=BLOCKED'
-  Write-Output 'AKATH_REASON=SOURCE_STATE_UNAVAILABLE'
-  exit 2
+  $evidence = Write-Evidence @{
+    runtime_id = $runtimeId
+    run_id = $runId
+    job_id = $jobId
+    started_at = $started.ToString('o')
+    completed_at = [DateTime]::UtcNow.ToString('o')
+    probe = [bool]($ProbeMode -or $env:AKATH_PROBE_MODE -eq 'true')
+    side_effects = 'none'
+    verification_status = 'VERIFIED'
+    rehydration = $rehydration
+    next_job_ready = $true
+  }
+
+  Write-State 'VERIFIED' $jobId 'VERIFIED' $evidence '' 'A context reconstructed; select authoritative next job' 1
+  Write-Output 'AKATH_RUNTIME=VERIFIED'
+  Write-Output "AKATH_RUN_ID=$runId"
+  Write-Output "AKATH_JOB_ID=$jobId"
+  Write-Output "AKATH_EVIDENCE=$evidence"
+  Write-Output 'AKATH_REHYDRATION=VERIFIED'
+  exit 0
 }
 catch {
-  $message = $_.Exception.GetType().Name
+  $message = $_.Exception.Message
   Write-State 'FAILED' '' 'FAILED' '' $message 'diagnose and retry on next wake-up' 1
   Write-Output 'AKATH_RUNTIME=FAILED'
   Write-Output "AKATH_ERROR_CLASS=$message"
