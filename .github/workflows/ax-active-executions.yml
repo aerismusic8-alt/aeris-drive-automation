@@ -27,4 +27,14 @@ jobs:
           git config user.name 'AX Active Execution Monitor'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
           git add AX_ACTIVE_EXECUTIONS.json
-          if(git diff --cached --quiet){Write-Host 'No registry mutation'}else{git commit -m 'chore: update AX active execution registry';git push}
+          if(git diff --cached --quiet){Write-Host 'No registry mutation'; exit 0}
+          git commit -m 'chore: update AX active execution registry'
+          for($i=1;$i -le 5;$i++){
+            git fetch origin main
+            git rebase origin/main
+            git push origin HEAD:main
+            if($LASTEXITCODE -eq 0){Write-Host "Registry persistence: PASS attempt=$i"; exit 0}
+            Write-Host "Registry persistence: RETRY attempt=$i"
+            Start-Sleep -Seconds 2
+          }
+          throw 'AX_ACTIVE_EXECUTIONS_PUSH_FAILED'
