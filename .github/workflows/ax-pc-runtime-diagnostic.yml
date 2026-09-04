@@ -19,7 +19,7 @@ jobs:
         uses: actions/checkout@v5
 
       - name: Inspect PC execution channel
-        shell: powershell
+        shell: powershell -NoProfile -ExecutionPolicy Bypass -File {0}
         run: |
           $ErrorActionPreference = 'Stop'
           Write-Host '=== AX PC RUNTIME DIAGNOSTIC ==='
@@ -35,7 +35,7 @@ jobs:
           }
 
       - name: Probe live Apps Script command contract
-        shell: powershell
+        shell: powershell -NoProfile -ExecutionPolicy Bypass -File {0}
         run: |
           $ErrorActionPreference = 'Stop'
           $payloads = @(
@@ -54,7 +54,7 @@ jobs:
           }
 
       - name: Detect local Apps Script deployment capability
-        shell: powershell
+        shell: powershell -NoProfile -ExecutionPolicy Bypass -File {0}
         run: |
           $ErrorActionPreference = 'Continue'
           Write-Host '--- Apps Script deployment probe ---'
@@ -75,7 +75,7 @@ jobs:
           Write-Host 'RESULT=DEPLOYMENT_CAPABILITY_PRESENT'
 
       - name: Summary
-        shell: powershell
+        shell: powershell -NoProfile -ExecutionPolicy Bypass -File {0}
         run: |
           Write-Host '=== DIAGNOSTIC COMPLETE ==='
           Write-Host 'No secrets or credential values are printed.'
