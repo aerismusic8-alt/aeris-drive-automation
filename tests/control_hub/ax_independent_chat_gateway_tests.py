@@ -1,4 +1,5 @@
 import json
+import os
 from pathlib import Path
 
 from AX_CONTROL_HUB.communication_gateway import CommunicationGateway
@@ -43,7 +44,7 @@ def test_idempotency_key_rejects_duplicate_input(tmp_path):
     raise AssertionError('expected duplicate idempotency rejection')
 
 def test_real_queue_rejects_racing_idempotency_key(tmp_path):
-    queue=GatewayInputQueue(tmp_path); first={'request_id':'req-1','idempotency_key':'idem-1'}; queue.put(first)
+    queue=GatewayInputQueue(tmp_path); queue.put({'request_id':'req-1','idempotency_key':'idem-1'})
     try: queue.put({'request_id':'req-2','idempotency_key':'idem-1'})
     except ValueError as exc: assert str(exc)=='DUPLICATE_IDEMPOTENCY_KEY'; return
     raise AssertionError('expected atomic duplicate rejection')
@@ -66,9 +67,15 @@ def test_raw_attachment_data_is_rejected(tmp_path):
 def test_web_chat_surface_is_ax_not_aeris():
     html=Path(__file__).resolve().parents[2].joinpath('AX_CONTROL_HUB','operations.html').read_text(encoding='utf-8'); assert '<title>AX Web Chat</title>' in html and 'AERIS' not in html
 
+def test_contract_is_provider_neutral():
+    contract=json.loads(Path(__file__).resolve().parents[2].joinpath('AX_CONTROL_HUB','COMMUNICATION_GATEWAY_CONTRACT.json').read_text(encoding='utf-8'))
+    assert contract['security']['external_ai_direct_master_brain_access'] is False
+    assert set(contract['identities']['SERVICE']) >= {'read_state','read_tasks','read_evidence','submit_input'}
+    assert 'submit_input' not in contract['identities']['READ_ONLY']
+
 if __name__=='__main__':
     import tempfile
     with tempfile.TemporaryDirectory() as td:
         p=Path(td)
         for test in [test_new_session_rehydrates_authoritative_context,test_service_and_read_only_capabilities_are_distinct,test_idempotency_key_rejects_duplicate_input,test_real_queue_rejects_racing_idempotency_key,test_unverified_rehydration_blocks_control_input,test_read_only_cannot_submit_input,test_raw_attachment_data_is_rejected]: test(p)
-    test_web_chat_surface_is_ax_not_aeris(); print('AX_INDEPENDENT_CHAT_GATEWAY_TESTS: PASS')
+    test_web_chat_surface_is_ax_not_aeris(); test_contract_is_provider_neutral(); print('AX_INDEPENDENT_CHAT_GATEWAY_TESTS: PASS')
