@@ -1,0 +1,122 @@
+name: AX Request Correlation Fix
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/ax-request-correlation-fix.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  fix-and-deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      WORKER_NAME: ax-control-runtime
+      AX_CONTROL_RUNTIME_URL: https://ax-control-runtime.aerismusic8.workers.dev
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Patch request correlation
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+          src = Path('cloudflare/ax-control-runtime/src/index.ts')
+          text = src.read_text(encoding='utf-8')
+
+          old = """    if (path === '/pull' && request.method === 'POST') {
+      const now = Date.now();
+      const index = current.findIndex((item) => {
+        const meta = item as AxGatewayInput & { _status?: string; _leaseUntil?: number };
+        return meta._status !== 'ACKED' && (!meta._leaseUntil || meta._leaseUntil <= now);
+      });
+      if (index < 0) return json({ ok: true, item: null });
+"""
+          new = """    if (path === '/pull' && request.method === 'POST') {
+      const now = Date.now();
+      const requestedId = payload && typeof payload === 'object' ? String((payload as { request_id?: unknown }).request_id || '') : '';
+      const index = current.findIndex((item) => {
+        const meta = item as AxGatewayInput & { _status?: string; _leaseUntil?: number };
+        const eligible = meta._status !== 'ACKED' && (!meta._leaseUntil || meta._leaseUntil <= now);
+        return eligible && (!requestedId || item.request_id === requestedId);
+      });
+      if (index < 0) return requestedId ? json({ ok: false, item: null, error: 'REQUEST_UNAVAILABLE', requestId: requestedId }, 404) : json({ ok: true, item: null });
+"""
+          if old not in text:
+              raise SystemExit('gateway pull block not found')
+          text = text.replace(old, new, 1)
+
+          old2 = """async function gatewayInboxCall(env: Env, operation: 'put' | 'pull' | 'ack' | 'result-put' | 'result-get/', payload?: unknown, requestId?: string): Promise<Response> {
+"""
+          if old2 not in text:
+              raise SystemExit('gatewayInboxCall signature not found')
+
+          old3 = """    if (request.method === 'POST' && url.pathname === '/pc/pull') {
+      if (!secretAccepted(bearerSecret(request), env.AX_PC_PULL_SECRET)) return json({ error: 'AUTH_REQUIRED' }, 401);
+      const inboxResponse = await gatewayInboxCall(env, 'pull'); return json(await inboxResponse.json(), inboxResponse.status);
+    }
+"""
+          new3 = """    if (request.method === 'POST' && url.pathname === '/pc/pull') {
+      if (!secretAccepted(bearerSecret(request), env.AX_PC_PULL_SECRET)) return json({ error: 'AUTH_REQUIRED' }, 401);
+      const body = await request.json().catch(() => null);
+      const requestId = String(new URL(request.url).searchParams.get('request_id') || (body && typeof body === 'object' ? (body as { request_id?: unknown }).request_id || '' : ''));
+      const inboxResponse = await gatewayInboxCall(env, 'pull', requestId ? { request_id: requestId } : undefined);
+      return json(await inboxResponse.json(), inboxResponse.status);
+    }
+"""
+          if old3 not in text:
+              raise SystemExit('pc pull route not found')
+          text = text.replace(old3, new3, 1)
+          src.write_text(text, encoding='utf-8')
+          PY
+
+      - name: TypeScript regression checks
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -f cloudflare/ax-control-runtime/src/index.ts
+          grep -q "REQUEST_UNAVAILABLE" cloudflare/ax-control-runtime/src/index.ts
+          grep -q "searchParams.get('request_id')" cloudflare/ax-control-runtime/src/index.ts
+          grep -q "item.request_id === requestedId" cloudflare/ax-control-runtime/src/index.ts
+
+      - name: Persist patch
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add cloudflare/ax-control-runtime/src/index.ts
+          if git diff --cached --quiet; then exit 0; fi
+          git commit -m "fix: correlate PC pulls to requested web job"
+          git push
+
+      - name: Deploy runtime
+        shell: bash
+        working-directory: cloudflare/ax-control-runtime
+        run: npx wrangler@latest deploy --name "$WORKER_NAME"
+
+      - name: Verify public runtime
+        shell: bash
+        run: |
+          set -euo pipefail
+          node <<'NODE'
+          const base = process.env.AX_CONTROL_RUNTIME_URL;
+          const h = await fetch(base + '/health', { cache: 'no-store' });
+          if (!h.ok) throw new Error('HEALTH_HTTP_' + h.status);
+          const health = await h.json();
+          if (health.status !== 'ONLINE' || health.mode !== 'FREE_ONLY' || health.webChat !== true || health.pcPull !== true) throw new Error('HEALTH_CONTRACT_FAILED');
+          const c = await fetch(base + '/chat', { cache: 'no-store' });
+          if (!c.ok) throw new Error('CHAT_HTTP_' + c.status);
+          const chat = await c.text();
+          if (!chat.includes('AX Web Chat')) throw new Error('CHAT_PAGE_MISSING');
+          console.log('PUBLIC_RUNTIME_OK', health.version);
+          console.log('CHAT_ROUTE_OK');
+          console.log('REQUEST_CORRELATION_PATCH_PRESENT');
+          NODE
