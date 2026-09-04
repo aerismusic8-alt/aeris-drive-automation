@@ -36,6 +36,49 @@ jobs:
           }
           if ((Get-Content -Raw $runtime) -notmatch "'NODE_E2E_TEST'") { throw 'NODE_E2E_TEST_ALLOWLIST_NOT_VERIFIED' }
           Write-Host 'NODE_E2E_TEST_ALLOWLIST=VERIFIED'
+      - name: Patch PC2 worker Node action compatibility
+        shell: powershell -NoProfile -ExecutionPolicy Bypass -File {0}
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $runtime = 'C:\AX-Runtime\AX_PC2_WORKER_V2.ps1'
+          $text = Get-Content -Raw $runtime
+          $marker = '# AX_NODE_ACTION_COMPAT_V1'
+          if ($text -notmatch [regex]::Escape($marker)) {
+            $backup = "$runtime.bak-before-node-action-compat-$(Get-Date -Format yyyyMMddHHmmss)"
+            Copy-Item $runtime $backup -Force
+            $compat = @"
+$marker
+if ($body -ne $null) {
+  $hasAction = $false
+  if ($body.PSObject.Properties.Name -contains 'action') {
+    $hasAction = -not [string]::IsNullOrWhiteSpace([string]$body.action)
+  }
+  if (-not $hasAction) {
+    $derivedAction = ''
+    $delegationId = Get-PropertyValue $body 'delegationJobId'
+    $executionValue = Get-PropertyValue $body 'execution'
+    $statusValue = Get-PropertyValue $body 'status'
+    $versionValue = Get-PropertyValue $body 'version'
+    if (-not [string]::IsNullOrWhiteSpace([string]$delegationId) -and $executionValue -ne $null) {
+      $derivedAction = 'node_complete'
+    } elseif (-not [string]::IsNullOrWhiteSpace([string]$statusValue) -or -not [string]::IsNullOrWhiteSpace([string]$versionValue)) {
+      $derivedAction = 'node_heartbeat'
+    } else {
+      $derivedAction = 'node_pull'
+    }
+    $body | Add-Member -NotePropertyName 'action' -NotePropertyValue $derivedAction -Force
+    Write-Host "[PC2] NODE_ACTION_COMPAT=$derivedAction"
+  }
+}
+"@
+            $needle = '  $r = Invoke-RestMethod -Uri $ApiUrl -Method Post -Headers (Headers) -Body ($body | ConvertTo-Json -Depth 20 -Compress) -TimeoutSec 30'
+            if ($text -notmatch [regex]::Escape($needle)) { throw 'NODE_ACTION_COMPAT_INJECTION_POINT_NOT_FOUND' }
+            $text = $text.Replace($needle, "$compat`r`n$needle")
+            Set-Content -Path $runtime -Value $text -Encoding UTF8
+          }
+          $patched = Get-Content -Raw $runtime
+          if ($patched -notmatch [regex]::Escape($marker)) { throw 'NODE_ACTION_COMPAT_NOT_VERIFIED' }
+          Write-Host 'NODE_ACTION_COMPAT=VERIFIED'
       - name: Inspect PC2 worker Node API contract
         shell: powershell -NoProfile -ExecutionPolicy Bypass -File {0}
         run: |
@@ -43,7 +86,7 @@ jobs:
           $runtime = 'C:\AX-Runtime\AX_PC2_WORKER_V2.ps1'
           $lines = Get-Content $runtime
           Write-Host '--- WORKER API/COMMAND LINES ---'
-          $lines | Where-Object { $_ -match 'NODE_API|UNKNOWN_COMMAND|allowed|allowlist|Invoke-RestMethod|Invoke-WebRequest|gateway|command|apiUrl|endpoint' } | Select-Object -First 120 | ForEach-Object { Write-Host $_ }
+          $lines | Where-Object { $_ -match 'AX_NODE_ACTION_COMPAT_V1|NODE_ACTION_COMPAT|NODE_API|UNKNOWN_COMMAND|allowlist|Invoke-RestMethod|command|action|apiUrl|endpoint' } | Select-Object -First 160 | ForEach-Object { Write-Host $_ }
           Write-Host '--- WORKER END ---'
       - name: Execute one PC2 worker E2E
         shell: powershell -NoProfile -ExecutionPolicy Bypass -File {0}
