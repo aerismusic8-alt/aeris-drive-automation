@@ -5,6 +5,7 @@ on:
     branches: [main]
     paths:
       - '.github/workflows/ax-request-correlation-fix.yml'
+      - 'cloudflare/ax-control-runtime/src/index.ts'
   workflow_dispatch:
 
 permissions:
@@ -49,14 +50,8 @@ jobs:
       });
       if (index < 0) return requestedId ? json({ ok: false, item: null, error: 'REQUEST_UNAVAILABLE', requestId: requestedId }, 404) : json({ ok: true, item: null });
 """
-          if old not in text:
-              raise SystemExit('gateway pull block not found')
-          text = text.replace(old, new, 1)
-
-          old2 = """async function gatewayInboxCall(env: Env, operation: 'put' | 'pull' | 'ack' | 'result-put' | 'result-get/', payload?: unknown, requestId?: string): Promise<Response> {
-"""
-          if old2 not in text:
-              raise SystemExit('gatewayInboxCall signature not found')
+          if old in text:
+              text = text.replace(old, new, 1)
 
           old3 = """    if (request.method === 'POST' && url.pathname === '/pc/pull') {
       if (!secretAccepted(bearerSecret(request), env.AX_PC_PULL_SECRET)) return json({ error: 'AUTH_REQUIRED' }, 401);
@@ -71,17 +66,15 @@ jobs:
       return json(await inboxResponse.json(), inboxResponse.status);
     }
 """
-          if old3 not in text:
-              raise SystemExit('pc pull route not found')
-          text = text.replace(old3, new3, 1)
+          if old3 in text:
+              text = text.replace(old3, new3, 1)
           src.write_text(text, encoding='utf-8')
           PY
 
-      - name: TypeScript regression checks
+      - name: Regression checks
         shell: bash
         run: |
           set -euo pipefail
-          test -f cloudflare/ax-control-runtime/src/index.ts
           grep -q "REQUEST_UNAVAILABLE" cloudflare/ax-control-runtime/src/index.ts
           grep -q "searchParams.get('request_id')" cloudflare/ax-control-runtime/src/index.ts
           grep -q "item.request_id === requestedId" cloudflare/ax-control-runtime/src/index.ts
