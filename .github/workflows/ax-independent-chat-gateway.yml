@@ -19,4 +19,6 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Run AX independent chat gateway acceptance tests
+        env:
+          PYTHONPATH: ${{ github.workspace }}
         run: python3 tests/control_hub/ax_independent_chat_gateway_tests.py
