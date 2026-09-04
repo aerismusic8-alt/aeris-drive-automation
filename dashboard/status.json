@@ -1,12 +1,12 @@
 ﻿{
     "system":  "ONLINE",
-    "cycle":  "ff122213-6584-4537-9a03-632087070404",
-    "timestamp":  "2026-09-04T14:58:30.9378713+07:00",
-    "overall":  "DEGRADED",
+    "cycle":  "613685e1-219e-4f1f-85cf-ea72c065b128",
+    "timestamp":  "2026-09-04T15:01:07.8023008+07:00",
+    "overall":  "PASS",
     "recovery":  "PASS",
     "decision":  "PASS",
     "dispatch":  "PASS",
-    "persistence":  "NOT_VERIFIED",
+    "persistence":  "VERIFIED",
     "runner":  "VERIFIED",
     "mutation":  "ENABLED",
     "selectedTask":  "AX-RECOVERED-005"
