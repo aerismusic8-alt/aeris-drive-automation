@@ -15,7 +15,7 @@ on:
       - 'AX_CLOUDFLARE_DISPATCH_ADAPTER.ps1'
 
 permissions:
-  contents: write
+  contents: read
 
 jobs:
   deploy:
@@ -46,62 +46,11 @@ jobs:
           npm --version
           npx wrangler@latest --version
 
-      - name: Repair AX Web Chat source before deployment
-        shell: bash
-        run: |
-          set -euo pipefail
-          python3 - <<'PY'
-          from pathlib import Path
-
-          path = Path('cloudflare/ax-control-runtime/src/index.ts')
-          source = path.read_text(encoding='utf-8')
-          changed = False
-
-          replacements = [
-              (
-                  '<button id="login">Start session</button></div>',
-                  '<button id="login">Start session</button><div id="loginStatus" class="muted" role="status" aria-live="polite"></div></div>',
-              ),
-              (
-                  "async function login(){try{const secret=$('secret').value;const r=await fetch('/web/session',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({secret})});const j=await r.json();if(!r.ok)throw new Error(j.error||'AUTH_FAILED');setSession(j.sessionToken);$('secret').value='';logged();await refresh()}catch(e){$('session').textContent=e.message}}",
-                  "async function login(){const status=$('loginStatus');status.className='muted';status.textContent='Connecting…';try{const secret=$('secret').value.trim();if(!secret)throw new Error('SECRET_REQUIRED');const r=await fetch('/web/session',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({secret})});const j=await r.json().catch(()=>({}));if(!r.ok)throw new Error(j.error||'AUTH_FAILED');if(!j.sessionToken)throw new Error('SESSION_TOKEN_MISSING');setSession(j.sessionToken);$('secret').value='';status.textContent='';logged();await refresh()}catch(e){status.className='err';status.textContent=e.message||'AUTH_FAILED';}}",
-              ),
-              (
-                  "$('send').onclick=async()=>{try{const r=await submit($('message').value);$('messages').textContent+='\\n\\n[RECEIVED] '+r.requestId+'\\n'+($('message').value||'');$('result').className='muted';$('result').textContent='Waiting for Local Hub result…';const result=await poll(r.requestId);$('messages').textContent+='\\n[LOCAL HUB RESULT]\\n'+JSON.stringify(result.result||result,null,2);$('result').textContent='Completed';$('message').value='';$('file').value=''}catch(e){$('result').className='err';$('result').textContent=e.message}};if(session()){logged();refresh().catch(()=>{})}",
-                  "$('send').onclick=async()=>{try{const message=$('message').value.trim();if(!message && !$('file').files.length)throw new Error('MESSAGE_REQUIRED');const r=await submit(message);$('messages').textContent+='\\n\\n[RECEIVED] '+r.requestId+'\\n'+(message||'[attachment]');$('result').className='muted';$('result').textContent='Waiting for Local Hub result…';const result=await poll(r.requestId);$('messages').textContent+='\\n[LOCAL HUB RESULT]\\n'+JSON.stringify(result.result||result,null,2);$('result').textContent='Completed';$('message').value='';$('file').value=''}catch(e){$('result').className='err';$('result').textContent=e.message}};if(session()){logged();refresh().catch(()=>{})}",
-              ),
-          ]
-
-          for old, new in replacements:
-              if old not in source:
-                  raise SystemExit('AX_WEB_CHAT_REPAIR_MARKER_NOT_FOUND')
-              if old != new:
-                  source = source.replace(old, new, 1)
-                  changed = True
-
-          path.write_text(source, encoding='utf-8')
-          print('AX_WEB_CHAT_SOURCE_CHANGED=' + str(changed).lower())
-          PY
-
       - name: Verify AX Web Chat regression guard
         shell: bash
         run: |
           set -euo pipefail
           node cloudflare/ax-control-runtime/tests/web-chat-source.test.mjs
-
-      - name: Commit repaired AX Web Chat source
-        shell: bash
-        run: |
-          set -euo pipefail
-          if git diff --quiet -- cloudflare/ax-control-runtime/src/index.ts; then
-            echo 'AX_WEB_CHAT_SOURCE_ALREADY_REPAIRED'
-            exit 0
-          fi
-          git config user.name 'github-actions[bot]'
-          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git add cloudflare/ax-control-runtime/src/index.ts
-          git commit -m 'fix: repair AX web chat browser interactions'
-          git push
 
       - name: Ensure AX Queue exists
         shell: bash
@@ -138,11 +87,13 @@ jobs:
           if (!response.ok) process.exit(1);
           const r = await response.json();
           console.log('Status:', r.status);
+          console.log('Version:', r.version);
           console.log('Mode:', r.mode);
           console.log('Live Financial Execution:', r.liveFinancialExecution);
           console.log('Mobile Ingress Auth Configured:', r.mobileIngressAuthConfigured);
           console.log('PC Pull Auth Configured:', r.pcPullAuthConfigured);
-          const ok = r.status === 'ONLINE' && r.mode === 'FREE_ONLY' && r.liveFinancialExecution === false && r.mobileIngressAuthConfigured === true && r.pcPullAuthConfigured === true && r.gatewayInbox === 'AX_GATEWAY_INBOX';
+          console.log('Web Chat Auth Configured:', r.webChatAuthConfigured);
+          const ok = r.status === 'ONLINE' && r.version === 'control-runtime-1.5.0' && r.mode === 'FREE_ONLY' && r.liveFinancialExecution === false && r.mobileIngressAuthConfigured === true && r.pcPullAuthConfigured === true && r.webChat === true && r.webChatAuthConfigured === true && r.gatewayInbox === 'AX_GATEWAY_INBOX';
           if (!ok) process.exit(1);
           NODE
             then
@@ -156,23 +107,6 @@ jobs:
             sleep 5
           done
 
-      - name: Verify Existing AERIS External Runtime
-        shell: bash
-        run: |
-          set -euo pipefail
-          node <<'NODE'
-          const url = 'https://aeris-execution-runtime.aerismusic8.workers.dev';
-          try {
-            const response = await fetch(url);
-            const r = await response.json();
-            if (r.status !== 'ONLINE') throw new Error('EXISTING_AERIS_RUNTIME_NOT_ONLINE');
-            console.log('Existing AERIS External Runtime: VERIFIED ONLINE');
-          } catch (error) {
-            console.log(`WARNING: Existing runtime verification failed: ${error.message}`);
-            console.log('New AX Control Runtime remains independently deployed.');
-          }
-          NODE
-
       - name: Deployment Summary
         shell: bash
         run: |
@@ -180,8 +114,8 @@ jobs:
           echo 'AX CONTROL RUNTIME DEPLOYMENT VERIFIED'
           echo "Control Worker: $WORKER_NAME"
           echo "Control Runtime: $AX_CONTROL_RUNTIME_URL"
+          echo 'Web Chat regression guard: PASS'
           echo 'Ingress auth verified by deployed Worker health endpoint.'
           echo 'Transport store: AX_GATEWAY_INBOX'
           echo 'Execution mode: FREE_ONLY'
           echo 'Live financial execution: DISABLED'
-          echo 'Existing AERIS External Execution Runtime remains a separate boundary.'
