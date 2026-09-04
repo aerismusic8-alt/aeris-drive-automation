@@ -1,11 +1,10 @@
 name: AX Web Result Auth Repair
 
 on:
-  push:
+  workflow_run:
+    workflows: ["AX PC Runtime Diagnostic"]
+    types: [completed]
     branches: [main]
-    paths:
-      - '.github/workflows/ax-web-result-auth-repair.yml'
-      - 'cloudflare/ax-control-runtime/wrangler.jsonc'
   workflow_dispatch:
 
 permissions:
@@ -13,6 +12,7 @@ permissions:
 
 jobs:
   repair:
+    if: ${{ github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success' }}
     runs-on: ubuntu-latest
     timeout-minutes: 10
     env:
