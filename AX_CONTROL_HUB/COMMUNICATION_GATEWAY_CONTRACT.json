@@ -1,12 +1,13 @@
 {
-  "schema_version": "1.0",
+  "schema_version": "1.1",
   "source_of_truth": "A_MASTER_BRAIN",
-  "source_channels": ["GPT", "PC", "MOBILE", "SYSTEM"],
+  "source_channels": ["GPT", "PC", "MOBILE", "SYSTEM", "WEB"],
   "content_types": ["text", "file", "image", "event", "command"],
   "request": {
-    "required": ["request_id", "source_channel", "content_type"],
+    "required": ["request_id", "idempotency_key", "source_channel", "content_type"],
     "fields": {
       "request_id": "string",
+      "idempotency_key": "string",
       "task_id": "string|null",
       "source_channel": "string",
       "content_type": "string",
@@ -14,7 +15,22 @@
       "attachments": "array",
       "requested_at": "string|null"
     },
-    "attachment": ["attachment_id", "kind", "name", "media_type", "reference"]
+    "attachment": ["attachment_id", "kind", "name", "media_type", "reference"],
+    "raw_binary_policy": "references_only"
+  },
+  "routes": {
+    "session": "GET /gateway/session",
+    "capabilities": "GET /gateway/capabilities",
+    "input": "POST /gateway/input",
+    "state": "GET /gateway/state",
+    "tasks": "GET /gateway/tasks",
+    "evidence": "GET /gateway/evidence/{request_id}",
+    "m_a_check": "POST /gateway/m-a-check"
+  },
+  "identities": {
+    "K": ["read_state", "read_tasks", "read_evidence", "submit_input", "m_a_check"],
+    "SERVICE": ["read_state", "read_tasks", "read_evidence", "submit_input", "m_a_check"],
+    "READ_ONLY": ["read_state", "read_tasks", "read_evidence", "m_a_check"]
   },
   "response": {
     "required": ["request_id", "status", "rehydration_status", "verification_status"],
@@ -26,6 +42,8 @@
     "protected_routes_require_authentication": true,
     "max_request_bytes": 1048576,
     "raw_binary_in_master_state": false,
-    "live_financial_execution": false
+    "live_financial_execution": false,
+    "external_ai_direct_master_brain_access": false,
+    "model_identity_is_ax_identity": false
   }
 }

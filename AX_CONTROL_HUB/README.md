@@ -12,47 +12,58 @@ Secure transport/control boundary for A MASTER BRAIN.
 
 ## Authentication
 
-The Hub MUST authenticate the operator before any control operation.
+The Hub MUST authenticate the caller before any protected operation.
 
 Required properties:
 
 1. Passwords are never stored in plaintext.
-2. Password verification uses an adaptive password KDF with a unique salt. The reference implementation uses PBKDF2-HMAC-SHA256 from the Python standard library so the foundation has no external dependency requirement; production may use an approved memory-hard KDF such as Argon2id when available.
-3. Session credentials are short-lived, revocable, and never placed in URLs.
-4. Failed authentication is rate-limited by the production deployment boundary.
-5. Authentication and authorization events must be audit logged without secrets.
-6. Secrets are provided through local environment/OS secret storage, never A MASTER BRAIN or Git.
-7. Default/demo credentials are forbidden in production.
-8. All remote access requires HTTPS or an authenticated secure tunnel.
+2. Password verification uses PBKDF2-HMAC-SHA256 with a unique salt in the reference runtime.
+3. K sessions are short-lived and revocable and are never placed in URLs.
+4. SERVICE and READ_ONLY tokens are supplied through environment/OS secret storage, never A MASTER BRAIN or Git.
+5. Default/demo credentials are forbidden in production.
+6. All remote access requires HTTPS or an authenticated secure tunnel.
 
-## Initial roles
+Environment variables:
+
+```text
+AX_CONTROL_HUB_USERNAME=<local-operator>
+AX_CONTROL_HUB_PASSWORD=<strong-local-password>
+AX_CONTROL_HUB_SERVICE_TOKEN=<random-service-token>
+AX_CONTROL_HUB_READ_ONLY_TOKEN=<random-read-only-token>
+```
+
+## Roles
 
 - `K`: full operator authority, including approved control and emergency stop.
-- `READ_ONLY`: state/task/evidence visibility only.
-- `SERVICE`: machine-to-machine execution identity with least privilege; cannot redefine A identity or alter K authority.
+- `SERVICE`: machine-to-machine least privilege; may read approved state/task/evidence and submit approved gateway input; cannot redefine AX identity or alter K authority.
+- `READ_ONLY`: state/task/evidence visibility only; cannot submit input.
+
+## Browser client
+
+`/operations` is the responsive **AX Web Chat** client for PC1, PC2, and Mobile. It is a client of the Hub, not a memory store. Browser storage contains only the short-lived session token and presentation state.
+
+## Standard gateway routes
+
+- `GET /gateway/session` — rehydrate AX context from A MASTER BRAIN.
+- `GET /gateway/capabilities` — caller capability set.
+- `GET /gateway/state` — authoritative state view.
+- `GET /gateway/tasks` — authoritative task registry view.
+- `POST /gateway/m-a-check` — identity/rehydration challenge.
+- `POST /gateway/input` — input with required unique `idempotency_key`.
+- `GET /gateway/input/{request_id}` — durable transport input.
+- `GET /gateway/evidence/{request_id}` — execution evidence.
+
+External AI clients use the same standard API boundary and never access Master Brain files directly.
+
+## Safety boundaries
+
+- Failed Master Brain rehydration blocks control input.
+- Duplicate idempotency keys are rejected.
+- `QUEUED`, `EXECUTING`, and `COMPLETED` remain distinct.
+- Completion requires evidence and verification.
+- Attachments are metadata/references only; raw binary is rejected.
+- Live financial execution is outside this gateway phase.
 
 ## Local reference runtime
 
-`AX_CONTROL_HUB/ax_control_hub_server.py` is a loopback-first reference implementation. It reads `A_MASTER_BRAIN/AX_MASTER_STATE.json` and `A_MASTER_BRAIN/AX_MASTER_TASK_REGISTRY_v2.json` as authoritative sources and fails closed when they are unavailable.
-
-Start on Windows:
-
-```powershell
-$env:AX_CONTROL_HUB_USERNAME = '<local-operator>'
-$env:AX_CONTROL_HUB_PASSWORD = '<strong-local-password>'
-python .\AX_CONTROL_HUB\ax_control_hub_server.py
-```
-
-Then run:
-
-```powershell
-.\AX_CONTROL_HUB\AX_CONTROL_HUB_E2E.ps1
-```
-
-The reference command allowlist intentionally contains only `health_check`; financial/live execution is not exposed by this foundation runtime.
-
-## Trust model
-
-`Client -> Authentication -> Authorization -> Command Validation -> Queue/Execution -> Evidence -> Verification`
-
-A health response only proves health. It must never be used as proof that a task executed.
+`AX_CONTROL_HUB/ax_control_hub_server.py` is loopback-first. It reads `A_MASTER_BRAIN/AX_MASTER_STATE.json` and `A_MASTER_BRAIN/AX_MASTER_TASK_REGISTRY_v2.json` as authoritative sources and fails closed when they are unavailable.
