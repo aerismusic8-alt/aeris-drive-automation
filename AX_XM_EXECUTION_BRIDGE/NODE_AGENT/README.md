@@ -10,6 +10,18 @@ This is the execution-node side of the XM bridge. It is intentionally separate f
 - Return broker-visible results and reconciliation evidence.
 - Never accept deposit, withdrawal, account-settings, or credential-export commands.
 
+## Transport
+
+The deployed control runtime exposes an isolated XM namespace:
+
+- `POST /xm/node/pull` — authenticated node polling.
+- `POST /xm/node/result` — authenticated result/reconciliation write-back.
+- `GET /xm/node/result/{request_id}` — authenticated result retrieval.
+- `POST /xm/control/enqueue` — authenticated AX/control-plane command enqueue.
+- `GET /xm/status` — sanitized public health/status only.
+
+The queue is backed by a dedicated Durable Object (`AxXmExecutionQueue`) and is not the AX Gateway Inbox. This prevents XM execution state from becoming a second source of truth for normal AX tasks.
+
 ## Safety defaults
 
 - `LIVE_EXECUTION_ENABLED=false`
@@ -18,13 +30,16 @@ This is the execution-node side of the XM bridge. It is intentionally separate f
 - Missing/invalid authentication => reject.
 - Unknown command state => reject.
 - Ambiguous broker result => `UNKNOWN_REQUIRES_RECONCILIATION`; never blind-retry a mutating request.
+- Duplicate `idempotency_key` => no second command is created.
 
-## Transport boundary
+## MT5 boundary
 
-The node agent is designed to poll a remote HTTPS bridge. MT5 can communicate with an HTTPS endpoint using MQL5 `WebRequest`, but the MT5 terminal must explicitly allow the endpoint URL. The endpoint must therefore be fixed and allowlisted during node setup.
+MT5 is the broker execution adapter. XM documents Expert Advisor support on MT5. MQL5 `WebRequest()` can send HTTP/HTTPS requests from an EA, but the bridge URL must be explicitly allowlisted in the MT5 Expert Advisors settings. `WebRequest()` is not available in the Strategy Tester, so transport testing and broker execution testing remain separate gates.
 
-No broker password, investor password, API key, or bridge secret belongs in this repository.
+## Secrets
+
+No broker password, investor password, API key, or bridge secret belongs in this repository. The execution node must provision `AX_BRIDGE_TOKEN`/the node authentication secret through its local secret store only.
 
 ## Current state
 
-`SCAFFOLD_ONLY` — no live broker command is enabled by this file alone.
+`TRANSPORT_READY_READ_ONLY` — authenticated queue transport is implemented, but no live broker execution is enabled by this layer. The node must still complete the handshake/readiness checklist before any live enablement.
