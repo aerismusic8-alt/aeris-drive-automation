@@ -65,22 +65,22 @@ Supported logical input types include text, file references, image references, e
 
 | Area | Open |
 |---|---|
-| Repository | [AKATH repository](https://github.com/aerismusic8-alt/aeris-drive-automation) |
-| GitHub Actions | [Workflows & runs](https://github.com/aerismusic8-alt/aeris-drive-automation/actions) |
-| Issues | [Issues](https://github.com/aerismusic8-alt/aeris-drive-automation/issues) |
+| Repository | [AKATH repository](./) |
+| GitHub Actions | [Workflows & runs](https://github.com/actions) |
+| Issues | [Issues](https://github.com/aerismusic8-alt) |
 | Copilot | [GitHub Copilot](https://github.com/copilot) |
-| Code | [Repository files](https://github.com/aerismusic8-alt/aeris-drive-automation/tree/main) |
+| Code | [Repository files](./) |
 
 ## EXECUTION
 
 Use the links below for the execution layer that is verifiable from this repository.
 
-- [GitHub Actions — execution history](https://github.com/aerismusic8-alt/aeris-drive-automation/actions)
-- [AKATH runtime workflow](https://github.com/aerismusic8-alt/aeris-drive-automation/blob/main/.github/workflows/akath-runtime.yml)
-- [AKATH 24×7 acceptance gate](https://github.com/aerismusic8-alt/aeris-drive-automation/blob/main/.github/workflows/akath-24x7-acceptance.yml)
-- [Workflow files](https://github.com/aerismusic8-alt/aeris-drive-automation/tree/main/.github/workflows)
-- [All repository files](https://github.com/aerismusic8-alt/aeris-drive-automation/tree/main)
-- [Three-cycle proof](https://github.com/aerismusic8-alt/aeris-drive-automation/blob/main/AKATH/VERIFICATION/three-cycle-proof.json) — valid only after a real successful acceptance sequence.
+- [GitHub Actions — execution history](../../actions)
+- [AKATH runtime workflow](./.github/workflows/akath-runtime.yml)
+- [AKATH 24×7 acceptance gate](./.github/workflows/akath-24x7-acceptance.yml)
+- [Workflow files](./.github/workflows)
+- [All repository files](./)
+- [Three-cycle proof](./AKATH/VERIFICATION/three-cycle-proof.json) — valid only after a real successful acceptance sequence.
 
 ### PC1 / PC2
 
@@ -95,17 +95,17 @@ A node is not considered healthy solely from configuration. Live status must com
 
 Only verified GitHub destinations are linked here until runtime endpoints are confirmed from repository configuration.
 
-- [Actions / runtime history](https://github.com/aerismusic8-alt/aeris-drive-automation/actions)
-- [Issues / operational incidents](https://github.com/aerismusic8-alt/aeris-drive-automation/issues)
+- [Actions / runtime history](../../actions)
+- [Issues / operational incidents](../../issues)
 
 ## REPOSITORY DOCUMENTATION
 
-- [AX Control Hub API Contract](https://github.com/aerismusic8-alt/aeris-drive-automation/blob/main/AX_CONTROL_HUB/API_CONTRACT.md) — gateway, authentication, state, task, and evidence semantics.
-- [AKATH Runtime Contract](https://github.com/aerismusic8-alt/aeris-drive-automation/blob/main/AKATH/RUNTIME_CONTRACT.md) — autonomous runtime state and invariants.
-- [AKATH Status](https://github.com/aerismusic8-alt/aeris-drive-automation/blob/main/AKATH/STATUS.md) — current implementation and verification status.
-- [AKATH 24×7 verification](https://github.com/aerismusic8-alt/aeris-drive-automation/blob/main/AKATH/VERIFICATION/README.md) — acceptance evidence contract.
-- [Workflow files](https://github.com/aerismusic8-alt/aeris-drive-automation/tree/main/.github/workflows) — automation definitions.
-- [Repository](https://github.com/aerismusic8-alt/aeris-drive-automation/tree/main) — complete source tree.
+- [AX Control Hub API Contract](./AX_CONTROL_HUB/API_CONTRACT.md) — gateway, authentication, state, task, and evidence semantics.
+- [AKATH Runtime Contract](./AKATH/RUNTIME_CONTRACT.md) — autonomous runtime state and invariants.
+- [AKATH Status](./AKATH/STATUS.md) — current implementation and verification status.
+- [AKATH 24×7 verification](./AKATH/VERIFICATION/README.md) — acceptance evidence contract.
+- [Workflow files](./.github/workflows) — automation definitions.
+- [Repository](./) — complete source tree.
 
 ## CURRENT OPERATING PRIORITY
 
