@@ -30,8 +30,18 @@ function base64Url(bytes: Uint8Array): string {
   return btoa(binary).replaceAll('+', '-').replaceAll('/', '_').replaceAll('=', '');
 }
 function base64UrlText(text: string): string { return base64Url(new TextEncoder().encode(text)); }
+function normalizePemSecret(pem: string): string {
+  let normalized = pem.trim();
+  if ((normalized.startsWith('"') && normalized.endsWith('"')) || (normalized.startsWith("'") && normalized.endsWith("'"))) {
+    try {
+      if (normalized.startsWith('"')) normalized = JSON.parse(normalized) as string;
+      else normalized = normalized.slice(1, -1);
+    } catch { /* keep raw value */ }
+  }
+  return normalized.replace(/\\r/g, '\r').replace(/\\n/g, '\n').replace(/\r/g, '').trim();
+}
 function pemToDer(pem: string): { der: Uint8Array; format: 'pkcs1' | 'pkcs8' } {
-  const normalized = pem.replace(/\r/g, '').trim();
+  const normalized = normalizePemSecret(pem);
   const isPkcs1 = normalized.includes('-----BEGIN RSA PRIVATE KEY-----');
   const isPkcs8 = normalized.includes('-----BEGIN PRIVATE KEY-----');
   if (!isPkcs1 && !isPkcs8) throw new Error('GITHUB_PRIVATE_KEY_PEM_FORMAT_UNSUPPORTED');
