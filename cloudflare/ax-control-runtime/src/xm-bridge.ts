@@ -23,9 +23,22 @@ export type XmResult = {
   received_at: string;
 };
 
+export type XmHeartbeat = {
+  account_scope: string;
+  login?: number;
+  currency?: string;
+  balance?: number;
+  equity?: number;
+  terminal_connected?: boolean;
+  trade_allowed?: boolean;
+  expert_allowed?: boolean;
+  received_at: string;
+};
+
 const ALLOWED = new Set(['GET_ACCOUNT_STATE','GET_POSITIONS','GET_SYMBOL_STATE','SUBMIT_ORDER','MODIFY_POSITION','CLOSE_POSITION']);
 const BLOCKED = new Set(['DEPOSIT','WITHDRAW','CHANGE_ACCOUNT_SETTINGS','EXPORT_CREDENTIALS']);
 const SCOPE = 'XM_MICRO_K_DESIGNATED_ACCOUNT';
+const TERMINAL = new Set(['VERIFIED','REJECTED','FAILED','UNKNOWN_REQUIRES_RECONCILIATION']);
 
 function json(body: unknown, status = 200): Response {
   return Response.json(body, { status, headers: { 'Cache-Control': 'no-store', 'Content-Type': 'application/json; charset=utf-8' } });
@@ -75,7 +88,7 @@ export class AxXmExecutionQueue {
       const leases = (await this.state.storage.get<Record<string, number>>('leases')) || {};
       const item = commands.find(c => {
         const lease = leases[c.request_id] || 0;
-        return lease <= now && !['VERIFIED','REJECTED','FAILED','UNKNOWN_REQUIRES_RECONCILIATION'].includes(String((c as any)._terminal));
+        return lease <= now && !TERMINAL.has(String((c as any)._terminal));
       }) as (XmCommand & { _lease_until?: number }) | undefined;
       if (!item) return json({ ok: true, item: null });
       const leased = { ...item, _lease_until: now + 60000 };
@@ -86,12 +99,12 @@ export class AxXmExecutionQueue {
 
     if (path === '/result' && request.method === 'POST') {
       const result = body as XmResult | null;
-      if (!result || typeof result.request_id !== 'string' || typeof result.idempotency_key !== 'string' || typeof result.state !== 'string') return json({ error: 'RESULT_SCHEMA_INVALID' }, 422);
+      if (!result || typeof result.request_id !== 'string' || typeof result.idempotency_key !== 'string' || !TERMINAL.has(String(result.state)) && !['REQUESTED','VALIDATED','SENT','BROKER_ACK'].includes(String(result.state))) return json({ error: 'RESULT_SCHEMA_INVALID' }, 422);
       const command = commands.find(c => c.request_id === result.request_id);
       if (!command) return json({ error: 'COMMAND_NOT_FOUND' }, 404);
       if (command.idempotency_key !== result.idempotency_key) return json({ error: 'IDEMPOTENCY_MISMATCH' }, 409);
       await this.state.storage.put(`result:${result.request_id}`, result);
-      if (['VERIFIED','REJECTED','FAILED','UNKNOWN_REQUIRES_RECONCILIATION'].includes(result.state)) {
+      if (TERMINAL.has(result.state)) {
         const terminalCommands = commands.map(c => c.request_id === result.request_id ? { ...c, _terminal: result.state } : c);
         await this.state.storage.put('commands', terminalCommands);
         const leases = (await this.state.storage.get<Record<string, number>>('leases')) || {};
@@ -99,6 +112,13 @@ export class AxXmExecutionQueue {
         await this.state.storage.put('leases', leases);
       }
       return json({ ok: true, request_id: result.request_id, state: result.state }, 201);
+    }
+
+    if (path === '/heartbeat' && request.method === 'POST') {
+      if (!body || typeof body !== 'object' || Array.isArray(body) || (body as any).account_scope !== SCOPE) return json({ error: 'HEARTBEAT_SCOPE_INVALID' }, 422);
+      const heartbeat: XmHeartbeat = { ...(body as XmHeartbeat), received_at: new Date().toISOString() };
+      await this.state.storage.put('heartbeat', heartbeat);
+      return json({ ok: true, account_scope: SCOPE, received_at: heartbeat.received_at }, 201);
     }
 
     if (path.startsWith('/result/') && request.method === 'GET') {
@@ -109,7 +129,8 @@ export class AxXmExecutionQueue {
 
     if (path === '/status' && request.method === 'GET') {
       const latest = commands.slice(-20).map(c => ({ request_id: c.request_id, operation: c.operation, account_scope: c.account_scope, terminal: (c as any)._terminal || null }));
-      return json({ ok: true, service: 'AX XM EXECUTION BRIDGE', mode: 'READ_ONLY_PENDING_HANDSHAKE', live_execution_enabled: false, kill_switch: true, account_scope: SCOPE, queued: commands.length, recent: latest });
+      const heartbeat = await this.state.storage.get<XmHeartbeat>('heartbeat');
+      return json({ ok: true, service: 'AX XM EXECUTION BRIDGE', mode: 'READ_ONLY_PENDING_HANDSHAKE', live_execution_enabled: false, kill_switch: true, account_scope: SCOPE, queued: commands.length, heartbeat: heartbeat ? { received_at: heartbeat.received_at, account_scope: heartbeat.account_scope, terminal_connected: heartbeat.terminal_connected === true, trade_allowed: heartbeat.trade_allowed === true, expert_allowed: heartbeat.expert_allowed === true } : null, recent: latest });
     }
     return json({ error: 'NOT_FOUND' }, 404);
   }
