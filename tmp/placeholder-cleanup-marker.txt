@@ -1,1 +1,0 @@
-This placeholder is temporary and will be removed atomically by the final cleanup commit.
