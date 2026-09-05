@@ -4,7 +4,7 @@
   "type": "module",
   "scripts": {
     "test": "vitest run",
-    "test:gemini": "vitest run test/gemini-adapter.spec.ts"
+    "test:gemini": "vitest run test/gemini-*.spec.ts"
   },
   "devDependencies": {
     "@cloudflare/workers-types": "4.20250905.0",
