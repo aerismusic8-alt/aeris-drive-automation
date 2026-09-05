@@ -39,6 +39,15 @@ assert(webChatSource.includes('<input id="file" type="file" multiple>'), 'web ch
 assert(webChatSource.includes('.filePicker{'), 'web chat file picker must define full-area label styling');
 assert(webChatSource.includes("$('file').addEventListener('change'"), 'web chat file picker must react to file selection');
 
-// Deployment trigger marker: source change above is intentionally followed by this no-op comment.
+// GitHub App authentication contract: production code must use the three Worker secrets,
+// mint an App JWT, resolve the repository installation, and mint an installation token.
+assert(source.includes('AX_GITHUB_APP_PRIVATE_KEY'), 'GitHub App private-key secret binding is missing');
+assert(source.includes('AX_GITHUB_CLIENT_ID'), 'GitHub App client-id secret binding is missing');
+assert(source.includes('AX_GITHUB_APP_ID'), 'GitHub App app-id secret binding is missing');
+assert(source.includes('crypto.subtle.importKey'), 'GitHub App JWT signing must use Web Crypto');
+assert(source.includes('RSASSA-PKCS1-v1_5'), 'GitHub App JWT must use RS256-compatible RSA signing');
+assert(source.includes('/repos/${REPO}/installation'), 'GitHub App must resolve the repository installation');
+assert(source.includes('/app/installations/${installationId}/access_tokens'), 'GitHub App must mint an installation access token');
+assert(source.includes('verifyGitHubToken'), 'GitHub repository access verification must remain present');
 
-console.log('AX web chat source regression checks passed.');
+console.log('AX web chat and GitHub App source regression checks passed.');
