@@ -21,6 +21,7 @@ type GitHubEnv = {
 const REPO = 'aerismusic8-alt/aeris-drive-automation';
 const API = 'https://api.github.com';
 const API_VERSION = '2026-03-10';
+const WORKFLOW_FILE = 'akath-runtime.yml';
 
 function json(body: unknown, status = 200): Response {
   return Response.json(body, { status, headers: { 'Cache-Control': 'no-store', 'Content-Type': 'application/json; charset=utf-8' } });
@@ -98,7 +99,7 @@ async function getInstallationId(jwt: string): Promise<number> {
   const body = await response.json() as { id?: number }; if (!body.id) throw new Error('GITHUB_INSTALLATION_ID_MISSING'); return body.id;
 }
 async function createInstallationToken(jwt: string, installationId: number): Promise<{ token: string; expires_at?: string }> {
-  const response = await githubRequest(`/app/installations/${installationId}/access_tokens`, { method: 'POST', headers: { Authorization: `Bearer ${jwt}`, 'Content-Type': 'application/json' }, body: JSON.stringify({ repositories: ['aeris-drive-automation'], permissions: { contents: 'read', actions: 'read', checks: 'read', metadata: 'read' } }) });
+  const response = await githubRequest(`/app/installations/${installationId}/access_tokens`, { method: 'POST', headers: { Authorization: `Bearer ${jwt}`, 'Content-Type': 'application/json' }, body: JSON.stringify({ repositories: ['aeris-drive-automation'], permissions: { contents: 'read', actions: 'write', checks: 'read', metadata: 'read' } }) });
   if (!response.ok) throw new Error(`GITHUB_TOKEN_HTTP_${response.status}`);
   const body = await response.json() as { token?: string; expires_at?: string }; if (!body.token) throw new Error('GITHUB_INSTALLATION_TOKEN_MISSING'); return { token: body.token, expires_at: body.expires_at };
 }
@@ -112,7 +113,7 @@ async function verifyGitHubApp(env: GitHubEnv): Promise<Response> {
   if (!configured) return json({ verified: false, configured: false, error: 'GITHUB_APP_CREDENTIALS_MISSING' }, 503);
   try {
     const jwt = await createAppJwt(env); const installationId = await getInstallationId(jwt); const installationToken = await createInstallationToken(jwt, installationId); const repository = await verifyRepository(installationToken.token);
-    return json({ verified: true, configured: true, authenticated: true, installationResolved: true, repositoryAccess: true, repository, installationIdPresent: Boolean(installationId), tokenExpiresAt: installationToken.expires_at || null, permissionsRequested: { contents: 'read', actions: 'read', checks: 'read', metadata: 'read' } });
+    return json({ verified: true, configured: true, authenticated: true, installationResolved: true, repositoryAccess: true, repository, installationIdPresent: Boolean(installationId), tokenExpiresAt: installationToken.expires_at || null, permissionsRequested: { contents: 'read', actions: 'write', checks: 'read', metadata: 'read' } });
   } catch (error) {
     const message = error instanceof Error ? error.message : 'GITHUB_APP_VERIFICATION_FAILED';
     return json({ verified: false, configured: true, authenticated: false, repositoryAccess: false, status: 'NOT_VERIFIED', error: message }, 502);
@@ -122,6 +123,22 @@ async function publicStatus(env: GitHubEnv): Promise<Response> {
   const response = await verifyGitHubApp(env); let body: Record<string, unknown> = {};
   try { body = await response.clone().json() as Record<string, unknown>; } catch { /* sanitized fallback */ }
   return json({ verified: body.verified === true, configured: body.configured === true, authenticated: body.authenticated === true, repositoryAccess: body.repositoryAccess === true, status: body.verified === true ? 'VERIFIED' : 'NOT_VERIFIED', error: typeof body.error === 'string' ? body.error : undefined }, body.verified === true ? 200 : 503);
+}
+async function dispatchWorkflow(token: string, target: 'PC1' | 'PC2', taskId: string): Promise<Response> {
+  const response = await githubRequest(`/repos/${REPO}/actions/workflows/${encodeURIComponent(WORKFLOW_FILE)}/dispatches`, { method: 'POST', headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' }, body: JSON.stringify({ ref: 'main', inputs: { target, task_id: taskId } }) });
+  if (!response.ok) {
+    const text = await response.text();
+    throw new Error(`GITHUB_WORKFLOW_DISPATCH_HTTP_${response.status}:${text.slice(0, 300)}`);
+  }
+  return response;
+}
+async function dispatchFromApp(env: GitHubEnv, target: 'PC1' | 'PC2', taskId: string): Promise<Record<string, unknown>> {
+  const jwt = await createAppJwt(env);
+  const installationId = await getInstallationId(jwt);
+  const installationToken = await createInstallationToken(jwt, installationId);
+  await verifyRepository(installationToken.token);
+  await dispatchWorkflow(installationToken.token, target, taskId);
+  return { dispatched: true, repository: REPO, workflow: WORKFLOW_FILE, ref: 'main', target, taskId, dispatchAcceptedAt: new Date().toISOString(), tokenExpiresAt: installationToken.expires_at || null };
 }
 
 async function xmRoute(request: Request, env: GitHubEnv): Promise<Response | null> {
@@ -162,13 +179,21 @@ export default {
     const adapters = await handleAxAdaptersRoute(request, env);
     if (adapters) return adapters;
     const url = new URL(request.url);
-    if (request.method === 'POST' && url.pathname === '/gemini/test') {
-      return handleGeminiLiveProbe(request, env);
-    }
+    if (request.method === 'POST' && url.pathname === '/gemini/test') return handleGeminiLiveProbe(request, env);
     if (request.method === 'GET' && url.pathname === '/github/status') return publicStatus(env);
     if (request.method === 'GET' && url.pathname === '/github/verify') {
       if (!authorized(request, env)) return json({ error: 'AUTH_REQUIRED' }, 401);
       return verifyGitHubApp(env);
+    }
+    if (request.method === 'POST' && url.pathname === '/github/dispatch') {
+      if (!authorized(request, env)) return json({ error: 'AUTH_REQUIRED' }, 401);
+      const body = await request.json().catch(() => null) as { target?: unknown; task_id?: unknown; taskId?: unknown } | null;
+      const target = String(body?.target || '');
+      const taskId = String(body?.task_id || body?.taskId || '');
+      if (target !== 'PC1' && target !== 'PC2') return json({ error: 'TARGET_INVALID', allowed: ['PC1', 'PC2'] }, 422);
+      if (!taskId || taskId.length > 128) return json({ error: 'TASK_ID_REQUIRED' }, 422);
+      try { return json(await dispatchFromApp(env, target, taskId), 202); }
+      catch (error) { return json({ dispatched: false, error: error instanceof Error ? error.message : 'GITHUB_WORKFLOW_DISPATCH_FAILED' }, 502); }
     }
     return runtime.fetch(request, env as never, ctx);
   },
