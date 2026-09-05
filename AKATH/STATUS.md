@@ -22,4 +22,16 @@
 
 ## 24/7 verification
 
-**NOT VERIFIED** until direct GitHub Actions evidence demonstrates at least three successive autonomous verified cycles without a ChatGPT message between them.
+**IN PROGRESS** — the runtime must accumulate at least three successive autonomous verified cycles without a ChatGPT message between them before this status can be promoted to VERIFIED.
+
+### Current acceptance target
+
+1. Autonomous cycle executes on the configured self-hosted runner.
+2. Runtime state is VERIFIED.
+3. A MASTER BRAIN rehydration is VERIFIED and execution authority remains false during rehydration.
+4. Adapter acceptance tests pass.
+5. Three successive verified cycles are evidenced without ChatGPT intervention.
+
+### Important boundary
+
+A dashboard heartbeat showing `PASS` is not, by itself, sufficient proof of 24/7 autonomous continuity. The authoritative acceptance criterion is successive verified GitHub Actions runtime evidence.
