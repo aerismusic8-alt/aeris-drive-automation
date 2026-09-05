@@ -32,6 +32,7 @@ The primary AKATH acceptance criterion is **GPT-independent continuous operation
 - Rehydration adapter: `AKATH/runtime/ax_rehydration_adapter.py`
 - GitHub Actions runtime: `.github/workflows/akath-runtime.yml`
 - 24×7 acceptance gate: `.github/workflows/akath-24x7-acceptance.yml`
+- Legacy identity audit: `AKATH/probes/akath_legacy_identity_audit.ps1`
 - Acceptance proof: `AKATH/VERIFICATION/three-cycle-proof.json` (created only after real passing scheduled evidence)
 
 ### Acceptance Gate
@@ -43,6 +44,7 @@ The acceptance gate performs **one independently verified AKATH cycle per schedu
 3. Execution authority is not bypassed (`execution_authorized=false` during rehydration).
 4. The next job is reported ready.
 5. Adapter acceptance tests pass.
+6. Legacy identity audit passes before runtime verification.
 
 The gate promotes the repository to 24×7 `VERIFIED` only after **three consecutive successful scheduled acceptance runs** and then writes the machine-readable proof to `AKATH/VERIFICATION/three-cycle-proof.json`. Manual runs do not count toward acceptance.
 
@@ -66,16 +68,15 @@ Supported logical input types include text, file references, image references, e
 | Area | Open |
 |---|---|
 | Repository | [AKATH repository](./) |
-| GitHub Actions | [Workflows & runs](https://github.com/actions) |
-| Issues | [Issues](https://github.com/aerismusic8-alt) |
+| GitHub Actions | Use the repository **Actions** tab |
+| Issues | Use the repository **Issues** tab |
 | Copilot | [GitHub Copilot](https://github.com/copilot) |
 | Code | [Repository files](./) |
 
 ## EXECUTION
 
-Use the links below for the execution layer that is verifiable from this repository.
+Use the repository's Actions tab for execution history.
 
-- [GitHub Actions — execution history](../../actions)
 - [AKATH runtime workflow](./.github/workflows/akath-runtime.yml)
 - [AKATH 24×7 acceptance gate](./.github/workflows/akath-24x7-acceptance.yml)
 - [Workflow files](./.github/workflows)
@@ -93,10 +94,10 @@ A node is not considered healthy solely from configuration. Live status must com
 
 ## MONITOR / JOBS
 
-Only verified GitHub destinations are linked here until runtime endpoints are confirmed from repository configuration.
+Only verified runtime destinations are linked here until runtime endpoints are confirmed from repository configuration.
 
-- [Actions / runtime history](../../actions)
-- [Issues / operational incidents](../../issues)
+- Use the repository **Actions** tab for runtime history.
+- Use the repository **Issues** tab for operational incidents.
 
 ## REPOSITORY DOCUMENTATION
 
