@@ -1,4 +1,4 @@
-name: AERIS Apps Script Trigger Fix Tests
+name: AKATH Apps Script OAuth Bridge Tests
 
 on:
   workflow_dispatch:
