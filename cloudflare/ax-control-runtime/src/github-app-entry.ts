@@ -1,4 +1,5 @@
 import runtime from './index';
+import { handleGeminiLiveProbe } from './gemini-live-probe';
 import { AxXmExecutionQueue, auth as xmAuth, json as xmJson, xmQueueStub } from './xm-bridge';
 
 type GitHubEnv = {
@@ -7,6 +8,7 @@ type GitHubEnv = {
   AX_GITHUB_APP_ID?: string;
   AX_MOBILE_INGRESS_SECRET?: string;
   AX_XM_NODE_SECRET?: string;
+  GEMINI_API_KEY?: string;
   AX_XM_EXECUTION_QUEUE: DurableObjectNamespace;
   [key: string]: unknown;
 };
@@ -124,9 +126,7 @@ async function xmRoute(request: Request, env: GitHubEnv): Promise<Response | nul
   const controlAuthorized = authorized(request, env);
   const stub = xmQueueStub(env);
 
-  if (request.method === 'GET' && url.pathname === '/xm/status') {
-    return stub.fetch('https://xm.local/status', { method: 'GET' });
-  }
+  if (request.method === 'GET' && url.pathname === '/xm/status') return stub.fetch('https://xm.local/status', { method: 'GET' });
   if (request.method === 'POST' && url.pathname === '/xm/node/pull') {
     if (!nodeAuthorized) return xmJson({ error: 'AUTH_REQUIRED' }, 401);
     return stub.fetch('https://xm.local/pull', { method: 'POST', headers: { 'content-type': 'application/json' }, body: '{}' });
@@ -155,6 +155,9 @@ export default {
     const xm = await xmRoute(request, env);
     if (xm) return xm;
     const url = new URL(request.url);
+    if (request.method === 'POST' && url.pathname === '/gemini/test') {
+      return handleGeminiLiveProbe(request, env);
+    }
     if (request.method === 'GET' && url.pathname === '/github/status') return publicStatus(env);
     if (request.method === 'GET' && url.pathname === '/github/verify') {
       if (!authorized(request, env)) return json({ error: 'AUTH_REQUIRED' }, 401);
