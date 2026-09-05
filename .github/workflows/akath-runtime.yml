@@ -1,12 +1,6 @@
 name: AKATH Autonomous Runtime
 
 on:
-  push:
-    branches: [main]
-    paths:
-      - 'AKATH/**'
-      - 'AX_MASTER_BRAIN/**'
-      - '.github/workflows/akath-runtime.yml'
   workflow_dispatch:
     inputs:
       target:
@@ -17,8 +11,6 @@ on:
         options:
           - PC1
           - PC2
-  schedule:
-    - cron: "*/5 * * * *"
 
 permissions:
   contents: read
@@ -97,12 +89,12 @@ jobs:
           if ($evidence.rehydration.rehydration_status -ne 'VERIFIED') { throw 'AKATH_REHYDRATION_NOT_VERIFIED' }
           if ($evidence.rehydration.identity -ne 'A') { throw 'AKATH_IDENTITY_NOT_A' }
           if ($evidence.rehydration.execution_authorized -ne $false) { throw 'AKATH_REHYDRATION_AUTHORITY_BYPASS' }
-          "AKATH_STATE=$($state.state)" | Out-File -FilePath $env:GITHUB_STEP_SUMMARY -Append
-          "AKATH_RUN_ID=$($state.run_id)" | Out-File -FilePath $env:GITHUB_STEP_SUMMARY -Append
-          "AKATH_JOB_ID=$($state.job_id)" | Out-File -FilePath $env:GITHUB_STEP_SUMMARY -Append
-          "AKATH_REHYDRATION=$($evidence.rehydration.rehydration_status)" | Out-File -FilePath $env:GITHUB_STEP_SUMMARY -Append
-          "AKATH_IDENTITY=$($evidence.rehydration.identity)" | Out-File -FilePath $env:GITHUB_STEP_SUMMARY -Append
-          "AKATH_EVIDENCE=$($state.evidence_ref)" | Out-File -FilePath $env:GITHUB_STEP_SUMMARY -Append
+          "AKATH_STATE=$($state.state)" | Out-File -FilePath $env:GITHUB_STEP_SUMMARY -Append -Encoding utf8
+          "AKATH_RUN_ID=$($state.run_id)" | Out-File -FilePath $env:GITHUB_STEP_SUMMARY -Append -Encoding utf8
+          "AKATH_JOB_ID=$($state.job_id)" | Out-File -FilePath $env:GITHUB_STEP_SUMMARY -Append -Encoding utf8
+          "AKATH_REHYDRATION=$($evidence.rehydration.rehydration_status)" | Out-File -FilePath $env:GITHUB_STEP_SUMMARY -Append -Encoding utf8
+          "AKATH_IDENTITY=$($evidence.rehydration.identity)" | Out-File -FilePath $env:GITHUB_STEP_SUMMARY -Append -Encoding utf8
+          "AKATH_EVIDENCE=$($state.evidence_ref)" | Out-File -FilePath $env:GITHUB_STEP_SUMMARY -Append -Encoding utf8
 
       - name: Run adapter acceptance test
         shell: powershell -NoProfile -ExecutionPolicy Bypass -File {0}
