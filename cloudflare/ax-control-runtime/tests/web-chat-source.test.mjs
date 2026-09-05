@@ -44,6 +44,9 @@ assert(githubSource.includes('AX_GITHUB_CLIENT_ID'), 'GitHub App client-id secre
 assert(githubSource.includes('AX_GITHUB_APP_ID'), 'GitHub App app-id secret binding is missing');
 assert(githubSource.includes('crypto.subtle.importKey'), 'GitHub App JWT signing must use Web Crypto');
 assert(githubSource.includes('RSASSA-PKCS1-v1_5'), 'GitHub App JWT must use RS256-compatible RSA signing');
+assert(githubSource.includes('-----BEGIN RSA PRIVATE KEY-----'), 'GitHub App PEM parser must accept GitHub PKCS#1 RSA private keys');
+assert(githubSource.includes('wrapPkcs1AsPkcs8'), 'GitHub App PKCS#1 key must be converted to PKCS#8 for Web Crypto import');
+assert(githubSource.includes('iss: clientId'), 'GitHub App JWT issuer must use the configured Client ID');
 assert(githubSource.includes('/repos/${REPO}/installation'), 'GitHub App must resolve the repository installation');
 assert(githubSource.includes('/app/installations/${installationId}/access_tokens'), 'GitHub App must mint an installation access token');
 assert(githubSource.includes("url.pathname === '/github/verify'"), 'GitHub App verification route is missing');
