@@ -1,4 +1,5 @@
 import runtime from './index';
+import { handleAxAdaptersRoute } from './ax-adapters-route';
 import { handleGeminiLiveProbe } from './gemini-live-probe';
 import { AxXmExecutionQueue, auth as xmAuth, json as xmJson, xmQueueStub } from './xm-bridge';
 
@@ -9,6 +10,10 @@ type GitHubEnv = {
   AX_MOBILE_INGRESS_SECRET?: string;
   AX_XM_NODE_SECRET?: string;
   GEMINI_API_KEY?: string;
+  GEMINI_ACCOUNT_1?: string;
+  GEMINI_ACCOUNT_2?: string;
+  GEMINI_ACCOUNT_3?: string;
+  GOOGLE_DRIVE_CREDENTIAL?: string;
   AX_XM_EXECUTION_QUEUE: DurableObjectNamespace;
   [key: string]: unknown;
 };
@@ -154,6 +159,8 @@ export default {
   async fetch(request: Request, env: GitHubEnv, ctx: ExecutionContext): Promise<Response> {
     const xm = await xmRoute(request, env);
     if (xm) return xm;
+    const adapters = await handleAxAdaptersRoute(request, env);
+    if (adapters) return adapters;
     const url = new URL(request.url);
     if (request.method === 'POST' && url.pathname === '/gemini/test') {
       return handleGeminiLiveProbe(request, env);
