@@ -6,6 +6,9 @@ on:
     paths:
       - '.github/workflows/ax-request-correlation-fix.yml'
       - 'cloudflare/ax-control-runtime/src/index.ts'
+      - 'cloudflare/ax-control-runtime/src/github-app-entry.ts'
+      - 'cloudflare/ax-control-runtime/wrangler.jsonc'
+      - 'cloudflare/ax-control-runtime/package.json'
   workflow_dispatch:
   schedule:
     - cron: "*/5 * * * *"
