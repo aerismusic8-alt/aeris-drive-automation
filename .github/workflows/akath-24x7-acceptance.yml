@@ -8,14 +8,14 @@ on:
       - 'AKATH/runtime/**'
       - 'AKATH/probes/**'
       - 'AKATH/tests/**'
-    paths-ignore:
-      - 'AKATH/VERIFICATION/**'
   schedule:
     - cron: "*/5 * * * *"
 
 permissions:
   contents: write
   actions: read
+
+authorization: none
 
 concurrency:
   group: akath-24x7-acceptance
