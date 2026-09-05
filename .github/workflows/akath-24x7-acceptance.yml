@@ -1,9 +1,6 @@
 name: AKATH 24x7 Acceptance Gate
 
 on:
-  push:
-    branches:
-      - main
   workflow_dispatch:
   schedule:
     - cron: "*/5 * * * *"
