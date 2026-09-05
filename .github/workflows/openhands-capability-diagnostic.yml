@@ -25,7 +25,7 @@ jobs:
           fetch-depth: 1
 
       - name: Inspect OpenHands host capabilities
-        shell: powershell
+        shell: powershell -NoProfile -ExecutionPolicy Bypass
         run: |
           $ErrorActionPreference = 'Continue'
           Write-Host '=== OPENHANDS CAPABILITY DIAGNOSTIC ==='
