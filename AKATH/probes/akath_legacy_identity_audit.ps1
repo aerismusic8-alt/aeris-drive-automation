@@ -15,7 +15,7 @@ $matches = New-Object System.Collections.Generic.List[object]
 
 Get-ChildItem -LiteralPath $rootPath -Recurse -Force -File -ErrorAction SilentlyContinue |
   Where-Object {
-    $relative = $_.FullName.Substring($rootPath.Length).TrimStart('\\','/')
+    $relative = $_.FullName.Substring($rootPath.Length).TrimStart([char]92, '/')
     $parts = $relative -split '[\\/]'
     ($parts | Where-Object { $excludedNames -contains $_ }).Count -eq 0 -and
     ($excludedFiles -notcontains $_.Name)
@@ -24,7 +24,7 @@ Get-ChildItem -LiteralPath $rootPath -Recurse -Force -File -ErrorAction Silently
     try {
       $content = Get-Content -LiteralPath $_.FullName -Raw -Encoding UTF8 -ErrorAction Stop
       if ($content -match $activeIdentityPattern) {
-        $matches.Add([pscustomobject]@{ path = $_.FullName.Substring($rootPath.Length).TrimStart('\\','/'); type = 'active-identity-declaration' })
+        $matches.Add([pscustomobject]@{ path = $_.FullName.Substring($rootPath.Length).TrimStart([char]92, '/'); type = 'active-identity-declaration' })
       }
     } catch {
       # Ignore binary/unreadable files; the audit targets text/config artifacts.
