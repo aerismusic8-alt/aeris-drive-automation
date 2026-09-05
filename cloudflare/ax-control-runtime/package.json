@@ -1,0 +1,14 @@
+{
+  "name": "ax-control-runtime",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "vitest run",
+    "test:gemini": "vitest run test/gemini-adapter.spec.ts"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "latest",
+    "vitest": "latest",
+    "typescript": "latest"
+  }
+}
