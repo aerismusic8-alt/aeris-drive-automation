@@ -37,7 +37,7 @@ jobs:
         run: |
           $ErrorActionPreference = 'Stop'
           & "$env:GITHUB_WORKSPACE/AKATH/probes/akath_legacy_identity_audit.ps1" -Root $env:GITHUB_WORKSPACE
-          if ($LASTEXITCODE -ne 0) { throw "AKATH_LEGACY_IDENTITY_AUDIT_FAILED:$LASTEXITCODE" }
+          if (-not $?) { throw 'AKATH_LEGACY_IDENTITY_AUDIT_FAILED' }
           "AKATH_AUDIT_PASS=true" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
 
       - name: Run and verify one autonomous AKATH cycle
@@ -46,7 +46,7 @@ jobs:
           $ErrorActionPreference = 'Stop'
           $stateDir = Join-Path $env:RUNNER_TEMP ("akath-24x7-acceptance\${{ github.run_id }}")
           & "$env:GITHUB_WORKSPACE/AKATH/runtime/akath_worker.ps1" -ProbeMode -StateDir $stateDir
-          if ($LASTEXITCODE -ne 0) { throw "AKATH_WORKER_FAILED:$LASTEXITCODE" }
+          if (-not $?) { throw 'AKATH_WORKER_FAILED' }
           $statePath = Join-Path $stateDir 'runtime-state.json'
           if (-not (Test-Path -LiteralPath $statePath)) { throw 'AKATH_STATE_MISSING' }
           $state = Get-Content -Raw -LiteralPath $statePath | ConvertFrom-Json
@@ -158,11 +158,19 @@ jobs:
           git add AKATH/VERIFICATION/runtime-cycle-ledger.json
           if ($streak -ge 3) { git add AKATH/VERIFICATION/three-cycle-proof.json AKATH/STATUS.md }
           git commit -m "chore: record AKATH scheduled runtime acceptance cycle" -m "Result: $result; consecutive_successes: $streak/3"
-          git push origin HEAD:main
+          $pushed = $false
+          for ($attempt = 1; $attempt -le 3; $attempt++) {
+            git pull --rebase origin main
+            if ($LASTEXITCODE -ne 0) { throw "AKATH_LEDGER_REBASE_FAILED:$attempt" }
+            git push origin HEAD:main
+            if ($LASTEXITCODE -eq 0) { $pushed = $true; break }
+            Start-Sleep -Seconds ([int](5 * $attempt))
+          }
+          if (-not $pushed) { throw 'AKATH_LEDGER_PUSH_FAILED' }
 
       - name: Report acceptance state
         if: always()
-        shell: powershell -NoProfile -ExecutionPolicy Bypass
+        shell: powershell -NoProfile -ExecutionPolicy Bypass -File {0}
         run: |
           Write-Host "AKATH_24X7_ACCEPTANCE_RUN=${{ github.run_id }}"
           Write-Host "AKATH_24X7_ACCEPTANCE_EVENT=${{ github.event_name }}"
