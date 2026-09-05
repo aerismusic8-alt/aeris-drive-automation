@@ -7,8 +7,8 @@
     "test:gemini": "vitest run test/gemini-adapter.spec.ts"
   },
   "devDependencies": {
-    "@cloudflare/workers-types": "latest",
-    "vitest": "latest",
-    "typescript": "latest"
+    "@cloudflare/workers-types": "4.20250905.0",
+    "vitest": "3.2.4",
+    "typescript": "5.9.2"
   }
 }
