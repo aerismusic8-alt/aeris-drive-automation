@@ -1,7 +1,7 @@
 {
   "schema_version": "2.0",
   "registry_role": "AUTHORITATIVE_MASTER_TASK_STATUS",
-  "last_updated_local": "2026-09-03",
+  "last_updated_local": "2026-09-05",
   "authority": "K_FINAL_AUTHORITY",
   "status_rules": {
     "approved_is_not_executing": true,
@@ -11,7 +11,7 @@
     "missing_timestamp": "NOT RECORDED"
   },
   "tasks": [
-    {"task":"AERIS Autonomous Company Engine","approval":"QUEUED","execution":"QUEUED","time":"2026-09-02T16:54:00+07:00","note":"ไม่ได้บันทึกเป็น APPROVED"},
+    {"task":"AKATH Autonomous Company Engine","approval":"QUEUED","execution":"QUEUED","time":"2026-09-02T16:54:00+07:00","note":"ไม่ได้บันทึกเป็น APPROVED"},
     {"task":"AICS Paper Risk Engine","approval":"COMPLETED","execution":"COMPLETED","time":"NOT RECORDED — ห้ามเดาเวลา"},
     {"task":"AICS Live Trading","approval":"APPROVED","execution":"NON-LIVE / GUARDRAIL","time":"2026-09-02T16:54:00+07:00","note":"ยังปิดการเงินจริง"},
     {"task":"AX Executive Reporting","approval":"QUEUED","execution":"QUEUED","time":"2026-09-02T16:54:00+07:00"},
