@@ -14,7 +14,6 @@ type GitHubEnv = {
 const REPO = 'aerismusic8-alt/aeris-drive-automation';
 const API = 'https://api.github.com';
 const API_VERSION = '2026-03-10';
-const XM_SCOPE = 'XM_MICRO_K_DESIGNATED_ACCOUNT';
 
 function json(body: unknown, status = 200): Response {
   return Response.json(body, { status, headers: { 'Cache-Control': 'no-store', 'Content-Type': 'application/json; charset=utf-8' } });
@@ -126,7 +125,7 @@ async function xmRoute(request: Request, env: GitHubEnv): Promise<Response | nul
   const stub = xmQueueStub(env);
 
   if (request.method === 'GET' && url.pathname === '/xm/status') {
-    return nodeAuthorized || controlAuthorized ? stub.fetch('https://xm.local/status') : xmJson({ error: 'AUTH_REQUIRED' }, 401);
+    return xmJson({ ok: true, service: 'AX XM EXECUTION BRIDGE', mode: 'READ_ONLY_PENDING_HANDSHAKE', live_execution_enabled: false, kill_switch: true, account_scope: 'XM_MICRO_K_DESIGNATED_ACCOUNT', node_auth_configured: Boolean(env.AX_XM_NODE_SECRET) });
   }
   if (request.method === 'POST' && url.pathname === '/xm/node/pull') {
     if (!nodeAuthorized) return xmJson({ error: 'AUTH_REQUIRED' }, 401);
