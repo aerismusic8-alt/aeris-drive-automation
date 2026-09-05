@@ -5,8 +5,45 @@ on:
     branches: [main]
   workflow_dispatch:
 
+permissions:
+  actions: read
+
 jobs:
+  inspect-runner-control-plane:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Inspect PC runner state
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          curl -fsSL \
+            -H "Accept: application/vnd.github+json" \
+            -H "Authorization: Bearer ${GH_TOKEN}" \
+            -H "X-GitHub-Api-Version: 2022-11-28" \
+            "https://api.github.com/repos/${GITHUB_REPOSITORY}/actions/runners?per_page=100" \
+            > runners.json
+          node <<'NODE'
+          const fs = require('fs');
+          const data = JSON.parse(fs.readFileSync('runners.json', 'utf8'));
+          const wanted = new Set(['PC1-AUTONOMOUS-EXECUTOR', 'PC2-CODING-EXECUTOR']);
+          const rows = (data.runners || []).filter(r => wanted.has(r.name));
+          for (const r of rows) {
+            console.log(JSON.stringify({
+              name: r.name,
+              status: r.status,
+              busy: r.busy,
+              labels: (r.labels || []).map(x => x.name)
+            }));
+          }
+          for (const name of wanted) {
+            if (!rows.some(r => r.name === name)) console.log(JSON.stringify({name, status:'NOT_REGISTERED'}));
+          }
+          NODE
+
   pc-runner-smoke:
+    needs: inspect-runner-control-plane
     runs-on: [self-hosted, Windows, X64, PC2-CODING-EXECUTOR]
     steps:
       - name: Verify PC2 runner execution
