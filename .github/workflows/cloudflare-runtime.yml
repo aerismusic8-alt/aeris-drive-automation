@@ -118,13 +118,37 @@ jobs:
             sleep 5
           done
 
+      - name: Verify GitHub App live status
+        shell: bash
+        run: |
+          set -euo pipefail
+          for attempt in {1..6}; do
+            if node <<'NODE'
+          const url = process.env.AX_CONTROL_RUNTIME_URL + '/github/status';
+          const response = await fetch(url, { cache: 'no-store' });
+          const r = await response.json();
+          console.log(JSON.stringify(r));
+          if (response.ok && r.verified === true && r.configured === true && r.authenticated === true && r.repositoryAccess === true && r.status === 'VERIFIED') process.exit(0);
+          process.exit(1);
+          NODE
+            then
+              echo 'AX GitHub App live verification passed.'
+              break
+            fi
+            if [[ "$attempt" -eq 6 ]]; then
+              echo 'AX_GITHUB_APP_LIVE_VERIFICATION_FAILED'
+              exit 1
+            fi
+            sleep 5
+          done
+
       - name: Verify GitHub App gateway source is deployed
         shell: bash
         run: |
           set -euo pipefail
-          echo 'GitHub App entrypoint is part of the deployed Worker source contract.'
           test -f cloudflare/ax-control-runtime/src/github-app-entry.ts
           grep -q "url.pathname === '/github/verify'" cloudflare/ax-control-runtime/src/github-app-entry.ts
+          grep -q "url.pathname === '/github/status'" cloudflare/ax-control-runtime/src/github-app-entry.ts
           grep -q "AX_GITHUB_APP_PRIVATE_KEY" cloudflare/ax-control-runtime/src/github-app-entry.ts
           grep -q "AX_GITHUB_APP_ID" cloudflare/ax-control-runtime/src/github-app-entry.ts
           grep -q "AX_GITHUB_CLIENT_ID" cloudflare/ax-control-runtime/src/github-app-entry.ts
@@ -138,6 +162,6 @@ jobs:
           echo "Control Runtime: $AX_CONTROL_RUNTIME_URL"
           echo 'Regression guard: PASS'
           echo 'Health verification: PASS'
+          echo 'GitHub App live verification: PASS'
           echo 'Execution mode: FREE_ONLY'
           echo 'Live financial execution: DISABLED'
-          echo 'Next gate: authenticated /github/verify check'
