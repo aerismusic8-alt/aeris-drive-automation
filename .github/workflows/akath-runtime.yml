@@ -64,6 +64,13 @@ jobs:
           & $python --version
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
+      - name: Run runner health policy tests
+        shell: powershell -NoProfile -ExecutionPolicy Bypass -File {0}
+        run: |
+          $ErrorActionPreference = 'Stop'
+          python -m unittest AKATH.tests.runner_health_policy_tests -v
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
       - name: Run AKATH worker with canonical Brain rehydration
         shell: powershell -NoProfile -ExecutionPolicy Bypass -File {0}
         env:
