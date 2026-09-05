@@ -8,6 +8,15 @@ on:
       - 'AX_MASTER_BRAIN/**'
       - '.github/workflows/akath-runtime.yml'
   workflow_dispatch:
+    inputs:
+      target:
+        description: 'Execution target'
+        required: false
+        default: 'PC1'
+        type: choice
+        options:
+          - PC1
+          - PC2
   schedule:
     - cron: "*/5 * * * *"
 
@@ -18,13 +27,22 @@ concurrency:
   group: akath-runtime
   cancel-in-progress: false
 
+env:
+  AKATH_TARGET: ${{ inputs.target || 'PC1' }}
+
 jobs:
   runtime:
-    runs-on: [self-hosted, Windows, X64, PC1-AUTONOMOUS-EXECUTOR]
+    runs-on: [self-hosted, Windows, X64, "${{ inputs.target == 'PC2' && 'PC2-CODING-EXECUTOR' || 'PC1-AUTONOMOUS-EXECUTOR' }}"]
     timeout-minutes: 5
     steps:
       - name: Checkout
         uses: actions/checkout@v5
+
+      - name: Record execution target
+        shell: powershell -NoProfile -ExecutionPolicy Bypass -File {0}
+        run: |
+          "AKATH_TARGET=$env:AKATH_TARGET" | Out-File -FilePath $env:GITHUB_STEP_SUMMARY -Append -Encoding utf8
+          "AKATH_RUNNER=$env:COMPUTERNAME" | Out-File -FilePath $env:GITHUB_STEP_SUMMARY -Append -Encoding utf8
 
       - name: Discover existing Python runtime
         shell: powershell -NoProfile -ExecutionPolicy Bypass -File {0}
