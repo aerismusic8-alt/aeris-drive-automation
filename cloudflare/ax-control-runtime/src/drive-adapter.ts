@@ -3,12 +3,11 @@ export type DriveFile = {
   name: string;
 };
 
-export type DriveResult<T> =
-  | { ok: true; value: T }
+export type DriveResult =
+  | { ok: true; files: DriveFile[] }
   | { ok: false; error: string };
 
 type DriveListResponse = { files?: Array<{ id?: unknown; name?: unknown }> };
-
 type FetchImpl = typeof fetch;
 
 const DRIVE_FILES_URL = 'https://www.googleapis.com/drive/v3/files';
@@ -19,15 +18,12 @@ export class DriveAdapter {
     private readonly fetchImpl: FetchImpl = fetch,
   ) {}
 
-  async list(query = ''): Promise<DriveResult<{ files: DriveFile[] }>> {
+  async list(query = ''): Promise<DriveResult> {
     if (!this.accessToken) {
       return { ok: false, error: 'GOOGLE_DRIVE_CREDENTIAL_MISSING' };
     }
 
-    const params = new URLSearchParams({
-      pageSize: '100',
-      fields: 'files(id,name)',
-    });
+    const params = new URLSearchParams({ pageSize: '100', fields: 'files(id,name)' });
     if (query) params.set('q', `name contains '${query.replace(/'/g, "\\'")}' and trashed = false`);
 
     try {
@@ -41,7 +37,7 @@ export class DriveAdapter {
       const files = (data.files ?? [])
         .filter(file => typeof file.id === 'string' && typeof file.name === 'string')
         .map(file => ({ id: file.id as string, name: file.name as string }));
-      return { ok: true, value: { files } };
+      return { ok: true, files };
     } catch {
       return { ok: false, error: 'GOOGLE_DRIVE_NETWORK_ERROR' };
     }
