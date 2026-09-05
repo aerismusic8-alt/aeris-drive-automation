@@ -27,6 +27,13 @@ jobs:
         with:
           fetch-depth: 0
 
+      - name: Audit legacy identity removal
+        shell: powershell -NoProfile -ExecutionPolicy Bypass -File {0}
+        run: |
+          $ErrorActionPreference = 'Stop'
+          & "$env:GITHUB_WORKSPACE/AKATH/probes/akath_legacy_identity_audit.ps1" -Root $env:GITHUB_WORKSPACE
+          if ($LASTEXITCODE -ne 0) { throw "AKATH_LEGACY_IDENTITY_AUDIT_FAILED:$LASTEXITCODE" }
+
       - name: Run and verify one autonomous AKATH cycle
         shell: powershell -NoProfile -ExecutionPolicy Bypass -File {0}
         run: |
