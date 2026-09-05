@@ -154,17 +154,16 @@ async function verifyGitHubApp(env: GitHubEnv): Promise<Response> {
   }
 }
 
-export { runtime as default };
-
-export const fetch = async (request: Request, env: GitHubEnv, ctx: ExecutionContext): Promise<Response> => {
-  const url = new URL(request.url);
-
-  if (request.method === 'GET' && url.pathname === '/github/verify') {
-    if (!authorized(request, env)) return json({ error: 'AUTH_REQUIRED' }, 401);
-    return verifyGitHubApp(env);
-  }
-
-  return runtime.fetch(request, env as never, ctx);
+export default {
+  async fetch(request: Request, env: GitHubEnv, ctx: ExecutionContext): Promise<Response> {
+    const url = new URL(request.url);
+    if (request.method === 'GET' && url.pathname === '/github/verify') {
+      if (!authorized(request, env)) return json({ error: 'AUTH_REQUIRED' }, 401);
+      return verifyGitHubApp(env);
+    }
+    return runtime.fetch(request, env as never, ctx);
+  },
+  queue: runtime.queue,
 };
 
 export { AxGatewayInbox } from './index';
