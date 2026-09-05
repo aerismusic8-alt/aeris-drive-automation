@@ -2,6 +2,7 @@ import fs from 'node:fs';
 
 const source = fs.readFileSync(new URL('../src/index.ts', import.meta.url), 'utf8');
 const githubSource = fs.readFileSync(new URL('../src/github-app-entry.ts', import.meta.url), 'utf8');
+const xmSource = fs.readFileSync(new URL('../src/xm-bridge.ts', import.meta.url), 'utf8');
 const wrangler = fs.readFileSync(new URL('../wrangler.jsonc', import.meta.url), 'utf8');
 
 function assert(condition, message) {
@@ -38,7 +39,7 @@ assert(webChatSource.includes('<input id="file" type="file" multiple>'), 'web ch
 assert(webChatSource.includes('.filePicker{'), 'web chat file picker must define full-area label styling');
 assert(webChatSource.includes("$('file').addEventListener('change'"), 'web chat file picker must react to file selection');
 
-// GitHub App authentication contract lives in a dedicated Worker entry wrapper.
+// GitHub App authentication contract.
 assert(githubSource.includes('AX_GITHUB_APP_PRIVATE_KEY'), 'GitHub App private-key secret binding is missing');
 assert(githubSource.includes('AX_GITHUB_CLIENT_ID'), 'GitHub App client-id secret binding is missing');
 assert(githubSource.includes('AX_GITHUB_APP_ID'), 'GitHub App app-id secret binding is missing');
@@ -56,7 +57,22 @@ assert(!githubSource.slice(githubSource.indexOf('async function publicStatus')).
 assert(!githubSource.slice(githubSource.indexOf('async function publicStatus')).includes('installationIdPresent'), 'public GitHub status must not expose installation identifiers');
 assert(githubSource.includes("repositories: ['aeris-drive-automation']"), 'installation token must be repository-scoped');
 assert(githubSource.includes("permissions: { contents: 'read', actions: 'read', checks: 'read', metadata: 'read' }"), 'installation token must request read-only verification permissions');
-assert(githubSource.includes("export { AxGatewayInbox } from './index';"), 'Durable Object export must remain available from Worker entrypoint');
-assert(wrangler.includes('"main": "src/github-app-entry.ts"'), 'Wrangler must use the GitHub App gateway entrypoint');
 
-console.log('AX web chat and GitHub App source regression checks passed.');
+// XM execution bridge transport.
+assert(githubSource.includes("import { AxXmExecutionQueue"), 'XM execution queue import is missing');
+assert(githubSource.includes('AX_XM_NODE_SECRET'), 'XM node secret binding is missing');
+assert(githubSource.includes("'/xm/node/pull'"), 'XM node pull route is missing');
+assert(githubSource.includes("'/xm/node/result'"), 'XM node result route is missing');
+assert(githubSource.includes("'/xm/control/enqueue'"), 'XM control enqueue route is missing');
+assert(githubSource.includes("'/xm/status'"), 'XM status route is missing');
+assert(githubSource.includes("export { AxXmExecutionQueue } from './xm-bridge';"), 'XM Durable Object export is missing');
+assert(xmSource.includes("const SCOPE = 'XM_MICRO_K_DESIGNATED_ACCOUNT';"), 'XM account scope must be fixed');
+assert(xmSource.includes('idempotency_key'), 'XM transport must carry idempotency keys');
+assert(xmSource.includes('UNKNOWN_REQUIRES_RECONCILIATION'), 'XM transport must support ambiguous-result reconciliation state');
+assert(xmSource.includes("DEPOSIT','WITHDRAW','CHANGE_ACCOUNT_SETTINGS','EXPORT_CREDENTIALS"), 'XM bridge must define blocked financial/account operations');
+assert(xmSource.includes("live_execution_enabled: false"), 'XM status must remain live-disabled');
+assert(wrangler.includes('"name": "AX_XM_EXECUTION_QUEUE"'), 'Wrangler XM queue binding is missing');
+assert(wrangler.includes('"class_name": "AxXmExecutionQueue"'), 'Wrangler XM Durable Object class is missing');
+assert(wrangler.includes('"tag": "v2-xm-execution-bridge"'), 'XM Durable Object migration is missing');
+
+console.log('AX web chat, GitHub App, and XM bridge source regression checks passed.');
