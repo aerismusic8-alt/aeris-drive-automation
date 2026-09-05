@@ -2,7 +2,7 @@
   "schema_version": "1.3",
   "storage_role": "A_MASTER_BRAIN_SINGLE_SOURCE_OF_TRUTH",
   "status": "VERIFIED",
-  "last_updated_utc": "2026-09-03",
+  "last_updated_utc": "2026-09-05",
   "authority": "K_FINAL_AUTHORITY",
   "identity_authority": "A_MASTER_BRAIN",
   "model_independence": true,
@@ -64,7 +64,7 @@
   },
   "current_system_state": {
     "ax_core": "LOCKED",
-    "aeris_drive_automation": "ACTIVE",
+    "akath_runtime": "ACTIVE",
     "persistent_queue": "ACTIVE",
     "state_snapshot_resume": "ACTIVE",
     "agent_registry": "ACTIVE",
