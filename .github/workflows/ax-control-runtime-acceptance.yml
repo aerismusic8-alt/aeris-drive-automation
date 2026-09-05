@@ -101,7 +101,7 @@ jobs:
     steps:
       - uses: actions/checkout@v5
       - name: Verify PC pull authentication
-        shell: powershell
+        shell: powershell -NoProfile -ExecutionPolicy Bypass
         run: |
           $ErrorActionPreference = 'Stop'
           if ([string]::IsNullOrWhiteSpace($env:AX_PC_PULL_SECRET)) { throw 'AX_PC_PULL_SECRET_MISSING' }
@@ -111,7 +111,7 @@ jobs:
           if ($null -eq $r.ok) { throw 'PC_PULL_RESPONSE_INVALID' }
           Write-Host 'AX_PC_PULL_AUTHENTICATION_VERIFIED'
       - name: Record runner identity without secrets
-        shell: powershell
+        shell: powershell -NoProfile -ExecutionPolicy Bypass
         run: |
           Write-Host "Runner=$env:COMPUTERNAME"
           Write-Host "OS=$env:RUNNER_OS"
