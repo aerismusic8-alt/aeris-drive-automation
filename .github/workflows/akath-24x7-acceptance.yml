@@ -15,8 +15,6 @@ permissions:
   contents: write
   actions: read
 
-authorization: none
-
 concurrency:
   group: akath-24x7-acceptance
   cancel-in-progress: false
