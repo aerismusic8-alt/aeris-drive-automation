@@ -1,18 +1,1 @@
-name: AX Control Runtime GitHub App
-
-# Deployment is owned by the existing AX Cloudflare Control Runtime workflow.
-# This workflow is intentionally retained as a disabled placeholder to avoid
-# two concurrent deployment authorities for the same Worker.
-
-on:
-  workflow_dispatch:
-
-permissions:
-  contents: read
-
-jobs:
-  disabled-placeholder:
-    if: ${{ false }}
-    runs-on: ubuntu-latest
-    steps:
-      - run: echo 'Deployment authority is .github/workflows/cloudflare-runtime.yml'
+# intentionally removed; deployment authority remains cloudflare-runtime.yml
