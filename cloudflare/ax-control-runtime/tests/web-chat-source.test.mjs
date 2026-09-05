@@ -1,6 +1,8 @@
 import fs from 'node:fs';
 
 const source = fs.readFileSync(new URL('../src/index.ts', import.meta.url), 'utf8');
+const githubSource = fs.readFileSync(new URL('../src/github-app-entry.ts', import.meta.url), 'utf8');
+const wrangler = fs.readFileSync(new URL('../wrangler.jsonc', import.meta.url), 'utf8');
 
 function assert(condition, message) {
   if (!condition) throw new Error(message);
@@ -39,15 +41,18 @@ assert(webChatSource.includes('<input id="file" type="file" multiple>'), 'web ch
 assert(webChatSource.includes('.filePicker{'), 'web chat file picker must define full-area label styling');
 assert(webChatSource.includes("$('file').addEventListener('change'"), 'web chat file picker must react to file selection');
 
-// GitHub App authentication contract: production code must use the three Worker secrets,
-// mint an App JWT, resolve the repository installation, and mint an installation token.
-assert(source.includes('AX_GITHUB_APP_PRIVATE_KEY'), 'GitHub App private-key secret binding is missing');
-assert(source.includes('AX_GITHUB_CLIENT_ID'), 'GitHub App client-id secret binding is missing');
-assert(source.includes('AX_GITHUB_APP_ID'), 'GitHub App app-id secret binding is missing');
-assert(source.includes('crypto.subtle.importKey'), 'GitHub App JWT signing must use Web Crypto');
-assert(source.includes('RSASSA-PKCS1-v1_5'), 'GitHub App JWT must use RS256-compatible RSA signing');
-assert(source.includes('/repos/${REPO}/installation'), 'GitHub App must resolve the repository installation');
-assert(source.includes('/app/installations/${installationId}/access_tokens'), 'GitHub App must mint an installation access token');
-assert(source.includes('verifyGitHubToken'), 'GitHub repository access verification must remain present');
+// GitHub App authentication contract lives in a dedicated Worker entry wrapper.
+assert(githubSource.includes('AX_GITHUB_APP_PRIVATE_KEY'), 'GitHub App private-key secret binding is missing');
+assert(githubSource.includes('AX_GITHUB_CLIENT_ID'), 'GitHub App client-id secret binding is missing');
+assert(githubSource.includes('AX_GITHUB_APP_ID'), 'GitHub App app-id secret binding is missing');
+assert(githubSource.includes('crypto.subtle.importKey'), 'GitHub App JWT signing must use Web Crypto');
+assert(githubSource.includes('RSASSA-PKCS1-v1_5'), 'GitHub App JWT must use RS256-compatible RSA signing');
+assert(githubSource.includes('/repos/${REPO}/installation'), 'GitHub App must resolve the repository installation');
+assert(githubSource.includes('/app/installations/${installationId}/access_tokens'), 'GitHub App must mint an installation access token');
+assert(githubSource.includes("url.pathname === '/github/verify'"), 'GitHub App verification route is missing');
+assert(githubSource.includes("repositories: ['aeris-drive-automation']"), 'installation token must be repository-scoped');
+assert(githubSource.includes("permissions: { contents: 'read', actions: 'read', checks: 'read', metadata: 'read' }"), 'installation token must request read-only verification permissions');
+assert(githubSource.includes("export { AxGatewayInbox } from './index';"), 'Durable Object export must remain available from Worker entrypoint');
+assert(wrangler.includes('"main": "src/github-app-entry.ts"'), 'Wrangler must use the GitHub App gateway entrypoint');
 
 console.log('AX web chat and GitHub App source regression checks passed.');
