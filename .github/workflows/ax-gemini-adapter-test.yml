@@ -25,5 +25,5 @@ jobs:
       - name: Install dependencies
         run: npm install
 
-      - name: Run Gemini adapter test
+      - name: Run Gemini adapter tests
         run: npm run test:gemini
