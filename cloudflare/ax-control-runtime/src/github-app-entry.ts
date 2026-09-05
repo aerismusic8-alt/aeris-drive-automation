@@ -99,7 +99,7 @@ async function getInstallationId(jwt: string): Promise<number> {
   const body = await response.json() as { id?: number }; if (!body.id) throw new Error('GITHUB_INSTALLATION_ID_MISSING'); return body.id;
 }
 async function createInstallationToken(jwt: string, installationId: number): Promise<{ token: string; expires_at?: string }> {
-  const response = await githubRequest(`/app/installations/${installationId}/access_tokens`, { method: 'POST', headers: { Authorization: `Bearer ${jwt}`, 'Content-Type': 'application/json' }, body: JSON.stringify({ repositories: ['aeris-drive-automation'], permissions: { contents: 'read', actions: 'write', checks: 'read', metadata: 'read' } }) });
+  const response = await githubRequest(`/app/installations/${installationId}/access_tokens`, { method: 'POST', headers: { Authorization: `Bearer ${jwt}`, 'Content-Type': 'application/json' }, body: JSON.stringify({ repositories: ['aeris-drive-automation'], permissions: { administration: 'read', contents: 'read', actions: 'write', checks: 'read', metadata: 'read' } }) });
   if (!response.ok) throw new Error(`GITHUB_TOKEN_HTTP_${response.status}`);
   const body = await response.json() as { token?: string; expires_at?: string }; if (!body.token) throw new Error('GITHUB_INSTALLATION_TOKEN_MISSING'); return { token: body.token, expires_at: body.expires_at };
 }
@@ -113,11 +113,24 @@ async function verifyGitHubApp(env: GitHubEnv): Promise<Response> {
   if (!configured) return json({ verified: false, configured: false, error: 'GITHUB_APP_CREDENTIALS_MISSING' }, 503);
   try {
     const jwt = await createAppJwt(env); const installationId = await getInstallationId(jwt); const installationToken = await createInstallationToken(jwt, installationId); const repository = await verifyRepository(installationToken.token);
-    return json({ verified: true, configured: true, authenticated: true, installationResolved: true, repositoryAccess: true, repository, installationIdPresent: Boolean(installationId), tokenExpiresAt: installationToken.expires_at || null, permissionsRequested: { contents: 'read', actions: 'write', checks: 'read', metadata: 'read' } });
+    return json({ verified: true, configured: true, authenticated: true, installationResolved: true, repositoryAccess: true, repository, installationIdPresent: Boolean(installationId), tokenExpiresAt: installationToken.expires_at || null, permissionsRequested: { administration: 'read', contents: 'read', actions: 'write', checks: 'read', metadata: 'read' } });
   } catch (error) {
     const message = error instanceof Error ? error.message : 'GITHUB_APP_VERIFICATION_FAILED';
     return json({ verified: false, configured: true, authenticated: false, repositoryAccess: false, status: 'NOT_VERIFIED', error: message }, 502);
   }
+}
+async function getRunnerHealth(env: GitHubEnv): Promise<Record<string, unknown>> {
+  const jwt = await createAppJwt(env);
+  const installationId = await getInstallationId(jwt);
+  const installationToken = await createInstallationToken(jwt, installationId);
+  const response = await githubRequest(`/repos/${REPO}/actions/runners?per_page=100`, { headers: { Authorization: `Bearer ${installationToken.token}` } });
+  if (!response.ok) throw new Error(`GITHUB_RUNNERS_HTTP_${response.status}`);
+  const body = await response.json() as { runners?: Array<{ name?: string; status?: string; busy?: boolean; labels?: Array<{ name?: string }> }> };
+  const wanted = new Set(['PC1-AUTONOMOUS-EXECUTOR', 'PC2-CODING-EXECUTOR']);
+  const runners = (body.runners || []).filter(r => wanted.has(String(r.name || ''))).map(r => ({ name: r.name, status: r.status, busy: Boolean(r.busy), labels: (r.labels || []).map(x => x.name).filter(Boolean) }));
+  const known = new Set(runners.map(r => String(r.name)));
+  for (const name of wanted) if (!known.has(name)) runners.push({ name, status: 'NOT_REGISTERED', busy: false, labels: [] });
+  return { verified: true, repository: REPO, runners, sampledAt: new Date().toISOString() };
 }
 async function publicStatus(env: GitHubEnv): Promise<Response> {
   const response = await verifyGitHubApp(env); let body: Record<string, unknown> = {};
@@ -126,10 +139,7 @@ async function publicStatus(env: GitHubEnv): Promise<Response> {
 }
 async function dispatchWorkflow(token: string, target: 'PC1' | 'PC2', taskId: string): Promise<Response> {
   const response = await githubRequest(`/repos/${REPO}/actions/workflows/${encodeURIComponent(WORKFLOW_FILE)}/dispatches`, { method: 'POST', headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' }, body: JSON.stringify({ ref: 'main', inputs: { target, task_id: taskId } }) });
-  if (!response.ok) {
-    const text = await response.text();
-    throw new Error(`GITHUB_WORKFLOW_DISPATCH_HTTP_${response.status}:${text.slice(0, 300)}`);
-  }
+  if (!response.ok) { const text = await response.text(); throw new Error(`GITHUB_WORKFLOW_DISPATCH_HTTP_${response.status}:${text.slice(0, 300)}`); }
   return response;
 }
 async function dispatchFromApp(env: GitHubEnv, target: 'PC1' | 'PC2', taskId: string): Promise<Record<string, unknown>> {
@@ -147,49 +157,31 @@ async function xmRoute(request: Request, env: GitHubEnv): Promise<Response | nul
   const nodeAuthorized = xmAuth(request, env.AX_XM_NODE_SECRET);
   const controlAuthorized = authorized(request, env);
   const stub = xmQueueStub(env);
-
   if (request.method === 'GET' && url.pathname === '/xm/status') return stub.fetch('https://xm.local/status', { method: 'GET' });
-  if (request.method === 'POST' && url.pathname === '/xm/node/pull') {
-    if (!nodeAuthorized) return xmJson({ error: 'AUTH_REQUIRED' }, 401);
-    return stub.fetch('https://xm.local/pull', { method: 'POST', headers: { 'content-type': 'application/json' }, body: '{}' });
-  }
-  if (request.method === 'POST' && url.pathname === '/xm/node/heartbeat') {
-    if (!nodeAuthorized) return xmJson({ error: 'AUTH_REQUIRED' }, 401);
-    return stub.fetch('https://xm.local/heartbeat', { method: 'POST', headers: { 'content-type': 'application/json' }, body: await request.text() });
-  }
-  if (request.method === 'POST' && url.pathname === '/xm/node/result') {
-    if (!nodeAuthorized) return xmJson({ error: 'AUTH_REQUIRED' }, 401);
-    return stub.fetch('https://xm.local/result', { method: 'POST', headers: { 'content-type': 'application/json' }, body: await request.text() });
-  }
-  if (request.method === 'GET' && url.pathname.startsWith('/xm/node/result/')) {
-    if (!nodeAuthorized) return xmJson({ error: 'AUTH_REQUIRED' }, 401);
-    return stub.fetch(`https://xm.local/result/${encodeURIComponent(url.pathname.slice('/xm/node/result/'.length))}`, { method: 'GET' });
-  }
-  if (request.method === 'POST' && url.pathname === '/xm/control/enqueue') {
-    if (!controlAuthorized) return xmJson({ error: 'AUTH_REQUIRED' }, 401);
-    return stub.fetch('https://xm.local/enqueue', { method: 'POST', headers: { 'content-type': 'application/json' }, body: await request.text() });
-  }
+  if (request.method === 'POST' && url.pathname === '/xm/node/pull') { if (!nodeAuthorized) return xmJson({ error: 'AUTH_REQUIRED' }, 401); return stub.fetch('https://xm.local/pull', { method: 'POST', headers: { 'content-type': 'application/json' }, body: '{}' }); }
+  if (request.method === 'POST' && url.pathname === '/xm/node/heartbeat') { if (!nodeAuthorized) return xmJson({ error: 'AUTH_REQUIRED' }, 401); return stub.fetch('https://xm.local/heartbeat', { method: 'POST', headers: { 'content-type': 'application/json' }, body: await request.text() }); }
+  if (request.method === 'POST' && url.pathname === '/xm/node/result') { if (!nodeAuthorized) return xmJson({ error: 'AUTH_REQUIRED' }, 401); return stub.fetch('https://xm.local/result', { method: 'POST', headers: { 'content-type': 'application/json' }, body: await request.text() }); }
+  if (request.method === 'GET' && url.pathname.startsWith('/xm/node/result/')) { if (!nodeAuthorized) return xmJson({ error: 'AUTH_REQUIRED' }, 401); return stub.fetch(`https://xm.local/result/${encodeURIComponent(url.pathname.slice('/xm/node/result/'.length))}`, { method: 'GET' }); }
+  if (request.method === 'POST' && url.pathname === '/xm/control/enqueue') { if (!controlAuthorized) return xmJson({ error: 'AUTH_REQUIRED' }, 401); return stub.fetch('https://xm.local/enqueue', { method: 'POST', headers: { 'content-type': 'application/json' }, body: await request.text() }); }
   return xmJson({ error: 'NOT_FOUND' }, 404);
 }
 
 export default {
   async fetch(request: Request, env: GitHubEnv, ctx: ExecutionContext): Promise<Response> {
-    const xm = await xmRoute(request, env);
-    if (xm) return xm;
-    const adapters = await handleAxAdaptersRoute(request, env);
-    if (adapters) return adapters;
+    const xm = await xmRoute(request, env); if (xm) return xm;
+    const adapters = await handleAxAdaptersRoute(request, env); if (adapters) return adapters;
     const url = new URL(request.url);
     if (request.method === 'POST' && url.pathname === '/gemini/test') return handleGeminiLiveProbe(request, env);
     if (request.method === 'GET' && url.pathname === '/github/status') return publicStatus(env);
-    if (request.method === 'GET' && url.pathname === '/github/verify') {
-      if (!authorized(request, env)) return json({ error: 'AUTH_REQUIRED' }, 401);
-      return verifyGitHubApp(env);
+    if (request.method === 'GET' && url.pathname === '/github/runners') {
+      try { return json(await getRunnerHealth(env)); }
+      catch (error) { return json({ verified: false, error: error instanceof Error ? error.message : 'GITHUB_RUNNER_HEALTH_FAILED' }, 502); }
     }
+    if (request.method === 'GET' && url.pathname === '/github/verify') { if (!authorized(request, env)) return json({ error: 'AUTH_REQUIRED' }, 401); return verifyGitHubApp(env); }
     if (request.method === 'POST' && url.pathname === '/github/dispatch') {
       if (!authorized(request, env)) return json({ error: 'AUTH_REQUIRED' }, 401);
       const body = await request.json().catch(() => null) as { target?: unknown; task_id?: unknown; taskId?: unknown } | null;
-      const target = String(body?.target || '');
-      const taskId = String(body?.task_id || body?.taskId || '');
+      const target = String(body?.target || ''); const taskId = String(body?.task_id || body?.taskId || '');
       if (target !== 'PC1' && target !== 'PC2') return json({ error: 'TARGET_INVALID', allowed: ['PC1', 'PC2'] }, 422);
       if (!taskId || taskId.length > 128) return json({ error: 'TASK_ID_REQUIRED' }, 422);
       try { return json(await dispatchFromApp(env, target, taskId), 202); }
