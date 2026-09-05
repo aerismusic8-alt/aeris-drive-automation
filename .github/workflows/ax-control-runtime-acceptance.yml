@@ -28,6 +28,9 @@ jobs:
       - uses: actions/setup-node@v5
         with:
           node-version: 24
+      - name: Run source contract regression checks
+        shell: bash
+        run: node cloudflare/ax-control-runtime/tests/web-chat-source.test.mjs
       - name: Validate required secrets are provisioned
         shell: bash
         run: |
