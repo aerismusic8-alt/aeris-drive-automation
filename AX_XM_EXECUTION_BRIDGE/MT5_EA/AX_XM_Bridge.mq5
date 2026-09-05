@@ -1,5 +1,5 @@
 #property strict
-#property version   "1.2"
+#property version   "1.3"
 #property description "AX XM Execution Bridge - authenticated execution adapter only"
 
 // Execution adapter only: no trading strategy, no deposits/withdrawals,
@@ -77,15 +77,25 @@ int PostJson(const string url, const string body, string &response)
    string response_headers = "";
    char payload[], result[];
    StringToCharArray(body, payload, 0, WHOLE_ARRAY, CP_UTF8);
+   // StringToCharArray appends a terminating NUL. Remove it so the HTTP
+   // body is exactly the JSON document expected by the Worker parser.
+   int payload_size = ArraySize(payload);
+   if(payload_size > 0 && payload[payload_size - 1] == 0)
+      ArrayResize(payload, payload_size - 1);
+
    ResetLastError();
    int status = WebRequest("POST", url, request_headers, RequestTimeoutMs,
-                           payload, result, response_headers);
+                           payload, ArraySize(payload), result, response_headers);
    if(status == -1)
    {
       Print("AX XM Bridge WebRequest error=", GetLastError());
       return -1;
    }
    response = CharArrayToString(result, 0, -1, CP_UTF8);
+   if(status < 200 || status >= 300)
+   {
+      Print("AX XM Bridge HTTP status=", status, " response=", response);
+   }
    return status;
 }
 
@@ -104,7 +114,7 @@ void PublishHeartbeat()
    body += "\"expert_allowed\":" + (AccountInfoInteger(ACCOUNT_TRADE_EXPERT) ? "true" : "false") + "}";
 
    int status = PostJson(BridgeEndpoint + "/xm/node/heartbeat", body, response);
-   if(status < 200 || status >= 300)
+   if(status >= 200 && status < 300)
       Print("AX XM Bridge heartbeat HTTP status=", status);
 }
 
