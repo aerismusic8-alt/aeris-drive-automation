@@ -2,12 +2,6 @@ name: AKATH 24x7 Acceptance Gate
 
 on:
   workflow_dispatch:
-  push:
-    paths:
-      - '.github/workflows/akath-24x7-acceptance.yml'
-      - 'AKATH/runtime/**'
-      - 'AKATH/probes/**'
-      - 'AKATH/tests/**'
   schedule:
     - cron: "*/5 * * * *"
 
