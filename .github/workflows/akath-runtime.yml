@@ -11,6 +11,11 @@ on:
         options:
           - PC1
           - PC2
+      task_id:
+        description: 'AX task identifier'
+        required: false
+        default: ''
+        type: string
 
 permissions:
   contents: read
@@ -21,6 +26,7 @@ concurrency:
 
 env:
   AKATH_TARGET: ${{ inputs.target || 'PC1' }}
+  AKATH_TASK_ID: ${{ inputs.task_id || '' }}
 
 jobs:
   runtime:
@@ -34,6 +40,7 @@ jobs:
         shell: powershell -NoProfile -ExecutionPolicy Bypass -File {0}
         run: |
           "AKATH_TARGET=$env:AKATH_TARGET" | Out-File -FilePath $env:GITHUB_STEP_SUMMARY -Append -Encoding utf8
+          "AKATH_TASK_ID=$env:AKATH_TASK_ID" | Out-File -FilePath $env:GITHUB_STEP_SUMMARY -Append -Encoding utf8
           "AKATH_RUNNER=$env:COMPUTERNAME" | Out-File -FilePath $env:GITHUB_STEP_SUMMARY -Append -Encoding utf8
 
       - name: Discover existing Python runtime
