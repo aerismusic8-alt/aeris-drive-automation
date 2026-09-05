@@ -62,6 +62,7 @@ assert(githubSource.includes("permissions: { contents: 'read', actions: 'read', 
 assert(githubSource.includes("import { AxXmExecutionQueue"), 'XM execution queue import is missing');
 assert(githubSource.includes('AX_XM_NODE_SECRET'), 'XM node secret binding is missing');
 assert(githubSource.includes("'/xm/node/pull'"), 'XM node pull route is missing');
+assert(githubSource.includes("'/xm/node/heartbeat'"), 'XM node heartbeat route is missing');
 assert(githubSource.includes("'/xm/node/result'"), 'XM node result route is missing');
 assert(githubSource.includes("'/xm/control/enqueue'"), 'XM control enqueue route is missing');
 assert(githubSource.includes("'/xm/status'"), 'XM status route is missing');
@@ -69,8 +70,9 @@ assert(githubSource.includes("export { AxXmExecutionQueue } from './xm-bridge';"
 assert(xmSource.includes("const SCOPE = 'XM_MICRO_K_DESIGNATED_ACCOUNT';"), 'XM account scope must be fixed');
 assert(xmSource.includes('idempotency_key'), 'XM transport must carry idempotency keys');
 assert(xmSource.includes('UNKNOWN_REQUIRES_RECONCILIATION'), 'XM transport must support ambiguous-result reconciliation state');
-assert(xmSource.includes("DEPOSIT','WITHDRAW','CHANGE_ACCOUNT_SETTINGS','EXPORT_CREDENTIALS"), 'XM bridge must define blocked financial/account operations');
+assert(xmSource.includes("const BLOCKED = new Set(['DEPOSIT','WITHDRAW','CHANGE_ACCOUNT_SETTINGS','EXPORT_CREDENTIALS']);"), 'XM bridge must define blocked financial/account operations');
 assert(xmSource.includes("live_execution_enabled: false"), 'XM status must remain live-disabled');
+assert(xmSource.includes("path === '/heartbeat'"), 'XM queue must persist node heartbeat');
 assert(wrangler.includes('"name": "AX_XM_EXECUTION_QUEUE"'), 'Wrangler XM queue binding is missing');
 assert(wrangler.includes('"class_name": "AxXmExecutionQueue"'), 'Wrangler XM Durable Object class is missing');
 assert(wrangler.includes('"tag": "v2-xm-execution-bridge"'), 'XM Durable Object migration is missing');
