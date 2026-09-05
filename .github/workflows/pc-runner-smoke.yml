@@ -7,6 +7,10 @@ on:
 
 permissions:
   contents: read
+  statuses: write
+
+env:
+  AX_PC2_STATUS_CONTEXT: ax/pc2-runner-smoke
 
 jobs:
   control-plane-runner-check:
@@ -28,6 +32,31 @@ jobs:
           echo "pc2_online=$pc2" >> "$GITHUB_OUTPUT"
           echo "pc1_online=$pc1" >> "$GITHUB_OUTPUT"
 
+      - name: Publish AX PC2 runner status
+        if: always()
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          state=failure
+          description="AX Control Runtime runner health check failed"
+          if [ "${{ job.status }}" = "success" ]; then
+            if [ "${{ steps.check.outputs.pc2_online }}" = "true" ]; then
+              state=pending
+              description="PC2-CODING-EXECUTOR reported online; awaiting self-hosted execution proof"
+            else
+              state=failure
+              description="PC2-CODING-EXECUTOR is not online according to AX Control Runtime"
+            fi
+          fi
+          curl -fsS -X POST \
+            -H "Accept: application/vnd.github+json" \
+            -H "Authorization: Bearer $GH_TOKEN" \
+            -H "X-GitHub-Api-Version: 2022-11-28" \
+            "https://api.github.com/repos/${GITHUB_REPOSITORY}/statuses/${GITHUB_SHA}" \
+            -d "$(node -e 'const [state,description,context]=process.argv.slice(1); console.log(JSON.stringify({state,description,context}))' "$state" "$description" "$AX_PC2_STATUS_CONTEXT")"
+
   pc2-runner-smoke:
     needs: control-plane-runner-check
     if: needs.control-plane-runner-check.outputs.pc2_online == 'true'
@@ -45,3 +74,21 @@ jobs:
           echo Runner Name: %RUNNER_NAME%
           git --version
           echo === PC2 RUNNER SMOKE TEST COMPLETE ===
+
+      - name: Publish AX PC2 execution proof
+        if: always()
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          $state = if ('${{ job.status }}' -eq 'success') { 'success' } else { 'failure' }
+          $description = if ($state -eq 'success') {
+            'PC2-CODING-EXECUTOR accepted and completed the self-hosted smoke test'
+          } else {
+            'PC2-CODING-EXECUTOR started the smoke job but execution failed'
+          }
+          $body = @{ state = $state; description = $description; context = $env:AX_PC2_STATUS_CONTEXT } | ConvertTo-Json -Compress
+          Invoke-RestMethod -Method Post `
+            -Uri "https://api.github.com/repos/$env:GITHUB_REPOSITORY/statuses/$env:GITHUB_SHA" `
+            -Headers @{ Authorization = "Bearer $env:GH_TOKEN"; Accept = 'application/vnd.github+json'; 'X-GitHub-Api-Version' = '2022-11-28' } `
+            -Body $body
