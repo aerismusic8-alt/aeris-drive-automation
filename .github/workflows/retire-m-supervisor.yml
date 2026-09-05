@@ -10,7 +10,7 @@ jobs:
     runs-on: [self-hosted, windows]
     steps:
       - name: Remove temporary M scheduler trigger
-        shell: powershell
+        shell: powershell -NoProfile -ExecutionPolicy Bypass
         run: |
           $ErrorActionPreference = 'Stop'
           $taskName = 'AERIS AX Supervisor Trigger'
@@ -26,7 +26,7 @@ jobs:
           Write-Host 'M_RETIREMENT_VERIFIED=TRUE'
 
       - name: Confirm AX worker task remains untouched
-        shell: powershell
+        shell: powershell -NoProfile -ExecutionPolicy Bypass
         run: |
           $taskName = 'AX-AERIS-Worker'
           $task = Get-ScheduledTask -TaskName $taskName -ErrorAction SilentlyContinue
