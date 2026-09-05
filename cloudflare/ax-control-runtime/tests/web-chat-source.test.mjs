@@ -9,7 +9,7 @@ function assert(condition, message) {
   if (!condition) throw new Error(message);
 }
 
-assert(!/\$('messages')\.textContent\+='[\r\n]/.test(source), 'web chat contains a literal newline inside a JavaScript string');
+assert(!/\$('messages')\.textContent+='[\r\n]/.test(source), 'web chat contains a literal newline inside a JavaScript string');
 assert(source.includes('id="loginStatus"'), 'web chat must expose a visible login status element');
 assert(source.includes("$('loginStatus').textContent=e.message"), 'web chat login errors must be visible in loginStatus');
 assert(source.includes("status.textContent='Connecting…'"), 'web chat login must show connecting state');
@@ -53,10 +53,21 @@ assert(githubSource.includes('/app/installations/${installationId}/access_tokens
 assert(githubSource.includes("url.pathname === '/github/verify'"), 'GitHub App verification route is missing');
 assert(githubSource.includes("url.pathname === '/github/status'"), 'GitHub App sanitized status route is missing');
 assert(githubSource.includes("status: body.verified === true ? 'VERIFIED' : 'NOT_VERIFIED'"), 'GitHub App status route must expose only sanitized verification state');
-assert(!githubSource.slice(githubSource.indexOf('async function publicStatus')).includes('tokenExpiresAt'), 'public GitHub status must not expose token expiry');
-assert(!githubSource.slice(githubSource.indexOf('async function publicStatus')).includes('installationIdPresent'), 'public GitHub status must not expose installation identifiers');
+const publicStatusStart = githubSource.indexOf('async function publicStatus');
+const publicStatusEnd = githubSource.indexOf('\n}\nasync function dispatchWorkflow', publicStatusStart);
+assert(publicStatusStart >= 0 && publicStatusEnd > publicStatusStart, 'publicStatus source block must be present');
+const publicStatusSource = githubSource.slice(publicStatusStart, publicStatusEnd);
+assert(!publicStatusSource.includes('tokenExpiresAt'), 'public GitHub status must not expose token expiry');
+assert(!publicStatusSource.includes('installationIdPresent'), 'public GitHub status must not expose installation identifiers');
 assert(githubSource.includes("repositories: ['aeris-drive-automation']"), 'installation token must be repository-scoped');
-assert(githubSource.includes("permissions: { contents: 'read', actions: 'read', checks: 'read', metadata: 'read' }"), 'installation token must request read-only verification permissions');
+assert(githubSource.includes("permissions: { administration: 'read', contents: 'read', actions: 'write', checks: 'read', metadata: 'read' }"), 'installation token must request the permissions required for runner health and workflow dispatch');
+
+// Runner health control-plane contract.
+assert(githubSource.includes("/repos/${REPO}/actions/runners?per_page=100"), 'GitHub App runner health endpoint is missing');
+assert(githubSource.includes('PC1-AUTONOMOUS-EXECUTOR'), 'PC1 runner label is missing from health contract');
+assert(githubSource.includes('PC2-CODING-EXECUTOR'), 'PC2 runner label is missing from health contract');
+assert(githubSource.includes("url.pathname === '/github/runners'"), 'runner health route is missing');
+assert(githubSource.includes('installationToken.token'), 'runner health must use an installation token');
 
 // XM execution bridge transport.
 assert(githubSource.includes("import { AxXmExecutionQueue"), 'XM execution queue import is missing');
@@ -77,4 +88,4 @@ assert(wrangler.includes('"name": "AX_XM_EXECUTION_QUEUE"'), 'Wrangler XM queue 
 assert(wrangler.includes('"class_name": "AxXmExecutionQueue"'), 'Wrangler XM Durable Object class is missing');
 assert(wrangler.includes('"tag": "v2-xm-execution-bridge"'), 'XM Durable Object migration is missing');
 
-console.log('AX web chat, GitHub App, and XM bridge source regression checks passed.');
+console.log('AX web chat, GitHub App, runner health, and XM bridge source regression checks passed.');
