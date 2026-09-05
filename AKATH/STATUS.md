@@ -1,6 +1,6 @@
 # AKATH Status
 
-**Overall:** IMPLEMENTATION IN PROGRESS
+**Overall:** AKATH SYSTEM — IMPLEMENTATION IN PROGRESS
 
 ## Identity
 
@@ -34,4 +34,8 @@
 
 ### Important boundary
 
-A dashboard heartbeat showing `PASS` is not, by itself, sufficient proof of 24/7 autonomous continuity. The authoritative acceptance criterion is successive verified GitHub Actions runtime evidence.
+A dashboard heartbeat showing `PASS` is not, by itself, sufficient proof of 24×7 autonomous continuity. The authoritative acceptance criterion is successive verified GitHub Actions runtime evidence.
+
+## Identity Transition
+
+AKATH is now the sole current company/system identity for Operations, runtime status, and acceptance reporting. Legacy project references are not treated as the active operating identity.
