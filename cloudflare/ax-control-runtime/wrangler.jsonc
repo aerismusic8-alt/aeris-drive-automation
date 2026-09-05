@@ -5,24 +5,23 @@
   "compatibility_date": "2026-08-25",
   "durable_objects": {
     "bindings": [
-      {
-        "name": "AX_GATEWAY_INBOX",
-        "class_name": "AxGatewayInbox"
-      }
+      { "name": "AX_GATEWAY_INBOX", "class_name": "AxGatewayInbox" },
+      { "name": "AX_XM_EXECUTION_QUEUE", "class_name": "AxXmExecutionQueue" }
     ]
   },
   "migrations": [
     {
       "tag": "v1",
       "new_sqlite_classes": ["AxGatewayInbox"]
+    },
+    {
+      "tag": "v2-xm-execution-bridge",
+      "new_sqlite_classes": ["AxXmExecutionQueue"]
     }
   ],
   "queues": {
     "producers": [
-      {
-        "binding": "AX_EXECUTION_QUEUE",
-        "queue": "ax-execution-events"
-      }
+      { "binding": "AX_EXECUTION_QUEUE", "queue": "ax-execution-events" }
     ],
     "consumers": [
       {
@@ -37,4 +36,4 @@
   }
 }
 
-// AX runtime deployment trigger: GitHub App read-only verification gateway v1.
+// AX runtime deployment trigger: GitHub App gateway + isolated XM execution bridge.
