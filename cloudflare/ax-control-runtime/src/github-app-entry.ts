@@ -125,11 +125,15 @@ async function xmRoute(request: Request, env: GitHubEnv): Promise<Response | nul
   const stub = xmQueueStub(env);
 
   if (request.method === 'GET' && url.pathname === '/xm/status') {
-    return xmJson({ ok: true, service: 'AX XM EXECUTION BRIDGE', mode: 'READ_ONLY_PENDING_HANDSHAKE', live_execution_enabled: false, kill_switch: true, account_scope: 'XM_MICRO_K_DESIGNATED_ACCOUNT', node_auth_configured: Boolean(env.AX_XM_NODE_SECRET) });
+    return stub.fetch('https://xm.local/status', { method: 'GET' });
   }
   if (request.method === 'POST' && url.pathname === '/xm/node/pull') {
     if (!nodeAuthorized) return xmJson({ error: 'AUTH_REQUIRED' }, 401);
     return stub.fetch('https://xm.local/pull', { method: 'POST', headers: { 'content-type': 'application/json' }, body: '{}' });
+  }
+  if (request.method === 'POST' && url.pathname === '/xm/node/heartbeat') {
+    if (!nodeAuthorized) return xmJson({ error: 'AUTH_REQUIRED' }, 401);
+    return stub.fetch('https://xm.local/heartbeat', { method: 'POST', headers: { 'content-type': 'application/json' }, body: await request.text() });
   }
   if (request.method === 'POST' && url.pathname === '/xm/node/result') {
     if (!nodeAuthorized) return xmJson({ error: 'AUTH_REQUIRED' }, 401);
@@ -141,8 +145,7 @@ async function xmRoute(request: Request, env: GitHubEnv): Promise<Response | nul
   }
   if (request.method === 'POST' && url.pathname === '/xm/control/enqueue') {
     if (!controlAuthorized) return xmJson({ error: 'AUTH_REQUIRED' }, 401);
-    const body = await request.text();
-    return stub.fetch('https://xm.local/enqueue', { method: 'POST', headers: { 'content-type': 'application/json' }, body });
+    return stub.fetch('https://xm.local/enqueue', { method: 'POST', headers: { 'content-type': 'application/json' }, body: await request.text() });
   }
   return xmJson({ error: 'NOT_FOUND' }, 404);
 }
