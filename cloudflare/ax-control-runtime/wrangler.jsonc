@@ -1,7 +1,7 @@
 {
   "$schema": "https://unpkg.com/wrangler@latest/config-schema.json",
   "name": "ax-control-runtime",
-  "main": "src/index.ts",
+  "main": "src/github-app-entry.ts",
   "compatibility_date": "2026-08-25",
   "durable_objects": {
     "bindings": [
@@ -37,4 +37,4 @@
   }
 }
 
-// AX runtime deployment trigger: web-result auth boundary repair v3.
+// AX runtime deployment trigger: GitHub App read-only verification gateway v1.
