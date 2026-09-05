@@ -1,27 +1,24 @@
-name: AX Request Correlation Fix
+name: AX Control Runtime Deploy
 
 on:
   push:
     branches: [main]
     paths:
-      - '.github/workflows/ax-request-correlation-fix.yml'
-      - 'cloudflare/ax-control-runtime/src/index.ts'
-      - 'cloudflare/ax-control-runtime/src/github-app-entry.ts'
+      - 'cloudflare/ax-control-runtime/src/**'
       - 'cloudflare/ax-control-runtime/wrangler.jsonc'
       - 'cloudflare/ax-control-runtime/package.json'
+      - '.github/workflows/ax-request-correlation-fix.yml'
   workflow_dispatch:
-  schedule:
-    - cron: "*/5 * * * *"
 
 permissions:
-  contents: write
+  contents: read
 
 concurrency:
-  group: ax-request-correlation-fix
+  group: ax-control-runtime-deploy
   cancel-in-progress: false
 
 jobs:
-  fix-and-deploy:
+  deploy:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     env:
@@ -32,70 +29,15 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v5
 
-      - name: Patch request correlation
+      - name: Verify deployment source
         shell: bash
         run: |
           set -euo pipefail
-          node <<'NODE'
-          const fs = require('fs');
-          const src = 'cloudflare/ax-control-runtime/src/index.ts';
-          let text = fs.readFileSync(src, 'utf8');
-
-          const old = `    if (path === '/pull' && request.method === 'POST') {
-      const now = Date.now();
-      const index = current.findIndex((item) => {
-        const meta = item as AxGatewayInput & { _status?: string; _leaseUntil?: number };
-        return meta._status !== 'ACKED' && (!meta._leaseUntil || meta._leaseUntil <= now);
-      });
-      if (index < 0) return json({ ok: true, item: null });
-`;
-          const replacement = `    if (path === '/pull' && request.method === 'POST') {
-      const now = Date.now();
-      const requestedId = payload && typeof payload === 'object' ? String((payload as { request_id?: unknown }).request_id || '') : '';
-      const index = current.findIndex((item) => {
-        const meta = item as AxGatewayInput & { _status?: string; _leaseUntil?: number };
-        const eligible = meta._status !== 'ACKED' && (!meta._leaseUntil || meta._leaseUntil <= now);
-        return eligible && (!requestedId || item.request_id === requestedId);
-      });
-      if (index < 0) return requestedId ? json({ ok: false, item: null, error: 'REQUEST_UNAVAILABLE', requestId: requestedId }, 404) : json({ ok: true, item: null });
-`;
-          if (text.includes(old)) text = text.replace(old, replacement);
-
-          const old3 = `    if (request.method === 'POST' && url.pathname === '/pc/pull') {
-      if (!secretAccepted(bearerSecret(request), env.AX_PC_PULL_SECRET)) return json({ error: 'AUTH_REQUIRED' }, 401);
-      const inboxResponse = await gatewayInboxCall(env, 'pull'); return json(await inboxResponse.json(), inboxResponse.status);
-    }
-`;
-          const replacement3 = `    if (request.method === 'POST' && url.pathname === '/pc/pull') {
-      if (!secretAccepted(bearerSecret(request), env.AX_PC_PULL_SECRET)) return json({ error: 'AUTH_REQUIRED' }, 401);
-      const body = await request.json().catch(() => null);
-      const requestId = String(new URL(request.url).searchParams.get('request_id') || (body && typeof body === 'object' ? (body as { request_id?: unknown }).request_id || '' : ''));
-      const inboxResponse = await gatewayInboxCall(env, 'pull', requestId ? { request_id: requestId } : undefined);
-      return json(await inboxResponse.json(), inboxResponse.status);
-    }
-`;
-          if (text.includes(old3)) text = text.replace(old3, replacement3);
-          fs.writeFileSync(src, text, 'utf8');
-          NODE
-
-      - name: Regression checks
-        shell: bash
-        run: |
-          set -euo pipefail
-          grep -q "REQUEST_UNAVAILABLE" cloudflare/ax-control-runtime/src/index.ts
-          grep -q "searchParams.get('request_id')" cloudflare/ax-control-runtime/src/index.ts
-          grep -q "item.request_id === requestedId" cloudflare/ax-control-runtime/src/index.ts
-
-      - name: Persist patch
-        shell: bash
-        run: |
-          set -euo pipefail
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add cloudflare/ax-control-runtime/src/index.ts
-          if git diff --cached --quiet; then exit 0; fi
-          git commit -m "fix: correlate PC pulls to requested web job"
-          git push
+          test -f cloudflare/ax-control-runtime/wrangler.jsonc
+          test -f cloudflare/ax-control-runtime/src/github-app-entry.ts
+          grep -q 'main.*src/github-app-entry.ts' cloudflare/ax-control-runtime/wrangler.jsonc
+          grep -q 'dispatchFromApp' cloudflare/ax-control-runtime/src/github-app-entry.ts
+          echo 'DEPLOYMENT_SOURCE_OK'
 
       - name: Deploy runtime
         shell: bash
@@ -118,5 +60,4 @@ jobs:
           if (!chat.includes('AX Web Chat')) throw new Error('CHAT_PAGE_MISSING');
           console.log('PUBLIC_RUNTIME_OK', health.version);
           console.log('CHAT_ROUTE_OK');
-          console.log('REQUEST_CORRELATION_PATCH_PRESENT');
           NODE
