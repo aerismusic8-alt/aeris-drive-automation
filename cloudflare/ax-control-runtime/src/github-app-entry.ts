@@ -57,8 +57,8 @@ function pemToDer(pem: string): Uint8Array {
 
 async function createAppJwt(env: GitHubEnv): Promise<string> {
   const privateKeyPem = env.AX_GITHUB_APP_PRIVATE_KEY || '';
-  const clientId = env.AX_GITHUB_CLIENT_ID || '';
-  if (!privateKeyPem || !clientId) throw new Error('GITHUB_APP_CREDENTIALS_MISSING');
+  const appId = env.AX_GITHUB_APP_ID || '';
+  if (!privateKeyPem || !appId) throw new Error('GITHUB_APP_CREDENTIALS_MISSING');
 
   const key = await crypto.subtle.importKey(
     'pkcs8',
@@ -70,7 +70,7 @@ async function createAppJwt(env: GitHubEnv): Promise<string> {
 
   const now = Math.floor(Date.now() / 1000);
   const header = base64UrlText(JSON.stringify({ alg: 'RS256', typ: 'JWT' }));
-  const payload = base64UrlText(JSON.stringify({ iat: now - 60, exp: now + 540, iss: clientId }));
+  const payload = base64UrlText(JSON.stringify({ iat: now - 60, exp: now + 540, iss: appId }));
   const signingInput = `${header}.${payload}`;
   const signature = await crypto.subtle.sign(
     'RSASSA-PKCS1-v1_5',
