@@ -9,7 +9,28 @@ permissions:
   contents: read
 
 jobs:
-  pc-runner-smoke:
+  control-plane-runner-check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      pc2_online: ${{ steps.check.outputs.pc2_online }}
+      pc1_online: ${{ steps.check.outputs.pc1_online }}
+    steps:
+      - name: Check PC runner health through AX Control Runtime
+        id: check
+        shell: bash
+        run: |
+          set -euo pipefail
+          response=$(curl -fsS --retry 3 --retry-delay 2 https://ax-control-runtime.aerismusic8.workers.dev/github/runners)
+          echo "$response"
+          pc2=$(printf '%s' "$response" | node -e 'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>{const r=JSON.parse(s);const x=(r.runners||[]).find(v=>v.name==="PC2-CODING-EXECUTOR");process.stdout.write(x?.status==="online" ? "true" : "false")})')
+          pc1=$(printf '%s' "$response" | node -e 'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>{const r=JSON.parse(s);const x=(r.runners||[]).find(v=>v.name==="PC1-AUTONOMOUS-EXECUTOR");process.stdout.write(x?.status==="online" ? "true" : "false")})')
+          echo "pc2_online=$pc2" >> "$GITHUB_OUTPUT"
+          echo "pc1_online=$pc1" >> "$GITHUB_OUTPUT"
+
+  pc2-runner-smoke:
+    needs: control-plane-runner-check
+    if: needs.control-plane-runner-check.outputs.pc2_online == 'true'
     runs-on: [self-hosted, Windows, X64, PC2-CODING-EXECUTOR]
     timeout-minutes: 5
     steps:
