@@ -1,0 +1,133 @@
+name: AX Self-Hosted PowerShell Hardening
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/**'
+
+permissions:
+  contents: write
+
+concurrency:
+  group: ax-self-hosted-powershell-hardening
+  cancel-in-progress: false
+
+jobs:
+  harden:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout workflows
+        uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+
+      - name: Harden self-hosted Windows PowerShell policy
+        shell: bash
+        run: |
+          set -euo pipefail
+          changed=0
+          for file in .github/workflows/*.yml .github/workflows/*.yaml; do
+            [ -f "$file" ] || continue
+            case "$file" in
+              .github/workflows/ax-self-hosted-powershell-hardening.yml) continue ;;
+            esac
+            if ! grep -Eq 'runs-on:.*self-hosted|runs-on: \[self-hosted' "$file"; then
+              continue
+            fi
+
+            node - "$file" <<'NODE'
+          const fs = require('fs');
+          const file = process.argv[2];
+          let text = fs.readFileSync(file, 'utf8');
+          let next = text;
+
+          next = next.replace(/^([ \t]*)shell:\s*powershell\s*$/gm,
+            '$1shell: powershell -NoProfile -ExecutionPolicy Bypass -File {0}');
+          next = next.replace(/^([ \t]*)shell:\s*powershell\s+-NoProfile\s*$/gm,
+            '$1shell: powershell -NoProfile -ExecutionPolicy Bypass -File {0}');
+
+          const hasDefaultShell = /(^|\n)defaults:\n(?:[ \t]+[^\n]*\n)*[ \t]+run:\n[ \t]+shell:\s*powershell(?:\s|$)/m.test(next);
+          const hasSelfHosted = /runs-on:\s*.*self-hosted|runs-on:\s*\[self-hosted/.test(next);
+          if (hasSelfHosted && !hasDefaultShell) {
+            const lines = next.split(/\r?\n/);
+            const nameIndex = lines.findIndex((line) => /^name:\s*/.test(line));
+            let insertAt = nameIndex >= 0 ? nameIndex + 1 : 0;
+            if (lines[insertAt] === '') insertAt++;
+            lines.splice(insertAt, 0,
+              '',
+              'defaults:',
+              '  run:',
+              '    shell: powershell -NoProfile -ExecutionPolicy Bypass -File {0}',
+              '');
+            next = lines.join('\n');
+          }
+
+          if (next !== text) {
+            fs.writeFileSync(file, next, 'utf8');
+            console.log(`HARDENED:${file}`);
+          }
+          NODE
+            if git diff --quiet -- "$file"; then :; else changed=1; fi
+          done
+
+          if [ "$changed" -ne 1 ]; then
+            echo 'NO_WORKFLOW_HARDENING_CHANGES'
+            exit 0
+          fi
+
+      - name: Validate hardened workflow sources
+        shell: bash
+        run: |
+          set -euo pipefail
+          node <<'NODE'
+          const fs = require('fs');
+          const path = require('path');
+          for (const file of fs.readdirSync('.github/workflows')) {
+            if (!/\.ya?ml$/.test(file) || file === 'ax-self-hosted-powershell-hardening.yml') continue;
+            const p = path.join('.github/workflows', file);
+            const text = fs.readFileSync(p, 'utf8');
+            if (!/runs-on:\s*.*self-hosted|runs-on:\s*\[self-hosted/.test(text)) continue;
+            const badExplicit = /^\s*shell:\s*powershell\s*$/m.test(text);
+            const hasBypass = /ExecutionPolicy\s+Bypass/.test(text);
+            if (badExplicit || !hasBypass) {
+              throw new Error(`SELF_HOSTED_POWERSHELL_NOT_HARDENED:${p}`);
+            }
+          }
+          console.log('SELF_HOSTED_POWERSHELL_HARDENING_SOURCE_GUARD=PASS');
+          NODE
+
+      - name: Persist hardening
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name 'AX Workflow Hardening'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add .github/workflows
+          if git diff --cached --quiet; then
+            echo 'NO_HARDENING_COMMIT_REQUIRED'
+            exit 0
+          fi
+          git stash push -u -m 'ax-workflow-hardening'
+          git fetch origin main
+          git rebase origin/main
+          git stash pop
+          git add .github/workflows
+          if git diff --cached --quiet; then
+            echo 'NO_HARDENING_COMMIT_AFTER_REBASE'
+            exit 0
+          fi
+          git commit -m 'fix: harden self-hosted PowerShell execution policy'
+          for attempt in 1 2 3; do
+            git fetch origin main
+            if [ "$(git rev-list --count HEAD..origin/main)" -gt 0 ]; then git rebase origin/main; fi
+            if git push origin HEAD:main; then
+              echo "AX_WORKFLOW_HARDENING_PUSH=PASS attempt=$attempt"
+              exit 0
+            fi
+            sleep 2
+          done
+          echo 'AX_WORKFLOW_HARDENING_PUSH=FAILED'
+          exit 1
