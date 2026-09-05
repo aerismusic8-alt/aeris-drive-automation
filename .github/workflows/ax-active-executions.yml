@@ -5,22 +5,78 @@ on:
     - cron: '*/1 * * * *'
 permissions:
   contents: write
+  actions: write
 jobs:
   heartbeat:
     runs-on: self-hosted
     timeout-minutes: 3
     steps:
       - uses: actions/checkout@v5
+
       - name: Record runtime heartbeat
         shell: powershell -NoProfile -ExecutionPolicy Bypass -File {0}
         run: |
           & "$PWD\AX_ACTIVE_EXECUTIONS.ps1" -TriggerId "ax-active-execution-monitor" -JobId "${{ github.run_id }}" -Status "ACTIVE" -Runner "$env:COMPUTERNAME" -Result "monitor_heartbeat"
+
       - name: Verify active execution registry
         shell: powershell -NoProfile -ExecutionPolicy Bypass -File {0}
         run: |
           $x=Get-Content -Raw AX_ACTIVE_EXECUTIONS.json|ConvertFrom-Json
           if($x.schema -ne 'AX_ACTIVE_EXECUTIONS_V1'){throw 'ACTIVE_EXECUTIONS_SCHEMA_FAIL'}
           Write-Host "ACTIVE_EXECUTIONS PASS active=$($x.activeCount) stale=$($x.staleCount)"
+
+      - name: Run runner failover unit test
+        shell: powershell -NoProfile -ExecutionPolicy Bypass -File {0}
+        run: |
+          $ErrorActionPreference='Stop'
+          & "$PWD\tests\AX_RUNNER_FAILOVER_TEST.ps1"
+          if($LASTEXITCODE -ne 0){exit $LASTEXITCODE}
+
+      - name: Supervise AKATH runtime and fail over PC1 to PC2
+        shell: powershell -NoProfile -ExecutionPolicy Bypass -File {0}
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          $ErrorActionPreference='Stop'
+          $repo='${{ github.repository }}'
+          $workflow='akath-runtime.yml'
+
+          $runs = @(gh run list -R $repo -w $workflow -L 20 --json databaseId,status,event,createdAt | ConvertFrom-Json)
+          $active = @($runs | Where-Object { $_.status -in @('queued','requested','waiting','pending','in_progress') })
+          if($active.Count -gt 0){
+            Write-Host "AKATH_SUPERVISOR=BUSY existingRun=$($active[0].databaseId) status=$($active[0].status)"
+            exit 0
+          }
+
+          Write-Host 'AKATH_SUPERVISOR=DISPATCH_PC1'
+          $dispatch = gh workflow run $workflow -R $repo --ref main -f target=PC1 2>&1
+          $dispatchText = ($dispatch -join [Environment]::NewLine)
+          Write-Host $dispatchText
+          $match=[regex]::Match($dispatchText,'/runs/(\d+)')
+          if(-not $match.Success){ throw 'AKATH_DISPATCH_RUN_ID_NOT_FOUND' }
+          $runId=[int64]$match.Groups[1].Value
+
+          $status='queued'
+          for($i=1;$i -le 6;$i++){
+            Start-Sleep -Seconds 5
+            $status=gh run view $runId -R $repo --json status --jq '.status'
+            Write-Host "AKATH_SUPERVISOR poll=$i run=$runId status=$status"
+            if($status -ne 'queued' -and $status -ne 'requested' -and $status -ne 'waiting' -and $status -ne 'pending'){ break }
+          }
+
+          if($status -in @('queued','requested','waiting','pending')){
+            Write-Host "AKATH_SUPERVISOR=PC1_OFFLINE_FAILOVER"
+            gh run cancel $runId -R $repo
+            Start-Sleep -Seconds 2
+            $fallback = gh workflow run $workflow -R $repo --ref main -f target=PC2 2>&1
+            Write-Host ($fallback -join [Environment]::NewLine)
+            "AKATH_SUPERVISOR=PC1_OFFLINE_FAILOVER_TO_PC2" | Out-File -FilePath $env:GITHUB_STEP_SUMMARY -Append -Encoding utf8
+          } elseif($status -eq 'in_progress') {
+            "AKATH_SUPERVISOR=PC1_PRIMARY_ACTIVE" | Out-File -FilePath $env:GITHUB_STEP_SUMMARY -Append -Encoding utf8
+          } else {
+            "AKATH_SUPERVISOR=PC1_RUN_STATUS_$status" | Out-File -FilePath $env:GITHUB_STEP_SUMMARY -Append -Encoding utf8
+          }
+
       - name: Persist registry
         shell: powershell -NoProfile -ExecutionPolicy Bypass -File {0}
         run: |
