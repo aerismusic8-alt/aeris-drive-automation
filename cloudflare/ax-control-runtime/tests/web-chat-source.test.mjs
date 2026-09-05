@@ -47,6 +47,10 @@ assert(githubSource.includes('RSASSA-PKCS1-v1_5'), 'GitHub App JWT must use RS25
 assert(githubSource.includes('/repos/${REPO}/installation'), 'GitHub App must resolve the repository installation');
 assert(githubSource.includes('/app/installations/${installationId}/access_tokens'), 'GitHub App must mint an installation access token');
 assert(githubSource.includes("url.pathname === '/github/verify'"), 'GitHub App verification route is missing');
+assert(githubSource.includes("url.pathname === '/github/status'"), 'GitHub App sanitized status route is missing');
+assert(githubSource.includes("status: body.verified === true ? 'VERIFIED' : 'NOT_VERIFIED'"), 'GitHub App status route must expose only sanitized verification state');
+assert(!githubSource.slice(githubSource.indexOf('async function publicStatus')).includes('tokenExpiresAt'), 'public GitHub status must not expose token expiry');
+assert(!githubSource.slice(githubSource.indexOf('async function publicStatus')).includes('installationIdPresent'), 'public GitHub status must not expose installation identifiers');
 assert(githubSource.includes("repositories: ['aeris-drive-automation']"), 'installation token must be repository-scoped');
 assert(githubSource.includes("permissions: { contents: 'read', actions: 'read', checks: 'read', metadata: 'read' }"), 'installation token must request read-only verification permissions');
 assert(githubSource.includes("export { AxGatewayInbox } from './index';"), 'Durable Object export must remain available from Worker entrypoint');
