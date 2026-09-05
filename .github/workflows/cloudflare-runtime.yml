@@ -1,10 +1,5 @@
 name: AX Cloudflare Control Runtime
 
-# POST-MERGE VERIFICATION TRIGGER: this workflow is intentionally push-enabled on main.
-# Cloudflare deployment runs on GitHub-hosted Linux; PC execution remains on the
-# existing self-hosted Windows runner workflows and is verified separately.
-# Browser-scoped NL hotfix is now part of the deployed main source.
-
 on:
   workflow_dispatch:
   push:
@@ -16,13 +11,12 @@ on:
       - 'AX_CLOUDFLARE_DISPATCH_ADAPTER.ps1'
 
 permissions:
-  contents: write
+  contents: read
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
-    timeout-minutes: 10
-
+    timeout-minutes: 15
     env:
       CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
       WORKER_NAME: ax-control-runtime
@@ -39,38 +33,6 @@ jobs:
           node-version: 24
           check-latest: true
 
-      - name: Patch AX Web result auth boundary
-        shell: bash
-        run: |
-          set -euo pipefail
-          python3 - <<'PY'
-          from pathlib import Path
-          import re
-
-          src = Path('cloudflare/ax-control-runtime/src/index.ts')
-          text = src.read_text(encoding='utf-8')
-          pattern = r"if \(request\.method === 'GET' && url\.pathname\.startsWith\('/web/result/'\)\) \{.*?\n\}"
-          replacement = """if (request.method === 'GET' && url.pathname.startsWith('/web/result/')) {
-  const requestId = decodeURIComponent(url.pathname.slice('/web/result/'.length));
-  if (!/^[0-9a-f]{8}-[0-9a-f-]{27}$/i.test(requestId)) return json({ error: 'REQUEST_ID_INVALID' }, 422);
-  const resultResponse = await gatewayInboxCall(env, 'result-get/', undefined, requestId);
-  return json(await resultResponse.json(), resultResponse.status);
-}"""
-          text2, count = re.subn(pattern, replacement, text, count=1, flags=re.S)
-          if count != 1:
-              raise SystemExit('expected web result route was not found; refusing deployment')
-          src.write_text(text2, encoding='utf-8')
-
-          test = Path('cloudflare/ax-control-runtime/tests/web-chat-source.test.mjs')
-          t = test.read_text(encoding='utf-8')
-          marker = "assert(webChatSource.includes(\"$('file').addEventListener('change'\"), 'web chat file picker must react to file selection');"
-          if 'web result polling must not depend on a browser session after gateway acceptance' not in t:
-              if marker not in t:
-                  raise SystemExit('expected web chat test marker was not found; refusing deployment')
-              addition = marker + "\n\nconst webResultRouteStart = source.indexOf(\"if (request.method === 'GET' && url.pathname.startsWith('/web/result/')\")\nassert(webResultRouteStart >= 0, 'web result route must be present');\nconst webResultRouteEnd = source.indexOf(\"\n    if (request.method === 'POST' && url.pathname === '/mobile/input')\", webResultRouteStart);\nconst webResultRoute = source.slice(webResultRouteStart, webResultRouteEnd);\nassert(!webResultRoute.includes('requireWebSession'), 'web result polling must not depend on a browser session after gateway acceptance');\nassert(webResultRoute.includes('REQUEST_ID_INVALID'), 'web result route must validate the request id before lookup');"
-              test.write_text(t.replace(marker, addition, 1), encoding='utf-8')
-          PY
-
       - name: Verify Node and Wrangler
         shell: bash
         run: |
@@ -79,26 +41,18 @@ jobs:
           npm --version
           npx wrangler@latest --version
 
-      - name: Verify AX Web Chat regression guard
+      - name: Verify AX Web Chat and GitHub App regression guard
         shell: bash
         run: |
           set -euo pipefail
           node cloudflare/ax-control-runtime/tests/web-chat-source.test.mjs
 
-      - name: Persist web result auth repair
+      - name: Verify required Cloudflare credential is present
         shell: bash
         run: |
           set -euo pipefail
-          rm -f .github/workflows/ax-web-result-auth-repair.yml
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add cloudflare/ax-control-runtime/src/index.ts cloudflare/ax-control-runtime/tests/web-chat-source.test.mjs .github/workflows/ax-web-result-auth-repair.yml .github/workflows/cloudflare-runtime.yml
-          if git diff --cached --quiet; then
-            echo 'No persistence commit required.'
-          else
-            git commit -m "fix: decouple web result polling from session auth"
-            git push
-          fi
+          test -n "$CLOUDFLARE_API_TOKEN"
+          echo 'Cloudflare API token is configured.'
 
       - name: Ensure AX Queue exists
         shell: bash
@@ -128,10 +82,10 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          for attempt in {1..8}; do
+          for attempt in {1..12}; do
             if node <<'NODE'
           const url = process.env.AX_CONTROL_RUNTIME_URL + '/health';
-          const response = await fetch(url);
+          const response = await fetch(url, { cache: 'no-store' });
           if (!response.ok) process.exit(1);
           const r = await response.json();
           console.log('Status:', r.status);
@@ -141,19 +95,39 @@ jobs:
           console.log('Mobile Ingress Auth Configured:', r.mobileIngressAuthConfigured);
           console.log('PC Pull Auth Configured:', r.pcPullAuthConfigured);
           console.log('Web Chat Auth Configured:', r.webChatAuthConfigured);
-          const ok = r.status === 'ONLINE' && r.version === 'control-runtime-1.5.0' && r.mode === 'FREE_ONLY' && r.liveFinancialExecution === false && r.mobileIngressAuthConfigured === true && r.pcPullAuthConfigured === true && r.webChat === true && r.webChatAuthConfigured === true && r.gatewayInbox === 'AX_GATEWAY_INBOX';
+          console.log('Gateway Inbox:', r.gatewayInbox);
+          const ok = r.status === 'ONLINE'
+            && r.version === 'control-runtime-1.5.0'
+            && r.mode === 'FREE_ONLY'
+            && r.liveFinancialExecution === false
+            && r.mobileIngressAuthConfigured === true
+            && r.pcPullAuthConfigured === true
+            && r.webChat === true
+            && r.webChatAuthConfigured === true
+            && r.gatewayInbox === 'AX_GATEWAY_INBOX';
           if (!ok) process.exit(1);
           NODE
             then
               echo 'AX Control Runtime health verification passed.'
               break
             fi
-            if [[ "$attempt" -eq 8 ]]; then
+            if [[ "$attempt" -eq 12 ]]; then
               echo 'AX_CONTROL_RUNTIME_HEALTH_VERIFICATION_FAILED'
               exit 1
             fi
             sleep 5
           done
+
+      - name: Verify GitHub App gateway source is deployed
+        shell: bash
+        run: |
+          set -euo pipefail
+          echo 'GitHub App entrypoint is part of the deployed Worker source contract.'
+          test -f cloudflare/ax-control-runtime/src/github-app-entry.ts
+          grep -q "url.pathname === '/github/verify'" cloudflare/ax-control-runtime/src/github-app-entry.ts
+          grep -q "AX_GITHUB_APP_PRIVATE_KEY" cloudflare/ax-control-runtime/src/github-app-entry.ts
+          grep -q "AX_GITHUB_APP_ID" cloudflare/ax-control-runtime/src/github-app-entry.ts
+          grep -q "AX_GITHUB_CLIENT_ID" cloudflare/ax-control-runtime/src/github-app-entry.ts
 
       - name: Deployment Summary
         shell: bash
@@ -162,8 +136,8 @@ jobs:
           echo 'AX CONTROL RUNTIME DEPLOYMENT VERIFIED'
           echo "Control Worker: $WORKER_NAME"
           echo "Control Runtime: $AX_CONTROL_RUNTIME_URL"
-          echo 'Web Chat regression guard: PASS'
-          echo 'Ingress auth verified by deployed Worker health endpoint.'
-          echo 'Transport store: AX_GATEWAY_INBOX'
+          echo 'Regression guard: PASS'
+          echo 'Health verification: PASS'
           echo 'Execution mode: FREE_ONLY'
           echo 'Live financial execution: DISABLED'
+          echo 'Next gate: authenticated /github/verify check'
