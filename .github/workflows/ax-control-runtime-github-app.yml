@@ -1,81 +1,18 @@
 name: AX Control Runtime GitHub App
 
+# Deployment is owned by the existing AX Cloudflare Control Runtime workflow.
+# This workflow is intentionally retained as a disabled placeholder to avoid
+# two concurrent deployment authorities for the same Worker.
+
 on:
-  push:
-    branches: [main]
-    paths:
-      - 'cloudflare/ax-control-runtime/**'
-      - '.github/workflows/ax-control-runtime-github-app.yml'
   workflow_dispatch:
 
 permissions:
   contents: read
 
 jobs:
-  test-deploy-verify:
+  disabled-placeholder:
+    if: ${{ false }}
     runs-on: ubuntu-latest
-    timeout-minutes: 15
-    env:
-      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-      AX_MOBILE_INGRESS_SECRET: ${{ secrets.AX_MOBILE_INGRESS_SECRET }}
-      RUNTIME_URL: https://ax-control-runtime.aerismusic8.workers.dev
     steps:
-      - uses: actions/checkout@v5
-      - uses: actions/setup-node@v5
-        with:
-          node-version: 24
-
-      - name: Run source contract regression checks
-        run: node cloudflare/ax-control-runtime/tests/web-chat-source.test.mjs
-
-      - name: Validate deployment credentials
-        shell: bash
-        run: |
-          set -euo pipefail
-          test -n "$CLOUDFLARE_API_TOKEN" || { echo 'CLOUDFLARE_API_TOKEN_MISSING'; exit 1; }
-          test -n "$AX_MOBILE_INGRESS_SECRET" || { echo 'AX_MOBILE_INGRESS_SECRET_MISSING'; exit 1; }
-
-      - name: Deploy AX Control Runtime
-        working-directory: cloudflare/ax-control-runtime
-        run: npx wrangler@latest deploy
-
-      - name: Verify deployed health gate
-        shell: bash
-        run: |
-          set -euo pipefail
-          node <<'NODE'
-          const url = process.env.RUNTIME_URL + '/health';
-          const response = await fetch(url);
-          if (!response.ok) throw new Error(`HEALTH_HTTP_${response.status}`);
-          const r = await response.json();
-          console.log(JSON.stringify({
-            status:r.status,
-            mode:r.mode,
-            liveFinancialExecution:r.liveFinancialExecution,
-            repository:r.repository,
-            webChat:r.webChat
-          }));
-          if (r.status !== 'ONLINE' || r.mode !== 'FREE_ONLY' || r.liveFinancialExecution !== false || r.repository !== 'aerismusic8-alt/aeris-drive-automation' || r.webChat !== true) process.exit(1);
-          NODE
-
-      - name: Verify GitHub App read-only authentication
-        shell: bash
-        run: |
-          set -euo pipefail
-          node <<'NODE'
-          const url = process.env.RUNTIME_URL + '/github/verify';
-          const response = await fetch(url, { headers: { Authorization: `Bearer ${process.env.AX_MOBILE_INGRESS_SECRET}` } });
-          const r = await response.json();
-          console.log(JSON.stringify({
-            status:response.status,
-            verified:r.verified,
-            configured:r.configured,
-            authenticated:r.authenticated,
-            installationResolved:r.installationResolved,
-            repositoryAccess:r.repositoryAccess,
-            repository:r.repository,
-            tokenExpiresAt:r.tokenExpiresAt,
-            error:r.error
-          }));
-          if (response.status !== 200 || r.verified !== true || r.configured !== true || r.authenticated !== true || r.installationResolved !== true || r.repositoryAccess !== true || r.repository?.full_name !== 'aerismusic8-alt/aeris-drive-automation') process.exit(1);
-          NODE
+      - run: echo 'Deployment authority is .github/workflows/cloudflare-runtime.yml'
