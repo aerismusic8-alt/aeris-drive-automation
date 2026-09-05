@@ -27,5 +27,5 @@ jobs:
       - name: Install dependencies
         run: npm install
 
-      - name: Run Gemini router and Drive adapter tests
-        run: npx vitest run test/gemini-router.spec.ts test/drive-adapter.spec.ts
+      - name: Run AX adapter integration tests
+        run: npx vitest run test/gemini-router.spec.ts test/drive-adapter.spec.ts test/ax-adapters-integration.spec.ts
