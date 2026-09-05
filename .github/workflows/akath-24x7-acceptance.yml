@@ -162,7 +162,7 @@ jobs:
 
       - name: Report acceptance state
         if: always()
-        shell: powershell
+        shell: powershell -NoProfile -ExecutionPolicy Bypass
         run: |
           Write-Host "AKATH_24X7_ACCEPTANCE_RUN=${{ github.run_id }}"
           Write-Host "AKATH_24X7_ACCEPTANCE_EVENT=${{ github.event_name }}"
