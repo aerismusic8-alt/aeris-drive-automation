@@ -154,9 +154,25 @@ async function verifyGitHubApp(env: GitHubEnv): Promise<Response> {
   }
 }
 
+async function publicStatus(env: GitHubEnv): Promise<Response> {
+  const response = await verifyGitHubApp(env);
+  let body: { verified?: boolean; configured?: boolean; authenticated?: boolean; repositoryAccess?: boolean } = {};
+  try { body = await response.clone().json() as typeof body; } catch { /* preserve sanitized fallback */ }
+  return json({
+    verified: body.verified === true,
+    configured: body.configured === true,
+    authenticated: body.authenticated === true,
+    repositoryAccess: body.repositoryAccess === true,
+    status: body.verified === true ? 'VERIFIED' : 'NOT_VERIFIED',
+  }, body.verified === true ? 200 : 503);
+}
+
 export default {
   async fetch(request: Request, env: GitHubEnv, ctx: ExecutionContext): Promise<Response> {
     const url = new URL(request.url);
+    if (request.method === 'GET' && url.pathname === '/github/status') {
+      return publicStatus(env);
+    }
     if (request.method === 'GET' && url.pathname === '/github/verify') {
       if (!authorized(request, env)) return json({ error: 'AUTH_REQUIRED' }, 401);
       return verifyGitHubApp(env);
