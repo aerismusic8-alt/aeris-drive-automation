@@ -1,16 +1,20 @@
 import runtime from './index';
+import { AxXmExecutionQueue, auth as xmAuth, json as xmJson, xmQueueStub } from './xm-bridge';
 
 type GitHubEnv = {
   AX_GITHUB_APP_PRIVATE_KEY?: string;
   AX_GITHUB_CLIENT_ID?: string;
   AX_GITHUB_APP_ID?: string;
   AX_MOBILE_INGRESS_SECRET?: string;
+  AX_XM_NODE_SECRET?: string;
+  AX_XM_EXECUTION_QUEUE: DurableObjectNamespace;
   [key: string]: unknown;
 };
 
 const REPO = 'aerismusic8-alt/aeris-drive-automation';
 const API = 'https://api.github.com';
 const API_VERSION = '2026-03-10';
+const XM_SCOPE = 'XM_MICRO_K_DESIGNATED_ACCOUNT';
 
 function json(body: unknown, status = 200): Response {
   return Response.json(body, { status, headers: { 'Cache-Control': 'no-store', 'Content-Type': 'application/json; charset=utf-8' } });
@@ -113,5 +117,51 @@ async function publicStatus(env: GitHubEnv): Promise<Response> {
   try { body = await response.clone().json() as Record<string, unknown>; } catch { /* sanitized fallback */ }
   return json({ verified: body.verified === true, configured: body.configured === true, authenticated: body.authenticated === true, repositoryAccess: body.repositoryAccess === true, status: body.verified === true ? 'VERIFIED' : 'NOT_VERIFIED', error: typeof body.error === 'string' ? body.error : undefined }, body.verified === true ? 200 : 503);
 }
-export default { async fetch(request: Request, env: GitHubEnv, ctx: ExecutionContext): Promise<Response> { const url = new URL(request.url); if (request.method === 'GET' && url.pathname === '/github/status') return publicStatus(env); if (request.method === 'GET' && url.pathname === '/github/verify') { if (!authorized(request, env)) return json({ error: 'AUTH_REQUIRED' }, 401); return verifyGitHubApp(env); } return runtime.fetch(request, env as never, ctx); }, queue: runtime.queue };
+
+async function xmRoute(request: Request, env: GitHubEnv): Promise<Response | null> {
+  const url = new URL(request.url);
+  if (!url.pathname.startsWith('/xm/')) return null;
+  const nodeAuthorized = xmAuth(request, env.AX_XM_NODE_SECRET);
+  const controlAuthorized = authorized(request, env);
+  const stub = xmQueueStub(env);
+
+  if (request.method === 'GET' && url.pathname === '/xm/status') {
+    return nodeAuthorized || controlAuthorized ? stub.fetch('https://xm.local/status') : xmJson({ error: 'AUTH_REQUIRED' }, 401);
+  }
+  if (request.method === 'POST' && url.pathname === '/xm/node/pull') {
+    if (!nodeAuthorized) return xmJson({ error: 'AUTH_REQUIRED' }, 401);
+    return stub.fetch('https://xm.local/pull', { method: 'POST', headers: { 'content-type': 'application/json' }, body: '{}' });
+  }
+  if (request.method === 'POST' && url.pathname === '/xm/node/result') {
+    if (!nodeAuthorized) return xmJson({ error: 'AUTH_REQUIRED' }, 401);
+    return stub.fetch('https://xm.local/result', { method: 'POST', headers: { 'content-type': 'application/json' }, body: await request.text() });
+  }
+  if (request.method === 'GET' && url.pathname.startsWith('/xm/node/result/')) {
+    if (!nodeAuthorized) return xmJson({ error: 'AUTH_REQUIRED' }, 401);
+    return stub.fetch(`https://xm.local/result/${encodeURIComponent(url.pathname.slice('/xm/node/result/'.length))}`, { method: 'GET' });
+  }
+  if (request.method === 'POST' && url.pathname === '/xm/control/enqueue') {
+    if (!controlAuthorized) return xmJson({ error: 'AUTH_REQUIRED' }, 401);
+    const body = await request.text();
+    return stub.fetch('https://xm.local/enqueue', { method: 'POST', headers: { 'content-type': 'application/json' }, body });
+  }
+  return xmJson({ error: 'NOT_FOUND' }, 404);
+}
+
+export default {
+  async fetch(request: Request, env: GitHubEnv, ctx: ExecutionContext): Promise<Response> {
+    const xm = await xmRoute(request, env);
+    if (xm) return xm;
+    const url = new URL(request.url);
+    if (request.method === 'GET' && url.pathname === '/github/status') return publicStatus(env);
+    if (request.method === 'GET' && url.pathname === '/github/verify') {
+      if (!authorized(request, env)) return json({ error: 'AUTH_REQUIRED' }, 401);
+      return verifyGitHubApp(env);
+    }
+    return runtime.fetch(request, env as never, ctx);
+  },
+  queue: runtime.queue,
+};
+
 export { AxGatewayInbox } from './index';
+export { AxXmExecutionQueue } from './xm-bridge';
