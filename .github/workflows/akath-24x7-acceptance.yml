@@ -185,3 +185,5 @@ jobs:
           Write-Host "AKATH_AUDIT_PASS=$env:AKATH_AUDIT_PASS"
           Write-Host "AKATH_RUNTIME_PASS=$env:AKATH_RUNTIME_PASS"
           Write-Host "AKATH_ADAPTER_PASS=$env:AKATH_ADAPTER_PASS"
+
+# harmless trigger-touch commit to validate the acceptance runner path
