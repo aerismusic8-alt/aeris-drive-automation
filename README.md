@@ -1,4 +1,4 @@
-# AKATH / AERIS / AX OPERATIONS HUB
+# AKATH OPERATIONS HUB
 
 > **AKATH — Autonomous AI Company**. This repository is the current execution substrate for the AKATH autonomous operating system. A MASTER BRAIN remains authoritative; AX is the executive orchestrator; ChatGPT is a K-facing control/observation channel and is not required for ordinary runtime continuation.
 
@@ -65,7 +65,7 @@ Supported logical input types include text, file references, image references, e
 
 | Area | Open |
 |---|---|
-| Repository | [AERIS Drive Automation](https://github.com/aerismusic8-alt/aeris-drive-automation) |
+| Repository | [AKATH repository](https://github.com/aerismusic8-alt/aeris-drive-automation) |
 | GitHub Actions | [Workflows & runs](https://github.com/aerismusic8-alt/aeris-drive-automation/actions) |
 | Issues | [Issues](https://github.com/aerismusic8-alt/aeris-drive-automation/issues) |
 | Copilot | [GitHub Copilot](https://github.com/copilot) |
@@ -91,7 +91,7 @@ PC1 and PC2 are execution nodes. Their live machine status is not exposed by a v
 
 A node is not considered healthy solely from configuration. Live status must come from execution evidence.
 
-## AERIS MONITOR / JOBS
+## MONITOR / JOBS
 
 Only verified GitHub destinations are linked here until runtime endpoints are confirmed from repository configuration.
 
@@ -109,7 +109,7 @@ Only verified GitHub destinations are linked here until runtime endpoints are co
 
 ## CURRENT OPERATING PRIORITY
 
-1. Keep the execution layer reliable.
+1. Keep the AKATH execution layer reliable.
 2. Preserve GPT-independent runtime continuation.
 3. Prioritize PC1 for high availability / 24×7 operation where applicable.
 4. Use PC2 for development, testing, and E2E execution.
@@ -123,7 +123,7 @@ Open `/operations` from the running Control Hub in a mobile browser for the resp
 
 ## LINK INTEGRITY RULE
 
-This page intentionally avoids unverified runtime URLs. Runtime endpoints for PC1, PC2, AERIS Monitor, Job Log, and Delegation Queue will be added only after their actual endpoints are verified.
+This page intentionally avoids unverified runtime URLs. Runtime endpoints for PC1, PC2, monitor, Job Log, and Delegation Queue will be added only after their actual endpoints are verified.
 
 ## STATUS INTEGRITY RULE
 
