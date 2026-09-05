@@ -1,5 +1,5 @@
 #property strict
-#property version   "1.3"
+#property version   "1.4"
 #property description "AX XM Execution Bridge - authenticated execution adapter only"
 
 // Execution adapter only: no trading strategy, no deposits/withdrawals,
@@ -84,8 +84,9 @@ int PostJson(const string url, const string body, string &response)
       ArrayResize(payload, payload_size - 1);
 
    ResetLastError();
+   // Custom-header overload: no payload_size parameter.
    int status = WebRequest("POST", url, request_headers, RequestTimeoutMs,
-                           payload, ArraySize(payload), result, response_headers);
+                           payload, result, response_headers);
    if(status == -1)
    {
       Print("AX XM Bridge WebRequest error=", GetLastError());
