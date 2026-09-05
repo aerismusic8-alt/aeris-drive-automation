@@ -9,83 +9,9 @@ permissions:
   contents: read
 
 jobs:
-  inspect-runner-control-plane:
-    runs-on: ubuntu-latest
-    env:
-      AX_GITHUB_APP_ID: ${{ secrets.AX_GITHUB_APP_ID }}
-      AX_GITHUB_APP_PRIVATE_KEY: ${{ secrets.AX_GITHUB_APP_PRIVATE_KEY }}
-    steps:
-      - name: Inspect PC runner state via GitHub App
-        shell: bash
-        run: |
-          set -euo pipefail
-          test -n "${AX_GITHUB_APP_ID:-}" || { echo 'AX_GITHUB_APP_ID_UNSET'; exit 1; }
-          test -n "${AX_GITHUB_APP_PRIVATE_KEY:-}" || { echo 'AX_GITHUB_APP_PRIVATE_KEY_UNSET'; exit 1; }
-          node <<'NODE'
-          const crypto = require('crypto');
-          const https = require('https');
-
-          const appId = process.env.AX_GITHUB_APP_ID;
-          const privateKey = process.env.AX_GITHUB_APP_PRIVATE_KEY.replace(/\\n/g, '\n');
-          const now = Math.floor(Date.now() / 1000);
-
-          const b64u = value => Buffer.from(value).toString('base64url');
-          const header = b64u(JSON.stringify({ alg: 'RS256', typ: 'JWT' }));
-          const payload = b64u(JSON.stringify({ iat: now - 60, exp: now + 540, iss: appId }));
-          const unsigned = `${header}.${payload}`;
-          const signer = crypto.createSign('RSA-SHA256');
-          signer.update(unsigned);
-          signer.end();
-          const jwt = `${unsigned}.${signer.sign(privateKey, 'base64url')}`;
-
-          function request(path, options = {}, body = null) {
-            return new Promise((resolve, reject) => {
-              const req = https.request({
-                hostname: 'api.github.com',
-                path,
-                method: options.method || 'GET',
-                headers: {
-                  'Accept': 'application/vnd.github+json',
-                  'X-GitHub-Api-Version': '2026-03-10',
-                  'User-Agent': 'AKATH-PC-Runner-Diagnostic',
-                  ...(options.authorization ? { Authorization: `Bearer ${options.authorization}` } : {}),
-                  ...(body ? { 'Content-Type': 'application/json', 'Content-Length': Buffer.byteLength(body) } : {})
-                }
-              }, res => {
-                let text = '';
-                res.on('data', chunk => { text += chunk; });
-                res.on('end', () => {
-                  let data;
-                  try { data = JSON.parse(text); } catch { data = text; }
-                  if (res.statusCode < 200 || res.statusCode >= 300) reject(new Error(`HTTP_${res.statusCode}:${typeof data === 'string' ? data : JSON.stringify(data)}`));
-                  else resolve(data);
-                });
-              });
-              req.on('error', reject);
-              if (body) req.write(body);
-              req.end();
-            });
-          }
-
-          (async () => {
-            const installations = await request('/app/installations', { authorization: jwt });
-            const installation = installations.find(x => x.account && x.account.login === 'aeris-music8-alt');
-            if (!installation) throw new Error('APP_INSTALLATION_NOT_FOUND');
-            const token = await request(`/app/installations/${installation.id}/access_tokens`, { method: 'POST', authorization: jwt }, '{}');
-            const runners = await request('/repos/aeris-music8-alt/aeris-drive-automation/actions/runners?per_page=100', { authorization: token.token });
-            const wanted = new Set(['PC1-AUTONOMOUS-EXECUTOR', 'PC2-CODING-EXECUTOR']);
-            const rows = (runners.runners || []).filter(r => wanted.has(r.name));
-            console.log(JSON.stringify({
-              total_runners: runners.total_count,
-              target_runners: rows.map(r => ({ name: r.name, status: r.status, busy: r.busy, labels: (r.labels || []).map(x => x.name) }))
-            }, null, 2));
-            for (const name of wanted) if (!rows.some(r => r.name === name)) console.log(JSON.stringify({ name, status: 'NOT_REGISTERED' }));
-          })().catch(err => { console.error(err.message); process.exit(1); });
-          NODE
-
   pc-runner-smoke:
-    needs: inspect-runner-control-plane
     runs-on: [self-hosted, Windows, X64, PC2-CODING-EXECUTOR]
+    timeout-minutes: 5
     steps:
       - name: Verify PC2 runner execution
         shell: cmd
@@ -97,4 +23,4 @@ jobs:
           echo Runner Arch: %RUNNER_ARCH%
           echo Runner Name: %RUNNER_NAME%
           git --version
-          echo === PC2 SMOKE TEST COMPLETE ===
+          echo === PC2 RUNNER SMOKE TEST COMPLETE ===
