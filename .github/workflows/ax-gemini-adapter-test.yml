@@ -4,6 +4,7 @@ on:
   push:
     paths:
       - 'cloudflare/ax-control-runtime/**'
+      - '.github/workflows/ax-gemini-adapter-test.yml'
   workflow_dispatch:
 
 jobs:
