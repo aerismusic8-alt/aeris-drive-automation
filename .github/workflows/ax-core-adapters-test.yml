@@ -28,4 +28,4 @@ jobs:
         run: npm install
 
       - name: Run AX adapter integration tests
-        run: npx vitest run test/gemini-router.spec.ts test/drive-adapter.spec.ts test/ax-adapters-integration.spec.ts
+        run: npx vitest run test/gemini-router.spec.ts test/drive-adapter.spec.ts test/ax-adapters-integration.spec.ts test/ax-adapters-route.spec.ts
