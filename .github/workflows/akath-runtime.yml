@@ -12,7 +12,7 @@ on:
     - cron: "*/5 * * * *"
 
 permissions:
-  contents: read
+  contents: write
 
 concurrency:
   group: akath-runtime
@@ -21,7 +21,7 @@ concurrency:
 jobs:
   runtime:
     runs-on: [self-hosted, Windows, X64, PC2-CODING-EXECUTOR]
-    timeout-minutes: 5
+    timeout-minutes: 10
     steps:
       - name: Checkout
         uses: actions/checkout@v5
@@ -54,37 +54,70 @@ jobs:
           & $python --version
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
-      - name: Run AKATH worker with canonical Brain rehydration
+      - name: Execute three successive autonomous AKATH cycles
         shell: powershell -NoProfile -ExecutionPolicy Bypass -File {0}
         env:
           AKATH_RUNTIME_ID: akath-primary
           AKATH_PROBE_MODE: "true"
         run: |
           $ErrorActionPreference = 'Stop'
-          & "$env:GITHUB_WORKSPACE/AKATH/runtime/akath_worker.ps1" -ProbeMode
-          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-
-      - name: Verify persisted runtime state and A rehydration
-        shell: powershell -NoProfile -ExecutionPolicy Bypass -File {0}
-        run: |
-          $ErrorActionPreference = 'Stop'
           $stateDir = if ($env:AKATH_STATE_DIR) { $env:AKATH_STATE_DIR } else { Join-Path $HOME '.akath/runtime' }
           $statePath = Join-Path $stateDir 'runtime-state.json'
-          if (-not (Test-Path -LiteralPath $statePath)) { throw 'AKATH_STATE_MISSING' }
-          $state = Get-Content -Raw -LiteralPath $statePath | ConvertFrom-Json
-          if ($state.state -ne 'VERIFIED') { throw "AKATH_STATE_NOT_VERIFIED:$($state.state)" }
-          if ($state.verification_status -ne 'VERIFIED') { throw 'AKATH_VERIFICATION_MISSING' }
-          if ([string]::IsNullOrWhiteSpace($state.evidence_ref)) { throw 'AKATH_EVIDENCE_REF_MISSING' }
-          $evidence = Get-Content -Raw -LiteralPath $state.evidence_ref | ConvertFrom-Json
-          if ($evidence.rehydration.rehydration_status -ne 'VERIFIED') { throw 'AKATH_REHYDRATION_NOT_VERIFIED' }
-          if ($evidence.rehydration.identity -ne 'A') { throw 'AKATH_IDENTITY_NOT_A' }
-          if ($evidence.rehydration.execution_authorized -ne $false) { throw 'AKATH_REHYDRATION_AUTHORITY_BYPASS' }
-          "AKATH_STATE=$($state.state)" | Out-File -FilePath $env:GITHUB_STEP_SUMMARY -Append
-          "AKATH_RUN_ID=$($state.run_id)" | Out-File -FilePath $env:GITHUB_STEP_SUMMARY -Append
-          "AKATH_JOB_ID=$($state.job_id)" | Out-File -FilePath $env:GITHUB_STEP_SUMMARY -Append
-          "AKATH_REHYDRATION=$($evidence.rehydration.rehydration_status)" | Out-File -FilePath $env:GITHUB_STEP_SUMMARY -Append
-          "AKATH_IDENTITY=$($evidence.rehydration.identity)" | Out-File -FilePath $env:GITHUB_STEP_SUMMARY -Append
-          "AKATH_EVIDENCE=$($state.evidence_ref)" | Out-File -FilePath $env:GITHUB_STEP_SUMMARY -Append
+          $proof = New-Object System.Collections.Generic.List[object]
+
+          for ($cycle = 1; $cycle -le 3; $cycle++) {
+            & "$env:GITHUB_WORKSPACE/AKATH/runtime/akath_worker.ps1" -ProbeMode
+            if ($LASTEXITCODE -ne 0) { throw "AKATH_CYCLE_FAILED:$cycle" }
+            if (-not (Test-Path -LiteralPath $statePath)) { throw "AKATH_STATE_MISSING:$cycle" }
+
+            $state = Get-Content -Raw -LiteralPath $statePath | ConvertFrom-Json
+            if ($state.state -ne 'VERIFIED') { throw "AKATH_STATE_NOT_VERIFIED:$cycle:$($state.state)" }
+            if ($state.verification_status -ne 'VERIFIED') { throw "AKATH_VERIFICATION_MISSING:$cycle" }
+            if ([string]::IsNullOrWhiteSpace($state.evidence_ref)) { throw "AKATH_EVIDENCE_REF_MISSING:$cycle" }
+
+            $evidence = Get-Content -Raw -LiteralPath $state.evidence_ref | ConvertFrom-Json
+            if ($evidence.verification_status -ne 'VERIFIED') { throw "AKATH_EVIDENCE_NOT_VERIFIED:$cycle" }
+            if ($evidence.rehydration.rehydration_status -ne 'VERIFIED') { throw "AKATH_REHYDRATION_NOT_VERIFIED:$cycle" }
+            if ($evidence.rehydration.identity -ne 'A') { throw "AKATH_IDENTITY_NOT_A:$cycle" }
+            if ($evidence.rehydration.execution_authorized -ne $false) { throw "AKATH_REHYDRATION_AUTHORITY_BYPASS:$cycle" }
+            if ($evidence.next_job_ready -ne $true) { throw "AKATH_NEXT_JOB_NOT_READY:$cycle" }
+
+            $proof.Add([ordered]@{
+              sequence = $cycle
+              runtime_id = $state.runtime_id
+              run_id = $state.run_id
+              job_id = $state.job_id
+              evidence_ref = $state.evidence_ref
+              state = $state.state
+              verification_status = $state.verification_status
+              rehydration_status = $evidence.rehydration.rehydration_status
+              identity = $evidence.rehydration.identity
+              execution_authorized = $evidence.rehydration.execution_authorized
+              next_job_ready = $evidence.next_job_ready
+            })
+
+            "AKATH_CYCLE_$cycle=VERIFIED run=$($state.run_id) job=$($state.job_id)" | Out-File -FilePath $env:GITHUB_STEP_SUMMARY -Append -Encoding utf8
+          }
+
+          $runIds = @($proof | ForEach-Object { $_.run_id })
+          if (($runIds | Sort-Object -Unique).Count -ne 3) { throw 'AKATH_CYCLE_RUN_IDS_NOT_UNIQUE' }
+          if (($proof | Where-Object { $_.state -ne 'VERIFIED' -or $_.verification_status -ne 'VERIFIED' -or $_.rehydration_status -ne 'VERIFIED' -or $_.identity -ne 'A' -or $_.execution_authorized -ne $false }).Count -ne 0) {
+            throw 'AKATH_THREE_CYCLE_PROOF_INVALID'
+          }
+
+          $proofDir = Join-Path $env:GITHUB_WORKSPACE 'AKATH/VERIFICATION'
+          New-Item -ItemType Directory -Force -Path $proofDir | Out-Null
+          $record = [ordered]@{
+            schema = 'AKATH_AUTONOMY_3_CYCLE_PROOF_V1'
+            github_run_id = [string]${{ github.run_id }}
+            github_workflow = '${{ github.workflow }}'
+            generated_at_utc = [DateTime]::UtcNow.ToString('o')
+            cycle_count = 3
+            chat_intervention_between_cycles = $false
+            cycles = @($proof)
+            acceptance = 'PASS'
+          }
+          $record | ConvertTo-Json -Depth 12 | Set-Content -Encoding UTF8 -Path (Join-Path $proofDir 'three-cycle-proof.json')
 
       - name: Run adapter acceptance test
         shell: powershell -NoProfile -ExecutionPolicy Bypass -File {0}
@@ -93,3 +126,34 @@ jobs:
           python --version
           python "$env:GITHUB_WORKSPACE/AKATH/tests/rehydration_adapter_tests.py"
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Verify and persist three-cycle proof
+        shell: powershell -NoProfile -ExecutionPolicy Bypass -File {0}
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $proofPath = "$env:GITHUB_WORKSPACE/AKATH/VERIFICATION/three-cycle-proof.json"
+          if (-not (Test-Path -LiteralPath $proofPath)) { throw 'AKATH_THREE_CYCLE_PROOF_MISSING' }
+          $proof = Get-Content -Raw -LiteralPath $proofPath | ConvertFrom-Json
+          if ($proof.schema -ne 'AKATH_AUTONOMY_3_CYCLE_PROOF_V1') { throw 'AKATH_THREE_CYCLE_PROOF_SCHEMA_FAIL' }
+          if ($proof.cycle_count -ne 3) { throw 'AKATH_THREE_CYCLE_COUNT_FAIL' }
+          if ($proof.acceptance -ne 'PASS') { throw 'AKATH_THREE_CYCLE_ACCEPTANCE_FAIL' }
+          if ($proof.chat_intervention_between_cycles -ne $false) { throw 'AKATH_CHAT_DEPENDENCY_FAIL' }
+          if (@($proof.cycles).Count -ne 3) { throw 'AKATH_THREE_CYCLE_RECORD_COUNT_FAIL' }
+
+          git config user.name 'AKATH Autonomous Runtime'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add AKATH/VERIFICATION/three-cycle-proof.json
+          if(git diff --cached --quiet){ Write-Host 'No proof mutation'; exit 0 }
+          git commit -m 'chore: persist AKATH autonomous 3-cycle proof'
+          for($i=1;$i -le 5;$i++){
+            git fetch origin main
+            git rebase origin/main
+            git push origin HEAD:main
+            if($LASTEXITCODE -eq 0){
+              "AKATH_THREE_CYCLE_PROOF=PERSISTED attempt=$i" | Out-File -FilePath $env:GITHUB_STEP_SUMMARY -Append -Encoding utf8
+              exit 0
+            }
+            Write-Host "Proof persistence retry=$i"
+            Start-Sleep -Seconds 2
+          }
+          throw 'AKATH_THREE_CYCLE_PROOF_PUSH_FAILED'
