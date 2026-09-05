@@ -1,5 +1,5 @@
 #property strict
-#property version   "1.1"
+#property version   "1.2"
 #property description "AX XM Execution Bridge - authenticated execution adapter only"
 
 // Execution adapter only: no trading strategy, no deposits/withdrawals,
@@ -7,10 +7,10 @@
 // Live execution is fail-closed and disabled by default.
 
 input bool   LiveExecutionEnabled = false;
-input string BridgeEndpoint       = "";
-input string BridgeToken          = "";
+input string BridgeEndpoint       = ""; // Base URL, e.g. https://ax-control-runtime.aerismusic8.workers.dev
+input string BridgeToken          = ""; // Store locally in MT5; never commit to Git.
 input string AccountScope         = "XM_MICRO_K_DESIGNATED_ACCOUNT";
-input int    PollSeconds          = 2;
+input int    PollSeconds          = 5;
 input int    RequestTimeoutMs     = 1500;
 
 bool g_kill_switch = true;
@@ -94,18 +94,24 @@ void PublishHeartbeat()
    if(BridgeEndpoint == "" || BridgeToken == "") return;
 
    string response;
-   string body = "{\"operation\":\"GET_ACCOUNT_STATE\",\"account_scope\":\"";
-   body += AccountScope + "\",\"state\":" + AccountStateJson() + "}";
+   string body = "{\"account_scope\":\"" + AccountScope + "\",";
+   body += "\"login\":" + IntegerToString((long)AccountInfoInteger(ACCOUNT_LOGIN)) + ",";
+   body += "\"currency\":\"" + AccountInfoString(ACCOUNT_CURRENCY) + "\",";
+   body += "\"balance\":" + DoubleToString(AccountInfoDouble(ACCOUNT_BALANCE),2) + ",";
+   body += "\"equity\":" + DoubleToString(AccountInfoDouble(ACCOUNT_EQUITY),2) + ",";
+   body += "\"terminal_connected\":" + (TerminalInfoInteger(TERMINAL_CONNECTED) ? "true" : "false") + ",";
+   body += "\"trade_allowed\":" + (AccountInfoInteger(ACCOUNT_TRADE_ALLOWED) ? "true" : "false") + ",";
+   body += "\"expert_allowed\":" + (AccountInfoInteger(ACCOUNT_TRADE_EXPERT) ? "true" : "false") + "}";
 
-   int status = PostJson(BridgeEndpoint, body, response);
+   int status = PostJson(BridgeEndpoint + "/xm/node/heartbeat", body, response);
    if(status < 200 || status >= 300)
       Print("AX XM Bridge heartbeat HTTP status=", status);
 }
 
 void OnTimer()
 {
-   // Heartbeat only. Commands must be explicitly authorized by the bridge;
-   // a timer or tick must never create an order by itself.
+   // Heartbeat only. Market ticks cannot create orders.
+   // Command execution remains disabled until a future, separately verified gate.
    PublishHeartbeat();
 }
 
@@ -117,7 +123,7 @@ int OnInit()
    if(PollSeconds < 1 || RequestTimeoutMs < 100)
       return INIT_PARAMETERS_INCORRECT;
 
-   // Fail closed until a future authenticated control path changes the switch.
+   // Fail closed: this scaffold cannot enable live trading itself.
    g_kill_switch = true;
 
    if(BridgeEndpoint == "")
