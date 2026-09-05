@@ -16,7 +16,7 @@ permissions:
   contents: read
 
 concurrency:
-  group: akath-runtime
+  group: akath-runtime-${{ inputs.target || 'PC1' }}
   cancel-in-progress: false
 
 env:
