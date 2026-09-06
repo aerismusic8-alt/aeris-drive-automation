@@ -37,6 +37,13 @@ jobs:
           & "$PWD\tests\AX_RUNNER_FAILOVER_TEST.ps1"
           if($LASTEXITCODE -ne 0){exit $LASTEXITCODE}
 
+      - name: Verify workflow dispatch contract
+        shell: powershell -NoProfile -ExecutionPolicy Bypass -File {0}
+        run: |
+          $ErrorActionPreference='Stop'
+          & "$PWD\tests\AX_ACTIVE_EXECUTIONS_DISPATCH_TEST.ps1"
+          if($LASTEXITCODE -ne 0){exit $LASTEXITCODE}
+
       - name: Supervise AKATH runtime and fail over PC1 to PC2
         shell: powershell -NoProfile -ExecutionPolicy Bypass -File {0}
         env:
@@ -57,9 +64,8 @@ jobs:
 
           function Dispatch-Akath([string]$target) {
             $dispatchAt=[DateTime]::UtcNow
-            $payload=@{ ref='main'; inputs=@{ target=$target; task_id='' } } | ConvertTo-Json -Compress
             Write-Host "AKATH_SUPERVISOR=POST_WORKFLOW_DISPATCH target=$target endpoint=$dispatchEndpoint"
-            $response = $payload | gh api --method POST $dispatchEndpoint --input - --include 2>&1
+            $response = gh api --method POST $dispatchEndpoint -f ref=main -f "inputs[target]=$target" -f "inputs[task_id]=" --include 2>&1
             $exit=$LASTEXITCODE
             Write-Host ($response -join [Environment]::NewLine)
             if($exit -ne 0){ throw "AKATH_WORKFLOW_DISPATCH_POST_FAILED:$target" }
