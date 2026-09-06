@@ -40,22 +40,40 @@ jobs:
           $ErrorActionPreference='Stop'
           $repo='${{ github.repository }}'
           $workflow='akath-runtime.yml'
+          $dispatchEndpoint="repos/$repo/actions/workflows/$workflow/dispatches"
+          $runsEndpoint="repos/$repo/actions/workflows/$workflow/runs?event=workflow_dispatch&per_page=10"
 
-          $runs = @(gh run list -R $repo -w $workflow -L 20 --json databaseId,status,event,createdAt | ConvertFrom-Json)
-          $active = @($runs | Where-Object { $_.status -in @('queued','requested','waiting','pending','in_progress') })
+          $runs = @(gh api $runsEndpoint --jq '.workflow_runs[] | {id,status,event,created_at}')
+          $active = @($runs | ForEach-Object { $_ | ConvertFrom-Json } | Where-Object { $_.status -in @('queued','requested','waiting','pending','in_progress') })
           if($active.Count -gt 0){
-            Write-Host "AKATH_SUPERVISOR=BUSY existingRun=$($active[0].databaseId) status=$($active[0].status)"
+            Write-Host "AKATH_SUPERVISOR=BUSY existingRun=$($active[0].id) status=$($active[0].status)"
             exit 0
           }
 
-          Write-Host 'AKATH_SUPERVISOR=DISPATCH_PC1'
-          $dispatch = gh workflow run $workflow -R $repo --ref main -f target=PC1 2>&1
-          $dispatchText = ($dispatch -join [Environment]::NewLine)
-          Write-Host $dispatchText
-          $match=[regex]::Match($dispatchText,'/runs/(\d+)')
-          if(-not $match.Success){ throw 'AKATH_DISPATCH_RUN_ID_NOT_FOUND' }
-          $runId=[int64]$match.Groups[1].Value
+          function Dispatch-Akath([string]$target) {
+            $dispatchAt=[DateTime]::UtcNow
+            $payload=@{ ref='main'; inputs=@{ target=$target; task_id='' } } | ConvertTo-Json -Compress
+            Write-Host "AKATH_SUPERVISOR=POST_WORKFLOW_DISPATCH target=$target endpoint=$dispatchEndpoint"
+            $responseFile=Join-Path $env:RUNNER_TEMP "akath-dispatch-$target.json"
+            $status = gh api --method POST $dispatchEndpoint --input - --include --silent 2>&1 <<< $payload
+            $exit=$LASTEXITCODE
+            Write-Host ($status -join [Environment]::NewLine)
+            if($exit -ne 0){ throw "AKATH_WORKFLOW_DISPATCH_POST_FAILED:$target" }
 
+            for($i=1;$i -le 12;$i++){
+              Start-Sleep -Seconds 5
+              $recent = @(gh api $runsEndpoint --jq '.workflow_runs[] | {id,status,event,created_at}') | ForEach-Object { $_ | ConvertFrom-Json }
+              $match = $recent | Where-Object { $_.event -eq 'workflow_dispatch' -and ([DateTime]$_.created_at) -ge $dispatchAt } | Sort-Object { [DateTime]$_.created_at } -Descending | Select-Object -First 1
+              if($null -ne $match){
+                Write-Host "AKATH_SUPERVISOR=DISPATCH_CONFIRMED target=$target run=$($match.id) status=$($match.status)"
+                return [int64]$match.id
+              }
+              Write-Host "AKATH_SUPERVISOR dispatch-poll=$i target=$target run=NOT_FOUND"
+            }
+            throw "AKATH_DISPATCH_RUN_ID_NOT_FOUND:$target"
+          }
+
+          $runId=Dispatch-Akath 'PC1'
           $status='queued'
           for($i=1;$i -le 6;$i++){
             Start-Sleep -Seconds 5
@@ -68,13 +86,12 @@ jobs:
             Write-Host "AKATH_SUPERVISOR=PC1_OFFLINE_FAILOVER"
             gh run cancel $runId -R $repo
             Start-Sleep -Seconds 2
-            $fallback = gh workflow run $workflow -R $repo --ref main -f target=PC2 2>&1
-            Write-Host ($fallback -join [Environment]::NewLine)
-            "AKATH_SUPERVISOR=PC1_OFFLINE_FAILOVER_TO_PC2" | Out-File -FilePath $env:GITHUB_STEP_SUMMARY -Append -Encoding utf8
+            $fallbackRunId=Dispatch-Akath 'PC2'
+            "AKATH_SUPERVISOR=PC1_OFFLINE_FAILOVER_TO_PC2 run=$fallbackRunId" | Out-File -FilePath $env:GITHUB_STEP_SUMMARY -Append -Encoding utf8
           } elseif($status -eq 'in_progress') {
-            "AKATH_SUPERVISOR=PC1_PRIMARY_ACTIVE" | Out-File -FilePath $env:GITHUB_STEP_SUMMARY -Append -Encoding utf8
+            "AKATH_SUPERVISOR=PC1_PRIMARY_ACTIVE run=$runId" | Out-File -FilePath $env:GITHUB_STEP_SUMMARY -Append -Encoding utf8
           } else {
-            "AKATH_SUPERVISOR=PC1_RUN_STATUS_$status" | Out-File -FilePath $env:GITHUB_STEP_SUMMARY -Append -Encoding utf8
+            "AKATH_SUPERVISOR=PC1_RUN_STATUS_$status run=$runId" | Out-File -FilePath $env:GITHUB_STEP_SUMMARY -Append -Encoding utf8
           }
 
       - name: Persist registry
