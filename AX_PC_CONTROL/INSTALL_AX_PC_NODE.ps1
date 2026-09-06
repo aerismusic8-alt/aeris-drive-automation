@@ -27,14 +27,27 @@ Set-Content -LiteralPath "$root\AX_PC_NODE_CONFIG.json" -Value $config -Encoding
 
 [Environment]::SetEnvironmentVariable('AX_PC_PULL_SECRET',$TransportSecret,'Machine')
 
-$serviceName="AX-PC-NODE-$Node"
-$existing=Get-Service -Name $serviceName -ErrorAction SilentlyContinue
-if($existing){Stop-Service $serviceName -Force -ErrorAction SilentlyContinue; sc.exe delete $serviceName | Out-Null; Start-Sleep -Seconds 2}
+$taskName="AX-PC-NODE-$Node"
+$oldServiceName=$taskName
+$existingService=Get-Service -Name $oldServiceName -ErrorAction SilentlyContinue
+if($existingService){
+  if($existingService.Status -ne 'Stopped'){Stop-Service $oldServiceName -Force -ErrorAction SilentlyContinue}
+  sc.exe delete $oldServiceName | Out-Null
+  Start-Sleep -Seconds 2
+}
 
-$binPath='powershell.exe -NoLogo -NoProfile -NonInteractive -ExecutionPolicy Bypass -File "'+$root+'\AX_PC_NODE.ps1" -ConfigPath "'+$root+'\AX_PC_NODE_CONFIG.json"'
-sc.exe create $serviceName binPath= $binPath start= auto DisplayName= "AX PC Node $Node" | Out-Null
-sc.exe failure $serviceName reset= 86400 actions= restart/5000/restart/15000/restart/30000 | Out-Null
-Start-Service $serviceName
+$oldTask=Get-ScheduledTask -TaskName $taskName -ErrorAction SilentlyContinue
+if($oldTask){Unregister-ScheduledTask -TaskName $taskName -Confirm:$false}
 
-Write-Output "AX_PC_NODE_INSTALLED|$Node|$nodeId|SERVICE=$serviceName"
-Get-Service -Name $serviceName | Select-Object Name,Status,StartType
+$psExe=(Get-Command powershell.exe -ErrorAction Stop).Source
+$arguments='-NoLogo -NoProfile -NonInteractive -ExecutionPolicy Bypass -File "'+$root+'\AX_PC_NODE.ps1" -ConfigPath "'+$root+'\AX_PC_NODE_CONFIG.json"'
+$action=New-ScheduledTaskAction -Execute $psExe -Argument $arguments -WorkingDirectory $root
+$trigger=New-ScheduledTaskTrigger -AtStartup
+$principal=New-ScheduledTaskPrincipal -UserId 'SYSTEM' -LogonType ServiceAccount -RunLevel Highest
+$settings=New-ScheduledTaskSettingsSet -StartWhenAvailable -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries -ExecutionTimeLimit ([TimeSpan]::Zero)
+Register-ScheduledTask -TaskName $taskName -Action $action -Trigger $trigger -Principal $principal -Settings $settings -Description "AKATH AX PC Node $Node outbound control worker" -Force | Out-Null
+Start-ScheduledTask -TaskName $taskName
+
+Start-Sleep -Seconds 2
+$taskInfo=Get-ScheduledTaskInfo -TaskName $taskName
+Write-Output "AX_PC_NODE_INSTALLED|$Node|$nodeId|TASK=$taskName|STATE=$((Get-ScheduledTask -TaskName $taskName).State)|LAST_RUN=$($taskInfo.LastRunTime)"
