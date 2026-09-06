@@ -1,0 +1,113 @@
+name: AX 3-Hour External PC2 E2E
+
+on:
+  push:
+    branches: [ax-3hour-mission-2026-09-06]
+    paths:
+      - '.github/workflows/ax-3hour-external-pc2-e2e.yml'
+      - 'docs/AX_EXTERNAL_K_CHANNELS.md'
+      - 'dashboard/**'
+      - 'business/**'
+
+permissions:
+  contents: read
+
+env:
+  AX_CONTROL_RUNTIME_URL: https://ax-control-runtime.aerismusic8.workers.dev
+
+jobs:
+  submit:
+    runs-on: ubuntu-latest
+    outputs:
+      request_id: ${{ steps.submit.outputs.request_id }}
+      task_id: ${{ steps.submit.outputs.task_id }}
+    steps:
+      - id: submit
+        name: Submit real external request
+        env:
+          AX_MOBILE_INGRESS_SECRET: ${{ secrets.AX_MOBILE_INGRESS_SECRET }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "$AX_MOBILE_INGRESS_SECRET"
+          REQUEST_ID="AX-3H-E2E-$(date -u +%Y%m%dT%H%M%SZ)-$RANDOM"
+          TASK_ID="AX-3H-PC2-$(date -u +%H%M%S)-$RANDOM"
+          curl --fail --silent --show-error \
+            -X POST "$AX_CONTROL_RUNTIME_URL/web/session" \
+            -H 'Content-Type: application/json' \
+            --data "{\"secret\":\"$AX_MOBILE_INGRESS_SECRET\"}" -o session.json
+          TOKEN=$(node -e "const r=require('./session.json'); if(!r.sessionToken) process.exit(1); process.stdout.write(r.sessionToken)")
+          curl --fail --silent --show-error \
+            -X POST "$AX_CONTROL_RUNTIME_URL/web/input" \
+            -H "Authorization: Bearer $TOKEN" \
+            -H 'Content-Type: application/json' \
+            --data "{\"request_id\":\"$REQUEST_ID\",\"task_id\":\"$TASK_ID\",\"source_channel\":\"WEB\",\"content_type\":\"text\",\"content\":\"AX 3-hour real PC2 E2E probe\",\"attachments\":[]}" -o submit.json
+          node <<'NODE'
+          const fs=require('fs'); const r=JSON.parse(fs.readFileSync('submit.json','utf8'));
+          if(r.accepted!==true||r.queued!==true) throw new Error('EXTERNAL_SUBMIT_FAILED');
+          fs.writeFileSync('request_id.txt',r.requestId); fs.writeFileSync('task_id.txt',r.taskId);
+          console.log('EXTERNAL_SUBMIT_PASS',JSON.stringify({requestId:r.requestId,taskId:r.taskId}));
+          NODE
+          echo "request_id=$(cat request_id.txt)" >> "$GITHUB_OUTPUT"
+          echo "task_id=$(cat task_id.txt)" >> "$GITHUB_OUTPUT"
+
+  execute-on-pc2:
+    needs: submit
+    runs-on: [self-hosted, Windows, X64, PC2-CODING-EXECUTOR]
+    timeout-minutes: 5
+    steps:
+      - name: Pull and execute real task on PC2
+        env:
+          AX_PC_PULL_SECRET: ${{ secrets.AX_PC_PULL_SECRET }}
+          REQUEST_ID: ${{ needs.submit.outputs.request_id }}
+          TASK_ID: ${{ needs.submit.outputs.task_id }}
+        shell: powershell
+        run: |
+          $ErrorActionPreference='Stop'
+          $headers=@{ Authorization="Bearer $env:AX_PC_PULL_SECRET" }
+          $item=$null
+          for($i=0;$i-lt 15;$i++) {
+            $r=Invoke-RestMethod -Method Post -Uri "$env:AX_CONTROL_RUNTIME_URL/pc/pull" -Headers $headers
+            if($r.item -and $r.item.request_id -eq $env:REQUEST_ID) { $item=$r.item; break }
+            Start-Sleep -Seconds 2
+          }
+          if(-not $item) { throw 'PC2_PULL_TIMEOUT' }
+          $hostName=$env:COMPUTERNAME
+          $sw=[Diagnostics.Stopwatch]::StartNew()
+          $stdout=& powershell.exe -NoProfile -NonInteractive -Command 'Write-Output "AX_PC2_E2E_EXECUTED"; Write-Output "HOST=$env:COMPUTERNAME"; Write-Output "UTC=$([DateTime]::UtcNow.ToString("o"))"' 2>&1 | Out-String
+          $exit=$LASTEXITCODE
+          $sw.Stop()
+          $body=@{request_id=$env:REQUEST_ID;task_id=$env:TASK_ID;result=@{accepted=($exit -eq 0);status=if($exit -eq 0){'SUCCESS'}else{'FAILED'};taskId=$env:TASK_ID;verified=($exit -eq 0);executed=($exit -eq 0);evidence=@{node_id='PC2-CODING-EXECUTOR';computer_name=$hostName;exit_code=$exit;stdout=$stdout;duration_ms=$sw.ElapsedMilliseconds};writeBackVerified=$false}} | ConvertTo-Json -Depth 8
+          $result=Invoke-RestMethod -Method Post -Uri "$env:AX_CONTROL_RUNTIME_URL/pc/result" -Headers $headers -ContentType 'application/json' -Body $body
+          if(-not $result.ok) { throw 'PC_RESULT_STORE_FAILED' }
+          Write-Host "PC2_EXECUTION_PASS task=$env:TASK_ID host=$hostName exit=$exit"
+
+  verify-result:
+    needs: [submit, execute-on-pc2]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Verify result returned to Runtime
+        env:
+          AX_MOBILE_INGRESS_SECRET: ${{ secrets.AX_MOBILE_INGRESS_SECRET }}
+          REQUEST_ID: ${{ needs.submit.outputs.request_id }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl --fail --silent --show-error \
+            -X POST "$AX_CONTROL_RUNTIME_URL/web/session" \
+            -H 'Content-Type: application/json' \
+            --data "{\"secret\":\"$AX_MOBILE_INGRESS_SECRET\"}" -o session.json
+          TOKEN=$(node -e "const r=require('./session.json'); if(!r.sessionToken) process.exit(1); process.stdout.write(r.sessionToken)")
+          for i in {1..10}; do
+            if curl --fail --silent --show-error -H "Authorization: Bearer $TOKEN" "$AX_CONTROL_RUNTIME_URL/web/result/$REQUEST_ID" -o result.json; then
+              node <<'NODE'
+              const fs=require('fs'); const r=JSON.parse(fs.readFileSync('result.json','utf8')); const x=r.result||{};
+              if(r.ok!==true||x.verified!==true||x.executed!==true||!x.evidence||x.evidence.node_id!=='PC2-CODING-EXECUTOR'||x.evidence.exit_code!==0) throw new Error('RESULT_VERIFICATION_FAILED');
+              console.log('EXTERNAL_TO_PC2_E2E_PASS',JSON.stringify({requestId:x.request_id,taskId:x.task_id,nodeId:x.evidence.node_id,computer:x.evidence.computer_name}));
+              NODE
+              exit 0
+            fi
+            sleep 2
+          done
+          cat result.json 2>/dev/null || true
+          exit 1
