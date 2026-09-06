@@ -57,14 +57,7 @@ jobs:
           const response = await fetch(url);
           if (!response.ok) throw new Error(`HEALTH_HTTP_${response.status}`);
           const r = await response.json();
-          console.log(JSON.stringify({
-            status:r.status,
-            mode:r.mode,
-            liveFinancialExecution:r.liveFinancialExecution,
-            mobileIngressAuthConfigured:r.mobileIngressAuthConfigured,
-            pcPullAuthConfigured:r.pcPullAuthConfigured,
-            gatewayInbox:r.gatewayInbox
-          }));
+          console.log(JSON.stringify({status:r.status,mode:r.mode,liveFinancialExecution:r.liveFinancialExecution,mobileIngressAuthConfigured:r.mobileIngressAuthConfigured,pcPullAuthConfigured:r.pcPullAuthConfigured,gatewayInbox:r.gatewayInbox}));
           if (r.status !== 'ONLINE' || r.mode !== 'FREE_ONLY' || r.liveFinancialExecution !== false || r.mobileIngressAuthConfigured !== true || r.pcPullAuthConfigured !== true || r.gatewayInbox !== 'AX_GATEWAY_INBOX') process.exit(1);
           NODE
       - name: Verify mobile ingress and create explicit PC health task
@@ -75,19 +68,8 @@ jobs:
           const url = process.env.RUNTIME_URL + '/mobile/input';
           const requestId = `ACCEPT-PC-${crypto.randomUUID()}`;
           const taskId = `TASK-PC2-${crypto.randomUUID().slice(0,8)}`;
-          const body = {
-            request_id: requestId,
-            task_id: taskId,
-            source_channel: 'MOBILE',
-            content_type: 'text',
-            content: JSON.stringify({operation:'health'}),
-            attachments: []
-          };
-          const response = await fetch(url, {
-            method:'POST',
-            headers:{Authorization:`Bearer ${process.env.AX_MOBILE_INGRESS_SECRET}`,'Content-Type':'application/json'},
-            body:JSON.stringify(body)
-          });
+          const body = {request_id:requestId,task_id:taskId,source_channel:'MOBILE',content_type:'text',content:JSON.stringify({operation:'health'}),attachments:[]};
+          const response = await fetch(url,{method:'POST',headers:{Authorization:`Bearer ${process.env.AX_MOBILE_INGRESS_SECRET}`,'Content-Type':'application/json'},body:JSON.stringify(body)});
           const r = await response.json();
           console.log(JSON.stringify({status:response.status,accepted:r.accepted,queued:r.queued,requestId:r.requestId,taskId:r.taskId}));
           if (response.status !== 201 || r.accepted !== true || r.queued !== true || r.requestId !== requestId || r.taskId !== taskId) process.exit(1);
@@ -95,38 +77,35 @@ jobs:
 
   pc-e2e:
     needs: provision-and-mobile-e2e
-    runs-on: [self-hosted, Windows, X64]
+    runs-on: [self-hosted, Windows, X64, PC2-CODING-EXECUTOR]
     timeout-minutes: 10
     env:
       AX_PC_PULL_SECRET: ${{ secrets.AX_PC_PULL_SECRET }}
-      RUNTIME_URL: https://ax-control-runtime.aerismusic8.workers.dev
     steps:
-      - uses: actions/checkout@v5
-      - name: Verify PC pull authentication and execute one explicit task
+      - name: Run PC2 node once to drain any stale task
         shell: powershell -NoProfile -ExecutionPolicy Bypass
         run: |
           $ErrorActionPreference = 'Stop'
-          if ([string]::IsNullOrWhiteSpace($env:AX_PC_PULL_SECRET)) { throw 'AX_PC_PULL_SECRET_MISSING' }
-          if ($env:AX_PC_PULL_SECRET.Length -lt 32) { throw 'AX_PC_PULL_SECRET_TOO_SHORT' }
-          $headers = @{ Authorization = "Bearer $env:AX_PC_PULL_SECRET" }
-          $r = Invoke-RestMethod -Uri "$env:RUNTIME_URL/pc/pull" -Method Post -Headers $headers -TimeoutSec 30
-          if ($null -eq $r.ok) { throw 'PC_PULL_RESPONSE_INVALID' }
-          if ($null -eq $r.item) { throw 'PC_TASK_NOT_AVAILABLE' }
-          $item = $r.item
-          if ($item.content_type -ne 'text') { throw "PC_TASK_CONTENT_TYPE_UNEXPECTED:$($item.content_type)" }
-          $payload = $item.content | ConvertFrom-Json
-          if ($payload.operation -ne 'health') { throw "PC_TASK_OPERATION_UNEXPECTED:$($payload.operation)" }
-          $node = Join-Path $PWD 'AX_PC_CONTROL\AX_PC_NODE.ps1'
-          $config = Join-Path $PWD 'AX_PC_CONTROL\AX_PC_NODE_CONFIG.json'
-          if (!(Test-Path -LiteralPath $node)) { throw 'AX_PC_NODE_SOURCE_MISSING' }
-          if (!(Test-Path -LiteralPath $config)) { throw 'AX_PC_NODE_CONFIG_MISSING' }
-          $env:AX_PC_PULL_SECRET = $env:AX_PC_PULL_SECRET
+          $node = 'C:\AKATH\AX_PC_CONTROL\AX_PC_NODE.ps1'
+          $config = 'C:\AKATH\AX_PC_CONTROL\AX_PC_NODE_CONFIG.json'
+          if (!(Test-Path -LiteralPath $node)) { throw 'AX_PC_NODE_NOT_INSTALLED' }
+          if (!(Test-Path -LiteralPath $config)) { throw 'AX_PC_NODE_CONFIG_NOT_FOUND' }
+          $output = & powershell.exe -NoLogo -NoProfile -NonInteractive -ExecutionPolicy Bypass -File $node -ConfigPath $config -Once 2>&1 | Out-String
+          Write-Host $output
+          if ($LASTEXITCODE -ne 0) { throw "AX_PC_NODE_EXIT_$LASTEXITCODE" }
+      - name: Execute explicit PC2 health task and require VERIFIED
+        shell: powershell -NoProfile -ExecutionPolicy Bypass
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $node = 'C:\AKATH\AX_PC_CONTROL\AX_PC_NODE.ps1'
+          $config = 'C:\AKATH\AX_PC_CONTROL\AX_PC_NODE_CONFIG.json'
           $output = & powershell.exe -NoLogo -NoProfile -NonInteractive -ExecutionPolicy Bypass -File $node -ConfigPath $config -Once 2>&1 | Out-String
           Write-Host $output
           if ($LASTEXITCODE -ne 0) { throw "AX_PC_NODE_EXIT_$LASTEXITCODE" }
           if ($output -notmatch 'AX_PC_NODE_RESULT\|') { throw 'AX_PC_NODE_RESULT_MISSING' }
           if ($output -notmatch '"verified":true') { throw 'AX_PC_NODE_VERIFICATION_FAILED' }
           if ($output -notmatch '"status":"VERIFIED"') { throw 'AX_PC_NODE_STATUS_NOT_VERIFIED' }
+          if ($output -notmatch '"command":"health"') { throw 'AX_PC_NODE_HEALTH_EVIDENCE_MISSING' }
           Write-Host 'AX_PC_NODE_E2E_VERIFIED'
       - name: Record runner identity without secrets
         shell: powershell -NoProfile -ExecutionPolicy Bypass
