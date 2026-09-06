@@ -1,6 +1,11 @@
 name: AX Active Executions
 on:
   workflow_dispatch:
+  push:
+    paths:
+      - '.github/workflows/ax-active-executions.yml'
+      - 'AX_ACTIVE_EXECUTIONS.ps1'
+      - 'AX_ACTIVE_EXECUTIONS.json'
   schedule:
     - cron: '*/1 * * * *'
 permissions:
@@ -9,7 +14,6 @@ permissions:
 jobs:
   heartbeat:
     runs-on: self-hosted
-    timeout-minutes: 3
     steps:
       - uses: actions/checkout@v5
 
