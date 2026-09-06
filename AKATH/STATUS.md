@@ -39,3 +39,7 @@ A dashboard heartbeat showing `PASS` is not, by itself, sufficient proof of 24×
 ## Identity Transition
 
 AKATH is now the sole current company/system identity for Operations, runtime status, and acceptance reporting. Legacy project references are not treated as the active operating identity.
+
+## PC2 Runtime Gate
+
+The PC2 self-hosted executor is the current execution gate. The recovery workflow is intentionally triggered by this commit so the runner can be verified from GitHub Actions before any execution is treated as VERIFIED.
