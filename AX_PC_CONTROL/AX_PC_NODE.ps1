@@ -84,17 +84,36 @@ function Invoke-AllowedCommand($Operation,$Args,$Cfg) {
 function Process-Item($Item,$Cfg,$Secret) {
   $requestId=[string]$Item.request_id; $taskId=[string]$Item.task_id
   if(!$requestId -or !$taskId){throw 'REQUEST_OR_TASK_ID_MISSING'}
-  $operation=[string]$Item.content_type
+
+  $operation=''
   $args=@{}
-  if($Item.content){ try{$parsed=$Item.content|ConvertFrom-Json; if($parsed.operation){$operation=[string]$parsed.operation;$args=$parsed.args}else{$args.command=[string]$Item.content}}catch{$args.command=[string]$Item.content} }
+
+  if($Item.content){
+    try {
+      $parsed=$Item.content | ConvertFrom-Json
+      if(!$parsed.operation){ throw 'OPERATION_REQUIRED: content must be JSON with an explicit operation' }
+      $operation=[string]$parsed.operation
+      if($null -ne $parsed.args){ $args=$parsed.args }
+    } catch {
+      if($_.Exception.Message -like 'OPERATION_REQUIRED:*'){ throw }
+      throw 'INVALID_OPERATION_PAYLOAD: content must be valid JSON with an explicit operation'
+    }
+  } elseif($Cfg.allowedCommands -contains [string]$Item.content_type) {
+    $operation=[string]$Item.content_type
+  } else {
+    throw ("OPERATION_REQUIRED: content_type={0}" -f [string]$Item.content_type)
+  }
+
   try {
     $r=Invoke-AllowedCommand $operation $args $Cfg
     $result=@{accepted=$true;executed=($r.exit_code -eq 0);verified=($r.exit_code -eq 0);requestId=$requestId;taskId=$taskId;status=if($r.exit_code -eq 0){'VERIFIED'}else{'EXECUTION_FAILED'};node_id=$Cfg.nodeId;exit_code=$r.exit_code;stdout=$r.stdout;stderr=$r.stderr;duration_ms=$r.duration_ms;evidence=@{taskId=$taskId;nodeId=$Cfg.nodeId;command=$operation};writeBackVerified=$true}
   } catch {
     $result=@{accepted=$true;executed=$false;verified=$false;requestId=$requestId;taskId=$taskId;status='EXECUTION_FAILED';node_id=$Cfg.nodeId;error=$_.Exception.Message;writeBackVerified=$false;evidence=@{taskId=$taskId;nodeId=$Cfg.nodeId;command=$operation}}
   }
+
   Invoke-ControlApi 'POST' '/pc/result' @{request_id=$requestId;task_id=$taskId;result=$result} $Secret $Cfg.requestTimeoutSeconds | Out-Null
   Invoke-ControlApi 'POST' '/pc/ack' @{request_id=$requestId} $Secret $Cfg.requestTimeoutSeconds | Out-Null
+  return $result
 }
 
 $script:Config=Read-Config
@@ -102,8 +121,15 @@ $secret=Get-TransportSecret
 while($true){
   try {
     $response=Invoke-ControlApi 'POST' '/pc/pull' $null $secret $script:Config.requestTimeoutSeconds
-    if($response.item){Process-Item $response.item $script:Config $secret}
-  } catch { Write-Error ("AX_PC_NODE_ERROR|"+$_.Exception.Message) }
+    if($response.item){
+      $result=Process-Item $response.item $script:Config $secret
+      if($Once){ Write-Output ("AX_PC_NODE_RESULT|" + ($result | ConvertTo-Json -Depth 20 -Compress)) }
+    } elseif($Once) {
+      Write-Output 'AX_PC_NODE_PULL|EMPTY'
+    }
+  } catch {
+    Write-Error ("AX_PC_NODE_ERROR|"+$_.Exception.Message)
+  }
   if($Once){break}
   Start-Sleep -Seconds ([Math]::Max(2,[int]$script:Config.pollSeconds))
 }
