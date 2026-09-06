@@ -87,24 +87,26 @@ function Process-Item($Item,$Cfg,$Secret) {
 
   $operation=''
   $args=@{}
-
-  if($Item.content){
-    try {
-      $parsed=$Item.content | ConvertFrom-Json
-      if(!$parsed.operation){ throw 'OPERATION_REQUIRED: content must be JSON with an explicit operation' }
-      $operation=[string]$parsed.operation
-      if($null -ne $parsed.args){ $args=$parsed.args }
-    } catch {
-      if($_.Exception.Message -like 'OPERATION_REQUIRED:*'){ throw }
-      throw 'INVALID_OPERATION_PAYLOAD: content must be valid JSON with an explicit operation'
-    }
-  } elseif($Cfg.allowedCommands -contains [string]$Item.content_type) {
-    $operation=[string]$Item.content_type
-  } else {
-    throw ("OPERATION_REQUIRED: content_type={0}" -f [string]$Item.content_type)
-  }
+  $parseError=$null
 
   try {
+    if($Item.content){
+      try {
+        $parsed=$Item.content | ConvertFrom-Json -ErrorAction Stop
+        if(!$parsed.operation){ throw 'OPERATION_REQUIRED: content must be JSON with an explicit operation' }
+        $operation=[string]$parsed.operation
+        if($null -ne $parsed.args){ $args=$parsed.args }
+      } catch {
+        $parseError=$_.Exception.Message
+        if($parseError -like 'OPERATION_REQUIRED:*'){ throw $parseError }
+        throw 'INVALID_OPERATION_PAYLOAD: content must be valid JSON with an explicit operation'
+      }
+    } elseif($Cfg.allowedCommands -contains [string]$Item.content_type) {
+      $operation=[string]$Item.content_type
+    } else {
+      throw ("OPERATION_REQUIRED: content_type={0}" -f [string]$Item.content_type)
+    }
+
     $r=Invoke-AllowedCommand $operation $args $Cfg
     $result=@{accepted=$true;executed=($r.exit_code -eq 0);verified=($r.exit_code -eq 0);requestId=$requestId;taskId=$taskId;status=if($r.exit_code -eq 0){'VERIFIED'}else{'EXECUTION_FAILED'};node_id=$Cfg.nodeId;exit_code=$r.exit_code;stdout=$r.stdout;stderr=$r.stderr;duration_ms=$r.duration_ms;evidence=@{taskId=$taskId;nodeId=$Cfg.nodeId;command=$operation};writeBackVerified=$true}
   } catch {
