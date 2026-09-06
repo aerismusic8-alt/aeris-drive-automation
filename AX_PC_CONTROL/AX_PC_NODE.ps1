@@ -29,18 +29,19 @@ function Invoke-ControlApi([string]$Method,[string]$Path,[object]$Body,[string]$
 }
 
 function Invoke-SafeProcess([string]$FilePath,[string[]]$Arguments,[int]$TimeoutSeconds,[int]$MaxOutputBytes,[string]$WorkingDirectory) {
-  $psi = [System.Diagnostics.ProcessStartInfo]::new()
+  $psi = New-Object System.Diagnostics.ProcessStartInfo
   $psi.FileName = $FilePath
   $psi.UseShellExecute = $false
   $psi.RedirectStandardOutput = $true
   $psi.RedirectStandardError = $true
   $psi.CreateNoWindow = $true
   if ($WorkingDirectory -and (Test-Path -LiteralPath $WorkingDirectory)) { $psi.WorkingDirectory = $WorkingDirectory }
-  foreach ($arg in $Arguments) { [void]$psi.ArgumentList.Add($arg) }
-  $p = [System.Diagnostics.Process]::new(); $p.StartInfo=$psi
+  $psi.Arguments = (($Arguments | ForEach-Object { '"' + ($_.Replace('\','\\').Replace('"','\"')) + '"' }) -join ' ')
+  $p = New-Object System.Diagnostics.Process
+  $p.StartInfo=$psi
   $sw=[Diagnostics.Stopwatch]::StartNew()
   [void]$p.Start()
-  if (!$p.WaitForExit($TimeoutSeconds*1000)) { try{$p.Kill($true)}catch{}; throw "COMMAND_TIMEOUT:$TimeoutSeconds" }
+  if (!$p.WaitForExit($TimeoutSeconds*1000)) { try{$p.Kill()}catch{}; throw "COMMAND_TIMEOUT:$TimeoutSeconds" }
   $stdout=$p.StandardOutput.ReadToEnd(); $stderr=$p.StandardError.ReadToEnd(); $sw.Stop()
   if ($stdout.Length -gt $MaxOutputBytes) { $stdout=$stdout.Substring(0,$MaxOutputBytes)+'`n[OUTPUT_TRUNCATED]' }
   if ($stderr.Length -gt $MaxOutputBytes) { $stderr=$stderr.Substring(0,$MaxOutputBytes)+'`n[OUTPUT_TRUNCATED]' }
@@ -73,7 +74,8 @@ function Invoke-AllowedCommand($Operation,$Args,$Cfg) {
     'git-status' { return Invoke-SafeProcess 'git.exe' @('status','--short','--branch') $maxSeconds $maxBytes $wd }
     'terminal-powershell' {
       $cmd=[string]$Args.command; if([string]::IsNullOrWhiteSpace($cmd)){throw 'COMMAND_REQUIRED'}
-      return Invoke-SafeProcess 'powershell.exe' @('-NoLogo','-NoProfile','-NonInteractive','-ExecutionPolicy','Bypass','-Command',$cmd) $maxSeconds $maxBytes $wd
+      $encoded=[Convert]::ToBase64String([Text.Encoding]::Unicode.GetBytes($cmd))
+      return Invoke-SafeProcess 'powershell.exe' @('-NoLogo','-NoProfile','-NonInteractive','-ExecutionPolicy','Bypass','-EncodedCommand',$encoded) $maxSeconds $maxBytes $wd
     }
     default { throw "UNKNOWN_COMMAND:$Operation" }
   }
@@ -87,7 +89,7 @@ function Process-Item($Item,$Cfg,$Secret) {
   if($Item.content){ try{$parsed=$Item.content|ConvertFrom-Json; if($parsed.operation){$operation=[string]$parsed.operation;$args=$parsed.args}else{$args.command=[string]$Item.content}}catch{$args.command=[string]$Item.content} }
   try {
     $r=Invoke-AllowedCommand $operation $args $Cfg
-    $result=@{accepted=$true;executed=($r.exit_code -eq 0);verified=$true;requestId=$requestId;taskId=$taskId;status=if($r.exit_code -eq 0){'VERIFIED'}else{'EXECUTION_FAILED'};node_id=$Cfg.nodeId;exit_code=$r.exit_code;stdout=$r.stdout;stderr=$r.stderr;duration_ms=$r.duration_ms;evidence=@{taskId=$taskId;nodeId=$Cfg.nodeId;command=$operation};writeBackVerified=$true}
+    $result=@{accepted=$true;executed=($r.exit_code -eq 0);verified=($r.exit_code -eq 0);requestId=$requestId;taskId=$taskId;status=if($r.exit_code -eq 0){'VERIFIED'}else{'EXECUTION_FAILED'};node_id=$Cfg.nodeId;exit_code=$r.exit_code;stdout=$r.stdout;stderr=$r.stderr;duration_ms=$r.duration_ms;evidence=@{taskId=$taskId;nodeId=$Cfg.nodeId;command=$operation};writeBackVerified=$true}
   } catch {
     $result=@{accepted=$true;executed=$false;verified=$false;requestId=$requestId;taskId=$taskId;status='EXECUTION_FAILED';node_id=$Cfg.nodeId;error=$_.Exception.Message;writeBackVerified=$false;evidence=@{taskId=$taskId;nodeId=$Cfg.nodeId;command=$operation}}
   }
