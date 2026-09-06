@@ -54,10 +54,9 @@ jobs:
             $dispatchAt=[DateTime]::UtcNow
             $payload=@{ ref='main'; inputs=@{ target=$target; task_id='' } } | ConvertTo-Json -Compress
             Write-Host "AKATH_SUPERVISOR=POST_WORKFLOW_DISPATCH target=$target endpoint=$dispatchEndpoint"
-            $responseFile=Join-Path $env:RUNNER_TEMP "akath-dispatch-$target.json"
-            $status = gh api --method POST $dispatchEndpoint --input - --include --silent 2>&1 <<< $payload
+            $response = $payload | gh api --method POST $dispatchEndpoint --input - --include 2>&1
             $exit=$LASTEXITCODE
-            Write-Host ($status -join [Environment]::NewLine)
+            Write-Host ($response -join [Environment]::NewLine)
             if($exit -ne 0){ throw "AKATH_WORKFLOW_DISPATCH_POST_FAILED:$target" }
 
             for($i=1;$i -le 12;$i++){
