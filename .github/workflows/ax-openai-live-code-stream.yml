@@ -1,0 +1,36 @@
+name: AX OpenAI Live Code Stream
+
+on:
+  workflow_dispatch:
+    inputs:
+      prompt:
+        description: "Coding task for OpenAI"
+        required: true
+        type: string
+      file:
+        description: "Displayed target file name"
+        required: true
+        default: "AKATH/runtime/generated_task.py"
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  code-stream:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+      - name: Run OpenAI coding worker
+        shell: bash
+        env:
+          PROMPT: ${{ inputs.prompt }}
+          TARGET_FILE: ${{ inputs.file }}
+        run: |
+          python AKATH/runtime/ax_openai_code_writer.py "$PROMPT" --task-id "OPENAI-${GITHUB_RUN_ID}" --file "$TARGET_FILE"
