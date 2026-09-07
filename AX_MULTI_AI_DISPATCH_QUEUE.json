@@ -1,7 +1,8 @@
 {
   "schema": "AX_MULTI_AI_DISPATCH_QUEUE_V3",
   "status": "READY",
-  "updated_at": "2026-09-08T00:00:00Z",
+  "updated_at": "2026-09-08T00:05:00Z",
+  "kick": "2026-09-08T00:05:00Z",
   "allowlist": ["OPENAI","GEMINI_API","GEMINI_CLOUDFLARE","GEMINI_LIVE_CODE_STREAM"],
   "tasks": [
     {
