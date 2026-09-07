@@ -1,0 +1,2 @@
+AX GEMINI EXECUTION KICK 2026-09-07
+Task: multiply two integers; return source code only.
