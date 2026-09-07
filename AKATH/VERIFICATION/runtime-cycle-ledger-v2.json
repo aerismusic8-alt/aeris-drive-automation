@@ -1,9 +1,9 @@
 ﻿{
     "schema":  "AKATH_RUNTIME_CYCLE_LEDGER_V2",
     "acceptance":  "PASS",
-    "consecutive_successes":  3,
+    "consecutive_successes":  4,
     "required_consecutive_successes":  3,
-    "last_updated_utc":  "2026-09-07T17:04:14.0393896Z",
+    "last_updated_utc":  "2026-09-07T17:39:44.2704578Z",
     "cycles":  [
                    {
                        "sequence":  1,
@@ -109,6 +109,21 @@
                        "runtime_run_id":  "15c8cebf-f0ce-4d8a-bb8c-11c12cde418f",
                        "runtime_job_id":  "AKATH-PROBE-20260907-170412",
                        "evidence_ref":  "C:\\actions-runner\\_work\\_temp\\akath-24x7-acceptance-v2\\34145681121\\evidence-15c8cebf-f0ce-4d8a-bb8c-11c12cde418f.json"
+                   },
+                   {
+                       "sequence":  8,
+                       "github_run_id":  "34146960150",
+                       "github_run_number":  167,
+                       "event":  "schedule",
+                       "recorded_at_utc":  "2026-09-07T17:39:44.2514721Z",
+                       "result":  "PASS",
+                       "error_class":  "",
+                       "audit_pass":  true,
+                       "runtime_pass":  true,
+                       "adapter_pass":  true,
+                       "runtime_run_id":  "4c61cd29-0af5-4b1e-b5d8-664c881df479",
+                       "runtime_job_id":  "AKATH-PROBE-20260907-173942",
+                       "evidence_ref":  "C:\\actions-runner\\_work\\_temp\\akath-24x7-acceptance-v2\\34146960150\\evidence-4c61cd29-0af5-4b1e-b5d8-664c881df479.json"
                    }
                ]
 }
