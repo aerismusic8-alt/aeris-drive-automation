@@ -10,8 +10,6 @@ on:
       - 'AKATH/runtime/ax_code_stream_writer.ps1'
       - 'dashboard/**'
       - '.github/workflows/ax-openai-live-code-stream.yml'
-  schedule:
-    - cron: '*/5 * * * *'
   workflow_dispatch:
     inputs:
       prompt:
@@ -36,7 +34,7 @@ env:
 
 jobs:
   code-stream:
-    runs-on: windows-latest
+    runs-on: [self-hosted, Windows, X64]
     timeout-minutes: 15
     env:
       OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
