@@ -152,4 +152,4 @@ jobs:
           Write-Host "AKATH_ADAPTER_PASS=$env:AKATH_ADAPTER_PASS"
 
 # CI self-healing: portable Python avoids runner execution-policy wrapper failure; ledger push cleans stale rebase state before retry.
-# trigger: re-verify acceptance on current main.
+# trigger: acceptance rerun after quote-safe dispatch contract test.
