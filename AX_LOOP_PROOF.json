@@ -8,12 +8,20 @@
       "conclusion": "failure",
       "matched_tasks": [],
       "result": "FAILURE_OBSERVED"
+    },
+    {
+      "verified_at": "2026-09-07T17:54:26.656506+00:00",
+      "workflow_run_id": 34149467173,
+      "workflow": "AX OpenAI Live Code Stream",
+      "conclusion": "failure",
+      "matched_tasks": [],
+      "result": "FAILURE_OBSERVED"
     }
   ],
   "last_verified_cycle": {
-    "verified_at": "2026-09-07T17:54:14.682134+00:00",
-    "workflow_run_id": 34149467166,
-    "workflow": "AX Independent Chat Gateway",
+    "verified_at": "2026-09-07T17:54:26.656506+00:00",
+    "workflow_run_id": 34149467173,
+    "workflow": "AX OpenAI Live Code Stream",
     "conclusion": "failure",
     "matched_tasks": [],
     "result": "FAILURE_OBSERVED"
