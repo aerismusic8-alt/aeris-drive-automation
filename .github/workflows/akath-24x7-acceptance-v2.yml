@@ -58,9 +58,12 @@ jobs:
         shell: powershell -NoProfile -ExecutionPolicy Bypass -File {0}
         run: |
           $ErrorActionPreference = 'Stop'
-          git rebase --abort 2>$null
-          if (Test-Path -LiteralPath "$env:GITHUB_WORKSPACE/.git/rebase-merge") { Remove-Item -LiteralPath "$env:GITHUB_WORKSPACE/.git/rebase-merge" -Recurse -Force }
-          if (Test-Path -LiteralPath "$env:GITHUB_WORKSPACE/.git/rebase-apply") { Remove-Item -LiteralPath "$env:GITHUB_WORKSPACE/.git/rebase-apply" -Recurse -Force }
+          $rebaseMerge = Join-Path $env:GITHUB_WORKSPACE '.git/rebase-merge'
+          $rebaseApply = Join-Path $env:GITHUB_WORKSPACE '.git/rebase-apply'
+          if (Test-Path -LiteralPath $rebaseMerge) { git rebase --abort *> $null }
+          if (Test-Path -LiteralPath $rebaseApply) { git rebase --abort *> $null }
+          if (Test-Path -LiteralPath $rebaseMerge) { Remove-Item -LiteralPath $rebaseMerge -Recurse -Force }
+          if (Test-Path -LiteralPath $rebaseApply) { Remove-Item -LiteralPath $rebaseApply -Recurse -Force }
           python --version
 
       - name: Audit legacy identity removal
