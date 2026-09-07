@@ -65,7 +65,6 @@ jobs:
             $taskId = [string]$task.task_id
             $prompt = [string]$task.prompt
             $target = [string]$task.file
-            "FROM_QUEUE=true" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
           }
           if ([string]::IsNullOrWhiteSpace($prompt)) { throw 'OPENAI_PROMPT_EMPTY' }
           if ([string]::IsNullOrWhiteSpace($target)) { throw 'OPENAI_TARGET_EMPTY' }
@@ -73,17 +72,20 @@ jobs:
             $existing = Get-Content -Raw -LiteralPath $target
             $prompt = "$prompt`n`nCURRENT SOURCE OF $target:`n```text`n$existing`n``` `nReturn the COMPLETE replacement source for $target only."
           }
+          $promptFile = Join-Path $env:RUNNER_TEMP 'ax-openai-prompt.txt'
+          Set-Content -LiteralPath $promptFile -Value $prompt -Encoding utf8
+          "PROMPT_FILE=$promptFile" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
           "TASK_ID=$taskId" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
-          "PROMPT=$prompt" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
           "TARGET_FILE=$target" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
-          if (-not $fromQueue) { "FROM_QUEUE=false" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8 }
+          "FROM_QUEUE=$($fromQueue.ToString().ToLower())" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
           Write-Host "AX_OPENAI_TASK_READY task=$taskId file=$target"
 
       - name: Run OpenAI coding worker
         if: env.TASK_ID != ''
         shell: powershell
         run: |
-          python AKATH/runtime/ax_openai_code_writer.py "$env:PROMPT" --task-id "$env:TASK_ID" --file "$env:TARGET_FILE"
+          $prompt = Get-Content -Raw -LiteralPath $env:PROMPT_FILE
+          python AKATH/runtime/ax_openai_code_writer.py "$prompt" --task-id "$env:TASK_ID" --file "$env:TARGET_FILE"
 
       - name: Verify generated file
         if: env.TASK_ID != ''
