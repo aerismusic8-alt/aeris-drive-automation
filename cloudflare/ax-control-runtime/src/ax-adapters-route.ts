@@ -63,6 +63,34 @@ function directLedgerStub(env: AxAdaptersEnv, missionId: string): DurableObjectS
   return env.AX_MISSION_LEDGER.get(env.AX_MISSION_LEDGER.idFromName(`mission:${missionId}`));
 }
 
+async function directAttachment(request: Request, env: AxAdaptersEnv): Promise<Response> {
+  if (!await authorized(request, env)) return json({ error: 'AUTH_REQUIRED' }, 401);
+  if (!env.AX_MISSION_LEDGER) return json({ error: 'DIRECT_AX_LEDGER_UNAVAILABLE' }, 503);
+
+  const missionId = (request.headers.get('X-AX-Mission-Id') || '').trim();
+  const attachmentId = (request.headers.get('X-AX-Attachment-Id') || '').trim();
+  const name = (request.headers.get('X-AX-Attachment-Name') || '').trim();
+  const mediaType = (request.headers.get('Content-Type') || 'application/octet-stream').trim().split(';', 1)[0] || 'application/octet-stream';
+  if (!missionId || !attachmentId || !name) return json({ error: 'ATTACHMENT_SCHEMA_INVALID' }, 422);
+  if (missionId.length > 128 || attachmentId.length > 128 || name.length > 512) return json({ error: 'ATTACHMENT_METADATA_TOO_LARGE' }, 413);
+
+  const stub = directLedgerStub(env, missionId);
+  if (!stub) return json({ error: 'DIRECT_AX_LEDGER_UNAVAILABLE' }, 503);
+  const target = new URL('https://mission.local/attachment');
+  target.searchParams.set('mission_id', missionId);
+  target.searchParams.set('attachment_id', attachmentId);
+  target.searchParams.set('name', name);
+  target.searchParams.set('media_type', mediaType);
+
+  const response = await stub.fetch(target.toString(), {
+    method: 'POST',
+    headers: { 'content-type': mediaType },
+    body: request.body,
+  });
+  const body = await response.json().catch(() => ({ error: 'ATTACHMENT_RESPONSE_INVALID' }));
+  return json(body, response.status);
+}
+
 async function directInput(request: Request, env: AxAdaptersEnv): Promise<Response> {
   if (!await authorized(request, env)) return json({ error: 'AUTH_REQUIRED' }, 401);
   if (!env.AX_EXECUTION_QUEUE || !env.AX_MISSION_LEDGER) return json({ error: 'DIRECT_AX_STORAGE_NOT_CONFIGURED' }, 503);
@@ -136,6 +164,7 @@ export async function handleAxAdaptersRoute(
 ): Promise<Response | null> {
   const url = new URL(request.url);
   if ((url.pathname === '/ax/direct' || url.pathname === '/chat') && request.method === 'GET') return axDirectConsolePage();
+  if (url.pathname === '/ax/direct/attachment' && request.method === 'POST') return directAttachment(request, env);
   if (url.pathname === '/ax/direct/input' && request.method === 'POST') return directInput(request, env);
   if (url.pathname.startsWith('/ax/direct/mission/') && request.method === 'GET') {
     const missionId = decodeURIComponent(url.pathname.slice('/ax/direct/mission/'.length)).trim();
