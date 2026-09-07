@@ -41,7 +41,6 @@ jobs:
           $queue=Get-Content -Raw 'AX_MULTI_AI_DISPATCH_QUEUE.json' | ConvertFrom-Json
           if(-not $queue.tasks){throw 'AX_SELF_CHECK_TASKS_MISSING'}
 
-          $allowed=@('READY','DISPATCHED','RUNNING','STALE','FAILED','COMPLETED','WAITING_K','REPROCESS_QUEUED','BLOCKED','APPROVED')
           $counts=[ordered]@{READY=0;DISPATCHED=0;RUNNING=0;STALE=0;FAILED=0;COMPLETED=0;OTHER=0}
           $awaiting=@()
           foreach($task in @($queue.tasks)){
@@ -87,7 +86,7 @@ jobs:
             "- Recovery required: $(if($counts.FAILED -gt 0 -or $counts.STALE -gt 0){'YES'}else{'NO'})"
             '- AI availability:'
           ) | Out-File -FilePath $env:GITHUB_STEP_SUMMARY -Append -Encoding utf8
-          foreach($name in $providerState.Keys){"  - $name: $($providerState[$name])" | Out-File -FilePath $env:GITHUB_STEP_SUMMARY -Append -Encoding utf8}
+          foreach($name in $providerState.Keys){"  - ${name}: $($providerState[$name])" | Out-File -FilePath $env:GITHUB_STEP_SUMMARY -Append -Encoding utf8}
 
       - name: Verify active execution registry
         shell: pwsh
