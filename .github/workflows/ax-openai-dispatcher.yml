@@ -6,6 +6,7 @@ on:
     paths:
       - 'AX_OPENAI_DISPATCH_QUEUE.json'
       - '.github/workflows/ax-openai-dispatcher.yml'
+      - 'tests/AX_OPENAI_DISPATCHER_CORRELATION.Tests.ps1'
   schedule:
     - cron: '*/5 * * * *'
   workflow_dispatch:
@@ -25,6 +26,10 @@ jobs:
     steps:
       - uses: actions/checkout@v5
 
+      - name: Regression test dispatcher correlation
+        shell: pwsh
+        run: ./tests/AX_OPENAI_DISPATCHER_CORRELATION.Tests.ps1
+
       - name: Dispatch READY OpenAI task
         shell: bash
         env:
@@ -42,9 +47,10 @@ jobs:
           echo "OPENAI_DISPATCH=POST task=$task_id"
           gh workflow run ax-openai-live-code-stream.yml --ref main -f prompt="$prompt" -f file="$file"
 
+          run_id=""
           for i in {1..12}; do
             sleep 5
-            run_id=$(gh run list --workflow ax-openai-live-code-stream.yml --event workflow_dispatch --limit 10 --json databaseId,createdAt --jq --argjson t "$(date +%s)" '[.[] | select((.createdAt | fromdateiso8601) >= ($t-90))] | .[0].databaseId // empty') || true
+            run_id=$(gh run list --workflow ax-openai-live-code-stream.yml --event workflow_dispatch --limit 1 --json databaseId --jq '.[0].databaseId // empty' || true)
             if [[ -n "$run_id" ]]; then
               break
             fi
