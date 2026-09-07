@@ -17,6 +17,25 @@ function normalizeEvent(event) {
 function normalizeAgent(agent) {
   return { id: agent?.id ?? agent?.name ?? null, name: agent?.name ?? agent?.id ?? 'UNKNOWN', status: agent?.status ?? 'UNKNOWN', role: agent?.role ?? null, route: agent?.route ?? agent?.execution ?? null, timestamp: agent?.timestamp ?? agent?.updatedAt ?? null };
 }
+function normalizeCodeStream(stream) {
+  assertObject(stream, 'codeStream');
+  if (stream.schema !== 'AX_CODE_STREAM_V1') throw new TypeError('AX_CODE_STREAM_V1 required');
+  if (!Array.isArray(stream.lines)) throw new TypeError('codeStream.lines must be an array');
+  return {
+    schema: stream.schema,
+    status: stream.status ?? 'UNKNOWN',
+    agent: stream.agent ?? 'UNKNOWN',
+    taskId: stream.taskId ?? null,
+    file: stream.file ?? null,
+    startedAt: stream.startedAt ?? null,
+    updatedAt: stream.updatedAt ?? null,
+    lines: stream.lines.map((line, index) => ({
+      seq: Number.isFinite(Number(line?.seq)) ? Number(line.seq) : index + 1,
+      kind: line?.kind ?? 'stdout',
+      text: String(line?.text ?? '')
+    }))
+  };
+}
 function asArray(value, key) { if (value == null) return []; if (!Array.isArray(value)) throw new TypeError(`${key} must be an array`); return value; }
 function countTaskStatuses(tasks) {
   const counts = { running: 0, queued: 0, failed: 0, completed: 0 };
@@ -44,4 +63,4 @@ function normalizeDashboardState(status, sync, extras = {}, now = Date.now(), st
     evidence: { runner: status.runner ?? 'UNKNOWN', mutation: status.mutation ?? 'UNKNOWN', cycle: status.cycle ?? null }
   };
 }
-export { isStale, normalizeTask, normalizeEvent, normalizeAgent, countTaskStatuses, normalizeDashboardState };
+export { isStale, normalizeTask, normalizeEvent, normalizeAgent, normalizeCodeStream, countTaskStatuses, normalizeDashboardState };
