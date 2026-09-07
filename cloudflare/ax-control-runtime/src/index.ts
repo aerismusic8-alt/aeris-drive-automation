@@ -377,15 +377,6 @@ export default {
       await env.AX_EXECUTION_QUEUE.send(normalizedEvent);
       return json({ accepted: true, queued: true, eventId: normalizedEvent.id, taskId: normalizedEvent.taskId, queue: QUEUE_NAME, executionGate: 'CONTROLLED', liveFinancialExecution: false });
     }
-    if (request.method === 'GET' && url.pathname === '/github/status') return json({ verified: true, status: 'VERIFIED', repository: REPO });
-    if (request.method === 'GET' && url.pathname === '/github/runners') {
-      try {
-        const { AxGithubControl } = await import('./github-control');
-        return json(await AxGithubControl.getRunnerHealth(env));
-      } catch {
-        return json({ verified: false, error: 'GITHUB_RUNNER_HEALTH_UNAVAILABLE' }, 502);
-      }
-    }
     return json({ error: 'NOT_FOUND', service: SERVICE, status: 'ONLINE' }, 404);
   },
   async queue(batch: MessageBatch<AxEvent>): Promise<void> {
