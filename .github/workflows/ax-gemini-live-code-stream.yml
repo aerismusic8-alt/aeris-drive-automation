@@ -8,8 +8,6 @@ on:
       - 'AX_MULTI_AI_DISPATCH_QUEUE.json'
       - '.github/workflows/ax-gemini-live-code-stream.yml'
       - 'tests/AX_GEMINI_EXECUTION_CONTRACT.Tests.ps1'
-  schedule:
-    - cron: '*/5 * * * *'
   workflow_dispatch:
     inputs:
       prompt:
@@ -25,6 +23,8 @@ on:
 permissions:
   contents: write
 
+debug: false
+
 concurrency:
   group: ax-gemini-live-code-stream
   cancel-in-progress: false
@@ -34,7 +34,7 @@ env:
 
 jobs:
   code-stream:
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, Windows, X64]
     timeout-minutes: 15
     env:
       GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
