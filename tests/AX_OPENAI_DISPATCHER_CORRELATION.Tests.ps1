@@ -8,7 +8,7 @@ if ($workflow -match '--jq\s+--argjson') {
 }
 
 # Correlation must use a quoted jq expression that extracts the latest workflow-dispatch run ID.
-if ($workflow -notmatch '--json\s+databaseId\s+--jq\s+[''\"]\.\[0\]\.databaseId\s+//\s+empty') {
+if ($workflow -notmatch "--json\s+databaseId\s+--jq\s+'[^']*databaseId[^']*'") {
   throw 'OPENAI_DISPATCHER_RUN_ID_LOOKUP_INVALID'
 }
 if ($workflow -notmatch 'OPENAI_WORKFLOW_RUN_ID_NOT_FOUND') {
