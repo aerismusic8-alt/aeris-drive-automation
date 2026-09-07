@@ -15,7 +15,7 @@ permissions:
 
 jobs:
   deploy:
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, Windows, X64]
     timeout-minutes: 15
     env:
       CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
@@ -188,6 +188,8 @@ jobs:
           grep -q "AX_GITHUB_APP_PRIVATE_KEY" cloudflare/ax-control-runtime/src/github-app-entry.ts
           grep -q "AX_GITHUB_APP_ID" cloudflare/ax-control-runtime/src/github-app-entry.ts
           grep -q "AX_GITHUB_CLIENT_ID" cloudflare/ax-control-runtime/src/github-app-entry.ts
+          grep -q "Access-Control-Allow-Origin" cloudflare/ax-control-runtime/src/index.ts
+          grep -q "request.method === 'OPTIONS'" cloudflare/ax-control-runtime/src/index.ts
 
       - name: Deployment Summary
         shell: bash
@@ -201,5 +203,6 @@ jobs:
           echo 'GitHub App live verification: PASS'
           echo 'XM bridge transport verification: PASS'
           echo 'Direct attachment route: PASS'
+          echo 'CORS contract: PASS'
           echo 'Execution mode: FREE_ONLY'
           echo 'Live financial execution: DISABLED'
