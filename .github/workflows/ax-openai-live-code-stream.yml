@@ -21,7 +21,7 @@ on:
         type: string
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   code-stream:
@@ -41,3 +41,18 @@ jobs:
           TARGET_FILE: ${{ inputs.file || 'AKATH/runtime/generated_task.py' }}
         run: |
           python AKATH/runtime/ax_openai_code_writer.py "$env:PROMPT" --task-id "OPENAI-${env:GITHUB_RUN_ID}" --file "$env:TARGET_FILE"
+      - name: Persist generated code
+        shell: powershell
+        env:
+          TARGET_FILE: ${{ inputs.file || 'AKATH/runtime/generated_task.py' }}
+        run: |
+          git config user.name 'AX OpenAI Live Code Stream'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add -- "$env:TARGET_FILE"
+          if (-not (git diff --cached --quiet -- "$env:TARGET_FILE")) {
+            git commit -m "chore: persist OpenAI code stream run=$env:GITHUB_RUN_ID"
+            git push origin HEAD:main
+            Write-Host "AX_OPENAI_CODE_WRITEBACK_PASS file=$env:TARGET_FILE run=$env:GITHUB_RUN_ID"
+          } else {
+            Write-Host "AX_OPENAI_CODE_WRITEBACK_SKIP file=$env:TARGET_FILE run=$env:GITHUB_RUN_ID"
+          }
