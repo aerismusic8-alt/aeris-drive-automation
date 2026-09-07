@@ -1,6 +1,12 @@
 name: AX Gemini Live Code Stream
 
 on:
+  push:
+    branches: [main]
+    paths:
+      - 'AX_GEMINI_KICK.txt'
+      - '.github/workflows/ax-gemini-live-code-stream.yml'
+      - 'tests/AX_GEMINI_EXECUTION_CONTRACT.Tests.ps1'
   workflow_dispatch:
     inputs:
       prompt:
@@ -14,7 +20,7 @@ on:
         type: string
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   code-stream:
@@ -24,26 +30,61 @@ jobs:
       GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
     steps:
       - uses: actions/checkout@v5
+
+      - name: Regression test Gemini execution contract
+        shell: pwsh
+        run: ./tests/AX_GEMINI_EXECUTION_CONTRACT.Tests.ps1
+
       - uses: actions/setup-python@v6
         with:
           python-version: "3.12"
-      - name: Run Gemini coding worker
+
+      - name: Resolve Gemini task
         shell: bash
         env:
-          PROMPT: ${{ inputs.prompt }}
-          TARGET_FILE: ${{ inputs.file }}
+          EVENT_NAME: ${{ github.event_name }}
+          INPUT_PROMPT: ${{ inputs.prompt }}
+          INPUT_FILE: ${{ inputs.file }}
         run: |
+          set -euo pipefail
+          if [[ "$EVENT_NAME" == "push" ]]; then
+            prompt="Write a tiny Python function named multiply that returns the product of two integers. Return only the source code."
+            target_file="AKATH/runtime/generated_gemini_task.py"
+          else
+            prompt="${INPUT_PROMPT:-Write a tiny Python function named multiply that returns the product of two integers. Return only the source code.}"
+            target_file="${INPUT_FILE:-AKATH/runtime/generated_gemini_task.py}"
+          fi
+          printf 'PROMPT=%s\n' "$prompt" >> "$GITHUB_ENV"
+          printf 'TARGET_FILE=%s\n' "$target_file" >> "$GITHUB_ENV"
+          echo "AX_GEMINI_TASK_READY file=$target_file"
+
+      - name: Run Gemini coding worker
+        shell: bash
+        run: |
+          set -euo pipefail
           python - <<'PY'
           import os
+          from pathlib import Path
           from AKATH.runtime.ax_gemini_helper import ask_gemini
-          try:
-              text = ask_gemini(os.environ['PROMPT'])
-              print('AX_GEMINI_CODE_STREAM_START')
-              for line in text.splitlines():
-                  print(f'AX_GEMINI_CODE_LINE={line}')
-              print('AX_GEMINI_CODE_STREAM_END')
-              print(f"AX_GEMINI_CODE_STREAM_PASS file={os.environ['TARGET_FILE']}")
-          except Exception as exc:
-              print(f'AX_GEMINI_CODE_STREAM_ERROR={exc}')
-              raise
+          text = ask_gemini(os.environ['PROMPT'])
+          target = Path(os.environ['TARGET_FILE'])
+          target.parent.mkdir(parents=True, exist_ok=True)
+          target.write_text(text.rstrip() + '\n', encoding='utf-8')
+          print('AX_GEMINI_CODE_STREAM_START')
+          for line in text.splitlines():
+              print(f'AX_GEMINI_CODE_LINE={line}')
+          print('AX_GEMINI_CODE_STREAM_END')
+          print(f"AX_GEMINI_CODE_STREAM_PASS file={target}")
           PY
+
+      - name: Durable write-back
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name 'AX Gemini Live Code Stream'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add "$TARGET_FILE"
+          git diff --cached --quiet && { echo 'GEMINI_WRITEBACK_EMPTY'; exit 1; }
+          git commit -m "chore: persist Gemini code-stream output"
+          git push origin HEAD:main
+          echo "AX_GEMINI_WRITEBACK_VERIFIED file=$TARGET_FILE"
