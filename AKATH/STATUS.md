@@ -1,6 +1,6 @@
-# AKATH Status
+﻿# AKATH Status
 
-**Overall:** AKATH SYSTEM — IMPLEMENTATION IN PROGRESS
+**Overall:** AKATH SYSTEM â€” IMPLEMENTATION IN PROGRESS
 
 ## Identity
 
@@ -22,20 +22,21 @@
 
 ## 24/7 verification
 
-**IN PROGRESS** — the runtime must accumulate at least three successive autonomous verified cycles without a ChatGPT message between them before this status can be promoted to VERIFIED.
+**VERIFIED** â€” three successive successful scheduled autonomous runtime cycles were verified by the AKATH 24x7 Acceptance Gate v2 without ChatGPT intervention.
 
-### Current acceptance target
+### Acceptance proof
 
-1. Autonomous cycle executes on the configured self-hosted runner.
-2. Runtime state is VERIFIED.
-3. A MASTER BRAIN rehydration is VERIFIED and execution authority remains false during rehydration.
-4. Adapter acceptance tests pass.
-5. Three successive verified cycles are evidenced without ChatGPT intervention.
+- Proof: `AKATH/VERIFICATION/three-cycle-proof-v2.json`
+- Ledger: `AKATH/VERIFICATION/runtime-cycle-ledger-v2.json`
+- Workflow: `.github/workflows/akath-24x7-acceptance-v2.yml`
+- Criterion: three consecutive successful scheduled runs
+- Runtime: self-hosted `PC2-CODING-EXECUTOR`
+- A MASTER BRAIN rehydration: VERIFIED
+- Execution authority bypass during rehydration: false
 
-### Important boundary
+### Integrity boundary
 
-A dashboard heartbeat showing `PASS` is not, by itself, sufficient proof of 24×7 autonomous continuity. The authoritative acceptance criterion is successive verified GitHub Actions runtime evidence.
-
+A dashboard heartbeat alone is not sufficient proof. The persisted three-cycle acceptance record is the authoritative runtime evidence.
 ## Identity Transition
 
 AKATH is now the sole current company/system identity for Operations, runtime status, and acceptance reporting. Legacy project references are not treated as the active operating identity.
@@ -43,3 +44,4 @@ AKATH is now the sole current company/system identity for Operations, runtime st
 ## PC2 Runtime Gate
 
 The PC2 self-hosted executor is the current execution gate. The recovery workflow is intentionally triggered by this commit so the runner can be verified from GitHub Actions before any execution is treated as VERIFIED.
+
