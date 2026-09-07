@@ -7,34 +7,35 @@
     "GEMINI_CLOUDFLARE",
     "GEMINI_LIVE_CODE_STREAM"
   ],
+  "priority_task": "AX-DASHBOARD-BUILD-20260907",
   "tasks": [
     {
       "provider": "OPENAI",
-      "task_id": "AX-REAL-CODE-OPENAI-20260907",
+      "task_id": "AX-DASHBOARD-BUILD-20260907",
       "workflow": "ax-openai-live-code-stream.yml",
-      "prompt": "Work on the current AX codebase. Inspect the existing execution/dispatch path and implement one concrete robustness improvement without changing external behavior. Return the source changes and a concise verification note.",
-      "file": "AKATH/runtime/generated_openai_task.py"
+      "prompt": "Work directly on the existing AX dashboard in this repository. Build the first production-ready Dashboard milestone using the current dashboard/index.html and related dashboard data modules as the base. Keep the current mobile-first dark operations UI. Add or complete: (1) clear executive system state, (2) task queue with RUNNING/QUEUED/FAILED/BLOCKED/COMPLETED counts, (3) AI/runtime cards for OPENAI and the three Gemini execution paths, (4) live activity timeline, (5) verified evidence section showing source timestamps and execution/run IDs when present, (6) stale/offline detection that never labels unverified state as healthy, and (7) responsive layout suitable for desktop and mobile. Reuse existing data files and helpers; do not invent backend endpoints. Return the COMPLETE source code for dashboard/index.html only. The generated file will be persisted and tested by AX.",
+      "file": "dashboard/index.html"
     },
     {
       "provider": "GEMINI_API",
-      "task_id": "AX-REAL-CODE-GEMINI-API-20260907",
+      "task_id": "AX-DASHBOARD-GEMINI-API-REVIEW-20260907",
       "workflow": "ax-gemini-live-code-stream.yml",
-      "prompt": "Work on the current AX codebase. Inspect the Gemini execution path and implement one concrete robustness improvement without changing external behavior. Return source changes and a concise verification note.",
-      "file": "AKATH/runtime/generated_gemini_api_task.py"
+      "prompt": "Review the completed AX dashboard implementation after the OpenAI build. Identify one concrete correctness or robustness defect in dashboard/index.html or its dashboard data handling, fix it without changing the public dashboard purpose, and return the COMPLETE source for the affected file only. Do not invent APIs or data. Include safe stale/unverified handling.",
+      "file": "dashboard/index.html"
     },
     {
       "provider": "GEMINI_CLOUDFLARE",
-      "task_id": "AX-REAL-CODE-GEMINI-CF-20260907",
+      "task_id": "AX-DASHBOARD-CF-REVIEW-20260907",
       "workflow": "ax-independent-chat-gateway.yml",
-      "prompt": "Work on the current AX Cloudflare runtime. Inspect the Gemini adapter/router path and implement one concrete robustness improvement without changing external behavior. Return source changes and a concise verification note.",
+      "prompt": "Review AX dashboard data delivery assumptions against the current Cloudflare control runtime. Identify one concrete robustness improvement needed to keep dashboard execution evidence truthful and durable, implement it in the existing runtime without inventing APIs, and return source changes plus verification notes.",
       "file": "cloudflare/ax-control-runtime/src/generated_gemini_cf_task.ts"
     },
     {
       "provider": "GEMINI_LIVE_CODE_STREAM",
-      "task_id": "AX-REAL-CODE-GEMINI-LIVE-20260907",
+      "task_id": "AX-DASHBOARD-GEMINI-LIVE-20260907",
       "workflow": "ax-gemini-live-code-stream.yml",
-      "prompt": "Work on the current AX codebase. Inspect the live Gemini code-stream workflow and implement one concrete robustness improvement that makes generated code durable and verifiable. Return source changes and a concise verification note.",
-      "file": "AKATH/runtime/generated_gemini_live_task.py"
+      "prompt": "Review the AX dashboard after the first build and implement one concrete production robustness improvement that keeps task status, execution evidence, and stale/offline states truthful. Return the COMPLETE source for dashboard/index.html only.",
+      "file": "dashboard/index.html"
     }
   ]
 }
