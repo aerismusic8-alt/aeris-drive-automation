@@ -6,6 +6,11 @@ on:
       - 'AKATH/runtime/ax_openai_helper.py'
       - 'AKATH/tests/openai_helper_tests.py'
       - '.github/workflows/openai-helper-test.yml'
+  pull_request:
+    paths:
+      - 'AKATH/runtime/ax_openai_helper.py'
+      - 'AKATH/tests/openai_helper_tests.py'
+      - '.github/workflows/openai-helper-test.yml'
   workflow_dispatch:
 
 jobs:
