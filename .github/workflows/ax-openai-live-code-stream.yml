@@ -1,6 +1,13 @@
 name: AX OpenAI Live Code Stream
 
 on:
+  push:
+    branches: [main]
+    paths:
+      - 'AKATH/runtime/ax_openai_code_writer.py'
+      - 'AKATH/runtime/ax_openai_helper.py'
+      - 'AKATH/runtime/ax_code_stream_writer.ps1'
+      - '.github/workflows/ax-openai-live-code-stream.yml'
   workflow_dispatch:
     inputs:
       prompt:
@@ -18,7 +25,7 @@ permissions:
 
 jobs:
   code-stream:
-    runs-on: ubuntu-latest
+    runs-on: windows-latest
     timeout-minutes: 10
     env:
       OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
@@ -28,9 +35,9 @@ jobs:
         with:
           python-version: "3.12"
       - name: Run OpenAI coding worker
-        shell: bash
+        shell: powershell
         env:
-          PROMPT: ${{ inputs.prompt }}
-          TARGET_FILE: ${{ inputs.file }}
+          PROMPT: ${{ inputs.prompt || 'Write a tiny Python function named add that returns the sum of two integers. Return only the source code.' }}
+          TARGET_FILE: ${{ inputs.file || 'AKATH/runtime/generated_task.py' }}
         run: |
-          python AKATH/runtime/ax_openai_code_writer.py "$PROMPT" --task-id "OPENAI-${GITHUB_RUN_ID}" --file "$TARGET_FILE"
+          python AKATH/runtime/ax_openai_code_writer.py "$env:PROMPT" --task-id "OPENAI-${env:GITHUB_RUN_ID}" --file "$env:TARGET_FILE"
