@@ -1,0 +1,49 @@
+name: AX Gemini Live Code Stream
+
+on:
+  workflow_dispatch:
+    inputs:
+      prompt:
+        description: "Coding task for Gemini"
+        required: true
+        type: string
+      file:
+        description: "Displayed target file name"
+        required: true
+        default: "AKATH/runtime/generated_gemini_task.py"
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  code-stream:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+      - name: Run Gemini coding worker
+        shell: bash
+        env:
+          PROMPT: ${{ inputs.prompt }}
+          TARGET_FILE: ${{ inputs.file }}
+        run: |
+          python - <<'PY'
+          import os
+          from AKATH.runtime.ax_gemini_helper import ask_gemini
+          try:
+              text = ask_gemini(os.environ['PROMPT'])
+              print('AX_GEMINI_CODE_STREAM_START')
+              for line in text.splitlines():
+                  print(f'AX_GEMINI_CODE_LINE={line}')
+              print('AX_GEMINI_CODE_STREAM_END')
+              print(f"AX_GEMINI_CODE_STREAM_PASS file={os.environ['TARGET_FILE']}")
+          except Exception as exc:
+              print(f'AX_GEMINI_CODE_STREAM_ERROR={exc}')
+              raise
+          PY
