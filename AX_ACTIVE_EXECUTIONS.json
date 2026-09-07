@@ -1,16 +1,16 @@
-﻿{
-    "schema":  "AX_ACTIVE_EXECUTIONS_V1",
-    "updatedAt":  "2026-09-07T17:19:43.5001580Z",
-    "activeCount":  1,
-    "staleCount":  0,
-    "executions":  [
-                       {
-                           "triggerId":  "ax-active-execution-monitor",
-                           "jobId":  "34146924352",
-                           "status":  "ACTIVE",
-                           "runner":  "DESKTOP-RGK6JKB",
-                           "lastSeen":  "2026-09-07T17:19:43.5001580Z",
-                           "result":  "monitor_heartbeat"
-                       }
-                   ]
+{
+  "schema": "AX_ACTIVE_EXECUTIONS_V1",
+  "updatedAt": "2026-09-07T17:28:36.2350947Z",
+  "activeCount": 1,
+  "staleCount": 0,
+  "executions": [
+    {
+      "triggerId": "ax-active-execution-monitor",
+      "jobId": "34147748946",
+      "status": "ACTIVE",
+      "runner": "GitHub Actions 1000001459",
+      "lastSeen": "2026-09-07T17:28:36.2350947Z",
+      "result": "supervisor_heartbeat"
+    }
+  ]
 }
