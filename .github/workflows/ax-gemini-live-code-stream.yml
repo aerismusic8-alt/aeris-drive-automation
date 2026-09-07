@@ -42,7 +42,7 @@ jobs:
         with:
           python-version: "3.12"
 
-      - name: Resolve task
+      - name: Resolve enabled Gemini task
         shell: bash
         env:
           EVENT_NAME: ${{ github.event_name }}
@@ -58,8 +58,8 @@ jobs:
             task_data=$(python - <<'PY'
           import json
           q=json.load(open('AX_MULTI_AI_DISPATCH_QUEUE.json', encoding='utf-8'))
-          t=next((x for x in q.get('tasks', []) if x.get('provider')=='GEMINI_LIVE_CODE_STREAM'), None)
-          if not t: raise SystemExit('GEMINI_LIVE_TASK_NOT_FOUND')
+          t=next((x for x in q.get('tasks', []) if x.get('provider','').startswith('GEMINI') and x.get('enabled') is True), None)
+          if not t: raise SystemExit('GEMINI_ENABLED_TASK_NOT_FOUND')
           print(t['task_id'])
           print(t['prompt'])
           print(t['file'])
