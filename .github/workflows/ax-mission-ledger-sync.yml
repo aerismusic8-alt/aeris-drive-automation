@@ -32,20 +32,20 @@ jobs:
           fetch-depth: 0
 
       - name: Install Pester when missing
-        shell: powershell -NoProfile -ExecutionPolicy Bypass
+        shell: powershell
         run: |
           if (-not (Get-Module -ListAvailable -Name Pester)) {
             Install-Module Pester -Scope CurrentUser -Force -SkipPublisherCheck
           }
 
       - name: Run mission ledger tests
-        shell: powershell -NoProfile -ExecutionPolicy Bypass
+        shell: powershell
         run: |
           Import-Module Pester
           Invoke-Pester .\tests\AX_MISSION_LEDGER.Tests.ps1 -Output Detailed
 
       - name: Apply mission input
-        shell: powershell -NoProfile -ExecutionPolicy Bypass
+        shell: powershell
         env:
           MISSION_PAYLOAD: ${{ github.event.inputs.mission_payload }}
         run: |
@@ -74,7 +74,7 @@ jobs:
           Write-Host "AX_MISSION_EVENT_COUNT=$($result.eventCount)"
 
       - name: Recovery verification
-        shell: powershell -NoProfile -ExecutionPolicy Bypass
+        shell: powershell
         run: |
           . .\AX_MISSION_LEDGER.ps1
           $reloaded = Load-AxMissionLedger '.\AX_MISSION_LEDGER.json'
@@ -85,7 +85,7 @@ jobs:
           Write-Host "AX_MISSION_LATEST_EVENT=$($reloaded.index.lastEventId)"
 
       - name: Persist verified ledger
-        shell: powershell -NoProfile -ExecutionPolicy Bypass
+        shell: powershell
         run: |
           git config user.name 'AX Mission Ledger'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
