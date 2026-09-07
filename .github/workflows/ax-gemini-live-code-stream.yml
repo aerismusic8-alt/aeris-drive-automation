@@ -23,8 +23,6 @@ on:
 permissions:
   contents: write
 
-debug: false
-
 concurrency:
   group: ax-gemini-live-code-stream
   cancel-in-progress: false
