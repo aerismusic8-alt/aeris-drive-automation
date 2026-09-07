@@ -7,7 +7,7 @@ on:
       - 'AX_OPENAI_DISPATCH_QUEUE.json'
       - '.github/workflows/ax-openai-dispatcher.yml'
   schedule:
-    - cron: '*/1 * * * *'
+    - cron: '*/5 * * * *'
   workflow_dispatch:
 
 permissions:
@@ -20,51 +20,47 @@ concurrency:
 
 jobs:
   dispatch:
-    runs-on: self-hosted
+    runs-on: ubuntu-latest
     timeout-minutes: 3
     steps:
       - uses: actions/checkout@v5
 
       - name: Dispatch READY OpenAI task
-        shell: powershell
+        shell: bash
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          $ErrorActionPreference = 'Stop'
-          $queuePath = Join-Path $env:GITHUB_WORKSPACE 'AX_OPENAI_DISPATCH_QUEUE.json'
-          if (-not (Test-Path $queuePath)) { Write-Host 'OPENAI_DISPATCH_QUEUE=EMPTY'; exit 0 }
-          $q = Get-Content -Raw $queuePath | ConvertFrom-Json
-          if ($q.status -ne 'READY') { Write-Host "OPENAI_DISPATCH_QUEUE=SKIP status=$($q.status)"; exit 0 }
+          set -euo pipefail
+          queue_path="$GITHUB_WORKSPACE/AX_OPENAI_DISPATCH_QUEUE.json"
+          if [[ ! -f "$queue_path" ]]; then echo 'OPENAI_DISPATCH_QUEUE=EMPTY'; exit 0; fi
+          status=$(python -c 'import json,sys; print(json.load(open(sys.argv[1]))["status"])' "$queue_path")
+          if [[ "$status" != "READY" ]]; then echo "OPENAI_DISPATCH_QUEUE=SKIP status=$status"; exit 0; fi
 
-          $repo = '${{ github.repository }}'
-          $workflow = 'ax-openai-live-code-stream.yml'
-          $endpoint = "repos/$repo/actions/workflows/$workflow/dispatches"
-          $runsEndpoint = "repos/$repo/actions/workflows/$workflow/runs?event=workflow_dispatch&per_page=10"
-          $dispatchAt = [DateTime]::UtcNow
+          task_id=$(python -c 'import json,sys; print(json.load(open(sys.argv[1]))["task_id"])' "$queue_path")
+          prompt=$(python -c 'import json,sys; print(json.load(open(sys.argv[1]))["prompt"])' "$queue_path")
+          file=$(python -c 'import json,sys; print(json.load(open(sys.argv[1]))["file"])' "$queue_path")
+          echo "OPENAI_DISPATCH=POST task=$task_id"
+          gh workflow run ax-openai-live-code-stream.yml --ref main -f prompt="$prompt" -f file="$file"
 
-          Write-Host "OPENAI_DISPATCH=POST task=$($q.task_id)"
-          gh api --method POST $endpoint -f ref=main -f "inputs[prompt]=$($q.prompt)" -f "inputs[file]=$($q.file)"
-          if ($LASTEXITCODE -ne 0) { throw 'OPENAI_WORKFLOW_DISPATCH_FAILED' }
+          for i in {1..12}; do
+            sleep 5
+            run_id=$(gh run list --workflow ax-openai-live-code-stream.yml --event workflow_dispatch --limit 10 --json databaseId,createdAt --jq --argjson t "$(date +%s)" '[.[] | select((.createdAt | fromdateiso8601) >= ($t-90))] | .[0].databaseId // empty') || true
+            if [[ -n "$run_id" ]]; then
+              break
+            fi
+          done
+          if [[ -z "${run_id:-}" ]]; then echo 'OPENAI_WORKFLOW_RUN_ID_NOT_FOUND' >&2; exit 1; fi
 
-          $runId = $null
-          for ($i = 1; $i -le 12; $i++) {
-            Start-Sleep -Seconds 5
-            $recent = @(gh api $runsEndpoint --jq '.workflow_runs[] | {id,status,event,created_at}') | ForEach-Object { $_ | ConvertFrom-Json }
-            $match = $recent | Where-Object { $_.event -eq 'workflow_dispatch' -and ([DateTime]$_.created_at) -ge $dispatchAt } | Sort-Object { [DateTime]$_.created_at } -Descending | Select-Object -First 1
-            if ($null -ne $match) { $runId = $match.id; break }
-          }
-          if ($null -eq $runId) { throw 'OPENAI_WORKFLOW_RUN_ID_NOT_FOUND' }
-
-          $q.status = 'DISPATCHED'
-          $q.run_id = [int64]$runId
-          $q.dispatched_at = [DateTime]::UtcNow.ToString('o')
-          $q | ConvertTo-Json -Depth 10 | Set-Content $queuePath -Encoding UTF8
-
+          python - "$queue_path" "$run_id" <<'PY'
+          import json,sys
+          p=sys.argv[1]; run_id=int(sys.argv[2])
+          with open(p,encoding='utf-8') as f: q=json.load(f)
+          q['status']='DISPATCHED'; q['run_id']=run_id
+          with open(p,'w',encoding='utf-8') as f: json.dump(q,f,indent=2,ensure_ascii=False); f.write('\n')
+          PY
           git config user.name 'AX OpenAI Autonomous Dispatcher'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
           git add AX_OPENAI_DISPATCH_QUEUE.json
-          git commit -m "chore: mark OpenAI task dispatched run=$runId"
+          git commit -m "chore: mark OpenAI task dispatched run=$run_id"
           git push origin HEAD:main
-          if ($LASTEXITCODE -ne 0) { throw 'OPENAI_DISPATCH_QUEUE_WRITEBACK_FAILED' }
-
-          Write-Host "OPENAI_DISPATCH_CONFIRMED run=$runId task=$($q.task_id)"
+          echo "OPENAI_DISPATCH_CONFIRMED run=$run_id task=$task_id"
