@@ -6,7 +6,8 @@
   "durable_objects": {
     "bindings": [
       { "name": "AX_GATEWAY_INBOX", "class_name": "AxGatewayInbox" },
-      { "name": "AX_XM_EXECUTION_QUEUE", "class_name": "AxXmExecutionQueue" }
+      { "name": "AX_XM_EXECUTION_QUEUE", "class_name": "AxXmExecutionQueue" },
+      { "name": "AX_MISSION_LEDGER", "class_name": "AxMissionLedger" }
     ]
   },
   "migrations": [
@@ -17,6 +18,10 @@
     {
       "tag": "v2-xm-execution-bridge",
       "new_sqlite_classes": ["AxXmExecutionQueue"]
+    },
+    {
+      "tag": "v3-ax-mission-ledger",
+      "new_sqlite_classes": ["AxMissionLedger"]
     }
   ],
   "queues": {
@@ -36,4 +41,4 @@
   }
 }
 
-// AX runtime deployment trigger: GitHub App gateway + isolated XM execution bridge.
+// AX runtime deployment trigger: GitHub App gateway + isolated XM execution bridge + persistent mission continuity ledger.
