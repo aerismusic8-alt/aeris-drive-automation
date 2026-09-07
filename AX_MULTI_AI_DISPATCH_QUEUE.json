@@ -11,6 +11,7 @@
   "tasks": [
     {
       "provider": "OPENAI",
+      "enabled": true,
       "task_id": "AX-DASHBOARD-BUILD-20260907",
       "workflow": "ax-openai-live-code-stream.yml",
       "prompt": "Work directly on the existing AX dashboard in this repository. Build the first production-ready Dashboard milestone using the current dashboard/index.html and related dashboard data modules as the base. Keep the current mobile-first dark operations UI. Add or complete: (1) clear executive system state, (2) task queue with RUNNING/QUEUED/FAILED/BLOCKED/COMPLETED counts, (3) AI/runtime cards for OPENAI and the three Gemini execution paths, (4) live activity timeline, (5) verified evidence section showing source timestamps and execution/run IDs when present, (6) stale/offline detection that never labels unverified state as healthy, and (7) responsive layout suitable for desktop and mobile. Reuse existing data files and helpers; do not invent backend endpoints. Return the COMPLETE source code for dashboard/index.html only. The generated file will be persisted and tested by AX.",
@@ -18,6 +19,7 @@
     },
     {
       "provider": "GEMINI_API",
+      "enabled": false,
       "task_id": "AX-DASHBOARD-GEMINI-API-REVIEW-20260907",
       "workflow": "ax-gemini-live-code-stream.yml",
       "prompt": "Review the completed AX dashboard implementation after the OpenAI build. Identify one concrete correctness or robustness defect in dashboard/index.html or its dashboard data handling, fix it without changing the public dashboard purpose, and return the COMPLETE source for the affected file only. Do not invent APIs or data. Include safe stale/unverified handling.",
@@ -25,6 +27,7 @@
     },
     {
       "provider": "GEMINI_CLOUDFLARE",
+      "enabled": false,
       "task_id": "AX-DASHBOARD-CF-REVIEW-20260907",
       "workflow": "ax-independent-chat-gateway.yml",
       "prompt": "Review AX dashboard data delivery assumptions against the current Cloudflare control runtime. Identify one concrete robustness improvement needed to keep dashboard execution evidence truthful and durable, implement it in the existing runtime without inventing APIs, and return source changes plus verification notes.",
@@ -32,6 +35,7 @@
     },
     {
       "provider": "GEMINI_LIVE_CODE_STREAM",
+      "enabled": false,
       "task_id": "AX-DASHBOARD-GEMINI-LIVE-20260907",
       "workflow": "ax-gemini-live-code-stream.yml",
       "prompt": "Review the AX dashboard after the first build and implement one concrete production robustness improvement that keeps task status, execution evidence, and stale/offline states truthful. Return the COMPLETE source for dashboard/index.html only.",
