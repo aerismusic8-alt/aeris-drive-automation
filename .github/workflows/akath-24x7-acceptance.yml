@@ -40,6 +40,24 @@ jobs:
         with:
           fetch-depth: 0
 
+      - name: Prepare Python runtime
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+
+      - name: Clean stale CI rebase state
+        shell: powershell -NoProfile -ExecutionPolicy Bypass -File {0}
+        run: |
+          $ErrorActionPreference = 'Stop'
+          git rebase --abort 2>$null
+          if (Test-Path -LiteralPath "$env:GITHUB_WORKSPACE/.git/rebase-merge") {
+            Remove-Item -LiteralPath "$env:GITHUB_WORKSPACE/.git/rebase-merge" -Recurse -Force
+          }
+          if (Test-Path -LiteralPath "$env:GITHUB_WORKSPACE/.git/rebase-apply") {
+            Remove-Item -LiteralPath "$env:GITHUB_WORKSPACE/.git/rebase-apply" -Recurse -Force
+          }
+          python --version
+
       - name: Audit legacy identity removal
         shell: powershell -NoProfile -ExecutionPolicy Bypass -File {0}
         run: |
@@ -186,4 +204,4 @@ jobs:
           Write-Host "AKATH_RUNTIME_PASS=$env:AKATH_RUNTIME_PASS"
           Write-Host "AKATH_ADAPTER_PASS=$env:AKATH_ADAPTER_PASS"
 
-# harmless trigger-touch commit to validate the acceptance runner path
+# CI self-healing: provision Python and clear stale runner rebase state before runtime verification.
