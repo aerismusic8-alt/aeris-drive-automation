@@ -5,8 +5,11 @@ on:
     branches: [main]
     paths:
       - 'AX_GEMINI_KICK.txt'
+      - 'AX_MULTI_AI_DISPATCH_QUEUE.json'
       - '.github/workflows/ax-gemini-live-code-stream.yml'
       - 'tests/AX_GEMINI_EXECUTION_CONTRACT.Tests.ps1'
+  schedule:
+    - cron: '*/5 * * * *'
   workflow_dispatch:
     inputs:
       prompt:
@@ -25,7 +28,7 @@ permissions:
 jobs:
   code-stream:
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 15
     env:
       GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
     steps:
@@ -47,35 +50,84 @@ jobs:
           INPUT_FILE: ${{ inputs.file }}
         run: |
           set -euo pipefail
-          if [[ "$EVENT_NAME" == "push" ]]; then
-            prompt="Write a tiny Python function named multiply that returns the product of two integers. Return only the source code."
-            target_file="AKATH/runtime/generated_gemini_task.py"
-          else
-            prompt="${INPUT_PROMPT:-Write a tiny Python function named multiply that returns the product of two integers. Return only the source code.}"
+          if [[ "$EVENT_NAME" == "workflow_dispatch" ]]; then
+            prompt="${INPUT_PROMPT}"
             target_file="${INPUT_FILE:-AKATH/runtime/generated_gemini_task.py}"
+          else
+            prompt=""
+            target_file="AKATH/runtime/generated_gemini_api_task.py"
+            if [[ -f AX_MULTI_AI_DISPATCH_QUEUE.json ]]; then
+              readarray -t task_data < <(python - <<'PY'
+          import json
+          q=json.load(open('AX_MULTI_AI_DISPATCH_QUEUE.json', encoding='utf-8'))
+          for p in ('GEMINI_API','GEMINI_LIVE_CODE_STREAM'):
+              t=next((x for x in q.get('tasks',[]) if x.get('provider')==p), None)
+              if t:
+                  print(t['task_id'])
+                  print(t['prompt'])
+                  print(t['file'])
+          PY
+              )
+              for ((i=0; i<${#task_data[@]}; i+=3)); do
+                task_id="${task_data[i]}"
+                prompt="${task_data[i+1]}"
+                target_file="${task_data[i+2]}"
+                printf 'GEMINI_TASKS += %s\n' "$task_id"
+                printf 'PROMPT=%s\n' "$prompt" >> "$GITHUB_ENV"
+                printf 'TARGET_FILE=%s\n' "$target_file" >> "$GITHUB_ENV"
+                python - <<PY
+          import os
+          from pathlib import Path
+          from AKATH.runtime.ax_gemini_helper import ask_gemini
+          text=ask_gemini(os.environ['PROMPT'])
+          target=Path(os.environ['TARGET_FILE'])
+          target.parent.mkdir(parents=True, exist_ok=True)
+          target.write_text(text.rstrip()+'\n', encoding='utf-8')
+          print(f"AX_GEMINI_CODE_STREAM_PASS file={target} task={os.environ['PROMPT'][:32]}")
+          PY
+                unset 'GITHUB_ENV'
+              done
+            fi
+            if [[ -z "$prompt" && -f AX_GEMINI_KICK.txt ]]; then
+              prompt="$(cat AX_GEMINI_KICK.txt)"
+              target_file="AKATH/runtime/generated_gemini_task.py"
+            fi
           fi
-          printf 'PROMPT=%s\n' "$prompt" >> "$GITHUB_ENV"
-          printf 'TARGET_FILE=%s\n' "$target_file" >> "$GITHUB_ENV"
-          echo "AX_GEMINI_TASK_READY file=$target_file"
+          if [[ "$EVENT_NAME" == "workflow_dispatch" ]]; then
+            printf 'PROMPT=%s\n' "$prompt" >> "$GITHUB_ENV"
+            printf 'TARGET_FILE=%s\n' "$target_file" >> "$GITHUB_ENV"
+            echo "AX_GEMINI_TASK_READY file=$target_file"
+          fi
 
       - name: Run Gemini coding worker
+        if: github.event_name == 'workflow_dispatch' || github.event_name == 'schedule' || github.event_name == 'push'
         shell: bash
         run: |
           set -euo pipefail
+          if [[ -z "${PROMPT:-}" || -z "${TARGET_FILE:-}" ]]; then
+            echo 'AX_GEMINI_QUEUE_EXECUTION_FAILED=NO_RESOLVED_TASK'
+            exit 1
+          fi
           python - <<'PY'
           import os
           from pathlib import Path
           from AKATH.runtime.ax_gemini_helper import ask_gemini
-          text = ask_gemini(os.environ['PROMPT'])
-          target = Path(os.environ['TARGET_FILE'])
+          text=ask_gemini(os.environ['PROMPT'])
+          target=Path(os.environ['TARGET_FILE'])
           target.parent.mkdir(parents=True, exist_ok=True)
-          target.write_text(text.rstrip() + '\n', encoding='utf-8')
+          target.write_text(text.rstrip()+'\n', encoding='utf-8')
           print('AX_GEMINI_CODE_STREAM_START')
-          for line in text.splitlines():
-              print(f'AX_GEMINI_CODE_LINE={line}')
+          for line in text.splitlines(): print(f'AX_GEMINI_CODE_LINE={line}')
           print('AX_GEMINI_CODE_STREAM_END')
-          print(f"AX_GEMINI_CODE_STREAM_PASS file={target}")
+          print(f'AX_GEMINI_CODE_STREAM_PASS file={target}')
           PY
+
+      - name: Verify generated file
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -s "$TARGET_FILE"
+          echo "AX_GEMINI_OUTPUT_VERIFIED file=$TARGET_FILE"
 
       - name: Durable write-back
         shell: bash
@@ -85,6 +137,6 @@ jobs:
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
           git add "$TARGET_FILE"
           git diff --cached --quiet && { echo 'GEMINI_WRITEBACK_EMPTY'; exit 1; }
-          git commit -m "chore: persist Gemini code-stream output"
+          git commit -m "chore: persist Gemini code-stream output run=$GITHUB_RUN_ID"
           git push origin HEAD:main
           echo "AX_GEMINI_WRITEBACK_VERIFIED file=$TARGET_FILE"
