@@ -19,8 +19,8 @@ concurrency:
 
 jobs:
   heartbeat:
-    # The supervisor must be independent from PC1/PC2 so it can recover a dead runner.
-    runs-on: ubuntu-latest
+    # The supervisor stays independent from PC1/PC2 while using the local runner pool.
+    runs-on: [self-hosted, Windows, X64]
     timeout-minutes: 3
     steps:
       - uses: actions/checkout@v5
