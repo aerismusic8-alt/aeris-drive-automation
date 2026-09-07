@@ -194,3 +194,4 @@ export default {
 
 export { AxGatewayInbox } from './index';
 export { AxXmExecutionQueue } from './xm-bridge';
+export { AxMissionLedger } from './ax-mission-ledger';
