@@ -8,12 +8,15 @@ if ($workflow -match '--jq\s+--argjson') {
   throw 'OPENAI_DISPATCHER_JQ_ARGUMENT_ORDER_INVALID'
 }
 
-# Correlation must use a quoted jq expression that extracts the latest workflow-dispatch run ID.
-if ($workflow -notmatch "--json\s+databaseId\s+--jq\s+'[^']*databaseId[^']*'") {
-  throw 'OPENAI_DISPATCHER_RUN_ID_LOOKUP_INVALID'
+# The dispatcher executes the READY task directly so it does not depend on nested workflow_dispatch permissions.
+if ($workflow -match 'gh\s+workflow\s+run') {
+  throw 'OPENAI_DISPATCHER_NESTED_WORKFLOW_DISPATCH_FORBIDDEN'
 }
-if ($workflow -notmatch 'OPENAI_WORKFLOW_RUN_ID_NOT_FOUND') {
-  throw 'OPENAI_DISPATCHER_MISSING_RUN_ID_GUARD'
+if ($workflow -notmatch 'ax_openai_code_writer\.py') {
+  throw 'OPENAI_DISPATCHER_DIRECT_WORKER_MISSING'
+}
+if ($workflow -notmatch 'OPENAI_DISPATCH_CONFIRMED') {
+  throw 'OPENAI_DISPATCH_CONFIRMED_MARKER_MISSING'
 }
 
 # A successful code-stream run must persist the generated file back to main, not only modify the ephemeral runner workspace.
