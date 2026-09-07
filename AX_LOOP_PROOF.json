@@ -32,12 +32,20 @@
       "conclusion": "failure",
       "matched_tasks": [],
       "result": "FAILURE_OBSERVED"
+    },
+    {
+      "verified_at": "2026-09-07T17:58:39.390460+00:00",
+      "workflow_run_id": 34149738430,
+      "workflow": "AX OpenAI Live Code Stream",
+      "conclusion": "failure",
+      "matched_tasks": [],
+      "result": "FAILURE_OBSERVED"
     }
   ],
   "last_verified_cycle": {
-    "verified_at": "2026-09-07T17:56:34.065042+00:00",
-    "workflow_run_id": 34149615710,
-    "workflow": "AX Gemini Live Code Stream",
+    "verified_at": "2026-09-07T17:58:39.390460+00:00",
+    "workflow_run_id": 34149738430,
+    "workflow": "AX OpenAI Live Code Stream",
     "conclusion": "failure",
     "matched_tasks": [],
     "result": "FAILURE_OBSERVED"
