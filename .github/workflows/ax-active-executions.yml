@@ -30,6 +30,65 @@ jobs:
         run: |
           & "$PWD/AX_ACTIVE_EXECUTIONS.ps1" -TriggerId "ax-active-execution-monitor" -JobId "${{ github.run_id }}" -Status "ACTIVE" -Runner "${{ runner.name }}" -Result "supervisor_heartbeat"
 
+      - name: Self-check task lifecycle and AI availability
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          $ErrorActionPreference='Stop'
+          $repo='${{ github.repository }}'
+          if(-not (Test-Path -LiteralPath 'AX_MULTI_AI_DISPATCH_QUEUE.json')){throw 'AX_SELF_CHECK_QUEUE_MISSING'}
+          $queue=Get-Content -Raw 'AX_MULTI_AI_DISPATCH_QUEUE.json' | ConvertFrom-Json
+          if(-not $queue.tasks){throw 'AX_SELF_CHECK_TASKS_MISSING'}
+
+          $allowed=@('READY','DISPATCHED','RUNNING','STALE','FAILED','COMPLETED','WAITING_K','REPROCESS_QUEUED','BLOCKED','APPROVED')
+          $counts=[ordered]@{READY=0;DISPATCHED=0;RUNNING=0;STALE=0;FAILED=0;COMPLETED=0;OTHER=0}
+          $awaiting=@()
+          foreach($task in @($queue.tasks)){
+            $status=([string]$task.status).Trim().ToUpper()
+            if($counts.Contains($status)){$counts[$status]++}else{$counts['OTHER']++}
+            if($status -in @('DISPATCHED','RUNNING') -and -not $task.result -and -not $task.execution){$awaiting += [string]$task.task_id}
+          }
+
+          $providers=[ordered]@{
+            OPENAI='ax-openai-live-code-stream.yml'
+            GEMINI_API='ax-gemini-live-code-stream.yml'
+            GEMINI_LIVE_CODE_STREAM='ax-gemini-live-code-stream.yml'
+            GEMINI_CLOUDFLARE='ax-independent-chat-gateway.yml'
+          }
+          $providerState=[ordered]@{}
+          foreach($name in $providers.Keys){
+            $wf=$providers[$name]
+            try{
+              $raw=gh api "repos/$repo/actions/workflows/$wf/runs?per_page=10"
+              $runs=@($raw | ConvertFrom-Json).workflow_runs
+              $busy=@($runs | Where-Object {$_.status -in @('queued','requested','waiting','pending','in_progress')})
+              $providerState[$name]=if($busy.Count -gt 0){'BUSY'}else{'IDLE'}
+            }catch{
+              $providerState[$name]='UNKNOWN'
+            }
+          }
+
+          Write-Host '=== AX SELF-CHECK ==='
+          Write-Host "READY=$($counts.READY) DISPATCHED=$($counts.DISPATCHED) RUNNING=$($counts.RUNNING) STALE=$($counts.STALE) FAILED=$($counts.FAILED) COMPLETED=$($counts.COMPLETED) OTHER=$($counts.OTHER)"
+          Write-Host "AWAITING_RESPONSE=$(@($awaiting).Count)"
+          foreach($name in $providerState.Keys){Write-Host "AI_$name=$($providerState[$name])"}
+          if(@($awaiting).Count -gt 0){Write-Host ('AWAITING_TASKS='+($awaiting -join ','))}
+          if($counts.FAILED -gt 0 -or $counts.STALE -gt 0){Write-Host 'AX_RECOVERY_REQUIRED=TRUE'}else{Write-Host 'AX_RECOVERY_REQUIRED=FALSE'}
+          @(
+            '### AX SELF-CHECK'
+            "- READY: $($counts.READY)"
+            "- DISPATCHED: $($counts.DISPATCHED)"
+            "- RUNNING: $($counts.RUNNING)"
+            "- STALE: $($counts.STALE)"
+            "- FAILED: $($counts.FAILED)"
+            "- COMPLETED: $($counts.COMPLETED)"
+            "- Awaiting response: $(@($awaiting).Count)"
+            "- Recovery required: $(if($counts.FAILED -gt 0 -or $counts.STALE -gt 0){'YES'}else{'NO'})"
+            '- AI availability:'
+          ) | Out-File -FilePath $env:GITHUB_STEP_SUMMARY -Append -Encoding utf8
+          foreach($name in $providerState.Keys){"  - $name: $($providerState[$name])" | Out-File -FilePath $env:GITHUB_STEP_SUMMARY -Append -Encoding utf8}
+
       - name: Verify active execution registry
         shell: pwsh
         run: |
