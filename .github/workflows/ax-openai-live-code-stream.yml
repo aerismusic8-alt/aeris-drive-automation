@@ -32,7 +32,7 @@ concurrency:
   cancel-in-progress: false
 
 env:
-  PROOF_FILE: AX_AI_EXECUTION_PROOF.json
+  PROOF_FILE: AX_AI_EXECUTION_PROOF_OPENAI.json
 
 jobs:
   code-stream:
@@ -42,20 +42,11 @@ jobs:
       OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
     steps:
       - uses: actions/checkout@v5
-
       - uses: actions/setup-python@v6
         with:
           python-version: "3.12"
 
-      - name: Write start proof
-        shell: powershell
-        run: |
-          @{
-            provider='OPENAI'; task_id=''; status='STARTED'; workflow=$env:GITHUB_WORKFLOW
-            run_id=$env:GITHUB_RUN_ID; sha=$env:GITHUB_SHA; timestamp=(Get-Date).ToUniversalTime().ToString('o')
-          } | ConvertTo-Json | Set-Content -Encoding utf8 $env:PROOF_FILE
-
-      - name: Resolve OpenAI task with current source context
+      - name: Resolve next READY OpenAI task
         shell: powershell
         env:
           EVENT_NAME: ${{ github.event_name }}
@@ -65,31 +56,37 @@ jobs:
           $prompt = $env:INPUT_PROMPT
           $target = $env:INPUT_FILE
           $taskId = "MANUAL-OPENAI-$env:GITHUB_RUN_ID"
+          $fromQueue = $false
           if ($env:EVENT_NAME -ne 'workflow_dispatch') {
             $queue = Get-Content -Raw 'AX_MULTI_AI_DISPATCH_QUEUE.json' | ConvertFrom-Json
-            $task = @($queue.tasks | Where-Object { $_.provider -eq 'OPENAI' -and $_.enabled -eq $true }) | Select-Object -First 1
-            if (-not $task) { throw 'OPENAI_ENABLED_TASK_NOT_FOUND' }
+            $task = @($queue.tasks | Where-Object { $_.provider -eq 'OPENAI' -and $_.enabled -eq $true -and $_.status -eq 'READY' } | Sort-Object priority -Descending) | Select-Object -First 1
+            if (-not $task) { Write-Host 'OPENAI_NO_READY_TASK'; exit 0 }
+            $fromQueue = $true
             $taskId = [string]$task.task_id
             $prompt = [string]$task.prompt
             $target = [string]$task.file
+            "FROM_QUEUE=true" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
           }
           if ([string]::IsNullOrWhiteSpace($prompt)) { throw 'OPENAI_PROMPT_EMPTY' }
           if ([string]::IsNullOrWhiteSpace($target)) { throw 'OPENAI_TARGET_EMPTY' }
           if (Test-Path -LiteralPath $target) {
             $existing = Get-Content -Raw -LiteralPath $target
-            $prompt = "$prompt`n`nCURRENT SOURCE OF $target:`n```text`n$existing`n````nReturn the COMPLETE replacement source for $target only. Preserve existing working behavior unless the task explicitly requires a change."
+            $prompt = "$prompt`n`nCURRENT SOURCE OF $target:`n```text`n$existing`n``` `nReturn the COMPLETE replacement source for $target only."
           }
           "TASK_ID=$taskId" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
           "PROMPT=$prompt" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
           "TARGET_FILE=$target" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
+          if (-not $fromQueue) { "FROM_QUEUE=false" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8 }
           Write-Host "AX_OPENAI_TASK_READY task=$taskId file=$target"
 
       - name: Run OpenAI coding worker
+        if: env.TASK_ID != ''
         shell: powershell
         run: |
           python AKATH/runtime/ax_openai_code_writer.py "$env:PROMPT" --task-id "$env:TASK_ID" --file "$env:TARGET_FILE"
 
       - name: Verify generated file
+        if: env.TASK_ID != ''
         shell: powershell
         run: |
           if (-not (Test-Path -LiteralPath $env:TARGET_FILE)) { throw "OPENAI_OUTPUT_MISSING file=$env:TARGET_FILE" }
@@ -97,33 +94,25 @@ jobs:
           if ($lines.Count -eq 0) { throw "OPENAI_OUTPUT_EMPTY file=$env:TARGET_FILE" }
           Write-Host "AX_OPENAI_OUTPUT_VERIFIED task=$env:TASK_ID file=$env:TARGET_FILE lines=$($lines.Count)"
 
-      - name: Persist generated code
+      - name: Persist generated code and complete queue task
+        if: env.TASK_ID != ''
         shell: powershell
         run: |
           git config user.name 'AX OpenAI Live Code Stream'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
           git add -- "$env:TARGET_FILE"
           if (git diff --cached --quiet -- "$env:TARGET_FILE") { throw "OPENAI_WRITEBACK_EMPTY file=$env:TARGET_FILE" }
+          if ($env:FROM_QUEUE -eq 'true') {
+            $queue = Get-Content -Raw 'AX_MULTI_AI_DISPATCH_QUEUE.json' | ConvertFrom-Json
+            $task = @($queue.tasks | Where-Object { $_.task_id -eq $env:TASK_ID }) | Select-Object -First 1
+            if ($task) {
+              $task.status = 'COMPLETED'
+              $task.execution = [ordered]@{ workflow='ax-openai-live-code-stream.yml'; run_id=[int64]$env:GITHUB_RUN_ID; executor='OPENAI'; output_file=$env:TARGET_FILE; completed_at=(Get-Date).ToUniversalTime().ToString('o') }
+            }
+            $queue.updated_at=(Get-Date).ToUniversalTime().ToString('o')
+            $queue | ConvertTo-Json -Depth 20 | Set-Content -Encoding utf8 'AX_MULTI_AI_DISPATCH_QUEUE.json'
+            git add -- AX_MULTI_AI_DISPATCH_QUEUE.json
+          }
           git commit -m "chore: persist OpenAI task=$env:TASK_ID run=$env:GITHUB_RUN_ID"
           git push origin HEAD:main
           Write-Host "AX_OPENAI_WRITEBACK_VERIFIED task=$env:TASK_ID file=$env:TARGET_FILE run=$env:GITHUB_RUN_ID"
-
-      - name: Persist execution proof
-        if: always()
-        shell: powershell
-        run: |
-          $status = if ($env:AgentJobStatus) { $env:AgentJobStatus } else { 'UNKNOWN' }
-          $proof = @{
-            provider='OPENAI'; task_id=$env:TASK_ID; status=$status; workflow=$env:GITHUB_WORKFLOW
-            run_id=[int64]$env:GITHUB_RUN_ID; sha=$env:GITHUB_SHA; target_file=$env:TARGET_FILE
-            timestamp=(Get-Date).ToUniversalTime().ToString('o')
-          }
-          $proof | ConvertTo-Json | Set-Content -Encoding utf8 $env:PROOF_FILE
-          git config user.name 'AX OpenAI Execution Proof'
-          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git add -- $env:PROOF_FILE
-          git diff --cached --quiet -- $env:PROOF_FILE
-          if ($LASTEXITCODE -ne 0) {
-            git commit -m "chore: persist OpenAI execution proof run=$env:GITHUB_RUN_ID"
-            git push origin HEAD:main
-          }
