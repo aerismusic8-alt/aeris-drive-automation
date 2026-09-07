@@ -71,7 +71,7 @@ jobs:
           if ([string]::IsNullOrWhiteSpace($target)) { throw 'OPENAI_TARGET_EMPTY' }
           if (Test-Path -LiteralPath $target) {
             $existing = Get-Content -Raw -LiteralPath $target
-            $prompt = "$prompt`n`nCURRENT SOURCE OF $target:`n```text`n$existing`n``` `nReturn the COMPLETE replacement source for $target only."
+            $prompt = ('{0}`n`nCURRENT SOURCE OF {1}:`n```text`n{2}`n``` `nReturn the COMPLETE replacement source for {1} only.' -f $prompt, $target, $existing)
           }
           $promptFile = Join-Path $env:RUNNER_TEMP 'ax-openai-prompt.txt'
           Set-Content -LiteralPath $promptFile -Value $prompt -Encoding utf8
