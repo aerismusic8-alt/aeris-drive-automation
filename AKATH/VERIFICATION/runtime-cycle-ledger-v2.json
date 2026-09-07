@@ -1,0 +1,24 @@
+﻿{
+    "schema":  "AKATH_RUNTIME_CYCLE_LEDGER_V2",
+    "acceptance":  "PENDING",
+    "consecutive_successes":  0,
+    "required_consecutive_successes":  3,
+    "last_updated_utc":  "2026-09-07T15:34:15.5965924Z",
+    "cycles":  [
+                   {
+                       "sequence":  1,
+                       "github_run_id":  "34138867338",
+                       "github_run_number":  158,
+                       "event":  "schedule",
+                       "recorded_at_utc":  "2026-09-07T15:34:15.5193968Z",
+                       "result":  "FAIL",
+                       "error_class":  "AKATH_RUNTIME_FAILED",
+                       "audit_pass":  true,
+                       "runtime_pass":  false,
+                       "adapter_pass":  false,
+                       "runtime_run_id":  "",
+                       "runtime_job_id":  "",
+                       "evidence_ref":  ""
+                   }
+               ]
+}
