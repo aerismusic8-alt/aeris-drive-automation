@@ -27,8 +27,18 @@ export type MissionPutResult =
   | { kind: 'CONFLICT'; mission: MissionRecord };
 
 const RECORDS_KEY = 'records';
+const ATTACHMENT_PREFIX = 'attachment:';
 
 type StoredRecords = Record<string, MissionRecord>;
+
+type AttachmentMeta = {
+  attachment_id: string;
+  mission_id: string;
+  name: string;
+  media_type: string;
+  size: number;
+  uploaded_at: string;
+};
 
 function json(body: unknown, status = 200): Response {
   return Response.json(body, { status, headers: { 'Cache-Control': 'no-store', 'Content-Type': 'application/json; charset=utf-8' } });
@@ -101,6 +111,30 @@ export class AxMissionLedger {
       records[taskId] = updated;
       await this.state.storage.put(RECORDS_KEY, records);
       return json({ ok: true, mission: updated });
+    }
+
+    if (method === 'POST' && url.pathname === '/attachment') {
+      const missionId = (url.searchParams.get('mission_id') || '').trim();
+      const attachmentId = (url.searchParams.get('attachment_id') || '').trim();
+      const name = (url.searchParams.get('name') || '').trim();
+      const mediaType = (url.searchParams.get('media_type') || 'application/octet-stream').trim();
+      if (!missionId || !attachmentId || !name) return json({ ok: false, error: 'ATTACHMENT_SCHEMA_INVALID' }, 422);
+      const bytes = await request.arrayBuffer();
+      const maxBytes = 25 * 1024 * 1024;
+      if (bytes.byteLength > maxBytes) return json({ ok: false, error: 'ATTACHMENT_TOO_LARGE', maxBytes }, 413);
+      const meta: AttachmentMeta = { attachment_id: attachmentId, mission_id: missionId, name, media_type: mediaType, size: bytes.byteLength, uploaded_at: new Date().toISOString() };
+      await this.state.storage.put(`${ATTACHMENT_PREFIX}${attachmentId}:meta`, meta);
+      await this.state.storage.put(`${ATTACHMENT_PREFIX}${attachmentId}:data`, bytes);
+      return json({ ok: true, attachment: meta }, 201);
+    }
+
+    if (method === 'GET' && url.pathname.startsWith('/attachment/')) {
+      const attachmentId = decodeURIComponent(url.pathname.slice('/attachment/'.length)).trim();
+      if (!attachmentId) return json({ ok: false, error: 'ATTACHMENT_ID_REQUIRED' }, 422);
+      const meta = await this.state.storage.get<AttachmentMeta>(`${ATTACHMENT_PREFIX}${attachmentId}:meta`);
+      const bytes = await this.state.storage.get<ArrayBuffer>(`${ATTACHMENT_PREFIX}${attachmentId}:data`);
+      if (!meta || !bytes) return json({ ok: false, error: 'ATTACHMENT_NOT_FOUND' }, 404);
+      return new Response(bytes, { headers: { 'Content-Type': meta.media_type, 'Content-Length': String(meta.size), 'Cache-Control': 'no-store', 'X-Ax-Attachment-Id': attachmentId, 'X-Ax-Mission-Id': meta.mission_id } });
     }
 
     return json({ ok: false, error: 'NOT_FOUND' }, 404);
