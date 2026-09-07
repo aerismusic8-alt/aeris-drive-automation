@@ -1,15 +1,15 @@
 {
   "schema": "AX_ACTIVE_EXECUTIONS_V1",
-  "updatedAt": "2026-09-07T17:57:11.8218695Z",
+  "updatedAt": "2026-09-07T18:10:19.1977302Z",
   "activeCount": 1,
   "staleCount": 0,
   "executions": [
     {
       "triggerId": "ax-active-execution-monitor",
-      "jobId": "34149670379",
+      "jobId": "34150533912",
       "status": "ACTIVE",
-      "runner": "GitHub Actions 1000001499",
-      "lastSeen": "2026-09-07T17:57:11.8218695Z",
+      "runner": "GitHub Actions 1000001517",
+      "lastSeen": "2026-09-07T18:10:19.1977302Z",
       "result": "supervisor_heartbeat"
     }
   ]
