@@ -7,6 +7,7 @@ on:
       - 'AKATH/runtime/ax_openai_code_writer.py'
       - 'AKATH/runtime/ax_openai_helper.py'
       - 'AKATH/runtime/ax_code_stream_writer.ps1'
+      - 'AX_MULTI_AI_DISPATCH_QUEUE.json'
       - '.github/workflows/ax-openai-live-code-stream.yml'
   workflow_dispatch:
     inputs:
@@ -34,17 +35,40 @@ jobs:
       - uses: actions/setup-python@v6
         with:
           python-version: "3.12"
+      - name: Resolve OpenAI task
+        shell: powershell
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          INPUT_PROMPT: ${{ inputs.prompt }}
+          INPUT_FILE: ${{ inputs.file }}
+        run: |
+          $prompt = $env:INPUT_PROMPT
+          $target = $env:INPUT_FILE
+          if ($env:EVENT_NAME -eq 'push') {
+            $queue = Get-Content -Raw 'AX_MULTI_AI_DISPATCH_QUEUE.json' | ConvertFrom-Json
+            $task = @($queue.tasks | Where-Object { $_.provider -eq 'OPENAI' }) | Select-Object -First 1
+            if (-not $task) { throw 'OPENAI_QUEUE_TASK_NOT_FOUND' }
+            $prompt = [string]$task.prompt
+            $target = [string]$task.file
+            Write-Host "AX_OPENAI_TASK_FROM_QUEUE task=$($task.task_id) file=$target"
+          }
+          if ([string]::IsNullOrWhiteSpace($prompt)) { throw 'OPENAI_PROMPT_EMPTY' }
+          if ([string]::IsNullOrWhiteSpace($target)) { throw 'OPENAI_TARGET_EMPTY' }
+          "PROMPT=$prompt" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
+          "TARGET_FILE=$target" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
       - name: Run OpenAI coding worker
         shell: powershell
-        env:
-          PROMPT: ${{ inputs.prompt || 'Write a tiny Python function named add that returns the sum of two integers. Return only the source code.' }}
-          TARGET_FILE: ${{ inputs.file || 'AKATH/runtime/generated_task.py' }}
         run: |
           python AKATH/runtime/ax_openai_code_writer.py "$env:PROMPT" --task-id "OPENAI-${env:GITHUB_RUN_ID}" --file "$env:TARGET_FILE"
+      - name: Verify generated file
+        shell: powershell
+        run: |
+          if (-not (Test-Path -LiteralPath $env:TARGET_FILE)) { throw "OPENAI_OUTPUT_MISSING file=$env:TARGET_FILE" }
+          $lines = @(Get-Content -LiteralPath $env:TARGET_FILE)
+          if ($lines.Count -eq 0) { throw "OPENAI_OUTPUT_EMPTY file=$env:TARGET_FILE" }
+          Write-Host "AX_OPENAI_OUTPUT_VERIFIED file=$env:TARGET_FILE lines=$($lines.Count)"
       - name: Persist generated code
         shell: powershell
-        env:
-          TARGET_FILE: ${{ inputs.file || 'AKATH/runtime/generated_task.py' }}
         run: |
           git config user.name 'AX OpenAI Live Code Stream'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
