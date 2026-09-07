@@ -129,7 +129,7 @@ export async function handleAxAdaptersRoute(
   dependencies: Dependencies = {},
 ): Promise<Response | null> {
   const url = new URL(request.url);
-  if (url.pathname === '/ax/direct' && request.method === 'GET') return axDirectConsolePage();
+  if ((url.pathname === '/ax/direct' || url.pathname === '/chat') && request.method === 'GET') return axDirectConsolePage();
   if (url.pathname === '/ax/direct/input' && request.method === 'POST') return directInput(request, env);
   if (url.pathname.startsWith('/ax/direct/mission/') && request.method === 'GET') {
     const missionId = decodeURIComponent(url.pathname.slice('/ax/direct/mission/'.length)).trim();
