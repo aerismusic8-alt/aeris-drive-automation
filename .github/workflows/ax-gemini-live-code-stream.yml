@@ -118,6 +118,9 @@ jobs:
           set -euo pipefail
           git config user.name 'AX Gemini Live Code Stream'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git fetch origin main
+          git rebase origin/main
+          test -s "$TARGET_FILE"
           git add -- "$TARGET_FILE"
           if git diff --cached --quiet -- "$TARGET_FILE"; then echo "GEMINI_WRITEBACK_EMPTY task=$TASK_ID"; exit 1; fi
           if [[ "$FROM_QUEUE" == "true" ]]; then
@@ -128,7 +131,7 @@ jobs:
           for t in q.get('tasks',[]):
               if t.get('task_id')==os.environ['TASK_ID']:
                   t['status']='COMPLETED'
-                  t['execution']={'workflow':'ax-gemini-live-code-stream.yml','run_id':int(os.environ['GITHUB_RUN_ID']),'executor':t.get('provider'),'output_file':os.environ['TARGET_FILE']}
+                  t['execution']={'workflow':'ax-gemini-live-code-stream.yml','run_id':int(os.environ['GITHUB_RUN_ID']),'executor':t.get('provider'),'output_file':os.environ['TARGET_FILE'],'completed_at':__import__('datetime').datetime.now(__import__('datetime').timezone.utc).isoformat()}
           q['updated_at']=__import__('datetime').datetime.now(__import__('datetime').timezone.utc).isoformat()
           json.dump(q,open(p,'w',encoding='utf-8'),indent=2,ensure_ascii=False); open(p,'a',encoding='utf-8').write('\n')
           PY
@@ -138,4 +141,6 @@ jobs:
           git add -- AX_GEMINI_PROMPT.txt
           git commit -m "chore: persist Gemini task=$TASK_ID run=$GITHUB_RUN_ID"
           git push origin HEAD:main
+          git fetch origin main
+          git cat-file -e "origin/main:$TARGET_FILE"
           echo "AX_GEMINI_WRITEBACK_VERIFIED task=$TASK_ID file=$TARGET_FILE run=$GITHUB_RUN_ID"
