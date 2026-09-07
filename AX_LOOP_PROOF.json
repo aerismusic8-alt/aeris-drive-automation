@@ -88,12 +88,20 @@
       "conclusion": "failure",
       "matched_tasks": [],
       "result": "FAILURE_OBSERVED"
+    },
+    {
+      "verified_at": "2026-09-07T18:34:22.346843+00:00",
+      "workflow_run_id": 34152147287,
+      "workflow": "AX Gemini Live Code Stream",
+      "conclusion": "failure",
+      "matched_tasks": [],
+      "result": "FAILURE_OBSERVED"
     }
   ],
   "last_verified_cycle": {
-    "verified_at": "2026-09-07T18:23:36.026106+00:00",
-    "workflow_run_id": 34151419035,
-    "workflow": "AX Independent Chat Gateway",
+    "verified_at": "2026-09-07T18:34:22.346843+00:00",
+    "workflow_run_id": 34152147287,
+    "workflow": "AX Gemini Live Code Stream",
     "conclusion": "failure",
     "matched_tasks": [],
     "result": "FAILURE_OBSERVED"
