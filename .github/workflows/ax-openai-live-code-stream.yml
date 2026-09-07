@@ -9,6 +9,8 @@ on:
       - 'AKATH/runtime/ax_code_stream_writer.ps1'
       - 'AX_MULTI_AI_DISPATCH_QUEUE.json'
       - '.github/workflows/ax-openai-live-code-stream.yml'
+  schedule:
+    - cron: '*/5 * * * *'
   workflow_dispatch:
     inputs:
       prompt:
@@ -16,9 +18,9 @@ on:
         required: true
         type: string
       file:
-        description: "Displayed target file name"
+        description: "Target file"
         required: true
-        default: "AKATH/runtime/generated_task.py"
+        default: "AKATH/runtime/generated_openai_task.py"
         type: string
 
 permissions:
@@ -44,7 +46,7 @@ jobs:
         run: |
           $prompt = $env:INPUT_PROMPT
           $target = $env:INPUT_FILE
-          if ($env:EVENT_NAME -eq 'push') {
+          if ($env:EVENT_NAME -ne 'workflow_dispatch') {
             $queue = Get-Content -Raw 'AX_MULTI_AI_DISPATCH_QUEUE.json' | ConvertFrom-Json
             $task = @($queue.tasks | Where-Object { $_.provider -eq 'OPENAI' }) | Select-Object -First 1
             if (-not $task) { throw 'OPENAI_QUEUE_TASK_NOT_FOUND' }
@@ -78,5 +80,5 @@ jobs:
             git push origin HEAD:main
             Write-Host "AX_OPENAI_CODE_WRITEBACK_PASS file=$env:TARGET_FILE run=$env:GITHUB_RUN_ID"
           } else {
-            Write-Host "AX_OPENAI_CODE_WRITEBACK_SKIP file=$env:TARGET_FILE run=$env:GITHUB_RUN_ID"
+            throw "OPENAI_WRITEBACK_EMPTY file=$env:TARGET_FILE"
           }
