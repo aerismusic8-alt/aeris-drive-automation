@@ -1,9 +1,9 @@
 $ErrorActionPreference='Stop'
 $writer=Get-Content -Raw (Join-Path $PSScriptRoot '..\AKATH\runtime\ax_code_stream_writer.ps1')
-if($writer -notmatch 'Join-Path \$root \$File' -and $writer -notmatch 'Set-Content.*\$File'){
+if(-not $writer.Contains('$targetPath=Join-Path $root $File') -and -not $writer.Contains('Set-Content -LiteralPath $targetPath')){
   throw 'AX_CODE_STREAM_TARGET_WRITE_MISSING'
 }
-if($writer -notmatch "Event -eq 'START'" -or $writer -notmatch "Event -in @\('LINE','ERROR'\)"){
+if(-not $writer.Contains("if($Event -eq 'START')") -or -not $writer.Contains("if($Event -eq 'LINE')") -or -not $writer.Contains("if($Event -eq 'ERROR')")){
   throw 'AX_CODE_STREAM_EVENT_PATH_MISSING'
 }
 Write-Host 'AX_CODE_STREAM_WRITER_TARGET_TEST: PASS'
