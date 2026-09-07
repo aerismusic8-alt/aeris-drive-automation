@@ -1,0 +1,20 @@
+{
+  "schema": "AX_MULTI_AI_DISPATCH_QUEUE_V1",
+  "status": "READY",
+  "tasks": [
+    {
+      "provider": "OPENAI",
+      "task_id": "OPENAI-LIVE-PROOF-20260907-RUN1",
+      "workflow": "ax-openai-live-code-stream.yml",
+      "prompt": "Write a tiny Python function named add that returns the sum of two integers. Return only the source code.",
+      "file": "AKATH/runtime/generated_openai_task.py"
+    },
+    {
+      "provider": "GEMINI",
+      "task_id": "GEMINI-LIVE-PROOF-20260907-RUN1",
+      "workflow": "ax-gemini-live-code-stream.yml",
+      "prompt": "Write a tiny Python function named multiply that returns the product of two integers. Return only the source code.",
+      "file": "AKATH/runtime/generated_gemini_task.py"
+    }
+  ]
+}
