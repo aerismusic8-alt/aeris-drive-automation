@@ -10,8 +10,6 @@ on:
       - 'cloudflare/ax-control-runtime/src/gemini-router.ts'
       - 'tests/control_hub/ax_independent_chat_gateway_tests.py'
       - '.github/workflows/ax-independent-chat-gateway.yml'
-  schedule:
-    - cron: '*/5 * * * *'
   workflow_dispatch:
 
 permissions:
@@ -19,7 +17,7 @@ permissions:
 
 jobs:
   control-hub-acceptance:
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, Windows, X64]
     timeout-minutes: 15
     env:
       GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
