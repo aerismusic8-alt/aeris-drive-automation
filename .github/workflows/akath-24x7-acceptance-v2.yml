@@ -31,6 +31,30 @@ jobs:
         with:
           fetch-depth: 0
 
+      - name: Prepare portable Python runtime
+        shell: powershell -NoProfile -ExecutionPolicy Bypass -File {0}
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $pythonDir = Join-Path $env:RUNNER_TEMP 'akath-python-3.12'
+          $pythonZip = Join-Path $env:RUNNER_TEMP 'python-3.12.10-embed-amd64.zip'
+          if (Test-Path -LiteralPath $pythonDir) { Remove-Item -LiteralPath $pythonDir -Recurse -Force }
+          Invoke-WebRequest -Uri 'https://www.python.org/ftp/python/3.12.10/python-3.12.10-embed-amd64.zip' -OutFile $pythonZip -UseBasicParsing
+          New-Item -ItemType Directory -Force -Path $pythonDir | Out-Null
+          Expand-Archive -LiteralPath $pythonZip -DestinationPath $pythonDir -Force
+          $pythonExe = Join-Path $pythonDir 'python.exe'
+          if (-not (Test-Path -LiteralPath $pythonExe)) { throw 'AKATH_PORTABLE_PYTHON_MISSING' }
+          $pythonExe | Out-File -FilePath $env:GITHUB_PATH -Append -Encoding utf8
+          & $pythonExe --version
+
+      - name: Clean stale CI rebase state
+        shell: powershell -NoProfile -ExecutionPolicy Bypass -File {0}
+        run: |
+          $ErrorActionPreference = 'Stop'
+          git rebase --abort 2>$null
+          if (Test-Path -LiteralPath "$env:GITHUB_WORKSPACE/.git/rebase-merge") { Remove-Item -LiteralPath "$env:GITHUB_WORKSPACE/.git/rebase-merge" -Recurse -Force }
+          if (Test-Path -LiteralPath "$env:GITHUB_WORKSPACE/.git/rebase-apply") { Remove-Item -LiteralPath "$env:GITHUB_WORKSPACE/.git/rebase-apply" -Recurse -Force }
+          python --version
+
       - name: Audit legacy identity removal
         shell: powershell -NoProfile -ExecutionPolicy Bypass -File {0}
         run: |
