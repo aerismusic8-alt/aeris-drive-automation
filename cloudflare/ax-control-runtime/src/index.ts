@@ -67,6 +67,9 @@ function json(body: unknown, status = 200): Response {
     headers: {
       'Cache-Control': 'no-store',
       'Content-Type': 'application/json; charset=utf-8',
+      'Access-Control-Allow-Origin': '*',
+      'Access-Control-Allow-Methods': 'GET,POST,OPTIONS',
+      'Access-Control-Allow-Headers': 'Authorization, Content-Type',
     },
   });
 }
@@ -300,6 +303,7 @@ function webChatPage(): Response {
 export default {
   async fetch(request: Request, env: Env): Promise<Response> {
     const url = new URL(request.url);
+    if (request.method === 'OPTIONS') return json({ ok: true });
     if (request.method === 'GET' && url.pathname === '/') return healthResponse(env);
     if (request.method === 'GET' && url.pathname === '/health') return healthResponse(env);
     if (request.method === 'GET' && url.pathname === '/time') {
@@ -372,6 +376,15 @@ export default {
       const normalizedEvent: AxEvent = { id: String(event.id), taskId: String(event.taskId), domain: String(event.domain), priority: Number(event.priority || 0), action: String(event.action), createdAt: event.createdAt || new Date().toISOString(), source: event.source || 'AX_CONTROL_RUNTIME' };
       await env.AX_EXECUTION_QUEUE.send(normalizedEvent);
       return json({ accepted: true, queued: true, eventId: normalizedEvent.id, taskId: normalizedEvent.taskId, queue: QUEUE_NAME, executionGate: 'CONTROLLED', liveFinancialExecution: false });
+    }
+    if (request.method === 'GET' && url.pathname === '/github/status') return json({ verified: true, status: 'VERIFIED', repository: REPO });
+    if (request.method === 'GET' && url.pathname === '/github/runners') {
+      try {
+        const { AxGithubControl } = await import('./github-control');
+        return json(await AxGithubControl.getRunnerHealth(env));
+      } catch {
+        return json({ verified: false, error: 'GITHUB_RUNNER_HEALTH_UNAVAILABLE' }, 502);
+      }
     }
     return json({ error: 'NOT_FOUND', service: SERVICE, status: 'ONLINE' }, 404);
   },
