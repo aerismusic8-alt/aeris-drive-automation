@@ -3,7 +3,7 @@
     "acceptance":  "PENDING",
     "consecutive_successes":  0,
     "required_consecutive_successes":  3,
-    "last_updated_utc":  "2026-09-07T15:50:33.4088687Z",
+    "last_updated_utc":  "2026-09-07T16:02:26.9411028Z",
     "cycles":  [
                    {
                        "sequence":  1,
@@ -26,6 +26,21 @@
                        "github_run_number":  160,
                        "event":  "schedule",
                        "recorded_at_utc":  "2026-09-07T15:50:33.3918794Z",
+                       "result":  "FAIL",
+                       "error_class":  "LEGACY_IDENTITY_AUDIT_FAILED",
+                       "audit_pass":  false,
+                       "runtime_pass":  false,
+                       "adapter_pass":  false,
+                       "runtime_run_id":  "",
+                       "runtime_job_id":  "",
+                       "evidence_ref":  ""
+                   },
+                   {
+                       "sequence":  3,
+                       "github_run_id":  "34141008771",
+                       "github_run_number":  161,
+                       "event":  "schedule",
+                       "recorded_at_utc":  "2026-09-07T16:02:26.9230232Z",
                        "result":  "FAIL",
                        "error_class":  "LEGACY_IDENTITY_AUDIT_FAILED",
                        "audit_pass":  false,
