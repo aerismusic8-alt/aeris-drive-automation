@@ -1,0 +1,26 @@
+{
+  "schema": "AX_LOOP_PROOF_V1",
+  "cycles": [
+    {
+      "verified_at": "2026-09-07T17:54:14.682134+00:00",
+      "workflow_run_id": 34149467166,
+      "workflow": "AX Independent Chat Gateway",
+      "conclusion": "failure",
+      "matched_tasks": [],
+      "result": "FAILURE_OBSERVED"
+    }
+  ],
+  "last_verified_cycle": {
+    "verified_at": "2026-09-07T17:54:14.682134+00:00",
+    "workflow_run_id": 34149467166,
+    "workflow": "AX Independent Chat Gateway",
+    "conclusion": "failure",
+    "matched_tasks": [],
+    "result": "FAILURE_OBSERVED"
+  },
+  "loop_condition": {
+    "queue_has_ready_work": true,
+    "completed_cycles": 0,
+    "multi_cycle_pass": false
+  }
+}
