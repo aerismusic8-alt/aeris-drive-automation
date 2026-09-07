@@ -1,8 +1,8 @@
 {
   "schema": "AX_MULTI_AI_DISPATCH_QUEUE_V3",
   "status": "READY",
-  "updated_at": "2026-09-08T00:52:21Z",
-  "kick": "2026-09-08T00:52:21Z",
+  "updated_at": "2026-09-08T00:52:22Z",
+  "kick": "2026-09-08T00:52:22Z",
   "allowlist": ["OPENAI","GEMINI_API","GEMINI_CLOUDFLARE","GEMINI_LIVE_CODE_STREAM"],
   "tasks": [
     {
@@ -28,7 +28,7 @@
     {
       "provider":"GEMINI_API","enabled":true,"priority":110,"status":"READY",
       "task_id":"AX-FILE-ID-PERSISTENCE-AI-20260908","workflow":"ax-gemini-live-code-stream.yml","file":"AKATH/runtime/ax_file_id_persistence.py",
-      "prompt":"Implement the missing AX File ID persistence repair as a standalone production-quality Python helper. It must normalize a file record, require a non-empty stable file_id, reject conflicting IDs, persist atomically using a temp file plus replace, reload and verify the exact persisted ID, and expose a concise verification result. Do not invent external APIs. Include a minimal self-test under __main__. Return COMPLETE source for AKATH/runtime/ax_file_id_persistence.py only."
+      "prompt":"Implement the missing AX File ID persistence repair as a standalone production-quality Python helper. It must normalize a file record, require a non-empty stable file_id, reject conflicting IDs, persist atomically using a temp file plus replace, reload and verify the exact persisted ID, and expose a concise verification result. Do not invent external APIs. Include a minimal self-test under __main__."
     },
     {
       "provider":"GEMINI_API","enabled":true,"priority":100,"status":"READY",
