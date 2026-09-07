@@ -13,13 +13,13 @@ on:
   workflow_dispatch:
     inputs:
       prompt:
-        description: "Coding task for Gemini Live Code Stream"
+        description: "Coding task for Gemini"
         required: true
         type: string
       file:
         description: "Target file"
         required: true
-        default: "AKATH/runtime/generated_gemini_live_task.py"
+        default: "AKATH/runtime/generated_gemini_task.py"
         type: string
 
 permissions:
@@ -40,11 +40,9 @@ jobs:
       GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
     steps:
       - uses: actions/checkout@v5
-
       - name: Regression test Gemini execution contract
         shell: pwsh
         run: ./tests/AX_GEMINI_EXECUTION_CONTRACT.Tests.ps1
-
       - uses: actions/setup-python@v6
         with:
           python-version: "3.12"
@@ -67,21 +65,25 @@ jobs:
           import json
           q=json.load(open('AX_MULTI_AI_DISPATCH_QUEUE.json',encoding='utf-8'))
           t=next((x for x in sorted(q.get('tasks',[]), key=lambda x:x.get('priority',0), reverse=True)
-                  if x.get('provider','').startswith('GEMINI') and x.get('enabled') is True and x.get('status')=='READY'), None)
+                  if x.get('provider') in {'GEMINI_API','GEMINI_LIVE_CODE_STREAM'}
+                  and x.get('enabled') is True and x.get('status')=='READY'), None)
           if not t: raise SystemExit('GEMINI_NO_READY_TASK')
-          print(t['task_id']); print(t['prompt']); print(t['file'])
+          print(t['task_id']); print(t['file']); print(t['prompt'])
           PY
             )
-            mapfile -t fields <<< "$task_data"
-            task_id="${fields[0]}"; prompt="${fields[1]}"; target="${fields[2]}"; from_queue=true
+            task_id="$(printf '%s\n' "$task_data" | sed -n '1p')"
+            target="$(printf '%s\n' "$task_data" | sed -n '2p')"
+            printf '%s\n' "$task_data" | tail -n +3 > AX_GEMINI_PROMPT.txt
+            from_queue=true
           fi
-          [[ -n "$prompt" ]] || { echo 'GEMINI_PROMPT_EMPTY'; exit 1; }
+          if [[ "$from_queue" == "false" ]]; then printf '%s' "$prompt" > AX_GEMINI_PROMPT.txt; fi
+          [[ -s AX_GEMINI_PROMPT.txt ]] || { echo 'GEMINI_PROMPT_EMPTY'; exit 1; }
           [[ -n "$target" ]] || { echo 'GEMINI_TARGET_EMPTY'; exit 1; }
           {
             echo "TASK_ID=$task_id"
-            echo "PROMPT=$prompt"
             echo "TARGET_FILE=$target"
             echo "FROM_QUEUE=$from_queue"
+            echo "PROMPT_FILE=$GITHUB_WORKSPACE/AX_GEMINI_PROMPT.txt"
           } >> "$GITHUB_ENV"
           echo "AX_GEMINI_TASK_READY task=$task_id file=$target"
 
@@ -93,13 +95,13 @@ jobs:
           import os
           from pathlib import Path
           from AKATH.runtime.ax_gemini_helper import ask_gemini
-          text=ask_gemini(os.environ['PROMPT'])
+          prompt=Path(os.environ['PROMPT_FILE']).read_text(encoding='utf-8')
+          text=ask_gemini(prompt)
           target=Path(os.environ['TARGET_FILE'])
           target.parent.mkdir(parents=True,exist_ok=True)
           target.write_text(text.rstrip()+'\n',encoding='utf-8')
           print(f"AX_GEMINI_CODE_STREAM_START task={os.environ['TASK_ID']}")
-          for line in text.splitlines(): print(f"AX_GEMINI_CODE_LINE={line}")
-          print('AX_GEMINI_CODE_STREAM_END')
+          print(f"AX_GEMINI_CODE_STREAM_END task={os.environ['TASK_ID']}")
           print(f"AX_GEMINI_CODE_STREAM_PASS task={os.environ['TASK_ID']} file={target}")
           PY
 
@@ -126,12 +128,14 @@ jobs:
           for t in q.get('tasks',[]):
               if t.get('task_id')==os.environ['TASK_ID']:
                   t['status']='COMPLETED'
-                  t['execution']={'workflow':'ax-gemini-live-code-stream.yml','run_id':int(os.environ['GITHUB_RUN_ID']),'executor':'GEMINI','output_file':os.environ['TARGET_FILE']}
+                  t['execution']={'workflow':'ax-gemini-live-code-stream.yml','run_id':int(os.environ['GITHUB_RUN_ID']),'executor':t.get('provider'),'output_file':os.environ['TARGET_FILE']}
           q['updated_at']=__import__('datetime').datetime.now(__import__('datetime').timezone.utc).isoformat()
           json.dump(q,open(p,'w',encoding='utf-8'),indent=2,ensure_ascii=False); open(p,'a',encoding='utf-8').write('\n')
           PY
             git add -- AX_MULTI_AI_DISPATCH_QUEUE.json
           fi
+          rm -f AX_GEMINI_PROMPT.txt
+          git add -- AX_GEMINI_PROMPT.txt
           git commit -m "chore: persist Gemini task=$TASK_ID run=$GITHUB_RUN_ID"
           git push origin HEAD:main
           echo "AX_GEMINI_WRITEBACK_VERIFIED task=$TASK_ID file=$TARGET_FILE run=$GITHUB_RUN_ID"
