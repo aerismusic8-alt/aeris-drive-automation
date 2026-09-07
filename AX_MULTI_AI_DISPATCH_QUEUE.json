@@ -1,20 +1,40 @@
 {
-  "schema": "AX_MULTI_AI_DISPATCH_QUEUE_V1",
+  "schema": "AX_MULTI_AI_DISPATCH_QUEUE_V2",
   "status": "READY",
+  "allowlist": [
+    "OPENAI",
+    "GEMINI_API",
+    "GEMINI_CLOUDFLARE",
+    "GEMINI_LIVE_CODE_STREAM"
+  ],
   "tasks": [
     {
       "provider": "OPENAI",
-      "task_id": "OPENAI-LIVE-PROOF-20260907-RUN1",
+      "task_id": "AX-REAL-CODE-OPENAI-20260907",
       "workflow": "ax-openai-live-code-stream.yml",
-      "prompt": "Write a tiny Python function named add that returns the sum of two integers. Return only the source code.",
+      "prompt": "Work on the current AX codebase. Inspect the existing execution/dispatch path and implement one concrete robustness improvement without changing external behavior. Return the source changes and a concise verification note.",
       "file": "AKATH/runtime/generated_openai_task.py"
     },
     {
-      "provider": "GEMINI",
-      "task_id": "GEMINI-LIVE-PROOF-20260907-RUN1",
+      "provider": "GEMINI_API",
+      "task_id": "AX-REAL-CODE-GEMINI-API-20260907",
       "workflow": "ax-gemini-live-code-stream.yml",
-      "prompt": "Write a tiny Python function named multiply that returns the product of two integers. Return only the source code.",
-      "file": "AKATH/runtime/generated_gemini_task.py"
+      "prompt": "Work on the current AX codebase. Inspect the Gemini execution path and implement one concrete robustness improvement without changing external behavior. Return source changes and a concise verification note.",
+      "file": "AKATH/runtime/generated_gemini_api_task.py"
+    },
+    {
+      "provider": "GEMINI_CLOUDFLARE",
+      "task_id": "AX-REAL-CODE-GEMINI-CF-20260907",
+      "workflow": "ax-independent-chat-gateway.yml",
+      "prompt": "Work on the current AX Cloudflare runtime. Inspect the Gemini adapter/router path and implement one concrete robustness improvement without changing external behavior. Return source changes and a concise verification note.",
+      "file": "cloudflare/ax-control-runtime/src/generated_gemini_cf_task.ts"
+    },
+    {
+      "provider": "GEMINI_LIVE_CODE_STREAM",
+      "task_id": "AX-REAL-CODE-GEMINI-LIVE-20260907",
+      "workflow": "ax-gemini-live-code-stream.yml",
+      "prompt": "Work on the current AX codebase. Inspect the live Gemini code-stream workflow and implement one concrete robustness improvement that makes generated code durable and verifiable. Return source changes and a concise verification note.",
+      "file": "AKATH/runtime/generated_gemini_live_task.py"
     }
   ]
 }
