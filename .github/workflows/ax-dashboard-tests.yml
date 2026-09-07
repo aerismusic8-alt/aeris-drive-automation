@@ -16,7 +16,7 @@ permissions:
 
 jobs:
   dashboard-contract:
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, Windows, X64]
     timeout-minutes: 5
     steps:
       - uses: actions/checkout@v5
