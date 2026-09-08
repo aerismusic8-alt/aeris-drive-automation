@@ -86,12 +86,14 @@ This is the default response pattern for status/update commands such as `ax อ�
 
 **Mandatory rule:** AX MUST complete the baseline report from live canonical state BEFORE beginning analysis, planning, recommendations, or new task decomposition.
 
-The baseline is a read/rehydration step, not a reasoning step. It must use the current system state and canonical registry, then expose the state in a stable Thai format. Only after the baseline is shown may AX use reasoning to decide what should happen next.
+**Initial-update stop rule:** When K asks only for a current-system update, AX MUST report baseline sequence 1–8 and STOP. AX MUST NOT automatically continue into reasoning sequence 9–12 unless K asks a follow-up question or explicitly directs AX to continue.
+
+The baseline is a read/rehydration step, not a reasoning step. It must use the current system state and canonical registry, then expose the state in a stable Thai format. Only after K asks/authorizes continuation may AX use reasoning to decide what should happen next.
 
 ### Baseline sequence — exactly 1 to 8
 
-| ลำดับหัวข้อสิ่งที่ AX ต้องทำแหล่งข้อมูล |
-|---|---|---|
+| ลำดับ | หัวข้อ | สิ่งที่ AX ต้องทำ | แหล่งข้อมูล |
+|---:|---|---|---|
 | 1 | **สถานะระบบ** | อ่านสถานะหลักของ AKATH ปัจจุบันก่อนทุกครั้ง | A MASTER BRAIN |
 | 2 | **จำนวนงานทั้งหมด** | รายงานจำนวนจาก `tasks` จริงเท่านั้น ห้ามเดา/เติม | Master Task Registry |
 | 3 | **งานระบบ (SYSTEM)** | แสดงงานระบบทั้งหมดที่อยู่ใน Registry พร้อมสถานะ | Master Task Registry |
@@ -101,20 +103,9 @@ The baseline is a read/rehydration step, not a reasoning step. It must use the c
 | 7 | **ตัวติดขัด** | ระบุ blocker ที่ผูกกับ `task_id` | Canonical task details |
 | 8 | **สถานะสรุป** | `PASS / PARTIAL / BLOCKED / QUEUED / FAILED` ตามหลักฐานจริง | AX Verification |
 
-### Reasoning sequence — exactly 9 to 12
+### Initial baseline output
 
-หลังจาก baseline ข้อ 1–8 เสร็จแล้วเท่านั้น AX จึงเริ่มใช้สมองต่อ:
-
-| ลำดับหัวข้อสิ่งที่ AX ต้องทำแหล่งข้อมูล |
-|---|---|---|
-| 9 | **เข้าสู่สมอง AX** | หลัง baseline เท่านั้น จึงเริ่มวิเคราะห์และตัดสินใจ | AX Reasoning |
-| 10 | **PCSEV ต่อเนื่อง** | ปัญหา → สาเหตุ → วิธีแก้ → ดำเนินการ → หลักฐาน → ตรวจสอบ | AX Execution |
-| 11 | **งานถัดไป** | เลือกงานต่อจากสถานะจริง ไม่สร้าง task ใหม่ | Master Task Registry |
-| 12 | **วนต่อ** | Execute → Verify → Update State → คิดงานต่อ | AKATH Runtime |
-
-### Required Thai output layout
-
-Every baseline report should use this order:
+Every initial-update report should stop after the baseline and use this order:
 
 `## อัปเดตงานปัจจุบัน — [วันที่/เวลาอ้างอิง]`
 
@@ -175,9 +166,24 @@ Show blockers attached to the canonical task_id. Do not turn an issue, error, or
 Use only evidence-supported values:
 `PASS` / `PARTIAL` / `BLOCKED` / `QUEUED` / `FAILED`.
 
-### Transition to AX reasoning
+The initial-update response ends here unless K explicitly asks AX to continue.
 
-Only after the baseline is visible may AX continue with:
+### Reasoning sequence — exactly 9 to 12
+
+Only after K asks a follow-up question or explicitly directs AX to continue may AX enter the reasoning loop:
+
+| ลำดับ | หัวข้อ | สิ่งที่ AX ต้องทำ | แหล่งข้อมูล |
+|---:|---|---|---|
+| 9 | **เข้าสู่สมอง AX** | หลัง baseline เท่านั้น จึงเริ่มวิเคราะห์และตัดสินใจ | AX Reasoning |
+| 10 | **PCSEV ต่อเนื่อง** | ปัญหา → สาเหตุ → วิธีแก้ → ดำเนินการ → หลักฐาน → ตรวจสอบ | AX Execution |
+| 11 | **งานถัดไป** | เลือกงานต่อจากสถานะจริง ไม่สร้าง task ใหม่ | Master Task Registry |
+| 12 | **วนต่อ** | Execute → Verify → Update State → คิดงานต่อ | AKATH Runtime |
+
+### Reasoning transition
+
+After the initial baseline, K may ask about any single item or direct AX to continue. AX should answer from the same canonical task record and should not require K to restate the task context.
+
+When reasoning begins, use:
 
 `### 9. เข้าสู่สมอง AX`
 
@@ -185,8 +191,6 @@ Then:
 `### 10. PCSEV ต่อเนื่อง`
 `### 11. งานถัดไป`
 `### 12. วนต่อ`
-
-K may ask a question about any single item after the baseline. AX should answer from the same canonical task record and should not require K to restate the task context.
 
 ## Source-of-truth boundaries
 
