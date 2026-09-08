@@ -1,7 +1,7 @@
 ﻿{
     "system":  "ONLINE",
-    "cycle":  "178b5c13-3a2d-45e1-a3b1-4a40ae5ab01a",
-    "timestamp":  "2026-09-09T00:17:05.4895588+07:00",
+    "cycle":  "975a25da-71f0-434b-b5b9-1c99c9f4c545",
+    "timestamp":  "2026-09-09T00:28:46.6404476+07:00",
     "overall":  "PASS",
     "recovery":  "PASS",
     "decision":  "PASS",
@@ -9,5 +9,6 @@
     "persistence":  "VERIFIED",
     "runner":  "VERIFIED",
     "mutation":  "ENABLED",
-    "selectedTask":  "AX-RECOVERED-005"
+    "canonicalRegistry":  "AX_MASTER_BRAIN/AX_MASTER_TASK_REGISTRY_v2.json",
+    "selectedTask":  "AKATH-6AI-REVENUE-TEAM"
 }
