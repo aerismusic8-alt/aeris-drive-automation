@@ -1,35 +1,16 @@
-name: AICS Portfolio Trigger E2E
+name: RETIRED - AICS Portfolio Trigger E2E
 
 on:
-  push:
-    paths:
-      - 'AX_AICS_PORTFOLIO_TRIGGER.ps1'
-      - 'tests/AX_AICS_PORTFOLIO_TRIGGER_TEST.ps1'
-      - '.github/workflows/aics-portfolio-trigger-e2e.yml'
   workflow_dispatch:
 
 permissions:
   contents: read
 
 jobs:
-  trigger-e2e:
-    runs-on: [self-hosted, Windows, X64]
-    timeout-minutes: 5
+  retired:
+    runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v5
-      - name: Run AX-only portfolio trigger E2E
-        shell: powershell
+      - name: Confirm retirement
         run: |
-          $ErrorActionPreference = 'Continue'
-          & "$PWD/tests/AX_AICS_PORTFOLIO_TRIGGER_TEST.ps1" 2>&1 | Tee-Object -FilePath "$PWD/trigger-test.log"
-          $code = $LASTEXITCODE
-          if ($code -ne 0) { exit $code }
-      - name: Upload trigger diagnostics
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: aics-portfolio-trigger-diagnostics
-          path: |
-            trigger-test.log
-            AX_AICS_PORTFOLIO_STATE.json
-          if-no-files-found: ignore
+          echo "AICS portfolio execution is retired by K authority."
+          echo "No XM live-trade execution is performed."
