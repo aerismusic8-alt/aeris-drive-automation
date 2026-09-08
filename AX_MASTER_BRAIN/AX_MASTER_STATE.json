@@ -1,8 +1,8 @@
 {
-  "schema_version": "1.3",
+  "schema_version": "1.4",
   "storage_role": "A_MASTER_BRAIN_SINGLE_SOURCE_OF_TRUTH",
   "status": "VERIFIED",
-  "last_updated_utc": "2026-09-05",
+  "last_updated_utc": "2026-09-08T01:22:00Z",
   "authority": "K_FINAL_AUTHORITY",
   "identity_authority": "A_MASTER_BRAIN",
   "model_independence": true,
@@ -33,7 +33,8 @@
     "Preserve every task across channels",
     "Model-local memory never outranks A_MASTER_BRAIN",
     "Model switching requires rehydration and verification",
-    "Continuous Reflection must audit claims, evidence, uncertainty, conflicts, lessons and state before continuation"
+    "Continuous Reflection must audit claims, evidence, uncertainty, conflicts, lessons and state before continuation",
+    "Exactly one canonical current_work may be active at a time"
   ],
   "company_priority": [
     "P1 Revenue",
@@ -42,10 +43,16 @@
     "P4 Financial Control",
     "P5 Autonomous Execution"
   ],
+  "current_work_ref": {
+    "task_id": "AICS-LIVE-TRADING",
+    "source": "AX_MASTER_BRAIN/AX_MASTER_TASK_REGISTRY_v2.json",
+    "rule": "This is the only canonical active current-work identity. Runtime mission details and execution evidence may be attached to the same task ID; no competing current-work registry is authoritative."
+  },
   "rehydration_protocol": [
     "LOAD_REHYDRATION_CONTRACT",
     "LOAD_MASTER_STATE",
     "LOAD_MASTER_TASK_REGISTRY",
+    "RESOLVE_SINGLE_CURRENT_WORK",
     "LOAD_LATEST_EVIDENCE_AND_VERIFICATION",
     "RECONSTRUCT_IDENTITY_MISSION_DECISIONS_TASKS_KNOWLEDGE_STATE",
     "VERIFY_CONSISTENCY",
@@ -82,7 +89,7 @@
     "continuous_reflection": "VERIFIED",
     "file_id_persistence": "VERIFIED"
   },
-  "critical_continuity_gap": "NONE — canonical File ID manifest is populated with durable IDs and exact content hashes and has passed the acceptance suite.",
+  "critical_continuity_gap": "NONE for canonical storage model: current_work is resolved from the authoritative Master Task Registry. Runtime integration and fresh-channel acceptance remain evidence gates.",
   "verification_requirements": [
     "runtime startup load",
     "state write-back after transitions",
@@ -93,7 +100,8 @@
     "two-model/two-runtime portability test",
     "conflict resolution and source-of-truth precedence test",
     "continuous reflection acceptance tests",
-    "canonical File ID manifest population and verification"
+    "canonical File ID manifest population and verification",
+    "single current-work continuity test"
   ],
   "verified_evidence": {
     "github_actions_run": 33707158558,
