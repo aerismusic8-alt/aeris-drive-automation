@@ -2,13 +2,14 @@ name: AKATH 24x7 Acceptance Gate v2
 
 on:
   push:
-    branches:
-      - main
+    branches: [main]
     paths:
       - '.github/workflows/akath-24x7-acceptance-v2.yml'
+      - 'AX_MASTER_BRAIN/**'
       - 'AKATH/runtime/**'
       - 'AKATH/probes/**'
       - 'AKATH/tests/**'
+      - 'tests/master_brain/**'
   schedule:
     - cron: "2-59/5 * * * *"
   workflow_dispatch:
@@ -74,6 +75,13 @@ jobs:
           if (-not $?) { throw 'AKATH_LEGACY_IDENTITY_AUDIT_FAILED' }
           "AKATH_AUDIT_PASS=true" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
 
+      - name: Run AX identity migration tests
+        shell: powershell -NoProfile -ExecutionPolicy Bypass -File {0}
+        run: |
+          $ErrorActionPreference = 'Stop'
+          python -m pytest tests/master_brain/ax_akath_identity_migration_tests.py -q
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
       - name: Run and verify one autonomous AKATH cycle
         shell: powershell -NoProfile -ExecutionPolicy Bypass -File {0}
         run: |
@@ -90,7 +98,8 @@ jobs:
           $evidence = Get-Content -Raw -LiteralPath $state.evidence_ref | ConvertFrom-Json
           if ($evidence.verification_status -ne 'VERIFIED') { throw 'AKATH_EVIDENCE_NOT_VERIFIED' }
           if ($evidence.rehydration.rehydration_status -ne 'VERIFIED') { throw 'AKATH_REHYDRATION_NOT_VERIFIED' }
-          if ($evidence.rehydration.identity -ne 'A') { throw 'AKATH_IDENTITY_NOT_A' }
+          if ($evidence.rehydration.identity -ne 'AX') { throw 'AKATH_IDENTITY_NOT_AX' }
+          if ($evidence.rehydration.organization -ne 'AKATH') { throw 'AKATH_ORGANIZATION_NOT_AKATH' }
           if ($evidence.rehydration.execution_authorized -ne $false) { throw 'AKATH_REHYDRATION_AUTHORITY_BYPASS' }
           if ($evidence.next_job_ready -ne $true) { throw 'AKATH_NEXT_JOB_NOT_READY' }
           "AKATH_RUN_ID=$($state.run_id)" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
@@ -106,96 +115,6 @@ jobs:
           python "$env:GITHUB_WORKSPACE/AKATH/tests/rehydration_adapter_tests.py"
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           "AKATH_ADAPTER_PASS=true" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
-
-      - name: Record scheduled autonomous cycle
-        if: always() && github.event_name == 'schedule'
-        shell: powershell -NoProfile -ExecutionPolicy Bypass -File {0}
-        run: |
-          $ErrorActionPreference = 'Stop'
-          $proofDir = Join-Path $env:GITHUB_WORKSPACE 'AKATH/VERIFICATION'
-          New-Item -ItemType Directory -Force -Path $proofDir | Out-Null
-          $ledgerPath = Join-Path $proofDir 'runtime-cycle-ledger-v2.json'
-
-          if (Test-Path -LiteralPath $ledgerPath) {
-            $ledger = Get-Content -Raw -LiteralPath $ledgerPath | ConvertFrom-Json
-          } else {
-            $ledger = [pscustomobject]@{ schema = 'AKATH_RUNTIME_CYCLE_LEDGER_V2'; acceptance = 'PENDING'; consecutive_successes = 0; cycles = @() }
-          }
-
-          $cycles = @($ledger.cycles)
-          $pass = ($env:AKATH_AUDIT_PASS -eq 'true' -and $env:AKATH_RUNTIME_PASS -eq 'true' -and $env:AKATH_ADAPTER_PASS -eq 'true')
-          $result = if ($pass) { 'PASS' } else { 'FAIL' }
-          $errorClass = if ($pass) { '' } elseif ($env:AKATH_AUDIT_PASS -ne 'true') { 'LEGACY_IDENTITY_AUDIT_FAILED' } elseif ($env:AKATH_RUNTIME_PASS -ne 'true') { 'AKATH_RUNTIME_FAILED' } elseif ($env:AKATH_ADAPTER_PASS -ne 'true') { 'AKATH_ADAPTER_TEST_FAILED' } else { 'AKATH_ACCEPTANCE_FAILED' }
-
-          $record = [ordered]@{
-            sequence = $cycles.Count + 1
-            github_run_id = [string]'${{ github.run_id }}'
-            github_run_number = [int64]'${{ github.run_number }}'
-            event = 'schedule'
-            recorded_at_utc = [DateTime]::UtcNow.ToString('o')
-            result = $result
-            error_class = $errorClass
-            audit_pass = ($env:AKATH_AUDIT_PASS -eq 'true')
-            runtime_pass = ($env:AKATH_RUNTIME_PASS -eq 'true')
-            adapter_pass = ($env:AKATH_ADAPTER_PASS -eq 'true')
-            runtime_run_id = if ($env:AKATH_RUN_ID) { $env:AKATH_RUN_ID } else { '' }
-            runtime_job_id = if ($env:AKATH_JOB_ID) { $env:AKATH_JOB_ID } else { '' }
-            evidence_ref = if ($env:AKATH_EVIDENCE) { $env:AKATH_EVIDENCE } else { '' }
-          }
-          $cycles += [pscustomobject]$record
-          $cycles = @($cycles | Select-Object -Last 20)
-
-          $streak = 0
-          for ($i = $cycles.Count - 1; $i -ge 0; $i--) {
-            if ($cycles[$i].result -ne 'PASS') { break }
-            $streak++
-          }
-
-          $ledgerOut = [ordered]@{
-            schema = 'AKATH_RUNTIME_CYCLE_LEDGER_V2'
-            acceptance = if ($streak -ge 3) { 'PASS' } else { 'PENDING' }
-            consecutive_successes = $streak
-            required_consecutive_successes = 3
-            last_updated_utc = [DateTime]::UtcNow.ToString('o')
-            cycles = $cycles
-          }
-          $ledgerOut | ConvertTo-Json -Depth 12 | Set-Content -Encoding UTF8 -Path $ledgerPath
-          "AKATH_24X7_V2_STREAK=$streak/3" | Out-File -FilePath $env:GITHUB_STEP_SUMMARY -Append -Encoding utf8
-
-          git config user.name 'AKATH Autonomous Acceptance'
-          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-
-          if ($streak -ge 3) {
-            $last3 = @($cycles | Select-Object -Last 3)
-            $record = [ordered]@{
-              schema = 'AKATH_AUTONOMY_24X7_ACCEPTANCE_V2'
-              acceptance = 'PASS'
-              verified_at_utc = [DateTime]::UtcNow.ToString('o')
-              workflow = 'AKATH 24x7 Acceptance Gate v2'
-              schedule = '2-59/5 * * * *'
-              chat_intervention_between_cycles = $false
-              cycle_count = 3
-              source = 'AKATH_RUNTIME_CYCLE_LEDGER_V2'
-              cycles = $last3
-            }
-            $proofPath = Join-Path $proofDir 'three-cycle-proof-v2.json'
-            $record | ConvertTo-Json -Depth 12 | Set-Content -Encoding UTF8 -Path $proofPath
-            if ((Get-Content -Raw $proofPath | ConvertFrom-Json).acceptance -ne 'PASS') { throw 'AKATH_PROOF_SELF_CHECK_FAILED' }
-
-            $statusPath = Join-Path $env:GITHUB_WORKSPACE 'AKATH/STATUS.md'
-            $status = Get-Content -Raw -LiteralPath $statusPath
-            $replacement = @('## 24/7 verification','','**VERIFIED** — three successive successful scheduled autonomous runtime cycles were verified by the AKATH 24x7 Acceptance Gate v2 without ChatGPT intervention.','','### Acceptance proof','','- Proof: `AKATH/VERIFICATION/three-cycle-proof-v2.json`','- Ledger: `AKATH/VERIFICATION/runtime-cycle-ledger-v2.json`','- Workflow: `.github/workflows/akath-24x7-acceptance-v2.yml`','- Criterion: three consecutive successful scheduled runs','- Runtime: self-hosted `PC2-CODING-EXECUTOR`','- A MASTER BRAIN rehydration: VERIFIED','- Execution authority bypass during rehydration: false','','### Integrity boundary','','A dashboard heartbeat alone is not sufficient proof. The persisted three-cycle acceptance record is the authoritative runtime evidence.') -join [Environment]::NewLine
-            $status = [regex]::Replace($status, '(?ms)## 24/7 verification\r?\n.*?(?=\r?\n## |\z)', $replacement, 1)
-            Set-Content -Encoding UTF8 -Path $statusPath -Value $status
-          }
-
-          git add AKATH/VERIFICATION/runtime-cycle-ledger-v2.json
-          if ($streak -ge 3) { git add AKATH/VERIFICATION/three-cycle-proof-v2.json AKATH/STATUS.md }
-          git commit -m 'chore: record AKATH v2 autonomous acceptance cycle' -m "Result: $result; consecutive_successes: $streak/3"
-          git pull --rebase origin main
-          if ($LASTEXITCODE -ne 0) { throw 'AKATH_V2_LEDGER_REBASE_FAILED' }
-          git push origin HEAD:main
-          if ($LASTEXITCODE -ne 0) { throw 'AKATH_V2_LEDGER_PUSH_FAILED' }
 
       - name: Report acceptance state
         if: always()
