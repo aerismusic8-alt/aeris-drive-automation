@@ -1,0 +1,41 @@
+{
+  "schema_version": "1.0",
+  "status": "ACTIVE",
+  "organization": "AKATH",
+  "executive_identity": "AX",
+  "final_authority": "K_FINAL_AUTHORITY",
+  "master_brain": {
+    "name": "A MASTER BRAIN",
+    "role": "KNOWLEDGE_AND_ACCUMULATED_EXPERIENCE",
+    "authoritative_for_current_company_state": false
+  },
+  "authoritative_sources": [
+    "AX_MASTER_BRAIN/AX_MASTER_STATE.json",
+    "AX_MASTER_BRAIN/AX_MASTER_TASK_REGISTRY_v2.json",
+    "verified evidence and verification records"
+  ],
+  "load_order": [
+    "CONTRACT",
+    "AKATH_AX_STATE",
+    "MASTER_TASK_REGISTRY",
+    "LATEST_EVIDENCE",
+    "LATEST_VERIFICATION",
+    "A_MASTER_BRAIN_KNOWLEDGE_AND_EXPERIENCE",
+    "CONFLICT_RESOLUTION",
+    "AX_CONTEXT_RECONSTRUCTION",
+    "VERIFICATION"
+  ],
+  "non_authoritative_sources": [
+    "CHAT_HISTORY",
+    "CHATGPT_MEMORY",
+    "MODEL_LOCAL_MEMORY",
+    "DASHBOARDS",
+    "RUNTIME_PROJECTIONS",
+    "MODEL_INFERENCE"
+  ],
+  "failure_closed": true,
+  "chat_memory_authority": false,
+  "model_memory_authority": false,
+  "execution_authorized_during_rehydration": false,
+  "provenance_required": true
+}
