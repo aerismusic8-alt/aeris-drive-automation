@@ -43,14 +43,22 @@ def main() -> None:
         })
 
         registry = json.loads(tasks.read_text(encoding="utf-8"))
-        assert registry["schema_version"] == "2.2", registry
+        assert registry["schema_version"] == "2.3", registry
         assert isinstance(registry.get("tasks"), list), registry
         assert len(registry["tasks"]) == 12, len(registry["tasks"])
         ids = [task.get("task_id") for task in registry["tasks"]]
         assert all(ids), ids
         assert len(ids) == len(set(ids)), ids
+        assert all(task.get("task_type") in {"SYSTEM", "MISSION"} for task in registry["tasks"]), registry
+        assert all(task.get("category") for task in registry["tasks"]), registry
+        missions = [task for task in registry["tasks"] if task.get("task_type") == "MISSION"]
+        assert len(missions) == 2, missions
+        assert all(isinstance(task.get("details", {}).get("target"), dict) for task in missions), missions
+        assert not any(task.get("task_id") == "AICS-PAPER-RISK-ENGINE" for task in registry["tasks"]), registry
         assert registry["current_work"]["task_id"] in ids, registry["current_work"]
         current = next(task for task in registry["tasks"] if task["task_id"] == registry["current_work"]["task_id"])
+        assert current["task_type"] == "SYSTEM", current
+        assert current["category"] == "REVENUE", current
         assert current["details"]["current_step"] == "CONTROL_PLANE_BLOCKER_REPAIR", current
         assert current["details"]["next_step"] == "RUN_SELF_HOSTED_XM_VERIFICATION", current
 
@@ -64,6 +72,7 @@ def main() -> None:
         assert result["source_conflicts"] == [], result
         assert result["task_count"] == 12, result
         assert result["task_ids"] == ids, result
+        assert result["task_type_counts"] == {"SYSTEM": 10, "MISSION": 2}, result
         assert result["current_work_task_id"] == registry["current_work"]["task_id"], result
         assert result["current_work"] == current, result
 
@@ -74,7 +83,7 @@ def main() -> None:
         assert result["execution_authorized"] is False, result
         assert "TASK_REGISTRY_MISSING" in result["failure_reasons"], result
 
-    print("REHYDRATION_ADAPTER_PASS authoritative task registry + exact count + fail-closed missing registry")
+    print("REHYDRATION_ADAPTER_PASS system/mission model + canonical registry + exact count + fail-closed missing registry")
 
 
 if __name__ == "__main__":

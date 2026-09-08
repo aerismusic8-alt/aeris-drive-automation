@@ -18,6 +18,8 @@ REQUIRED_STATE = {
     "authority": "K_FINAL_AUTHORITY",
     "identity_authority": "A_MASTER_BRAIN",
 }
+ALLOWED_TASK_TYPES = {"SYSTEM", "MISSION"}
+ALLOWED_CATEGORIES = {"CORE", "REVENUE", "OPERATIONS", "INFRASTRUCTURE", "FINANCE", "INPUT"}
 
 
 def fail(*reasons: str) -> dict[str, Any]:
@@ -50,10 +52,11 @@ def validate_task_registry(registry: Mapping[str, Any]) -> dict[str, Any]:
     tasks = registry.get("tasks")
     errors: list[str] = []
     if not isinstance(tasks, list):
-        return {"valid": False, "task_count": 0, "task_ids": [], "errors": ["TASK_LIST_MISSING"]}
+        return {"valid": False, "task_count": 0, "task_ids": [], "task_type_counts": {}, "errors": ["TASK_LIST_MISSING"]}
 
     task_ids: list[str] = []
     seen: set[str] = set()
+    type_counts = {"SYSTEM": 0, "MISSION": 0}
     for task in tasks:
         if not isinstance(task, Mapping):
             errors.append("TASK_RECORD_INVALID")
@@ -68,13 +71,28 @@ def validate_task_registry(registry: Mapping[str, Any]) -> dict[str, Any]:
         task_ids.append(task_id)
         if not str(task.get("name") or "").strip():
             errors.append("TASK_NAME_MISSING")
-        if not isinstance(task.get("details"), Mapping):
+
+        task_type = str(task.get("task_type") or "").strip().upper()
+        if task_type not in ALLOWED_TASK_TYPES:
+            errors.append(f"TASK_TYPE_MISSING:{task_id}" if not task_type else f"TASK_TYPE_INVALID:{task_id}")
+        else:
+            type_counts[task_type] += 1
+
+        category = str(task.get("category") or "").strip().upper()
+        if category not in ALLOWED_CATEGORIES:
+            errors.append(f"TASK_CATEGORY_MISSING:{task_id}" if not category else f"TASK_CATEGORY_INVALID:{task_id}")
+
+        details = task.get("details")
+        if not isinstance(details, Mapping):
             errors.append(f"TASK_DETAILS_MISSING:{task_id}")
+        elif task_type == "MISSION" and not isinstance(details.get("target"), Mapping):
+            errors.append(f"MISSION_TARGET_MISSING:{task_id}")
 
     return {
         "valid": not errors,
         "task_count": len(tasks),
         "task_ids": task_ids,
+        "task_type_counts": type_counts,
         "errors": errors,
     }
 
@@ -138,7 +156,7 @@ def rehydrate() -> dict[str, Any]:
             reasons.append(f"STATE_{key.upper()}_INVALID")
     if state.get("model_independence") is not True:
         reasons.append("MODEL_INDEPENDENCE_INVALID")
-    if str(tasks.get("schema_version")) != "2.2":
+    if str(tasks.get("schema_version")) != "2.3":
         reasons.append("TASK_REGISTRY_VERSION_INVALID")
     if state.get("status") != "VERIFIED":
         reasons.append("MASTER_STATE_NOT_VERIFIED")
@@ -168,6 +186,7 @@ def rehydrate() -> dict[str, Any]:
         "mission": state.get("identity", {}).get("mission"),
         "task_count": registry_validation["task_count"],
         "task_ids": registry_validation["task_ids"],
+        "task_type_counts": registry_validation["task_type_counts"],
         "master_state_version": state.get("schema_version"),
         "current_work": current_work,
         "current_work_task_id": current_work["task_id"],

@@ -1,9 +1,11 @@
 {
-  "schema_version": "2.2",
+  "schema_version": "2.3",
   "registry_role": "AUTHORITATIVE_MASTER_TASK_STATUS",
   "authority": "K_FINAL_AUTHORITY",
   "task_identity_policy": "Every task has exactly one stable task_id. The task_id is the only canonical identity used across Master Brain, runtime, execution, evidence, verification, dashboards and chats.",
   "task_record_policy": "Each task is one canonical record containing its operational details. Runtime ledgers, evidence, verification and dashboards may attach records to the same task_id but may not create a competing task record or task identity.",
+  "task_type_policy": "Every task is exactly one of SYSTEM or MISSION. SYSTEM tasks are enduring company components that must operate and maintain their verified baseline 24/7. MISSION tasks are finite objectives that complete when their target is achieved and verified, then close while retaining outcome experience.",
+  "category_policy": "Categories only organize canonical tasks for management. Categories are not a second registry and cannot create tasks.",
   "task_count_policy": "Task count is derived only from the tasks array in this registry at read time. Never pad, infer, backfill, merge, or source extra tasks from chat, dashboards, runtime ledgers, execution registries or model memory to reach a requested count.",
   "current_work_policy": "Exactly one current_work record may be active. It must reference an existing task_id in this registry. current_work is a pointer, not a second task record.",
   "current_work": {
@@ -16,13 +18,17 @@
     "heartbeat_is_not_task_execution": true,
     "executing_requires_actual_start_trusted_timestamp_and_evidence": true,
     "completed_requires_verification": true,
+    "system_completed_means_operational_baseline": true,
+    "mission_completed_requires_target_verification_then_close": true,
     "missing_timestamp": "NOT RECORDED"
   },
   "tasks": [
     {
       "task_id": "AKATH-AUTONOMOUS-COMPANY-ENGINE",
+      "task_type": "SYSTEM",
+      "category": "CORE",
       "name": "AKATH Autonomous Company Engine",
-      "objective": "Build the autonomous company operating engine under A MASTER BRAIN authority.",
+      "objective": "Build and maintain the autonomous company operating engine under A MASTER BRAIN authority.",
       "priority": "P2_CONTINUITY",
       "approval_status": "QUEUED",
       "execution_status": "QUEUED",
@@ -39,33 +45,14 @@
         "retry_fallback": [],
         "business_revenue_state": "NOT_STARTED"
       },
-      "note": "ไม่ได้บันทึกเป็น APPROVED"
-    },
-    {
-      "task_id": "AICS-PAPER-RISK-ENGINE",
-      "name": "AICS Paper Risk Engine",
-      "objective": "Maintain and verify non-live portfolio risk controls before any live-money activation.",
-      "priority": "P4_FINANCIAL_CONTROL",
-      "approval_status": "COMPLETED",
-      "execution_status": "COMPLETED",
-      "timestamp": "NOT RECORDED — ห้ามเดาเวลา",
-      "details": {
-        "approval_required_next": "NONE",
-        "current_step": "COMPLETED",
-        "next_step": "MAINTENANCE_ONLY",
-        "worker": "AX",
-        "output": [],
-        "evidence": [],
-        "verification": [],
-        "blockers": [],
-        "retry_fallback": [],
-        "business_revenue_state": "VERIFIED_NON_LIVE"
-      }
+      "note": "SYSTEM task: after VERIFIED COMPLETED, preserve the operational baseline continuously."
     },
     {
       "task_id": "AICS-LIVE-TRADING",
+      "task_type": "SYSTEM",
+      "category": "REVENUE",
       "name": "XM Strategy & Revenue Pipeline",
-      "objective": "Build and verify the guarded XM revenue pipeline from market data through strategy, risk, execution and business verification without enabling unrestricted live money autonomously.",
+      "objective": "Build and maintain the guarded XM revenue pipeline from market data through strategy, risk, execution and business verification without enabling unrestricted live money autonomously.",
       "priority": "P1_REVENUE",
       "approval_status": "APPROVED",
       "execution_status": "NON-LIVE / GUARDRAIL",
@@ -90,11 +77,14 @@
         ],
         "business_revenue_state": "ACTIVE / NON-LIVE"
       },
-      "continuity_rule": "Reuse this same task_id across chats, channels, PCs and runtime restarts until the task is explicitly completed, failed-and-closed, or superseded by a recorded K decision.",
-      "live_money_enabled": false
+      "continuity_rule": "Reuse this same task_id across chats, channels, PCs and runtime restarts until the system is explicitly superseded by a recorded K decision.",
+      "live_money_enabled": false,
+      "note": "SYSTEM task: this is the enduring execution system. Specific financial targets are separate MISSION tasks linked to this system."
     },
     {
       "task_id": "AX-EXECUTIVE-REPORTING",
+      "task_type": "SYSTEM",
+      "category": "OPERATIONS",
       "name": "AX Executive Reporting",
       "objective": "Produce task reporting from the authoritative Master Registry without inventing or padding records.",
       "priority": "P2_CONTINUITY",
@@ -116,6 +106,8 @@
     },
     {
       "task_id": "AKATH-DASHBOARD",
+      "task_type": "SYSTEM",
+      "category": "OPERATIONS",
       "name": "Dashboard",
       "objective": "Expose registry and runtime status as a read-only projection of canonical task state.",
       "priority": "P2_CONTINUITY",
@@ -137,6 +129,8 @@
     },
     {
       "task_id": "AKATH-CLOUD-MIGRATION",
+      "task_type": "MISSION",
+      "category": "INFRASTRUCTURE",
       "name": "Cloud Migration",
       "objective": "Migrate approved AKATH execution components while preserving canonical Master Brain identity and task continuity.",
       "priority": "P5_AUTONOMOUS_EXECUTION",
@@ -153,11 +147,18 @@
         "verification": [],
         "blockers": [],
         "retry_fallback": [],
-        "business_revenue_state": "NOT_STARTED"
-      }
+        "business_revenue_state": "NOT_STARTED",
+        "target": {
+          "metric": "migration_status",
+          "value": "VERIFIED"
+        }
+      },
+      "completion_rule": "Complete and verify the approved migration target, then close this mission."
     },
     {
       "task_id": "AKATH-NOTIFICATION-ACTION-ALERT",
+      "task_type": "SYSTEM",
+      "category": "OPERATIONS",
       "name": "Notification / Action Alert",
       "objective": "Provide actionable notifications from verified runtime and task state.",
       "priority": "P3_INPUT_LIMIT",
@@ -179,6 +180,8 @@
     },
     {
       "task_id": "FIN-REVENUE-CRYPTO",
+      "task_type": "SYSTEM",
+      "category": "FINANCE",
       "name": "Financial Revenue → Crypto",
       "objective": "Validate financial revenue-to-crypto workflow under explicit guards; no live transfer without K authorization and verification.",
       "priority": "P4_FINANCIAL_CONTROL",
@@ -201,6 +204,8 @@
     },
     {
       "task_id": "AKATH-MISSION-MEMORY",
+      "task_type": "SYSTEM",
+      "category": "CORE",
       "name": "Mission Memory",
       "objective": "Preserve mission and continuity through the canonical Master Brain without creating a competing task registry.",
       "priority": "P2_CONTINUITY",
@@ -222,6 +227,8 @@
     },
     {
       "task_id": "AKATH-UNIVERSAL-INPUT-GATEWAY",
+      "task_type": "SYSTEM",
+      "category": "INPUT",
       "name": "Universal Input Gateway",
       "objective": "Route incoming instructions into the authoritative task system without creating ambiguous task identities.",
       "priority": "P3_INPUT_LIMIT",
@@ -243,6 +250,8 @@
     },
     {
       "task_id": "AKATH-6AI-REVENUE-TEAM",
+      "task_type": "SYSTEM",
+      "category": "REVENUE",
       "name": "6-AI Revenue Team",
       "objective": "Coordinate AI workers against canonical task identities and revenue objectives without duplicating the task catalog.",
       "priority": "P1_REVENUE",
@@ -264,16 +273,18 @@
     },
     {
       "task_id": "AKATH-FILE-ID-PERSISTENCE",
+      "task_type": "SYSTEM",
+      "category": "CORE",
       "name": "File ID Persistence",
       "objective": "Maintain canonical file identifiers and manifests needed to rehydrate the authoritative task system.",
       "priority": "P2_CONTINUITY",
       "approval_status": "COMPLETED",
-      "execution_status": "COMPLETED",
+      "execution_status": "COMPLETED / OPERATIONAL",
       "timestamp": "NOT RECORDED — ห้ามเดาเวลา",
       "details": {
         "approval_required_next": "NONE",
         "current_step": "COMPLETED",
-        "next_step": "MAINTENANCE_ONLY",
+        "next_step": "MAINTENANCE_24_7",
         "worker": "AX",
         "output": [],
         "evidence": [
@@ -286,8 +297,37 @@
         "retry_fallback": [],
         "business_revenue_state": "VERIFIED"
       },
-      "note": "Canonical manifest persisted and passed GitHub Actions run 33707158558: File ID Persistence + Manifest Builder acceptance."
+      "note": "SYSTEM task: completed means verified operational baseline and must remain maintained."
+    },
+    {
+      "task_id": "MISSION-XM-PORTFOLIO-1M",
+      "task_type": "MISSION",
+      "category": "REVENUE",
+      "name": "XM Portfolio → 1,000,000 THB",
+      "objective": "Build and verify an XM portfolio until the verified portfolio value reaches 1,000,000 THB.",
+      "priority": "P1_REVENUE",
+      "approval_status": "APPROVED",
+      "execution_status": "QUEUED / NON-LIVE",
+      "timestamp": "NOT RECORDED — ห้ามเดาเวลา",
+      "details": {
+        "approval_required_next": "STRATEGY_ACTIVATION_K",
+        "current_step": "QUEUED",
+        "next_step": "RUN_SELF_HOSTED_XM_VERIFICATION",
+        "worker": "AX",
+        "output": [],
+        "evidence": [],
+        "verification": [],
+        "blockers": [],
+        "retry_fallback": [],
+        "business_revenue_state": "TARGET_1000000_THB",
+        "target": {
+          "metric": "portfolio_value_thb",
+          "value": 1000000
+        }
+      },
+      "completion_rule": "Complete only when the 1,000,000 THB portfolio target is actually achieved and independently verified; then close the mission and retain the result as success/failure experience."
     }
   ],
-  "reporting_rule": "AX must read this registry first for every task count and task status report. The number reported must equal the current length of tasks exactly. Every reported task must include its task_id, name, approval_status, execution_status, timestamp, and linked canonical details. AX must never add an external task to make the count match a prior report. If the registry changes from 8 tasks to 7, report 7; if it changes to 9, report 9. Any task not present in this registry is not a master task and must not be reported as one."
+  "reporting_rule": "AX must read this registry first for every task count and task status report. The number reported must equal the current length of tasks exactly. Every reported task must include task_id, task_type, category, name, approval_status, execution_status, timestamp, and linked canonical details. AX must never add an external task to make the count match a prior report. If the registry changes from 8 tasks to 7, report 7; if it changes to 9, report 9. Any task not present in this registry is not a master task and must not be reported as one.",
+  "mission_close_rule": "A MISSION is not removed when completed. It transitions to CLOSED after target verification, while its outcome, evidence and lessons remain attached to the same task_id as durable experience."
 }
