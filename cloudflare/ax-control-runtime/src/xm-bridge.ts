@@ -40,6 +40,18 @@ export type XmHeartbeat = {
   received_at: string;
 };
 
+export type XmMarketSnapshot = {
+  account_scope: string;
+  received_at: string;
+  snapshots: Array<{
+    symbol: string;
+    timeframe: string;
+    bars: Array<Record<string, unknown>>;
+    source?: string;
+    read_only?: boolean;
+  }>;
+};
+
 const ALLOWED = new Set(['GET_ACCOUNT_STATE','GET_POSITIONS','GET_SYMBOL_STATE','GET_HISTORICAL_BARS','SUBMIT_ORDER','MODIFY_POSITION','CLOSE_POSITION']);
 const BLOCKED = new Set(['DEPOSIT','WITHDRAW','CHANGE_ACCOUNT_SETTINGS','EXPORT_CREDENTIALS']);
 const SCOPE = 'XM_MICRO_K_DESIGNATED_ACCOUNT';
@@ -132,6 +144,20 @@ export class AxXmExecutionQueue {
       return json({ ok: true, account_scope: SCOPE, received_at: heartbeat.received_at }, 201);
     }
 
+    if (path === '/market-data' && request.method === 'POST') {
+      if (!body || typeof body !== 'object' || Array.isArray(body) || (body as any).account_scope !== SCOPE || !Array.isArray((body as any).snapshots)) return json({ error: 'MARKET_DATA_SCHEMA_INVALID' }, 422);
+      const snapshots = (body as any).snapshots as Array<Record<string, unknown>>;
+      if (snapshots.some(item => !item || typeof item !== 'object' || typeof item.symbol !== 'string' || typeof item.timeframe !== 'string' || !Array.isArray(item.bars))) return json({ error: 'MARKET_DATA_SNAPSHOT_INVALID' }, 422);
+      const market: XmMarketSnapshot = { account_scope: SCOPE, received_at: new Date().toISOString(), snapshots: snapshots.map(item => ({ symbol: String(item.symbol), timeframe: String(item.timeframe), bars: item.bars as Array<Record<string, unknown>>, source: typeof item.source === 'string' ? item.source : undefined, read_only: item.read_only !== false })) };
+      await this.state.storage.put('market-data', market);
+      return json({ ok: true, account_scope: SCOPE, received_at: market.received_at, snapshots: market.snapshots.length }, 201);
+    }
+
+    if (path === '/market-data' && request.method === 'GET') {
+      const market = await this.state.storage.get<XmMarketSnapshot>('market-data');
+      return market ? json({ ok: true, market_data: market }) : json({ ok: true, market_data: null });
+    }
+
     if (path.startsWith('/result/') && request.method === 'GET') {
       const requestId = decodeURIComponent(path.slice('/result/'.length));
       const result = await this.state.storage.get<XmResult>(`result:${requestId}`);
@@ -141,7 +167,8 @@ export class AxXmExecutionQueue {
     if (path === '/status' && request.method === 'GET') {
       const latest = commands.slice(-20).map(c => ({ request_id: c.request_id, operation: c.operation, account_scope: c.account_scope, terminal: (c as any)._terminal || null }));
       const heartbeat = await this.state.storage.get<XmHeartbeat>('heartbeat');
-      return json({ ok: true, service: 'AX XM EXECUTION BRIDGE', mode: 'READ_ONLY_PENDING_HANDSHAKE', live_execution_enabled: false, kill_switch: true, account_scope: SCOPE, queued: commands.length, heartbeat: heartbeat ? { received_at: heartbeat.received_at, account_scope: heartbeat.account_scope, terminal_connected: heartbeat.terminal_connected === true, trade_allowed: heartbeat.trade_allowed === true, expert_allowed: heartbeat.expert_allowed === true } : null, recent: latest });
+      const market = await this.state.storage.get<XmMarketSnapshot>('market-data');
+      return json({ ok: true, service: 'AX XM EXECUTION BRIDGE', mode: 'READ_ONLY_PENDING_HANDSHAKE', live_execution_enabled: false, kill_switch: true, account_scope: SCOPE, queued: commands.length, market_data_available: Boolean(market), market_data_received_at: market?.received_at || null, heartbeat: heartbeat ? { received_at: heartbeat.received_at, account_scope: heartbeat.account_scope, terminal_connected: heartbeat.terminal_connected === true, trade_allowed: heartbeat.trade_allowed === true, expert_allowed: heartbeat.expert_allowed === true } : null, recent: latest });
     }
     return json({ error: 'NOT_FOUND' }, 404);
   }
