@@ -1,5 +1,5 @@
 {
-  "schema_version": "1.4",
+  "schema_version": "1.5",
   "storage_role": "A_MASTER_BRAIN_SINGLE_SOURCE_OF_TRUTH",
   "status": "VERIFIED",
   "last_updated_utc": "2026-09-08T01:48:18Z",
@@ -39,7 +39,11 @@
     "Every master task has exactly one stable task_id",
     "All task details are bound to the same canonical task_id",
     "Task counts are derived only from the current Master Task Registry tasks array",
-    "No system may invent, pad, merge or source extra master tasks outside the Master Task Registry"
+    "No system may invent, pad, merge or source extra master tasks outside the Master Task Registry",
+    "Every task is exactly SYSTEM or MISSION",
+    "SYSTEM tasks are enduring components that must maintain their verified operational baseline continuously",
+    "MISSION tasks are finite objectives that close after target achievement and verification",
+    "Categories organize canonical tasks but cannot create tasks"
   ],
   "company_priority": [
     "P1 Revenue",
@@ -52,9 +56,13 @@
     "source": "AX_MASTER_BRAIN/AX_MASTER_TASK_REGISTRY_v2.json",
     "status": "IMPLEMENTED_PENDING_ACCEPTANCE_VERIFICATION",
     "identity_rule": "1 task_id = 1 task = 1 canonical task record",
+    "type_rule": "Every task is exactly SYSTEM or MISSION",
+    "system_rule": "SYSTEM tasks build to VERIFIED COMPLETED and then remain under 24/7 operational maintenance; failure triggers recovery and re-verification without changing task identity",
+    "mission_rule": "MISSION tasks build toward a finite target; target achievement requires verification, then the task transitions to CLOSED while retaining outcome experience",
+    "category_rule": "Each canonical task has one management category from the small controlled set; categories are labels, not a second task registry",
     "count_rule": "reported_task_count = len(tasks) from Master Task Registry at read time",
     "no_padding_rule": "Never add external or historical task records to reach a requested count",
-    "detail_rule": "Objective, priority, approval, execution, timestamp, current step, next step, worker, output, evidence, verification, blockers, retry/fallback and business/revenue state remain linked to the same task_id",
+    "detail_rule": "Objective, type, category, priority, approval, execution, timestamp, current step, next step, worker, output, evidence, verification, blockers, retry/fallback and business/revenue state remain linked to the same task_id",
     "projection_rule": "Dashboard, chat, runtime ledger and execution registry are projections or execution persistence and cannot create competing task identities"
   },
   "current_work_ref": {
@@ -67,6 +75,7 @@
     "LOAD_MASTER_STATE",
     "LOAD_MASTER_TASK_REGISTRY",
     "VALIDATE_TASK_IDENTITY_UNIQUENESS",
+    "VALIDATE_TASK_TYPE_AND_CATEGORY",
     "RESOLVE_SINGLE_CURRENT_WORK",
     "LOAD_CANONICAL_TASK_RECORD",
     "LOAD_LATEST_EVIDENCE_AND_VERIFICATION",
@@ -105,7 +114,7 @@
     "continuous_reflection": "VERIFIED",
     "file_id_persistence": "VERIFIED"
   },
-  "critical_continuity_gap": "TASK_REGISTRY_CANONICAL_IDENTITY_HARDENING_PENDING_ACCEPTANCE: the authoritative registry now carries stable task_id records and exact-count/no-padding rules; CI acceptance must verify runtime rehydration uses those records.",
+  "critical_continuity_gap": "TASK_MODELING_REFINEMENT_PENDING_ACCEPTANCE: canonical tasks now distinguish SYSTEM versus MISSION and categories; runtime acceptance must verify this model is used without creating competing task identities.",
   "verification_requirements": [
     "runtime startup load",
     "state write-back after transitions",
@@ -120,7 +129,10 @@
     "single current-work continuity test",
     "canonical task_id uniqueness and exact registry count test",
     "no task padding or task invention test",
-    "canonical task detail linkage test"
+    "canonical task detail linkage test",
+    "system-versus-mission task type test",
+    "mission target declaration test",
+    "category validation test"
   ],
   "verified_evidence": {
     "github_actions_run": 33707158558,
