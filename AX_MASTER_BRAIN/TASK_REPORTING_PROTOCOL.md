@@ -26,6 +26,8 @@ Example: if the registry has 8 canonical tasks, report 8. If it later has 7, rep
 
 Every task record requires:
 - `task_id`
+- `task_type` (`SYSTEM` or `MISSION`)
+- `category`
 - `name`
 - `objective`
 - `priority`
@@ -36,7 +38,29 @@ Every task record requires:
 
 `details` is the canonical operational envelope for current step, next step, approvals, worker, outputs, evidence, verification, blockers, retry/fallback and business/revenue state.
 
-Duplicate `task_id` values or task records without `task_id` are invalid and must fail closed.
+`MISSION` tasks must declare a target inside `details.target`.
+
+Duplicate `task_id` values, unsupported task types/categories, or task records without required canonical fields are invalid and must fail closed.
+
+## System versus mission lifecycle
+
+### SYSTEM
+A SYSTEM task is an enduring company component.
+
+`BUILD -> VERIFY -> COMPLETED/OPERATIONAL -> MAINTAIN 24/7`
+
+`COMPLETED` establishes the verified operational baseline; it does not retire the task. A fault triggers recovery and re-verification while retaining the same `task_id`.
+
+### MISSION
+A MISSION task is a finite objective with a measurable target.
+
+`START -> EXECUTE -> TARGET -> VERIFY -> COMPLETED -> CLOSED`
+
+After target achievement and verification, the mission closes and retains its result, evidence and lessons under the same `task_id` as durable experience. It is not deleted merely because it is closed.
+
+## Categories
+
+Categories are management labels only. They make tasks easier to group and operate, but they are not a separate registry and cannot create additional tasks.
 
 ## Current work
 
@@ -51,12 +75,14 @@ A new chat/channel/runtime must resolve:
 - APPROVED is not EXECUTING.
 - EXECUTING requires Actual Start + Trusted Timestamp + Execution Evidence.
 - COMPLETED requires Verification.
+- For SYSTEM, COMPLETED means verified operational baseline and continued maintenance is required.
+- For MISSION, COMPLETED means the finite target was achieved and verified, after which the task may transition to CLOSED.
 - HEARTBEAT, dashboard sync, persistence, and execution-registry activity do not by themselves prove business-task execution.
 - If a historical timestamp is not supported by evidence, report `NOT RECORDED — ห้ามเดาเวลา`.
 
 ## Source-of-truth boundaries
 
-- Master Task Registry: authoritative task catalog, identity, status and canonical task details.
+- Master Task Registry: authoritative task catalog, identity, type, category, status and canonical task details.
 - Runtime `AxMissionLedger`: execution-detail persistence only; never a competing task registry.
 - Evidence and verification: proof linked to the same `task_id`; never a source for inventing tasks.
 - Dashboard/task views: derived projections only.
