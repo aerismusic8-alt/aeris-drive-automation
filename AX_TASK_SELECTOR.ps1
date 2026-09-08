@@ -1,3 +1,11 @@
+function Get-AxRetirementPolicy {
+  $path = Join-Path $PSScriptRoot 'AX_MASTER_BRAIN\AX_RETIREMENT_POLICY.json'
+  if (-not (Test-Path $path)) {
+    return [pscustomobject]@{ retired_task_ids=@(); replacement_priority=@() }
+  }
+  return (Get-Content -Raw -Path $path | ConvertFrom-Json)
+}
+
 function Convert-AxMasterPriority {
   param([string]$Priority)
   switch -Regex ($Priority) {
@@ -12,9 +20,11 @@ function Convert-AxMasterPriority {
 }
 
 function Convert-AxMasterTaskState {
-  param($Task)
+  param($Task, $RetiredTaskIds)
   $execution = [string]$Task.execution_status
   $approval = [string]$Task.approval_status
+  $id = [string]$Task.task_id
+  if ($id -in @($RetiredTaskIds)) { return 'RETIRED' }
   if ($execution -match 'RETIRED') { return 'RETIRED' }
   if ($execution -match 'CLOSED') { return 'CLOSED' }
   if ($execution -match '^COMPLETED') { return 'COMPLETED' }
@@ -33,8 +43,10 @@ function Convert-AxMasterRegistry {
     throw 'AX_MASTER_REGISTRY_SCHEMA_NOT_RECOGNIZED'
   }
 
+  $retirementPolicy = Get-AxRetirementPolicy
+  $retiredTaskIds = @($retirementPolicy.retired_businesses | ForEach-Object { @($_.task_ids) })
   $runtimeTasks = foreach ($task in @($MasterRegistry.tasks)) {
-    $state = Convert-AxMasterTaskState -Task $task
+    $state = Convert-AxMasterTaskState -Task $task -RetiredTaskIds $retiredTaskIds
     [pscustomobject]@{
       id = [string]$task.task_id
       domain = [string]$task.category
@@ -58,11 +70,16 @@ function Convert-AxMasterRegistry {
       active = [bool]$MasterRegistry.current_work.active
       task_id = [string]$MasterRegistry.current_work.task_id
     }
+    if ($currentWork.task_id -in $retiredTaskIds) {
+      $replacement = $runtimeTasks | Where-Object { $_.state -notin @('RETIRED','CLOSED','BLOCKED','WAITING_K') } | Sort-Object priority -Descending | Select-Object -First 1
+      if ($replacement) { $currentWork.task_id = [string]$replacement.id }
+    }
   }
 
   [pscustomobject]@{
     source = 'AX_MASTER_BRAIN/AX_MASTER_TASK_REGISTRY_v2.json'
     canonical = $true
+    retirement_policy = 'AX_MASTER_BRAIN/AX_RETIREMENT_POLICY.json'
     policy = [pscustomobject]@{
       terminal_states = @('COMPLETED','BLOCKED','PAUSED','WAITING_K','CLOSED','RETIRED')
       scheduler = [pscustomobject]@{
