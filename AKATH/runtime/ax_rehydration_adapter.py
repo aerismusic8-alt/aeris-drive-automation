@@ -6,7 +6,7 @@ import json
 import os
 import sys
 from pathlib import Path
-from typing import Any
+from typing import Any, Mapping
 
 ROOT = Path(__file__).resolve().parents[2]
 STATE_PATH = Path(os.getenv("AX_MASTER_STATE_PATH", ROOT / "AX_MASTER_BRAIN" / "AX_MASTER_STATE.json"))
@@ -46,6 +46,36 @@ def load_json(path: Path, missing_code: str, malformed_code: str) -> tuple[dict[
     return value, None
 
 
+def validate_current_work(registry: Mapping[str, Any]) -> dict[str, Any]:
+    current = registry.get("current_work")
+    errors: list[str] = []
+    if not isinstance(current, Mapping):
+        errors.append("CURRENT_WORK_MISSING")
+        return {"valid": False, "task_id": None, "errors": errors}
+    if current.get("active") is not True:
+        errors.append("CURRENT_WORK_NOT_ACTIVE")
+    task_id = str(current.get("task_id") or "").strip()
+    if not task_id:
+        errors.append("CURRENT_WORK_TASK_ID_MISSING")
+    tasks = registry.get("tasks")
+    task_ids = {
+        str(task.get("task") or "").strip()
+        for task in tasks
+        if isinstance(task, Mapping) and str(task.get("task") or "").strip()
+    } if isinstance(tasks, list) else set()
+    if task_id and task_id not in task_ids:
+        errors.append("CURRENT_WORK_TASK_NOT_FOUND")
+    return {"valid": not errors, "task_id": task_id or None, "errors": errors}
+
+
+def extract_current_work(registry: Mapping[str, Any]) -> dict[str, Any]:
+    validation = validate_current_work(registry)
+    if not validation["valid"]:
+        raise ValueError("CURRENT_WORK_INVALID:" + ",".join(validation["errors"]))
+    current = registry["current_work"]
+    return dict(current)
+
+
 def rehydrate() -> dict[str, Any]:
     if not CONTRACT_PATH.is_file():
         return fail("REHYDRATION_CONTRACT_MISSING")
@@ -66,14 +96,19 @@ def rehydrate() -> dict[str, Any]:
             reasons.append(f"STATE_{key.upper()}_INVALID")
     if state.get("model_independence") is not True:
         reasons.append("MODEL_INDEPENDENCE_INVALID")
-    if str(tasks.get("schema_version")) != "2.0":
+    if str(tasks.get("schema_version")) != "2.1":
         reasons.append("TASK_REGISTRY_VERSION_INVALID")
     if state.get("status") != "VERIFIED":
         reasons.append("MASTER_STATE_NOT_VERIFIED")
 
+    current_validation = validate_current_work(tasks)
+    if not current_validation["valid"]:
+        reasons.extend(current_validation["errors"])
+
     if reasons:
         return fail(*reasons)
 
+    current_work = extract_current_work(tasks)
     return {
         "rehydration_status": "VERIFIED",
         "identity": "A",
@@ -87,6 +122,8 @@ def rehydrate() -> dict[str, Any]:
         "mission": state.get("identity", {}).get("mission"),
         "task_count": len(tasks.get("tasks", [])) if isinstance(tasks.get("tasks"), list) else None,
         "master_state_version": state.get("schema_version"),
+        "current_work": current_work,
+        "current_work_task_id": current_work["task_id"],
     }
 
 
