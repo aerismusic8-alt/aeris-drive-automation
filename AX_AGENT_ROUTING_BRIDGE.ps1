@@ -13,15 +13,14 @@ if (-not (Test-Path $dispatch)) { throw "AX_AGENT_DISPATCH_NOT_FOUND:$dispatch" 
 $registry = Get-Content -Raw $registryPath | ConvertFrom-Json
 if ($Candidates.Count -eq 0) {
   switch ($Domain) {
-    'AERIS' { $Candidates=@('GEMINI','COPILOT') }
-    'AX'    { $Candidates=@('COPILOT','GEMINI') }
-    default { $Candidates=@('GEMINI','COPILOT') }
+    'AERIS' { $Candidates=@('GEMINI','OPENAI') }
+    'AX'    { $Candidates=@('OPENAI','GEMINI') }
+    default { $Candidates=@('GEMINI','OPENAI') }
   }
 }
 
 # Capability metadata alone never grants execution ownership.
-# A helper is eligible only when its executable connector exists and
-# completes the full execution/evidence/write-back contract.
+# Current executable provider families are OPENAI and GEMINI only.
 foreach ($agent in $Candidates) {
   $cap = $registry.agents.$agent
   if ($null -eq $cap) { continue }
