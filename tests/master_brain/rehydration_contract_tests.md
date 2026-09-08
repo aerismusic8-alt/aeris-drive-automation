@@ -1,69 +1,35 @@
 # Rehydration Contract Acceptance Tests
 
-These are acceptance cases for the A MASTER BRAIN rehydration adapter. They are intentionally defined before implementation behavior is accepted.
+These acceptance cases define the AKATH/AX rehydration contract. A MASTER BRAIN is the durable knowledge and accumulated-experience brain; it is not the company or executive identity.
 
-## Test R1 — Authoritative load order
+## R1 — Authoritative load order
 
-**Given:** A MASTER STATE, master task registry, rehydration contract, and latest evidence/verification exist.
+Given AKATH/AX canonical state, master task registry, rehydration contract, and latest evidence/verification exist, startup loads them in authoritative order, then loads relevant A MASTER BRAIN knowledge/experience, resolves conflicts, verifies consistency, and continues. Missing authoritative input produces non-verified startup.
 
-**When:** a runtime starts.
+## R2 — Identity reconstruction
 
-**Then:** it loads the rehydration contract, master state, master task registry, latest evidence/verification, reconstructs A context, verifies consistency, and only then continues.
+Given canonical state identifies AKATH as the organization and AX as executive management, rehydration reconstructs AX for AKATH under K final authority. M is legacy support-only and is never promoted to AX by chat-local text.
 
-**Failure:** any missing authoritative input produces a non-verified startup state.
+## R3 — Task continuity
 
-## Test R2 — Identity reconstruction
+Given the authoritative task registry contains the current task set and statuses, a fresh channel/runtime reconstructs the same task IDs/statuses without inference from heartbeat or dashboard activity.
 
-**Given:** `AX_MASTER_STATE.json` identifies the authoritative identity as A and M as support agent.
+## R4 — Source-of-truth precedence
 
-**When:** rehydration runs.
+Given historical A MASTER BRAIN knowledge or chat-local state conflicts with current verified AKATH/AX state, current verified state wins for present operational truth and the conflict is surfaced rather than silently overwritten.
 
-**Then:** reconstructed identity is A; support role is M; M is never promoted to A by chat-local text.
+## R5 — Evidence gate
 
-## Test R3 — Task continuity
+Given a task is APPROVED or EXECUTING but lacks valid completion evidence/verification, rehydration never reports it COMPLETED.
 
-**Given:** the authoritative task registry contains the current task set and statuses.
+## R6 — Model independence
 
-**When:** rehydration runs in a fresh channel/runtime.
+Given the same authoritative files are loaded by two compatible runtimes, AX identity, AKATH context, authority, task state, and source precedence are equivalent; model-local memory does not outrank persistent state.
 
-**Then:** the same authoritative task IDs/statuses are reconstructed without inference from heartbeat or dashboard activity.
+## R7 — Corrupt/missing state
 
-## Test R4 — Source-of-truth precedence
+Given an authoritative file is missing, malformed, or unreadable, startup fails closed with NOT_VERIFIED and no execution authorization.
 
-**Given:** chat-local state conflicts with A MASTER BRAIN.
+## R8 — Fresh-channel challenge
 
-**When:** rehydration compares sources.
-
-**Then:** A MASTER BRAIN wins; the conflict is recorded; the runtime does not silently overwrite authoritative state.
-
-## Test R5 — Evidence gate
-
-**Given:** a task is marked APPROVED or EXECUTING but has no valid evidence/verification.
-
-**When:** rehydration evaluates completion.
-
-**Then:** the task is not reported COMPLETED.
-
-## Test R6 — Model independence
-
-**Given:** the same authoritative files are loaded by two different compatible runtimes.
-
-**When:** each runtime reconstructs context.
-
-**Then:** identity, mission, authority, task state, and source-of-truth precedence are equivalent; model-local memory does not outrank persistent state.
-
-## Test R7 — Corrupt/missing state
-
-**Given:** an authoritative file is missing, malformed, or unreadable.
-
-**When:** startup occurs.
-
-**Then:** rehydration fails closed with an explicit NOT_VERIFIED result and no execution is authorized.
-
-## Test R8 — Fresh-channel challenge
-
-**Given:** a new chat/channel has no prior local context.
-
-**When:** `M-A-CHECK` is invoked.
-
-**Then:** the runtime loads authoritative state and returns a PASS only if every identity/continuity acceptance gate passes.
+Given a new chat/channel has no prior local context, `AX-CHECK` loads authoritative state and returns PASS only if identity and continuity gates pass. The key itself is not evidence of identity.
