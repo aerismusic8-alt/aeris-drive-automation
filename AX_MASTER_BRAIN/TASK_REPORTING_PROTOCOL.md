@@ -82,13 +82,11 @@ A new chat/channel/runtime must resolve:
 
 ## Thai AX baseline-first reporting pattern
 
-This is the default response pattern for status/update commands such as `ax อัพเดทงานในระบบปัจจุบันด้วย`.
+This is the default response pattern for status/update commands such as `ax อัพเดทงานระบบปัจจุบันด้วย` or `ax อัพเดทงานในระบบปัจจุบันด้วย`.
 
-**Mandatory rule:** AX MUST complete the baseline report from live canonical state BEFORE beginning analysis, planning, recommendations, or new task decomposition.
+**Mandatory rule:** An initial update command is a READ/REPORT operation only. AX MUST read live canonical state and produce the baseline report before any reasoning, analysis, recommendation, planning, task decomposition, or execution.
 
-**Initial-update stop rule:** When K asks only for a current-system update, AX MUST report baseline sequence 1–8 and STOP. AX MUST NOT automatically continue into reasoning sequence 9–12 unless K asks a follow-up question or explicitly directs AX to continue.
-
-The baseline is a read/rehydration step, not a reasoning step. It must use the current system state and canonical registry, then expose the state in a stable Thai format. Only after K asks/authorizes continuation may AX use reasoning to decide what should happen next.
+**Initial-update stop rule:** The initial update ends after baseline sequence 1–8. AX MUST NOT automatically continue into reasoning sequence 9–12. K may then ask about any single item or explicitly direct AX to continue.
 
 ### Baseline sequence — exactly 1 to 8
 
@@ -105,7 +103,7 @@ The baseline is a read/rehydration step, not a reasoning step. It must use the c
 
 ### Initial baseline output
 
-Every initial-update report should stop after the baseline and use this order:
+Every initial-update report MUST use this order and MUST stop after item 8:
 
 `## อัปเดตงานปัจจุบัน — [วันที่/เวลาอ้างอิง]`
 
@@ -159,38 +157,27 @@ Show only evidence that actually exists and is linked to the relevant task_id. D
 
 `### 7. ตัวติดขัด`
 
-Show blockers attached to the canonical task_id. Do not turn an issue, error, or observation into a new master task unless K explicitly changes the Master Registry.
+Show blockers attached to the canonical task_id. Do not turn an issue, error, observation, dashboard record or runtime record into a new master task unless K explicitly changes the Master Registry.
 
 `### 8. สถานะสรุป`
 
 Use only evidence-supported values:
 `PASS` / `PARTIAL` / `BLOCKED` / `QUEUED` / `FAILED`.
 
-The initial-update response ends here unless K explicitly asks AX to continue.
+**The initial-update response ends here.** No `FACT / INFERENCE / PLAN / PCSEV / NEXT ACTION` analysis is appended unless K explicitly asks AX to continue.
 
-### Reasoning sequence — exactly 9 to 12
+## AX reasoning after the baseline
 
-Only after K asks a follow-up question or explicitly directs AX to continue may AX enter the reasoning loop:
+Reasoning is a separate phase. It begins only when K asks a follow-up question or explicitly directs AX to continue from the baseline.
 
-| ลำดับ | หัวข้อ | สิ่งที่ AX ต้องทำ | แหล่งข้อมูล |
-|---:|---|---|---|
-| 9 | **เข้าสู่สมอง AX** | หลัง baseline เท่านั้น จึงเริ่มวิเคราะห์และตัดสินใจ | AX Reasoning |
-| 10 | **PCSEV ต่อเนื่อง** | ปัญหา → สาเหตุ → วิธีแก้ → ดำเนินการ → หลักฐาน → ตรวจสอบ | AX Execution |
-| 11 | **งานถัดไป** | เลือกงานต่อจากสถานะจริง ไม่สร้าง task ใหม่ | Master Task Registry |
-| 12 | **วนต่อ** | Execute → Verify → Update State → คิดงานต่อ | AKATH Runtime |
-
-### Reasoning transition
-
-After the initial baseline, K may ask about any single item or direct AX to continue. AX should answer from the same canonical task record and should not require K to restate the task context.
-
-When reasoning begins, use:
+When authorized to continue, use:
 
 `### 9. เข้าสู่สมอง AX`
-
-Then:
 `### 10. PCSEV ต่อเนื่อง`
 `### 11. งานถัดไป`
 `### 12. วนต่อ`
+
+The reasoning phase must continue to use the same canonical `task_id` and current state established by the baseline. It must not invent, pad, merge, or create competing task identities.
 
 ## Source-of-truth boundaries
 
