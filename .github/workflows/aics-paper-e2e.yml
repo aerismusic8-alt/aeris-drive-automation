@@ -1,30 +1,16 @@
-name: AICS Paper E2E
+name: RETIRED - AICS Paper E2E
 
 on:
   workflow_dispatch:
-  push:
-    branches:
-      - main
-    paths:
-      - 'AX_AICS_*.ps1'
-      - '.github/workflows/aics-paper-e2e.yml'
-  schedule:
-    # Fast feedback during development/testing. GitHub Actions minimum schedule granularity is 5 minutes.
-    - cron: "*/5 * * * *"
 
 permissions:
   contents: read
 
-concurrency:
-  group: aics-paper-e2e
-  cancel-in-progress: true
-
 jobs:
-  paper-e2e:
-    runs-on: self-hosted
+  retired:
+    runs-on: ubuntu-latest
     steps:
-      - name: Run AICS Paper E2E
-        shell: powershell -ExecutionPolicy Bypass -File {0}
+      - name: Confirm retirement
         run: |
-          & "$env:GITHUB_WORKSPACE\AX_AICS_PAPER_E2E.ps1"
-          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          echo "AICS paper execution is retired by K authority."
+          echo "No AICS or XM execution is performed."
