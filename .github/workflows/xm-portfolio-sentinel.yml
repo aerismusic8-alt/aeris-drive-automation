@@ -42,6 +42,13 @@ jobs:
           Split-Path -Parent $python | Out-File -FilePath $env:GITHUB_PATH -Append -Encoding utf8
           & $python --version
 
+      - name: Run XM market-data and backtest contract tests
+        shell: powershell -NoProfile -ExecutionPolicy Bypass -File {0}
+        run: |
+          $ErrorActionPreference = 'Stop'
+          python -m unittest AKATH.tests.xm_historical_backtest_tests AKATH.tests.xm_live_cycle_market_data_tests -v
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
       - name: Run XM observation and risk cycle
         shell: powershell -NoProfile -ExecutionPolicy Bypass -File {0}
         run: |
