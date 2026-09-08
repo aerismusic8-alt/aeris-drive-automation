@@ -25,7 +25,8 @@ function Get-TestSignature {
   ) -join '|'
   $hmac = [System.Security.Cryptography.HMACSHA256]::new([Text.Encoding]::UTF8.GetBytes($env:AX_PORTFOLIO_TRIGGER_SECRET))
   try {
-    return ([Convert]::ToHexString($hmac.ComputeHash([Text.Encoding]::UTF8.GetBytes($canonical)))).ToLowerInvariant()
+    $hash = $hmac.ComputeHash([Text.Encoding]::UTF8.GetBytes($canonical))
+    return ([BitConverter]::ToString($hash)).Replace('-', '').ToLowerInvariant()
   } finally {
     $hmac.Dispose()
   }
@@ -39,11 +40,14 @@ function Invoke-Trigger {
   [pscustomobject]@{ ExitCode = $LASTEXITCODE; Output = ($out -join [Environment]::NewLine) }
 }
 
-$now = [DateTimeOffset]::UtcNow.ToUnixTimeSeconds()
+$statePath = Join-Path $PSScriptRoot '..' 'AX_AICS_PORTFOLIO_STATE.json'
+Remove-Item -LiteralPath $statePath -Force -ErrorAction SilentlyContinue
+
 $task = 'AICS-LIVE-TRADING'
+$now = [DateTimeOffset]::UtcNow.ToUnixTimeSeconds()
 
 $unauthorized = Invoke-Trigger -Command @{
-  task_id=$task; command_id='test-unauthorized'; source='MOBILE'; issued_at=$now; action='OPEN'; symbol='XAUUSD'; volume=0.01; position_id=''; strategy_version='TEST-1'; mode='SIMULATION'
+  task_id=$task; command_id='test-unauthorized'; source='MOBILE'; issued_at=$now; action='OPEN'; symbol='XAUUSD'; volume=0.01; position_id='POS-UNAUTH'; strategy_version='TEST-1'; mode='SIMULATION'
 }
 if ($unauthorized.ExitCode -eq 0 -or $unauthorized.Output -notmatch 'AX_SOURCE_ONLY_REJECTED') { throw "UNAUTHORIZED_SOURCE_NOT_REJECTED:$($unauthorized.Output)" }
 
