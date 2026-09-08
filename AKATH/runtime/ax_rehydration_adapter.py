@@ -46,6 +46,50 @@ def load_json(path: Path, missing_code: str, malformed_code: str) -> tuple[dict[
     return value, None
 
 
+def validate_task_registry(registry: Mapping[str, Any]) -> dict[str, Any]:
+    tasks = registry.get("tasks")
+    errors: list[str] = []
+    if not isinstance(tasks, list):
+        return {"valid": False, "task_count": 0, "task_ids": [], "errors": ["TASK_LIST_MISSING"]}
+
+    task_ids: list[str] = []
+    seen: set[str] = set()
+    for task in tasks:
+        if not isinstance(task, Mapping):
+            errors.append("TASK_RECORD_INVALID")
+            continue
+        task_id = str(task.get("task_id") or "").strip()
+        if not task_id:
+            errors.append("TASK_ID_MISSING")
+            continue
+        if task_id in seen:
+            errors.append("DUPLICATE_TASK_ID")
+        seen.add(task_id)
+        task_ids.append(task_id)
+        if not str(task.get("name") or "").strip():
+            errors.append("TASK_NAME_MISSING")
+        if not isinstance(task.get("details"), Mapping):
+            errors.append(f"TASK_DETAILS_MISSING:{task_id}")
+
+    return {
+        "valid": not errors,
+        "task_count": len(tasks),
+        "task_ids": task_ids,
+        "errors": errors,
+    }
+
+
+def get_task_by_id(registry: Mapping[str, Any], task_id: str) -> dict[str, Any]:
+    normalized_id = str(task_id or "").strip()
+    tasks = registry.get("tasks")
+    if not normalized_id or not isinstance(tasks, list):
+        raise ValueError("TASK_NOT_FOUND")
+    matches = [task for task in tasks if isinstance(task, Mapping) and str(task.get("task_id") or "").strip() == normalized_id]
+    if len(matches) != 1:
+        raise ValueError("TASK_NOT_FOUND_OR_NOT_UNIQUE:" + normalized_id)
+    return dict(matches[0])
+
+
 def validate_current_work(registry: Mapping[str, Any]) -> dict[str, Any]:
     current = registry.get("current_work")
     errors: list[str] = []
@@ -57,13 +101,10 @@ def validate_current_work(registry: Mapping[str, Any]) -> dict[str, Any]:
     task_id = str(current.get("task_id") or "").strip()
     if not task_id:
         errors.append("CURRENT_WORK_TASK_ID_MISSING")
-    tasks = registry.get("tasks")
-    task_ids = {
-        str(task.get("task") or "").strip()
-        for task in tasks
-        if isinstance(task, Mapping) and str(task.get("task") or "").strip()
-    } if isinstance(tasks, list) else set()
-    if task_id and task_id not in task_ids:
+    registry_validation = validate_task_registry(registry)
+    if not registry_validation["valid"]:
+        errors.extend(registry_validation["errors"])
+    elif task_id and task_id not in registry_validation["task_ids"]:
         errors.append("CURRENT_WORK_TASK_NOT_FOUND")
     return {"valid": not errors, "task_id": task_id or None, "errors": errors}
 
@@ -72,8 +113,9 @@ def extract_current_work(registry: Mapping[str, Any]) -> dict[str, Any]:
     validation = validate_current_work(registry)
     if not validation["valid"]:
         raise ValueError("CURRENT_WORK_INVALID:" + ",".join(validation["errors"]))
-    current = registry["current_work"]
-    return dict(current)
+    task_id = validation["task_id"]
+    assert task_id is not None
+    return get_task_by_id(registry, task_id)
 
 
 def rehydrate() -> dict[str, Any]:
@@ -96,17 +138,21 @@ def rehydrate() -> dict[str, Any]:
             reasons.append(f"STATE_{key.upper()}_INVALID")
     if state.get("model_independence") is not True:
         reasons.append("MODEL_INDEPENDENCE_INVALID")
-    if str(tasks.get("schema_version")) != "2.1":
+    if str(tasks.get("schema_version")) != "2.2":
         reasons.append("TASK_REGISTRY_VERSION_INVALID")
     if state.get("status") != "VERIFIED":
         reasons.append("MASTER_STATE_NOT_VERIFIED")
+
+    registry_validation = validate_task_registry(tasks)
+    if not registry_validation["valid"]:
+        reasons.extend(registry_validation["errors"])
 
     current_validation = validate_current_work(tasks)
     if not current_validation["valid"]:
         reasons.extend(current_validation["errors"])
 
     if reasons:
-        return fail(*reasons)
+        return fail(*dict.fromkeys(reasons))
 
     current_work = extract_current_work(tasks)
     return {
@@ -120,7 +166,8 @@ def rehydrate() -> dict[str, Any]:
         "execution_authorized": False,
         "failure_reasons": [],
         "mission": state.get("identity", {}).get("mission"),
-        "task_count": len(tasks.get("tasks", [])) if isinstance(tasks.get("tasks"), list) else None,
+        "task_count": registry_validation["task_count"],
+        "task_ids": registry_validation["task_ids"],
         "master_state_version": state.get("schema_version"),
         "current_work": current_work,
         "current_work_task_id": current_work["task_id"],
