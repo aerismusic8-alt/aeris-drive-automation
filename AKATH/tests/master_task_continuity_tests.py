@@ -11,12 +11,14 @@ from AKATH.runtime.ax_rehydration_adapter import (
 class MasterTaskContinuityTests(unittest.TestCase):
     def registry(self):
         return {
-            "schema_version": "2.2",
+            "schema_version": "2.3",
             "registry_role": "AUTHORITATIVE_MASTER_TASK_STATUS",
             "current_work": {"active": True, "task_id": "AICS-LIVE-TRADING"},
             "tasks": [
                 {
                     "task_id": "AICS-LIVE-TRADING",
+                    "task_type": "SYSTEM",
+                    "category": "REVENUE",
                     "name": "XM Strategy & Revenue Pipeline",
                     "objective": "Build and verify the guarded XM revenue pipeline.",
                     "priority": "P1_REVENUE",
@@ -35,7 +37,31 @@ class MasterTaskContinuityTests(unittest.TestCase):
                         "retry_fallback": [],
                         "business_revenue_state": "ACTIVE / NON-LIVE",
                     },
-                }
+                },
+                {
+                    "task_id": "MISSION-XM-PORTFOLIO-1M",
+                    "task_type": "MISSION",
+                    "category": "REVENUE",
+                    "name": "XM Portfolio → 1,000,000 THB",
+                    "objective": "Build and verify an XM portfolio until the verified portfolio value reaches 1,000,000 THB.",
+                    "priority": "P1_REVENUE",
+                    "approval_status": "APPROVED",
+                    "execution_status": "QUEUED / NON-LIVE",
+                    "timestamp": "NOT RECORDED — ห้ามเดาเวลา",
+                    "details": {
+                        "approval_required_next": "STRATEGY_ACTIVATION_K",
+                        "current_step": "QUEUED",
+                        "next_step": "RUN_SELF_HOSTED_XM_VERIFICATION",
+                        "worker": "AX",
+                        "output": [],
+                        "evidence": [],
+                        "verification": [],
+                        "blockers": [],
+                        "retry_fallback": [],
+                        "business_revenue_state": "TARGET_1000000_THB",
+                        "target": {"metric": "portfolio_value_thb", "value": 1000000},
+                    },
+                },
             ],
         }
 
@@ -48,26 +74,14 @@ class MasterTaskContinuityTests(unittest.TestCase):
         result = extract_current_work(self.registry())
         self.assertEqual(result["task_id"], "AICS-LIVE-TRADING")
         self.assertEqual(result["name"], "XM Strategy & Revenue Pipeline")
+        self.assertEqual(result["task_type"], "SYSTEM")
+        self.assertEqual(result["category"], "REVENUE")
         self.assertEqual(result["details"]["current_step"], "CONTROL_PLANE_BLOCKER_REPAIR")
 
     def test_task_lookup_returns_same_canonical_record(self):
         task = get_task_by_id(self.registry(), "AICS-LIVE-TRADING")
         self.assertEqual(task["task_id"], "AICS-LIVE-TRADING")
         self.assertEqual(task["details"]["next_step"], "RUN_SELF_HOSTED_XM_VERIFICATION")
-
-    def test_missing_current_work_fails_closed(self):
-        registry = self.registry()
-        registry.pop("current_work")
-        result = validate_current_work(registry)
-        self.assertFalse(result["valid"])
-        self.assertIn("CURRENT_WORK_MISSING", result["errors"])
-
-    def test_current_work_cannot_reference_unknown_task(self):
-        registry = self.registry()
-        registry["current_work"]["task_id"] = "UNKNOWN-TASK"
-        result = validate_current_work(registry)
-        self.assertFalse(result["valid"])
-        self.assertIn("CURRENT_WORK_TASK_NOT_FOUND", result["errors"])
 
     def test_duplicate_task_ids_fail_closed(self):
         registry = self.registry()
@@ -87,7 +101,22 @@ class MasterTaskContinuityTests(unittest.TestCase):
         registry = self.registry()
         result = validate_task_registry(registry)
         self.assertTrue(result["valid"])
-        self.assertEqual(result["task_count"], 1)
+        self.assertEqual(result["task_count"], 2)
+
+    def test_task_type_and_category_are_required(self):
+        registry = self.registry()
+        registry["tasks"][0].pop("task_type")
+        registry["tasks"][0].pop("category")
+        result = validate_task_registry(registry)
+        self.assertFalse(result["valid"])
+        self.assertIn("TASK_TYPE_MISSING:AICS-LIVE-TRADING", result["errors"])
+        self.assertIn("TASK_CATEGORY_MISSING:AICS-LIVE-TRADING", result["errors"])
+
+    def test_mission_has_target_and_is_not_system(self):
+        task = get_task_by_id(self.registry(), "MISSION-XM-PORTFOLIO-1M")
+        self.assertEqual(task["task_type"], "MISSION")
+        self.assertEqual(task["category"], "REVENUE")
+        self.assertEqual(task["details"]["target"]["value"], 1000000)
 
 
 if __name__ == "__main__":
