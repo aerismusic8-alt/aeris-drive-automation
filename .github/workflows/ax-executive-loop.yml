@@ -6,7 +6,6 @@ on:
     - cron: "*/5 * * * *"
   workflow_run:
     workflows:
-      - AICS Paper E2E
       - PC Runner Smoke Test
     types:
       - completed
@@ -26,7 +25,7 @@ jobs:
   executive-loop:
     if: ${{ github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success' }}
     runs-on: self-hosted
-    timeout-minutes: 5
+    timeout-minutes: 10
 
     steps:
       - name: Checkout AX control state
@@ -35,10 +34,6 @@ jobs:
           fetch-depth: 0
           persist-credentials: true
 
-      # Regression guard: the runner must invoke the policy script through an
-      # explicit ExecutionPolicy Bypass. GitHub's PowerShell shell wrapper can
-      # itself be blocked by the Windows execution-policy setting before the
-      # workflow's Bypass argument is reached.
       - name: Enforce temporary GPT bridge policy
         shell: cmd
         run: >-
