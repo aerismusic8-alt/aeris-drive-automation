@@ -5,6 +5,10 @@ export type XmCommand = {
   timestamp: string;
   account_scope: string;
   symbol?: string;
+  timeframe?: string;
+  from_ts?: number;
+  to_ts?: number;
+  limit?: number;
   side?: string;
   volume?: number;
   stop_loss?: number;
@@ -18,6 +22,7 @@ export type XmResult = {
   idempotency_key: string;
   state: 'REQUESTED' | 'VALIDATED' | 'SENT' | 'BROKER_ACK' | 'VERIFIED' | 'REJECTED' | 'FAILED' | 'UNKNOWN_REQUIRES_RECONCILIATION';
   broker?: Record<string, unknown>;
+  market_data?: { symbol: string; timeframe: string; bars: Array<Record<string, unknown>> };
   evidence?: Record<string, unknown>;
   error?: string;
   received_at: string;
@@ -35,7 +40,7 @@ export type XmHeartbeat = {
   received_at: string;
 };
 
-const ALLOWED = new Set(['GET_ACCOUNT_STATE','GET_POSITIONS','GET_SYMBOL_STATE','SUBMIT_ORDER','MODIFY_POSITION','CLOSE_POSITION']);
+const ALLOWED = new Set(['GET_ACCOUNT_STATE','GET_POSITIONS','GET_SYMBOL_STATE','GET_HISTORICAL_BARS','SUBMIT_ORDER','MODIFY_POSITION','CLOSE_POSITION']);
 const BLOCKED = new Set(['DEPOSIT','WITHDRAW','CHANGE_ACCOUNT_SETTINGS','EXPORT_CREDENTIALS']);
 const SCOPE = 'XM_MICRO_K_DESIGNATED_ACCOUNT';
 const TERMINAL = new Set(['VERIFIED','REJECTED','FAILED','UNKNOWN_REQUIRES_RECONCILIATION']);
@@ -70,6 +75,12 @@ export class AxXmExecutionQueue {
 
     if (path === '/enqueue' && request.method === 'POST') {
       if (!validCommand(body)) return json({ error: 'COMMAND_SCHEMA_INVALID' }, 422);
+      if (body.operation === 'GET_HISTORICAL_BARS') {
+        if (!body.symbol || !body.timeframe) return json({ error: 'HISTORICAL_QUERY_SCHEMA_INVALID' }, 422);
+        if (body.limit !== undefined && (!Number.isInteger(body.limit) || body.limit < 1 || body.limit > 10000)) return json({ error: 'HISTORICAL_LIMIT_INVALID' }, 422);
+        if (body.from_ts !== undefined && !Number.isFinite(body.from_ts)) return json({ error: 'HISTORICAL_FROM_INVALID' }, 422);
+        if (body.to_ts !== undefined && !Number.isFinite(body.to_ts)) return json({ error: 'HISTORICAL_TO_INVALID' }, 422);
+      }
       const existingByRequest = commands.find(c => c.request_id === body.request_id);
       if (existingByRequest) {
         if (JSON.stringify(existingByRequest) !== JSON.stringify(body)) return json({ error: 'REQUEST_ID_CONFLICT' }, 409);
