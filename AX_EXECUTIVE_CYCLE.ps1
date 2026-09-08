@@ -12,6 +12,7 @@ if ([string]::IsNullOrWhiteSpace($root)) { $root = Split-Path -Parent $scriptPat
 if ([string]::IsNullOrWhiteSpace($env:AERIS_WEB_APP_URL)) {
   $env:AERIS_WEB_APP_URL = 'https://script.google.com/macros/s/AKfycbwdK1NVd0_ZUVS_fRto6xRIWzUOkFi8BV90UxxKrujQYfYWvcaIlWNDXKxI9Ree7Zqx/exec'
 }
+$masterRegistryPath = Join-Path $root 'AX_MASTER_BRAIN\AX_MASTER_TASK_REGISTRY_v2.json'
 
 Write-Host '=== AX AUTONOMOUS EXECUTIVE CYCLE ==='
 Write-Host "Cycle: $cycle"
@@ -22,6 +23,7 @@ Write-Host "Computer: $env:COMPUTERNAME"
 Write-Host "Runner: $env:RUNNER_NAME"
 Write-Host "Repo: $repo"
 Write-Host "Root: $root"
+Write-Host "Canonical Registry: $masterRegistryPath"
 Write-Host "Persistence URL: CONFIGURED"
 
 function Invoke-PhaseWithRetry {
@@ -43,6 +45,7 @@ function Invoke-PhaseWithRetry {
 
 $selectorPath = Join-Path $root 'AX_TASK_SELECTOR.ps1'
 if (-not (Test-Path $selectorPath)) { throw "AX_TASK_SELECTOR_NOT_FOUND: $selectorPath" }
+if (-not (Test-Path $masterRegistryPath)) { throw "AX_MASTER_TASK_REGISTRY_NOT_FOUND: $masterRegistryPath" }
 . $selectorPath
 
 $recoveryOk = Invoke-PhaseWithRetry -Name 'RECOVERY' -Action {
@@ -72,11 +75,11 @@ try {
   Write-Host 'Observation is non-blocking; continuing Executive Cycle.'
 }
 $decisionOk = Invoke-PhaseWithRetry -Name 'DECISION' -Action {
-  & powershell.exe -NoProfile -ExecutionPolicy Bypass -File "$root\AX_DECISION_ENGINE.ps1" -RegistryPath "$root\AX_TASK_REGISTRY.json"
+  & powershell.exe -NoProfile -ExecutionPolicy Bypass -File "$root\AX_DECISION_ENGINE.ps1" -RegistryPath $masterRegistryPath
 }
 
 $dispatchOk = Invoke-PhaseWithRetry -Name 'DISPATCH' -Action {
-  & powershell.exe -NoProfile -ExecutionPolicy Bypass -File "$root\AX_ACTION_DISPATCHER.ps1" -RegistryPath "$root\AX_TASK_REGISTRY.json"
+  & powershell.exe -NoProfile -ExecutionPolicy Bypass -File "$root\AX_ACTION_DISPATCHER.ps1" -RegistryPath $masterRegistryPath
 }
 
 $persistenceOk = $false
@@ -93,7 +96,8 @@ try {
 }
 
 Write-Host '=== AUTONOMOUS DASHBOARD HEARTBEAT ==='
-$registry = Get-Content -Raw -Path "$root\AX_TASK_REGISTRY.json" | ConvertFrom-Json
+$masterRegistry = Get-Content -Raw -Path $masterRegistryPath | ConvertFrom-Json
+$registry = Convert-AxMasterRegistry -MasterRegistry $masterRegistry
 $selected = Select-AxNextTask -Registry $registry
 if ($selected) {
   Write-Host "Canonical Selected Task: $($selected.id)"
@@ -115,6 +119,7 @@ $status = [ordered]@{
   persistence=if($persistenceOk){'VERIFIED'}else{'NOT_VERIFIED'}
   runner='VERIFIED'
   mutation=if($env:AX_REPOSITORY_MUTATION_ENABLED -eq 'true'){'ENABLED'}else{'DISABLED'}
+  canonicalRegistry='AX_MASTER_BRAIN/AX_MASTER_TASK_REGISTRY_v2.json'
   selectedTask=if($selected){$selected.id}else{$null}
 }
 New-Item -ItemType Directory -Force -Path "$root\dashboard" | Out-Null
