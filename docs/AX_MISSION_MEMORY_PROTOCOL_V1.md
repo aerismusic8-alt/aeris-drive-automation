@@ -1,60 +1,64 @@
-# AX Mission Memory Protocol V1
+# AX Mission Continuity Protocol V2
 
-## Purpose
+## Authority
 
-The AX Mission Ledger is the durable source of truth for K-assigned work. Chat sessions, AI workers, PCs, and dashboards are interfaces or execution surfaces; they are not the authoritative mission record.
+`AX_MASTER_BRAIN/AX_MASTER_STATE.json` is the single authoritative company state.
+`AX_MASTER_BRAIN/AX_MASTER_TASK_REGISTRY_v2.json` is the single authoritative task list and contains exactly one active `current_work` record.
 
-## Mission identity
+The existing Cloudflare Durable Object `AxMissionLedger` stores execution-detail persistence for a mission. It is not a second master task registry.
 
-Every explicitly assigned task receives one stable `missionId`. The ID remains unchanged when K follows the task from another chat, channel, PC, worker, or session.
+## Single-work rule
 
-## Required record
+At any moment exactly one `current_work.active=true` record may exist in the Master Task Registry.
 
-A mission retains:
+`current_work.task_id` must match an existing task ID in the master registry. The task ID is stable across chats, channels, PCs, runners, and model/runtime changes.
 
-- original objective and deadline
-- priority
-- current lifecycle status
-- every participating channel reference
-- latest conversation/update as `lastConversation`
-- event history
-- worker allocation
-- output references
-- verification result
-- evidence references
-- AX certification state
-- business/product/revenue extension assessment
+Do not create a new task ID merely because K opens a new chat. Resolve the existing task ID and continue it.
 
-## Event rule
+## Cross-chat reconstruction
 
-Each update is an immutable event with a deterministic `eventId`. Replaying the same event is a no-op. Ordinary conversation does not create a mission; only explicit task-intake events or an existing `missionId` may mutate mission state.
+The startup/recovery sequence is:
 
-## Cross-channel rule
+`A MASTER BRAIN → Master Task Registry → current_work → latest evidence/verification → runtime mission details → continue`
 
-When K asks for a status from another channel, AX resolves the existing `missionId` from the durable ledger first. The latest event becomes the current conversation projection while the complete event history remains available.
+Chat history, ChatGPT memory, model-local memory, dashboards, queue projections, and generated summaries are not authoritative state.
 
-## No-loss rule
+When K asks about a task from a new chat, AX must return the same task ID, exact task name, current step, next step, approval state, execution state, and latest verified evidence available in the system.
 
-A mission is never deleted merely because it is completed, failed, old, or no longer active. Lifecycle state changes; history remains searchable. `ARCHIVED` means inactive, not forgotten.
+## Approval rule
 
-## Recovery rule
+Approval belongs to the specific task/strategy activation and is persisted in the authoritative task state.
 
-After process, runner, PC, or session restart, AX must reload the ledger and recover the same Mission ID, latest state, latest conversation, event history, evidence references, and certification state.
+A notification or chat summary is not an approval. Silence is not an approval. A strategy activation approval does not imply approval for unrelated tasks.
 
-## Security rule
+## Status and evidence
 
-Credentials and authentication material must never be persisted. Obvious secret-bearing fields are redacted before mission events are written.
+`QUEUED` is not `APPROVED`.
+`APPROVED` is not `EXECUTING`.
+`EXECUTING` requires actual start, trusted timestamp, and evidence.
+`COMPLETED` requires verification.
+`HEARTBEAT`, dashboard synchronization, persistence activity, or execution-registry activity alone cannot prove business execution.
 
-## Success rule
+Never invent timestamps, request IDs, evidence references, or results.
 
-`NOT VERIFIED ≠ SUCCESS`. Mission delivery requires Execute → Output → Verify → Evidence → AX Certification.
+## No duplicate system rule
 
-## Business rule
+The following are projections/details only and cannot become competing task authorities:
 
-Every mission receives a business-extension assessment. Where appropriate, the completed capability must be evaluated as a reusable product, service, internal platform, or revenue channel.
+- dashboards and task views
+- active-execution heartbeat registry
+- runtime mission detail records
+
+Legacy file-based `AX_MISSION_LEDGER` task registry and its sync workflow are retired. Do not recreate them.
+
+## Recovery
+
+An interruption must preserve the same task identity and continue from the last persisted verified state. A new model/runtime must rehydrate from A MASTER BRAIN and verify consistency before operating as A.
 
 ## Operational query
 
-The minimum status query is:
+`task_id → name → approval → execution_status → current_step → next_step → latest_update → executor/run → evidence → verification → next approval → business/revenue state`
 
-`Mission ID → Objective → Status → Latest Update → Worker → Output → Verification → Evidence → AX Certification → Next Action → Business Extension`
+## Business continuity
+
+Technical completion is not the final business state. Revenue-oriented work continues through value delivery and verified revenue outcome. Paper trading or simulated revenue does not count as realized revenue.
