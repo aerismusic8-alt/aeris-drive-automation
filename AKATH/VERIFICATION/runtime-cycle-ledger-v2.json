@@ -1,25 +1,10 @@
 ﻿{
     "schema":  "AKATH_RUNTIME_CYCLE_LEDGER_V2",
-    "acceptance":  "PASS",
-    "consecutive_successes":  20,
+    "acceptance":  "PENDING",
+    "consecutive_successes":  0,
     "required_consecutive_successes":  3,
-    "last_updated_utc":  "2026-09-08T14:44:40.3543109Z",
+    "last_updated_utc":  "2026-09-08T15:13:58.2930245Z",
     "cycles":  [
-                   {
-                       "sequence":  21,
-                       "github_run_id":  "34207212572",
-                       "github_run_number":  252,
-                       "event":  "schedule",
-                       "recorded_at_utc":  "2026-09-08T08:56:45.3178753Z",
-                       "result":  "PASS",
-                       "error_class":  "",
-                       "audit_pass":  true,
-                       "runtime_pass":  true,
-                       "adapter_pass":  true,
-                       "runtime_run_id":  "2b858e5d-d1e8-406e-9f8b-2831d39e6ba0",
-                       "runtime_job_id":  "AKATH-PROBE-20260908-085643",
-                       "evidence_ref":  "C:\\actions-runner\\_work\\_temp\\akath-24x7-acceptance-v2\\34207212572\\evidence-2b858e5d-d1e8-406e-9f8b-2831d39e6ba0.json"
-                   },
                    {
                        "sequence":  21,
                        "github_run_id":  "34208952806",
@@ -304,6 +289,21 @@
                        "runtime_run_id":  "09db4b76-f88e-4d97-9ef9-12f62bbffffa",
                        "runtime_job_id":  "AKATH-PROBE-20260908-144438",
                        "evidence_ref":  "C:\\actions-runner\\_work\\_temp\\akath-24x7-acceptance-v2\\34239641287\\evidence-09db4b76-f88e-4d97-9ef9-12f62bbffffa.json"
+                   },
+                   {
+                       "sequence":  21,
+                       "github_run_id":  "34241358596",
+                       "github_run_number":  284,
+                       "event":  "schedule",
+                       "recorded_at_utc":  "2026-09-08T15:13:58.2750356Z",
+                       "result":  "FAIL",
+                       "error_class":  "AKATH_RUNTIME_FAILED",
+                       "audit_pass":  true,
+                       "runtime_pass":  false,
+                       "adapter_pass":  false,
+                       "runtime_run_id":  "",
+                       "runtime_job_id":  "",
+                       "evidence_ref":  ""
                    }
                ]
 }
