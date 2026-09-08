@@ -44,7 +44,8 @@ function Get-HmacHex {
   )
   $hmac = [System.Security.Cryptography.HMACSHA256]::new([Text.Encoding]::UTF8.GetBytes($Secret))
   try {
-    return ([Convert]::ToHexString($hmac.ComputeHash([Text.Encoding]::UTF8.GetBytes($Canonical)))).ToLowerInvariant()
+    $hash = $hmac.ComputeHash([Text.Encoding]::UTF8.GetBytes($Canonical))
+    return ([BitConverter]::ToString($hash)).Replace('-', '').ToLowerInvariant()
   } finally {
     $hmac.Dispose()
   }
