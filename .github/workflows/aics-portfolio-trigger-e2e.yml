@@ -20,6 +20,16 @@ jobs:
       - name: Run AX-only portfolio trigger E2E
         shell: pwsh
         run: |
-          $ErrorActionPreference = 'Stop'
-          & "$PWD/tests/AX_AICS_PORTFOLIO_TRIGGER_TEST.ps1"
-          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $ErrorActionPreference = 'Continue'
+          & "$PWD/tests/AX_AICS_PORTFOLIO_TRIGGER_TEST.ps1" 2>&1 | Tee-Object -FilePath "$PWD/trigger-test.log"
+          $code = $LASTEXITCODE
+          if ($code -ne 0) { exit $code }
+      - name: Upload trigger diagnostics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: aics-portfolio-trigger-diagnostics
+          path: |
+            trigger-test.log
+            AX_AICS_PORTFOLIO_STATE.json
+          if-no-files-found: ignore
