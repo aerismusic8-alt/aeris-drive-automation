@@ -1,8 +1,26 @@
 {
-  "schema_version": "2.0",
+  "schema_version": "2.1",
   "registry_role": "AUTHORITATIVE_MASTER_TASK_STATUS",
-  "last_updated_local": "2026-09-05",
   "authority": "K_FINAL_AUTHORITY",
+  "current_work_policy": "Exactly one current_work record may be active. It must reference an existing task_id in this registry. Dashboards, chat, execution registries and model-local memory cannot create a competing current-work identity.",
+  "current_work": {
+    "active": true,
+    "task_id": "AICS-LIVE-TRADING",
+    "name": "XM Strategy & Revenue Pipeline",
+    "priority": "P1_REVENUE",
+    "approval_status": "APPROVED",
+    "execution_status": "NON-LIVE / GUARDRAIL",
+    "live_money_enabled": false,
+    "approval_required_next": "STRATEGY_ACTIVATION_K",
+    "current_step": "CONTROL_PLANE_BLOCKER_REPAIR",
+    "next_step": "RUN_SELF_HOSTED_XM_VERIFICATION",
+    "continuity_rule": "Reuse this same task_id across chats, channels, PCs and runtime restarts until the task is explicitly completed, failed-and-closed, or superseded by a recorded K decision.",
+    "updated_at": "2026-09-08T01:21:53Z",
+    "evidence_refs": [
+      "GitHub Actions run 34176394038",
+      "commit 3ca252668ae8745aea5bcdae052398ca0aeb8877"
+    ]
+  },
   "status_rules": {
     "approved_is_not_executing": true,
     "heartbeat_is_not_task_execution": true,
@@ -13,7 +31,7 @@
   "tasks": [
     {"task":"AKATH Autonomous Company Engine","approval":"QUEUED","execution":"QUEUED","time":"2026-09-02T16:54:00+07:00","note":"ไม่ได้บันทึกเป็น APPROVED"},
     {"task":"AICS Paper Risk Engine","approval":"COMPLETED","execution":"COMPLETED","time":"NOT RECORDED — ห้ามเดาเวลา"},
-    {"task":"AICS Live Trading","approval":"APPROVED","execution":"NON-LIVE / GUARDRAIL","time":"2026-09-02T16:54:00+07:00","note":"ยังปิดการเงินจริง"},
+    {"task":"AICS Live Trading","approval":"APPROVED","execution":"NON-LIVE / GUARDRAIL","time":"2026-09-02T16:54:00+07:00","note":"XM Strategy & Revenue Pipeline ใช้ task_id เดิมนี้เป็น current work; การอนุมัติกลยุทธ์ใหม่ต้องผ่าน K"},
     {"task":"AX Executive Reporting","approval":"QUEUED","execution":"QUEUED","time":"2026-09-02T16:54:00+07:00"},
     {"task":"Dashboard","approval":"—","execution":"REPROCESS_QUEUED","time":"2026-09-02T16:54:00+07:00"},
     {"task":"Cloud Migration","approval":"—","execution":"REPROCESS_QUEUED","time":"2026-09-02T16:54:00+07:00"},
@@ -24,5 +42,5 @@
     {"task":"6-AI Revenue Team","approval":"—","execution":"REPROCESS_QUEUED","time":"2026-09-02T16:54:00+07:00"},
     {"task":"File ID Persistence","approval":"COMPLETED","execution":"COMPLETED","time":"NOT RECORDED — ห้ามเดาเวลา","note":"Canonical manifest persisted and passed GitHub Actions run 33707158558: File ID Persistence + Manifest Builder acceptance."}
   ],
-  "reporting_rule": "Every AX task update must report the complete current task list with status and timestamp. Do not infer approval or execution from heartbeat, dashboard, persistence, or execution-registry activity."
+  "reporting_rule": "Every AX task update must report the complete current task list with status and timestamp. Current work must be resolved from this registry first. Do not infer approval or execution from heartbeat, dashboard, persistence, chat context, or execution-registry activity."
 }
