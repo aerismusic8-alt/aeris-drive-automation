@@ -1,25 +1,10 @@
 ﻿{
     "schema":  "AKATH_RUNTIME_CYCLE_LEDGER_V2",
     "acceptance":  "PASS",
-    "consecutive_successes":  10,
+    "consecutive_successes":  11,
     "required_consecutive_successes":  3,
-    "last_updated_utc":  "2026-09-08T04:43:38.4098311Z",
+    "last_updated_utc":  "2026-09-08T04:59:08.0662863Z",
     "cycles":  [
-                   {
-                       "sequence":  4,
-                       "github_run_id":  "34142646138",
-                       "github_run_number":  162,
-                       "event":  "schedule",
-                       "recorded_at_utc":  "2026-09-07T16:19:01.4043264Z",
-                       "result":  "FAIL",
-                       "error_class":  "LEGACY_IDENTITY_AUDIT_FAILED",
-                       "audit_pass":  false,
-                       "runtime_pass":  false,
-                       "adapter_pass":  false,
-                       "runtime_run_id":  "",
-                       "runtime_job_id":  "",
-                       "evidence_ref":  ""
-                   },
                    {
                        "sequence":  5,
                        "github_run_id":  "34143892866",
@@ -304,6 +289,21 @@
                        "runtime_run_id":  "6467fb54-aea7-404a-a7a7-1514959b526d",
                        "runtime_job_id":  "AKATH-PROBE-20260908-044336",
                        "evidence_ref":  "C:\\actions-runner\\_work\\_temp\\akath-24x7-acceptance-v2\\34187975456\\evidence-6467fb54-aea7-404a-a7a7-1514959b526d.json"
+                   },
+                   {
+                       "sequence":  21,
+                       "github_run_id":  "34188754695",
+                       "github_run_number":  238,
+                       "event":  "schedule",
+                       "recorded_at_utc":  "2026-09-08T04:59:08.0472981Z",
+                       "result":  "PASS",
+                       "error_class":  "",
+                       "audit_pass":  true,
+                       "runtime_pass":  true,
+                       "adapter_pass":  true,
+                       "runtime_run_id":  "040a6169-b562-40af-a972-04ceb3df391f",
+                       "runtime_job_id":  "AKATH-PROBE-20260908-045906",
+                       "evidence_ref":  "C:\\actions-runner\\_work\\_temp\\akath-24x7-acceptance-v2\\34188754695\\evidence-040a6169-b562-40af-a972-04ceb3df391f.json"
                    }
                ]
 }
