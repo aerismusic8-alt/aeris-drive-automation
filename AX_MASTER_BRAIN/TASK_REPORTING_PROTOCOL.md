@@ -80,6 +80,87 @@ A new chat/channel/runtime must resolve:
 - HEARTBEAT, dashboard sync, persistence, and execution-registry activity do not by themselves prove business-task execution.
 - If a historical timestamp is not supported by evidence, report `NOT RECORDED — ห้ามเดาเวลา`.
 
+## Thai AX reporting pattern
+
+AX status reports in chat should use a stable Thai structure so K can read the state immediately. The language may be Thai, but the canonical values (`task_id`, `SYSTEM/MISSION`, statuses, evidence IDs) must remain exact and machine-traceable.
+
+### Header
+
+`## อัปเดตงานปัจจุบัน — [วันที่/เวลาอ้างอิง]`
+
+### 1. ภาพรวม
+
+State one concise conclusion from the current Master Registry and latest verified evidence. Do not use heartbeat activity as a substitute for execution proof.
+
+### 2. งานระบบ (SYSTEM)
+
+Use this section for enduring systems only. Every item must include:
+
+`[งานระบบ] task_id — ชื่องาน`
+
+- สถานะอนุมัติ: `approval_status`
+- สถานะการทำงาน: `execution_status`
+- เวลา: `timestamp` (or `NOT RECORDED — ห้ามเดาเวลา`)
+- ขั้นตอนปัจจุบัน: `details.current_step`
+- ขั้นตอนถัดไป: `details.next_step`
+- Worker: `details.worker`
+- หลักฐาน: `details.evidence`
+- การตรวจสอบ: `details.verification`
+- ตัวติดขัด: `details.blockers`
+- Retry/Fallback: `details.retry_fallback`
+- สถานะธุรกิจ/รายได้: `details.business_revenue_state`
+
+For SYSTEM tasks, when `COMPLETED / OPERATIONAL` is reached, explicitly state `ต้องบำรุงรักษา 24/7` rather than treating the task as retired.
+
+### 3. ภารกิจ (MISSION)
+
+Use this section for finite objectives only. Every item must include:
+
+`[ภารกิจ] task_id — ชื่องาน`
+
+- เป้าหมาย: `details.target`
+- สถานะอนุมัติ: `approval_status`
+- สถานะการทำงาน: `execution_status`
+- เวลา: `timestamp` (or `NOT RECORDED — ห้ามเดาเวลา`)
+- ขั้นตอนปัจจุบัน: `details.current_step`
+- ขั้นตอนถัดไป: `details.next_step`
+- Worker: `details.worker`
+- หลักฐาน: `details.evidence`
+- การตรวจสอบ: `details.verification`
+- ตัวติดขัด: `details.blockers`
+- Retry/Fallback: `details.retry_fallback`
+- สถานะธุรกิจ/รายได้: `details.business_revenue_state`
+
+For MISSION tasks, do not report `COMPLETED` or `CLOSED` until the finite target is actually achieved and verified. After closure, retain outcome, evidence and lessons under the same `task_id`.
+
+### 4. งานที่กำลังทำอยู่
+
+Report exactly one current work pointer:
+
+`current_work.task_id -> canonical task record`
+
+Do not duplicate it as a second task. State whether it is actually executing or only approved/queued.
+
+### 5. Blocker / PCSEV
+
+When a blocker exists, use the pattern:
+
+`ปัญหา -> สาเหตุ -> วิธีแก้ -> ดำเนินการ -> หลักฐาน -> ตรวจสอบ`
+
+The blocker must remain attached to the same canonical `task_id`.
+
+### 6. ข้อสรุปการตัดสินใจ
+
+End the operational report with one clear conclusion:
+
+`PASS` = verified evidence supports the claimed state.
+`PARTIAL` = some required evidence exists but the acceptance condition is incomplete.
+`BLOCKED` = a known blocker prevents the required next step.
+`QUEUED` = task exists but execution has not started.
+`FAILED` = execution failed and recovery is required.
+
+AX MUST NOT upgrade a state simply because a dashboard, heartbeat, ledger write, or chat result looks healthy.
+
 ## Source-of-truth boundaries
 
 - Master Task Registry: authoritative task catalog, identity, type, category, status and canonical task details.
