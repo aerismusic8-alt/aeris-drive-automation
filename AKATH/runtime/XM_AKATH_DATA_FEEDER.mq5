@@ -86,21 +86,27 @@ void SendHistoricalSnapshot() {
    string symbols[];
    int count = StringSplit(SymbolsCsv, ',', symbols);
    if(count <= 0) return;
+   string snapshots = "[";
+   bool first = true;
    for(int i = 0; i < count; i++) {
       string symbol = Trim(symbols[i]);
       if(symbol == "") continue;
       if(!SymbolSelect(symbol, true)) continue;
-      string idempotency = StringFormat("HIST-%I64d-%s-%s", (long)TimeCurrent(), symbol, TimeframeText(Timeframe));
-      string request_id = StringFormat("REQ-%s", idempotency);
       string bars = BuildBarsJson(symbol);
-      string body = StringFormat(
-         "{\"request_id\":\"%s\",\"idempotency_key\":\"%s\",\"operation\":\"GET_HISTORICAL_BARS\",\"timestamp\":\"%s\",\"account_scope\":\"%s\",\"symbol\":\"%s\",\"market_data\":{\"symbol\":\"%s\",\"timeframe\":\"%s\",\"bars\":%s},\"evidence\":{\"source\":\"MT5_COPYRATES\",\"read_only\":true,\"terminal_login\":%I64d}}",
-         request_id, idempotency, TimeToString(TimeCurrent(), TIME_DATE|TIME_SECONDS), JsonEscape(AccountScope),
-         JsonEscape(symbol), JsonEscape(symbol), TimeframeText(Timeframe), bars, AccountInfoInteger(ACCOUNT_LOGIN)
+      if(!first) snapshots += ",";
+      first = false;
+      snapshots += StringFormat(
+         "{\"symbol\":\"%s\",\"timeframe\":\"%s\",\"bars\":%s,\"source\":\"MT5_COPYRATES\",\"read_only\":true}",
+         JsonEscape(symbol), TimeframeText(Timeframe), bars
       );
-      string ignored;
-      HttpPostJson("/xm/node/result", body, ignored);
    }
+   snapshots += "]";
+   string body = StringFormat(
+      "{\"account_scope\":\"%s\",\"snapshots\":%s}",
+      JsonEscape(AccountScope), snapshots
+   );
+   string ignored;
+   HttpPostJson("/xm/node/market-data", body, ignored);
 }
 
 int OnInit() {
