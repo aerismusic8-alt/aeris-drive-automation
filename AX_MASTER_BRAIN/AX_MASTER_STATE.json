@@ -2,7 +2,7 @@
   "schema_version": "1.4",
   "storage_role": "A_MASTER_BRAIN_SINGLE_SOURCE_OF_TRUTH",
   "status": "VERIFIED",
-  "last_updated_utc": "2026-09-08T01:48:18Z",
+  "last_updated_utc": "2026-09-08T02:10:00Z",
   "authority": "K_FINAL_AUTHORITY",
   "identity_authority": "A_MASTER_BRAIN",
   "model_independence": true,
@@ -34,7 +34,12 @@
     "Model-local memory never outranks A_MASTER_BRAIN",
     "Model switching requires rehydration and verification",
     "Continuous Reflection must audit claims, evidence, uncertainty, conflicts, lessons and state before continuation",
-    "Exactly one canonical current_work may be active at a time"
+    "Exactly one canonical current_work may be active at a time",
+    "Master Task Registry is the only authoritative task catalog",
+    "Every master task has exactly one stable task_id",
+    "All task details are bound to the same canonical task_id",
+    "Task counts are derived only from the current Master Task Registry tasks array",
+    "No system may invent, pad, merge or source extra master tasks outside the Master Task Registry"
   ],
   "company_priority": [
     "P1 Revenue",
@@ -43,6 +48,15 @@
     "P4 Financial Control",
     "P5 Autonomous Execution"
   ],
+  "task_system_contract": {
+    "source": "AX_MASTER_BRAIN/AX_MASTER_TASK_REGISTRY_v2.json",
+    "status": "IMPLEMENTED_PENDING_ACCEPTANCE_VERIFICATION",
+    "identity_rule": "1 task_id = 1 task = 1 canonical task record",
+    "count_rule": "reported_task_count = len(tasks) from Master Task Registry at read time",
+    "no_padding_rule": "Never add external or historical task records to reach a requested count",
+    "detail_rule": "Objective, priority, approval, execution, timestamp, current step, next step, worker, output, evidence, verification, blockers, retry/fallback and business/revenue state remain linked to the same task_id",
+    "projection_rule": "Dashboard, chat, runtime ledger and execution registry are projections or execution persistence and cannot create competing task identities"
+  },
   "current_work_ref": {
     "task_id": "AICS-LIVE-TRADING",
     "source": "AX_MASTER_BRAIN/AX_MASTER_TASK_REGISTRY_v2.json",
@@ -52,7 +66,9 @@
     "LOAD_REHYDRATION_CONTRACT",
     "LOAD_MASTER_STATE",
     "LOAD_MASTER_TASK_REGISTRY",
+    "VALIDATE_TASK_IDENTITY_UNIQUENESS",
     "RESOLVE_SINGLE_CURRENT_WORK",
+    "LOAD_CANONICAL_TASK_RECORD",
     "LOAD_LATEST_EVIDENCE_AND_VERIFICATION",
     "RECONSTRUCT_IDENTITY_MISSION_DECISIONS_TASKS_KNOWLEDGE_STATE",
     "VERIFY_CONSISTENCY",
@@ -89,7 +105,7 @@
     "continuous_reflection": "VERIFIED",
     "file_id_persistence": "VERIFIED"
   },
-  "critical_continuity_gap": "NONE for canonical storage model: current_work is resolved from the authoritative Master Task Registry. Runtime integration and fresh-channel acceptance remain evidence gates.",
+  "critical_continuity_gap": "TASK_REGISTRY_CANONICAL_IDENTITY_HARDENING_PENDING_ACCEPTANCE: the authoritative registry now carries stable task_id records and exact-count/no-padding rules; CI acceptance must verify runtime rehydration uses those records.",
   "verification_requirements": [
     "runtime startup load",
     "state write-back after transitions",
@@ -101,7 +117,10 @@
     "conflict resolution and source-of-truth precedence test",
     "continuous reflection acceptance tests",
     "canonical File ID manifest population and verification",
-    "single current-work continuity test"
+    "single current-work continuity test",
+    "canonical task_id uniqueness and exact registry count test",
+    "no task padding or task invention test",
+    "canonical task detail linkage test"
   ],
   "verified_evidence": {
     "github_actions_run": 33707158558,
