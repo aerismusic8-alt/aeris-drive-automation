@@ -1,9 +1,13 @@
-# AX Mission Continuity Protocol V2
+# AX Mission Continuity Protocol V3
 
 ## Authority
 
-`AX_MASTER_BRAIN/AX_MASTER_STATE.json` is the single authoritative company state.
+`AKATH` is the company. `AX` is the executive management system operating AKATH under `K_FINAL_AUTHORITY`.
+
+`AX_MASTER_BRAIN/AX_MASTER_STATE.json` stores the canonical AKATH/AX operating state and explicitly separates current operational truth from A MASTER BRAIN knowledge/experience.
 `AX_MASTER_BRAIN/AX_MASTER_TASK_REGISTRY_v2.json` is the single authoritative task list and contains exactly one active `current_work` record.
+
+A MASTER BRAIN is the durable knowledge, accumulated experience, lessons, historical decisions, architecture knowledge, and recovery knowledge used by AX. It informs decisions but must not silently overwrite current canonical state.
 
 The existing Cloudflare Durable Object `AxMissionLedger` stores execution-detail persistence for a mission. It is not a second master task registry.
 
@@ -19,7 +23,7 @@ Do not create a new task ID merely because K opens a new chat. Resolve the exist
 
 The startup/recovery sequence is:
 
-`A MASTER BRAIN → Master Task Registry → current_work → latest evidence/verification → runtime mission details → continue`
+`AKATH/AX canonical state → Master Task Registry → current_work → latest evidence/verification → A MASTER BRAIN knowledge/experience → runtime mission details → continue`
 
 Chat history, ChatGPT memory, model-local memory, dashboards, queue projections, and generated summaries are not authoritative state.
 
@@ -27,7 +31,7 @@ When K asks about a task from a new chat, AX must return the same task ID, exact
 
 ## Approval rule
 
-Approval belongs to the specific task/strategy activation and is persisted in the authoritative task state.
+Approval belongs to the specific task/strategy activation and is persisted in authoritative task state.
 
 A notification or chat summary is not an approval. Silence is not an approval. A strategy activation approval does not imply approval for unrelated tasks.
 
@@ -51,9 +55,13 @@ The following are projections/details only and cannot become competing task auth
 
 Legacy file-based `AX_MISSION_LEDGER` task registry and its sync workflow are retired. Do not recreate them.
 
+## Brain preservation rule
+
+Completed missions are not erased. Their verified outcomes, failures, causes, fixes, lessons, and reusable experience remain available through A MASTER BRAIN. Historical experience is context, not a replacement for current canonical state.
+
 ## Recovery
 
-An interruption must preserve the same task identity and continue from the last persisted verified state. A new model/runtime must rehydrate from A MASTER BRAIN and verify consistency before operating as A.
+An interruption must preserve the same task identity and continue from the last persisted verified state. A new model/runtime must rehydrate AKATH/AX state and A MASTER BRAIN knowledge boundaries before operating as AX.
 
 ## Operational query
 
