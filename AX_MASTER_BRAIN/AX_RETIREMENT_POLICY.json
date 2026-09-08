@@ -1,0 +1,23 @@
+{
+  "schema_version": "1.0",
+  "authority": "K_FINAL_AUTHORITY",
+  "status": "ACTIVE",
+  "effective_date": "2026-09-09",
+  "retired_businesses": [
+    {
+      "business_id": "XM_LIVE_TRADE",
+      "status": "RETIRED",
+      "reason": "K directed AX to stop pursuing XM live trading and remove it from active business execution.",
+      "task_ids": ["AICS-LIVE-TRADING", "MISSION-XM-PORTFOLIO-1M"]
+    }
+  ],
+  "execution_rule": "Retired task IDs must remain in canonical history for audit continuity but must never be selected, dispatched, scheduled, or treated as active current work.",
+  "financial_rule": "No XM live-money execution, transfer, activation, or trading action may be initiated by AX.",
+  "replacement_priority": [
+    "CASH_SURVIVAL",
+    "REVENUE_GENERATION_AND_COLLECTION",
+    "OPERATIONS_REQUIRED_FOR_REVENUE",
+    "INFRASTRUCTURE_MAINTENANCE",
+    "LONG_TERM_SYSTEM_EXPANSION"
+  ]
+}
