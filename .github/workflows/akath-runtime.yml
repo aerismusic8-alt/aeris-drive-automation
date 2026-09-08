@@ -78,6 +78,13 @@ jobs:
           python -m unittest AKATH.tests.runner_health_policy_tests -v
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
+      - name: Run master task continuity tests
+        shell: powershell -NoProfile -ExecutionPolicy Bypass -File {0}
+        run: |
+          $ErrorActionPreference = 'Stop'
+          python -m unittest AKATH.tests.master_task_continuity_tests -v
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
       - name: Run AKATH worker with canonical Brain rehydration
         shell: powershell -NoProfile -ExecutionPolicy Bypass -File {0}
         env:
