@@ -13,14 +13,14 @@ if (-not (Test-Path $dispatch)) { throw "AX_AGENT_DISPATCH_NOT_FOUND:$dispatch" 
 $registry = Get-Content -Raw $registryPath | ConvertFrom-Json
 if ($Candidates.Count -eq 0) {
   switch ($Domain) {
-    'AERIS' { $Candidates=@('GEMINI','OPENAI') }
-    'AX'    { $Candidates=@('OPENAI','GEMINI') }
-    default { $Candidates=@('GEMINI','OPENAI') }
+    'AERIS' { $Candidates=@('GEMINI_API','OPENAI') }
+    'AX'    { $Candidates=@('OPENAI','GEMINI_API') }
+    default { $Candidates=@('GEMINI_API','OPENAI') }
   }
 }
 
 # Capability metadata alone never grants execution ownership.
-# Current executable provider families are OPENAI and GEMINI only.
+# Candidate names must match active executable entries in the capability registry.
 foreach ($agent in $Candidates) {
   $cap = $registry.agents.$agent
   if ($null -eq $cap) { continue }
