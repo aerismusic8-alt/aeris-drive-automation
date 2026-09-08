@@ -1,26 +1,15 @@
 {
-  "schema_version": "2.1",
+  "schema_version": "2.2",
   "registry_role": "AUTHORITATIVE_MASTER_TASK_STATUS",
   "authority": "K_FINAL_AUTHORITY",
-  "current_work_policy": "Exactly one current_work record may be active. It must reference an existing task_id in this registry. Dashboards, chat, execution registries and model-local memory cannot create a competing current-work identity.",
+  "task_identity_policy": "Every task has exactly one stable task_id. The task_id is the only canonical identity used across Master Brain, runtime, execution, evidence, verification, dashboards and chats.",
+  "task_record_policy": "Each task is one canonical record containing its operational details. Runtime ledgers, evidence, verification and dashboards may attach records to the same task_id but may not create a competing task record or task identity.",
+  "task_count_policy": "Task count is derived only from the tasks array in this registry at read time. Never pad, infer, backfill, merge, or source extra tasks from chat, dashboards, runtime ledgers, execution registries or model memory to reach a requested count.",
+  "current_work_policy": "Exactly one current_work record may be active. It must reference an existing task_id in this registry. current_work is a pointer, not a second task record.",
   "current_work": {
     "active": true,
     "task_id": "AICS-LIVE-TRADING",
-    "name": "XM Strategy & Revenue Pipeline",
-    "priority": "P1_REVENUE",
-    "approval_status": "APPROVED",
-    "execution_status": "NON-LIVE / GUARDRAIL",
-    "live_money_enabled": false,
-    "approval_required_next": "STRATEGY_ACTIVATION_K",
-    "current_step": "CONTROL_PLANE_BLOCKER_REPAIR",
-    "next_step": "RUN_SELF_HOSTED_XM_VERIFICATION",
-    "continuity_rule": "Reuse this same task_id across chats, channels, PCs and runtime restarts until the task is explicitly completed, failed-and-closed, or superseded by a recorded K decision.",
-    "updated_at": "2026-09-08T08:43:54+07:00",
-    "evidence_refs": [
-      "GitHub Actions run 34176394038",
-      "commit 3ca252668ae8745aea5bcdae052398ca0aeb8877",
-      "commit 09d345631c8a4d839e80486c79a1884616258ffc"
-    ]
+    "updated_at": "2026-09-08T08:43:54+07:00"
   },
   "status_rules": {
     "approved_is_not_executing": true,
@@ -30,18 +19,275 @@
     "missing_timestamp": "NOT RECORDED"
   },
   "tasks": [
-    {"task":"AKATH Autonomous Company Engine","approval":"QUEUED","execution":"QUEUED","time":"2026-09-02T16:54:00+07:00","note":"ไม่ได้บันทึกเป็น APPROVED"},
-    {"task":"AICS Paper Risk Engine","approval":"COMPLETED","execution":"COMPLETED","time":"NOT RECORDED — ห้ามเดาเวลา"},
-    {"task":"AICS Live Trading","approval":"APPROVED","execution":"NON-LIVE / GUARDRAIL","time":"2026-09-02T16:54:00+07:00","note":"XM Strategy & Revenue Pipeline ใช้ task_id เดิมนี้เป็น current work; การอนุมัติกลยุทธ์ใหม่ต้องผ่าน K"},
-    {"task":"AX Executive Reporting","approval":"QUEUED","execution":"QUEUED","time":"2026-09-02T16:54:00+07:00"},
-    {"task":"Dashboard","approval":"—","execution":"REPROCESS_QUEUED","time":"2026-09-02T16:54:00+07:00"},
-    {"task":"Cloud Migration","approval":"—","execution":"REPROCESS_QUEUED","time":"2026-09-02T16:54:00+07:00"},
-    {"task":"Notification / Action Alert","approval":"—","execution":"REPROCESS_QUEUED","time":"2026-09-02T16:54:00+07:00"},
-    {"task":"Financial Revenue → Crypto","approval":"—","execution":"GUARDED / NON-LIVE VERIFICATION","time":"2026-09-02T16:54:00+07:00","note":"ยังไม่โอนเงินจริง"},
-    {"task":"Mission Memory","approval":"—","execution":"REPROCESS_QUEUED","time":"2026-09-02T16:54:00+07:00"},
-    {"task":"Universal Input Gateway","approval":"—","execution":"REPROCESS_QUEUED","time":"2026-09-02T16:54:00+07:00"},
-    {"task":"6-AI Revenue Team","approval":"—","execution":"REPROCESS_QUEUED","time":"2026-09-02T16:54:00+07:00"},
-    {"task":"File ID Persistence","approval":"COMPLETED","execution":"COMPLETED","time":"NOT RECORDED — ห้ามเดาเวลา","note":"Canonical manifest persisted and passed GitHub Actions run 33707158558: File ID Persistence + Manifest Builder acceptance."}
+    {
+      "task_id": "AKATH-AUTONOMOUS-COMPANY-ENGINE",
+      "name": "AKATH Autonomous Company Engine",
+      "objective": "Build the autonomous company operating engine under A MASTER BRAIN authority.",
+      "priority": "P2_CONTINUITY",
+      "approval_status": "QUEUED",
+      "execution_status": "QUEUED",
+      "timestamp": "2026-09-02T16:54:00+07:00",
+      "details": {
+        "approval_required_next": "K_DECISION",
+        "current_step": "QUEUED",
+        "next_step": "RESUME_FROM_MASTER_REGISTRY",
+        "worker": "AX",
+        "output": [],
+        "evidence": [],
+        "verification": [],
+        "blockers": [],
+        "retry_fallback": [],
+        "business_revenue_state": "NOT_STARTED"
+      },
+      "note": "ไม่ได้บันทึกเป็น APPROVED"
+    },
+    {
+      "task_id": "AICS-PAPER-RISK-ENGINE",
+      "name": "AICS Paper Risk Engine",
+      "objective": "Maintain and verify non-live portfolio risk controls before any live-money activation.",
+      "priority": "P4_FINANCIAL_CONTROL",
+      "approval_status": "COMPLETED",
+      "execution_status": "COMPLETED",
+      "timestamp": "NOT RECORDED — ห้ามเดาเวลา",
+      "details": {
+        "approval_required_next": "NONE",
+        "current_step": "COMPLETED",
+        "next_step": "MAINTENANCE_ONLY",
+        "worker": "AX",
+        "output": [],
+        "evidence": [],
+        "verification": [],
+        "blockers": [],
+        "retry_fallback": [],
+        "business_revenue_state": "VERIFIED_NON_LIVE"
+      }
+    },
+    {
+      "task_id": "AICS-LIVE-TRADING",
+      "name": "XM Strategy & Revenue Pipeline",
+      "objective": "Build and verify the guarded XM revenue pipeline from market data through strategy, risk, execution and business verification without enabling unrestricted live money autonomously.",
+      "priority": "P1_REVENUE",
+      "approval_status": "APPROVED",
+      "execution_status": "NON-LIVE / GUARDRAIL",
+      "timestamp": "2026-09-08T08:43:54+07:00",
+      "details": {
+        "approval_required_next": "STRATEGY_ACTIVATION_K",
+        "current_step": "CONTROL_PLANE_BLOCKER_REPAIR",
+        "next_step": "RUN_SELF_HOSTED_XM_VERIFICATION",
+        "worker": "AX",
+        "output": [],
+        "evidence": [
+          "GitHub Actions run 34176394038",
+          "commit 3ca252668ae8745aea5bcdae052398ca0aeb8877",
+          "commit 09d345631c8a4d839e80486c79a1884616258ffc"
+        ],
+        "verification": [],
+        "blockers": [
+          "CONTROL_PLANE_BLOCKER_REPAIR"
+        ],
+        "retry_fallback": [
+          "RUN_SELF_HOSTED_XM_VERIFICATION"
+        ],
+        "business_revenue_state": "ACTIVE / NON-LIVE"
+      },
+      "continuity_rule": "Reuse this same task_id across chats, channels, PCs and runtime restarts until the task is explicitly completed, failed-and-closed, or superseded by a recorded K decision.",
+      "live_money_enabled": false
+    },
+    {
+      "task_id": "AX-EXECUTIVE-REPORTING",
+      "name": "AX Executive Reporting",
+      "objective": "Produce task reporting from the authoritative Master Registry without inventing or padding records.",
+      "priority": "P2_CONTINUITY",
+      "approval_status": "QUEUED",
+      "execution_status": "QUEUED",
+      "timestamp": "2026-09-02T16:54:00+07:00",
+      "details": {
+        "approval_required_next": "K_DECISION",
+        "current_step": "QUEUED",
+        "next_step": "ENFORCE_REGISTRY_ONLY_REPORTING",
+        "worker": "AX",
+        "output": [],
+        "evidence": [],
+        "verification": [],
+        "blockers": [],
+        "retry_fallback": [],
+        "business_revenue_state": "NOT_STARTED"
+      }
+    },
+    {
+      "task_id": "AKATH-DASHBOARD",
+      "name": "Dashboard",
+      "objective": "Expose registry and runtime status as a read-only projection of canonical task state.",
+      "priority": "P2_CONTINUITY",
+      "approval_status": "—",
+      "execution_status": "REPROCESS_QUEUED",
+      "timestamp": "2026-09-02T16:54:00+07:00",
+      "details": {
+        "approval_required_next": "NONE",
+        "current_step": "REPROCESS_QUEUED",
+        "next_step": "REBUILD_FROM_MASTER_REGISTRY",
+        "worker": "AX",
+        "output": [],
+        "evidence": [],
+        "verification": [],
+        "blockers": [],
+        "retry_fallback": [],
+        "business_revenue_state": "SUPPORTING_PROJECTION"
+      }
+    },
+    {
+      "task_id": "AKATH-CLOUD-MIGRATION",
+      "name": "Cloud Migration",
+      "objective": "Migrate approved AKATH execution components while preserving canonical Master Brain identity and task continuity.",
+      "priority": "P5_AUTONOMOUS_EXECUTION",
+      "approval_status": "—",
+      "execution_status": "REPROCESS_QUEUED",
+      "timestamp": "2026-09-02T16:54:00+07:00",
+      "details": {
+        "approval_required_next": "NONE",
+        "current_step": "REPROCESS_QUEUED",
+        "next_step": "REPROCESS_FROM_CANONICAL_STATE",
+        "worker": "AX",
+        "output": [],
+        "evidence": [],
+        "verification": [],
+        "blockers": [],
+        "retry_fallback": [],
+        "business_revenue_state": "NOT_STARTED"
+      }
+    },
+    {
+      "task_id": "AKATH-NOTIFICATION-ACTION-ALERT",
+      "name": "Notification / Action Alert",
+      "objective": "Provide actionable notifications from verified runtime and task state.",
+      "priority": "P3_INPUT_LIMIT",
+      "approval_status": "—",
+      "execution_status": "REPROCESS_QUEUED",
+      "timestamp": "2026-09-02T16:54:00+07:00",
+      "details": {
+        "approval_required_next": "NONE",
+        "current_step": "REPROCESS_QUEUED",
+        "next_step": "REPROCESS_FROM_CANONICAL_TASKS",
+        "worker": "AX",
+        "output": [],
+        "evidence": [],
+        "verification": [],
+        "blockers": [],
+        "retry_fallback": [],
+        "business_revenue_state": "NOT_STARTED"
+      }
+    },
+    {
+      "task_id": "FIN-REVENUE-CRYPTO",
+      "name": "Financial Revenue → Crypto",
+      "objective": "Validate financial revenue-to-crypto workflow under explicit guards; no live transfer without K authorization and verification.",
+      "priority": "P4_FINANCIAL_CONTROL",
+      "approval_status": "—",
+      "execution_status": "GUARDED / NON-LIVE VERIFICATION",
+      "timestamp": "2026-09-02T16:54:00+07:00",
+      "details": {
+        "approval_required_next": "K_DECISION_FOR_LIVE_TRANSFER",
+        "current_step": "GUARDED / NON-LIVE VERIFICATION",
+        "next_step": "VERIFY_BUSINESS_AND_FINANCIAL_CONTROLS",
+        "worker": "AX",
+        "output": [],
+        "evidence": [],
+        "verification": [],
+        "blockers": [],
+        "retry_fallback": [],
+        "business_revenue_state": "NON-LIVE"
+      },
+      "note": "ยังไม่โอนเงินจริง"
+    },
+    {
+      "task_id": "AKATH-MISSION-MEMORY",
+      "name": "Mission Memory",
+      "objective": "Preserve mission and continuity through the canonical Master Brain without creating a competing task registry.",
+      "priority": "P2_CONTINUITY",
+      "approval_status": "—",
+      "execution_status": "REPROCESS_QUEUED",
+      "timestamp": "2026-09-02T16:54:00+07:00",
+      "details": {
+        "approval_required_next": "NONE",
+        "current_step": "REPROCESS_QUEUED",
+        "next_step": "REPROCESS_FROM_MASTER_BRAIN",
+        "worker": "AX",
+        "output": [],
+        "evidence": [],
+        "verification": [],
+        "blockers": [],
+        "retry_fallback": [],
+        "business_revenue_state": "NOT_STARTED"
+      }
+    },
+    {
+      "task_id": "AKATH-UNIVERSAL-INPUT-GATEWAY",
+      "name": "Universal Input Gateway",
+      "objective": "Route incoming instructions into the authoritative task system without creating ambiguous task identities.",
+      "priority": "P3_INPUT_LIMIT",
+      "approval_status": "—",
+      "execution_status": "REPROCESS_QUEUED",
+      "timestamp": "2026-09-02T16:54:00+07:00",
+      "details": {
+        "approval_required_next": "NONE",
+        "current_step": "REPROCESS_QUEUED",
+        "next_step": "ENFORCE_TASK_ID_RESOLUTION",
+        "worker": "AX",
+        "output": [],
+        "evidence": [],
+        "verification": [],
+        "blockers": [],
+        "retry_fallback": [],
+        "business_revenue_state": "NOT_STARTED"
+      }
+    },
+    {
+      "task_id": "AKATH-6AI-REVENUE-TEAM",
+      "name": "6-AI Revenue Team",
+      "objective": "Coordinate AI workers against canonical task identities and revenue objectives without duplicating the task catalog.",
+      "priority": "P1_REVENUE",
+      "approval_status": "—",
+      "execution_status": "REPROCESS_QUEUED",
+      "timestamp": "2026-09-02T16:54:00+07:00",
+      "details": {
+        "approval_required_next": "NONE",
+        "current_step": "REPROCESS_QUEUED",
+        "next_step": "BIND_ALL_AI_WORK_TO_TASK_ID",
+        "worker": "AX",
+        "output": [],
+        "evidence": [],
+        "verification": [],
+        "blockers": [],
+        "retry_fallback": [],
+        "business_revenue_state": "NOT_STARTED"
+      }
+    },
+    {
+      "task_id": "AKATH-FILE-ID-PERSISTENCE",
+      "name": "File ID Persistence",
+      "objective": "Maintain canonical file identifiers and manifests needed to rehydrate the authoritative task system.",
+      "priority": "P2_CONTINUITY",
+      "approval_status": "COMPLETED",
+      "execution_status": "COMPLETED",
+      "timestamp": "NOT RECORDED — ห้ามเดาเวลา",
+      "details": {
+        "approval_required_next": "NONE",
+        "current_step": "COMPLETED",
+        "next_step": "MAINTENANCE_ONLY",
+        "worker": "AX",
+        "output": [],
+        "evidence": [
+          "GitHub Actions run 33707158558: File ID Persistence + Manifest Builder acceptance"
+        ],
+        "verification": [
+          "File ID Persistence + Manifest Builder acceptance"
+        ],
+        "blockers": [],
+        "retry_fallback": [],
+        "business_revenue_state": "VERIFIED"
+      },
+      "note": "Canonical manifest persisted and passed GitHub Actions run 33707158558: File ID Persistence + Manifest Builder acceptance."
+    }
   ],
-  "reporting_rule": "Every AX task update must report the complete current task list with status and timestamp. Current work must be resolved from this registry first. Do not infer approval or execution from heartbeat, dashboard, persistence, chat context, or execution-registry activity."
+  "reporting_rule": "AX must read this registry first for every task count and task status report. The number reported must equal the current length of tasks exactly. Every reported task must include its task_id, name, approval_status, execution_status, timestamp, and linked canonical details. AX must never add an external task to make the count match a prior report. If the registry changes from 8 tasks to 7, report 7; if it changes to 9, report 9. Any task not present in this registry is not a master task and must not be reported as one."
 }
