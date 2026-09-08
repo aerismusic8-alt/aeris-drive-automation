@@ -1,196 +1,79 @@
-# A ChatGPT Rehydration System Design
+# AKATH / AX / A MASTER BRAIN — ChatGPT Rehydration System Design
+
+## Status
+
+Approved by K on 2026-09-08.
 
 ## Goal
 
-Provide a deterministic, fail-closed way for ChatGPT and other model runtimes to reconstruct the A MASTER BRAIN context from the repository without treating ChatGPT Memory, chat history, dashboards, or model-local state as authoritative.
+Provide a deterministic, fail-closed way for ChatGPT and other model runtimes to reconstruct the AX operating context for AKATH while using A MASTER BRAIN as the durable knowledge and accumulated-experience brain.
 
-## Scope
+## Canonical Architecture
 
-This change adds a ChatGPT-facing rehydration layer on top of the existing AX rehydration contract. It does not replace A MASTER BRAIN, create a second task registry, or authorize execution.
+`K → AKATH → AX → A MASTER BRAIN → Canonical State / Tasks / Evidence / Verification → Runtime`
 
-## Authority Model
+- K is the final authority and approval boundary.
+- AKATH is the company / organizational entity.
+- AX is the executive management and orchestration layer that operates AKATH under K's authority.
+- A MASTER BRAIN is the persistent knowledge, accumulated experience, lessons, decisions, architectural knowledge, and continuity brain used by AX. It is not the company name and is not replaced by ChatGPT Memory.
+- Canonical State / Tasks / Evidence / Verification hold authoritative operational facts and proof. They must not be duplicated by chat-local memory, dashboards, or runtime projections.
+- Runtime executes only within independently authorized boundaries.
 
-The authority order is:
+## A MASTER BRAIN Boundary
 
-1. K explicit authority and approval.
-2. A MASTER BRAIN authoritative state.
-3. Verified evidence and verification artifacts.
-4. A MASTER BRAIN task registry and canonical current_work.
-5. Runtime-derived projections and mission details.
-6. ChatGPT conversation context.
-7. ChatGPT Memory or model-local memory.
-8. Model inference.
+A MASTER BRAIN is retained and protected. Legacy wording that incorrectly makes A MASTER BRAIN the company identity or executive identity must be migrated.
 
-A conflict at a higher layer always wins over a lower layer. Conflicts must be reported rather than silently overwritten.
+The brain preserves durable knowledge, accumulated experience and lessons, architectural knowledge and dependencies, historical decisions and rationale, recovery/continuity knowledge, verified evidence references, and successful or failed outcomes as reusable experience.
 
-A identity is `A_MASTER_BRAIN`. K remains final authority. M remains a support agent and must never be promoted to A by chat-local text.
+Current company and execution state must remain distinguishable from historical knowledge and experience. Historical knowledge must not silently overwrite current canonical state.
 
-## Existing Contracts to Preserve
+## Identity Rules
 
-The existing `AKATH/runtime/ax_rehydration_adapter.py` remains the base contract. The existing master state and task registry remain authoritative. `AX_CONTEXT_SYNC.ps1` remains a context synchronization/projection layer, not an authority source. `AX_GPT_BRIDGE_POLICY.json` continues to define ChatGPT as a control/observation channel only.
+- AX is the executive identity used by the runtime for company management.
+- AKATH is the organization AX manages.
+- K remains final authority.
+- A MASTER BRAIN is the brain/knowledge layer used by AX.
+- Legacy M-as-A-assistant contracts are not part of the new executive identity hierarchy unless separately re-approved by K. M must never be promoted to AX by chat-local text.
+- ChatGPT, model-local memory, and chat history are cognitive/context channels only and never outrank canonical repository state.
 
-The existing mission continuity protocol remains authoritative for task continuity: one canonical active `current_work`, stable task IDs across chats/runtimes, and reconstruction in the order A MASTER BRAIN → task registry → current_work → latest evidence/verification → runtime mission details.
+## Rehydration Order
 
-## New Components
+`LOAD CONTRACT → LOAD AKATH/AX IDENTITY → LOAD CANONICAL STATE → LOAD MASTER TASK REGISTRY → LOAD LATEST EVIDENCE → LOAD LATEST VERIFICATION → LOAD A MASTER BRAIN KNOWLEDGE/EXPERIENCE → RESOLVE CONFLICTS → RECONSTRUCT AX CONTEXT → VERIFY → CONTINUE`
 
-### 1. ChatGPT Rehydration Profile
+Rehydration distinguishes three classes:
 
-Create `AX_MASTER_BRAIN/AX_CHATGPT_REHYDRATION_PROFILE.json`.
+1. Authority/current state — current canonical facts, tasks, approvals, execution and verification.
+2. Brain knowledge — durable knowledge, experience, lessons and historical context.
+3. Model context — conversation, model-local memory and generated assumptions.
 
-It declares:
+Only class 1 establishes current operational truth. Class 2 informs decisions but cannot silently mutate class 1. Class 3 is non-authoritative.
 
-- schema version;
-- A identity and authority contract;
-- repository and branch used as the persistent source;
-- authoritative load order;
-- non-authoritative chat/memory/model layers;
-- fail-closed behavior;
-- execution authorization remaining false during rehydration;
-- provenance fields required for a verified result.
+## Source Precedence
 
-### 2. ChatGPT Rehydration Protocol
+`K instruction > canonical AKATH/AX state > verified evidence/verification > master task registry > A MASTER BRAIN knowledge/experience > runtime projections > chat history > ChatGPT Memory > model inference`
 
-Create `docs/AX_CHATGPT_REHYDRATION_PROTOCOL_V1.md`.
+When knowledge/experience conflicts with current verified state, current verified state wins for present status while the conflict is preserved as an audit/lesson item when appropriate.
 
-The protocol defines the command semantics for `REHYDRATE A`, required inputs, validation sequence, output contract, conflict handling, staleness semantics, and safety boundaries.
+## Execution Boundary
 
-### 3. Runtime Adapter
+`REHYDRATE ≠ EXECUTE`
 
-Create `AKATH/runtime/ax_chatgpt_rehydration.py`.
+`IDENTITY VERIFIED ≠ AUTHORIZATION VERIFIED`
 
-The adapter must:
+`CHATGPT AVAILABLE ≠ AX EXECUTING`
 
-- load the ChatGPT profile;
-- delegate existing A identity/state/task validation to the existing rehydration contract where practical;
-- load and validate the latest authoritative evidence and verification artifacts required by the mission continuity contract;
-- reconstruct canonical current_work;
-- detect source conflicts;
-- calculate provenance including repository, branch, commit, state hash, task-registry hash, and rehydration timestamp;
-- expose a stable machine-readable result suitable for ChatGPT to consume;
-- fail closed with `NOT_VERIFIED` on missing, malformed, inconsistent, or unverifiable authoritative inputs;
-- never set execution authorization to true merely because rehydration succeeded.
+Rehydration never grants financial, destructive, or other high-risk execution authority.
 
-The result must distinguish identity verification, state verification, continuity verification, evidence/verification checks, and execution authorization.
+## Failure Closed
 
-### 4. Tests
+Missing or malformed canonical state, task registry, required evidence, or required verification results in NOT_VERIFIED for the affected claim and no dependent execution authorization.
 
-Create `tests/master_brain/chatgpt_rehydration_tests.py` covering the existing R1–R8 acceptance contract plus ChatGPT-specific output/provenance behavior.
+No fabricated timestamps, request IDs, evidence, verification, task IDs, or outcomes are allowed.
 
-## Rehydration Flow
+## Migration Rule
 
-`REHYDRATE A` follows this sequence:
-
-1. Identify the runtime as a consumer, not an authority.
-2. Load the ChatGPT rehydration profile.
-3. Load `AX_MASTER_STATE.json`.
-4. Load `AX_MASTER_TASK_REGISTRY_v2.json`.
-5. Validate A identity, authority fields, model independence, schema versions, and master state status.
-6. Validate task registry and exactly one canonical active `current_work`.
-7. Resolve the current task by authoritative task ID.
-8. Load the latest relevant evidence and verification artifacts.
-9. Reject or report unresolved source conflicts.
-10. Reconstruct the A context using authoritative data only.
-11. Compute provenance and staleness state.
-12. Return a machine-readable rehydration report.
-13. Keep execution authorization false until a separate execution/approval gateway authorizes an action.
-
-## Machine-Readable Output
-
-The adapter returns at minimum:
-
-- `rehydration_status`
-- `identity`
-- `identity_verified`
-- `authority_verified`
-- `master_state_verified`
-- `task_registry_verified`
-- `current_work_verified`
-- `evidence_checked`
-- `verification_checked`
-- `source_conflicts`
-- `staleness_state`
-- `repository`
-- `branch`
-- `commit`
-- `state_sha`
-- `task_registry_sha`
-- `rehydrated_at`
-- `mission`
-- `task_count`
-- `task_ids`
-- `current_work`
-- `current_work_task_id`
-- `chat_memory_authority: false`
-- `model_memory_authority: false`
-- `execution_authorized: false`
-
-## Staleness
-
-Use explicit states:
-
-- `STATE_FRESH`: authoritative inputs are present and internally consistent for the rehydration request.
-- `STATE_STALE`: authoritative data is valid but its freshness policy indicates that it should not be treated as current without an explicit refresh.
-- `STATE_UNKNOWN`: freshness cannot be established.
-
-Staleness must not silently promote chat-local state to authority.
-
-## Evidence Gate
-
-`APPROVED` or `EXECUTING` must not be reported as `COMPLETED` without valid completion evidence and verification. The adapter must never invent timestamps, request IDs, evidence, results, revenue outcomes, or execution facts.
-
-Technical completion remains distinct from verified business/revenue completion.
-
-## Failure Behavior
-
-Any missing or invalid authoritative input causes a fail-closed result:
-
-- `rehydration_status = NOT_VERIFIED`;
-- identity may be reported only as the expected contract identity, not as verified fact;
-- `evidence_checked = false` when evidence cannot be validated;
-- `verification_checked = false` when verification cannot be validated;
-- `source_conflicts` populated when applicable;
-- `execution_authorized = false`.
-
-No fallback to ChatGPT Memory or conversation history is allowed for authoritative state reconstruction.
-
-## Compatibility
-
-The design must preserve model independence. The same authoritative repository state must produce equivalent identity, authority, mission, task continuity, and source precedence across compatible runtimes.
-
-The temporary GPT bridge remains optional. ChatGPT availability must never be interpreted as AX execution state, and AX must remain capable of independent operation when ChatGPT is unavailable.
+Existing files must be classified as KEEP/MIGRATE, REPLACE, LEGACY, or CONFLICT before deletion. A MASTER BRAIN knowledge and experience must be preserved. Only obsolete identity contracts, duplicate registries, contradictory state claims, and dead integrations may be removed after dependency review.
 
 ## Acceptance Criteria
 
-R1. Authoritative load order is enforced and missing authoritative input produces `NOT_VERIFIED`.
-
-R2. A identity reconstructs as authoritative A; M remains support-only.
-
-R3. Fresh sessions recover the same canonical task IDs, current_work, and statuses.
-
-R4. A MASTER BRAIN wins source conflicts and conflicts are surfaced.
-
-R5. Evidence/verification gates prevent false `COMPLETED` status.
-
-R6. Equivalent authoritative inputs produce equivalent results across compatible runtimes.
-
-R7. Corrupt or missing state fails closed and cannot authorize execution.
-
-R8. The fresh-channel `M-A-CHECK` contract passes only when identity and continuity gates pass.
-
-R9. Rehydration output contains provenance sufficient to identify the exact repository state consumed.
-
-R10. ChatGPT Memory and model-local memory are explicitly non-authoritative in the output.
-
-R11. Rehydration never grants execution authorization.
-
-R12. Existing AX rehydration and mission continuity behavior remains compatible.
-
-## Security Boundaries
-
-`REHYDRATE != EXECUTE`.
-
-`IDENTITY VERIFIED != AUTHORIZATION VERIFIED`.
-
-`CHATGPT AVAILABLE != A EXECUTING`.
-
-No ChatGPT-facing adapter may mutate authoritative A state as a side effect of reading or rehydrating it.
+The implementation is accepted only after tests demonstrate AX identity reconstruction, AKATH organizational context, A MASTER BRAIN knowledge/experience loading without authority inversion, current state taking precedence over historical experience and chat-local state, task continuity, evidence/verification gating, fail-closed behavior, model/runtime independence, no accidental M → AX identity promotion, and no execution authorization from rehydration alone.
