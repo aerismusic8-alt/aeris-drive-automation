@@ -80,86 +80,113 @@ A new chat/channel/runtime must resolve:
 - HEARTBEAT, dashboard sync, persistence, and execution-registry activity do not by themselves prove business-task execution.
 - If a historical timestamp is not supported by evidence, report `NOT RECORDED — ห้ามเดาเวลา`.
 
-## Thai AX reporting pattern
+## Thai AX baseline-first reporting pattern
 
-AX status reports in chat should use a stable Thai structure so K can read the state immediately. The language may be Thai, but the canonical values (`task_id`, `SYSTEM/MISSION`, statuses, evidence IDs) must remain exact and machine-traceable.
+This is the default response pattern for status/update commands such as `ax อัพเดทงานในระบบปัจจุบันด้วย`.
 
-### Header
+**Mandatory rule:** AX MUST complete the baseline report from live canonical state BEFORE beginning analysis, planning, recommendations, or new task decomposition.
+
+The baseline is a read/rehydration step, not a reasoning step. It must use the current system state and canonical registry, then expose the state in a stable Thai format. Only after the baseline is shown may AX use reasoning to decide what should happen next.
+
+### Baseline sequence — exactly 1 to 8
+
+| ลำดับหัวข้อสิ่งที่ AX ต้องทำแหล่งข้อมูล |
+|---|---|---|
+| 1 | **สถานะระบบ** | อ่านสถานะหลักของ AKATH ปัจจุบันก่อนทุกครั้ง | A MASTER BRAIN |
+| 2 | **จำนวนงานทั้งหมด** | รายงานจำนวนจาก `tasks` จริงเท่านั้น ห้ามเดา/เติม | Master Task Registry |
+| 3 | **งานระบบ (SYSTEM)** | แสดงงานระบบทั้งหมดที่อยู่ใน Registry พร้อมสถานะ | Master Task Registry |
+| 4 | **ภารกิจ (MISSION)** | แสดงภารกิจทั้งหมด พร้อมเป้าหมายและสถานะ | Master Task Registry |
+| 5 | **งานที่กำลังทำอยู่** | ชี้ `current_work.task_id` เพียงตัวเดียว | Master Task Registry |
+| 6 | **หลักฐานล่าสุด** | แสดง evidence/verification ที่มีจริง | Evidence / Runtime |
+| 7 | **ตัวติดขัด** | ระบุ blocker ที่ผูกกับ `task_id` | Canonical task details |
+| 8 | **สถานะสรุป** | `PASS / PARTIAL / BLOCKED / QUEUED / FAILED` ตามหลักฐานจริง | AX Verification |
+
+### Reasoning sequence — exactly 9 to 12
+
+หลังจาก baseline ข้อ 1–8 เสร็จแล้วเท่านั้น AX จึงเริ่มใช้สมองต่อ:
+
+| ลำดับหัวข้อสิ่งที่ AX ต้องทำแหล่งข้อมูล |
+|---|---|---|
+| 9 | **เข้าสู่สมอง AX** | หลัง baseline เท่านั้น จึงเริ่มวิเคราะห์และตัดสินใจ | AX Reasoning |
+| 10 | **PCSEV ต่อเนื่อง** | ปัญหา → สาเหตุ → วิธีแก้ → ดำเนินการ → หลักฐาน → ตรวจสอบ | AX Execution |
+| 11 | **งานถัดไป** | เลือกงานต่อจากสถานะจริง ไม่สร้าง task ใหม่ | Master Task Registry |
+| 12 | **วนต่อ** | Execute → Verify → Update State → คิดงานต่อ | AKATH Runtime |
+
+### Required Thai output layout
+
+Every baseline report should use this order:
 
 `## อัปเดตงานปัจจุบัน — [วันที่/เวลาอ้างอิง]`
 
-### 1. ภาพรวม
+`### 1. สถานะระบบ`
 
-State one concise conclusion from the current Master Registry and latest verified evidence. Do not use heartbeat activity as a substitute for execution proof.
+`### 2. จำนวนงานทั้งหมด`
 
-### 2. งานระบบ (SYSTEM)
+`### 3. งานระบบ (SYSTEM)`
 
-Use this section for enduring systems only. Every item must include:
-
+Each item:
 `[งานระบบ] task_id — ชื่องาน`
 
-- สถานะอนุมัติ: `approval_status`
-- สถานะการทำงาน: `execution_status`
-- เวลา: `timestamp` (or `NOT RECORDED — ห้ามเดาเวลา`)
-- ขั้นตอนปัจจุบัน: `details.current_step`
-- ขั้นตอนถัดไป: `details.next_step`
-- Worker: `details.worker`
-- หลักฐาน: `details.evidence`
-- การตรวจสอบ: `details.verification`
-- ตัวติดขัด: `details.blockers`
-- Retry/Fallback: `details.retry_fallback`
-- สถานะธุรกิจ/รายได้: `details.business_revenue_state`
+- สถานะอนุมัติ:
+- สถานะการทำงาน:
+- เวลา:
+- ขั้นตอนปัจจุบัน:
+- ขั้นตอนถัดไป:
+- Worker:
+- หลักฐาน:
+- การตรวจสอบ:
+- ตัวติดขัด:
+- Retry/Fallback:
+- สถานะธุรกิจ/รายได้:
 
-For SYSTEM tasks, when `COMPLETED / OPERATIONAL` is reached, explicitly state `ต้องบำรุงรักษา 24/7` rather than treating the task as retired.
+`### 4. ภารกิจ (MISSION)`
 
-### 3. ภารกิจ (MISSION)
-
-Use this section for finite objectives only. Every item must include:
-
+Each item:
 `[ภารกิจ] task_id — ชื่องาน`
 
-- เป้าหมาย: `details.target`
-- สถานะอนุมัติ: `approval_status`
-- สถานะการทำงาน: `execution_status`
-- เวลา: `timestamp` (or `NOT RECORDED — ห้ามเดาเวลา`)
-- ขั้นตอนปัจจุบัน: `details.current_step`
-- ขั้นตอนถัดไป: `details.next_step`
-- Worker: `details.worker`
-- หลักฐาน: `details.evidence`
-- การตรวจสอบ: `details.verification`
-- ตัวติดขัด: `details.blockers`
-- Retry/Fallback: `details.retry_fallback`
-- สถานะธุรกิจ/รายได้: `details.business_revenue_state`
+- เป้าหมาย:
+- สถานะอนุมัติ:
+- สถานะการทำงาน:
+- เวลา:
+- ขั้นตอนปัจจุบัน:
+- ขั้นตอนถัดไป:
+- Worker:
+- หลักฐาน:
+- การตรวจสอบ:
+- ตัวติดขัด:
+- Retry/Fallback:
+- สถานะธุรกิจ/รายได้:
 
-For MISSION tasks, do not report `COMPLETED` or `CLOSED` until the finite target is actually achieved and verified. After closure, retain outcome, evidence and lessons under the same `task_id`.
-
-### 4. งานที่กำลังทำอยู่
+`### 5. งานที่กำลังทำอยู่`
 
 Report exactly one current work pointer:
-
 `current_work.task_id -> canonical task record`
 
-Do not duplicate it as a second task. State whether it is actually executing or only approved/queued.
+`### 6. หลักฐานล่าสุด`
 
-### 5. Blocker / PCSEV
+Show only evidence that actually exists and is linked to the relevant task_id. Do not convert heartbeat/dashboard/persistence into execution evidence.
 
-When a blocker exists, use the pattern:
+`### 7. ตัวติดขัด`
 
-`ปัญหา -> สาเหตุ -> วิธีแก้ -> ดำเนินการ -> หลักฐาน -> ตรวจสอบ`
+Show blockers attached to the canonical task_id. Do not turn an issue, error, or observation into a new master task unless K explicitly changes the Master Registry.
 
-The blocker must remain attached to the same canonical `task_id`.
+`### 8. สถานะสรุป`
 
-### 6. ข้อสรุปการตัดสินใจ
+Use only evidence-supported values:
+`PASS` / `PARTIAL` / `BLOCKED` / `QUEUED` / `FAILED`.
 
-End the operational report with one clear conclusion:
+### Transition to AX reasoning
 
-`PASS` = verified evidence supports the claimed state.
-`PARTIAL` = some required evidence exists but the acceptance condition is incomplete.
-`BLOCKED` = a known blocker prevents the required next step.
-`QUEUED` = task exists but execution has not started.
-`FAILED` = execution failed and recovery is required.
+Only after the baseline is visible may AX continue with:
 
-AX MUST NOT upgrade a state simply because a dashboard, heartbeat, ledger write, or chat result looks healthy.
+`### 9. เข้าสู่สมอง AX`
+
+Then:
+`### 10. PCSEV ต่อเนื่อง`
+`### 11. งานถัดไป`
+`### 12. วนต่อ`
+
+K may ask a question about any single item after the baseline. AX should answer from the same canonical task record and should not require K to restate the task context.
 
 ## Source-of-truth boundaries
 
