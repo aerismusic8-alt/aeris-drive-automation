@@ -13,12 +13,12 @@ permissions:
 
 jobs:
   trigger-e2e:
-    runs-on: windows-latest
+    runs-on: [self-hosted, Windows, X64]
     timeout-minutes: 5
     steps:
       - uses: actions/checkout@v5
       - name: Run AX-only portfolio trigger E2E
-        shell: pwsh
+        shell: powershell
         run: |
           $ErrorActionPreference = 'Continue'
           & "$PWD/tests/AX_AICS_PORTFOLIO_TRIGGER_TEST.ps1" 2>&1 | Tee-Object -FilePath "$PWD/trigger-test.log"
