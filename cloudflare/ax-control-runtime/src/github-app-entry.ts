@@ -158,6 +158,7 @@ async function xmRoute(request: Request, env: GitHubEnv): Promise<Response | nul
   const controlAuthorized = authorized(request, env);
   const stub = xmQueueStub(env);
   if (request.method === 'GET' && url.pathname === '/xm/status') return stub.fetch('https://xm.local/status', { method: 'GET' });
+  if (request.method === 'GET' && url.pathname === '/xm/market-data') return stub.fetch('https://xm.local/market-data', { method: 'GET' });
   if (request.method === 'POST' && url.pathname === '/xm/node/pull') { if (!nodeAuthorized) return xmJson({ error: 'AUTH_REQUIRED' }, 401); return stub.fetch('https://xm.local/pull', { method: 'POST', headers: { 'content-type': 'application/json' }, body: '{}' }); }
   if (request.method === 'POST' && url.pathname === '/xm/node/heartbeat') { if (!nodeAuthorized) return xmJson({ error: 'AUTH_REQUIRED' }, 401); return stub.fetch('https://xm.local/heartbeat', { method: 'POST', headers: { 'content-type': 'application/json' }, body: await request.text() }); }
   if (request.method === 'POST' && url.pathname === '/xm/node/result') { if (!nodeAuthorized) return xmJson({ error: 'AUTH_REQUIRED' }, 401); return stub.fetch('https://xm.local/result', { method: 'POST', headers: { 'content-type': 'application/json' }, body: await request.text() }); }
