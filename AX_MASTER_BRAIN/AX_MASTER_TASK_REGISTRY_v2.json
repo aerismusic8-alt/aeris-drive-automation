@@ -15,10 +15,11 @@
     "current_step": "CONTROL_PLANE_BLOCKER_REPAIR",
     "next_step": "RUN_SELF_HOSTED_XM_VERIFICATION",
     "continuity_rule": "Reuse this same task_id across chats, channels, PCs and runtime restarts until the task is explicitly completed, failed-and-closed, or superseded by a recorded K decision.",
-    "updated_at": "2026-09-08T01:21:53Z",
+    "updated_at": "2026-09-08T08:43:54+07:00",
     "evidence_refs": [
       "GitHub Actions run 34176394038",
-      "commit 3ca252668ae8745aea5bcdae052398ca0aeb8877"
+      "commit 3ca252668ae8745aea5bcdae052398ca0aeb8877",
+      "commit 09d345631c8a4d839e80486c79a1884616258ffc"
     ]
   },
   "status_rules": {
