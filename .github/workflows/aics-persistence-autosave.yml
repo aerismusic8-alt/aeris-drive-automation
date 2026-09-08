@@ -1,16 +1,7 @@
-name: AICS Persistence Auto-Save
+name: AX Persistent State Auto-Save
 
 on:
   workflow_dispatch:
-  push:
-    branches: [main]
-    paths:
-      - '.github/workflows/aics-persistence-autosave.yml'
-      - 'AX_AERIS_EXECUTION_ADAPTER.ps1'
-      - 'AERIS_Code.gs'
-      - 'aics/**'
-  schedule:
-    - cron: "*/5 * * * *"
   workflow_run:
     workflows:
       - AX Autonomous Executive Loop
@@ -22,18 +13,18 @@ permissions:
   contents: read
 
 concurrency:
-  group: aics-persistence-autosave
+  group: ax-persistent-state-autosave
   cancel-in-progress: false
 
 jobs:
   autosave:
-    if: ${{ github.event_name != 'workflow_run' || github.event.workflow_run.conclusion != 'cancelled' }}
+    if: ${{ github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success' }}
     runs-on: [self-hosted, Windows, X64]
     timeout-minutes: 5
     steps:
-      - name: Auto-save AX/AICS state to Google Drive
+      - name: Auto-save AX state to persistent storage
         shell: cmd
         env:
           AERIS_WEB_APP_URL: https://script.google.com/macros/s/AKfycbwdK1NVd0_ZUVS_fRto6xRIWzUOkFi8BV90UxxKrujQYfYWvcaIlWNDXKxI9Ree7Zqx/exec
         run: |
-          powershell.exe -NoProfile -ExecutionPolicy Bypass -Command "$ErrorActionPreference = 'Stop'; $payload = @{ command = 'CREATE_SAVEPOINT'; approved = $true } | ConvertTo-Json -Compress; Write-Host '=== AICS PERSISTENCE AUTO-SAVE ==='; Write-Host ('Payload: ' + $payload); $response = Invoke-RestMethod -Uri $env:AERIS_WEB_APP_URL -Method Post -ContentType 'application/json' -Body $payload -TimeoutSec 30; Write-Host ($response | ConvertTo-Json -Depth 20); if ($response.success -ne $true) { throw ('AICS_AUTOSAVE_REJECTED: ' + $response.error) }; $result = $response.result; if ($null -eq $result -or $result.verified -ne $true) { throw 'AICS_AUTOSAVE_NOT_VERIFIED' }; Write-Host 'Drive persistence: VERIFIED'; Write-Host '=== AICS PERSISTENCE AUTO-SAVE COMPLETE ==='"
+          powershell.exe -NoProfile -ExecutionPolicy Bypass -Command "$ErrorActionPreference = 'Stop'; $payload = @{ command = 'CREATE_SAVEPOINT'; approved = $true; source = 'AX_PERSISTENT_STATE_AUTOSAVE' } | ConvertTo-Json -Compress; Write-Host '=== AX PERSISTENT STATE AUTO-SAVE ==='; $response = Invoke-RestMethod -Uri $env:AERIS_WEB_APP_URL -Method Post -ContentType 'application/json' -Body $payload -TimeoutSec 30; Write-Host ($response | ConvertTo-Json -Depth 20); if ($response.success -ne $true) { throw ('AX_AUTOSAVE_REJECTED: ' + $response.error) }; $result = $response.result; if ($null -eq $result -or $result.verified -ne $true) { throw 'AX_AUTOSAVE_NOT_VERIFIED' }; Write-Host 'Persistent state: VERIFIED'; Write-Host '=== AX PERSISTENT STATE AUTO-SAVE COMPLETE ==='"
