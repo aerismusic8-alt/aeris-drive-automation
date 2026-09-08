@@ -1,5 +1,5 @@
 param(
-  [string]$RegistryPath = "$PSScriptRoot\AX_TASK_REGISTRY.json"
+  [string]$RegistryPath = "$PSScriptRoot\AX_MASTER_BRAIN\AX_MASTER_TASK_REGISTRY_v2.json"
 )
 
 $ErrorActionPreference = 'Stop'
@@ -17,10 +17,12 @@ $selectorPath = Join-Path $PSScriptRoot 'AX_TASK_SELECTOR.ps1'
 if (-not (Test-Path $selectorPath)) { throw "AX_TASK_SELECTOR_NOT_FOUND: $selectorPath" }
 . $selectorPath
 
-$registry = Get-Content -Raw -Path $RegistryPath | ConvertFrom-Json
+$sourceRegistry = Get-Content -Raw -Path $RegistryPath | ConvertFrom-Json
+$registry = if ([string]$sourceRegistry.registry_role -eq 'AUTHORITATIVE_AKATH_MASTER_TASK_STATUS') { Convert-AxMasterRegistry -MasterRegistry $sourceRegistry } else { $sourceRegistry }
 $selected = Select-AxNextTask -Registry $registry
 
 Write-Host '=== AX ACTION DISPATCHER ==='
+Write-Host "Canonical Registry: $RegistryPath"
 if ($null -eq $selected) { Write-Host 'Dispatch: NO_ELIGIBLE_TASK'; Write-Host 'Execution: NOT_PERFORMED'; exit 0 }
 if (-not (Test-AxTaskDependencies -Registry $registry -Task $selected)) { throw "AX_DEPENDENCY_GATE_REJECTED:$($selected.id)" }
 
@@ -32,15 +34,13 @@ Write-Host 'Dependency Gate: PASSED'
 
 # ============================================================
 # HELPER-AGENT ROUTING
-# A helper route may own execution only when the bridge returns success.
-# A successful helper route must represent actual executor ownership;
-# route selection alone never means task completion.
+# Only route to executors that are explicitly active in the capability registry.
 # ============================================================
 
 $agentRoutingBridge = Join-Path $PSScriptRoot 'AX_AGENT_ROUTING_BRIDGE.ps1'
 $agentRouteSelected = $false
 if (Test-Path $agentRoutingBridge) {
-  $agentCandidates = @('GEMINI','COPILOT')
+  $agentCandidates = @('OPENAI','GEMINI_API','GEMINI_CLOUDFLARE','GEMINI_LIVE_CODE_STREAM')
   $agentRoutingResult = & powershell.exe -ExecutionPolicy Bypass -File $agentRoutingBridge -TaskId $selected.id -Domain $selected.domain -Candidates $agentCandidates 2>&1
   if ($LASTEXITCODE -eq 0) {
     $agentRouteSelected = $true
