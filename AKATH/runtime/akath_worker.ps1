@@ -52,7 +52,12 @@ function Write-Evidence {
 
 function Invoke-Rehydration {
   if (-not (Test-Path -LiteralPath $Adapter)) { throw 'REHYDRATION_ADAPTER_MISSING' }
-  $output = & python $Adapter rehydrate 2>&1
+  $pythonExe = $env:AKATH_PORTABLE_PYTHON
+  if ([string]::IsNullOrWhiteSpace($pythonExe) -or -not (Test-Path -LiteralPath $pythonExe)) {
+    $pythonExe = (Get-Command python.exe -ErrorAction SilentlyContinue).Source
+  }
+  if ([string]::IsNullOrWhiteSpace($pythonExe) -or -not (Test-Path -LiteralPath $pythonExe)) { throw 'PYTHON_RUNTIME_NOT_FOUND' }
+  $output = & $pythonExe $Adapter rehydrate 2>&1
   if ($LASTEXITCODE -ne 0) {
     $text = ($output -join "`n").Trim()
     if ($text) {
