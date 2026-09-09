@@ -1,7 +1,14 @@
 ﻿{
     "schema":  "AX_ACTIVITY_V1",
-    "updatedAt":  "2026-09-09T03:17:55.0317639Z",
+    "updatedAt":  "2026-09-09T03:30:09.9284730Z",
     "events":  [
+                   {
+                       "id":  "2026-09-09T03:30:09.9284730Z-push-",
+                       "type":  "DASHBOARD_SYNC",
+                       "message":  "System=ONLINE Overall=PASS SelectedTask=AKATH-6AI-REVENUE-TEAM",
+                       "status":  "PASS",
+                       "timestamp":  "2026-09-09T03:30:09.9284730Z"
+                   },
                    {
                        "id":  "2026-09-09T03:17:55.0317639Z-push-",
                        "type":  "DASHBOARD_SYNC",
@@ -694,13 +701,6 @@
                        "message":  "System=ONLINE Overall=PASS SelectedTask=AX-RECOVERED-005",
                        "status":  "PASS",
                        "timestamp":  "2026-09-08T10:46:24.7270832Z"
-                   },
-                   {
-                       "id":  "2026-09-08T10:35:29.6566190Z-push-",
-                       "type":  "DASHBOARD_SYNC",
-                       "message":  "System=ONLINE Overall=PASS SelectedTask=AX-RECOVERED-005",
-                       "status":  "PASS",
-                       "timestamp":  "2026-09-08T10:35:29.6566190Z"
                    }
                ]
 }
