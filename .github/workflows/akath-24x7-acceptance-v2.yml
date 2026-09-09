@@ -50,7 +50,7 @@ jobs:
           Expand-Archive -LiteralPath $pythonZip -DestinationPath $pythonDir -Force
           $pythonExe = Join-Path $pythonDir 'python.exe'
           if (-not (Test-Path -LiteralPath $pythonExe)) { throw 'AKATH_PORTABLE_PYTHON_MISSING' }
-          $pythonDir | Out-File -FilePath $env:GITHUB_PATH -Append -Encoding utf8
+          "AKATH_PORTABLE_PYTHON=$pythonExe" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
           & $pythonExe --version
       - name: Clean stale CI rebase state
         shell: powershell -NoProfile -ExecutionPolicy Bypass -File {0}
@@ -75,6 +75,12 @@ jobs:
         run: |
           $ErrorActionPreference = 'Stop'
           python -m pytest tests/master_brain/ax_akath_identity_migration_tests.py -q
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Run Python isolation regression test
+        shell: powershell -NoProfile -ExecutionPolicy Bypass -File {0}
+        run: |
+          $ErrorActionPreference = 'Stop'
+          python -m pytest tests/master_brain/akath_acceptance_python_isolation_tests.py -q
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
       - name: Run and verify one autonomous AKATH cycle
         shell: powershell -NoProfile -ExecutionPolicy Bypass -File {0}
@@ -104,8 +110,8 @@ jobs:
         shell: powershell -NoProfile -ExecutionPolicy Bypass -File {0}
         run: |
           $ErrorActionPreference = 'Stop'
-          python --version
-          python "$env:GITHUB_WORKSPACE/AKATH/tests/rehydration_adapter_tests.py"
+          & $env:AKATH_PORTABLE_PYTHON --version
+          & $env:AKATH_PORTABLE_PYTHON "$env:GITHUB_WORKSPACE/AKATH/tests/rehydration_adapter_tests.py"
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           "AKATH_ADAPTER_PASS=true" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
       - name: Record scheduled autonomous cycle
