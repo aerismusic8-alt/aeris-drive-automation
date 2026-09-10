@@ -1,7 +1,14 @@
 ﻿{
     "schema":  "AX_ACTIVITY_V1",
-    "updatedAt":  "2026-09-10T04:23:03.6350414Z",
+    "updatedAt":  "2026-09-10T04:34:06.9608928Z",
     "events":  [
+                   {
+                       "id":  "2026-09-10T04:34:06.9608928Z-push-",
+                       "type":  "DASHBOARD_SYNC",
+                       "message":  "System=ONLINE Overall=DEGRADED SelectedTask=AX-EXECUTIVE-REPORTING",
+                       "status":  "DEGRADED",
+                       "timestamp":  "2026-09-10T04:34:06.9608928Z"
+                   },
                    {
                        "id":  "2026-09-10T04:23:03.6350414Z-push-",
                        "type":  "DASHBOARD_SYNC",
@@ -694,13 +701,6 @@
                        "message":  "System=ONLINE Overall=PASS SelectedTask=AKATH-6AI-REVENUE-TEAM",
                        "status":  "PASS",
                        "timestamp":  "2026-09-09T10:36:26.0851316Z"
-                   },
-                   {
-                       "id":  "2026-09-09T10:25:24.7944467Z-push-",
-                       "type":  "DASHBOARD_SYNC",
-                       "message":  "System=ONLINE Overall=PASS SelectedTask=AKATH-6AI-REVENUE-TEAM",
-                       "status":  "PASS",
-                       "timestamp":  "2026-09-09T10:25:24.7944467Z"
                    }
                ]
 }
