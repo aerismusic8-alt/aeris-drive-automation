@@ -1,8 +1,8 @@
 ﻿{
     "schema":  "AX_CANONICAL_STATE_V1",
-    "generatedAt":  "2026-09-10T22:42:40.1945080+07:00",
+    "generatedAt":  "2026-09-10T22:53:24.5233896+07:00",
     "windowHours":  24,
-    "windowStart":  "2026-09-09T22:42:40.1945080+07:00",
+    "windowStart":  "2026-09-09T22:53:24.5233896+07:00",
     "eventCount":  0,
     "channels":  [
 
@@ -11,7 +11,7 @@
 
                ],
     "continuity":  {
-                       "previousStateGeneratedAt":  "2026-09-10T22:27:16.3255568+07:00",
+                       "previousStateGeneratedAt":  "2026-09-10T22:42:40.1945080+07:00",
                        "previousStateSchema":  "AX_CANONICAL_STATE_V1",
                        "bootstrapRequired":  true,
                        "bootstrapReason":  "CONTEXT_SYNC_OR_CHANNEL_CHANGE"
