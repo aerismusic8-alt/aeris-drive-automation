@@ -42,10 +42,9 @@ jobs:
           $ErrorActionPreference = 'Stop'
           $runtime = 'C:\AX-Runtime\AX_PC2_WORKER_V2.ps1'
           $text = Get-Content -Raw $runtime
-          $marker = '# AX_NODE_ACTION_COMPAT_V2'
           $needle = '  $r = Invoke-RestMethod -Uri $ApiUrl -Method Post -Headers (Headers) -Body ($body | ConvertTo-Json -Depth 20 -Compress) -TimeoutSec 30'
           $compatLines = @(
-            '# AX_NODE_ACTION_COMPAT_V2'
+            '# AX_NODE_ACTION_COMPAT_V3'
             'if ($body -ne $null) {'
             '  $hasAction = $false'
             '  if ($body.PSObject.Properties.Name -contains ''action'') {'
@@ -70,31 +69,33 @@ jobs:
             '}'
           )
           $compat = $compatLines -join "`r`n"
-          $markerIndex = $text.IndexOf($marker, [StringComparison]::Ordinal)
           $needleIndex = $text.IndexOf($needle, [StringComparison]::Ordinal)
           if ($needleIndex -lt 0) { throw 'NODE_ACTION_COMPAT_INJECTION_POINT_NOT_FOUND' }
-          if ($markerIndex -ge 0 -and $markerIndex -lt $needleIndex) {
-            $backup = "$runtime.bak-before-node-action-compat-v3-$(Get-Date -Format yyyyMMddHHmmss)"
-            Copy-Item $runtime $backup -Force
-            $text = $text.Substring(0, $markerIndex) + $compat + "`r`n" + $text.Substring($needleIndex)
-          } else {
-            $backup = "$runtime.bak-before-node-action-compat-v3-$(Get-Date -Format yyyyMMddHHmmss)"
-            Copy-Item $runtime $backup -Force
-            $text = $text.Substring(0, $needleIndex) + $compat + "`r`n" + $text.Substring($needleIndex)
+          $v1Index = $text.IndexOf('# AX_NODE_ACTION_COMPAT_V1', [StringComparison]::Ordinal)
+          $v2Index = $text.IndexOf('# AX_NODE_ACTION_COMPAT_V2', [StringComparison]::Ordinal)
+          $v3Index = $text.IndexOf('# AX_NODE_ACTION_COMPAT_V3', [StringComparison]::Ordinal)
+          $startIndex = $needleIndex
+          foreach ($candidate in @($v1Index, $v2Index, $v3Index)) {
+            if ($candidate -ge 0 -and $candidate -lt $startIndex) { $startIndex = $candidate }
           }
+          $backup = "$runtime.bak-before-node-action-compat-v4-$(Get-Date -Format yyyyMMddHHmmss)"
+          Copy-Item $runtime $backup -Force
+          $text = $text.Substring(0, $startIndex) + $compat + "`r`n" + $text.Substring($needleIndex)
           Set-Content -Path $runtime -Value $text -Encoding UTF8
           $patched = Get-Content -Raw $runtime
-          if ($patched -notmatch [regex]::Escape($marker)) { throw 'NODE_ACTION_COMPAT_V3_NOT_VERIFIED' }
-          $lines = $patched -split "`r?`n"
-          $compatStart = [Array]::IndexOf($lines, $marker)
-          $compatEnd = [Math]::Min($lines.Length - 1, $compatStart + 30)
-          $compatBlock = ($lines[$compatStart..$compatEnd] -join "`n")
-          if ($compatBlock -match 'if \(\.PSObject\.Properties' -or $compatBlock -match '\| Add-Member.*-NotePropertyValue\s+-Force') { throw 'NODE_ACTION_COMPAT_V3_MALFORMED' }
-          if ($compatBlock -notmatch '\$body\.PSObject\.Properties\.Name') { throw 'NODE_ACTION_COMPAT_V3_BODY_ACTION_CHECK_MISSING' }
+          $remainingBad = $patched -match '# AX_NODE_ACTION_COMPAT_V1' -or $patched -match '# AX_NODE_ACTION_COMPAT_V2'
+          if ($remainingBad) { throw 'NODE_ACTION_COMPAT_STALE_BLOCK_REMAINS' }
+          if ($patched -notmatch '# AX_NODE_ACTION_COMPAT_V3') { throw 'NODE_ACTION_COMPAT_V3_NOT_VERIFIED' }
+          $compatStart = $patched.IndexOf('# AX_NODE_ACTION_COMPAT_V3', [StringComparison]::Ordinal)
+          $compatEnd = $patched.IndexOf($needle, $compatStart, [StringComparison]::Ordinal)
+          if ($compatEnd -lt 0) { throw 'NODE_ACTION_COMPAT_NEEDLE_AFTER_V3_NOT_FOUND' }
+          $compatBlock = $patched.Substring($compatStart, $compatEnd - $compatStart)
+          if ($compatBlock -match 'if \(\.PSObject\.Properties' -or $compatBlock -match '\| Add-Member.*-NotePropertyValue\s+-Force') { throw 'NODE_ACTION_COMPAT_V4_MALFORMED' }
+          if ($compatBlock -notmatch '\$body\.PSObject\.Properties\.Name') { throw 'NODE_ACTION_COMPAT_V4_BODY_ACTION_CHECK_MISSING' }
           $parseErrors = $null
           [void][System.Management.Automation.Language.Parser]::ParseInput($patched, [ref]$null, [ref]$parseErrors)
           if ($parseErrors.Count -gt 0) { throw ('NODE_WORKER_POWERSHELL_PARSE_FAILED:' + (($parseErrors | ForEach-Object Message) -join '; ')) }
-          Write-Host 'NODE_ACTION_COMPAT_V3=VERIFIED'
+          Write-Host 'NODE_ACTION_COMPAT_V4=VERIFIED'
           Write-Host 'NODE_WORKER_POWERSHELL_PARSE=VERIFIED'
       - name: Inspect PC2 worker Node API contract
         shell: powershell -NoProfile -ExecutionPolicy Bypass -File {0}
@@ -103,7 +104,7 @@ jobs:
           $runtime = 'C:\AX-Runtime\AX_PC2_WORKER_V2.ps1'
           $lines = Get-Content $runtime
           Write-Host '--- WORKER API/COMMAND LINES ---'
-          $lines | Where-Object { $_ -match 'AX_NODE_ACTION_COMPAT_V2|NODE_ACTION_COMPAT|NODE_API|UNKNOWN_COMMAND|allowlist|Invoke-RestMethod|command|action|apiUrl|endpoint' } | Select-Object -First 160 | ForEach-Object { Write-Host $_ }
+          $lines | Where-Object { $_ -match 'AX_NODE_ACTION_COMPAT_V3|NODE_ACTION_COMPAT|NODE_API|UNKNOWN_COMMAND|allowlist|Invoke-RestMethod|command|action|apiUrl|endpoint' } | Select-Object -First 160 | ForEach-Object { Write-Host $_ }
           Write-Host '--- WORKER END ---'
       - name: Execute one PC2 worker E2E
         shell: powershell -NoProfile -ExecutionPolicy Bypass -File {0}
