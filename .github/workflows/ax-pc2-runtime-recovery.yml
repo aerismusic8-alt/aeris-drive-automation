@@ -79,7 +79,13 @@ jobs:
           }
           $patched = Get-Content -Raw $runtime
           if ($patched -notmatch [regex]::Escape($marker)) { throw 'NODE_ACTION_COMPAT_V2_NOT_VERIFIED' }
-          if ($patched -match 'if \(\.PSObject\.Properties|\| Add-Member.*-NotePropertyValue\s+-Force') { throw 'NODE_ACTION_COMPAT_V2_MALFORMED' }
+          $lines = $patched -split "`r?`n"
+          $compatStart = [Array]::IndexOf($lines, $marker)
+          if ($compatStart -lt 0) { throw 'NODE_ACTION_COMPAT_V2_NOT_VERIFIED' }
+          $compatEnd = [Math]::Min($lines.Length - 1, $compatStart + 30)
+          $compatBlock = ($lines[$compatStart..$compatEnd] -join "`n")
+          if ($compatBlock -match 'if \(\.PSObject\.Properties' -or $compatBlock -match '\| Add-Member.*-NotePropertyValue\s+-Force') { throw 'NODE_ACTION_COMPAT_V2_MALFORMED' }
+          if ($compatBlock -notmatch '\$body\.PSObject\.Properties\.Name') { throw 'NODE_ACTION_COMPAT_V2_BODY_ACTION_CHECK_MISSING' }
           Write-Host 'NODE_ACTION_COMPAT_V2=VERIFIED'
       - name: Inspect PC2 worker Node API contract
         shell: powershell -NoProfile -ExecutionPolicy Bypass -File {0}
