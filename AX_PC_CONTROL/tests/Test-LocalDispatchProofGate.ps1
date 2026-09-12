@@ -12,8 +12,11 @@ if ($workflow -notmatch 'GITHUB_RUN_ID') {
 if ($workflow -notmatch 'GITHUB_RUN_ATTEMPT') {
     throw 'CURRENT_RUN_ATTEMPT_NOT_BOUND'
 }
-if ($workflow -notmatch 'dispatch\\\$\{JobId\}\.json') {
+if ($workflow -notmatch '\$recordPath\s*=\s*Join-Path\s+\$dispatchDir\s+"\$jobId\.json"') {
     throw 'EXACT_DISPATCH_RECORD_NOT_VERIFIED'
+}
+if ($workflow -notmatch '-JobId\s+\$env:AX_DISPATCH_JOB_ID') {
+    throw 'DISPATCH_JOB_ID_NOT_PASSED_TO_DISPATCHER'
 }
 
 Write-Host 'LOCAL_DISPATCH_PROOF_GATE_TEST=PASSED'
