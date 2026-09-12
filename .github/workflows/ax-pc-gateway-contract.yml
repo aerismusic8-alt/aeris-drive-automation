@@ -1,0 +1,13 @@
+name: AX PC Dispatch Gateway Contract
+on:
+  push:
+    branches:
+      - feature/ax-pc-dispatch-gateway-impl2
+jobs:
+  contract:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Run contract test
+        shell: pwsh
+        run: ./tests/AX_PC_DISPATCH_GATEWAY.Tests.ps1
