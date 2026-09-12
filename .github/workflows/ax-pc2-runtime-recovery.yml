@@ -46,31 +46,32 @@ jobs:
           if ($text -notmatch [regex]::Escape($marker)) {
             $backup = "$runtime.bak-before-node-action-compat-$(Get-Date -Format yyyyMMddHHmmss)"
             Copy-Item $runtime $backup -Force
-            $compat = @'
-          # AX_NODE_ACTION_COMPAT_V1
-          if ($body -ne $null) {
-            $hasAction = $false
-            if ($body.PSObject.Properties.Name -contains 'action') {
-              $hasAction = -not [string]::IsNullOrWhiteSpace([string]$body.action)
-            }
-            if (-not $hasAction) {
-              $derivedAction = ''
-              $delegationId = Get-PropertyValue $body 'delegationJobId'
-              $executionValue = Get-PropertyValue $body 'execution'
-              $statusValue = Get-PropertyValue $body 'status'
-              $versionValue = Get-PropertyValue $body 'version'
-              if (-not [string]::IsNullOrWhiteSpace([string]$delegationId) -and $executionValue -ne $null) {
-                $derivedAction = 'node_complete'
-              } elseif (-not [string]::IsNullOrWhiteSpace([string]$statusValue) -or -not [string]::IsNullOrWhiteSpace([string]$versionValue)) {
-                $derivedAction = 'node_heartbeat'
-              } else {
-                $derivedAction = 'node_pull'
-              }
-              $body | Add-Member -NotePropertyName 'action' -NotePropertyValue $derivedAction -Force
-              Write-Host "[PC2] NODE_ACTION_COMPAT=$derivedAction"
-            }
-          }
-          '@
+            $compatLines = @(
+              '# AX_NODE_ACTION_COMPAT_V1'
+              'if ($body -ne $null) {'
+              '  $hasAction = $false'
+              "  if (`$body.PSObject.Properties.Name -contains 'action') {"
+              '    $hasAction = -not [string]::IsNullOrWhiteSpace([string]$body.action)'
+              '  }'
+              '  if (-not $hasAction) {'
+              "    `$derivedAction = ''"
+              "    `$delegationId = Get-PropertyValue `$body 'delegationJobId'"
+              "    `$executionValue = Get-PropertyValue `$body 'execution'"
+              "    `$statusValue = Get-PropertyValue `$body 'status'"
+              "    `$versionValue = Get-PropertyValue `$body 'version'"
+              '    if (-not [string]::IsNullOrWhiteSpace([string]$delegationId) -and $executionValue -ne $null) {'
+              "      `$derivedAction = 'node_complete'"
+              '    } elseif (-not [string]::IsNullOrWhiteSpace([string]$statusValue) -or -not [string]::IsNullOrWhiteSpace([string]$versionValue)) {'
+              "      `$derivedAction = 'node_heartbeat'"
+              '    } else {'
+              "      `$derivedAction = 'node_pull'"
+              '    }'
+              "    `$body | Add-Member -NotePropertyName 'action' -NotePropertyValue `$derivedAction -Force"
+              '    Write-Host "[PC2] NODE_ACTION_COMPAT=$derivedAction"'
+              '  }'
+              '}'
+            )
+            $compat = $compatLines -join "`r`n"
             $needle = '  $r = Invoke-RestMethod -Uri $ApiUrl -Method Post -Headers (Headers) -Body ($body | ConvertTo-Json -Depth 20 -Compress) -TimeoutSec 30'
             if ($text -notmatch [regex]::Escape($needle)) { throw 'NODE_ACTION_COMPAT_INJECTION_POINT_NOT_FOUND' }
             $text = $text.Replace($needle, "$compat`r`n$needle")
