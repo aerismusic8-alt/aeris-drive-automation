@@ -15,12 +15,17 @@ on:
 permissions:
   contents: read
 
+concurrency:
+  group: ax-pc2-local-dispatch
+  cancel-in-progress: false
+
 jobs:
   pc2-local-dispatch:
     runs-on: [self-hosted, Windows, X64, PC2-CODING-EXECUTOR]
     timeout-minutes: 5
     env:
       AX_EXPECTED_PC2: DESKTOP-O0AUKHG
+      AX_DISPATCH_JOB_ID: AX-PC2-DISPATCH-${{ github.run_id }}-${{ github.run_attempt }}
     steps:
       - name: Checkout
         uses: actions/checkout@v5
@@ -32,15 +37,17 @@ jobs:
           if ($env:COMPUTERNAME -ne $env:AX_EXPECTED_PC2) { throw 'PC2_DISPATCHER_IDENTITY_MISMATCH' }
           $dispatcher = Join-Path $env:GITHUB_WORKSPACE 'AX_PC_CONTROL\AX_PC2_LOCAL_DISPATCHER.ps1'
           if (-not (Test-Path $dispatcher)) { throw 'PC2_LOCAL_DISPATCHER_MISSING' }
+          if ([string]::IsNullOrWhiteSpace($env:AX_DISPATCH_JOB_ID)) { throw 'DISPATCH_JOB_ID_MISSING' }
           Write-Host 'PC2_DISPATCHER_IDENTITY=VERIFIED'
           Write-Host 'PC2_LOCAL_DISPATCHER_FILE=FOUND'
+          Write-Host "DISPATCH_JOB=$env:AX_DISPATCH_JOB_ID"
 
       - name: AX dispatch to PC2 and verify write-back
         shell: powershell -NoProfile -ExecutionPolicy Bypass -File {0}
         run: |
           $ErrorActionPreference = 'Stop'
           $dispatcher = Join-Path $env:GITHUB_WORKSPACE 'AX_PC_CONTROL\AX_PC2_LOCAL_DISPATCHER.ps1'
-          & powershell.exe -NoProfile -ExecutionPolicy Bypass -File $dispatcher
+          & powershell.exe -NoProfile -ExecutionPolicy Bypass -File $dispatcher -JobId $env:AX_DISPATCH_JOB_ID
           if ($LASTEXITCODE -ne 0) { throw "AX_PC2_DISPATCHER_EXIT:$LASTEXITCODE" }
           Write-Host 'AX_DISPATCH_GATE=VERIFIED'
 
@@ -50,14 +57,25 @@ jobs:
         run: |
           $ErrorActionPreference = 'Stop'
           $dispatchDir = 'C:\AX-Runtime\dispatch'
-          $record = Get-ChildItem $dispatchDir -File -ErrorAction SilentlyContinue | Sort-Object LastWriteTime -Descending | Select-Object -First 1
-          if (-not $record) { throw 'DISPATCH_RECORD=NONE' }
-          $data = Get-Content $record.FullName -Raw | ConvertFrom-Json
+          $jobId = $env:AX_DISPATCH_JOB_ID
+          $recordPath = Join-Path $dispatchDir "$jobId.json"
+          if (-not (Test-Path $recordPath)) { throw "DISPATCH_RECORD_MISSING:$recordPath" }
+          $data = Get-Content $recordPath -Raw | ConvertFrom-Json
+          if ($data.jobId -ne $jobId) { throw "DISPATCH_JOB_MISMATCH:$($data.jobId)" }
+          if ($data.targetNode -ne 'PC2') { throw "DISPATCH_NODE_MISMATCH:$($data.targetNode)" }
           if ($data.dispatchStatus -ne 'COMPLETED') { throw "DISPATCH_NOT_COMPLETED:$($data.dispatchStatus)" }
           if ($data.verified -ne $true) { throw 'DISPATCH_RESULT_NOT_VERIFIED' }
-          Write-Host "DISPATCH_RECORD=$($record.FullName)"
+          if (-not $data.proof) { throw 'DISPATCH_PROOF_REFERENCE_MISSING' }
+          if (-not (Test-Path $data.proof)) { throw "DISPATCH_PROOF_MISSING:$($data.proof)" }
+          $proofData = Get-Content $data.proof -Raw | ConvertFrom-Json
+          if ($proofData.jobId -ne $jobId) { throw "PROOF_JOB_MISMATCH:$($proofData.jobId)" }
+          if ($proofData.nodeId -ne 'PC2') { throw "PROOF_NODE_MISMATCH:$($proofData.nodeId)" }
+          if ($proofData.verified -ne $true) { throw 'PROOF_NOT_VERIFIED' }
+          Write-Host "DISPATCH_RECORD=$recordPath"
+          Write-Host "DISPATCH_JOB=$jobId"
           Write-Host 'DISPATCH_ACCEPTED=VERIFIED'
           Write-Host 'PC2_EXECUTED=VERIFIED'
           Write-Host 'RESULT_VERIFIED=VERIFIED'
           Write-Host 'STATE=COMPLETED'
           Write-Host 'WRITE_BACK=VERIFIED'
+          Write-Host 'PROOF=VERIFIED'
