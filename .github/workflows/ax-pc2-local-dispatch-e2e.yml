@@ -9,6 +9,13 @@ on:
     paths:
       - 'AX_PC_CONTROL/AX_PC2_LOCAL_DISPATCHER.ps1'
       - 'AX_PC_CONTROL/AX_PC2_LOCAL_EXECUTOR_E2E.ps1'
+      - 'AX_PC_CONTROL/tests/Test-LocalDispatchProofGate.ps1'
+      - '.github/workflows/ax-pc2-local-dispatch-e2e.yml'
+  pull_request:
+    paths:
+      - 'AX_PC_CONTROL/AX_PC2_LOCAL_DISPATCHER.ps1'
+      - 'AX_PC_CONTROL/AX_PC2_LOCAL_EXECUTOR_E2E.ps1'
+      - 'AX_PC_CONTROL/tests/Test-LocalDispatchProofGate.ps1'
       - '.github/workflows/ax-pc2-local-dispatch-e2e.yml'
   workflow_dispatch:
 
@@ -29,6 +36,13 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v5
+
+      - name: Regression test proof gate
+        shell: powershell -NoProfile -ExecutionPolicy Bypass -File {0}
+        run: |
+          $ErrorActionPreference = 'Stop'
+          & powershell.exe -NoProfile -ExecutionPolicy Bypass -File (Join-Path $env:GITHUB_WORKSPACE 'AX_PC_CONTROL\tests\Test-LocalDispatchProofGate.ps1')
+          if ($LASTEXITCODE -ne 0) { throw "PROOF_GATE_TEST_EXIT:$LASTEXITCODE" }
 
       - name: Verify PC2 dispatcher identity
         shell: powershell -NoProfile -ExecutionPolicy Bypass -File {0}
