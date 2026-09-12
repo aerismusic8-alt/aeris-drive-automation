@@ -4,13 +4,8 @@ param(
 
 $ErrorActionPreference = 'Stop'
 
-# ============================================================
 # AX ACTION DISPATCHER
-# Route contract:
-#   AX Control Runtime    -> GET /health
-#   AERIS External Runtime -> GET /
-#   Helper agents         -> verified executable route, otherwise canonical fallback
-# ============================================================
+# Canonical routes: AX helper agents, PC Dispatch Gateway, then canonical runtimes.
 
 if (-not (Test-Path $RegistryPath)) { throw "AX_TASK_REGISTRY_NOT_FOUND: $RegistryPath" }
 $selectorPath = Join-Path $PSScriptRoot 'AX_TASK_SELECTOR.ps1'
@@ -33,10 +28,23 @@ Write-Host "Requested Action: $($selected.next_action)"
 Write-Host 'Dependency Gate: PASSED'
 
 # ============================================================
-# HELPER-AGENT ROUTING
-# Only route to executors that are explicitly active in the capability registry.
+# PC DISPATCH GATEWAY — CANONICAL PC EXECUTION ROUTE
 # ============================================================
+$pcGateway = Join-Path $PSScriptRoot 'AX_PC_DISPATCH_GATEWAY.ps1'
+if ([string]$selected.domain -eq 'PC' -and (Test-Path $pcGateway)) {
+  Write-Host 'PC Gateway: CANONICAL'
+  Write-Host 'PC Node: PC2-CODING-EXECUTOR'
+  Write-Host 'PC Command: health'
+  & powershell.exe -ExecutionPolicy Bypass -File $pcGateway -TaskId $selected.id -Command health -NodeId 'PC2-CODING-EXECUTOR' -Enqueue
+  if ($LASTEXITCODE -ne 0) { throw "AX_PC_GATEWAY_FAILED:$LASTEXITCODE" }
+  Write-Host 'PC_GATEWAY_SELECTED=TRUE'
+  Write-Host 'PC_COMPLETION=NOT_CLAIMED_UNTIL_RESULT_ACK_VERIFIED'
+  exit 0
+}
 
+# ============================================================
+# HELPER-AGENT ROUTING
+# ============================================================
 $agentRoutingBridge = Join-Path $PSScriptRoot 'AX_AGENT_ROUTING_BRIDGE.ps1'
 $agentRouteSelected = $false
 if (Test-Path $agentRoutingBridge) {
@@ -70,16 +78,13 @@ Write-Host "AX Control Runtime: $controlRuntimeUrl"
 Write-Host "AERIS External Runtime: $aerisRuntimeUrl"
 
 $controlRuntimeHealthy = $false
-Write-Host '=== AX CONTROL RUNTIME HEALTH ==='
 try {
   $controlHealth = Invoke-RestMethod -Uri "$($controlRuntimeUrl.TrimEnd('/'))/health" -Method Get -TimeoutSec 15
   $controlRuntimeHealthy = ($controlHealth.status -eq 'ONLINE' -and $controlHealth.mode -eq 'FREE_ONLY' -and $controlHealth.liveFinancialExecution -eq $false -and $controlHealth.queue -eq 'ax-execution-events')
-  if ($controlRuntimeHealthy) { Write-Host 'AX Control Runtime Health: ONLINE'; Write-Host "Mode: $($controlHealth.mode)"; Write-Host "Queue: $($controlHealth.queue)"; Write-Host 'Live Financial Execution: DISABLED' }
-  else { Write-Host 'AX Control Runtime Health: REJECTED_BY_POLICY' }
+  if ($controlRuntimeHealthy) { Write-Host 'AX Control Runtime Health: ONLINE' } else { Write-Host 'AX Control Runtime Health: REJECTED_BY_POLICY' }
 } catch { Write-Host "AX Control Runtime Health: UNAVAILABLE ($($_.Exception.Message))" }
 
 $aerisRuntimeHealthy = $false
-Write-Host '=== AERIS EXTERNAL RUNTIME HEALTH ==='
 try {
   $aerisResponse = Invoke-WebRequest -Uri "$($aerisRuntimeUrl.TrimEnd('/'))/" -Method Get -UseBasicParsing -TimeoutSec 15
   if ($aerisResponse.StatusCode -ne 200) { throw "AERIS_RUNTIME_HTTP_$($aerisResponse.StatusCode)" }
@@ -88,8 +93,7 @@ try {
   $capabilities = ($aerisHealth.appsScript -eq 'OAUTH_READY' -and $aerisHealth.appsScriptExecution -eq 'READY' -and $aerisHealth.gemini -eq 'READY' -and (@($aerisHealth.endpoints) -contains 'POST /execute'))
   $financialSafe = ($aerisHealth.liveFinancialExecution -ne $true)
   $aerisRuntimeHealthy = ($identity -and $capabilities -and $financialSafe)
-  if ($aerisRuntimeHealthy) { Write-Host 'AERIS External Runtime Health: ONLINE'; Write-Host "Version: $($aerisHealth.version)"; Write-Host "Gate: $($aerisHealth.gate)"; Write-Host 'Live Financial Execution: DISABLED' }
-  else { Write-Host 'AERIS External Runtime Health: REJECTED_BY_POLICY' }
+  if ($aerisRuntimeHealthy) { Write-Host 'AERIS External Runtime Health: ONLINE' } else { Write-Host 'AERIS External Runtime Health: REJECTED_BY_POLICY' }
 } catch { Write-Host "AERIS External Runtime Health: UNAVAILABLE ($($_.Exception.Message))" }
 
 Write-Host '=== CONTROLLED CLOUDFLARE DISPATCH ==='
@@ -107,7 +111,6 @@ if ($controlRuntimeHealthy -and $aerisRuntimeHealthy) {
   if ($selected.domain -eq 'AERIS') {
     Write-Host 'AERIS Execution: QUEUED_TO_CONTROL_RUNTIME_QUEUE_CONSUMER'
     Write-Host 'Business Execution: NOT_CLAIMED_BY_DISPATCHER'
-    Write-Host 'Business Completion: NOT_CLAIMED_BY_DISPATCHER'
   }
   elseif ($selected.domain -eq 'AICS') {
     Write-Host '=== AICS DOMAIN ROUTING ==='
