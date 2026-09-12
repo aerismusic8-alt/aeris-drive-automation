@@ -7,6 +7,11 @@ on:
       - 'AX_PC_CONTROL/tests/Test-LocalDispatchProofGate.ps1'
       - '.github/workflows/ax-pc2-local-dispatch-e2e.yml'
       - '.github/workflows/ax-local-dispatch-proof-gate-test.yml'
+  pull_request:
+    paths:
+      - 'AX_PC_CONTROL/tests/Test-LocalDispatchProofGate.ps1'
+      - '.github/workflows/ax-pc2-local-dispatch-e2e.yml'
+      - '.github/workflows/ax-local-dispatch-proof-gate-test.yml'
   workflow_dispatch:
 
 permissions:
