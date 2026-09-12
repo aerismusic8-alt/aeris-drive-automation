@@ -46,8 +46,8 @@ jobs:
           if ($text -notmatch [regex]::Escape($marker)) {
             $backup = "$runtime.bak-before-node-action-compat-$(Get-Date -Format yyyyMMddHHmmss)"
             Copy-Item $runtime $backup -Force
-            $compat = @"
-          $marker
+            $compat = @'
+          # AX_NODE_ACTION_COMPAT_V1
           if ($body -ne $null) {
             $hasAction = $false
             if ($body.PSObject.Properties.Name -contains 'action') {
@@ -70,7 +70,7 @@ jobs:
               Write-Host "[PC2] NODE_ACTION_COMPAT=$derivedAction"
             }
           }
-          "@
+          '@
             $needle = '  $r = Invoke-RestMethod -Uri $ApiUrl -Method Post -Headers (Headers) -Body ($body | ConvertTo-Json -Depth 20 -Compress) -TimeoutSec 30'
             if ($text -notmatch [regex]::Escape($needle)) { throw 'NODE_ACTION_COMPAT_INJECTION_POINT_NOT_FOUND' }
             $text = $text.Replace($needle, "$compat`r`n$needle")
