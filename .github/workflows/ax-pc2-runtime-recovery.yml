@@ -42,31 +42,31 @@ jobs:
           $ErrorActionPreference = 'Stop'
           $runtime = 'C:\AX-Runtime\AX_PC2_WORKER_V2.ps1'
           $text = Get-Content -Raw $runtime
-          $marker = '# AX_NODE_ACTION_COMPAT_V1'
+          $marker = '# AX_NODE_ACTION_COMPAT_V2'
           if ($text -notmatch [regex]::Escape($marker)) {
-            $backup = "$runtime.bak-before-node-action-compat-$(Get-Date -Format yyyyMMddHHmmss)"
+            $backup = "$runtime.bak-before-node-action-compat-v2-$(Get-Date -Format yyyyMMddHHmmss)"
             Copy-Item $runtime $backup -Force
             $compatLines = @(
-              '# AX_NODE_ACTION_COMPAT_V1'
+              '# AX_NODE_ACTION_COMPAT_V2'
               'if ($body -ne $null) {'
               '  $hasAction = $false'
-              "  if (`$body.PSObject.Properties.Name -contains 'action') {"
+              '  if ($body.PSObject.Properties.Name -contains ''action'') {'
               '    $hasAction = -not [string]::IsNullOrWhiteSpace([string]$body.action)'
               '  }'
               '  if (-not $hasAction) {'
-              "    `$derivedAction = ''"
-              "    `$delegationId = Get-PropertyValue `$body 'delegationJobId'"
-              "    `$executionValue = Get-PropertyValue `$body 'execution'"
-              "    `$statusValue = Get-PropertyValue `$body 'status'"
-              "    `$versionValue = Get-PropertyValue `$body 'version'"
+              '    $derivedAction = '''''
+              '    $delegationId = Get-PropertyValue $body ''delegationJobId'''
+              '    $executionValue = Get-PropertyValue $body ''execution'''
+              '    $statusValue = Get-PropertyValue $body ''status'''
+              '    $versionValue = Get-PropertyValue $body ''version'''
               '    if (-not [string]::IsNullOrWhiteSpace([string]$delegationId) -and $executionValue -ne $null) {'
-              "      `$derivedAction = 'node_complete'"
+              '      $derivedAction = ''node_complete'''
               '    } elseif (-not [string]::IsNullOrWhiteSpace([string]$statusValue) -or -not [string]::IsNullOrWhiteSpace([string]$versionValue)) {'
-              "      `$derivedAction = 'node_heartbeat'"
+              '      $derivedAction = ''node_heartbeat'''
               '    } else {'
-              "      `$derivedAction = 'node_pull'"
+              '      $derivedAction = ''node_pull'''
               '    }'
-              "    `$body | Add-Member -NotePropertyName 'action' -NotePropertyValue `$derivedAction -Force"
+              '    $body | Add-Member -NotePropertyName ''action'' -NotePropertyValue $derivedAction -Force'
               '    Write-Host "[PC2] NODE_ACTION_COMPAT=$derivedAction"'
               '  }'
               '}'
@@ -78,8 +78,9 @@ jobs:
             Set-Content -Path $runtime -Value $text -Encoding UTF8
           }
           $patched = Get-Content -Raw $runtime
-          if ($patched -notmatch [regex]::Escape($marker)) { throw 'NODE_ACTION_COMPAT_NOT_VERIFIED' }
-          Write-Host 'NODE_ACTION_COMPAT=VERIFIED'
+          if ($patched -notmatch [regex]::Escape($marker)) { throw 'NODE_ACTION_COMPAT_V2_NOT_VERIFIED' }
+          if ($patched -match 'if \(\.PSObject\.Properties|\| Add-Member.*-NotePropertyValue\s+-Force') { throw 'NODE_ACTION_COMPAT_V2_MALFORMED' }
+          Write-Host 'NODE_ACTION_COMPAT_V2=VERIFIED'
       - name: Inspect PC2 worker Node API contract
         shell: powershell -NoProfile -ExecutionPolicy Bypass -File {0}
         run: |
@@ -87,7 +88,7 @@ jobs:
           $runtime = 'C:\AX-Runtime\AX_PC2_WORKER_V2.ps1'
           $lines = Get-Content $runtime
           Write-Host '--- WORKER API/COMMAND LINES ---'
-          $lines | Where-Object { $_ -match 'AX_NODE_ACTION_COMPAT_V1|NODE_ACTION_COMPAT|NODE_API|UNKNOWN_COMMAND|allowlist|Invoke-RestMethod|command|action|apiUrl|endpoint' } | Select-Object -First 160 | ForEach-Object { Write-Host $_ }
+          $lines | Where-Object { $_ -match 'AX_NODE_ACTION_COMPAT_V2|NODE_ACTION_COMPAT|NODE_API|UNKNOWN_COMMAND|allowlist|Invoke-RestMethod|command|action|apiUrl|endpoint' } | Select-Object -First 160 | ForEach-Object { Write-Host $_ }
           Write-Host '--- WORKER END ---'
       - name: Execute one PC2 worker E2E
         shell: powershell -NoProfile -ExecutionPolicy Bypass -File {0}
