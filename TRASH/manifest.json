@@ -1,0 +1,15 @@
+{
+  "schema": "AKATH-TRASH-1",
+  "purpose": "quarantine obsolete, duplicate, superseded, or suspect artifacts",
+  "restore_rule": "search_and_verify_before_rebuild",
+  "entries": [
+    {
+      "original_path": "AI_AX_PERSONAL_FAST_EXECUTOR_MISSION.md",
+      "trash_path": "TRASH/legacy/AI_AX_PERSONAL_FAST_EXECUTOR_MISSION.md",
+      "reason": "Superseded mission definition; references the retired 6-AI Revenue Network and a separate personal fast-executor lane.",
+      "status": "QUARANTINED",
+      "source_sha": "1f3a61468d79b4f5f3583f3bd756dd1929dba318",
+      "verified_no_active_code_reference": true
+    }
+  ]
+}
