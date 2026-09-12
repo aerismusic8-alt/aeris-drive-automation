@@ -10,6 +10,22 @@
       "status": "QUARANTINED",
       "source_sha": "1f3a61468d79b4f5f3583f3bd756dd1929dba318",
       "verified_no_active_code_reference": true
+    },
+    {
+      "original_path": ".github/workflows/aics-paper-e2e.yml",
+      "trash_path": "TRASH/workflows/aics-paper-e2e.yml",
+      "reason": "Explicitly retired workflow; performs no current execution and only confirms AICS/XM retirement.",
+      "status": "QUARANTINED",
+      "source_sha": "6ab697c36cfeca4aa18199b30d5e9a0ea44117d7",
+      "verified_no_active_code_reference": true
+    },
+    {
+      "original_path": ".github/workflows/aics-portfolio-trigger-e2e.yml",
+      "trash_path": "TRASH/workflows/aics-portfolio-trigger-e2e.yml",
+      "reason": "Explicitly retired workflow; no current XM live-trade execution is performed.",
+      "status": "QUARANTINED",
+      "source_sha": "f49aee5fdb2fa4f90d2342ea53288419af9467a8",
+      "verified_no_active_code_reference": true
     }
   ]
 }
