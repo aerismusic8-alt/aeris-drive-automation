@@ -1,0 +1,31 @@
+name: AX PC2 Gateway Dispatch Test
+on:
+  push:
+    branches:
+      - feature/ax-pc-dispatch-gateway-impl2
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  dispatch:
+    runs-on: [self-hosted, Windows, X64, PC2-CODING-EXECUTOR]
+    timeout-minutes: 3
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+      - name: Dispatch canonical PC2 health job
+        shell: powershell -NoProfile -ExecutionPolicy Bypass -File {0}
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $taskId = "AX-PC2-CANONICAL-TEST-$env:GITHUB_RUN_ID"
+          $output = & powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\AX_PC_DISPATCH_GATEWAY.ps1 -TaskId $taskId -Command health -NodeId 'PC2-CODING-EXECUTOR' -Enqueue 2>&1
+          $output | ForEach-Object { Write-Host $_ }
+          if ($LASTEXITCODE -ne 0) { throw "PC_GATEWAY_DISPATCH_FAILED:$LASTEXITCODE" }
+          Write-Host "PC2_GATEWAY_TEST_TASK=$taskId"
+          Write-Host 'PC2_GATEWAY_DISPATCH=ACCEPTED'
+          Start-Sleep -Seconds 20
+          Write-Host 'PC2_GATEWAY_WAIT_COMPLETE=20S'
