@@ -12,7 +12,7 @@ if (-not $workflow.Contains('GITHUB_RUN_ID')) {
 if (-not $workflow.Contains('GITHUB_RUN_ATTEMPT')) {
     throw 'CURRENT_RUN_ATTEMPT_NOT_BOUND'
 }
-if (-not $workflow.Contains('$recordPath = Join-Path $dispatchDir "$jobId.json"')) {
+if (-not $workflow.Contains('$recordPath = Join-Path $dispatchDir "$jobId.json"'.Replace('\"','"'))) {
     throw 'EXACT_DISPATCH_RECORD_NOT_VERIFIED'
 }
 if (-not $workflow.Contains('-JobId $env:AX_DISPATCH_JOB_ID')) {
