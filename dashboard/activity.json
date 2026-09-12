@@ -1,7 +1,14 @@
 ﻿{
     "schema":  "AX_ACTIVITY_V1",
-    "updatedAt":  "2026-09-12T07:09:56.6779545Z",
+    "updatedAt":  "2026-09-12T07:19:26.4226735Z",
     "events":  [
+                   {
+                       "id":  "2026-09-12T07:19:26.4226735Z-push-",
+                       "type":  "DASHBOARD_SYNC",
+                       "message":  "System=ONLINE Overall=DEGRADED SelectedTask=AX-EXECUTIVE-REPORTING",
+                       "status":  "DEGRADED",
+                       "timestamp":  "2026-09-12T07:19:26.4226735Z"
+                   },
                    {
                        "id":  "2026-09-12T07:09:56.6779545Z-push-",
                        "type":  "DASHBOARD_SYNC",
@@ -694,13 +701,6 @@
                        "message":  "System=ONLINE Overall=DEGRADED SelectedTask=AX-EXECUTIVE-REPORTING",
                        "status":  "DEGRADED",
                        "timestamp":  "2026-09-11T16:08:04.7727627Z"
-                   },
-                   {
-                       "id":  "2026-09-11T15:58:25.8382266Z-push-",
-                       "type":  "DASHBOARD_SYNC",
-                       "message":  "System=ONLINE Overall=DEGRADED SelectedTask=AX-EXECUTIVE-REPORTING",
-                       "status":  "DEGRADED",
-                       "timestamp":  "2026-09-11T15:58:25.8382266Z"
                    }
                ]
 }
