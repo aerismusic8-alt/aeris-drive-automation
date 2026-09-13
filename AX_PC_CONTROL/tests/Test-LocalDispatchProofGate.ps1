@@ -12,7 +12,7 @@ if ($workflow -notmatch $jobBindingPattern) {
     throw 'CURRENT_RUN_ID_OR_ATTEMPT_NOT_BOUND'
 }
 
-if ($workflow -notmatch 'dispatch\\\$\{JobId\}\.json') {
+if ($workflow -notmatch 'Join-Path\s+\$dispatchDir\s+"\$jobId\.json"') {
     throw 'EXACT_DISPATCH_RECORD_NOT_VERIFIED'
 }
 
