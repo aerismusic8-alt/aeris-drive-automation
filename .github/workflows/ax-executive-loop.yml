@@ -31,6 +31,7 @@ jobs:
       - name: Checkout AX control state
         uses: actions/checkout@v5
         with:
+          ref: main
           fetch-depth: 0
           persist-credentials: true
 
