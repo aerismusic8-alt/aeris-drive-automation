@@ -12,14 +12,18 @@ permissions:
   contents: read
 
 jobs:
-  provision-and-pc-e2e:
+  provision:
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 8
     env:
       CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
       AX_MOBILE_INGRESS_SECRET: ${{ secrets.AX_MOBILE_INGRESS_SECRET }}
       AX_PC_PULL_SECRET: ${{ secrets.AX_PC_PULL_SECRET }}
       RUNTIME_URL: https://ax-control-runtime.aerismusic8.workers.dev
+    outputs:
+      request_id: ${{ steps.enqueue.outputs.request_id }}
+      task_id: ${{ steps.enqueue.outputs.task_id }}
+      session_token: ${{ steps.web-session.outputs.session_token }}
     steps:
       - uses: actions/checkout@v5
       - uses: actions/setup-node@v5
@@ -51,8 +55,7 @@ jobs:
         run: |
           set -euo pipefail
           node <<'NODE'
-          const url = process.env.RUNTIME_URL + '/health';
-          const response = await fetch(url);
+          const response = await fetch(process.env.RUNTIME_URL + '/health');
           if (!response.ok) throw new Error(`HEALTH_HTTP_${response.status}`);
           const r = await response.json();
           console.log(JSON.stringify({status:r.status,mode:r.mode,liveFinancialExecution:r.liveFinancialExecution,mobileIngressAuthConfigured:r.mobileIngressAuthConfigured,pcPullAuthConfigured:r.pcPullAuthConfigured,gatewayInbox:r.gatewayInbox}));
@@ -65,15 +68,11 @@ jobs:
           set -euo pipefail
           node <<'NODE'
           import fs from 'node:fs';
-          const url = process.env.RUNTIME_URL + '/mobile/input';
-          const requestId = `ACCEPT-PC-${crypto.randomUUID()}`;
-          const taskId = `TASK-PC2-${crypto.randomUUID().slice(0,8)}`;
-          const body = {request_id:requestId,task_id:taskId,source_channel:'MOBILE',content_type:'text',content:JSON.stringify({operation:'health'}),attachments:[]};
-          const response = await fetch(url,{method:'POST',headers:{Authorization:`Bearer ${process.env.AX_MOBILE_INGRESS_SECRET}`,'Content-Type':'application/json'},body:JSON.stringify(body)});
+          const response = await fetch(process.env.RUNTIME_URL + '/mobile/input',{method:'POST',headers:{Authorization:`Bearer ${process.env.AX_MOBILE_INGRESS_SECRET}`,'Content-Type':'application/json'},body:JSON.stringify({request_id:`ACCEPT-PC-${crypto.randomUUID()}`,task_id:`TASK-PC2-${crypto.randomUUID().slice(0,8)}`,source_channel:'MOBILE',content_type:'text',content:JSON.stringify({operation:'health'}),attachments:[]})});
           const r = await response.json();
-          console.log(JSON.stringify({status:response.status,accepted:r.accepted,queued:r.queued,requestId:r.requestId,taskId:r.taskId}));
-          if (response.status !== 201 || r.accepted !== true || r.queued !== true || r.requestId !== requestId || r.taskId !== taskId) process.exit(1);
-          fs.writeFileSync(process.env.GITHUB_OUTPUT,`request_id=${requestId}${String.fromCharCode(10)}task_id=${taskId}${String.fromCharCode(10)}`);
+          console.log(JSON.stringify(r));
+          if (response.status !== 201 || r.accepted !== true || r.queued !== true || !r.requestId || !r.taskId) process.exit(1);
+          fs.writeFileSync(process.env.GITHUB_OUTPUT,`request_id=${r.requestId}${String.fromCharCode(10)}task_id=${r.taskId}${String.fromCharCode(10)}`);
           NODE
       - name: Open web result session
         id: web-session
@@ -84,16 +83,49 @@ jobs:
           import fs from 'node:fs';
           const response = await fetch(process.env.RUNTIME_URL + '/web/session',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({secret:process.env.AX_MOBILE_INGRESS_SECRET})});
           const r = await response.json();
-          console.log(JSON.stringify({status:response.status,authenticated:r.authenticated,expiresInMs:r.expiresInMs}));
           if (response.status !== 200 || r.authenticated !== true || !r.sessionToken) process.exit(1);
           fs.writeFileSync(process.env.GITHUB_OUTPUT,`session_token=${r.sessionToken}${String.fromCharCode(10)}`);
           NODE
-      - name: Poll for persistent PC2 execution result and require VERIFIED
+
+  pc2-execute:
+    needs: provision
+    runs-on: [self-hosted, Windows, X64, PC2-CODING-EXECUTOR]
+    timeout-minutes: 5
+    env:
+      AX_PC_PULL_SECRET: ${{ secrets.AX_PC_PULL_SECRET }}
+      REQUEST_ID: ${{ needs.provision.outputs.request_id }}
+      TASK_ID: ${{ needs.provision.outputs.task_id }}
+    steps:
+      - uses: actions/checkout@v5
+      - name: Execute one canonical PC2 pull cycle
+        shell: powershell -NoProfile -ExecutionPolicy Bypass -File {0}
+        run: |
+          $ErrorActionPreference='Stop'
+          $node = Join-Path $PWD 'AX_PC_CONTROL\AX_PC_NODE.ps1'
+          $config = 'C:\AKATH\AX_PC_CONTROL\AX_PC_NODE_CONFIG.json'
+          if (!(Test-Path -LiteralPath $node)) { throw 'AX_PC_NODE_SCRIPT_NOT_FOUND' }
+          if (!(Test-Path -LiteralPath $config)) { throw 'AX_PC_NODE_CONFIG_NOT_FOUND' }
+          $output = & powershell.exe -NoLogo -NoProfile -NonInteractive -ExecutionPolicy Bypass -File $node -ConfigPath $config -Once 2>&1 | Out-String
+          Write-Host $output
+          if ($LASTEXITCODE -ne 0) { throw "AX_PC_NODE_EXIT_$LASTEXITCODE" }
+          if ($output -notmatch 'AX_PC_NODE_RESULT\|') { throw 'AX_PC_NODE_RESULT_MISSING' }
+          if ($output -notmatch '"taskId":"' + [regex]::Escape($env:TASK_ID)) { throw 'AX_PC_TASK_ID_NOT_MATCHED' }
+          if ($output -notmatch '"verified":true') { throw 'AX_PC_NODE_VERIFICATION_FAILED' }
+          Write-Host 'AX_PC2_PULL_EXECUTE_WRITEBACK_TRIGGERED'
+
+  verify:
+    needs: [provision, pc2-execute]
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    env:
+      AX_MOBILE_INGRESS_SECRET: ${{ secrets.AX_MOBILE_INGRESS_SECRET }}
+      RUNTIME_URL: https://ax-control-runtime.aerismusic8.workers.dev
+      REQUEST_ID: ${{ needs.provision.outputs.request_id }}
+      TASK_ID: ${{ needs.provision.outputs.task_id }}
+      WEB_SESSION_TOKEN: ${{ needs.provision.outputs.session_token }}
+    steps:
+      - name: Verify PC2 result, ACK, evidence and write-back
         shell: bash
-        env:
-          REQUEST_ID: ${{ steps.enqueue.outputs.request_id }}
-          TASK_ID: ${{ steps.enqueue.outputs.task_id }}
-          WEB_SESSION_TOKEN: ${{ steps.web-session.outputs.session_token }}
         run: |
           set -euo pipefail
           node <<'NODE'
@@ -102,23 +134,19 @@ jobs:
           const resultUrl = process.env.RUNTIME_URL + '/web/result/' + encodeURIComponent(requestId);
           const headers = {Authorization:`Bearer ${process.env.WEB_SESSION_TOKEN}`,'Content-Type':'application/json'};
           let last = null;
-          for (let attempt = 1; attempt <= 60; attempt++) {
-            const response = await fetch(resultUrl,{headers});
-            if (response.ok) {
-              const body = await response.json();
-              const result = body.result?.result || body.result || {};
-              last = result;
+          for (let attempt=1; attempt<=30; attempt++) {
+            const response=await fetch(resultUrl,{headers});
+            if(response.ok){
+              const body=await response.json();
+              const result=body.result?.result || body.result || {};
+              last=result;
               console.log(JSON.stringify({attempt,requestId,taskId,result},null,2));
-              if (result.taskId === taskId && result.verified === true && result.executed === true && result.status === 'VERIFIED' && result.node_id === 'PC2' && result.writeBackVerified === true && result.evidence?.taskId === taskId && result.evidence?.nodeId === 'PC2' && result.evidence?.command === 'health') {
-                console.log('AX_PC_PERSISTENT_E2E_VERIFIED');
+              if(result.taskId===taskId && result.verified===true && result.executed===true && result.status==='VERIFIED' && result.node_id==='PC2' && result.writeBackVerified===true && result.evidence?.taskId===taskId && result.evidence?.nodeId==='PC2' && result.evidence?.command==='health'){
+                console.log('AX_PC_EXECUTION_LOOP_VERIFIED');
                 process.exit(0);
               }
-            } else if (response.status !== 404) {
-              const text = await response.text();
-              throw new Error(`RESULT_HTTP_${response.status}:${text}`);
-            }
-            await new Promise(resolve => setTimeout(resolve, 2000));
+            } else if(response.status!==404 && response.status!==401){throw new Error(`RESULT_HTTP_${response.status}`)}
+            await new Promise(r=>setTimeout(r,2000));
           }
-          console.error('AX_PC_PERSISTENT_E2E_TIMEOUT',JSON.stringify({requestId,taskId,last},null,2));
-          process.exit(1);
+          throw new Error('AX_PC_EXECUTION_LOOP_TIMEOUT '+JSON.stringify({requestId,taskId,last}));
           NODE
