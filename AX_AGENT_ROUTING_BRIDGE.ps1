@@ -30,7 +30,9 @@ foreach ($agent in $Candidates) {
   if (-not (Test-Path $connector)) { continue }
 
   try {
-    $route = & powershell.exe -ExecutionPolicy Bypass -File $dispatch -TaskId $TaskId -Candidates @($agent) 2>&1
+    # Pass one candidate as a scalar across the native PowerShell process boundary.
+    # Passing @($agent) can be rebound positionally by the child process on Windows.
+    $route = & powershell.exe -ExecutionPolicy Bypass -File $dispatch -TaskId $TaskId -Candidates $agent 2>&1
     $routeText = ($route | Out-String).Trim()
     if ($LASTEXITCODE -eq 0 -and
         $routeText -match 'AGENT_TASK_ACCEPTED' -and
