@@ -1,138 +1,17 @@
-﻿{
-    "schema":  "AX_TASK_QUEUE_V1",
-    "updatedAt":  "2026-09-13T07:56:52.9789552Z",
-    "tasks":  [
-                  {
-                      "id":  "AERIS-FILE-ID-PERSISTENCE",
-                      "status":  "BLOCKED",
-                      "agent":  "AERIS",
-                      "action":  "Execute repair helper, verify persisted File ID, then run E2E",
-                      "result":  null,
-                      "verification":  null,
-                      "error":  null,
-                      "retry":  null,
-                      "timestamp":  null
-                  },
-                  {
-                      "id":  "AERIS-AUTONOMOUS-COMPANY-ENGINE",
-                      "status":  "QUEUED",
-                      "agent":  "AERIS",
-                      "action":  "Connect research, production, publishing, analytics and revenue tasks",
-                      "result":  null,
-                      "verification":  null,
-                      "error":  null,
-                      "retry":  null,
-                      "timestamp":  null
-                  },
-                  {
-                      "id":  "AICS-PAPER-RISK-ENGINE",
-                      "status":  "COMPLETED",
-                      "agent":  "AICS",
-                      "action":  "Paper E2E verified; retain as completed foundation",
-                      "result":  null,
-                      "verification":  null,
-                      "error":  null,
-                      "retry":  null,
-                      "timestamp":  null
-                  },
-                  {
-                      "id":  "AICS-LIVE-TRADING",
-                      "status":  "APPROVED",
-                      "agent":  "AICS",
-                      "action":  "Complete required technical, security and compliance gates before any live-money execution",
-                      "result":  null,
-                      "verification":  null,
-                      "error":  null,
-                      "retry":  null,
-                      "timestamp":  null
-                  },
-                  {
-                      "id":  "AX-EXECUTIVE-REPORTING",
-                      "status":  "QUEUED",
-                      "agent":  "AX",
-                      "action":  "Generate verified status summary from task and execution evidence",
-                      "result":  null,
-                      "verification":  null,
-                      "error":  null,
-                      "retry":  null,
-                      "timestamp":  null
-                  },
-                  {
-                      "id":  "AX-RECOVERED-001",
-                      "status":  "REPROCESS_QUEUED",
-                      "agent":  "AX",
-                      "action":  "Re-verify product-ready deployment and E2E evidence",
-                      "result":  null,
-                      "verification":  null,
-                      "error":  null,
-                      "retry":  null,
-                      "timestamp":  null
-                  },
-                  {
-                      "id":  "AX-RECOVERED-002",
-                      "status":  "REPROCESS_QUEUED",
-                      "agent":  "AX",
-                      "action":  "Verify current cloud deployment, health and runtime evidence",
-                      "result":  null,
-                      "verification":  null,
-                      "error":  null,
-                      "retry":  null,
-                      "timestamp":  null
-                  },
-                  {
-                      "id":  "AX-RECOVERED-003",
-                      "status":  "REPROCESS_QUEUED",
-                      "agent":  "AX",
-                      "action":  "Implement or recover notification path and run E2E verification",
-                      "result":  null,
-                      "verification":  null,
-                      "error":  null,
-                      "retry":  null,
-                      "timestamp":  null
-                  },
-                  {
-                      "id":  "AX-RECOVERED-004",
-                      "status":  "WAITING_K",
-                      "agent":  "AX-FINANCE",
-                      "action":  "Verify non-live architecture and policy; keep live financial execution disabled",
-                      "result":  null,
-                      "verification":  null,
-                      "error":  null,
-                      "retry":  null,
-                      "timestamp":  null
-                  },
-                  {
-                      "id":  "AX-RECOVERED-005",
-                      "status":  "REPROCESS_QUEUED",
-                      "agent":  "AX-CORE",
-                      "action":  "Repair/verify durable mission ledger state and persistence evidence",
-                      "result":  null,
-                      "verification":  null,
-                      "error":  null,
-                      "retry":  null,
-                      "timestamp":  null
-                  },
-                  {
-                      "id":  "AX-RECOVERED-006",
-                      "status":  "REPROCESS_QUEUED",
-                      "agent":  "AX-CORE",
-                      "action":  "Verify gateway integration, deployment and external E2E evidence",
-                      "result":  null,
-                      "verification":  null,
-                      "error":  null,
-                      "retry":  null,
-                      "timestamp":  null
-                  },
-                  {
-                      "id":  "AX-REVENUE-001",
-                      "status":  "REPROCESS_QUEUED",
-                      "agent":  "AX-REVENUE",
-                      "action":  "Define the six AI roles, revenue missions, execution routing, verification gates and first revenue-producing actions",
-                      "result":  null,
-                      "verification":  null,
-                      "error":  null,
-                      "retry":  null,
-                      "timestamp":  null
-                  }
-              ]
+{
+  "schema": "AX_TASK_QUEUE_V1",
+  "updatedAt": "2026-09-13T14:53:00+07:00",
+  "tasks": [
+    {
+      "id": "AERIS-FILE-ID-PERSISTENCE",
+      "status": "BLOCKED",
+      "agent": "AERIS",
+      "action": "Execute repair helper, verify persisted File ID, then run E2E",
+      "result": null,
+      "verification": null,
+      "error": null,
+      "retry": null,
+      "timestamp": null
+    }
+  ]
 }
