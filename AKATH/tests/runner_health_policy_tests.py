@@ -24,8 +24,12 @@ class RunnerHealthPolicyTests(unittest.TestCase):
         self.assertEqual(result["status"], "DEGRADED")
         self.assertFalse(result["failover_ready"])
 
-    def test_offline_after_five_minutes(self):
-        result = evaluate_runner(self.now, self.now - timedelta(seconds=301))
+    def test_offline_after_five_minutes_requires_offline_detection(self):
+        result = evaluate_runner(
+            self.now,
+            self.now - timedelta(seconds=301),
+            offline_detected_at=self.now - timedelta(seconds=60),
+        )
         self.assertEqual(result["status"], "OFFLINE")
         self.assertTrue(result["failover_ready"])
 
