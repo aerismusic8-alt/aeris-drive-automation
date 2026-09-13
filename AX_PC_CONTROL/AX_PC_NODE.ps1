@@ -16,7 +16,8 @@ function Read-Config {
 }
 
 function Get-TransportSecret {
-  $secret = [Environment]::GetEnvironmentVariable('AX_PC_PULL_SECRET','Machine')
+  $secret = [Environment]::GetEnvironmentVariable('AX_PC_PULL_SECRET','Process')
+  if ([string]::IsNullOrWhiteSpace($secret)) { $secret = [Environment]::GetEnvironmentVariable('AX_PC_PULL_SECRET','Machine') }
   if ([string]::IsNullOrWhiteSpace($secret)) { throw 'AX_PC_PULL_SECRET_NOT_CONFIGURED' }
   return $secret
 }
