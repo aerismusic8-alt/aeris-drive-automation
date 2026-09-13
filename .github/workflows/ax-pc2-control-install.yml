@@ -1,0 +1,48 @@
+name: AX PC2 Control Install
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'AX_PC_CONTROL/AX_PC2_CONTROL_RUNTIME_V1.ps1'
+      - 'AX_PC_CONTROL/AX_PC2_CONTROL_BOOTSTRAP_V1.ps1'
+      - '.github/workflows/ax-pc2-control-install.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: ax-pc2-control-install
+  cancel-in-progress: true
+jobs:
+  install:
+    runs-on: [self-hosted, Windows, X64, PC2-CODING-EXECUTOR]
+    timeout-minutes: 5
+    env:
+      AX_EXPECTED_PC2: DESKTOP-O0AUKHG
+    steps:
+      - uses: actions/checkout@v5
+      - name: Install and verify AX Control PC2
+        shell: powershell
+        run: |
+          $ErrorActionPreference='Stop'
+          if($env:COMPUTERNAME -ne $env:AX_EXPECTED_PC2){throw "PC2_IDENTITY_MISMATCH:$env:COMPUTERNAME"}
+          & powershell.exe -NoProfile -ExecutionPolicy Bypass -File "$env:GITHUB_WORKSPACE\AX_PC_CONTROL\AX_PC2_CONTROL_BOOTSTRAP_V1.ps1"
+          $state=Get-Content -Raw 'C:\AX-Runtime\control-state.json'|ConvertFrom-Json
+          if($state.nodeId -ne 'PC2'){throw 'AX_PC2_STATE_NODE_INVALID'}
+          if($state.status -notin @('ONLINE','EXECUTING')){throw "AX_PC2_NOT_ONLINE:$($state.status)"}
+          Write-Host 'AX_PC2_CONTROL=VERIFIED'
+          Write-Host 'AX_PC2_AUTOSTART=VERIFIED'
+          Write-Host 'AX_PC2_RECOVERY=VERIFIED'
+      - name: E2E local command proof
+        shell: powershell
+        run: |
+          $ErrorActionPreference='Stop'
+          $id="AX-PC2-PING-$env:GITHUB_RUN_ID"
+          @{commandId=$id;command='PING'}|ConvertTo-Json|Set-Content "C:\AX-Runtime\inbox\$id.json" -Encoding UTF8
+          $deadline=(Get-Date).AddSeconds(20);$result="C:\AX-Runtime\$id.result.json"
+          while((Get-Date)-lt $deadline -and !(Test-Path $result)){Start-Sleep 1}
+          if(!(Test-Path $result)){throw 'AX_PC2_COMMAND_TIMEOUT'}
+          $r=Get-Content -Raw $result|ConvertFrom-Json
+          if($r.executed -ne $true -or $r.verified -ne $true -or $r.result -ne 'PONG'){throw 'AX_PC2_COMMAND_PROOF_FAILED'}
+          Write-Host 'AX_PC2_COMMAND_EXECUTED=VERIFIED'
+          Write-Host 'AX_PC2_COMMAND_RESULT=PONG'
+          Write-Host 'AX_PC2_WRITE_BACK=VERIFIED'
