@@ -133,5 +133,6 @@ jobs:
           const chat = await c.text();
           if (!chat.includes('AX Web Chat')) throw new Error('CHAT_PAGE_MISSING');
           console.log('PUBLIC_RUNTIME_OK', health.version);
+          console.log('REQUEST_CORRELATION_DEPLOY_VERIFY_OK');
           console.log('CHAT_ROUTE_OK');
           NODE
