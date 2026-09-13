@@ -80,7 +80,7 @@ jobs:
       AX_PC_PULL_SECRET: ${{ secrets.AX_PC_PULL_SECRET }}
     steps:
       - name: Run PC2 node once to drain any stale task
-        shell: powershell -NoProfile -ExecutionPolicy Bypass
+        shell: powershell -NoProfile -ExecutionPolicy Bypass -File {0}
         run: |
           $ErrorActionPreference = 'Stop'
           $node = 'C:\AKATH\AX_PC_CONTROL\AX_PC_NODE.ps1'
@@ -91,7 +91,7 @@ jobs:
           Write-Host $output
           if ($LASTEXITCODE -ne 0) { throw "AX_PC_NODE_EXIT_$LASTEXITCODE" }
       - name: Execute explicit PC2 health task and require VERIFIED
-        shell: powershell -NoProfile -ExecutionPolicy Bypass
+        shell: powershell -NoProfile -ExecutionPolicy Bypass -File {0}
         run: |
           $ErrorActionPreference = 'Stop'
           $node = 'C:\AKATH\AX_PC_CONTROL\AX_PC_NODE.ps1'
@@ -105,7 +105,7 @@ jobs:
           if ($output -notmatch '"command":"health"') { throw 'AX_PC_NODE_HEALTH_EVIDENCE_MISSING' }
           Write-Host 'AX_PC_NODE_E2E_VERIFIED'
       - name: Record runner identity without secrets
-        shell: powershell -NoProfile -ExecutionPolicy Bypass
+        shell: powershell -NoProfile -ExecutionPolicy Bypass -File {0}
         run: |
           Write-Host "Runner=$env:COMPUTERNAME"
           Write-Host "OS=$env:RUNNER_OS"
