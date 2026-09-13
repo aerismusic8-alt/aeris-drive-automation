@@ -22,6 +22,13 @@ function Get-TransportSecret {
   return $secret
 }
 
+function Get-RequestedRequestId {
+  $requestId = [Environment]::GetEnvironmentVariable('REQUEST_ID','Process')
+  if ([string]::IsNullOrWhiteSpace($requestId)) { $requestId = [Environment]::GetEnvironmentVariable('REQUEST_ID','Machine') }
+  if ([string]::IsNullOrWhiteSpace($requestId)) { return $null }
+  return $requestId.Trim()
+}
+
 function Invoke-ControlApi([string]$Method,[string]$Path,[object]$Body,[string]$Secret,[int]$TimeoutSeconds) {
   $headers = @{ Authorization = "Bearer $Secret"; Accept = 'application/json'; 'Content-Type' = 'application/json' }
   $params = @{ Method=$Method; Uri=($script:Config.controlRuntimeUrl.TrimEnd('/')+$Path); Headers=$headers; TimeoutSec=$TimeoutSeconds; UseBasicParsing=$true }
@@ -121,9 +128,11 @@ function Process-Item($Item,$Cfg,$Secret) {
 
 $script:Config=Read-Config
 $secret=Get-TransportSecret
+$requestedRequestId=Get-RequestedRequestId
 while($true){
   try {
-    $response=Invoke-ControlApi 'POST' '/pc/pull' $null $secret $script:Config.requestTimeoutSeconds
+    $pullBody = if($requestedRequestId){ @{request_id=$requestedRequestId} } else { $null }
+    $response=Invoke-ControlApi 'POST' '/pc/pull' $pullBody $secret $script:Config.requestTimeoutSeconds
     if($response.item){
       $result=Process-Item $response.item $script:Config $secret
       if($Once){ Write-Output ("AX_PC_NODE_RESULT|" + ($result | ConvertTo-Json -Depth 20 -Compress)) }
