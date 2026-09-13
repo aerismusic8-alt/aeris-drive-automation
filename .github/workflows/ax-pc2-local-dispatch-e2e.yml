@@ -2,6 +2,7 @@ name: AX PC2 Local Dispatch E2E
 
 # Free-first pcsev path: AX dispatcher -> PC2 -> local executor -> verify -> write-back.
 # Apps Script / external control APIs are excluded from this critical path.
+# Verification refresh trigger: run after proof-gate regression fixes.
 
 on:
   push:
