@@ -39,7 +39,8 @@ jobs:
           $repo='${{ github.repository }}'
           if(-not (Test-Path -LiteralPath 'AX_MULTI_AI_DISPATCH_QUEUE.json')){throw 'AX_SELF_CHECK_QUEUE_MISSING'}
           $queue=Get-Content -Raw 'AX_MULTI_AI_DISPATCH_QUEUE.json' | ConvertFrom-Json
-          if(-not $queue.tasks){throw 'AX_SELF_CHECK_TASKS_MISSING'}
+          $queueStatus=([string]$queue.status).Trim().ToUpper()
+          if($queueStatus -ne 'RETIRED' -and $null -eq $queue.tasks){throw 'AX_SELF_CHECK_TASKS_MISSING'}
 
           $counts=[ordered]@{READY=0;DISPATCHED=0;RUNNING=0;STALE=0;FAILED=0;COMPLETED=0;OTHER=0}
           $awaiting=@()
@@ -69,6 +70,7 @@ jobs:
           }
 
           Write-Host '=== AX SELF-CHECK ==='
+          Write-Host "QUEUE_STATUS=$queueStatus"
           Write-Host "READY=$($counts.READY) DISPATCHED=$($counts.DISPATCHED) RUNNING=$($counts.RUNNING) STALE=$($counts.STALE) FAILED=$($counts.FAILED) COMPLETED=$($counts.COMPLETED) OTHER=$($counts.OTHER)"
           Write-Host "AWAITING_RESPONSE=$(@($awaiting).Count)"
           foreach($name in $providerState.Keys){Write-Host "AI_$name=$($providerState[$name])"}
@@ -76,6 +78,7 @@ jobs:
           if($counts.FAILED -gt 0 -or $counts.STALE -gt 0){Write-Host 'AX_RECOVERY_REQUIRED=TRUE'}else{Write-Host 'AX_RECOVERY_REQUIRED=FALSE'}
           @(
             '### AX SELF-CHECK'
+            "- Queue status: $queueStatus"
             "- READY: $($counts.READY)"
             "- DISPATCHED: $($counts.DISPATCHED)"
             "- RUNNING: $($counts.RUNNING)"
