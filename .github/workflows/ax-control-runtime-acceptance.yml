@@ -2,6 +2,9 @@ name: AX Control Runtime Acceptance
 
 on:
   workflow_dispatch:
+  push:
+    paths:
+      - 'cloudflare/ax-control-runtime/**'
 
 permissions:
   contents: read
@@ -32,6 +35,10 @@ jobs:
           test -n "$AX_PC_PULL_SECRET" || { echo 'AX_PC_PULL_SECRET_MISSING'; exit 1; }
           test "${#AX_MOBILE_INGRESS_SECRET}" -ge 32 || { echo 'AX_MOBILE_INGRESS_SECRET_TOO_SHORT'; exit 1; }
           test "${#AX_PC_PULL_SECRET}" -ge 32 || { echo 'AX_PC_PULL_SECRET_TOO_SHORT'; exit 1; }
+      - name: Deploy current control runtime
+        shell: bash
+        working-directory: cloudflare/ax-control-runtime
+        run: npx wrangler@latest deploy
       - name: Provision Worker secrets
         shell: bash
         working-directory: cloudflare/ax-control-runtime
