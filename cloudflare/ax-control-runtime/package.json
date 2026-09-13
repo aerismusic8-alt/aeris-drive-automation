@@ -2,7 +2,7 @@
   "name": "ax-control-runtime",
   "private": true,
   "type": "module",
-  "description": "AX control runtime and canonical PC execution gateway",
+  "description": "AX control runtime and canonical PC execution gateway — acceptance trigger",
   "scripts": {
     "test": "vitest run",
     "test:gemini": "vitest run test/gemini-*.spec.ts"
