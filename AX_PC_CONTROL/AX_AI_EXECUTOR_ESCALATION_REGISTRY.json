@@ -1,0 +1,66 @@
+{
+  "schema": "AX_AI_EXECUTOR_ESCALATION_REGISTRY_V1",
+  "canonical": true,
+  "sourceOfTruth": "AX_PC_CONTROL/AX_AI_EXECUTOR_ESCALATION_REGISTRY.json",
+  "policy": {
+    "freeFirst": true,
+    "quotaAware": true,
+    "limitAction": "ROUTE_TO_NEXT_ELIGIBLE_SPECIALIST",
+    "noUnverifiedSuccess": true,
+    "historicalRegistries": "NON_AUTHORITATIVE",
+    "kRole": "FINAL_AUTHORITY_ONLY"
+  },
+  "specialists": [
+    {
+      "id": "AI-01-OPENAI",
+      "provider": "OPENAI",
+      "specialty": ["coding", "architecture", "reasoning", "review"],
+      "workflow": ".github/workflows/ax-openai-live-code-stream.yml",
+      "transport": "github-actions-self-hosted-pc2",
+      "freePath": true,
+      "quotaFallback": ["AI-02-GEMINI-API", "AI-03-GEMINI-CLOUDFLARE", "AI-04-GEMINI-LIVE-CODE-STREAM"],
+      "enabled": true,
+      "liveVerified": false
+    },
+    {
+      "id": "AI-02-GEMINI-API",
+      "provider": "GEMINI_API",
+      "specialty": ["coding", "debugging", "analysis", "repair"],
+      "workflow": ".github/workflows/ax-gemini-api-worker.yml",
+      "transport": "github-actions-self-hosted-pc2",
+      "freePath": true,
+      "quotaFallback": ["AI-01-OPENAI", "AI-03-GEMINI-CLOUDFLARE", "AI-04-GEMINI-LIVE-CODE-STREAM"],
+      "enabled": true,
+      "liveVerified": false
+    },
+    {
+      "id": "AI-03-GEMINI-CLOUDFLARE",
+      "provider": "GEMINI_CLOUDFLARE",
+      "specialty": ["independent-review", "gateway", "resilience", "alternative-route"],
+      "workflow": ".github/workflows/ax-independent-chat-gateway.yml",
+      "transport": "github-actions-self-hosted-pc2-cloudflare-adapter",
+      "freePath": true,
+      "quotaFallback": ["AI-02-GEMINI-API", "AI-01-OPENAI", "AI-04-GEMINI-LIVE-CODE-STREAM"],
+      "enabled": true,
+      "liveVerified": false
+    },
+    {
+      "id": "AI-04-GEMINI-LIVE-CODE-STREAM",
+      "provider": "GEMINI_LIVE_CODE_STREAM",
+      "specialty": ["coding", "independent-fix", "implementation-review", "recovery"],
+      "workflow": ".github/workflows/ax-gemini-live-code-stream.yml",
+      "transport": "github-actions-self-hosted-pc2",
+      "freePath": true,
+      "quotaFallback": ["AI-01-OPENAI", "AI-02-GEMINI-API", "AI-03-GEMINI-CLOUDFLARE"],
+      "enabled": true,
+      "liveVerified": false
+    }
+  ],
+  "routingRules": {
+    "technical": ["AI-01-OPENAI", "AI-02-GEMINI-API", "AI-04-GEMINI-LIVE-CODE-STREAM"],
+    "independentReview": ["AI-03-GEMINI-CLOUDFLARE", "AI-02-GEMINI-API", "AI-01-OPENAI"],
+    "recovery": ["AI-04-GEMINI-LIVE-CODE-STREAM", "AI-02-GEMINI-API", "AI-01-OPENAI"],
+    "architecture": ["AI-01-OPENAI", "AI-03-GEMINI-CLOUDFLARE", "AI-02-GEMINI-API"],
+    "kEscalation": "ONLY_WHEN_AUTHORITY_OR_HUMAN_DECISION_REQUIRED"
+  }
+}
