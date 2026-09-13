@@ -21,7 +21,7 @@ jobs:
     steps:
       - uses: actions/checkout@v5
       - name: Install and verify AX Control PC2
-        shell: powershell
+        shell: powershell -NoProfile -ExecutionPolicy Bypass -Command ". '{0}'"
         run: |
           $ErrorActionPreference='Stop'
           if($env:COMPUTERNAME -ne $env:AX_EXPECTED_PC2){throw "PC2_IDENTITY_MISMATCH:$env:COMPUTERNAME"}
@@ -33,7 +33,7 @@ jobs:
           Write-Host 'AX_PC2_AUTOSTART=VERIFIED'
           Write-Host 'AX_PC2_RECOVERY=VERIFIED'
       - name: E2E local command proof
-        shell: powershell
+        shell: powershell -NoProfile -ExecutionPolicy Bypass -Command ". '{0}'"
         run: |
           $ErrorActionPreference='Stop'
           $id="AX-PC2-PING-$env:GITHUB_RUN_ID"
