@@ -374,6 +374,26 @@ export default {
       try { event = JSON.parse(await request.text()) as AxEvent; } catch { return json({ error: 'INVALID_JSON' }, 400); }
       if (!event || typeof event !== 'object' || !event.id || !event.taskId || !event.domain || !event.action) return json({ error: 'EVENT_SCHEMA_INVALID', required: ['id', 'taskId', 'domain', 'action'] }, 422);
       const normalizedEvent: AxEvent = { id: String(event.id), taskId: String(event.taskId), domain: String(event.domain), priority: Number(event.priority || 0), action: String(event.action), createdAt: event.createdAt || new Date().toISOString(), source: event.source || 'AX_CONTROL_RUNTIME' };
+      if (normalizedEvent.domain === 'PC') {
+        const record: AxGatewayInput = {
+          request_id: normalizedEvent.id,
+          task_id: normalizedEvent.taskId,
+          status: 'RECEIVED',
+          source_channel: 'PC',
+          content_type: 'command',
+          content: JSON.stringify({ operation: normalizedEvent.action }),
+          evidence_status: 'PENDING',
+          verification_status: 'PENDING',
+          attachments: [],
+          source_of_truth: 'A_MASTER_BRAIN',
+          transport_store: INBOX_NAME,
+          received_at: normalizedEvent.createdAt,
+        };
+        const inboxResponse = await gatewayInboxCall(env, 'put', { record });
+        const inboxBody = await inboxResponse.json();
+        if (!inboxResponse.ok) return json(inboxBody, inboxResponse.status);
+        return json({ accepted: true, queued: true, eventId: normalizedEvent.id, taskId: normalizedEvent.taskId, queue: INBOX_NAME, route: 'PC_PULL', executionGate: 'CONTROLLED', liveFinancialExecution: false }, 201);
+      }
       await env.AX_EXECUTION_QUEUE.send(normalizedEvent);
       return json({ accepted: true, queued: true, eventId: normalizedEvent.id, taskId: normalizedEvent.taskId, queue: QUEUE_NAME, executionGate: 'CONTROLLED', liveFinancialExecution: false });
     }
