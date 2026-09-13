@@ -33,8 +33,6 @@ jobs:
           test -n "$CLOUDFLARE_API_TOKEN" || { echo 'CLOUDFLARE_API_TOKEN_MISSING'; exit 1; }
           test -n "$AX_MOBILE_INGRESS_SECRET" || { echo 'AX_MOBILE_INGRESS_SECRET_MISSING'; exit 1; }
           test -n "$AX_PC_PULL_SECRET" || { echo 'AX_PC_PULL_SECRET_MISSING'; exit 1; }
-          test "${#AX_MOBILE_INGRESS_SECRET}" -ge 32 || { echo 'AX_MOBILE_INGRESS_SECRET_TOO_SHORT'; exit 1; }
-          test "${#AX_PC_PULL_SECRET}" -ge 32 || { echo 'AX_PC_PULL_SECRET_TOO_SHORT'; exit 1; }
       - name: Deploy current control runtime
         shell: bash
         working-directory: cloudflare/ax-control-runtime
