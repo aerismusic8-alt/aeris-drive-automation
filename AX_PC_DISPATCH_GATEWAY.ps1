@@ -19,7 +19,7 @@ function New-AxPcDispatchEvent {
     taskId=$TaskId; task_id=$TaskId
     repository=$Repository; repositoryFullName=$Repository; repo=$Repository
     domain='PC'; targetType='PC_NODE'; nodeId=$NodeId
-    command=$Command; arguments=$Arguments
+    command=$Command; action=$Command; arguments=$Arguments
     content_type=$Command; content=$content
     priority=1; createdAt=(Get-Date).ToUniversalTime().ToString('o')
     source='AX_PC_DISPATCH_GATEWAY'
@@ -34,7 +34,7 @@ function Test-AxPcDispatchCompletion {
 function Invoke-AxPcDispatchGateway {
   param([string]$TaskId,[string]$Command,[string]$NodeId,[string]$ControlRuntimeUrl,[hashtable]$Arguments=@{},[string]$Repository)
   $event = New-AxPcDispatchEvent -TaskId $TaskId -Command $Command -Arguments $Arguments -NodeId $NodeId -Repository $Repository
-  $headers = @{ 'Content-Type'='application/json' }
+  $headers = @{ 'Content-Type'='application/json'; 'X-AERIS-REPOSITORY'=$Repository }
   if ($env:GITHUB_TOKEN) { $headers.Authorization="Bearer $env:GITHUB_TOKEN" }
   $started=Get-Date
   $response=Invoke-RestMethod -Uri "$($ControlRuntimeUrl.TrimEnd('/'))/enqueue" -Method Post -Headers $headers -Body ($event|ConvertTo-Json -Depth 10 -Compress) -TimeoutSec 15
