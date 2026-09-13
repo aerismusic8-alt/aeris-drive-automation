@@ -7,11 +7,12 @@ on:
       - 'cloudflare/ax-control-runtime/src/**'
       - 'cloudflare/ax-control-runtime/wrangler.jsonc'
       - 'cloudflare/ax-control-runtime/package.json'
+      - 'AX_PC_CONTROL/AX_PC_NODE.ps1'
       - '.github/workflows/ax-request-correlation-fix.yml'
   workflow_dispatch:
 
 permissions:
-  contents: read
+  contents: write
 
 concurrency:
   group: ax-control-runtime-deploy
@@ -29,6 +30,77 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v5
 
+      - name: Enforce request correlation in runtime
+        shell: python
+        run: |
+          from pathlib import Path
+          import subprocess
+
+          path = Path('cloudflare/ax-control-runtime/src/index.ts')
+          text = path.read_text(encoding='utf-8')
+
+          old_pull = """    if (path === '/pull' && request.method === 'POST') {
+      const now = Date.now();
+      const index = current.findIndex((item) => {
+        const meta = item as AxGatewayInput & { _status?: string; _leaseUntil?: number };
+        return meta._status !== 'ACKED' && (!meta._leaseUntil || meta._leaseUntil <= now);
+      });
+      if (index < 0) return json({ ok: true, item: null });
+"""
+          new_pull = """    if (path === '/pull' && request.method === 'POST') {
+      const now = Date.now();
+      const requestedId = payload && typeof payload === 'object'
+        ? String((payload as { request_id?: unknown }).request_id || '')
+        : '';
+      const index = current.findIndex((item) => {
+        const meta = item as AxGatewayInput & { _status?: string; _leaseUntil?: number };
+        return meta._status !== 'ACKED'
+          && (!meta._leaseUntil || meta._leaseUntil <= now)
+          && (!requestedId || item.request_id === requestedId);
+      });
+      if (index < 0) {
+        return requestedId
+          ? json({ error: 'REQUEST_UNAVAILABLE', requestId: requestedId }, 404)
+          : json({ ok: true, item: null });
+      }
+"""
+          if old_pull in text and 'REQUEST_UNAVAILABLE' not in text:
+              text = text.replace(old_pull, new_pull, 1)
+          elif 'REQUEST_UNAVAILABLE' not in text:
+              raise SystemExit('RUNTIME_PULL_PATTERN_NOT_FOUND')
+
+          old_route = """    if (request.method === 'POST' && url.pathname === '/pc/pull') {
+      if (!secretAccepted(bearerSecret(request), env.AX_PC_PULL_SECRET)) return json({ error: 'AUTH_REQUIRED' }, 401);
+      const inboxResponse = await gatewayInboxCall(env, 'pull'); return json(await inboxResponse.json(), inboxResponse.status);
+    }
+"""
+          new_route = """    if (request.method === 'POST' && url.pathname === '/pc/pull') {
+      if (!secretAccepted(bearerSecret(request), env.AX_PC_PULL_SECRET)) return json({ error: 'AUTH_REQUIRED' }, 401);
+      const body = await request.json().catch(() => null) as { request_id?: string; requestId?: string } | null;
+      const requestId = String(body?.request_id ?? body?.requestId ?? '');
+      const inboxResponse = await gatewayInboxCall(env, 'pull', requestId ? { request_id: requestId } : {});
+      return json(await inboxResponse.json(), inboxResponse.status);
+    }
+"""
+          if old_route in text:
+              text = text.replace(old_route, new_route, 1)
+          elif 'gatewayInboxCall(env, \'pull\', requestId ? { request_id: requestId } : {})' not in text:
+              raise SystemExit('PC_PULL_ROUTE_PATTERN_NOT_FOUND')
+
+          path.write_text(text, encoding='utf-8')
+          print('REQUEST_CORRELATION_SOURCE_OK')
+
+          subprocess.run(['git', 'config', 'user.name', 'github-actions[bot]'], check=True)
+          subprocess.run(['git', 'config', 'user.email', '41898282+github-actions[bot]@users.noreply.github.com'], check=True)
+          subprocess.run(['git', 'add', str(path)], check=True)
+          changed = subprocess.run(['git', 'diff', '--cached', '--quiet']).returncode != 0
+          if changed:
+              subprocess.run(['git', 'commit', '-m', 'fix: correlate PC pulls by request id'], check=True)
+              subprocess.run(['git', 'push', 'origin', 'HEAD:main'], check=True)
+              print('REQUEST_CORRELATION_COMMITTED')
+          else:
+              print('REQUEST_CORRELATION_ALREADY_CANONICAL')
+
       - name: Verify deployment source
         shell: bash
         run: |
@@ -37,6 +109,8 @@ jobs:
           test -f cloudflare/ax-control-runtime/src/github-app-entry.ts
           grep -q 'main.*src/github-app-entry.ts' cloudflare/ax-control-runtime/wrangler.jsonc
           grep -q 'dispatchFromApp' cloudflare/ax-control-runtime/src/github-app-entry.ts
+          grep -q 'REQUEST_UNAVAILABLE' cloudflare/ax-control-runtime/src/index.ts
+          grep -q 'requestId ? { request_id: requestId } : {}' cloudflare/ax-control-runtime/src/index.ts
           echo 'DEPLOYMENT_SOURCE_OK'
 
       - name: Deploy runtime
