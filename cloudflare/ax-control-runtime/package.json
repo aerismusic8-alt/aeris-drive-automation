@@ -2,6 +2,7 @@
   "name": "ax-control-runtime",
   "private": true,
   "type": "module",
+  "description": "AX control runtime and PC execution gateway",
   "scripts": {
     "test": "vitest run",
     "test:gemini": "vitest run test/gemini-*.spec.ts"
