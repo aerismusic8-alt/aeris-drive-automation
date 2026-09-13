@@ -188,12 +188,14 @@ export class AxGatewayInbox {
     }
 
     if (path === '/pull' && request.method === 'POST') {
+      const requestedId = String((payload as { request_id?: unknown } | null)?.request_id || '');
       const now = Date.now();
       const index = current.findIndex((item) => {
         const meta = item as AxGatewayInput & { _status?: string; _leaseUntil?: number };
-        return meta._status !== 'ACKED' && (!meta._leaseUntil || meta._leaseUntil <= now);
+        const eligible = meta._status !== 'ACKED' && (!meta._leaseUntil || meta._leaseUntil <= now);
+        return eligible && (!requestedId || item.request_id === requestedId);
       });
-      if (index < 0) return json({ ok: true, item: null });
+      if (index < 0) return requestedId ? json({ error: 'REQUEST_UNAVAILABLE', requestId: requestedId }, 404) : json({ ok: true, item: null });
       const item = current[index] as AxGatewayInput & { _status?: string; _leaseUntil?: number };
       item._status = 'CLAIMED';
       item._leaseUntil = now + LEASE_MS;
@@ -350,7 +352,10 @@ export default {
     }
     if (request.method === 'POST' && url.pathname === '/pc/pull') {
       if (!secretAccepted(bearerSecret(request), env.AX_PC_PULL_SECRET)) return json({ error: 'AUTH_REQUIRED' }, 401);
-      const inboxResponse = await gatewayInboxCall(env, 'pull'); return json(await inboxResponse.json(), inboxResponse.status);
+      const body = await request.json().catch(() => null) as { request_id?: string; requestId?: string } | null;
+      const requestId = String(body?.request_id ?? body?.requestId ?? '');
+      const inboxResponse = await gatewayInboxCall(env, 'pull', requestId ? { request_id: requestId } : {});
+      return json(await inboxResponse.json(), inboxResponse.status);
     }
     if (request.method === 'POST' && url.pathname === '/pc/result') {
       if (!secretAccepted(bearerSecret(request), env.AX_PC_PULL_SECRET)) return json({ error: 'AUTH_REQUIRED' }, 401);
