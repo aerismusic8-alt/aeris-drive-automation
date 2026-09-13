@@ -12,7 +12,7 @@ permissions:
   contents: read
 
 jobs:
-  provision-and-mobile-e2e:
+  provision-and-pc-e2e:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     env:
@@ -58,7 +58,8 @@ jobs:
           console.log(JSON.stringify({status:r.status,mode:r.mode,liveFinancialExecution:r.liveFinancialExecution,mobileIngressAuthConfigured:r.mobileIngressAuthConfigured,pcPullAuthConfigured:r.pcPullAuthConfigured,gatewayInbox:r.gatewayInbox}));
           if (r.status !== 'ONLINE' || r.mode !== 'FREE_ONLY' || r.liveFinancialExecution !== false || r.mobileIngressAuthConfigured !== true || r.pcPullAuthConfigured !== true || r.gatewayInbox !== 'AX_GATEWAY_INBOX') process.exit(1);
           NODE
-      - name: Verify mobile ingress and create explicit PC health task
+      - name: Enqueue explicit PC health task
+        id: enqueue
         shell: bash
         run: |
           set -euo pipefail
@@ -71,44 +72,40 @@ jobs:
           const r = await response.json();
           console.log(JSON.stringify({status:response.status,accepted:r.accepted,queued:r.queued,requestId:r.requestId,taskId:r.taskId}));
           if (response.status !== 201 || r.accepted !== true || r.queued !== true || r.requestId !== requestId || r.taskId !== taskId) process.exit(1);
+          console.log(`AX_PC_E2E_REQUEST_ID=${requestId}`);
+          console.log(`AX_PC_E2E_TASK_ID=${taskId}`);
+          require('node:fs').writeFileSync(process.env.GITHUB_OUTPUT,`request_id=${requestId}${String.fromCharCode(10)}task_id=${taskId}${String.fromCharCode(10)}`);
           NODE
-
-  pc-e2e:
-    needs: provision-and-mobile-e2e
-    runs-on: [self-hosted, Windows, X64, PC2-CODING-EXECUTOR]
-    timeout-minutes: 10
-    env:
-      AX_PC_PULL_SECRET: ${{ secrets.AX_PC_PULL_SECRET }}
-    steps:
-      - name: Run PC2 node once to drain any stale task
-        shell: powershell -NoProfile -ExecutionPolicy Bypass -File {0}
+      - name: Poll for persistent PC2 execution result and require VERIFIED
+        shell: bash
+        env:
+          REQUEST_ID: ${{ steps.enqueue.outputs.request_id }}
+          TASK_ID: ${{ steps.enqueue.outputs.task_id }}
         run: |
-          $ErrorActionPreference = 'Stop'
-          $node = 'C:\AKATH\AX_PC_CONTROL\AX_PC_NODE.ps1'
-          $config = 'C:\AKATH\AX_PC_CONTROL\AX_PC_NODE_CONFIG.json'
-          if (!(Test-Path -LiteralPath $node)) { throw 'AX_PC_NODE_NOT_INSTALLED' }
-          if (!(Test-Path -LiteralPath $config)) { throw 'AX_PC_NODE_CONFIG_NOT_FOUND' }
-          $output = & powershell.exe -NoLogo -NoProfile -NonInteractive -ExecutionPolicy Bypass -File $node -ConfigPath $config -Once 2>&1 | Out-String
-          Write-Host $output
-          if ($LASTEXITCODE -ne 0) { throw "AX_PC_NODE_EXIT_$LASTEXITCODE" }
-      - name: Execute explicit PC2 health task and require VERIFIED
-        shell: powershell -NoProfile -ExecutionPolicy Bypass -File {0}
-        run: |
-          $ErrorActionPreference = 'Stop'
-          $node = 'C:\AKATH\AX_PC_CONTROL\AX_PC_NODE.ps1'
-          $config = 'C:\AKATH\AX_PC_CONTROL\AX_PC_NODE_CONFIG.json'
-          $output = & powershell.exe -NoLogo -NoProfile -NonInteractive -ExecutionPolicy Bypass -File $node -ConfigPath $config -Once 2>&1 | Out-String
-          Write-Host $output
-          if ($LASTEXITCODE -ne 0) { throw "AX_PC_NODE_EXIT_$LASTEXITCODE" }
-          if ($output -notmatch 'AX_PC_NODE_RESULT\|') { throw 'AX_PC_NODE_RESULT_MISSING' }
-          if ($output -notmatch '"verified":true') { throw 'AX_PC_NODE_VERIFICATION_FAILED' }
-          if ($output -notmatch '"status":"VERIFIED"') { throw 'AX_PC_NODE_STATUS_NOT_VERIFIED' }
-          if ($output -notmatch '"command":"health"') { throw 'AX_PC_NODE_HEALTH_EVIDENCE_MISSING' }
-          Write-Host 'AX_PC_NODE_E2E_VERIFIED'
-      - name: Record runner identity without secrets
-        shell: powershell -NoProfile -ExecutionPolicy Bypass -File {0}
-        run: |
-          Write-Host "Runner=$env:COMPUTERNAME"
-          Write-Host "OS=$env:RUNNER_OS"
-          Write-Host "Arch=$env:RUNNER_ARCH"
-          Write-Host 'PC secret value was not printed.'
+          set -euo pipefail
+          node <<'NODE'
+          const requestId = process.env.REQUEST_ID;
+          const taskId = process.env.TASK_ID;
+          const resultUrl = process.env.RUNTIME_URL + '/web/result/' + encodeURIComponent(requestId);
+          const headers = {Authorization:`Bearer ${process.env.AX_MOBILE_INGRESS_SECRET}`,'Content-Type':'application/json'};
+          let last = null;
+          for (let attempt = 1; attempt <= 60; attempt++) {
+            const response = await fetch(resultUrl,{headers});
+            if (response.ok) {
+              const body = await response.json();
+              const result = body.result?.result || body.result || {};
+              last = result;
+              console.log(JSON.stringify({attempt,requestId,taskId,result},null,2));
+              if (result.taskId === taskId && result.verified === true && result.executed === true && result.status === 'VERIFIED' && result.node_id === 'PC2' && result.writeBackVerified === true && result.evidence?.taskId === taskId && result.evidence?.nodeId === 'PC2' && result.evidence?.command === 'health') {
+                console.log('AX_PC_PERSISTENT_E2E_VERIFIED');
+                process.exit(0);
+              }
+            } else if (response.status !== 404) {
+              const text = await response.text();
+              throw new Error(`RESULT_HTTP_${response.status}:${text}`);
+            }
+            await new Promise(resolve => setTimeout(resolve, 2000));
+          }
+          console.error('AX_PC_PERSISTENT_E2E_TIMEOUT',JSON.stringify({requestId,taskId,last},null,2));
+          process.exit(1);
+          NODE
