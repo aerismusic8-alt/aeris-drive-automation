@@ -64,6 +64,7 @@ jobs:
         run: |
           set -euo pipefail
           node <<'NODE'
+          import fs from 'node:fs';
           const url = process.env.RUNTIME_URL + '/mobile/input';
           const requestId = `ACCEPT-PC-${crypto.randomUUID()}`;
           const taskId = `TASK-PC2-${crypto.randomUUID().slice(0,8)}`;
@@ -74,7 +75,7 @@ jobs:
           if (response.status !== 201 || r.accepted !== true || r.queued !== true || r.requestId !== requestId || r.taskId !== taskId) process.exit(1);
           console.log(`AX_PC_E2E_REQUEST_ID=${requestId}`);
           console.log(`AX_PC_E2E_TASK_ID=${taskId}`);
-          require('node:fs').writeFileSync(process.env.GITHUB_OUTPUT,`request_id=${requestId}${String.fromCharCode(10)}task_id=${taskId}${String.fromCharCode(10)}`);
+          fs.writeFileSync(process.env.GITHUB_OUTPUT,`request_id=${requestId}${String.fromCharCode(10)}task_id=${taskId}${String.fromCharCode(10)}`);
           NODE
       - name: Poll for persistent PC2 execution result and require VERIFIED
         shell: bash
