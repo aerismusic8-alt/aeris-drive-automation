@@ -73,22 +73,34 @@ jobs:
           const r = await response.json();
           console.log(JSON.stringify({status:response.status,accepted:r.accepted,queued:r.queued,requestId:r.requestId,taskId:r.taskId}));
           if (response.status !== 201 || r.accepted !== true || r.queued !== true || r.requestId !== requestId || r.taskId !== taskId) process.exit(1);
-          console.log(`AX_PC_E2E_REQUEST_ID=${requestId}`);
-          console.log(`AX_PC_E2E_TASK_ID=${taskId}`);
           fs.writeFileSync(process.env.GITHUB_OUTPUT,`request_id=${requestId}${String.fromCharCode(10)}task_id=${taskId}${String.fromCharCode(10)}`);
+          NODE
+      - name: Open web result session
+        id: web-session
+        shell: bash
+        run: |
+          set -euo pipefail
+          node <<'NODE'
+          import fs from 'node:fs';
+          const response = await fetch(process.env.RUNTIME_URL + '/web/session',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({secret:process.env.AX_MOBILE_INGRESS_SECRET})});
+          const r = await response.json();
+          console.log(JSON.stringify({status:response.status,authenticated:r.authenticated,expiresInMs:r.expiresInMs}));
+          if (response.status !== 200 || r.authenticated !== true || !r.sessionToken) process.exit(1);
+          fs.writeFileSync(process.env.GITHUB_OUTPUT,`session_token=${r.sessionToken}${String.fromCharCode(10)}`);
           NODE
       - name: Poll for persistent PC2 execution result and require VERIFIED
         shell: bash
         env:
           REQUEST_ID: ${{ steps.enqueue.outputs.request_id }}
           TASK_ID: ${{ steps.enqueue.outputs.task_id }}
+          WEB_SESSION_TOKEN: ${{ steps.web-session.outputs.session_token }}
         run: |
           set -euo pipefail
           node <<'NODE'
           const requestId = process.env.REQUEST_ID;
           const taskId = process.env.TASK_ID;
           const resultUrl = process.env.RUNTIME_URL + '/web/result/' + encodeURIComponent(requestId);
-          const headers = {Authorization:`Bearer ${process.env.AX_MOBILE_INGRESS_SECRET}`,'Content-Type':'application/json'};
+          const headers = {Authorization:`Bearer ${process.env.WEB_SESSION_TOKEN}`,'Content-Type':'application/json'};
           let last = null;
           for (let attempt = 1; attempt <= 60; attempt++) {
             const response = await fetch(resultUrl,{headers});
