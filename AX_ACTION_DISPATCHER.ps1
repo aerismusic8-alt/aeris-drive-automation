@@ -48,8 +48,10 @@ if ([string]$selected.domain -eq 'PC' -and (Test-Path $pcGateway)) {
 $agentRoutingBridge = Join-Path $PSScriptRoot 'AX_AGENT_ROUTING_BRIDGE.ps1'
 $agentRouteSelected = $false
 if (Test-Path $agentRoutingBridge) {
-  $agentCandidates = @('OPENAI','GEMINI_API','GEMINI_CLOUDFLARE','GEMINI_LIVE_CODE_STREAM')
-  $agentRoutingResult = & powershell.exe -ExecutionPolicy Bypass -File $agentRoutingBridge -TaskId $selected.id -Domain $selected.domain -Candidates $agentCandidates 2>&1
+  # Let the routing bridge resolve the domain's candidate list itself.
+  # Passing a PowerShell array across a native powershell.exe boundary caused
+  # positional binding failures on the self-hosted Windows runner.
+  $agentRoutingResult = & powershell.exe -ExecutionPolicy Bypass -File $agentRoutingBridge -TaskId $selected.id -Domain $selected.domain 2>&1
   if ($LASTEXITCODE -eq 0) {
     $agentRouteSelected = $true
     Write-Host 'Helper Agent Route: VERIFIED_EXECUTOR_OWNERSHIP'
