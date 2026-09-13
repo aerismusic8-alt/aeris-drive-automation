@@ -5,6 +5,7 @@ on:
   push:
     paths:
       - 'cloudflare/ax-control-runtime/**'
+      - 'AX_PC_CONTROL/AX_PC_NODE.ps1'
 
 permissions:
   contents: read
