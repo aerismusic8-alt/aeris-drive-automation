@@ -45,88 +45,29 @@ jobs:
           python-version: "3.12"
 
       - name: Resolve next READY OpenAI task
-        shell: powershell
+        shell: cmd
         env:
           EVENT_NAME: ${{ github.event_name }}
           INPUT_PROMPT: ${{ inputs.prompt }}
           INPUT_FILE: ${{ inputs.file }}
-        run: |
-          $ErrorActionPreference = 'Stop'
-          $prompt = $env:INPUT_PROMPT
-          $target = $env:INPUT_FILE
-          $taskId = "MANUAL-OPENAI-$env:GITHUB_RUN_ID"
-          $fromQueue = $false
-          if ($env:EVENT_NAME -ne 'workflow_dispatch') {
-            $queue = Get-Content -Raw 'AX_MULTI_AI_DISPATCH_QUEUE.json' | ConvertFrom-Json
-            $task = @($queue.tasks | Where-Object { $_.provider -eq 'OPENAI' -and $_.enabled -eq $true -and $_.status -eq 'READY' } | Sort-Object priority -Descending) | Select-Object -First 1
-            if (-not $task) { Write-Host 'OPENAI_NO_READY_TASK'; exit 0 }
-            $fromQueue = $true
-            $taskId = [string]$task.task_id
-            $prompt = [string]$task.prompt
-            $target = [string]$task.file
-          }
-          if ([string]::IsNullOrWhiteSpace($prompt)) { throw 'OPENAI_PROMPT_EMPTY' }
-          if ([string]::IsNullOrWhiteSpace($target)) { throw 'OPENAI_TARGET_EMPTY' }
-          if (Test-Path -LiteralPath $target) {
-            $existing = Get-Content -Raw -LiteralPath $target
-            $prompt = ('{0}`n`nCURRENT SOURCE OF {1}:`n```text`n{2}`n``` `nReturn the COMPLETE replacement source for {1} only.' -f $prompt, $target, $existing)
-          }
-          $promptFile = Join-Path $env:RUNNER_TEMP 'ax-openai-prompt.txt'
-          Set-Content -LiteralPath $promptFile -Value $prompt -Encoding utf8
-          "PROMPT_FILE=$promptFile" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
-          "TASK_ID=$taskId" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
-          "TARGET_FILE=$target" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
-          "FROM_QUEUE=$($fromQueue.ToString().ToLower())" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
-          Write-Host "AX_OPENAI_TASK_READY task=$taskId file=$target"
+        run: powershell.exe -NoProfile -ExecutionPolicy Bypass -Command "& '%GITHUB_WORKSPACE%\scripts\AX_OPENAI_RESOLVE_TASK.ps1'"
 
       - name: Regression test code stream writer
         if: env.TASK_ID != ''
-        shell: powershell
-        run: ./tests/AX_CODE_STREAM_WRITER_TARGET.Tests.ps1
+        shell: cmd
+        run: powershell.exe -NoProfile -ExecutionPolicy Bypass -File "%GITHUB_WORKSPACE%\tests\AX_CODE_STREAM_WRITER_TARGET.Tests.ps1"
 
       - name: Run OpenAI coding worker
         if: env.TASK_ID != ''
-        shell: powershell
-        run: |
-          $ErrorActionPreference = 'Stop'
-          $prompt = Get-Content -Raw -LiteralPath $env:PROMPT_FILE
-          python AKATH/runtime/ax_openai_code_writer.py "$prompt" --task-id "$env:TASK_ID" --file "$env:TARGET_FILE"
+        shell: cmd
+        run: powershell.exe -NoProfile -ExecutionPolicy Bypass -Command "$ErrorActionPreference='Stop'; $prompt=Get-Content -Raw -LiteralPath $env:PROMPT_FILE; python AKATH/runtime/ax_openai_code_writer.py \"$prompt\" --task-id \"$env:TASK_ID\" --file \"$env:TARGET_FILE\""
 
       - name: Verify generated file
         if: env.TASK_ID != ''
-        shell: powershell
-        run: |
-          $ErrorActionPreference = 'Stop'
-          if (-not (Test-Path -LiteralPath $env:TARGET_FILE)) { throw "OPENAI_OUTPUT_MISSING file=$env:TARGET_FILE" }
-          $lines = @(Get-Content -LiteralPath $env:TARGET_FILE)
-          if ($lines.Count -eq 0) { throw "OPENAI_OUTPUT_EMPTY file=$env:TARGET_FILE" }
-          Write-Host "AX_OPENAI_OUTPUT_VERIFIED task=$env:TASK_ID file=$env:TARGET_FILE lines=$($lines.Count)"
+        shell: cmd
+        run: powershell.exe -NoProfile -ExecutionPolicy Bypass -Command "$ErrorActionPreference='Stop'; if (-not (Test-Path -LiteralPath $env:TARGET_FILE)) { throw \"OPENAI_OUTPUT_MISSING file=$env:TARGET_FILE\" }; $lines=@(Get-Content -LiteralPath $env:TARGET_FILE); if ($lines.Count -eq 0) { throw \"OPENAI_OUTPUT_EMPTY file=$env:TARGET_FILE\" }; Write-Host \"AX_OPENAI_OUTPUT_VERIFIED task=$env:TASK_ID file=$env:TARGET_FILE lines=$($lines.Count)\""
 
       - name: Persist generated code and complete queue task
         if: env.TASK_ID != ''
-        shell: powershell
-        run: |
-          $ErrorActionPreference = 'Stop'
-          git config user.name 'AX OpenAI Live Code Stream'
-          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git fetch origin main
-          git rebase origin/main
-          if (-not (Test-Path -LiteralPath $env:TARGET_FILE)) { throw "OPENAI_OUTPUT_LOST_AFTER_REBASE file=$env:TARGET_FILE" }
-          git add -- "$env:TARGET_FILE"
-          if (git diff --cached --quiet -- "$env:TARGET_FILE") { throw "OPENAI_WRITEBACK_EMPTY file=$env:TARGET_FILE" }
-          if ($env:FROM_QUEUE -eq 'true') {
-            $queue = Get-Content -Raw 'AX_MULTI_AI_DISPATCH_QUEUE.json' | ConvertFrom-Json
-            $task = @($queue.tasks | Where-Object { $_.task_id -eq $env:TASK_ID }) | Select-Object -First 1
-            if ($task) {
-              $task.status = 'COMPLETED'
-              $task.execution = [ordered]@{ workflow='ax-openai-live-code-stream.yml'; run_id=[int64]$env:GITHUB_RUN_ID; executor='OPENAI'; output_file=$env:TARGET_FILE; completed_at=(Get-Date).ToUniversalTime().ToString('o') }
-            }
-            $queue.updated_at=(Get-Date).ToUniversalTime().ToString('o')
-            $queue | ConvertTo-Json -Depth 20 | Set-Content -Encoding utf8 'AX_MULTI_AI_DISPATCH_QUEUE.json'
-            git add -- AX_MULTI_AI_DISPATCH_QUEUE.json
-          }
-          git commit -m "chore: persist OpenAI task=$env:TASK_ID run=$env:GITHUB_RUN_ID"
-          git push origin HEAD:main
-          git fetch origin main
-          if (-not (git cat-file -e "origin/main:$($env:TARGET_FILE)")) { throw "OPENAI_REMOTE_OUTPUT_MISSING file=$env:TARGET_FILE" }
-          Write-Host "AX_OPENAI_WRITEBACK_VERIFIED task=$env:TASK_ID file=$env:TARGET_FILE run=$env:GITHUB_RUN_ID"
+        shell: cmd
+        run: powershell.exe -NoProfile -ExecutionPolicy Bypass -Command "& '%GITHUB_WORKSPACE%\scripts\AX_OPENAI_PERSIST_TASK.ps1'"
