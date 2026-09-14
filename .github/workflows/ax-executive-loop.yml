@@ -1,14 +1,9 @@
-﻿name: AX Autonomous Executive Loop
+name: AX Autonomous Executive Loop
 
 on:
   workflow_dispatch:
   schedule:
     - cron: "*/5 * * * *"
-  workflow_run:
-    workflows:
-      - PC Runner Smoke Test
-    types:
-      - completed
 
 permissions:
   actions: read
@@ -23,17 +18,17 @@ env:
 
 jobs:
   executive-loop:
-    if: ${{ github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success' }}
     runs-on: self-hosted
     timeout-minutes: 10
 
     steps:
-      - name: Checkout AX control state
+      - name: Checkout canonical AX main
         uses: actions/checkout@v5
         with:
           ref: main
           fetch-depth: 0
           persist-credentials: true
+          clean: true
 
       - name: Enforce temporary GPT bridge policy
         shell: cmd
@@ -46,8 +41,8 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           AX_TRIGGER: ${{ github.event_name }}
-          AX_TRIGGER_WORKFLOW: ${{ github.event.workflow_run.name }}
+          AX_TRIGGER_WORKFLOW: ''
           AX_CLOUDFLARE_RUNTIME_URL: https://aeris-execution-runtime.workers.dev
-          AX_REPOSITORY_MUTATION_ENABLED: 'true'
+          AX_REPOSITORY_MUTATION_ENABLED: 'false'
           AERIS_WEB_APP_URL: https://script.google.com/macros/s/AKfycbwdK1NVd0_ZUVS_fRto6xRIWzUOkFi8BV90UxxKrujQYfYWvcaIlWNDXKxI9Ree7Zqx/exec
         run: powershell.exe -NoProfile -ExecutionPolicy Bypass -File "%GITHUB_WORKSPACE%\AX_EXECUTIVE_CYCLE.ps1"
