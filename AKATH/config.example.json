@@ -1,8 +1,0 @@
-{
-  "runtime_id": "akath-primary",
-  "state_dir": "${USERPROFILE}/.akath/runtime",
-  "heartbeat_stale_seconds": 900,
-  "max_recovery_attempts": 2,
-  "probe_mode": true,
-  "chat_dependency": false
-}

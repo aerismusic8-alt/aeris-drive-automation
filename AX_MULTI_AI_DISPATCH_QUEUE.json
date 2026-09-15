@@ -1,8 +1,0 @@
-{
-  "schema": "AX_MULTI_AI_DISPATCH_QUEUE_V4_RETIRED",
-  "status": "RETIRED",
-  "canonicalRegistry": "AX_PC_CONTROL/AX_AI_EXECUTOR_ESCALATION_REGISTRY.json",
-  "tasks": [],
-  "updated_at": "2026-09-13T00:00:00Z",
-  "note": "Historical multi-AI task records are no longer authoritative. New specialist routing must use the canonical AI executor escalation registry."
-}

@@ -1,2 +1,0 @@
-AX_REAL_WORK_GEMINI_20260907
-TASK: Implement a production-quality Python function parse_int(value, *, minimum=None, maximum=None) for AX runtime input validation. Accept int and integer strings with surrounding whitespace, reject booleans and ambiguous values, enforce optional bounds, and raise ValueError/TypeError appropriately. Return only source code for AKATH/runtime/generated_gemini_task.py. This is real AX engineering work; include a minimal self-test block under if __name__ == '__main__'.

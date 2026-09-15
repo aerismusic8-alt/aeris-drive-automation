@@ -1,9 +1,0 @@
-﻿{
-    "schema":  "AX_DASHBOARD_SYNC_V1",
-    "syncAt":  "2026-09-15T23:03:00.8569952Z",
-    "event":  "push",
-    "jobId":  "",
-    "triggerCount":  1,
-    "sourceState":  "dashboard/status.json",
-    "stateVerified":  true
-}

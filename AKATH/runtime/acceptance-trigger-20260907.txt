@@ -1,1 +1,0 @@
-Acceptance trigger: re-run AKATH 24x7 Acceptance Gate from main after the PC2 Python/rebase self-healing fix. No runtime behavior change.

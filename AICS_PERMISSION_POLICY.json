@@ -1,8 +1,0 @@
-{
-  "schema":"AICS_PERMISSION_POLICY_V1",
-  "mode":"AUTONOMOUS_WITH_EXECUTE_LOCK",
-  "finalAuthority":"K",
-  "permissions":{"research":true,"market_data":true,"account_read":true,"portfolio_analysis":true,"strategy":true,"backtest":true,"paper_trading":true,"portfolio_management":true,"order_prepare":true,"order_execute":false,"deposit":false,"withdrawal":false,"permission_escalation":false},
-  "executeLock":{"enabled":true,"realMoneyOrders":"BLOCKED","unlockAuthority":"K","unlockMustBeExplicit":true},
-  "requiredControls":["RISK_ENGINE","POSITION_LIMITS","KILL_SWITCH","AUDIT_LOG","VERIFY"]
-}

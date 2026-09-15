@@ -1,7 +1,0 @@
-{
-  "workflow": "apps-script-deploy",
-  "stage": "FAILED",
-  "last_stage": "RUNTIME_OAUTH_PROBE",
-  "commit": "d3d93adae777dfc698e4e5a038c3abb20a9b1fac",
-  "timestamp_utc": "2026-09-02T19:12:03Z"
-}
