@@ -1,0 +1,12 @@
+{
+  "$schema":"https://json-schema.org/draft/2020-12/schema",
+  "type":"object",
+  "required":["jobId","event","timestamp","verification"],
+  "properties":{
+    "jobId":{"type":"string","minLength":1},
+    "event":{"type":"string","minLength":1},
+    "timestamp":{"type":"string","format":"date-time"},
+    "result":{},
+    "verification":{"type":"object","required":["verified"],"properties":{"verified":{"type":"boolean"}}}
+  }
+}
