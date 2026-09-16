@@ -1,0 +1,19 @@
+{
+  "schema_version": "1.0",
+  "registry_role": "AKATH_CANONICAL_TASK_REGISTRY",
+  "authority": "K_FINAL_AUTHORITY",
+  "organization": "AKATH",
+  "managed_by": "AX",
+  "status": "CLEAN_START",
+  "current_work": {"active": false, "task_id": null},
+  "tasks": [],
+  "task_identity_policy": "1 task_id = 1 canonical task record",
+  "time_governance": {
+    "required": true,
+    "fields": ["started_at", "deadline_at", "milestones", "completion_criteria", "evidence", "verification", "completed_at"],
+    "overdue_policy": "OVERDUE -> cause analysis -> corrective action -> continue or escalate; never silently extend deadline"
+  },
+  "completion_rule": "DONE requires actual execution result, persisted evidence, and verification",
+  "execution_direction": "AX -> AX_RUNTIME -> DISPATCHER -> PC1_MAIN -> SPECIALIST -> EXECUTE -> EVIDENCE -> VERIFY -> NEXT_JOB",
+  "clean_start_rule": "Historical tasks are not current tasks. Experience may inform design but cannot create current state."
+}
