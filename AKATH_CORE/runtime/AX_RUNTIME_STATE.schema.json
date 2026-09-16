@@ -1,0 +1,14 @@
+{
+  "$schema":"https://json-schema.org/draft/2020-12/schema",
+  "type":"object",
+  "required":["schemaVersion","runtimeStatus","nodeId","lastHeartbeatAt","activeJob","lastVerifiedJob","recovery"],
+  "properties":{
+    "schemaVersion":{"type":"string"},
+    "runtimeStatus":{"enum":["OFFLINE","STARTING","ONLINE","DEGRADED","RECOVERY"]},
+    "nodeId":{"type":"string","minLength":1},
+    "lastHeartbeatAt":{"type":["string","null"]},
+    "activeJob":{"type":["string","null"]},
+    "lastVerifiedJob":{"type":["string","null"]},
+    "recovery":{"type":"object"}
+  }
+}
