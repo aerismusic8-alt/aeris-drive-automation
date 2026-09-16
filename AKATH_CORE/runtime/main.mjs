@@ -5,6 +5,7 @@ import { appendEvidence } from './evidence-store.mjs';
 import { loadJson, persistJson } from './state-store.mjs';
 import { createLocalPc1Adapter, dispatchToPc1 } from './dispatcher.mjs';
 import { runOnce, startSupervisor } from './ax-runtime.mjs';
+import { planNextTask } from './autonomous-planner.mjs';
 
 const root=dirname(fileURLToPath(import.meta.url));
 const registryPath=resolve(root,'../CANONICAL_TASK_REGISTRY.json');
@@ -15,6 +16,8 @@ const adapter=createLocalPc1Adapter();
 
 async function cycle(){
   const registry=await loadRegistry(registryPath);
+  const planned=planNextTask(registry,new Date());
+  if(planned) console.log(`[AX_RUNTIME] AUTONOMOUS_TASK ${planned.task_id}`);
   const result=await runOnce({registry,state,dispatch:(job)=>dispatchToPc1(job,adapter),appendEvidence:(record)=>appendEvidence(evidencePath,record)});
   await persistRegistry(registryPath,registry);
   await persistJson(statePath,state);
