@@ -10,7 +10,7 @@
                          "verified":  true
                      },
     "exitCode":  0,
-    "stdout":  "{\"computerName\":\"DESKTOP-O0AUKHG\",\"userName\":\"DESKTOP-O0AUKHG\\\\pc2\",\"nodeId\":\"PC2-MAIN\",\"processId\":4196,\"powershellVersion\":\"5.1.19041.6456\"}",
+    "stdout":  "{\"computerName\":\"DESKTOP-O0AUKHG\",\"userName\":\"DESKTOP-O0AUKHG\\\\pc2\",\"nodeId\":\"PC2-MAIN\",\"processId\":7920,\"powershellVersion\":\"5.1.19041.6456\"}",
     "stderr":  "",
     "result":  {
                    "ok":  true,
@@ -20,15 +20,15 @@
                                   "node":  "PC2-MAIN",
                                   "task_id":  "AX-PC2-CONTROL-TEST-20260918-0001",
                                   "execution":  "POWERSHELL_EXECUTED",
-                                  "completed_at":  "2026-09-17T17:52:04.478Z",
-                                  "stdout":  "{\"computerName\":\"DESKTOP-O0AUKHG\",\"userName\":\"DESKTOP-O0AUKHG\\\\pc2\",\"nodeId\":\"PC2-MAIN\",\"processId\":4196,\"powershellVersion\":\"5.1.19041.6456\"}",
+                                  "completed_at":  "2026-09-17T18:11:51.063Z",
+                                  "stdout":  "{\"computerName\":\"DESKTOP-O0AUKHG\",\"userName\":\"DESKTOP-O0AUKHG\\\\pc2\",\"nodeId\":\"PC2-MAIN\",\"processId\":7920,\"powershellVersion\":\"5.1.19041.6456\"}",
                                   "stderr":  "",
                                   "exitCode":  0,
                                   "hostIdentity":  {
                                                        "computerName":  "DESKTOP-O0AUKHG",
                                                        "userName":  "DESKTOP-O0AUKHG\\pc2",
                                                        "nodeId":  "PC2-MAIN",
-                                                       "processId":  4196,
+                                                       "processId":  7920,
                                                        "powershellVersion":  "5.1.19041.6456"
                                                    }
                               },
@@ -40,20 +40,20 @@
                                                          "computerName":  "DESKTOP-O0AUKHG",
                                                          "userName":  "DESKTOP-O0AUKHG\\pc2",
                                                          "nodeId":  "PC2-MAIN",
-                                                         "processId":  4196,
+                                                         "processId":  7920,
                                                          "powershellVersion":  "5.1.19041.6456"
                                                      },
                                     "verification":  {
                                                          "verified":  true
                                                      },
                                     "execution":  "POWERSHELL_EXECUTED",
-                                    "stdout":  "{\"computerName\":\"DESKTOP-O0AUKHG\",\"userName\":\"DESKTOP-O0AUKHG\\\\pc2\",\"nodeId\":\"PC2-MAIN\",\"processId\":4196,\"powershellVersion\":\"5.1.19041.6456\"}",
+                                    "stdout":  "{\"computerName\":\"DESKTOP-O0AUKHG\",\"userName\":\"DESKTOP-O0AUKHG\\\\pc2\",\"nodeId\":\"PC2-MAIN\",\"processId\":7920,\"powershellVersion\":\"5.1.19041.6456\"}",
                                     "stderr":  "",
                                     "exitCode":  0
                                 }
                },
     "error":  null,
-    "started_at":  "2026-09-17T17:52:04.3782207Z",
-    "completed_at":  "2026-09-17T17:52:04.8936226Z",
-    "push_status":  "PUSHED"
+    "started_at":  "2026-09-17T18:11:50.9742865Z",
+    "completed_at":  "2026-09-17T18:11:51.4386884Z",
+    "push_status":  "PENDING"
 }
