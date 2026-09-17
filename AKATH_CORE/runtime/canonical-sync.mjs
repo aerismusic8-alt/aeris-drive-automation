@@ -26,5 +26,8 @@ export function mergeCanonicalTasks(localRegistry, remoteRegistry) {
   }
 
   localRegistry.tasks = localTasks;
+  if (remoteRegistry?.current_work) {
+    localRegistry.current_work = structuredClone(remoteRegistry.current_work);
+  }
   return { added, preserved, requeued };
 }
