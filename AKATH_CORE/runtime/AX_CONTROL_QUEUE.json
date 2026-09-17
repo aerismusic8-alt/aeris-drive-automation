@@ -3,19 +3,8 @@
   "node": "PC2-MAIN",
   "commands": [
     {
-      "command_id": "AX-PC2-CONTROL-TEST-20260918-0001",
-      "title": "AX PC2 PowerShell runtime identity control test",
-      "status": "PENDING",
-      "capability": "control",
-      "action": "runtime_identity",
-      "payload": {
-        "action": "runtime_identity",
-        "capability": "control"
-      }
-    },
-    {
-      "command_id": "AX-PC2-CONTROL-LIVE-20260918-0002",
-      "title": "AX live PowerShell control verification",
+      "command_id": "AX-PC2-LIVE-20260918-0003",
+      "title": "AX live PC2 PowerShell control gate",
       "status": "PENDING",
       "capability": "control",
       "action": "runtime_identity",
