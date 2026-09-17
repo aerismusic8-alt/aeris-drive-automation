@@ -19,11 +19,11 @@ assert.equal(blockedWhilePending, null);
 
 registry.tasks[1].status = 'DONE';
 const recurring = planNextTask(registry, new Date('2026-09-17T02:00:02Z'));
-assert.equal(recurring.capability, 'self_check');
-assert.equal(recurring.action, 'pc1_runtime_self_check');
-assert.equal(recurring.task_id, 'AKATH-AUTONOMOUS-SELF-CHECK-002');
+assert.equal(recurring.capability, 'execution');
+assert.equal(recurring.action, 'pc1_execution');
+assert.equal(recurring.task_id, 'AKATH-AUTONOMOUS-EXECUTION-001');
 assert.equal(recurring.status, 'PENDING');
-assert.notEqual(recurring.task_id, first.task_id);
+assert.equal(recurring.payload.capability, 'execution');
 
 const failedRegistry = {
   tasks: [{ task_id: 'AKATH-AUTONOMOUS-SELF-CHECK-001', status: 'FAILED' }]
@@ -37,8 +37,8 @@ assert.equal(recovery.status, 'PENDING');
 
 recovery.status = 'DONE';
 const recoveryAfterDone = planNextTask(failedRegistry, new Date('2026-09-17T02:01:01Z'));
-assert.equal(recoveryAfterDone.capability, 'self_check');
-assert.equal(recoveryAfterDone.task_id, 'AKATH-AUTONOMOUS-SELF-CHECK-002');
+assert.equal(recoveryAfterDone.capability, 'execution');
+assert.equal(recoveryAfterDone.task_id, 'AKATH-AUTONOMOUS-EXECUTION-001');
 assert.equal(recoveryAfterDone.status, 'PENDING');
 
 console.log('PASS autonomous planner');
