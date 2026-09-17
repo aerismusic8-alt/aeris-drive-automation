@@ -11,7 +11,6 @@ if (-not (Test-Path $Specialist)) { throw 'PC2_SPECIALIST_MISSING' }
 $env:AX_PC1_NODE_ID = $NodeId
 $env:AX_PC1_EXECUTOR_COMMAND = $node.Source
 
-# Stop the legacy main.mjs supervisor so PC2 verification cannot be contaminated by a PC1-bound runtime.
 $existing = Get-CimInstance Win32_Process -Filter "Name = 'node.exe'" -ErrorAction SilentlyContinue |
   Where-Object { $_.CommandLine -and $_.CommandLine -like '*AKATH_CORE\runtime\main.mjs*' }
 foreach ($process in $existing) {
@@ -20,18 +19,20 @@ foreach ($process in $existing) {
 }
 
 $taskId = "AKATH-PC2-FIRST-BOT-$([DateTimeOffset]::UtcNow.ToUnixTimeMilliseconds())"
+$jobFile = Join-Path $RuntimeDir 'pc2-first-bot-job.json'
 $job = @{
   task_id = $taskId
   capability = 'powershell'
   payload = @{ action = 'runtime_identity' }
 } | ConvertTo-Json -Compress
+Set-Content -Path $jobFile -Value $job -Encoding UTF8
 
 $started = (Get-Date).ToUniversalTime().ToString('o')
 Write-Host "[PC2_BOOT] NODE_ID=$NodeId"
 Write-Host "[PC2_BOOT] SPECIALIST=PC2_POWERSHELL_SPECIALIST"
 Write-Host "[PC2_BOOT] FIRST_BOT_JOB=$taskId"
 
-$stdout = & $node.Source $Specialist $job 2>&1 | Out-String
+$stdout = & $node.Source $Specialist $jobFile 2>&1 | Out-String
 $exitCode = $LASTEXITCODE
 if ($exitCode -ne 0) { throw "PC2_FIRST_BOT_EXECUTION_FAILED:$stdout" }
 
@@ -70,6 +71,7 @@ $state = [ordered]@{
 }
 $state | ConvertTo-Json -Depth 20 | Set-Content -Path $State -Encoding UTF8
 
+Remove-Item $jobFile -Force -ErrorAction SilentlyContinue
 Write-Host "[PC2_BOOT] FIRST_BOT_JOB_VERIFIED=$taskId"
 Write-Host '[PC2_BOOT] RUNTIME_STATUS=ONLINE'
 Write-Host '[PC2_BOOT] NODE_ID=PC2-MAIN'
