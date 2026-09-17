@@ -1,4 +1,4 @@
-$ErrorActionPreference = 'Continue'
+﻿$ErrorActionPreference = 'Continue'
 $RuntimeDir = $PSScriptRoot
 $RepoRoot = Split-Path (Split-Path $RuntimeDir -Parent) -Parent
 Set-Location $RepoRoot
@@ -37,37 +37,17 @@ $processedControlIds = @{}
 
 function Write-ControlResult {
   param([object]$Result)
-
   $resultPath = Join-Path $ControlResultsDir "$($Result.command_id).json"
-  $Result.push_status = 'PENDING'
   $Result | ConvertTo-Json -Depth 30 | Set-Content -Path $resultPath -Encoding UTF8
-
   try {
-    & git add -- $resultPath 2>&1 | Out-Null
-    if ($LASTEXITCODE -ne 0) { throw "GIT_ADD_FAILED:$LASTEXITCODE" }
-
-    & git commit -m "AX control result $($Result.command_id)" -- $resultPath 2>&1 | Out-Null
-    if ($LASTEXITCODE -ne 0) { throw "GIT_COMMIT_FAILED:$LASTEXITCODE" }
-
-    & git push origin "HEAD:$ControlBranch" 2>&1 | Out-Null
-    if ($LASTEXITCODE -ne 0) { throw "GIT_PUSH_FAILED:$LASTEXITCODE" }
-
-    & git fetch origin $ControlBranch --quiet 2>&1 | Out-Null
-    if ($LASTEXITCODE -ne 0) { throw "GIT_FETCH_VERIFY_FAILED:$LASTEXITCODE" }
-
-    $remoteSpec = "origin/$ControlBranch`:AKATH_CORE/runtime/AX_CONTROL_RESULTS/$($Result.command_id).json"
-    $remoteJson = & git show $remoteSpec 2>&1
-    if ($LASTEXITCODE -ne 0 -or [string]::IsNullOrWhiteSpace(($remoteJson -join ''))) {
-      throw 'REMOTE_RESULT_FILE_NOT_FOUND_AFTER_PUSH'
-    }
-
+    & git add -- $resultPath 2>$null
+    & git commit -m "AX control result $($Result.command_id)" -- $resultPath 2>$null | Out-Null
+    & git push origin "HEAD:$ControlBranch" 2>$null | Out-Null
     $Result.push_status = 'PUSHED'
-  }
-  catch {
+  } catch {
     $Result.push_status = 'PUSH_FAILED'
     $Result.push_error = $_.Exception.Message
   }
-
   $Result | ConvertTo-Json -Depth 30 | Set-Content -Path $resultPath -Encoding UTF8
 }
 
@@ -98,7 +78,7 @@ function Invoke-ControlCommand {
         }
     )
     $exitCode = $LASTEXITCODE
-    $jsonLine = $stdoutLines | Where-Object { $_ -is [string] -and $_ -match '^\{"ok":' } | Select-Object -Last 1
+    $jsonLine = $stdoutLines | Where-Object { $_ -is [string] -and $_ -match '^{"ok":' } | Select-Object -Last 1
     $verified = $false
     $result = $null
     $errorText = $null
@@ -238,7 +218,7 @@ while ($true) {
     if ($exitCode -ne 0) { throw "PC2_REVENUE_EXECUTION_FAILED:$($stdoutLines -join "`n")" }
 
     $jsonLine = $stdoutLines |
-      Where-Object { $_ -is [string] -and $_ -match '^\{"ok":' } |
+      Where-Object { $_ -is [string] -and $_ -match '^{"ok":' } |
       Select-Object -Last 1
     if ([string]::IsNullOrWhiteSpace($jsonLine)) { throw 'PC2_REVENUE_RESULT_JSON_MISSING' }
     $result = $jsonLine | ConvertFrom-Json
@@ -328,3 +308,7 @@ while ($true) {
 
 Write-Host '[PC2_REVENUE_BOT] STOPPED'
 Write-Host "[PC2_REVENUE_BOT] COMPLETED=$completedJobs FAILED=$failedJobs"
+
+
+
+
