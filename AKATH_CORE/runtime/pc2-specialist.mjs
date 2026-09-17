@@ -11,7 +11,7 @@ if (!rawArg) {
 
 let raw;
 try {
-  raw = fs.readFileSync(rawArg, 'utf8');
+  raw = fs.readFileSync(rawArg, 'utf8').replace(/^\uFEFF/, '');
 } catch (error) {
   console.error(`cannot read job file: ${error.message}`);
   process.exit(2);
