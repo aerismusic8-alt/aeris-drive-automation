@@ -5,6 +5,11 @@ $StatePath = Join-Path $RuntimeDir 'revenue-farm-state.json'
 $Evidence = Join-Path $RuntimeDir 'revenue-farm-evidence.jsonl'
 $Specialist = Join-Path $RuntimeDir 'pc2-specialist.mjs'
 $OutputRoot = Join-Path $RuntimeDir 'AERIS_REVENUE_OUTPUT'
+$ControlQueuePath = Join-Path $RuntimeDir 'AX_CONTROL_QUEUE.json'
+$ControlResultsDir = Join-Path $RuntimeDir 'AX_CONTROL_RESULTS'
+$ControlPollSeconds = if ([string]::IsNullOrWhiteSpace($env:AX_PC2_CONTROL_POLL_SECONDS)) { 5 } else { [int]$env:AX_PC2_CONTROL_POLL_SECONDS }
+$ControlBranch = if ([string]::IsNullOrWhiteSpace($env:AX_PC2_CONTROL_BRANCH)) { 'ax-pc2-production-planner' } else { $env:AX_PC2_CONTROL_BRANCH }
+$ControlPollSeconds = [Math]::Max(2, $ControlPollSeconds)
 
 $loopDelayValue = if ([string]::IsNullOrWhiteSpace($env:AX_PC2_REVENUE_LOOP_DELAY_SECONDS)) { 5 } else { [int]$env:AX_PC2_REVENUE_LOOP_DELAY_SECONDS }
 $retryDelayValue = if ([string]::IsNullOrWhiteSpace($env:AX_PC2_REVENUE_RETRY_DELAY_SECONDS)) { 10 } else { [int]$env:AX_PC2_REVENUE_RETRY_DELAY_SECONDS }
@@ -17,6 +22,7 @@ $node = Get-Command node -ErrorAction SilentlyContinue
 if (-not $node) { throw 'PC2_NODE_JS_NOT_FOUND' }
 if (-not (Test-Path $Specialist)) { throw 'PC2_SPECIALIST_MISSING' }
 New-Item -ItemType Directory -Force -Path $OutputRoot | Out-Null
+New-Item -ItemType Directory -Force -Path $ControlResultsDir | Out-Null
 
 $env:AX_PC1_NODE_ID = $NodeId
 $env:AX_PC1_EXECUTOR_COMMAND = $node.Source
@@ -24,6 +30,131 @@ $env:AX_PC1_EXECUTOR_COMMAND = $node.Source
 $completedJobs = 0
 $failedJobs = 0
 $startedRuntime = (Get-Date).ToUniversalTime().ToString('o')
+$lastControlPoll = [DateTime]::MinValue
+$processedControlIds = @{}
+
+function Write-ControlResult {
+  param([object]$Result)
+  $resultPath = Join-Path $ControlResultsDir "$($Result.command_id).json"
+  $Result | ConvertTo-Json -Depth 30 | Set-Content -Path $resultPath -Encoding UTF8
+  try {
+    & git add -- $resultPath 2>$null
+    & git commit -m "AX control result $($Result.command_id)" -- $resultPath 2>$null | Out-Null
+    & git push origin "HEAD:$ControlBranch" 2>$null | Out-Null
+    $Result.push_status = 'PUSHED'
+  } catch {
+    $Result.push_status = 'PUSH_FAILED'
+    $Result.push_error = $_.Exception.Message
+  }
+  $Result | ConvertTo-Json -Depth 30 | Set-Content -Path $resultPath -Encoding UTF8
+}
+
+function Invoke-ControlCommand {
+  param([object]$Command)
+  $commandId = [string]$Command.command_id
+  $action = [string]($Command.payload.action ?? $Command.action)
+  $started = (Get-Date).ToUniversalTime().ToString('o')
+  $jobFile = Join-Path $RuntimeDir "ax-control-$commandId.json"
+  $job = [ordered]@{
+    task_id = $commandId
+    type = 'CONTROL'
+    title = [string]($Command.title ?? 'AX PowerShell control')
+    capability = 'control'
+    action = $action
+    status = 'PENDING'
+    payload = $Command.payload
+  } | ConvertTo-Json -Depth 30 -Compress
+  Set-Content -Path $jobFile -Value $job -Encoding UTF8
+
+  try {
+    Write-Host "[AX_CONTROL] CLAIM command=$commandId node=$NodeId action=$action"
+    $stdoutLines = @(
+      & $node.Source $Specialist $jobFile 2>&1 |
+        ForEach-Object {
+          Write-Host "[AX_CONTROL] $_"
+          $_
+        }
+    )
+    $exitCode = $LASTEXITCODE
+    $jsonLine = $stdoutLines | Where-Object { $_ -is [string] -and $_ -match '^\{"ok":' } | Select-Object -Last 1
+    $verified = $false
+    $result = $null
+    $errorText = $null
+    if ($jsonLine) {
+      $result = $jsonLine | ConvertFrom-Json
+      $verified = ($result.evidence.verification.verified -eq $true) -and ($exitCode -eq 0)
+    } else {
+      $errorText = 'AX_CONTROL_RESULT_JSON_MISSING'
+    }
+
+    $record = [ordered]@{
+      schemaVersion = '1.0'
+      command_id = $commandId
+      node = $NodeId
+      executor = 'PC2_POWERSHELL_SPECIALIST'
+      capability = 'control'
+      action = $action
+      execution = if ($exitCode -eq 0) { 'POWERSHELL_EXECUTED' } else { 'POWERSHELL_FAILED' }
+      verification = @{ verified = $verified }
+      exitCode = $exitCode
+      stdout = if ($result) { $result.evidence.stdout } else { ($stdoutLines -join "`n") }
+      stderr = if ($result) { $result.evidence.stderr } else { '' }
+      result = $result
+      error = $errorText
+      started_at = $started
+      completed_at = (Get-Date).ToUniversalTime().ToString('o')
+      push_status = 'PENDING'
+    }
+    Write-ControlResult -Result $record
+    Add-Content -Path $Evidence -Value ($record | ConvertTo-Json -Depth 30 -Compress)
+    Write-Host "[AX_CONTROL] DONE command=$commandId verified=$verified push=$($record.push_status)"
+  } catch {
+    $record = [ordered]@{
+      schemaVersion = '1.0'
+      command_id = $commandId
+      node = $NodeId
+      executor = 'PC2_POWERSHELL_SPECIALIST'
+      capability = 'control'
+      action = $action
+      execution = 'POWERSHELL_FAILED'
+      verification = @{ verified = $false }
+      exitCode = -1
+      stdout = ''
+      stderr = $_.Exception.Message
+      error = $_.Exception.Message
+      started_at = $started
+      completed_at = (Get-Date).ToUniversalTime().ToString('o')
+      push_status = 'PENDING'
+    }
+    Write-ControlResult -Result $record
+    Add-Content -Path $Evidence -Value ($record | ConvertTo-Json -Depth 30 -Compress)
+    Write-Host "[AX_CONTROL] FAILED command=$commandId error=$($_.Exception.Message)"
+  } finally {
+    Remove-Item $jobFile -Force -ErrorAction SilentlyContinue
+  }
+}
+
+function Sync-ControlQueue {
+  param([switch]$Force)
+  $now = Get-Date
+  if (-not $Force -and (($now - $lastControlPoll).TotalSeconds -lt $ControlPollSeconds)) { return }
+  $lastControlPoll = $now
+  try {
+    & git fetch origin $ControlBranch --quiet 2>$null | Out-Null
+    $json = & git show "origin/$ControlBranch`:AKATH_CORE/runtime/AX_CONTROL_QUEUE.json" 2>$null
+    if ($LASTEXITCODE -ne 0 -or [string]::IsNullOrWhiteSpace(($json -join ''))) { return }
+    $queue = ($json -join "`n") | ConvertFrom-Json
+    foreach ($command in @($queue.commands)) {
+      $id = [string]$command.command_id
+      if ([string]::IsNullOrWhiteSpace($id) -or $processedControlIds.ContainsKey($id)) { continue }
+      if ([string]$command.status -and [string]$command.status -ne 'PENDING') { $processedControlIds[$id] = $true; continue }
+      Invoke-ControlCommand -Command $command
+      $processedControlIds[$id] = $true
+    }
+  } catch {
+    Write-Host "[AX_CONTROL] POLL_FAILED error=$($_.Exception.Message)"
+  }
+}
 
 Write-Host '[PC2_REVENUE_BOT] =========================================='
 Write-Host '[PC2_REVENUE_BOT] AERIS REVENUE FARM'
@@ -32,10 +163,14 @@ Write-Host '[PC2_REVENUE_BOT] SPECIALIST=PC2_POWERSHELL_SPECIALIST'
 Write-Host '[PC2_REVENUE_BOT] MODE=24/7'
 Write-Host '[PC2_REVENUE_BOT] ACTION=youtube_short_package'
 Write-Host "[PC2_REVENUE_BOT] LOOP_DELAY_SECONDS=$LoopDelaySeconds"
+Write-Host "[PC2_REVENUE_BOT] CONTROL_POLL_SECONDS=$ControlPollSeconds"
+Write-Host "[PC2_REVENUE_BOT] CONTROL_BRANCH=$ControlBranch"
 Write-Host "[PC2_REVENUE_BOT] MAX_JOBS=$MaxJobs (0=UNLIMITED)"
 Write-Host '[PC2_REVENUE_BOT] =========================================='
 
 while ($true) {
+  Sync-ControlQueue
+
   if ($MaxJobs -gt 0 -and $completedJobs -ge $MaxJobs) {
     Write-Host "[PC2_REVENUE_BOT] MAX_JOBS_REACHED completed=$completedJobs"
     break
