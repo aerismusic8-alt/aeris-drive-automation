@@ -1,4 +1,5 @@
 import { planRecoveryRetry } from './recovery-planner.mjs';
+import { transitionJob } from './task-store.mjs';
 
 function buildRecoveryTask({ failedTaskId, now }) {
   const created = now.toISOString();
@@ -26,8 +27,24 @@ function buildRecoveryTask({ failedTaskId, now }) {
   };
 }
 
+function markExpiredCurrentWorkOverdue(registry, now) {
+  const currentTaskId = registry?.current_work?.active ? registry.current_work.task_id : null;
+  if (!currentTaskId) return null;
+  const currentTask = registry.tasks.find((task) => task.task_id === currentTaskId);
+  if (!currentTask || currentTask.status !== 'PENDING' || !currentTask.deadline_at) return null;
+  if (new Date(currentTask.deadline_at) > now) return null;
+
+  transitionJob(currentTask, 'OVERDUE', {
+    root_cause: 'deadline_exceeded_before_claim',
+    correction: 'autonomous_planner_recovery_path',
+    overdue_at: now.toISOString()
+  });
+  return currentTask;
+}
+
 export function planNextTask(registry, now = new Date()) {
   const tasks = registry?.tasks ?? [];
+  markExpiredCurrentWorkOverdue(registry, now);
   if (tasks.some((task) => ['PENDING', 'EXECUTING'].includes(task.status))) return null;
 
   const failed = tasks.find((task) => ['FAILED', 'OVERDUE'].includes(task.status));
