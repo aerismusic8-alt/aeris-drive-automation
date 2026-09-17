@@ -5,7 +5,7 @@
   "organization": "AKATH",
   "managed_by": "AX",
   "status": "READY_FOR_AUTONOMOUS_EXECUTION",
-  "current_work": {"active": true, "task_id": "AKATH-PC1-AI-PRODUCTION-001"},
+  "current_work": {"active": true, "task_id": "AKATH-PC1-CONTROL-BRIDGE-001"},
   "tasks": [
     {
       "task_id": "AKATH-PC1-EXECUTION-LOOP-GATE-001",
@@ -105,6 +105,28 @@
         "provider": "gemini",
         "prompt": "Produce a concise 3-point production readiness note for AERIS MUSIC's AI execution pipeline. Return exactly three numbered points and no preamble.",
         "system_instruction": "You are the AERIS MUSIC production AI specialist. Produce concise, factual output for the execution pipeline. Do not claim actions you did not perform."
+      }
+    },
+    {
+      "task_id": "AKATH-PC1-CONTROL-BRIDGE-001",
+      "type": "SYSTEM",
+      "title": "PC1 allowlisted PowerShell control bridge smoke",
+      "capability": "control",
+      "action": "pc1_status",
+      "status": "PENDING",
+      "created_at": "2026-09-17T04:50:00.000Z",
+      "deadline_at": "2026-09-17T06:30:00.000Z",
+      "milestones": ["AX issues canonical control task", "PC1 claims task", "ALLOWLIST validates action", "PowerShell executes", "stdout/stderr captured", "EVIDENCE persisted", "VERIFY passes", "DONE recorded"],
+      "completion_criteria": ["specialist returns ok=true", "result.execution is PC1_CONTROL_EXECUTED", "result.exit_code is 0", "evidence contains captured output", "verification.verified=true", "task status is DONE"],
+      "evidence": null,
+      "verification": null,
+      "completed_at": null,
+      "payload": {
+        "action": "pc1_status",
+        "capability": "control",
+        "canonical": true,
+        "autonomous": true,
+        "security": "allowlist-only"
       }
     }
   ],
