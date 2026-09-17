@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { verifyExecutionResult } from './pc2-specialist.mjs';
+import { verifyExecutionResult } from './pc2-specialist-verifier.mjs';
 
 const revenueStdout = '[REVENUE] OUTPUT=C:\\aeris\\AERIS_REVENUE_OUTPUT\\PC2-REV-YT-SHORT-1-1\r\n[REVENUE] RESULT=YOUTUBE_SHORT_PACKAGE_READY';
 assert.equal(verifyExecutionResult('youtube_short_package', { exitCode: 0, stdout: revenueStdout }, 'PC2-MAIN'), true);
