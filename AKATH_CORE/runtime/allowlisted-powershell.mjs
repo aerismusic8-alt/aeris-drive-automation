@@ -4,6 +4,9 @@ const ACTIONS = Object.freeze({
   runtime_heartbeat: Object.freeze({
     script: 'Write-Output "AX_PC1_RUNTIME_HEARTBEAT"'
   }),
+  runtime_status: Object.freeze({
+    script: 'Write-Output "AX_PC1_RUNTIME_STATUS"'
+  }),
   runtime_identity: Object.freeze({
     script: '$PSVersionTable.PSVersion.ToString()'
   }),
