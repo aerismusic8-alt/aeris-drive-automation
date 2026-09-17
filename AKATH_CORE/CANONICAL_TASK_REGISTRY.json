@@ -5,10 +5,7 @@
   "organization": "AKATH",
   "managed_by": "AX",
   "status": "READY_FOR_AUTONOMOUS_EXECUTION",
-  "current_work": {
-    "active": true,
-    "task_id": "AKATH-PC1-SPECIALIST-EXECUTION-CONTINUITY-001"
-  },
+  "current_work": {"active": true, "task_id": "AKATH-PC1-EXECUTION-PIPELINE-INTAKE-001"},
   "tasks": [
     {
       "task_id": "AKATH-PC1-EXECUTION-LOOP-GATE-001",
@@ -19,40 +16,15 @@
       "status": "DONE",
       "created_at": "2026-09-17T00:00:00.000Z",
       "deadline_at": "2026-09-17T12:00:00.000Z",
-      "milestones": [
-        "PC1 claims canonical task",
-        "SPECIALIST executes task",
-        "EVIDENCE persisted",
-        "VERIFY passes",
-        "DONE recorded"
-      ],
-      "completion_criteria": [
-        "specialist returns ok=true",
-        "evidence contains matching RESULT",
-        "verification.verified=true",
-        "task status is DONE"
-      ],
+      "milestones": ["PC1 claims canonical task", "SPECIALIST executes task", "EVIDENCE persisted", "VERIFY passes", "DONE recorded"],
+      "completion_criteria": ["specialist returns ok=true", "evidence contains matching RESULT", "verification.verified=true", "task status is DONE"],
       "evidence": null,
-      "verification": {
-        "verified": true,
-        "reasons": []
-      },
+      "verification": {"verified": true, "reasons": []},
       "completed_at": "2026-09-17T02:45:17.316Z",
-      "payload": {
-        "action": "pc1_execution_loop_gate",
-        "capability": "execution",
-        "canonical": true,
-        "autonomous": false
-      },
+      "payload": {"action": "pc1_execution_loop_gate", "capability": "execution", "canonical": true, "autonomous": false},
       "started_at": "2026-09-17T02:45:17.316Z",
       "attempt": 1,
-      "result": {
-        "executor": "PC1_MAIN_SPECIALIST",
-        "capability": "execution",
-        "task_id": "AKATH-PC1-EXECUTION-LOOP-GATE-001",
-        "execution": "EXECUTED",
-        "completed_at": "2026-09-17T02:45:17.385Z"
-      },
+      "result": {"executor": "PC1_MAIN_SPECIALIST", "capability": "execution", "task_id": "AKATH-PC1-EXECUTION-LOOP-GATE-001", "execution": "EXECUTED", "completed_at": "2026-09-17T02:45:17.385Z"},
       "verified_at": "2026-09-17T02:45:17.316Z"
     },
     {
@@ -61,47 +33,41 @@
       "title": "PC1 specialist execution continuity",
       "capability": "execution",
       "action": "pc1_specialist_execution_continuity",
-      "status": "PENDING",
+      "status": "DONE",
       "created_at": "2026-09-17T02:55:00.000Z",
       "deadline_at": "2026-09-17T04:00:00.000Z",
-      "milestones": [
-        "PC1 claims next canonical task",
-        "SPECIALIST executes task",
-        "EVIDENCE persisted",
-        "VERIFY passes",
-        "DONE recorded"
-      ],
-      "completion_criteria": [
-        "specialist returns ok=true",
-        "evidence contains matching RESULT",
-        "verification.verified=true",
-        "task status is DONE"
-      ],
+      "milestones": ["PC1 claims next canonical task", "SPECIALIST executes task", "EVIDENCE persisted", "VERIFY passes", "DONE recorded"],
+      "completion_criteria": ["specialist returns ok=true", "evidence contains matching RESULT", "verification.verified=true", "task status is DONE"],
+      "evidence": null,
+      "verification": {"verified": true, "reasons": []},
+      "completed_at": "2026-09-17T02:56:34.446Z",
+      "payload": {"action": "pc1_specialist_execution_continuity", "capability": "execution", "canonical": true, "autonomous": true, "objective": "continue the real canonical PC1 execution loop through the existing specialist path"},
+      "started_at": "2026-09-17T02:56:34.446Z",
+      "attempt": 1,
+      "result": {"executor": "PC1_MAIN_SPECIALIST", "capability": "execution", "task_id": "AKATH-PC1-SPECIALIST-EXECUTION-CONTINUITY-001", "execution": "EXECUTED", "completed_at": "2026-09-17T02:56:34.532Z"},
+      "verified_at": "2026-09-17T02:56:34.446Z"
+    },
+    {
+      "task_id": "AKATH-PC1-EXECUTION-PIPELINE-INTAKE-001",
+      "type": "SYSTEM",
+      "title": "PC1 execution pipeline intake",
+      "capability": "execution",
+      "action": "pc1_execution_pipeline_intake",
+      "status": "PENDING",
+      "created_at": "2026-09-17T03:12:00.000Z",
+      "deadline_at": "2026-09-17T05:00:00.000Z",
+      "milestones": ["PC1 claims next canonical task", "SPECIALIST executes task", "EVIDENCE persisted", "VERIFY passes", "DONE recorded"],
+      "completion_criteria": ["specialist returns ok=true", "evidence contains matching RESULT", "verification.verified=true", "task status is DONE"],
       "evidence": null,
       "verification": null,
       "completed_at": null,
-      "payload": {
-        "action": "pc1_specialist_execution_continuity",
-        "capability": "execution",
-        "canonical": true,
-        "autonomous": true,
-        "objective": "continue the real canonical PC1 execution loop through the existing specialist path"
-      }
+      "payload": {"action": "pc1_execution_pipeline_intake", "capability": "execution", "canonical": true, "autonomous": true, "objective": "keep the verified PC1 execution pipeline active and ready to accept the next canonical workload without human-per-cycle intervention"}
     }
   ],
   "task_identity_policy": "1 task_id = 1 canonical task record",
-  "time_governance": {
-    "required": true,
-    "fields": ["started_at", "deadline_at", "milestones", "completion_criteria", "evidence", "verification", "completed_at"],
-    "overdue_policy": "OVERDUE -> cause analysis -> corrective action -> continue or escalate; never silently extend deadline"
-  },
+  "time_governance": {"required": true, "fields": ["started_at", "deadline_at", "milestones", "completion_criteria", "evidence", "verification", "completed_at"], "overdue_policy": "OVERDUE -> cause analysis -> corrective action -> continue or escalate; never silently extend deadline"},
   "completion_rule": "DONE requires actual execution result, persisted evidence, and verification",
   "execution_direction": "AX -> AX_RUNTIME -> DISPATCHER -> PC1_MAIN -> SPECIALIST -> EXECUTE -> EVIDENCE -> VERIFY -> NEXT_JOB",
   "clean_start_rule": "Historical tasks are not current tasks. Experience may inform design but cannot create current state.",
-  "autonomous_continuation": {
-    "enabled": true,
-    "planner": "autonomous-planner.mjs",
-    "specialist_registry": "specialist-registry.mjs",
-    "requires_human_per_cycle": false
-  }
+  "autonomous_continuation": {"enabled": true, "planner": "autonomous-planner.mjs", "specialist_registry": "specialist-registry.mjs", "requires_human_per_cycle": false}
 }
