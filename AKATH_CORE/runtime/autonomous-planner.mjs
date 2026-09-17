@@ -26,6 +26,8 @@ const AUTONOMOUS_POWERSHELL_ACTIONS = Object.freeze([
   'runtime_heartbeat'
 ]);
 
+const AUTONOMOUS_CONTROL_ACTIONS = Object.freeze(['runtime_heartbeat']);
+
 function buildContinuationTask({ now }) {
   const created = now.toISOString();
   const deadline = new Date(now.getTime() + 30 * 60 * 1000).toISOString();
@@ -68,6 +70,27 @@ function buildPowerShellTask({ now, action, sequence }) {
   };
 }
 
+function buildControlTask({ now, action, sequence }) {
+  const created = now.toISOString();
+  const deadline = new Date(now.getTime() + 10 * 60 * 1000).toISOString();
+  return {
+    task_id: `AKATH-PC1-CONTROL-AUTO-${sequence}-${now.getTime()}`,
+    type: 'SYSTEM',
+    title: `Autonomous PC1 control action ${action}`,
+    capability: 'control',
+    action,
+    status: 'PENDING',
+    created_at: created,
+    deadline_at: deadline,
+    milestones: ['PC1 claims control task', `CONTROL SPECIALIST executes ${action}`, 'stdout/stderr/exitCode captured', 'EVIDENCE persisted', 'VERIFY passes', 'DONE recorded'],
+    completion_criteria: ['specialist returns ok=true', 'exitCode=0', 'evidence contains matching RESULT', 'verification.verified=true', 'task status is DONE'],
+    evidence: null,
+    verification: null,
+    completed_at: null,
+    payload: { action, capability: 'control', autonomous: true, objective: 'prove AX can dispatch an allowlisted PowerShell control action through the PC1 control specialist' }
+  };
+}
+
 export function planNextTask(registry, now = new Date()) {
   const tasks = registry?.tasks ?? [];
   if (tasks.some((task) => ['PENDING', 'EXECUTING'].includes(task.status))) return null;
@@ -78,7 +101,7 @@ export function planNextTask(registry, now = new Date()) {
     const existingRecovery = tasks.find((task) => task.task_id === recoveryId);
     if (!existingRecovery) return tasks.push(buildRecoveryTask({ failedTaskId: failed.task_id, now })) && tasks.at(-1);
     if (existingRecovery.status !== 'DONE') return null;
-    if (failed.capability === 'powershell') {
+    if (failed.capability === 'powershell' || failed.capability === 'control') {
       failed.status = 'PENDING';
       failed.recovered_at = now.toISOString();
       failed.error = null;
@@ -92,7 +115,13 @@ export function planNextTask(registry, now = new Date()) {
   if (!existingContinuation) return tasks.push(buildContinuationTask({ now })) && tasks.at(-1);
 
   const powershellTasks = tasks.filter((task) => task.capability === 'powershell');
+  const controlTasks = tasks.filter((task) => task.capability === 'control');
   const sequence = powershellTasks.length;
+  if (sequence > 0 && sequence % AUTONOMOUS_POWERSHELL_ACTIONS.length === 0 && controlTasks.length < Math.floor(sequence / AUTONOMOUS_POWERSHELL_ACTIONS.length)) {
+    const action = AUTONOMOUS_CONTROL_ACTIONS[controlTasks.length % AUTONOMOUS_CONTROL_ACTIONS.length];
+    return tasks.push(buildControlTask({ now, action, sequence: controlTasks.length + 1 })) && tasks.at(-1);
+  }
+
   const nextAction = AUTONOMOUS_POWERSHELL_ACTIONS[sequence % AUTONOMOUS_POWERSHELL_ACTIONS.length];
   return tasks.push(buildPowerShellTask({ now, action: nextAction, sequence: sequence + 1 })) && tasks.at(-1);
 }
