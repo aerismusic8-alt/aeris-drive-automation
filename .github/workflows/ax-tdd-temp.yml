@@ -1,0 +1,15 @@
+name: AX TDD Temp
+on:
+  push:
+    branches: [ax-pc2-production-planner]
+jobs:
+  runtime-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - run: node AKATH_CORE/runtime/autonomous-planner.test.mjs
+      - run: node AKATH_CORE/runtime/pc2-revenue-farm.test.mjs
+      - run: node AKATH_CORE/runtime/allowlisted-powershell.test.mjs
