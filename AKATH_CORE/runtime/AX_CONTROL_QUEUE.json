@@ -1,5 +1,17 @@
 {
   "schemaVersion": "1.0",
   "node": "PC2-MAIN",
-  "commands": []
+  "commands": [
+    {
+      "command_id": "AX-PC2-CONTROL-TEST-20260918-0001",
+      "title": "AX PC2 PowerShell runtime identity control test",
+      "status": "PENDING",
+      "capability": "control",
+      "action": "runtime_identity",
+      "payload": {
+        "action": "runtime_identity",
+        "capability": "control"
+      }
+    }
+  ]
 }
