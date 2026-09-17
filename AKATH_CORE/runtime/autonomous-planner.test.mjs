@@ -64,4 +64,22 @@ assert.equal(retry.status, 'PENDING');
 assert.equal(retry.capability, 'ai');
 assert.equal(retry.payload.recovery_of, 'AI-1');
 
+const overdueCurrentRegistry = {
+  current_work: { active: true, task_id: 'BRIDGE-1' },
+  tasks: [{
+    task_id: 'BRIDGE-1',
+    status: 'PENDING',
+    type: 'SYSTEM',
+    capability: 'control',
+    action: 'runtime_status',
+    deadline_at: '2026-09-17T01:00:00Z'
+  }]
+};
+const overdueRecovery = planNextTask(overdueCurrentRegistry, new Date('2026-09-17T02:03:00Z'));
+assert.ok(overdueRecovery);
+assert.equal(overdueCurrentRegistry.tasks.find((task) => task.task_id === 'BRIDGE-1').status, 'OVERDUE');
+assert.equal(overdueRecovery.task_id, 'AKATH-AUTONOMOUS-RECOVERY-BRIDGE-1');
+assert.equal(overdueRecovery.status, 'PENDING');
+assert.equal(overdueRecovery.payload.failed_task_id, 'BRIDGE-1');
+
 console.log('PASS autonomous planner');
