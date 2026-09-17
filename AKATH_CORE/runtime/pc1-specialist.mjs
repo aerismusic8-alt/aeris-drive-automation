@@ -2,6 +2,7 @@
 
 import { resolveSpecialist } from './specialist-registry.mjs';
 import { executeAiTask } from './ai-executor.mjs';
+import { executeControlTask } from './pc1-control.mjs';
 
 const raw = process.argv[2];
 if (!raw) {
@@ -47,6 +48,41 @@ if (specialist.capability === 'ai') {
     }));
   } catch (error) {
     console.error(`AI execution failed: ${error.message}`);
+    process.exit(1);
+  }
+  process.exit(0);
+}
+
+if (specialist.capability === 'control') {
+  try {
+    const control = await executeControlTask(job);
+    process.stdout.write(JSON.stringify({
+      ok: true,
+      result: {
+        executor: specialist.id,
+        capability: specialist.capability,
+        task_id: job.task_id ?? null,
+        execution: 'PC1_CONTROL_EXECUTED',
+        action: control.action,
+        command: control.command,
+        exit_code: control.exitCode,
+        output: control.stdout,
+        stderr: control.stderr,
+        completed_at: new Date().toISOString()
+      },
+      evidence: {
+        executor: specialist.id,
+        capability: specialist.capability,
+        node: process.env.AX_PC1_NODE_ID || 'PC1-MAIN',
+        verification: { verified: true },
+        execution: 'PC1_CONTROL_EXECUTED',
+        action: control.action,
+        exit_code: control.exitCode,
+        output: control.stdout
+      }
+    }));
+  } catch (error) {
+    console.error(`PC1 control execution failed: ${error.message}`);
     process.exit(1);
   }
   process.exit(0);
