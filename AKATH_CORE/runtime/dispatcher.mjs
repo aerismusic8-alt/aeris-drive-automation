@@ -8,13 +8,15 @@ export async function dispatchToPc1(job, adapter) {
 
 export function createLocalPc1Adapter({
   command = process.execPath,
-  executorPath = resolve(dirname(fileURLToPath(import.meta.url)), 'pc1-specialist.mjs')
+  executorPath = resolve(dirname(fileURLToPath(import.meta.url)), 'pc1-specialist.mjs'),
+  controlExecutorPath = resolve(dirname(fileURLToPath(import.meta.url)), 'pc1-specialist-control.mjs')
 } = {}) {
   if (!command) throw new Error('PC1 executor command is not configured');
   return { async execute(job) {
     const {spawn} = await import('node:child_process');
+    const selectedExecutor = job?.capability === 'control' ? controlExecutorPath : executorPath;
     return new Promise((resolve,reject)=>{
-      const child=spawn(command,[executorPath, JSON.stringify(job)],{shell:false,stdio:['ignore','pipe','pipe']});
+      const child=spawn(command,[selectedExecutor, JSON.stringify(job)],{shell:false,stdio:['ignore','pipe','pipe']});
       let out='',err=''; child.stdout.on('data',(d)=>out+=d); child.stderr.on('data',(d)=>err+=d);
       child.on('error',reject); child.on('close',(code)=>{
         if(code!==0) return reject(new Error(`PC1 executor exited ${code}: ${err.trim()}`));
