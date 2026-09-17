@@ -38,4 +38,27 @@ const recoveryAfterDone = planNextTask(failedRegistry, new Date('2026-09-17T02:0
 assert.equal(recoveryAfterDone, null);
 assert.equal(failedRegistry.tasks.length, 2);
 
+const retryRegistry = {
+  tasks: [
+    {
+      task_id: 'AI-1',
+      capability: 'ai',
+      status: 'FAILED',
+      payload: { prompt: 'retry me', capability: 'ai' }
+    },
+    {
+      task_id: 'AKATH-AUTONOMOUS-RECOVERY-AI-1',
+      capability: 'recovery',
+      status: 'DONE',
+      payload: { failed_task_id: 'AI-1' }
+    }
+  ]
+};
+const retry = planNextTask(retryRegistry, new Date('2026-09-17T02:02:00Z'));
+assert.ok(retry);
+assert.equal(retry.task_id, 'AI-1-RETRY-1');
+assert.equal(retry.status, 'PENDING');
+assert.equal(retry.capability, 'ai');
+assert.equal(retry.payload.recovery_of, 'AI-1');
+
 console.log('PASS autonomous planner');
