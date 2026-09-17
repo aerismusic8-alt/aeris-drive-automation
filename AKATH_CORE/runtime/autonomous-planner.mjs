@@ -1,5 +1,10 @@
 const PLAN = Object.freeze([
   Object.freeze({
+    capability: 'execution',
+    title: 'Autonomous PC1 execution task',
+    action: 'pc1_execution'
+  }),
+  Object.freeze({
     capability: 'self_check',
     title: 'Autonomous PC1 runtime self-check',
     action: 'pc1_runtime_self_check'
@@ -69,11 +74,11 @@ export function planNextTask(registry, now = new Date()) {
     if (existingRecovery.status !== 'DONE') return null;
   }
 
-  const selfCheckPrefix = 'AKATH-AUTONOMOUS-SELF-CHECK';
-  const selfCheckSequence = nextSequence(tasks, selfCheckPrefix);
+  const executionPrefix = 'AKATH-AUTONOMOUS-EXECUTION';
+  const executionSequence = nextSequence(tasks, executionPrefix);
   const candidate = PLAN[0];
   const task = buildTask({
-    taskId: `${selfCheckPrefix}-${String(selfCheckSequence).padStart(3, '0')}`,
+    taskId: `${executionPrefix}-${String(executionSequence).padStart(3, '0')}`,
     capability: candidate.capability,
     title: candidate.title,
     action: candidate.action,
