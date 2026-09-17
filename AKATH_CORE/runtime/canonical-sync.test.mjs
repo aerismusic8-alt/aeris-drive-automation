@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { mergeCanonicalTasks } from './canonical-sync.mjs';
 
 const local = {
-  current_work: { active: true, task_id: 'AKATH-BRIDGE-002' },
+  current_work: { active: true, task_id: 'AKATH-BRIDGE-001' },
   tasks: [
     { task_id: 'AKATH-DONE-001', status: 'DONE' },
     { task_id: 'AKATH-PENDING-001', status: 'PENDING' },
@@ -26,6 +26,7 @@ const result = mergeCanonicalTasks(local, remote);
 assert.equal(result.added, 1);
 assert.equal(result.preserved, 2);
 assert.equal(result.requeued, 2);
+assert.equal(local.current_work.task_id, 'AKATH-BRIDGE-002');
 assert.equal(local.tasks.length, 5);
 assert.equal(local.tasks.find((task) => task.task_id === 'AKATH-DONE-001').status, 'DONE');
 assert.equal(local.tasks.find((task) => task.task_id === 'AKATH-AI-PRODUCTION-001').status, 'PENDING');
