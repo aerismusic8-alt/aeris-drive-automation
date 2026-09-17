@@ -5,6 +5,7 @@ param(
 $ErrorActionPreference = 'Stop'
 $RuntimeDir = Split-Path -Parent $MyInvocation.MyCommand.Path
 $Main = Join-Path $RuntimeDir 'main.mjs'
+$Bootstrap = Join-Path $RuntimeDir 'run-ax-runtime-with-user-env.ps1'
 $TaskName = 'AERIS-AKATH-AX-RUNTIME'
 
 if (-not (Get-Command node -ErrorAction SilentlyContinue)) {
@@ -13,8 +14,11 @@ if (-not (Get-Command node -ErrorAction SilentlyContinue)) {
 if (-not (Test-Path $Main)) {
   throw "AX Runtime entrypoint not found: $Main"
 }
+if (-not (Test-Path $Bootstrap)) {
+  throw "AX Runtime environment bootstrap not found: $Bootstrap"
+}
 
-$nodePath = (Get-Command node).Source
+$powershellPath = (Get-Command powershell.exe -ErrorAction Stop).Source
 $userId = "$env:USERDOMAIN\$env:USERNAME"
 
 [Environment]::SetEnvironmentVariable('AX_PC1_NODE_ID', 'PC1-MAIN', 'User')
@@ -22,8 +26,8 @@ $userId = "$env:USERDOMAIN\$env:USERNAME"
 [Environment]::SetEnvironmentVariable('AX_CANONICAL_SYNC_INTERVAL_MS', '15000', 'User')
 
 $action = New-ScheduledTaskAction `
-  -Execute $nodePath `
-  -Argument ('"{0}"' -f $Main) `
+  -Execute $powershellPath `
+  -Argument ('-NoProfile -ExecutionPolicy Bypass -File "{0}"' -f $Bootstrap) `
   -WorkingDirectory $RuntimeDir
 
 $trigger = New-ScheduledTaskTrigger -AtLogOn -User $userId
@@ -50,6 +54,7 @@ Register-ScheduledTask `
 
 Write-Output "AX Runtime autostart registered: $TaskName"
 Write-Output "Runtime: $Main"
+Write-Output "Bootstrap: $Bootstrap"
 Write-Output "User: $userId"
 
 if ($StartNow) {
