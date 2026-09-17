@@ -27,6 +27,8 @@ function buildTask({ taskId, capability, title, action, now, failedTaskId = null
     task_id: taskId,
     type: 'SYSTEM',
     title,
+    capability,
+    action,
     status: 'PENDING',
     created_at: created,
     deadline_at: deadline,
