@@ -8,7 +8,10 @@ export async function executeAiTask(job, {
 } = {}) {
   if (typeof fetchImpl !== 'function') throw new Error('AI executor requires fetch');
   if (!apiKey) throw new Error('GEMINI_API_KEY is required for AI capability');
-  if (!job?.prompt) throw new Error('AI task prompt is required');
+
+  const prompt = job?.prompt ?? job?.payload?.prompt;
+  const systemInstruction = job?.system_instruction ?? job?.payload?.system_instruction;
+  if (!prompt) throw new Error('AI task prompt is required');
 
   const model = job.model || process.env.AX_AI_MODEL || DEFAULT_MODEL;
   const endpoint = `${baseUrl.replace(/\/$/, '')}/models/${encodeURIComponent(model)}:generateContent`;
@@ -19,9 +22,9 @@ export async function executeAiTask(job, {
       'x-goog-api-key': apiKey
     },
     body: JSON.stringify({
-      contents: [{ parts: [{ text: job.prompt }] }],
-      ...(job.system_instruction
-        ? { systemInstruction: { parts: [{ text: job.system_instruction }] } }
+      contents: [{ parts: [{ text: prompt }] }],
+      ...(systemInstruction
+        ? { systemInstruction: { parts: [{ text: systemInstruction }] } }
         : {})
     })
   });
