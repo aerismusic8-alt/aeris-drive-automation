@@ -42,9 +42,26 @@ function markExpiredCurrentWorkOverdue(registry, now) {
   return currentTask;
 }
 
+function markAllExpiredPendingOverdue(registry, now) {
+  const expired = [];
+  for (const task of registry?.tasks ?? []) {
+    if (task.status !== 'PENDING' || !task.deadline_at) continue;
+    if (new Date(task.deadline_at) <= now) {
+      transitionJob(task, 'OVERDUE', {
+        root_cause: 'deadline_exceeded_before_claim',
+        correction: 'autonomous_planner_recovery_path',
+        overdue_at: now.toISOString()
+      });
+      expired.push(task);
+    }
+  }
+  return expired;
+}
+
 export function planNextTask(registry, now = new Date()) {
   const tasks = registry?.tasks ?? [];
   markExpiredCurrentWorkOverdue(registry, now);
+  markAllExpiredPendingOverdue(registry, now);
   if (tasks.some((task) => ['PENDING', 'EXECUTING'].includes(task.status))) return null;
 
   const failed = tasks.find((task) => ['FAILED', 'OVERDUE'].includes(task.status));
