@@ -1,0 +1,1 @@
+Recovery retry implementation: autonomous planner now creates a concrete retry task after recovery completion, preserving the failed task capability and payload, with a maximum of three retry attempts.
