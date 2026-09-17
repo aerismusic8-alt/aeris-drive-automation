@@ -1,10 +1,10 @@
-function nextRetryAttempt(tasks, failedTaskId) {
+const MAX_RETRY_ATTEMPTS = 3;
+
+function retryTasks(tasks, failedTaskId) {
   const prefix = `${failedTaskId}-RETRY-`;
-  const attempts = tasks
+  return tasks
     .filter((task) => task.task_id?.startsWith(prefix))
-    .map((task) => Number(task.task_id.slice(prefix.length)))
-    .filter(Number.isInteger);
-  return attempts.length ? Math.max(...attempts) + 1 : 1;
+    .sort((a, b) => Number(a.task_id.slice(prefix.length)) - Number(b.task_id.slice(prefix.length)));
 }
 
 export function planRecoveryRetry(registry, recoveryTask, now = new Date()) {
@@ -15,7 +15,13 @@ export function planRecoveryRetry(registry, recoveryTask, now = new Date()) {
   const failedTask = tasks.find((task) => task.task_id === failedTaskId);
   if (!failedTask) return null;
 
-  const retryAttempt = nextRetryAttempt(tasks, failedTaskId);
+  const retries = retryTasks(tasks, failedTaskId);
+  const latest = retries.at(-1);
+  if (latest?.status === 'DONE') return null;
+
+  const retryAttempt = retries.length + 1;
+  if (retryAttempt > MAX_RETRY_ATTEMPTS) return null;
+
   const retryId = `${failedTaskId}-RETRY-${retryAttempt}`;
   if (tasks.some((task) => task.task_id === retryId)) return null;
 
