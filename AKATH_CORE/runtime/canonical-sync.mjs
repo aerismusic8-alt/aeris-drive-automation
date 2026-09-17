@@ -4,12 +4,18 @@ export function mergeCanonicalTasks(localRegistry, remoteRegistry) {
   const byId = new Map(localTasks.map((task) => [task.task_id, task]));
   let added = 0;
   let preserved = 0;
+  let requeued = 0;
 
   for (const remoteTask of remoteTasks) {
     if (!remoteTask?.task_id) continue;
     const localTask = byId.get(remoteTask.task_id);
     if (localTask) {
-      preserved += 1;
+      if (localTask.status === 'FAILED' && remoteTask.status === 'PENDING') {
+        localTask.status = 'PENDING';
+        requeued += 1;
+      } else {
+        preserved += 1;
+      }
       continue;
     }
     localTasks.push(structuredClone(remoteTask));
@@ -18,5 +24,5 @@ export function mergeCanonicalTasks(localRegistry, remoteRegistry) {
   }
 
   localRegistry.tasks = localTasks;
-  return { added, preserved };
+  return { added, preserved, requeued };
 }
