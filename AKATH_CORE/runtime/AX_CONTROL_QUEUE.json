@@ -12,6 +12,17 @@
         "action": "runtime_identity",
         "capability": "control"
       }
+    },
+    {
+      "command_id": "AX-PC2-CONTROL-LIVE-20260918-0002",
+      "title": "AX live PowerShell control verification",
+      "status": "PENDING",
+      "capability": "control",
+      "action": "runtime_identity",
+      "payload": {
+        "action": "runtime_identity",
+        "capability": "control"
+      }
     }
   ]
 }
