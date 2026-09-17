@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 
 import { resolveSpecialist } from './specialist-registry.mjs';
+import { executeAiTask } from './ai-executor.mjs';
 
 const raw = process.argv[2];
 if (!raw) {
@@ -18,6 +19,39 @@ try {
 
 const specialist = resolveSpecialist(job.capability);
 const now = new Date().toISOString();
+
+if (specialist.capability === 'ai') {
+  try {
+    const ai = await executeAiTask(job);
+    process.stdout.write(JSON.stringify({
+      ok: true,
+      result: {
+        executor: specialist.id,
+        capability: specialist.capability,
+        task_id: job.task_id ?? null,
+        execution: 'AI_EXECUTED',
+        provider: ai.provider,
+        model: ai.model,
+        output: ai.text,
+        completed_at: new Date().toISOString()
+      },
+      evidence: {
+        executor: specialist.id,
+        capability: specialist.capability,
+        node: process.env.AX_PC1_NODE_ID || 'PC1-MAIN',
+        verification: { verified: true },
+        execution: 'AI_EXECUTED',
+        provider: ai.provider,
+        model: ai.model
+      }
+    }));
+  } catch (error) {
+    console.error(`AI execution failed: ${error.message}`);
+    process.exit(1);
+  }
+  process.exit(0);
+}
+
 const execution = specialist.capability === 'self_check'
   ? 'SELF_CHECK'
   : specialist.capability === 'recovery'
