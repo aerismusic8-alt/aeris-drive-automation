@@ -1,10 +1,19 @@
 #!/usr/bin/env node
 
+import fs from 'node:fs';
 import { executeAllowlistedPowerShell } from './allowlisted-powershell.mjs';
 
-const raw = process.argv[2];
-if (!raw) {
-  console.error('PC2 specialist requires one JSON job argument');
+const rawArg = process.argv[2];
+if (!rawArg) {
+  console.error('PC2 specialist requires a JSON job file argument');
+  process.exit(2);
+}
+
+let raw;
+try {
+  raw = fs.readFileSync(rawArg, 'utf8');
+} catch (error) {
+  console.error(`cannot read job file: ${error.message}`);
   process.exit(2);
 }
 
