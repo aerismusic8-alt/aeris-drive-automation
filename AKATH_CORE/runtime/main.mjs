@@ -12,14 +12,19 @@ import { mergeCanonicalTasks } from './canonical-sync.mjs';
 
 const execFileAsync = promisify(execFile);
 const root = dirname(fileURLToPath(import.meta.url));
+const repoRoot = resolve(root, '../..');
 const registryPath = resolve(root, '../CANONICAL_TASK_REGISTRY.json');
 const statePath = resolve(root, 'runtime-state.json');
 const evidencePath = resolve(root, 'evidence.jsonl');
 const canonicalRelativePath = 'AKATH_CORE/CANONICAL_TASK_REGISTRY.json';
+const configuredNodeId = process.env.AX_PC1_NODE_ID || 'PC1-MAIN';
 const state = await loadJson(statePath, {
-  schemaVersion: '1.0', runtimeStatus: 'STARTING', nodeId: process.env.AX_PC1_NODE_ID || 'PC1-MAIN',
+  schemaVersion: '1.0', runtimeStatus: 'STARTING', nodeId: configuredNodeId,
   lastHeartbeatAt: null, activeJob: null, lastVerifiedJob: null, recovery: {}
 });
+// Environment is the authoritative runtime binding. Do not let a stale persisted
+// nodeId silently turn a PC1 launch back into PC2-MAIN.
+state.nodeId = configuredNodeId;
 const adapter = createLocalPc1Adapter();
 let lastCanonicalSyncAt = 0;
 const canonicalSyncIntervalMs = Number(process.env.AX_CANONICAL_SYNC_INTERVAL_MS || 15000);
@@ -29,8 +34,8 @@ async function syncCanonicalQueue(registry) {
   if (now - lastCanonicalSyncAt < canonicalSyncIntervalMs) return;
   lastCanonicalSyncAt = now;
   try {
-    await execFileAsync('git', ['fetch', 'origin', 'main', '--quiet'], { cwd: resolve(root, '../..') });
-    const { stdout } = await execFileAsync('git', ['show', `origin/main:${canonicalRelativePath}`], { cwd: resolve(root, '../..') });
+    await execFileAsync('git', ['fetch', 'origin', 'main', '--quiet'], { cwd: repoRoot });
+    const { stdout } = await execFileAsync('git', ['show', `origin/main:${canonicalRelativePath}`], { cwd: repoRoot });
     const remote = JSON.parse(stdout);
     const merged = mergeCanonicalTasks(registry, remote);
     if (merged.added > 0) console.log(`[AX_RUNTIME] CANONICAL_SYNC added=${merged.added}`);
