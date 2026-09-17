@@ -35,8 +35,11 @@ assert.equal(recovery.status, 'PENDING');
 
 recovery.status = 'DONE';
 const recoveryAfterDone = planNextTask(failedRegistry, new Date('2026-09-17T02:01:01Z'));
-assert.equal(recoveryAfterDone, null);
-assert.equal(failedRegistry.tasks.length, 2);
+assert.ok(recoveryAfterDone);
+assert.equal(recoveryAfterDone.task_id, 'AKATH-REAL-001-RETRY-1');
+assert.equal(recoveryAfterDone.status, 'PENDING');
+assert.equal(recoveryAfterDone.payload.recovery_of, 'AKATH-REAL-001');
+assert.equal(failedRegistry.tasks.length, 3);
 
 const retryRegistry = {
   tasks: [
