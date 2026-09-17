@@ -1,16 +1,22 @@
 import assert from 'node:assert/strict';
-import { planNextTask } from './autonomous-planner.mjs';
+import { planNextRevenueJob } from './pc2-revenue-planner.mjs';
 
-const registry = { tasks: [{ task_id: 'AKATH-REAL-001', status: 'DONE', type: 'WORK' }] };
-const continuation = planNextTask(registry, new Date('2026-09-17T03:00:00Z'));
-assert.equal(continuation?.capability, 'execution');
-continuation.status = 'DONE';
+const registry = { tasks: [] };
+const first = planNextRevenueJob(registry, new Date('2026-09-17T03:00:00Z'));
+assert.equal(first?.capability, 'revenue');
+assert.equal(first?.action, 'youtube_short_package');
+assert.equal(first?.payload?.channel, 'AERISMusicTH');
+assert.equal(first?.payload?.autonomous, true);
+assert.equal(first?.status, 'PENDING');
+assert.match(first?.task_id ?? '', /^PC2-REV-YT-SHORT-1-/);
 
-const revenueTask = planNextTask(registry, new Date('2026-09-17T03:00:01Z'));
-assert.equal(revenueTask?.capability, 'revenue');
-assert.equal(revenueTask?.action, 'youtube_short_package');
-assert.equal(revenueTask?.payload?.channel, 'AERISMusicTH');
-assert.equal(revenueTask?.payload?.autonomous, true);
-assert.equal(revenueTask?.status, 'PENDING');
+registry.tasks.push(first);
+assert.equal(planNextRevenueJob(registry, new Date('2026-09-17T03:00:01Z')), null);
+
+first.status = 'DONE';
+const second = planNextRevenueJob(registry, new Date('2026-09-17T03:00:02Z'));
+assert.equal(second?.capability, 'revenue');
+assert.equal(second?.action, 'youtube_short_package');
+assert.match(second?.task_id ?? '', /^PC2-REV-YT-SHORT-2-/);
 
 console.log('PASS PC2 revenue farm planner contract');
