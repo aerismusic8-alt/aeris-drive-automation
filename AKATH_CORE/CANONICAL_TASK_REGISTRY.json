@@ -5,7 +5,7 @@
   "organization": "AKATH",
   "managed_by": "AX",
   "status": "READY_FOR_AUTONOMOUS_EXECUTION",
-  "current_work": {"active": true, "task_id": "AKATH-PC1-CONTROL-BRIDGE-001"},
+  "current_work": {"active": true, "task_id": "AKATH-AX-PC1-REMOTE-POWERSHELL-GATE-001"},
   "tasks": [
     {
       "task_id": "AKATH-PC1-EXECUTION-LOOP-GATE-001",
@@ -127,6 +127,31 @@
         "canonical": true,
         "autonomous": true,
         "security": "allowlist-only"
+      }
+    },
+    {
+      "task_id": "AKATH-AX-PC1-REMOTE-POWERSHELL-GATE-001",
+      "type": "SYSTEM",
+      "title": "AX remote PC1 PowerShell control acceptance gate",
+      "capability": "control",
+      "action": "runtime_status",
+      "status": "PENDING",
+      "created_at": "2026-09-17T12:10:00.000Z",
+      "deadline_at": "2026-09-17T13:00:00.000Z",
+      "milestones": ["AX creates remote control task", "PC1 pulls canonical task", "PC1 claims task", "ALLOWLIST validates action", "PowerShell executes on PC1", "stdout/stderr and exit code captured", "EVIDENCE persisted", "VERIFY passes", "DONE recorded"],
+      "completion_criteria": ["specialist returns ok=true", "result.execution is PC1_CONTROL_EXECUTED", "result.exit_code is 0", "result.output is non-empty", "evidence contains captured PowerShell output", "verification.verified=true", "task status is DONE"],
+      "evidence": null,
+      "verification": null,
+      "completed_at": null,
+      "payload": {
+        "action": "runtime_status",
+        "capability": "control",
+        "canonical": true,
+        "autonomous": true,
+        "security": "allowlist-only",
+        "issued_by": "AX",
+        "remote_control_gate": true,
+        "objective": "prove AX can issue a PowerShell control task to PC1 without K typing the command"
       }
     }
   ],
