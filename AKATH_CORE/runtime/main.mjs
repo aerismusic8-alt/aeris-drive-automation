@@ -10,11 +10,13 @@ import { runOnce, startSupervisor } from './ax-runtime.mjs';
 import { planNextTask } from './autonomous-planner.mjs';
 import { mergeCanonicalTasks } from './canonical-sync.mjs';
 import { createLiveEmitter } from './live-console.mjs';
+import { resolveRuntimeRegistryPath } from './runtime-registry.mjs';
 
 const execFileAsync = promisify(execFile);
 const root=dirname(fileURLToPath(import.meta.url));
 const repoRoot=resolve(root,'../..');
-const registryPath=resolve(root,'../CANONICAL_TASK_REGISTRY.json');
+const canonicalPath=resolve(repoRoot,'AKATH_CORE/CANONICAL_TASK_REGISTRY.json');
+const runtimeRegistryPath=resolveRuntimeRegistryPath(root);
 const statePath=resolve(root,'runtime-state.json');
 const evidencePath=resolve(root,'evidence.jsonl');
 const canonicalRelativePath='AKATH_CORE/CANONICAL_TASK_REGISTRY.json';
@@ -46,7 +48,7 @@ async function syncCanonicalQueue(registry){
 }
 
 async function cycle(){
-  const registry=await loadRegistry(registryPath);
+  const registry=await loadRegistry(runtimeRegistryPath);
   const connected=await syncCanonicalQueue(registry);
   if(!connected) {
     await persistJson(statePath,state);
@@ -58,7 +60,7 @@ async function cycle(){
     console.log(`[AX_RUNTIME] AUTONOMOUS_TASK ${planned.task_id}`);
   }
   const result=await runOnce({registry,state,dispatch:(job)=>dispatchToPc1(job,adapter),appendEvidence:(record)=>appendEvidence(evidencePath,record),onEvent:live});
-  await persistRegistry(registryPath,registry);
+  await persistRegistry(runtimeRegistryPath,registry);
   await persistJson(statePath,state);
   if(result.status==='DONE') console.log(`[AX_RUNTIME] DONE ${result.job.task_id}`);
   else if(result.status==='FAILED') console.error(`[AX_RUNTIME] FAILED ${result.job?.task_id}: ${result.error||JSON.stringify(result.verification)}`);
