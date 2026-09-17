@@ -71,14 +71,21 @@ export function planNextTask(registry, now = new Date()) {
     const existingRecovery = tasks.find((task) => task.task_id === recoveryId);
     if (!existingRecovery) return tasks.push(buildRecoveryTask({ failedTaskId: failed.task_id, now })) && tasks.at(-1);
     if (existingRecovery.status !== 'DONE') return null;
+    if (failed.capability === 'powershell') {
+      failed.status = 'PENDING';
+      failed.recovered_at = now.toISOString();
+      failed.error = null;
+      failed.verification = null;
+      return failed;
+    }
   }
 
   const continuationId = 'AKATH-PC1-AUTONOMOUS-CONTINUATION-001';
   const existingContinuation = tasks.find((task) => task.task_id === continuationId);
   if (!existingContinuation) return tasks.push(buildContinuationTask({ now })) && tasks.at(-1);
 
-  const powerShellTask = tasks.find((task) => task.capability === 'powershell' && task.status !== 'DONE');
-  if (!powerShellTask) return tasks.push(buildPowerShellGateTask({ now })) && tasks.at(-1);
+  const existingPowerShell = tasks.find((task) => task.capability === 'powershell');
+  if (!existingPowerShell) return tasks.push(buildPowerShellGateTask({ now })) && tasks.at(-1);
 
   return null;
 }
