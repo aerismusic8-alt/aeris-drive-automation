@@ -4,6 +4,7 @@ import { listAllowlistedActions } from './allowlisted-powershell.mjs';
 const actions = listAllowlistedActions();
 assert.deepEqual(actions, [
   'runtime_heartbeat',
+  'runtime_status',
   'runtime_identity',
   'runtime_process_snapshot',
   'runtime_disk_snapshot',
