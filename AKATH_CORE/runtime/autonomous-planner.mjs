@@ -1,39 +1,12 @@
-const PLAN = Object.freeze([
-  Object.freeze({
-    capability: 'execution',
-    title: 'Autonomous PC1 execution task',
-    action: 'pc1_execution'
-  }),
-  Object.freeze({
-    capability: 'self_check',
-    title: 'Autonomous PC1 runtime self-check',
-    action: 'pc1_runtime_self_check'
-  }),
-  Object.freeze({
-    capability: 'recovery',
-    title: 'Autonomous PC1 recovery-path check',
-    action: 'pc1_recovery_path_check'
-  })
-]);
-
-function nextSequence(tasks, prefix) {
-  let max = 0;
-  for (const task of tasks) {
-    const match = String(task.task_id ?? '').match(new RegExp(`^${prefix}-(\\d+)$`));
-    if (match) max = Math.max(max, Number(match[1]));
-  }
-  return max + 1;
-}
-
-function buildTask({ taskId, capability, title, action, now, failedTaskId = null }) {
+function buildRecoveryTask({ failedTaskId, now }) {
   const created = now.toISOString();
   const deadline = new Date(now.getTime() + 30 * 60 * 1000).toISOString();
   return {
-    task_id: taskId,
+    task_id: `AKATH-AUTONOMOUS-RECOVERY-${failedTaskId}`,
     type: 'SYSTEM',
-    title,
-    capability,
-    action,
+    title: `Recover failed task ${failedTaskId}`,
+    capability: 'recovery',
+    action: 'pc1_recovery_path_check',
     status: 'PENDING',
     created_at: created,
     deadline_at: deadline,
@@ -43,10 +16,10 @@ function buildTask({ taskId, capability, title, action, now, failedTaskId = null
     verification: null,
     completed_at: null,
     payload: {
-      action,
-      capability,
+      action: 'pc1_recovery_path_check',
+      capability: 'recovery',
       autonomous: true,
-      ...(failedTaskId ? { failed_task_id: failedTaskId } : {})
+      failed_task_id: failedTaskId
     }
   };
 }
@@ -56,34 +29,16 @@ export function planNextTask(registry, now = new Date()) {
   if (tasks.some((task) => ['PENDING', 'EXECUTING'].includes(task.status))) return null;
 
   const failed = tasks.find((task) => ['FAILED', 'OVERDUE'].includes(task.status));
-  if (failed) {
-    const recoveryId = `AKATH-AUTONOMOUS-RECOVERY-${failed.task_id}`;
-    const existingRecovery = tasks.find((task) => task.task_id === recoveryId);
-    if (!existingRecovery) {
-      const recovery = buildTask({
-        taskId: recoveryId,
-        capability: 'recovery',
-        title: `Recover failed task ${failed.task_id}`,
-        action: 'pc1_recovery_path_check',
-        now,
-        failedTaskId: failed.task_id
-      });
-      tasks.push(recovery);
-      return recovery;
-    }
-    if (existingRecovery.status !== 'DONE') return null;
+  if (!failed) return null;
+
+  const recoveryId = `AKATH-AUTONOMOUS-RECOVERY-${failed.task_id}`;
+  const existingRecovery = tasks.find((task) => task.task_id === recoveryId);
+  if (!existingRecovery) {
+    const recovery = buildRecoveryTask({ failedTaskId: failed.task_id, now });
+    tasks.push(recovery);
+    return recovery;
   }
 
-  const executionPrefix = 'AKATH-AUTONOMOUS-EXECUTION';
-  const executionSequence = nextSequence(tasks, executionPrefix);
-  const candidate = PLAN[0];
-  const task = buildTask({
-    taskId: `${executionPrefix}-${String(executionSequence).padStart(3, '0')}`,
-    capability: candidate.capability,
-    title: candidate.title,
-    action: candidate.action,
-    now
-  });
-  tasks.push(task);
-  return task;
+  if (existingRecovery.status !== 'DONE') return null;
+  return null;
 }
