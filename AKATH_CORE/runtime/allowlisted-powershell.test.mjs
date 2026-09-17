@@ -6,7 +6,8 @@ assert.deepEqual(actions, [
   'runtime_heartbeat',
   'runtime_identity',
   'runtime_process_snapshot',
-  'runtime_disk_snapshot'
+  'runtime_disk_snapshot',
+  'jumtask'
 ]);
 assert.equal(actions.includes('arbitrary_command'), false);
 console.log('allowlisted PowerShell contract PASS');
