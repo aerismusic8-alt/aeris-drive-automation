@@ -13,4 +13,5 @@ jobs:
       - run: node AKATH_CORE/runtime/autonomous-planner.test.mjs
       - run: node AKATH_CORE/runtime/pc2-revenue-farm.test.mjs
       - run: node AKATH_CORE/runtime/pc2-autonomous-revenue.test.mjs
+      - run: node AKATH_CORE/runtime/pc2-specialist.test.mjs
       - run: node AKATH_CORE/runtime/allowlisted-powershell.test.mjs
