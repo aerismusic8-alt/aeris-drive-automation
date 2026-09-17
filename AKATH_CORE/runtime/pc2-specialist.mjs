@@ -2,6 +2,7 @@
 
 import fs from 'node:fs';
 import { executeAllowlistedPowerShell } from './allowlisted-powershell.mjs';
+import { verifyExecutionResult } from './pc2-specialist-verifier.mjs';
 
 const rawArg = process.argv[2];
 if (!rawArg) {
@@ -31,10 +32,10 @@ const action = job.payload?.action ?? job.action;
 
 const ps = await executeAllowlistedPowerShell(action, {
   onStdout: (text) => {
-    if (action === 'jumtask') process.stdout.write(text);
+    if (action === 'jumtask' || action === 'youtube_short_package') process.stdout.write(text);
   },
   onStderr: (text) => {
-    if (action === 'jumtask') process.stderr.write(`[JUMTASK][PS-ERR] ${text}`);
+    if (action === 'jumtask' || action === 'youtube_short_package') process.stderr.write(`[${action.toUpperCase()}][PS-ERR] ${text}`);
   }
 });
 
@@ -44,10 +45,10 @@ if (action === 'runtime_identity' && ps.exitCode === 0) {
   try { hostIdentity = JSON.parse(ps.stdout); } catch { hostIdentity = { raw: ps.stdout }; }
 }
 
-const jumtaskVerified = action !== 'jumtask' || /JUMTASK_OK/.test(ps.stdout);
+const verified = verifyExecutionResult(action, ps, nodeId);
 const result = {
   executor: 'PC2_POWERSHELL_SPECIALIST',
-  capability: 'powershell',
+  capability: action === 'youtube_short_package' ? 'revenue' : 'powershell',
   node: nodeId,
   task_id: job.task_id ?? null,
   execution,
@@ -58,17 +59,12 @@ const result = {
   hostIdentity
 };
 
-const verified = ps.exitCode === 0 &&
-  jumtaskVerified &&
-  (action !== 'runtime_identity' || !!hostIdentity?.computerName) &&
-  (!hostIdentity?.nodeId || hostIdentity.nodeId === nodeId);
-
 process.stdout.write(JSON.stringify({
   ok: verified,
   result,
   evidence: {
     executor: 'PC2_POWERSHELL_SPECIALIST',
-    capability: 'powershell',
+    capability: action === 'youtube_short_package' ? 'revenue' : 'powershell',
     node: nodeId,
     hostIdentity,
     verification: { verified },
