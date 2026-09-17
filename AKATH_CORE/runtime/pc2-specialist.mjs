@@ -28,13 +28,27 @@ try {
 const nodeId = process.env.AX_PC1_NODE_ID || 'PC2-MAIN';
 const now = new Date().toISOString();
 const action = job.payload?.action ?? job.action;
-const ps = await executeAllowlistedPowerShell(action);
+
+if (action === 'jumtask') {
+  console.log(`[JUMTASK] CLAIM task=${job.task_id ?? 'UNKNOWN'} node=${nodeId}`);
+}
+
+const ps = await executeAllowlistedPowerShell(action, {
+  onStdout: (text) => {
+    if (action === 'jumtask') process.stdout.write(text);
+  },
+  onStderr: (text) => {
+    if (action === 'jumtask') process.stderr.write(`[JUMTASK][PS-ERR] ${text}`);
+  }
+});
+
 const execution = ps.exitCode === 0 ? 'POWERSHELL_EXECUTED' : 'POWERSHELL_FAILED';
 let hostIdentity = null;
 if (action === 'runtime_identity' && ps.exitCode === 0) {
   try { hostIdentity = JSON.parse(ps.stdout); } catch { hostIdentity = { raw: ps.stdout }; }
 }
 
+const jumtaskVerified = action !== 'jumtask' || /JUMTASK_OK/.test(ps.stdout);
 const result = {
   executor: 'PC2_POWERSHELL_SPECIALIST',
   capability: 'powershell',
@@ -49,8 +63,13 @@ const result = {
 };
 
 const verified = ps.exitCode === 0 &&
+  jumtaskVerified &&
   (action !== 'runtime_identity' || !!hostIdentity?.computerName) &&
   (!hostIdentity?.nodeId || hostIdentity.nodeId === nodeId);
+
+if (action === 'jumtask') {
+  console.log(`[JUMTASK] VERIFY verified=${verified}`);
+}
 
 process.stdout.write(JSON.stringify({
   ok: verified,
