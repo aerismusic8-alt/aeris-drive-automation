@@ -19,6 +19,13 @@ function buildRecoveryTask({ failedTaskId, now }) {
   };
 }
 
+const AUTONOMOUS_POWERSHELL_ACTIONS = Object.freeze([
+  'runtime_process_snapshot',
+  'runtime_disk_snapshot',
+  'runtime_identity',
+  'runtime_heartbeat'
+]);
+
 function buildContinuationTask({ now }) {
   const created = now.toISOString();
   const deadline = new Date(now.getTime() + 30 * 60 * 1000).toISOString();
@@ -27,7 +34,7 @@ function buildContinuationTask({ now }) {
     type: 'SYSTEM',
     title: 'Autonomous PC1 execution continuation',
     capability: 'execution',
-    action: 'pc1_autonomous_execution_continuation',
+    action: 'runtime_identity',
     status: 'PENDING',
     created_at: created,
     deadline_at: deadline,
@@ -36,28 +43,28 @@ function buildContinuationTask({ now }) {
     evidence: null,
     verification: null,
     completed_at: null,
-    payload: { action: 'pc1_autonomous_execution_continuation', capability: 'execution', autonomous: true, objective: 'continue the verified execution loop without human-per-cycle intervention' }
+    payload: { action: 'runtime_identity', capability: 'execution', autonomous: true, objective: 'continue the verified execution loop without human-per-cycle intervention' }
   };
 }
 
-function buildPowerShellGateTask({ now }) {
+function buildPowerShellTask({ now, action, sequence }) {
   const created = now.toISOString();
   const deadline = new Date(now.getTime() + 10 * 60 * 1000).toISOString();
   return {
-    task_id: `AKATH-PC1-POWERSHELL-CONTROL-${now.getTime()}`,
+    task_id: `AKATH-PC1-POWERSHELL-AUTO-${sequence}-${now.getTime()}`,
     type: 'SYSTEM',
-    title: 'Verify autonomous allowlisted PowerShell control',
+    title: `Autonomous PowerShell action ${action}`,
     capability: 'powershell',
-    action: 'runtime_heartbeat',
+    action,
     status: 'PENDING',
     created_at: created,
     deadline_at: deadline,
-    milestones: ['PC1 claims task', 'PowerShell executes allowlisted action', 'stdout/stderr/exitCode captured', 'EVIDENCE persisted', 'VERIFY passes', 'DONE recorded'],
+    milestones: ['PC1 claims task', `PowerShell executes ${action}`, 'stdout/stderr/exitCode captured', 'EVIDENCE persisted', 'VERIFY passes', 'DONE recorded'],
     completion_criteria: ['specialist returns ok=true', 'exitCode=0', 'evidence contains stdout', 'verification.verified=true', 'task status is DONE'],
     evidence: null,
     verification: null,
     completed_at: null,
-    payload: { action: 'runtime_heartbeat', capability: 'powershell', autonomous: true, objective: 'prove the bot can control PowerShell without K typing each cycle' }
+    payload: { action, capability: 'powershell', autonomous: true, objective: 'continue execution with a new allowlisted PowerShell action' }
   };
 }
 
@@ -84,8 +91,8 @@ export function planNextTask(registry, now = new Date()) {
   const existingContinuation = tasks.find((task) => task.task_id === continuationId);
   if (!existingContinuation) return tasks.push(buildContinuationTask({ now })) && tasks.at(-1);
 
-  const existingPowerShell = tasks.find((task) => task.capability === 'powershell');
-  if (!existingPowerShell) return tasks.push(buildPowerShellGateTask({ now })) && tasks.at(-1);
-
-  return null;
+  const powershellTasks = tasks.filter((task) => task.capability === 'powershell');
+  const sequence = powershellTasks.length;
+  const nextAction = AUTONOMOUS_POWERSHELL_ACTIONS[sequence % AUTONOMOUS_POWERSHELL_ACTIONS.length];
+  return tasks.push(buildPowerShellTask({ now, action: nextAction, sequence: sequence + 1 })) && tasks.at(-1);
 }
