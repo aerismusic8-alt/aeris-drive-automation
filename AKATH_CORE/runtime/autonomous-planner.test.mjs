@@ -39,7 +39,7 @@ assert.equal(recovery.status, 'PENDING');
 recovery.status = 'DONE';
 const recoveryAfterDone = planNextTask(failedRegistry, new Date('2026-09-17T02:01:01Z'));
 assert.equal(recoveryAfterDone.payload.capability, 'self_check');
-assert.equal(recoveryAfterDone.task_id, 'AKATH-AUTONOMOUS-SELF-CHECK-001');
+assert.equal(recoveryAfterDone.task_id, 'AKATH-AUTONOMOUS-SELF-CHECK-002');
 assert.equal(recoveryAfterDone.status, 'PENDING');
 
 console.log('PASS autonomous planner');
