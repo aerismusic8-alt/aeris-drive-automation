@@ -4,6 +4,11 @@ const SPECIALISTS = Object.freeze({
     capability: 'execution',
     description: 'Default deterministic execution specialist for non-destructive AKATH work.'
   }),
+  powershell: Object.freeze({
+    id: 'PC1_POWERSHELL_SPECIALIST',
+    capability: 'powershell',
+    description: 'Allowlisted PowerShell execution specialist with stdout/stderr/exit-code evidence.'
+  }),
   self_check: Object.freeze({
     id: 'PC1_SELF_CHECK_SPECIALIST',
     capability: 'self_check',
