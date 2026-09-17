@@ -15,9 +15,18 @@ if ([string]::IsNullOrWhiteSpace($geminiKey)) {
 }
 
 $env:GEMINI_API_KEY = $geminiKey
-$env:AX_PC1_NODE_ID = [Environment]::GetEnvironmentVariable('AX_PC1_NODE_ID', 'User') ?? 'PC1-MAIN'
-$env:AX_RUNTIME_INTERVAL_MS = [Environment]::GetEnvironmentVariable('AX_RUNTIME_INTERVAL_MS', 'User') ?? '5000'
-$env:AX_CANONICAL_SYNC_INTERVAL_MS = [Environment]::GetEnvironmentVariable('AX_CANONICAL_SYNC_INTERVAL_MS', 'User') ?? '15000'
+
+$nodeId = [Environment]::GetEnvironmentVariable('AX_PC1_NODE_ID', 'User')
+if ([string]::IsNullOrWhiteSpace($nodeId)) { $nodeId = 'PC1-MAIN' }
+$env:AX_PC1_NODE_ID = $nodeId
+
+$runtimeInterval = [Environment]::GetEnvironmentVariable('AX_RUNTIME_INTERVAL_MS', 'User')
+if ([string]::IsNullOrWhiteSpace($runtimeInterval)) { $runtimeInterval = '5000' }
+$env:AX_RUNTIME_INTERVAL_MS = $runtimeInterval
+
+$syncInterval = [Environment]::GetEnvironmentVariable('AX_CANONICAL_SYNC_INTERVAL_MS', 'User')
+if ([string]::IsNullOrWhiteSpace($syncInterval)) { $syncInterval = '15000' }
+$env:AX_CANONICAL_SYNC_INTERVAL_MS = $syncInterval
 
 & (Get-Command node).Source $Main
 exit $LASTEXITCODE
