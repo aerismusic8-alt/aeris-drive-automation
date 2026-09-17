@@ -1,3 +1,5 @@
+import { planRecoveryRetry } from './recovery-planner.mjs';
+
 function buildRecoveryTask({ failedTaskId, now }) {
   const created = now.toISOString();
   const deadline = new Date(now.getTime() + 30 * 60 * 1000).toISOString();
@@ -39,6 +41,13 @@ export function planNextTask(registry, now = new Date()) {
     return recovery;
   }
 
-  if (existingRecovery.status !== 'DONE') return null;
+  if (existingRecovery.status === 'DONE') {
+    const retry = planRecoveryRetry(registry, existingRecovery, now);
+    if (retry) {
+      tasks.push(retry);
+      return retry;
+    }
+  }
+
   return null;
 }
