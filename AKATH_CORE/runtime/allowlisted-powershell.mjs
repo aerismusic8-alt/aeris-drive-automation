@@ -15,6 +15,9 @@ const ACTIONS = Object.freeze({
   }),
   runtime_disk_snapshot: Object.freeze({
     script: 'Get-PSDrive -PSProvider FileSystem | Select-Object Name,Free,Used | Format-Table -AutoSize | Out-String'
+  }),
+  jumtask: Object.freeze({
+    script: '$out = if ($env:AX_PC2_JUMTASK_OUTPUT) { $env:AX_PC2_JUMTASK_OUTPUT } else { Join-Path $env:TEMP "AERIS_JUMTASK_OUTPUT.txt" }; Write-Output "[JUMTASK] START"; Start-Sleep -Milliseconds 500; Write-Output "[JUMTASK] STEP=WORK"; Start-Sleep -Milliseconds 700; Write-Output "[JUMTASK] STEP=VERIFY"; Start-Sleep -Milliseconds 500; $record = "JUMTASK_OK|HOST=$env:COMPUTERNAME|USER=$env:USERNAME|UTC=$([DateTime]::UtcNow.ToString("o"))"; Set-Content -Path $out -Value $record -Encoding UTF8; Write-Output "[JUMTASK] OUTPUT=$out"; Write-Output "[JUMTASK] RESULT=JUMTASK_OK"'
   })
 });
 
@@ -22,7 +25,7 @@ export function listAllowlistedActions() {
   return Object.keys(ACTIONS);
 }
 
-export async function executeAllowlistedPowerShell(action) {
+export async function executeAllowlistedPowerShell(action, { onStdout, onStderr } = {}) {
   const spec = ACTIONS[action];
   if (!spec) throw new Error(`PowerShell action not allowlisted: ${action}`);
 
@@ -36,8 +39,16 @@ export async function executeAllowlistedPowerShell(action) {
     });
     let stdout = '';
     let stderr = '';
-    child.stdout.on('data', chunk => { stdout += chunk.toString(); });
-    child.stderr.on('data', chunk => { stderr += chunk.toString(); });
+    child.stdout.on('data', chunk => {
+      const text = chunk.toString();
+      stdout += text;
+      onStdout?.(text);
+    });
+    child.stderr.on('data', chunk => {
+      const text = chunk.toString();
+      stderr += text;
+      onStderr?.(text);
+    });
     child.on('error', reject);
     child.on('close', exitCode => resolve({ action, stdout: stdout.trim(), stderr: stderr.trim(), exitCode }));
   });
