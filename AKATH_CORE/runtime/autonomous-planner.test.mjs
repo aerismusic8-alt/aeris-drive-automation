@@ -20,8 +20,11 @@ const doneOnlyRegistry = {
   tasks: [{ task_id: 'AKATH-REAL-001', status: 'DONE', type: 'WORK' }]
 };
 const noSyntheticExecution = planNextTask(doneOnlyRegistry, new Date('2026-09-17T02:00:01Z'));
-assert.equal(noSyntheticExecution, null);
-assert.equal(doneOnlyRegistry.tasks.length, 1);
+assert.equal(noSyntheticExecution?.task_id, 'AKATH-PC1-AUTONOMOUS-CONTINUATION-001');
+assert.equal(noSyntheticExecution?.capability, 'execution');
+assert.equal(noSyntheticExecution?.action, 'pc1_autonomous_execution_continuation');
+assert.equal(noSyntheticExecution?.status, 'PENDING');
+assert.equal(noSyntheticExecution?.payload?.autonomous, true);
 
 const failedRegistry = {
   tasks: [{ task_id: 'AKATH-REAL-001', status: 'FAILED', type: 'WORK' }]
@@ -35,7 +38,7 @@ assert.equal(recovery.status, 'PENDING');
 
 recovery.status = 'DONE';
 const recoveryAfterDone = planNextTask(failedRegistry, new Date('2026-09-17T02:01:01Z'));
-assert.equal(recoveryAfterDone, null);
-assert.equal(failedRegistry.tasks.length, 2);
+assert.equal(recoveryAfterDone?.task_id, 'AKATH-PC1-AUTONOMOUS-CONTINUATION-001');
+assert.equal(failedRegistry.tasks.length, 3);
 
 console.log('PASS autonomous planner');
