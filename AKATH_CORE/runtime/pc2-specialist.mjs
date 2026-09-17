@@ -29,10 +29,6 @@ const nodeId = process.env.AX_PC1_NODE_ID || 'PC2-MAIN';
 const now = new Date().toISOString();
 const action = job.payload?.action ?? job.action;
 
-if (action === 'jumtask') {
-  console.log(`[JUMTASK] CLAIM task=${job.task_id ?? 'UNKNOWN'} node=${nodeId}`);
-}
-
 const ps = await executeAllowlistedPowerShell(action, {
   onStdout: (text) => {
     if (action === 'jumtask') process.stdout.write(text);
@@ -66,10 +62,6 @@ const verified = ps.exitCode === 0 &&
   jumtaskVerified &&
   (action !== 'runtime_identity' || !!hostIdentity?.computerName) &&
   (!hostIdentity?.nodeId || hostIdentity.nodeId === nodeId);
-
-if (action === 'jumtask') {
-  console.log(`[JUMTASK] VERIFY verified=${verified}`);
-}
 
 process.stdout.write(JSON.stringify({
   ok: verified,
