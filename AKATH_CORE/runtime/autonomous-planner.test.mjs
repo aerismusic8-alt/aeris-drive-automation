@@ -41,4 +41,14 @@ const recoveryAfterDone = planNextTask(failedRegistry, new Date('2026-09-17T02:0
 assert.equal(recoveryAfterDone?.task_id, 'AKATH-PC1-AUTONOMOUS-CONTINUATION-001');
 assert.equal(failedRegistry.tasks.length, 3);
 
+const gatedRegistry = {
+  tasks: [
+    { task_id: 'AKATH-PC1-AUTONOMOUS-CONTINUATION-001', status: 'DONE', type: 'SYSTEM', capability: 'execution' },
+    { task_id: 'AKATH-PC1-POWERSHELL-CONTROL-ONCE', status: 'DONE', type: 'SYSTEM', capability: 'powershell' }
+  ]
+};
+const afterGate = planNextTask(gatedRegistry, new Date('2026-09-17T02:02:00Z'));
+assert.equal(afterGate, null);
+assert.equal(gatedRegistry.tasks.length, 2);
+
 console.log('PASS autonomous planner');
