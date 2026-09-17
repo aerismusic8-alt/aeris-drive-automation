@@ -8,7 +8,7 @@ const ACTIONS = Object.freeze({
     script: 'Write-Output "AX_PC1_RUNTIME_STATUS"'
   }),
   runtime_identity: Object.freeze({
-    script: '$PSVersionTable.PSVersion.ToString()'
+    script: '$id=[ordered]@{computerName=$env:COMPUTERNAME;userName="$env:USERDOMAIN\\$env:USERNAME";nodeId=$env:AX_PC1_NODE_ID;processId=$PID;powershellVersion=$PSVersionTable.PSVersion.ToString()};$id|ConvertTo-Json -Compress'
   }),
   runtime_process_snapshot: Object.freeze({
     script: 'Get-Process | Where-Object { $_.ProcessName -match "node|powershell" } | Select-Object -First 20 Id,ProcessName | Format-Table -AutoSize | Out-String'
