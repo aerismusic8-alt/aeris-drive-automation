@@ -4,9 +4,13 @@ $NodeId = 'PC2-MAIN'
 $State = Join-Path $RuntimeDir 'runtime-state.json'
 $Evidence = Join-Path $RuntimeDir 'evidence.jsonl'
 $Specialist = Join-Path $RuntimeDir 'pc2-specialist.mjs'
-$LoopDelaySeconds = [Math]::Max(1, [int]($env:AX_PC2_LOOP_DELAY_SECONDS ?? '2'))
-$RetryDelaySeconds = [Math]::Max(1, [int]($env:AX_PC2_RETRY_DELAY_SECONDS ?? '5'))
-$MaxJobs = [Math]::Max(0, [int]($env:AX_PC2_MAX_JOBS ?? '0'))
+
+$loopDelayValue = if ([string]::IsNullOrWhiteSpace($env:AX_PC2_LOOP_DELAY_SECONDS)) { 2 } else { [int]$env:AX_PC2_LOOP_DELAY_SECONDS }
+$retryDelayValue = if ([string]::IsNullOrWhiteSpace($env:AX_PC2_RETRY_DELAY_SECONDS)) { 5 } else { [int]$env:AX_PC2_RETRY_DELAY_SECONDS }
+$maxJobsValue = if ([string]::IsNullOrWhiteSpace($env:AX_PC2_MAX_JOBS)) { 0 } else { [int]$env:AX_PC2_MAX_JOBS }
+$LoopDelaySeconds = [Math]::Max(1, $loopDelayValue)
+$RetryDelaySeconds = [Math]::Max(1, $retryDelayValue)
+$MaxJobs = [Math]::Max(0, $maxJobsValue)
 
 $node = Get-Command node -ErrorAction SilentlyContinue
 if (-not $node) { throw 'PC2_NODE_JS_NOT_FOUND' }
