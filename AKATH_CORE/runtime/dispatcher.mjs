@@ -6,8 +6,15 @@ export async function dispatchToPc1(job, adapter) {
   return adapter.execute(job);
 }
 
+export function resolvePc1ExecutorCommand(nodeId = process.env.AX_PC1_NODE_ID || 'PC1-MAIN', explicitCommand = process.env.AX_PC1_EXECUTOR_COMMAND) {
+  const configured = String(explicitCommand || '').trim();
+  if (configured) return configured;
+  if (nodeId === 'PC1-MAIN') throw new Error('AX_PC1_EXECUTOR_COMMAND is required when nodeId is PC1-MAIN');
+  return process.execPath;
+}
+
 export function createLocalPc1Adapter({
-  command = process.execPath,
+  command = resolvePc1ExecutorCommand(),
   executorPath = resolve(dirname(fileURLToPath(import.meta.url)), 'pc1-specialist.mjs'),
   controlExecutorPath = resolve(dirname(fileURLToPath(import.meta.url)), 'pc1-specialist-control.mjs')
 } = {}) {
