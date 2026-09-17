@@ -9,8 +9,8 @@ const transitions = {
 export async function loadRegistry(path) { return loadJson(path,{tasks:[]}); }
 export async function persistRegistry(path, registry) { return persistJson(path,registry); }
 
-export function claimNextEligibleJob(registry, now = new Date()) {
-  const job = registry.tasks.find((item) => item.status === 'PENDING');
+export function claimNextEligibleJob(registry, now = new Date(), nodeId = null) {
+  const job = registry.tasks.find((item) => item.status === 'PENDING' && (!item.node_id || !nodeId || item.node_id === nodeId));
   if (!job) return null;
   if (job.deadline_at && new Date(job.deadline_at) <= now) {
     transitionJob(job,'OVERDUE',{root_cause:'deadline_exceeded',correction:'deadline review required',overdue_at:now.toISOString()});
