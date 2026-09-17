@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 
 import { resolveSpecialist } from './specialist-registry.mjs';
+import { executeAllowlistedPowerShell } from './allowlisted-powershell.mjs';
 
 const raw = process.argv[2];
 if (!raw) {
@@ -18,6 +19,36 @@ try {
 
 const specialist = resolveSpecialist(job.capability);
 const now = new Date().toISOString();
+
+if (specialist.capability === 'powershell') {
+  const ps = await executeAllowlistedPowerShell(job.payload?.action);
+  const execution = ps.exitCode === 0 ? 'POWERSHELL_EXECUTED' : 'POWERSHELL_FAILED';
+  process.stdout.write(JSON.stringify({
+    ok: ps.exitCode === 0,
+    result: {
+      executor: specialist.id,
+      capability: specialist.capability,
+      task_id: job.task_id ?? null,
+      execution,
+      completed_at: now,
+      stdout: ps.stdout,
+      stderr: ps.stderr,
+      exitCode: ps.exitCode
+    },
+    evidence: {
+      executor: specialist.id,
+      capability: specialist.capability,
+      node: process.env.AX_PC1_NODE_ID || 'PC1-MAIN',
+      verification: { verified: ps.exitCode === 0 },
+      execution,
+      stdout: ps.stdout,
+      stderr: ps.stderr,
+      exitCode: ps.exitCode
+    }
+  }));
+  process.exit(ps.exitCode === 0 ? 0 : 1);
+}
+
 const execution = specialist.capability === 'self_check'
   ? 'SELF_CHECK'
   : specialist.capability === 'recovery'
