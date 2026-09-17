@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { listAllowlistedActions } from './allowlisted-powershell.mjs';
 
-assert.deepEqual(listAllowlistedActions(), ['runtime_heartbeat', 'runtime_identity']);
-assert.throws(() => listAllowlistedActions().includes('arbitrary_command') && (() => { throw new Error('bad') })());
+const actions = listAllowlistedActions();
+assert.deepEqual(actions, ['runtime_heartbeat', 'runtime_identity']);
+assert.equal(actions.includes('arbitrary_command'), false);
 console.log('allowlisted PowerShell contract PASS');
