@@ -17,7 +17,7 @@ const ACTIONS = Object.freeze({
     script: 'Get-PSDrive -PSProvider FileSystem | Select-Object Name,Free,Used | Format-Table -AutoSize | Out-String'
   }),
   jumtask: Object.freeze({
-    script: '$out = if ($env:AX_PC2_JUMTASK_OUTPUT) { $env:AX_PC2_JUMTASK_OUTPUT } else { Join-Path $env:TEMP "AERIS_JUMTASK_OUTPUT.txt" }; Write-Output "[JUMTASK] START"; Start-Sleep -Milliseconds 500; Write-Output "[JUMTASK] STEP=WORK"; Start-Sleep -Milliseconds 700; Write-Output "[JUMTASK] STEP=VERIFY"; Start-Sleep -Milliseconds 500; $record = "JUMTASK_OK|HOST=$env:COMPUTERNAME|USER=$env:USERNAME|UTC=$([DateTime]::UtcNow.ToString("o"))"; Set-Content -Path $out -Value $record -Encoding UTF8; Write-Output "[JUMTASK] OUTPUT=$out"; Write-Output "[JUMTASK] RESULT=JUMTASK_OK"'
+    script: '$out = if ($env:AX_PC2_JUMTASK_OUTPUT) { $env:AX_PC2_JUMTASK_OUTPUT } else { Join-Path $env:TEMP "AERIS_JUMTASK_OUTPUT.txt" }; Start-Sleep -Milliseconds 500; Write-Output "[JUMTASK] STEP=WORK"; Start-Sleep -Milliseconds 700; Write-Output "[JUMTASK] STEP=VERIFY"; Start-Sleep -Milliseconds 500; $record = "JUMTASK_OK|HOST=$env:COMPUTERNAME|USER=$env:USERNAME|UTC=$([DateTime]::UtcNow.ToString("o"))"; Set-Content -Path $out -Value $record -Encoding UTF8; Write-Output "[JUMTASK] OUTPUT=$out"; Write-Output "[JUMTASK] RESULT=JUMTASK_OK"'
   })
 });
 
