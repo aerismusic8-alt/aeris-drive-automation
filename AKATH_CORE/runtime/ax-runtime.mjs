@@ -11,9 +11,11 @@ export async function runOnce({registry,state,now=new Date(),dispatch,appendEvid
     const outcome=await dispatch(job);
     if(!outcome?.ok) throw new Error(outcome?.error || 'PC1 execution failed');
     job.result=outcome.result;
-    transitionJob(job,'COMPLETED',{completed_at:now.toISOString()});
     const evidence={...(outcome.evidence||{}),jobId:job.task_id,result:outcome.result,event:'RESULT',timestamp:now.toISOString()};
+
     await appendEvidence(evidence);
+    transitionJob(job,'COMPLETED',{completed_at:now.toISOString()});
+
     const verification=verifyJobResult(job,evidence);
     if(!verification.verified) {
       transitionJob(job,'FAILED',{verification,failed_at:now.toISOString()});
@@ -25,7 +27,9 @@ export async function runOnce({registry,state,now=new Date(),dispatch,appendEvid
     state.lastVerifiedJob=job.task_id; state.activeJob=null;
     return {status:'DONE',job,verification};
   } catch (error) {
-    if(job.status==='EXECUTING') transitionJob(job,'FAILED',{error:error.message,failed_at:now.toISOString()});
+    if(['EXECUTING','COMPLETED'].includes(job.status)) {
+      transitionJob(job,'FAILED',{error:error.message,failed_at:now.toISOString()});
+    }
     state.activeJob=null; return {status:'FAILED',job,error:error.message};
   }
 }
