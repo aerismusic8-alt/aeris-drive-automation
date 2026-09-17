@@ -1,3 +1,5 @@
+import { planNextRevenueJob } from './pc2-revenue-planner.mjs';
+
 function buildRecoveryTask({ failedTaskId, now }) {
   const created = now.toISOString();
   const deadline = new Date(now.getTime() + 30 * 60 * 1000).toISOString();
@@ -101,7 +103,7 @@ export function planNextTask(registry, now = new Date()) {
     const existingRecovery = tasks.find((task) => task.task_id === recoveryId);
     if (!existingRecovery) return tasks.push(buildRecoveryTask({ failedTaskId: failed.task_id, now })) && tasks.at(-1);
     if (existingRecovery.status !== 'DONE') return null;
-    if (failed.capability === 'powershell' || failed.capability === 'control') {
+    if (failed.capability === 'powershell' || failed.capability === 'control' || failed.capability === 'revenue') {
       failed.status = 'PENDING';
       failed.recovered_at = now.toISOString();
       failed.error = null;
@@ -116,7 +118,14 @@ export function planNextTask(registry, now = new Date()) {
 
   const powershellTasks = tasks.filter((task) => task.capability === 'powershell');
   const controlTasks = tasks.filter((task) => task.capability === 'control');
+  const revenueTasks = tasks.filter((task) => task.capability === 'revenue');
   const sequence = powershellTasks.length;
+
+  if (sequence > 0 && sequence % 3 === 0 && revenueTasks.length < Math.floor(sequence / 3)) {
+    const revenueTask = planNextRevenueJob(registry, now);
+    if (revenueTask) return revenueTask;
+  }
+
   if (sequence > 0 && sequence % AUTONOMOUS_POWERSHELL_ACTIONS.length === 0 && controlTasks.length < Math.floor(sequence / AUTONOMOUS_POWERSHELL_ACTIONS.length)) {
     const action = AUTONOMOUS_CONTROL_ACTIONS[controlTasks.length % AUTONOMOUS_CONTROL_ACTIONS.length];
     return tasks.push(buildControlTask({ now, action, sequence: controlTasks.length + 1 })) && tasks.at(-1);
