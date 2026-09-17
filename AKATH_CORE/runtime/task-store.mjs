@@ -10,7 +10,9 @@ export async function loadRegistry(path) { return loadJson(path,{tasks:[]}); }
 export async function persistRegistry(path, registry) { return persistJson(path,registry); }
 
 export function claimNextEligibleJob(registry, now = new Date()) {
-  const job = registry.tasks.find((item) => item.status === 'PENDING');
+  const pendingTasks = registry.tasks.filter((item) => item.status === 'PENDING');
+  const currentTaskId = registry?.current_work?.active ? registry.current_work.task_id : null;
+  const job = (currentTaskId ? pendingTasks.find((item) => item.task_id === currentTaskId) : null) ?? pendingTasks[0] ?? null;
   if (!job) return null;
   if (job.deadline_at && new Date(job.deadline_at) <= now) {
     transitionJob(job,'OVERDUE',{root_cause:'deadline_exceeded',correction:'deadline review required',overdue_at:now.toISOString()});
