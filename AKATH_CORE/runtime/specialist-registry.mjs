@@ -4,6 +4,11 @@ const SPECIALISTS = Object.freeze({
     capability: 'execution',
     description: 'Default deterministic execution specialist for non-destructive AKATH work.'
   }),
+  ai: Object.freeze({
+    id: 'PC1_GEMINI_AI_SPECIALIST',
+    capability: 'ai',
+    description: 'Gemini-backed AI execution specialist for production AI tasks.'
+  }),
   self_check: Object.freeze({
     id: 'PC1_SELF_CHECK_SPECIALIST',
     capability: 'self_check',
