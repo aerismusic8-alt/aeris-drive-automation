@@ -1,5 +1,7 @@
 $ErrorActionPreference = 'Continue'
 $RuntimeDir = $PSScriptRoot
+$RepoRoot = Split-Path (Split-Path $RuntimeDir -Parent) -Parent
+Set-Location $RepoRoot
 $NodeId = 'PC2-MAIN'
 $StatePath = Join-Path $RuntimeDir 'revenue-farm-state.json'
 $Evidence = Join-Path $RuntimeDir 'revenue-farm-evidence.jsonl'
@@ -35,30 +37,50 @@ $processedControlIds = @{}
 
 function Write-ControlResult {
   param([object]$Result)
+
   $resultPath = Join-Path $ControlResultsDir "$($Result.command_id).json"
+  $Result.push_status = 'PENDING'
   $Result | ConvertTo-Json -Depth 30 | Set-Content -Path $resultPath -Encoding UTF8
+
   try {
-    & git add -- $resultPath 2>$null
-    & git commit -m "AX control result $($Result.command_id)" -- $resultPath 2>$null | Out-Null
-    & git push origin "HEAD:$ControlBranch" 2>$null | Out-Null
+    & git add -- $resultPath 2>&1 | Out-Null
+    if ($LASTEXITCODE -ne 0) { throw "GIT_ADD_FAILED:$LASTEXITCODE" }
+
+    & git commit -m "AX control result $($Result.command_id)" -- $resultPath 2>&1 | Out-Null
+    if ($LASTEXITCODE -ne 0) { throw "GIT_COMMIT_FAILED:$LASTEXITCODE" }
+
+    & git push origin "HEAD:$ControlBranch" 2>&1 | Out-Null
+    if ($LASTEXITCODE -ne 0) { throw "GIT_PUSH_FAILED:$LASTEXITCODE" }
+
+    & git fetch origin $ControlBranch --quiet 2>&1 | Out-Null
+    if ($LASTEXITCODE -ne 0) { throw "GIT_FETCH_VERIFY_FAILED:$LASTEXITCODE" }
+
+    $remoteSpec = "origin/$ControlBranch`:AKATH_CORE/runtime/AX_CONTROL_RESULTS/$($Result.command_id).json"
+    $remoteJson = & git show $remoteSpec 2>&1
+    if ($LASTEXITCODE -ne 0 -or [string]::IsNullOrWhiteSpace(($remoteJson -join ''))) {
+      throw 'REMOTE_RESULT_FILE_NOT_FOUND_AFTER_PUSH'
+    }
+
     $Result.push_status = 'PUSHED'
-  } catch {
+  }
+  catch {
     $Result.push_status = 'PUSH_FAILED'
     $Result.push_error = $_.Exception.Message
   }
+
   $Result | ConvertTo-Json -Depth 30 | Set-Content -Path $resultPath -Encoding UTF8
 }
 
 function Invoke-ControlCommand {
   param([object]$Command)
   $commandId = [string]$Command.command_id
-  $action = [string]($Command.payload.action ?? $Command.action)
+  $action = if ($null -ne $Command.payload -and $null -ne $Command.payload.action) { [string]$Command.payload.action } else { [string]$Command.action }
   $started = (Get-Date).ToUniversalTime().ToString('o')
   $jobFile = Join-Path $RuntimeDir "ax-control-$commandId.json"
   $job = [ordered]@{
     task_id = $commandId
     type = 'CONTROL'
-    title = [string]($Command.title ?? 'AX PowerShell control')
+    title = if ($null -ne $Command.title) { [string]$Command.title } else { 'AX PowerShell control' }
     capability = 'control'
     action = $action
     status = 'PENDING'
