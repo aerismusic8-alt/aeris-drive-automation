@@ -17,7 +17,7 @@ const registryPath = resolve(root, '../CANONICAL_TASK_REGISTRY.json');
 const statePath = resolve(root, 'runtime-state.json');
 const evidencePath = resolve(root, 'evidence.jsonl');
 const canonicalRelativePath = 'AKATH_CORE/CANONICAL_TASK_REGISTRY.json';
-const configuredNodeId = process.env.AX_PC1_NODE_ID || 'PC1-MAIN';
+const configuredNodeId = process.env.AX_EXECUTOR_NODE_ID || process.env.AX_PC1_NODE_ID || 'PC1-MAIN';
 const state = await loadJson(statePath, {
   schemaVersion: '1.0', runtimeStatus: 'STARTING', nodeId: configuredNodeId,
   lastHeartbeatAt: null, activeJob: null, lastVerifiedJob: null, recovery: {}
@@ -53,7 +53,8 @@ async function cycle() {
     registry,
     state,
     dispatch: job => dispatchToPc1(job, adapter),
-    appendEvidence: record => appendEvidence(evidencePath, record)
+    appendEvidence: record => appendEvidence(evidencePath, record),
+    nodeId: configuredNodeId
   });
   await persistRegistry(registryPath, registry);
   await persistJson(statePath, state);
