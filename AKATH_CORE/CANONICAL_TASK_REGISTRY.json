@@ -4,41 +4,9 @@
   "authority": "K_FINAL_AUTHORITY",
   "organization": "AKATH",
   "managed_by": "AX",
-  "status": "EXECUTION_E2E",
-  "current_work": {"active": true, "task_id": "AKATH-EXECUTION-E2E-001"},
-  "tasks": [
-    {
-      "task_id": "AKATH-EXECUTION-E2E-001",
-      "type": "SYSTEM",
-      "title": "First PC1 Main Specialist execution loop E2E",
-      "status": "PENDING",
-      "created_at": "2026-09-16T09:31:00Z",
-      "deadline_at": "2026-09-16T10:01:00Z",
-      "milestones": [
-        "PC1_MAIN claims task",
-        "SPECIALIST executes task",
-        "RESULT persisted",
-        "EVIDENCE persisted",
-        "VERIFY passes",
-        "DONE recorded"
-      ],
-      "completion_criteria": [
-        "PC1 specialist returns ok=true",
-        "job result is persisted",
-        "evidence.jsonl contains matching RESULT evidence",
-        "verification.verified=true",
-        "task status is DONE",
-        "runtime lastVerifiedJob equals task_id"
-      ],
-      "evidence": null,
-      "verification": null,
-      "completed_at": null,
-      "payload": {
-        "action": "pc1_specialist_e2e_probe",
-        "purpose": "Prove the canonical AX -> Runtime -> Dispatcher -> PC1 -> Specialist -> Evidence -> Verify -> DONE loop"
-      }
-    }
-  ],
+  "status": "READY_FOR_AUTONOMOUS_EXECUTION",
+  "current_work": {"active": false, "task_id": null},
+  "tasks": [],
   "task_identity_policy": "1 task_id = 1 canonical task record",
   "time_governance": {
     "required": true,
@@ -47,5 +15,11 @@
   },
   "completion_rule": "DONE requires actual execution result, persisted evidence, and verification",
   "execution_direction": "AX -> AX_RUNTIME -> DISPATCHER -> PC1_MAIN -> SPECIALIST -> EXECUTE -> EVIDENCE -> VERIFY -> NEXT_JOB",
-  "clean_start_rule": "Historical tasks are not current tasks. Experience may inform design but cannot create current state."
+  "clean_start_rule": "Historical tasks are not current tasks. Experience may inform design but cannot create current state.",
+  "autonomous_continuation": {
+    "enabled": true,
+    "planner": "autonomous-planner.mjs",
+    "specialist_registry": "specialist-registry.mjs",
+    "requires_human_per_cycle": false
+  }
 }
