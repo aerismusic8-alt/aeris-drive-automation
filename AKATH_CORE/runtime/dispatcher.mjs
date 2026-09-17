@@ -2,7 +2,7 @@ import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 export async function dispatchToPc1(job, adapter) {
-  if (!adapter || typeof adapter.execute !== 'function') throw new Error('PC1 adapter is required');
+  if (!adapter || typeof adapter.execute !== 'function') throw new Error('executor adapter is required');
   return adapter.execute(job);
 }
 
@@ -15,8 +15,8 @@ export function resolvePc1ExecutorCommand(nodeId = process.env.AX_PC1_NODE_ID ||
 
 export function createLocalPc1Adapter({
   command = resolvePc1ExecutorCommand(),
-  executorPath = resolve(dirname(fileURLToPath(import.meta.url)), 'pc1-specialist.mjs'),
-  controlExecutorPath = resolve(dirname(fileURLToPath(import.meta.url)), 'pc1-specialist-control.mjs')
+  executorPath = resolve(dirname(fileURLToPath(import.meta.url)), process.env.AX_SPECIALIST_EXECUTOR || 'pc1-specialist.mjs'),
+  controlExecutorPath = resolve(dirname(fileURLToPath(import.meta.url)), process.env.AX_CONTROL_SPECIALIST_EXECUTOR || 'pc1-specialist-control.mjs')
 } = {}) {
   if (!command) throw new Error('PC1 executor command is not configured');
   return { async execute(job) {
