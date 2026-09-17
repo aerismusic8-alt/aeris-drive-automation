@@ -2,9 +2,9 @@ import { claimNextEligibleJob, transitionJob } from './task-store.mjs';
 import { verifyJobResult } from './verifier.mjs';
 import { appendEvidence as appendEvidenceFile } from './evidence-store.mjs';
 
-export async function runOnce({registry,state,now=new Date(),dispatch,appendEvidence=appendEvidenceFile}) {
+export async function runOnce({registry,state,now=new Date(),dispatch,appendEvidence=appendEvidenceFile,nodeId=null}) {
   state.runtimeStatus='ONLINE'; state.lastHeartbeatAt=now.toISOString();
-  const job=claimNextEligibleJob(registry,now);
+  const job=claimNextEligibleJob(registry,now,nodeId);
   if(!job) return {status:'IDLE'};
   state.activeJob=job.task_id;
   try {
