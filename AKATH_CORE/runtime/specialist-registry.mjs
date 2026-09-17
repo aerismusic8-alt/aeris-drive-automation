@@ -9,6 +9,11 @@ const SPECIALISTS = Object.freeze({
     capability: 'powershell',
     description: 'Allowlisted PowerShell execution specialist with stdout/stderr/exit-code evidence.'
   }),
+  control: Object.freeze({
+    id: 'PC1_CONTROL_SPECIALIST',
+    capability: 'control',
+    description: 'Allowlisted PC1 control specialist for AX-issued runtime control commands.'
+  }),
   self_check: Object.freeze({
     id: 'PC1_SELF_CHECK_SPECIALIST',
     capability: 'self_check',
