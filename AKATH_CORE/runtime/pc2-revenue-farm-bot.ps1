@@ -1,7 +1,7 @@
 $ErrorActionPreference = 'Continue'
 $RuntimeDir = $PSScriptRoot
 $NodeId = 'PC2-MAIN'
-$State = Join-Path $RuntimeDir 'revenue-farm-state.json'
+$StatePath = Join-Path $RuntimeDir 'revenue-farm-state.json'
 $Evidence = Join-Path $RuntimeDir 'revenue-farm-evidence.jsonl'
 $Specialist = Join-Path $RuntimeDir 'pc2-specialist.mjs'
 $OutputRoot = Join-Path $RuntimeDir 'AERIS_REVENUE_OUTPUT'
@@ -135,7 +135,7 @@ while ($true) {
       failedJobs = $failedJobs
       recovery = @{ autonomous = $true; retry = $true }
     }
-    $state | ConvertTo-Json -Depth 20 | Set-Content -Path $State -Encoding UTF8
+    $state | ConvertTo-Json -Depth 20 | Set-Content -Path $StatePath -Encoding UTF8
 
     Write-Host '[REVENUE] RESULT=YOUTUBE_SHORT_PACKAGE_READY'
     Write-Host '[REVENUE] VERIFY verified=true'
@@ -159,7 +159,7 @@ while ($true) {
       lastError = $_.Exception.Message
       recovery = @{ autonomous = $true; retry = $true }
     }
-    $state | ConvertTo-Json -Depth 20 | Set-Content -Path $State -Encoding UTF8
+    $state | ConvertTo-Json -Depth 20 | Set-Content -Path $StatePath -Encoding UTF8
     Start-Sleep -Seconds $RetryDelaySeconds
   }
   finally {
