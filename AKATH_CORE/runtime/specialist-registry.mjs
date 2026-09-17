@@ -9,6 +9,11 @@ const SPECIALISTS = Object.freeze({
     capability: 'ai',
     description: 'Gemini-backed AI execution specialist for production AI tasks.'
   }),
+  control: Object.freeze({
+    id: 'PC1_CONTROL_SPECIALIST',
+    capability: 'control',
+    description: 'Allowlisted PC1 PowerShell control specialist with evidence capture.'
+  }),
   self_check: Object.freeze({
     id: 'PC1_SELF_CHECK_SPECIALIST',
     capability: 'self_check',
