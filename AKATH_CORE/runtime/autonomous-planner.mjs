@@ -65,7 +65,50 @@ export function planNextTask(registry, now = new Date()) {
   if (tasks.some((task) => ['PENDING', 'EXECUTING'].includes(task.status))) return null;
 
   const failed = tasks.find((task) => ['FAILED', 'OVERDUE'].includes(task.status));
-  if (!failed) return null;
+  if (!failed) {
+    // Persistent AX management mode: when the queue is genuinely empty,
+    // keep the controller alive by scheduling a lightweight management
+    // self-check. Real externally-issued work takes priority because this
+    // task is created only when no PENDING/EXECUTING task exists.
+    const created = now.toISOString();
+    const tickId = `AKATH-AX-MANAGEMENT-TICK-${now.getTime()}`;
+    const managementTick = {
+      task_id: tickId,
+      type: 'SYSTEM',
+      title: 'AX persistent management cycle',
+      capability: 'self_check',
+      action: 'ax_autonomous_management_tick',
+      status: 'PENDING',
+      created_at: created,
+      deadline_at: new Date(now.getTime() + 60 * 1000).toISOString(),
+      milestones: [
+        'AX controller selects next eligible workload',
+        'PC1 claims management cycle',
+        'SPECIALIST executes self-check',
+        'EVIDENCE persisted',
+        'VERIFY passes',
+        'DONE recorded'
+      ],
+      completion_criteria: [
+        'specialist returns ok=true',
+        'evidence contains matching RESULT',
+        'verification.verified=true',
+        'task status is DONE'
+      ],
+      evidence: null,
+      verification: null,
+      completed_at: null,
+      payload: {
+        action: 'ax_autonomous_management_tick',
+        capability: 'self_check',
+        autonomous: true,
+        controller: 'AX',
+        purpose: 'keep autonomous management loop active while awaiting real workload'
+      }
+    };
+    tasks.push(managementTick);
+    return managementTick;
+  }
 
   const recoveryId = `AKATH-AUTONOMOUS-RECOVERY-${failed.task_id}`;
   const existingRecovery = tasks.find((task) => task.task_id === recoveryId);
