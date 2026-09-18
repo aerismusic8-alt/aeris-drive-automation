@@ -56,7 +56,15 @@ async function syncCanonicalQueue(registry){
   lastCanonicalSyncAt=now;
   live('CONNECT',{detail:'CANONICAL_QUEUE'});
   try {
-    await execFileAsync('git',['fetch','origin','main','--quiet'],{cwd:repoRoot});
+    try {
+      await execFileAsync('git',['fetch','origin','main','--quiet'],{cwd:repoRoot});
+    } catch (fetchError) {
+      // A concurrent fetch can advance origin/main before git's expected-ref
+      // lock is acquired. If the local tracking ref already advanced, use it.
+      const message=String(fetchError?.message||fetchError);
+      if (!message.includes("cannot lock ref 'refs/remotes/origin/main'")) throw fetchError;
+      live('CANONICAL_FETCH_RACE',{detail:'using current origin/main'});
+    }
     const {stdout}=await execFileAsync('git',['show',`origin/main:${canonicalRelativePath}`],{cwd:repoRoot});
     const remote=JSON.parse(stdout);
     const merged=mergeCanonicalTasks(registry,remote);
