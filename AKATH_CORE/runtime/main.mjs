@@ -19,12 +19,41 @@ const canonicalPath=resolve(repoRoot,'AKATH_CORE/CANONICAL_TASK_REGISTRY.json');
 const runtimeRegistryPath=resolveRuntimeRegistryPath(root);
 const statePath=resolve(root,'runtime-state.json');
 const evidencePath=resolve(root,'evidence.jsonl');
+const telemetryPath=resolve(root,'runtime-telemetry.json');
 const canonicalRelativePath='AKATH_CORE/CANONICAL_TASK_REGISTRY.json';
+const telemetryRelativePath='AKATH_CORE/runtime/runtime-telemetry.json';
 const state=await loadJson(statePath,{schemaVersion:'1.0',runtimeStatus:'STARTING',nodeId:process.env.AX_PC1_NODE_ID||'PC1-MAIN',lastHeartbeatAt:null,activeJob:null,lastVerifiedJob:null,recovery:{}});
 const adapter=createLocalPc1Adapter();
 const live=createLiveEmitter();
 let lastCanonicalSyncAt=0;
+let lastTelemetryPushAt=0;
+let telemetryPushInFlight=false;
 const canonicalSyncIntervalMs=Number(process.env.AX_CANONICAL_SYNC_INTERVAL_MS||15000);
+const telemetryIntervalMs=Number(process.env.AX_TELEMETRY_INTERVAL_MS||30000);
+
+async function publishTelemetry(force=false){
+  const now=Date.now();
+  if(!force && now-lastTelemetryPushAt<telemetryIntervalMs) return;
+  if(telemetryPushInFlight) return;
+  telemetryPushInFlight=true;
+  lastTelemetryPushAt=now;
+  try {
+    state.lastHeartbeatAt=new Date(now).toISOString();
+    state.runtimeStatus='ONLINE';
+    const telemetry={schemaVersion:'1.0',nodeId:state.nodeId,runtimeStatus:state.runtimeStatus,lastHeartbeatAt:state.lastHeartbeatAt,pid:process.pid,activeJob:state.activeJob||null,lastVerifiedJob:state.lastVerifiedJob||null,recovery:state.recovery||{},updatedAt:state.lastHeartbeatAt};
+    await persistJson(telemetryPath,telemetry);
+    const content=Buffer.from(JSON.stringify(telemetry,null,2)+'\\n','utf8').toString('base64');
+    const message='chore(runtime): publish PC1 telemetry';
+    const result=await execFileAsync('git',['add',telemetryRelativePath],{cwd:repoRoot});
+    await execFileAsync('git',['-c','user.name=AX Runtime','-c','user.email=ax-runtime@aeris.local','commit','--allow-empty','-m',message],{cwd:repoRoot});
+    await execFileAsync('git',['push','origin','HEAD:main'],{cwd:repoRoot});
+    live('TELEMETRY_PUBLISHED',{detail:state.lastHeartbeatAt});
+  } catch(error) {
+    console.error(`[AX_RUNTIME] TELEMETRY_PUBLISH_FAILED ${error.message}`);
+  } finally {
+    telemetryPushInFlight=false;
+  }
+}
 
 async function syncCanonicalQueue(registry){
   const now=Date.now();
@@ -52,6 +81,7 @@ async function cycle(){
   const connected=await syncCanonicalQueue(registry);
   if(!connected) {
     await persistJson(statePath,state);
+    await publishTelemetry();
     return;
   }
   const planned=planNextTask(registry,new Date());
@@ -62,10 +92,13 @@ async function cycle(){
   const result=await runOnce({registry,state,dispatch:(job)=>dispatchToPc1(job,adapter),appendEvidence:(record)=>appendEvidence(evidencePath,record),onEvent:live});
   await persistRegistry(runtimeRegistryPath,registry);
   await persistJson(statePath,state);
+  await publishTelemetry();
   if(result.status==='DONE') console.log(`[AX_RUNTIME] DONE ${result.job.task_id}`);
   else if(result.status==='FAILED') console.error(`[AX_RUNTIME] FAILED ${result.job?.task_id}: ${result.error||JSON.stringify(result.verification)}`);
 }
 
 live('BOT_ONLINE',{detail:state.nodeId});
 console.log(`[AX_RUNTIME] ONLINE node=${state.nodeId}`);
+state.runtimeStatus='ONLINE';
+await publishTelemetry(true);
 startSupervisor({cycle,intervalMs:Number(process.env.AX_RUNTIME_INTERVAL_MS||5000),onTick:live});
