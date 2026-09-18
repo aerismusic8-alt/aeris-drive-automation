@@ -1,8 +1,9 @@
 import { claimNextEligibleJob, transitionJob } from './task-store.mjs';
 import { verifyJobResult } from './verifier.mjs';
 import { appendEvidence as appendEvidenceFile } from './evidence-store.mjs';
+import { writeBackCanonical as defaultWriteBackCanonical } from './canonical-writeback.mjs';
 
-export async function runOnce({registry,state,now=new Date(),dispatch,appendEvidence=appendEvidenceFile,onEvent=()=>{}}) {
+export async function runOnce({registry,state,now=new Date(),dispatch,appendEvidence=appendEvidenceFile,writeBackCanonical=defaultWriteBackCanonical,repoRoot,onEvent=()=>{}}) {
   state.runtimeStatus='ONLINE'; state.lastHeartbeatAt=now.toISOString();
   onEvent('HEARTBEAT',{detail:state.nodeId});
   const job=claimNextEligibleJob(registry,now);
@@ -33,6 +34,9 @@ export async function runOnce({registry,state,now=new Date(),dispatch,appendEvid
     }
     transitionJob(job,'VERIFIED',{verification,verified_at:now.toISOString()});
     transitionJob(job,'DONE',{completed_at:now.toISOString()});
+    if (!repoRoot) throw new Error('CANONICAL_WRITEBACK_REPO_ROOT_MISSING');
+    await writeBackCanonical({repoRoot,job,evidence,verification,now});
+    onEvent('WRITE_BACK',{taskId:job.task_id,detail:'CANONICAL DONE'});
     state.lastVerifiedJob=job.task_id; state.activeJob=null;
     onEvent('DONE',{taskId:job.task_id,detail:'VERIFIED'});
     return {status:'DONE',job,verification};
