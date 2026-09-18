@@ -7,7 +7,7 @@
   "status": "READY_FOR_AUTONOMOUS_EXECUTION",
   "current_work": {
     "active": true,
-    "task_id": "AKATH-PC1-FIRST-PRODUCTIVE-AI-001"
+    "task_id": "AKATH-PC1-AI-LIVE-RUN-002"
   },
   "tasks": [
     {
@@ -402,7 +402,7 @@
       "title": "PC1 live autonomous execution gate",
       "capability": "execution",
       "action": "pc1_execution_live_gate",
-      "status": "PENDING",
+      "status": "OVERDUE",
       "created_at": "2026-09-18T04:05:19.015Z",
       "deadline_at": "2026-09-18T05:05:19.020Z",
       "milestones": [
@@ -427,7 +427,9 @@
         "canonical": true,
         "autonomous": true,
         "objective": "prove the live PC1 autonomous execution loop can claim, execute, persist evidence, verify, and complete a fresh canonical task"
-      }
+      },
+      "overdue_at": "2026-09-18T05:35:00.000Z",
+      "correction": "superseded_by_fresh_live_task"
     },
     {
       "task_id": "AKATH-PC1-CONTROL-BRIDGE-LIVE-004",
@@ -435,7 +437,7 @@
       "title": "PC1 live allowlisted PowerShell control bridge",
       "capability": "control",
       "action": "pc1_status",
-      "status": "PENDING",
+      "status": "OVERDUE",
       "created_at": "2026-09-18T03:10:00.000Z",
       "deadline_at": "2026-09-18T04:10:00.000Z",
       "milestones": [
@@ -468,7 +470,9 @@
         "issued_by": "AX",
         "bridge_proof": true,
         "objective": "prove the live AX-to-PC1 control bridge executes an allowlisted PowerShell command without K typing the command"
-      }
+      },
+      "overdue_at": "2026-09-18T05:35:00.000Z",
+      "correction": "superseded_by_fresh_live_task"
     },
     {
       "task_id": "AKATH-PC1-FIRST-PRODUCTIVE-AI-001",
@@ -476,7 +480,7 @@
       "title": "AERIS first productive AI production task",
       "capability": "ai",
       "action": "ai_first_productive_work",
-      "status": "PENDING",
+      "status": "OVERDUE",
       "created_at": "2026-09-18T04:36:19.179Z",
       "deadline_at": "2026-09-18T05:36:19.183Z",
       "milestones": [
@@ -506,6 +510,46 @@
         "autonomous": true,
         "issued_by": "AX",
         "prompt": "Create a concise production work brief for AERIS MUSIC's next execution cycle. Return exactly: 1) objective, 2) three concrete next actions, 3) required output artifact. Do not claim any action was performed.",
+        "system_instruction": "You are the AERIS MUSIC production AI specialist. Produce factual operational output only. Do not claim actions you did not perform."
+      },
+      "overdue_at": "2026-09-18T05:35:00.000Z",
+      "correction": "superseded_by_fresh_live_task"
+    },
+    {
+      "task_id": "AKATH-PC1-AI-LIVE-RUN-002",
+      "type": "PRODUCTION",
+      "title": "AERIS live AI execution — fresh workload",
+      "capability": "ai",
+      "action": "ai_first_productive_work",
+      "status": "PENDING",
+      "created_at": "2026-09-18T05:35:00.000Z",
+      "deadline_at": "2026-09-18T06:05:00.000Z",
+      "milestones": [
+        "PC1 claims fresh AI task",
+        "Gemini specialist executes",
+        "AI result returned",
+        "EVIDENCE persisted",
+        "VERIFY passes",
+        "DONE recorded"
+      ],
+      "completion_criteria": [
+        "specialist returns ok=true",
+        "result.execution is AI_EXECUTED",
+        "result.output is non-empty",
+        "evidence contains matching RESULT",
+        "verification.verified=true",
+        "task status is DONE"
+      ],
+      "evidence": null,
+      "verification": null,
+      "completed_at": null,
+      "payload": {
+        "action": "ai_first_productive_work",
+        "capability": "ai",
+        "provider": "gemini",
+        "autonomous": true,
+        "issued_by": "AX",
+        "prompt": "Create the next AERIS MUSIC production work brief. Return exactly: 1) objective, 2) three concrete next actions, 3) required output artifact. Do not claim any action was performed.",
         "system_instruction": "You are the AERIS MUSIC production AI specialist. Produce factual operational output only. Do not claim actions you did not perform."
       }
     }
