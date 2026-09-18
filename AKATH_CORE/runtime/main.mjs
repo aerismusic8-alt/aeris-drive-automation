@@ -11,6 +11,7 @@ import { planNextTask } from './autonomous-planner.mjs';
 import { mergeCanonicalTasks } from './canonical-sync.mjs';
 import { createLiveEmitter } from './live-console.mjs';
 import { resolveRuntimeRegistryPath } from './runtime-registry.mjs';
+import { reconcileCanonicalTerminalTasks } from './canonical-writeback.mjs';
 
 const execFileAsync = promisify(execFile);
 const root=dirname(fileURLToPath(import.meta.url));
@@ -90,6 +91,8 @@ async function cycle(){
     await publishTelemetry();
     return;
   }
+  const reconciled=await reconcileCanonicalTerminalTasks({repoRoot,registry,now:new Date()}).catch((error)=>{ console.error(`[AX_RUNTIME] CANONICAL_RECONCILE_FAILED ${error.message}`); return {changed:false,error:error.message}; });
+  if (reconciled.changed) live('WRITE_BACK',{detail:'RECONCILED TERMINAL TASKS'});
   const planned=planNextTask(registry,new Date());
   if(planned) {
     live('JOB_FOUND',{taskId:planned.task_id,detail:planned.capability||'execution'});
