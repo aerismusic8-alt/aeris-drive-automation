@@ -16,10 +16,10 @@ export function mergeCanonicalTasks(localRegistry, remoteRegistry) {
       // marks PENDING.
       const isCanonicalCurrent = remoteRegistry?.current_work?.active
         && remoteRegistry.current_work.task_id === remoteTask.task_id;
-      if (remoteTask.status === 'PENDING' && (
-        localTask.status === 'FAILED'
-        || (isCanonicalCurrent && ['OVERDUE','DONE'].includes(localTask.status))
-      )) {
+      const isFreshProductiveCurrent = isCanonicalCurrent
+        && remoteTask.status === 'PENDING'
+        && (remoteTask.type === 'PRODUCTION' || remoteTask.capability === 'ai' || remoteTask.capability === 'execution');
+      if (isFreshProductiveCurrent || (remoteTask.status === 'PENDING' && localTask.status === 'FAILED')) {
         Object.assign(localTask, structuredClone(remoteTask));
         requeued += 1;
       } else {
