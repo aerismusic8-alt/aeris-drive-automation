@@ -7,7 +7,7 @@
   "status": "READY_FOR_AUTONOMOUS_EXECUTION",
   "current_work": {
     "active": true,
-    "task_id": "AKATH-PC1-LIVE-EXECUTION-GATE-003"
+    "task_id": "AKATH-PC1-CONTROL-BRIDGE-LIVE-004"
   },
   "tasks": [
     {
@@ -427,6 +427,47 @@
         "canonical": true,
         "autonomous": true,
         "objective": "prove the live PC1 autonomous execution loop can claim, execute, persist evidence, verify, and complete a fresh canonical task"
+      }
+    },
+    {
+      "task_id": "AKATH-PC1-CONTROL-BRIDGE-LIVE-004",
+      "type": "SYSTEM",
+      "title": "PC1 live allowlisted PowerShell control bridge",
+      "capability": "control",
+      "action": "pc1_status",
+      "status": "PENDING",
+      "created_at": "2026-09-18T03:10:00.000Z",
+      "deadline_at": "2026-09-18T04:10:00.000Z",
+      "milestones": [
+        "AX issues canonical control task",
+        "PC1 claims task",
+        "ALLOWLIST validates action",
+        "PowerShell executes",
+        "stdout/stderr captured",
+        "EVIDENCE persisted",
+        "VERIFY passes",
+        "DONE recorded"
+      ],
+      "completion_criteria": [
+        "specialist returns ok=true",
+        "result.execution is PC1_CONTROL_EXECUTED",
+        "result.exit_code is 0",
+        "evidence contains captured output",
+        "verification.verified=true",
+        "task status is DONE"
+      ],
+      "evidence": null,
+      "verification": null,
+      "completed_at": null,
+      "payload": {
+        "action": "pc1_status",
+        "capability": "control",
+        "canonical": true,
+        "autonomous": true,
+        "security": "allowlist-only",
+        "issued_by": "AX",
+        "bridge_proof": true,
+        "objective": "prove the live AX-to-PC1 control bridge executes an allowlisted PowerShell command without K typing the command"
       }
     }
   ],
