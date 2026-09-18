@@ -1,0 +1,63 @@
+name: AX PC2 Local Dispatch E2E
+
+# Free-first pcsev path: AX dispatcher -> PC2 -> local executor -> verify -> write-back.
+# Apps Script / external control APIs are excluded from this critical path.
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'AX_PC_CONTROL/AX_PC2_LOCAL_DISPATCHER.ps1'
+      - 'AX_PC_CONTROL/AX_PC2_LOCAL_EXECUTOR_E2E.ps1'
+      - '.github/workflows/ax-pc2-local-dispatch-e2e.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  pc2-local-dispatch:
+    runs-on: [self-hosted, Windows, X64, PC2-CODING-EXECUTOR]
+    timeout-minutes: 5
+    env:
+      AX_EXPECTED_PC2: DESKTOP-O0AUKHG
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Verify PC2 dispatcher identity
+        shell: powershell -NoProfile -ExecutionPolicy Bypass -File {0}
+        run: |
+          $ErrorActionPreference = 'Stop'
+          if ($env:COMPUTERNAME -ne $env:AX_EXPECTED_PC2) { throw 'PC2_DISPATCHER_IDENTITY_MISMATCH' }
+          $dispatcher = Join-Path $env:GITHUB_WORKSPACE 'AX_PC_CONTROL\AX_PC2_LOCAL_DISPATCHER.ps1'
+          if (-not (Test-Path $dispatcher)) { throw 'PC2_LOCAL_DISPATCHER_MISSING' }
+          Write-Host 'PC2_DISPATCHER_IDENTITY=VERIFIED'
+          Write-Host 'PC2_LOCAL_DISPATCHER_FILE=FOUND'
+
+      - name: AX dispatch to PC2 and verify write-back
+        shell: powershell -NoProfile -ExecutionPolicy Bypass -File {0}
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $dispatcher = Join-Path $env:GITHUB_WORKSPACE 'AX_PC_CONTROL\AX_PC2_LOCAL_DISPATCHER.ps1'
+          & powershell.exe -NoProfile -ExecutionPolicy Bypass -File $dispatcher
+          if ($LASTEXITCODE -ne 0) { throw "AX_PC2_DISPATCHER_EXIT:$LASTEXITCODE" }
+          Write-Host 'AX_DISPATCH_GATE=VERIFIED'
+
+      - name: Verify final dispatch proof
+        if: ${{ always() }}
+        shell: powershell -NoProfile -ExecutionPolicy Bypass -File {0}
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $dispatchDir = 'C:\AX-Runtime\dispatch'
+          $record = Get-ChildItem $dispatchDir -File -ErrorAction SilentlyContinue | Sort-Object LastWriteTime -Descending | Select-Object -First 1
+          if (-not $record) { throw 'DISPATCH_RECORD=NONE' }
+          $data = Get-Content $record.FullName -Raw | ConvertFrom-Json
+          if ($data.dispatchStatus -ne 'COMPLETED') { throw "DISPATCH_NOT_COMPLETED:$($data.dispatchStatus)" }
+          if ($data.verified -ne $true) { throw 'DISPATCH_RESULT_NOT_VERIFIED' }
+          Write-Host "DISPATCH_RECORD=$($record.FullName)"
+          Write-Host 'DISPATCH_ACCEPTED=VERIFIED'
+          Write-Host 'PC2_EXECUTED=VERIFIED'
+          Write-Host 'RESULT_VERIFIED=VERIFIED'
+          Write-Host 'STATE=COMPLETED'
+          Write-Host 'WRITE_BACK=VERIFIED'
