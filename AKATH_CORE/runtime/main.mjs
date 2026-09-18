@@ -15,13 +15,10 @@ import { resolveRuntimeRegistryPath } from './runtime-registry.mjs';
 const execFileAsync = promisify(execFile);
 const root=dirname(fileURLToPath(import.meta.url));
 const repoRoot=resolve(root,'../..');
-const canonicalPath=resolve(repoRoot,'AKATH_CORE/CANONICAL_TASK_REGISTRY.json');
-const runtimeRegistryPath=resolveRuntimeRegistryPath(root);
 const statePath=resolve(root,'runtime-state.json');
 const evidencePath=resolve(root,'evidence.jsonl');
 const telemetryPath=resolve(root,'runtime-telemetry.json');
 const canonicalRelativePath='AKATH_CORE/CANONICAL_TASK_REGISTRY.json';
-const telemetryRelativePath='AKATH_CORE/runtime/runtime-telemetry.json';
 const state=await loadJson(statePath,{schemaVersion:'1.0',runtimeStatus:'STARTING',nodeId:process.env.AX_PC1_NODE_ID||'PC1-MAIN',lastHeartbeatAt:null,activeJob:null,lastVerifiedJob:null,recovery:{}});
 const adapter=createLocalPc1Adapter();
 const live=createLiveEmitter();
@@ -59,17 +56,22 @@ async function syncCanonicalQueue(registry){
     try {
       await execFileAsync('git',['fetch','origin','main','--quiet'],{cwd:repoRoot});
     } catch (fetchError) {
-      // A concurrent fetch can advance origin/main before git's expected-ref
-      // lock is acquired. If the local tracking ref already advanced, use it.
       const message=String(fetchError?.message||fetchError);
       if (!message.includes("cannot lock ref 'refs/remotes/origin/main'")) throw fetchError;
       live('CANONICAL_FETCH_RACE',{detail:'using current origin/main'});
     }
+
+    const {stdout:shaStdout}=await execFileAsync('git',['rev-parse','origin/main'],{cwd:repoRoot});
+    const originSha=shaStdout.trim();
+
     const {stdout}=await execFileAsync('git',['show',`origin/main:${canonicalRelativePath}`],{cwd:repoRoot});
     const remote=JSON.parse(stdout);
+    const currentTaskId=remote?.current_work?.active ? remote.current_work.task_id : 'none';
+    const currentTask=Array.isArray(remote?.tasks) ? remote.tasks.find((task)=>task?.task_id===currentTaskId) : null;
     const merged=mergeCanonicalTasks(registry,remote);
-    live('CONNECTED',{detail:`added=${merged.added}`});
-    if(merged.added>0) console.log(`[AX_RUNTIME] CANONICAL_SYNC added=${merged.added}`);
+
+    live('CONNECTED',{detail:`sha=${originSha.slice(0,12)} current=${currentTaskId} status=${currentTask?.status||'missing'} added=${merged.added} requeued=${merged.requeued} currentRehydrated=${merged.currentRehydrated} preserved=${merged.preserved}`});
+    console.log(`[AX_RUNTIME] CANONICAL_SYNC sha=${originSha} current=${currentTaskId} status=${currentTask?.status||'missing'} added=${merged.added} requeued=${merged.requeued} currentRehydrated=${merged.currentRehydrated} preserved=${merged.preserved}`);
     return true;
   } catch(error) {
     live('DISCONNECTED',{detail:error.message});
