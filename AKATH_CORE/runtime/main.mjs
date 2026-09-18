@@ -42,12 +42,7 @@ async function publishTelemetry(force=false){
     state.runtimeStatus='ONLINE';
     const telemetry={schemaVersion:'1.0',nodeId:state.nodeId,runtimeStatus:state.runtimeStatus,lastHeartbeatAt:state.lastHeartbeatAt,pid:process.pid,activeJob:state.activeJob||null,lastVerifiedJob:state.lastVerifiedJob||null,recovery:state.recovery||{},updatedAt:state.lastHeartbeatAt};
     await persistJson(telemetryPath,telemetry);
-    const content=Buffer.from(JSON.stringify(telemetry,null,2)+'\\n','utf8').toString('base64');
-    const message='chore(runtime): publish PC1 telemetry';
-    const result=await execFileAsync('git',['add',telemetryRelativePath],{cwd:repoRoot});
-    await execFileAsync('git',['-c','user.name=AX Runtime','-c','user.email=ax-runtime@aeris.local','commit','--allow-empty','-m',message],{cwd:repoRoot});
-    await execFileAsync('git',['push','origin','HEAD:main'],{cwd:repoRoot});
-    live('TELEMETRY_PUBLISHED',{detail:state.lastHeartbeatAt});
+    live('TELEMETRY_UPDATED',{detail:state.lastHeartbeatAt});
   } catch(error) {
     console.error(`[AX_RUNTIME] TELEMETRY_PUBLISH_FAILED ${error.message}`);
   } finally {
