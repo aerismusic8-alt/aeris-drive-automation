@@ -67,9 +67,12 @@ async function syncCanonicalQueue(registry){
     const remote=JSON.parse(stdout);
     const currentTaskId=remote?.current_work?.active ? remote.current_work.task_id : 'none';
     const currentTask=Array.isArray(remote?.tasks) ? remote.tasks.find((task)=>task?.task_id===currentTaskId) : null;
+    const localTask=Array.isArray(registry?.tasks) ? registry.tasks.find((task)=>task?.task_id===currentTaskId) : null;
+    const localStatusBefore=localTask?.status||'missing';
+    const localCreatedBefore=localTask?.created_at||'missing';
     const merged=mergeCanonicalTasks(registry,remote);
-    live('CONNECTED',{detail:`sha=${originSha.slice(0,12)} current=${currentTaskId} status=${currentTask?.status||'missing'} added=${merged.added} requeued=${merged.requeued} currentRehydrated=${merged.currentRehydrated} preserved=${merged.preserved}`});
-    console.log(`[AX_RUNTIME] CANONICAL_SYNC sha=${originSha} current=${currentTaskId} status=${currentTask?.status||'missing'} added=${merged.added} requeued=${merged.requeued} currentRehydrated=${merged.currentRehydrated} preserved=${merged.preserved}`);
+    live('CONNECTED',{detail:`sha=${originSha.slice(0,12)} current=${currentTaskId} remoteStatus=${currentTask?.status||'missing'} localStatus=${localStatusBefore} localCreated=${localCreatedBefore} remoteCreated=${currentTask?.created_at||'missing'} added=${merged.added} requeued=${merged.requeued} currentRehydrated=${merged.currentRehydrated} preserved=${merged.preserved}`});
+    console.log(`[AX_RUNTIME] CANONICAL_SYNC sha=${originSha} current=${currentTaskId} remoteStatus=${currentTask?.status||'missing'} localStatus=${localStatusBefore} localCreated=${localCreatedBefore} remoteCreated=${currentTask?.created_at||'missing'} added=${merged.added} requeued=${merged.requeued} currentRehydrated=${merged.currentRehydrated} preserved=${merged.preserved}`);
     return true;
   } catch(error) {
     live('DISCONNECTED',{detail:error.message});
