@@ -19,9 +19,7 @@ export function mergeCanonicalTasks(localRegistry, remoteRegistry) {
       localTasks.push(structuredClone(remoteTask));
       byId.set(remoteTask.task_id, localTasks.at(-1));
       added += 1;
-      if (remoteTask.task_id === currentTaskId && remoteTask.status === 'PENDING') {
-        currentRehydrated += 1;
-      }
+      if (remoteTask.task_id === currentTaskId && remoteTask.status === 'PENDING') currentRehydrated += 1;
       continue;
     }
 
@@ -32,9 +30,13 @@ export function mergeCanonicalTasks(localRegistry, remoteRegistry) {
 
     const localTerminal = ['DONE', 'VERIFIED', 'COMPLETED'].includes(localTask.status);
     const localActive = ['EXECUTING'].includes(localTask.status);
+    const metadataChanged = localTask.created_at !== remoteTask.created_at
+      || localTask.deadline_at !== remoteTask.deadline_at
+      || localTask.action !== remoteTask.action;
 
     if (
       (isFreshProductiveCurrent && !localTerminal && !localActive)
+      || (isFreshProductiveCurrent && localTerminal && metadataChanged)
       || (remoteTask.status === 'PENDING' && localTask.status === 'FAILED')
     ) {
       Object.assign(localTask, structuredClone(remoteTask));
@@ -46,10 +48,7 @@ export function mergeCanonicalTasks(localRegistry, remoteRegistry) {
   }
 
   localRegistry.tasks = localTasks;
-
-  if (remoteRegistry?.current_work) {
-    localRegistry.current_work = structuredClone(remoteRegistry.current_work);
-  }
+  if (remoteRegistry?.current_work) localRegistry.current_work = structuredClone(remoteRegistry.current_work);
 
   return { added, preserved, requeued, currentRehydrated };
 }
