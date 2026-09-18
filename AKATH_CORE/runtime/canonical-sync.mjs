@@ -1,7 +1,6 @@
 export function mergeCanonicalTasks(localRegistry, remoteRegistry) {
   const localTasks = Array.isArray(localRegistry?.tasks) ? localRegistry.tasks : [];
   const remoteTasks = Array.isArray(remoteRegistry?.tasks) ? remoteRegistry.tasks : [];
-  const currentTaskId = remoteRegistry?.current_work?.active ? remoteRegistry.current_work.task_id : null;
   const byId = new Map(localTasks.map((task) => [task.task_id, task]));
   let added = 0;
   let preserved = 0;
@@ -11,8 +10,11 @@ export function mergeCanonicalTasks(localRegistry, remoteRegistry) {
     if (!remoteTask?.task_id) continue;
     const localTask = byId.get(remoteTask.task_id);
     if (localTask) {
-      const isCurrentCanonicalTask = remoteTask.task_id === currentTaskId;
-      if (remoteTask.status === 'PENDING' && (localTask.status === 'FAILED' || isCurrentCanonicalTask)) {
+      // A canonical task that already reached DONE/VERIFIED must never be
+      // requeued merely because it remains current_work on the remote registry.
+      // Requeue only an explicitly FAILED task that the canonical queue still
+      // marks PENDING.
+      if (remoteTask.status === 'PENDING' && localTask.status === 'FAILED') {
         localTask.status = 'PENDING';
         requeued += 1;
       } else {
