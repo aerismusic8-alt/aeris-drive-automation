@@ -11,6 +11,9 @@ if (-not (Get-Command node -ErrorAction SilentlyContinue)) {
 
 $geminiKey = [Environment]::GetEnvironmentVariable('GEMINI_API_KEY', 'User')
 if ([string]::IsNullOrWhiteSpace($geminiKey)) {
+  $geminiKey = (Get-ItemProperty -Path 'HKCU:\Environment' -Name 'GEMINI_API_KEY' -ErrorAction SilentlyContinue).GEMINI_API_KEY
+}
+if ([string]::IsNullOrWhiteSpace($geminiKey)) {
   throw 'GEMINI_API_KEY is not set in the Windows User environment.'
 }
 
