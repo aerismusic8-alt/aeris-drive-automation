@@ -25,13 +25,24 @@ $state = [ordered]@{
 }
 $state | ConvertTo-Json -Depth 20 | Set-Content -Path $statePath -Encoding UTF8
 
-# Real local execution proof: create a tangible MP4 on PC2 using the installed FFmpeg binary.
-$ffmpegCandidates = @(
-    (Get-Command ffmpeg.exe -ErrorAction SilentlyContinue | Select-Object -ExpandProperty Source -ErrorAction SilentlyContinue),
-    'C:\\Users\\pc2\\AppData\\Local\\Microsoft\\WinGet\\Packages\\Gyan.FFmpeg.Shared_Microsoft.Winget.Source_8wekyb3d8bbwe\\ffmpeg-9.0.1-full_build-shared\\bin\\ffmpeg.exe'
-) | Where-Object { $_ -and (Test-Path $_) } | Select-Object -Unique
-if (-not $ffmpegCandidates) { throw 'FFMPEG_NOT_FOUND_ON_PC2' }
-$ffmpeg = $ffmpegCandidates[0]
+# Real local execution proof: create a tangible MP4 on PC2.
+$toolRoot = Join-Path $runtimeRoot 'tools\ffmpeg'
+$ffmpeg = Join-Path $toolRoot 'ffmpeg.exe'
+if (-not (Test-Path $ffmpeg)) {
+    New-Item -ItemType Directory -Path $toolRoot -Force | Out-Null
+    $zip = Join-Path $runtimeRoot 'ffmpeg-essentials.zip'
+    $url = 'https://www.gyan.dev/ffmpeg/builds/ffmpeg-release-essentials.zip'
+    Invoke-WebRequest -Uri $url -OutFile $zip -UseBasicParsing
+    $extract = Join-Path $toolRoot 'extract'
+    if (Test-Path $extract) { Remove-Item $extract -Recurse -Force }
+    Expand-Archive -Path $zip -DestinationPath $extract -Force
+    $found = Get-ChildItem $extract -Filter 'ffmpeg.exe' -Recurse -File | Select-Object -First 1
+    if (-not $found) { throw 'FFMPEG_DOWNLOAD_NO_BINARY' }
+    Copy-Item $found.FullName $ffmpeg -Force
+    Remove-Item $extract -Recurse -Force
+    Remove-Item $zip -Force
+}
+if (-not (Test-Path $ffmpeg)) { throw 'FFMPEG_NOT_FOUND_ON_PC2' }
 $mediaDir = Join-Path $runtimeRoot 'media'
 New-Item -ItemType Directory -Path $mediaDir -Force | Out-Null
 $mediaPath = Join-Path $mediaDir "$JobId.mp4"
