@@ -16,7 +16,7 @@ jobs:
     timeout-minutes: 5
     steps:
       - name: Inspect PC2 runtime identity
-        shell: powershell
+        shell: powershell -NoProfile -ExecutionPolicy Bypass -File {0}
         run: |
           $ErrorActionPreference = 'Stop'
           Write-Host "=== AX RDC PERSISTENT SETUP ==="
@@ -34,7 +34,7 @@ jobs:
             Format-List
 
       - name: Install persistent RDC logon task
-        shell: powershell
+        shell: powershell -NoProfile -ExecutionPolicy Bypass -File {0}
         run: |
           $ErrorActionPreference = 'Stop'
           $taskName = 'AX-RDC-PERSISTENT'
@@ -43,7 +43,24 @@ jobs:
           if ([string]::IsNullOrWhiteSpace($user)) {
             throw 'NO_INTERACTIVE_USER'
           }
-          $action = New-ScheduledTaskAction -Execute 'powershell.exe' -Argument '-NoProfile -ExecutionPolicy Bypass -NoExit -Command "npx @wonderwhy-er/desktop-commander@latest remote"'
+          $root = 'C:\AX-Runtime\RDC'
+          New-Item -ItemType Directory -Path $root -Force | Out-Null
+          $wrapper = Join-Path $root 'Start-RDC-Persistent.ps1'
+          @'
+$ErrorActionPreference = 'Continue'
+$log = 'C:\AX-Runtime\RDC\rdc-agent.log'
+while ($true) {
+  Add-Content -Path $log -Value "$(Get-Date -Format o) START RDC"
+  try {
+    & powershell.exe -NoProfile -ExecutionPolicy Bypass -Command "npx @wonderwhy-er/desktop-commander@latest remote" *>> $log
+  } catch {
+    Add-Content -Path $log -Value "$(Get-Date -Format o) ERROR $($_.Exception.Message)"
+  }
+  Add-Content -Path $log -Value "$(Get-Date -Format o) RDC EXIT; RETRY 10s"
+  Start-Sleep -Seconds 10
+}
+'@ | Set-Content -Path $wrapper -Encoding UTF8
+          $action = New-ScheduledTaskAction -Execute 'powershell.exe' -Argument "-NoProfile -ExecutionPolicy Bypass -WindowStyle Normal -File `"$wrapper`""
           $trigger = New-ScheduledTaskTrigger -AtLogOn -User $user
           $principal = New-ScheduledTaskPrincipal -UserId $user -LogonType InteractiveToken -RunLevel Highest
           $settings = New-ScheduledTaskSettingsSet -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries -StartWhenAvailable -RestartCount 999 -RestartInterval (New-TimeSpan -Minutes 1)
@@ -55,7 +72,7 @@ jobs:
           Write-Host "TASK_ACTION=$($t.Actions.Execute) $($t.Actions.Arguments)"
 
       - name: Start persistent RDC agent now
-        shell: powershell
+        shell: powershell -NoProfile -ExecutionPolicy Bypass -File {0}
         run: |
           $ErrorActionPreference = 'Stop'
           $taskName = 'AX-RDC-PERSISTENT'
@@ -68,3 +85,6 @@ jobs:
             Where-Object { $_.CommandLine -match 'desktop-commander.*remote|@wonderwhy-er/desktop-commander.*remote' } |
             Select-Object ProcessId,Name,CommandLine |
             Format-List
+          if (Test-Path 'C:\AX-Runtime\RDC\rdc-agent.log') {
+            Get-Content 'C:\AX-Runtime\RDC\rdc-agent.log' -Tail 40
+          }
