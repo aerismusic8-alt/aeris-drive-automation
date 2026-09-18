@@ -7,7 +7,7 @@
   "status": "READY_FOR_AUTONOMOUS_EXECUTION",
   "current_work": {
     "active": true,
-    "task_id": "AKATH-PC1-AI-PRODUCTION-LIVE-004"
+    "task_id": "AKATH-PC1-AI-PRODUCTION-RETRY-005"
   },
   "tasks": [
     {
@@ -626,6 +626,46 @@
         "issued_by": "AX",
         "provider": "gemini",
         "objective": "Produce a concrete AERIS MUSIC YouTube Short production package as the first real AI production workload on PC1.",
+        "prompt": "Create a production-ready package for one AERIS MUSIC YouTube Short. Return exactly these sections: 1) concept and hook, 2) 20-30 second timeline with 6 or fewer shots, 3) on-screen text, 4) voice/music direction, 5) title and caption, 6) rendering specification for a 9:16 MP4, 7) QC checklist. Make it concrete enough for a rendering specialist to execute next. Do not claim any media was rendered or uploaded.",
+        "system_instruction": "You are the AERIS MUSIC production AI specialist. Produce factual production instructions only. Never claim an artifact exists unless it was actually produced."
+      }
+    },
+    {
+      "task_id": "AKATH-PC1-AI-PRODUCTION-RETRY-005",
+      "type": "PRODUCTION",
+      "title": "AERIS live AI production package — Gemini fallback model",
+      "capability": "ai",
+      "action": "ai_content_production_package",
+      "status": "PENDING",
+      "created_at": "2026-09-18T08:48:00.000Z",
+      "deadline_at": "2026-09-18T09:20:00.000Z",
+      "milestones": [
+        "PC1 claims AI production retry",
+        "Gemini specialist executes",
+        "AI production package returned",
+        "EVIDENCE persisted",
+        "VERIFY passes",
+        "DONE recorded"
+      ],
+      "completion_criteria": [
+        "specialist returns ok=true",
+        "result.execution is AI_EXECUTED",
+        "result.output is non-empty",
+        "evidence contains matching RESULT",
+        "verification.verified=true",
+        "task status is DONE"
+      ],
+      "evidence": null,
+      "verification": null,
+      "completed_at": null,
+      "payload": {
+        "action": "ai_content_production_package",
+        "capability": "ai",
+        "autonomous": true,
+        "issued_by": "AX",
+        "provider": "gemini",
+        "model": "gemini-2.5-flash",
+        "objective": "Complete the first real AERIS MUSIC AI production workload on PC1 using an available Gemini model after the prior model returned a temporary high-demand error.",
         "prompt": "Create a production-ready package for one AERIS MUSIC YouTube Short. Return exactly these sections: 1) concept and hook, 2) 20-30 second timeline with 6 or fewer shots, 3) on-screen text, 4) voice/music direction, 5) title and caption, 6) rendering specification for a 9:16 MP4, 7) QC checklist. Make it concrete enough for a rendering specialist to execute next. Do not claim any media was rendered or uploaded.",
         "system_instruction": "You are the AERIS MUSIC production AI specialist. Produce factual production instructions only. Never claim an artifact exists unless it was actually produced."
       }
