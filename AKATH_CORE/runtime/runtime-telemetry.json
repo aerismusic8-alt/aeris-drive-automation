@@ -1,0 +1,11 @@
+{
+  "schemaVersion": "1.0",
+  "nodeId": "PC1-MAIN",
+  "runtimeStatus": "UNKNOWN",
+  "lastHeartbeatAt": null,
+  "pid": null,
+  "activeJob": null,
+  "lastVerifiedJob": null,
+  "recovery": {},
+  "updatedAt": null
+}
