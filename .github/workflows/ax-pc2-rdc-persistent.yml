@@ -1,0 +1,70 @@
+name: AX PC2 RDC Persistent Agent
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/ax-pc2-rdc-persistent.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  install-rdc-persistent:
+    runs-on: [self-hosted, Windows, X64, PC2-CODING-EXECUTOR]
+    timeout-minutes: 5
+    steps:
+      - name: Inspect PC2 runtime identity
+        shell: powershell
+        run: |
+          $ErrorActionPreference = 'Stop'
+          Write-Host "=== AX RDC PERSISTENT SETUP ==="
+          Write-Host "COMPUTERNAME=$env:COMPUTERNAME"
+          Write-Host "USERNAME=$env:USERNAME"
+          Write-Host "WHOAMI=$([System.Security.Principal.WindowsIdentity]::GetCurrent().Name)"
+          $cs = Get-CimInstance Win32_ComputerSystem
+          Write-Host "INTERACTIVE_USER=$($cs.UserName)"
+          node --version
+          npm --version
+          Write-Host "=== CURRENT RDC PROCESSES ==="
+          Get-CimInstance Win32_Process -ErrorAction SilentlyContinue |
+            Where-Object { $_.CommandLine -match 'desktop-commander.*remote|@wonderwhy-er/desktop-commander.*remote' } |
+            Select-Object ProcessId,Name,CommandLine |
+            Format-List
+
+      - name: Install persistent RDC logon task
+        shell: powershell
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $taskName = 'AX-RDC-PERSISTENT'
+          $cs = Get-CimInstance Win32_ComputerSystem
+          $user = [string]$cs.UserName
+          if ([string]::IsNullOrWhiteSpace($user)) {
+            throw 'NO_INTERACTIVE_USER'
+          }
+          $action = New-ScheduledTaskAction -Execute 'powershell.exe' -Argument '-NoProfile -ExecutionPolicy Bypass -NoExit -Command "npx @wonderwhy-er/desktop-commander@latest remote"'
+          $trigger = New-ScheduledTaskTrigger -AtLogOn -User $user
+          $principal = New-ScheduledTaskPrincipal -UserId $user -LogonType InteractiveToken -RunLevel Highest
+          $settings = New-ScheduledTaskSettingsSet -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries -StartWhenAvailable -RestartCount 999 -RestartInterval (New-TimeSpan -Minutes 1)
+          Register-ScheduledTask -TaskName $taskName -Action $action -Trigger $trigger -Principal $principal -Settings $settings -Force | Out-Null
+          $t = Get-ScheduledTask -TaskName $taskName
+          Write-Host "TASK_NAME=$($t.TaskName)"
+          Write-Host "TASK_STATE=$($t.State)"
+          Write-Host "TASK_USER=$user"
+          Write-Host "TASK_ACTION=$($t.Actions.Execute) $($t.Actions.Arguments)"
+
+      - name: Start persistent RDC agent now
+        shell: powershell
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $taskName = 'AX-RDC-PERSISTENT'
+          Start-ScheduledTask -TaskName $taskName
+          Start-Sleep -Seconds 8
+          $t = Get-ScheduledTask -TaskName $taskName
+          Write-Host "TASK_AFTER_START=$($t.State)"
+          Write-Host "=== RDC PROCESSES AFTER START ==="
+          Get-CimInstance Win32_Process -ErrorAction SilentlyContinue |
+            Where-Object { $_.CommandLine -match 'desktop-commander.*remote|@wonderwhy-er/desktop-commander.*remote' } |
+            Select-Object ProcessId,Name,CommandLine |
+            Format-List
