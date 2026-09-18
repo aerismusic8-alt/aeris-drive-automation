@@ -14,8 +14,13 @@ export function mergeCanonicalTasks(localRegistry, remoteRegistry) {
       // requeued merely because it remains current_work on the remote registry.
       // Requeue only an explicitly FAILED task that the canonical queue still
       // marks PENDING.
-      if (remoteTask.status === 'PENDING' && localTask.status === 'FAILED') {
-        localTask.status = 'PENDING';
+      const isCanonicalCurrent = remoteRegistry?.current_work?.active
+        && remoteRegistry.current_work.task_id === remoteTask.task_id;
+      if (remoteTask.status === 'PENDING' && (
+        localTask.status === 'FAILED'
+        || (isCanonicalCurrent && ['OVERDUE','DONE'].includes(localTask.status))
+      )) {
+        Object.assign(localTask, structuredClone(remoteTask));
         requeued += 1;
       } else {
         preserved += 1;
