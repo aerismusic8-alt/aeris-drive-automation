@@ -1,5 +1,6 @@
 import { resolve } from 'node:path';
 
 export function resolveRuntimeRegistryPath(runtimeRoot) {
-  return resolve(runtimeRoot, 'runtime-registry.json');
+  // Use a dedicated live registry path to avoid contention with stale/legacy registry handles.
+  return resolve(runtimeRoot, 'runtime-registry-live.json');
 }
