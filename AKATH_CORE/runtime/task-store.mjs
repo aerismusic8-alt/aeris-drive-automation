@@ -19,7 +19,24 @@ export function claimNextEligibleJob(registry, now = new Date()) {
     ? currentTask
     : null;
   const eligible = pendingTasks.filter((item) => !item.deadline_at || new Date(item.deadline_at) > now);
-  const job = currentEligible ?? eligible[0] ?? null;
+  // Execution priority is explicit: real productive work first, recovery
+  // second, autonomous management ticks last. A self-check must never starve
+  // a newly-issued production task.
+  const priority = (task) => {
+    if (task?.type === 'PRODUCTION' || task?.capability === 'ai' || task?.capability === 'execution') return 1;
+    if (task?.capability === 'recovery') return 2;
+    if (task?.capability === 'control') return 3;
+    if (task?.capability === 'self_check' || task?.action === 'ax_autonomous_management_tick') return 4;
+    return 3;
+  };
+  const ranked = [...eligible].sort((a,b) => {
+    const rankDelta = priority(a) - priority(b);
+    if (rankDelta !== 0) return rankDelta;
+    return new Date(a.created_at || 0) - new Date(b.created_at || 0);
+  });
+  const job = currentEligible && priority(currentEligible) <= 1
+    ? currentEligible
+    : (ranked[0] ?? null);
   if (!job) return null;
   transitionJob(job,'EXECUTING',{started_at:now.toISOString(),attempt:(job.attempt ?? 0)+1});
   return job;
