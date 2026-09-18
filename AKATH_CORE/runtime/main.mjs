@@ -95,7 +95,7 @@ async function cycle(){
     live('JOB_FOUND',{taskId:planned.task_id,detail:planned.capability||'execution'});
     console.log(`[AX_RUNTIME] AUTONOMOUS_TASK ${planned.task_id}`);
   }
-  const result=await runOnce({registry,state,dispatch:(job)=>dispatchToPc1(job,adapter),appendEvidence:(record)=>appendEvidence(evidencePath,record),onEvent:live});
+  const result=await runOnce({registry,state,repoRoot,dispatch:(job)=>dispatchToPc1(job,adapter),appendEvidence:(record)=>appendEvidence(evidencePath,record),onEvent:live});
   await persistRegistry(runtimeRegistryPath,registry);
   await persistJson(statePath,state);
   await publishTelemetry();
