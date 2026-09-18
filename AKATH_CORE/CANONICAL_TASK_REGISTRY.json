@@ -7,7 +7,7 @@
   "status": "READY_FOR_AUTONOMOUS_EXECUTION",
   "current_work": {
     "active": true,
-    "task_id": "AKATH-PC1-CONTROL-BRIDGE-LIVE-004"
+    "task_id": "AKATH-PC1-FIRST-PRODUCTIVE-AI-001"
   },
   "tasks": [
     {
@@ -468,6 +468,45 @@
         "issued_by": "AX",
         "bridge_proof": true,
         "objective": "prove the live AX-to-PC1 control bridge executes an allowlisted PowerShell command without K typing the command"
+      }
+    },
+    {
+      "task_id": "AKATH-PC1-FIRST-PRODUCTIVE-AI-001",
+      "type": "PRODUCTION",
+      "title": "AERIS first productive AI production task",
+      "capability": "ai",
+      "action": "ai_first_productive_work",
+      "status": "PENDING",
+      "created_at": "2026-09-18T04:36:19.179Z",
+      "deadline_at": "2026-09-18T05:36:19.183Z",
+      "milestones": [
+        "AX selects first productive workload",
+        "PC1 claims task",
+        "Gemini specialist executes",
+        "AI result returned",
+        "EVIDENCE persisted",
+        "VERIFY passes",
+        "DONE recorded"
+      ],
+      "completion_criteria": [
+        "specialist returns ok=true",
+        "result.execution is AI_EXECUTED",
+        "result.output is non-empty",
+        "evidence contains matching RESULT",
+        "verification.verified=true",
+        "task status is DONE"
+      ],
+      "evidence": null,
+      "verification": null,
+      "completed_at": null,
+      "payload": {
+        "action": "ai_first_productive_work",
+        "capability": "ai",
+        "provider": "gemini",
+        "autonomous": true,
+        "issued_by": "AX",
+        "prompt": "Create a concise production work brief for AERIS MUSIC's next execution cycle. Return exactly: 1) objective, 2) three concrete next actions, 3) required output artifact. Do not claim any action was performed.",
+        "system_instruction": "You are the AERIS MUSIC production AI specialist. Produce factual operational output only. Do not claim actions you did not perform."
       }
     }
   ],
