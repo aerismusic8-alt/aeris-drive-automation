@@ -15,6 +15,7 @@ import { resolveRuntimeRegistryPath } from './runtime-registry.mjs';
 const execFileAsync = promisify(execFile);
 const root=dirname(fileURLToPath(import.meta.url));
 const repoRoot=resolve(root,'../..');
+const runtimeRegistryPath=resolveRuntimeRegistryPath(root);
 const statePath=resolve(root,'runtime-state.json');
 const evidencePath=resolve(root,'evidence.jsonl');
 const telemetryPath=resolve(root,'runtime-telemetry.json');
@@ -60,16 +61,13 @@ async function syncCanonicalQueue(registry){
       if (!message.includes("cannot lock ref 'refs/remotes/origin/main'")) throw fetchError;
       live('CANONICAL_FETCH_RACE',{detail:'using current origin/main'});
     }
-
     const {stdout:shaStdout}=await execFileAsync('git',['rev-parse','origin/main'],{cwd:repoRoot});
     const originSha=shaStdout.trim();
-
     const {stdout}=await execFileAsync('git',['show',`origin/main:${canonicalRelativePath}`],{cwd:repoRoot});
     const remote=JSON.parse(stdout);
     const currentTaskId=remote?.current_work?.active ? remote.current_work.task_id : 'none';
     const currentTask=Array.isArray(remote?.tasks) ? remote.tasks.find((task)=>task?.task_id===currentTaskId) : null;
     const merged=mergeCanonicalTasks(registry,remote);
-
     live('CONNECTED',{detail:`sha=${originSha.slice(0,12)} current=${currentTaskId} status=${currentTask?.status||'missing'} added=${merged.added} requeued=${merged.requeued} currentRehydrated=${merged.currentRehydrated} preserved=${merged.preserved}`});
     console.log(`[AX_RUNTIME] CANONICAL_SYNC sha=${originSha} current=${currentTaskId} status=${currentTask?.status||'missing'} added=${merged.added} requeued=${merged.requeued} currentRehydrated=${merged.currentRehydrated} preserved=${merged.preserved}`);
     return true;
