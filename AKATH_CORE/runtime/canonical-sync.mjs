@@ -19,7 +19,9 @@ export function mergeCanonicalTasks(localRegistry, remoteRegistry) {
       const isFreshProductiveCurrent = isCanonicalCurrent
         && remoteTask.status === 'PENDING'
         && (remoteTask.type === 'PRODUCTION' || remoteTask.capability === 'ai' || remoteTask.capability === 'execution');
-      if (isFreshProductiveCurrent || (remoteTask.status === 'PENDING' && localTask.status === 'FAILED')) {
+      const localTerminal = ['DONE', 'VERIFIED', 'COMPLETED'].includes(localTask.status);
+      const localActive = ['EXECUTING'].includes(localTask.status);
+      if ((isFreshProductiveCurrent && !localTerminal && !localActive) || (remoteTask.status === 'PENDING' && localTask.status === 'FAILED')) {
         Object.assign(localTask, structuredClone(remoteTask));
         requeued += 1;
       } else {
