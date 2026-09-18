@@ -68,7 +68,17 @@ export function planNextTask(registry, now = new Date()) {
   });
   if (hasExecutablePending) return null;
 
-  const failed = tasks.find((task) => ['FAILED', 'OVERDUE'].includes(task.status));
+  const failedCandidates = tasks.filter((task) => ['FAILED', 'OVERDUE'].includes(task.status));
+  const failed = failedCandidates.find((task) => {
+    const recoveryId = `AKATH-AUTONOMOUS-RECOVERY-${task.task_id}`;
+    const recovery = tasks.find((item) => item.task_id === recoveryId);
+    if (!recovery) return true;
+    if (recovery.status !== 'DONE') return false;
+    const retryPrefix = `${task.task_id}-RETRY-`;
+    const retries = tasks.filter((item) => item.task_id?.startsWith(retryPrefix));
+    const latestRetry = retries.at(-1);
+    return !(latestRetry?.status === 'DONE' || retries.length >= 3);
+  });
   if (!failed) {
     // Persistent AX management mode: when the queue is genuinely empty,
     // keep the controller alive by scheduling a lightweight management
