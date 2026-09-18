@@ -62,7 +62,11 @@ export function planNextTask(registry, now = new Date()) {
   const tasks = registry?.tasks ?? [];
   markExpiredCurrentWorkOverdue(registry, now);
   markAllExpiredPendingOverdue(registry, now);
-  if (tasks.some((task) => ['PENDING', 'EXECUTING'].includes(task.status))) return null;
+  const hasExecutablePending = tasks.some((task) => {
+    if (!['PENDING', 'EXECUTING'].includes(task.status)) return false;
+    return !task.deadline_at || new Date(task.deadline_at) > now;
+  });
+  if (hasExecutablePending) return null;
 
   const failed = tasks.find((task) => ['FAILED', 'OVERDUE'].includes(task.status));
   if (!failed) {
