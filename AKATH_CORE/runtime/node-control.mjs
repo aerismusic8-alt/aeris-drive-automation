@@ -11,7 +11,7 @@ const DEFAULT_NODES={
 };
 
 export async function loadNodeRegistry(){
-  try { return JSON.parse(await fs.readFile(REGISTRY_PATH,'utf8')); }
+  try { const raw=await fs.readFile(REGISTRY_PATH,'utf8'); return JSON.parse(raw.replace(/^\uFEFF/,'')); }
   catch { const data={schemaVersion:"1.0",updatedAt:new Date().toISOString(),nodes:DEFAULT_NODES}; await persistNodeRegistry(data); return data; }
 }
 
