@@ -1,0 +1,20 @@
+import {spawn} from 'node:child_process';
+import fs from 'node:fs/promises';
+const ffmpeg=process.env.AX_FFMPEG||'C:\\ffmpeg\\bin\\ffmpeg.exe';
+const ffprobe=process.env.AX_FFPROBE||'C:\\ffmpeg\\bin\\ffprobe.exe';
+const job=JSON.parse(process.argv[2]||'{}');
+const input=job?.payload?.input;
+const output=job?.payload?.output;
+const duration=Number(job?.payload?.duration_seconds||25);
+if(!input||!output) throw new Error('MEDIA_INPUT_OUTPUT_REQUIRED');
+function run(cmd,args){return new Promise((resolve,reject)=>{const p=spawn(cmd,args,{shell:false,stdio:['ignore','pipe','pipe']});let out='',err='';p.stdout.on('data',d=>out+=d);p.stderr.on('data',d=>err+=d);p.on('error',reject);p.on('close',c=>c===0?resolve({out,err}):reject(new Error(err||('exit '+c))))})}
+await fs.access(input);
+await run(ffmpeg,['-y','-ss','0','-i',input,'-t',String(duration),'-c','copy',output]);
+const probe=await run(ffprobe,['-v','error','-show_entries','stream=codec_type,codec_name,width,height,r_frame_rate,duration','-of','json',output]);
+const meta=JSON.parse(probe.out);
+const video=meta.streams?.find(s=>s.codec_type==='video');
+const audio=meta.streams?.find(s=>s.codec_type==='audio');
+const stat=await fs.stat(output);
+const verified=Boolean(video&&audio&&Number(video.width)===1080&&Number(video.height)===1920&&Math.abs(Number(video.duration)-duration)<1&&stat.size>0);
+if(!verified) throw new Error('MEDIA_QC_FAILED');
+console.log(JSON.stringify({ok:true,result:{executor:'PC1_MEDIA_SPECIALIST',capability:'media',task_id:job.task_id,execution:'MEDIA_RENDERED',artifact:output,size:stat.size,duration_seconds:Number(video.duration),video:{codec:video.codec_name,width:video.width,height:video.height,fps:video.r_frame_rate},audio:{codec:audio.codec_name,duration_seconds:Number(audio.duration)},completed_at:new Date().toISOString()},evidence:{executor:'PC1_MEDIA_SPECIALIST',capability:'media',node:process.env.AX_PC1_NODE_ID||'PC1-MAIN',verification:{verified:true},execution:'MEDIA_RENDERED',artifact:output,size:stat.size,qc:{vertical1080x1920:true,duration_ok:true,audio_present:true}}}));

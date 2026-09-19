@@ -3,32 +3,15 @@ import {resolveSpecialist} from './specialist-registry.mjs';
 import {executeAiTask} from './ai-executor.mjs';
 import {executeControlTask} from './pc1-control.mjs';
 import {executeBrowserTask} from './browser-specialist.mjs';
-
-const raw = process.argv[2];
-if (!raw) { console.error('PC1 specialist requires one JSON job argument'); process.exit(2); }
-let job;
-try { job = JSON.parse(raw); } catch (error) { console.error(`invalid job JSON: ${error.message}`); process.exit(2); }
-
-const specialist = resolveSpecialist(job.capability);
-
-try {
-  if (specialist.capability === 'browser') {
-    const b = await executeBrowserTask(job);
-    process.stdout.write(JSON.stringify({ ok:true, result:{executor:specialist.id,capability:'browser',task_id:job.task_id??null,execution:'BROWSER_EXECUTED',...b.result}, evidence:{executor:specialist.id,capability:'browser',node:process.env.AX_PC1_NODE_ID||'PC1-MAIN',verification:{verified:true},execution:'BROWSER_EXECUTED',...b.evidence} }));
-  } else if (specialist.capability === 'ai') {
-    const ai = await executeAiTask(job);
-    process.stdout.write(JSON.stringify({ ok:true, result:{executor:specialist.id,capability:'ai',task_id:job.task_id??null,execution:'AI_EXECUTED',provider:ai.provider,model:ai.model,output:ai.text,completed_at:new Date().toISOString()}, evidence:{executor:specialist.id,capability:'ai',node:process.env.AX_PC1_NODE_ID||'PC1-MAIN',verification:{verified:true},execution:'AI_EXECUTED',provider:ai.provider,model:ai.model} }));
-  } else if (specialist.capability === 'control') {
-    const c = await executeControlTask(job);
-    process.stdout.write(JSON.stringify({ ok:true, result:{executor:specialist.id,capability:'control',task_id:job.task_id??null,execution:'PC1_CONTROL_EXECUTED',action:c.action,command:c.command,exit_code:c.exitCode,output:c.stdout,stderr:c.stderr,completed_at:new Date().toISOString()}, evidence:{executor:specialist.id,capability:'control',node:process.env.AX_PC1_NODE_ID||'PC1-MAIN',verification:{verified:true},execution:'PC1_CONTROL_EXECUTED',action:c.action,exit_code:c.exitCode,output:c.stdout} }));
-  } else {
-    const execution = specialist.capability === 'self_check' ? 'SELF_CHECK' : specialist.capability === 'recovery' ? 'RECOVERY_READY' : 'EXECUTED';
-    const result = {executor:specialist.id,capability:specialist.capability,task_id:job.task_id??null,execution,completed_at:new Date().toISOString()};
-    process.stdout.write(JSON.stringify({ok:true,result,evidence:{executor:specialist.id,capability:specialist.capability,node:process.env.AX_PC1_NODE_ID||'PC1-MAIN',verification:{verified:true},execution}}));
-  }
-} catch (error) {
-  const detail = String(error?.stack || error?.message || error);
-  console.error(JSON.stringify({ok:false,error:detail,recoverable:Boolean(error?.recoverable),providerAttempts:error?.providerAttempts||[]}));
-  process.exit(1);
-}
-process.exit(0);
+import {spawn} from 'node:child_process';
+import fs from 'node:fs/promises';
+const raw=process.argv[2];if(!raw){console.error('PC1 specialist requires one JSON job argument');process.exit(2)}
+let job;try{job=JSON.parse(raw)}catch(e){console.error('invalid job JSON: '+e.message);process.exit(2)}
+const specialist=resolveSpecialist(job.capability);
+try{
+ if(specialist.capability==='browser'){const b=await executeBrowserTask(job);process.stdout.write(JSON.stringify({ok:true,result:{executor:specialist.id,capability:'browser',task_id:job.task_id??null,execution:'BROWSER_EXECUTED',...b.result},evidence:{executor:specialist.id,capability:'browser',node:process.env.AX_PC1_NODE_ID||'PC1-MAIN',verification:{verified:true},execution:'BROWSER_EXECUTED',...b.evidence}}))}
+ else if(specialist.capability==='ai'){const ai=await executeAiTask(job);process.stdout.write(JSON.stringify({ok:true,result:{executor:specialist.id,capability:'ai',task_id:job.task_id??null,execution:'AI_EXECUTED',provider:ai.provider,model:ai.model,output:ai.text,completed_at:new Date().toISOString()},evidence:{executor:specialist.id,capability:'ai',node:process.env.AX_PC1_NODE_ID||'PC1-MAIN',verification:{verified:true},execution:'AI_EXECUTED',provider:ai.provider,model:ai.model}}))}
+ else if(specialist.capability==='control'){const c=await executeControlTask(job);process.stdout.write(JSON.stringify({ok:true,result:{executor:specialist.id,capability:'control',task_id:job.task_id??null,execution:'PC1_CONTROL_EXECUTED',action:c.action,command:c.command,exit_code:c.exitCode,output:c.stdout,stderr:c.stderr,completed_at:new Date().toISOString()},evidence:{executor:specialist.id,capability:'control',node:process.env.AX_PC1_NODE_ID||'PC1-MAIN',verification:{verified:true},execution:'PC1_CONTROL_EXECUTED',action:c.action,exit_code:c.exitCode,output:c.stdout}}))}
+ else if(specialist.capability==='media'){const media=job.payload||{};const ffmpeg=process.env.AX_FFMPEG||'C:\\ffmpeg\\bin\\ffmpeg.exe',ffprobe=process.env.AX_FFPROBE||'C:\\ffmpeg\\bin\\ffprobe.exe';const input=media.input,output=media.output,duration=Number(media.duration_seconds||25);if(!input||!output)throw new Error('MEDIA_INPUT_OUTPUT_REQUIRED');const run=(cmd,args)=>new Promise((res,rej)=>{const p=spawn(cmd,args,{shell:false,stdio:['ignore','pipe','pipe']});let o='',e='';p.stdout.on('data',d=>o+=d);p.stderr.on('data',d=>e+=d);p.on('error',rej);p.on('close',c=>c===0?res({o,e}):rej(new Error(e||('exit '+c))))});await fs.access(input);await run(ffmpeg,['-y','-ss','0','-i',input,'-t',String(duration),'-c','copy',output]);const pr=await run(ffprobe,['-v','error','-show_entries','stream=codec_type,codec_name,width,height,r_frame_rate,duration','-of','json',output]);const meta=JSON.parse(pr.o),v=meta.streams?.find(s=>s.codec_type==='video'),a=meta.streams?.find(s=>s.codec_type==='audio'),st=await fs.stat(output),verified=Boolean(v&&a&&Number(v.width)===1080&&Number(v.height)===1920&&Math.abs(Number(v.duration)-duration)<1&&st.size>0);if(!verified)throw new Error('MEDIA_QC_FAILED');process.stdout.write(JSON.stringify({ok:true,result:{executor:specialist.id,capability:'media',task_id:job.task_id,execution:'MEDIA_RENDERED',artifact:output,size:st.size,duration_seconds:Number(v.duration),video:{codec:v.codec_name,width:v.width,height:v.height,fps:v.r_frame_rate},audio:{codec:a.codec_name,duration_seconds:Number(a.duration)},completed_at:new Date().toISOString()},evidence:{executor:specialist.id,capability:'media',node:process.env.AX_PC1_NODE_ID||'PC1-MAIN',verification:{verified:true},execution:'MEDIA_RENDERED',artifact:output,size:st.size,qc:{vertical1080x1920:true,duration_ok:true,audio_present:true}}}))}
+ else {const execution=specialist.capability==='self_check'?'SELF_CHECK':specialist.capability==='recovery'?'RECOVERY_READY':'EXECUTED';const result={executor:specialist.id,capability:specialist.capability,task_id:job.task_id??null,execution,completed_at:new Date().toISOString()};process.stdout.write(JSON.stringify({ok:true,result,evidence:{executor:specialist.id,capability:specialist.capability,node:process.env.AX_PC1_NODE_ID||'PC1-MAIN',verification:{verified:true},execution}}))}
+}catch(error){console.error(JSON.stringify({ok:false,error:String(error?.stack||error?.message||error),recoverable:Boolean(error?.recoverable),providerAttempts:error?.providerAttempts||[]}));process.exit(1)}process.exit(0);
