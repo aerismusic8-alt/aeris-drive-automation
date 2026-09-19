@@ -6,9 +6,10 @@
   "managed_by": "AX",
   "status": "READY_FOR_AUTONOMOUS_EXECUTION",
   "current_work": {
-    "active": false,
-    "task_id": "AKATH-PC1-LOCAL-OLLAMA-LIVE-001",
-    "completed_at": "2026-09-19T20:04:35.042Z"
+    "active": true,
+    "task_id": "AKATH-PC1-MEDIA-PRODUCTION-001",
+    "status": "PENDING",
+    "updated_at": "2026-09-19T20:07:48.239Z"
   },
   "tasks": [
     {
@@ -923,6 +924,44 @@
         "completed_at": "2026-09-19T20:04:46.385Z"
       },
       "verified_at": "2026-09-19T20:04:43.621Z"
+    },
+    {
+      "task_id": "AKATH-PC1-MEDIA-PRODUCTION-001",
+      "type": "PRODUCTION",
+      "title": "AERIS first YouTube Short media render",
+      "capability": "media",
+      "action": "render_first_short",
+      "status": "PENDING",
+      "created_at": "2026-09-19T20:07:48.239Z",
+      "deadline_at": "2026-09-19T21:07:48.239Z",
+      "milestones": [
+        "PC1 claims media task",
+        "MEDIA SPECIALIST renders MP4",
+        "QC verifies artifact",
+        "EVIDENCE persisted",
+        "DONE recorded"
+      ],
+      "completion_criteria": [
+        "specialist returns ok=true",
+        "result.execution is MEDIA_RENDERED",
+        "artifact exists",
+        "1080x1920 verified",
+        "audio present",
+        "verification.verified=true",
+        "task status is DONE"
+      ],
+      "evidence": null,
+      "verification": null,
+      "completed_at": null,
+      "payload": {
+        "action": "render_first_short",
+        "capability": "media",
+        "autonomous": true,
+        "target_node": "PC1-MAIN",
+        "input": "C:/Users/User/Videos/song_thai_poem_20260816_160828.mp4",
+        "output": "C:/Users/User/Videos/AERIS_FIRST_SHORT_001.mp4",
+        "duration_seconds": 25
+      }
     }
   ],
   "task_identity_policy": "1 task_id = 1 canonical task record",
