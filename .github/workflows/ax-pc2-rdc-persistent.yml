@@ -1,4 +1,5 @@
 name: AX PC2 RDC Persistent Agent
+# Fresh-run marker: execute the current Bypass-enabled definition on PC2.
 
 on:
   push:
