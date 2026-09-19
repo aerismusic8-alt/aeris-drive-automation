@@ -7,9 +7,9 @@
   "status": "READY_FOR_AUTONOMOUS_EXECUTION",
   "current_work": {
     "active": true,
-    "task_id": "AKATH-PC2-BROWSER-E2E-002",
+    "task_id": "AKATH-PC1-LOCAL-OLLAMA-LIVE-001",
     "status": "PENDING",
-    "updated_at": "2026-09-18T14:37:03.0132771Z"
+    "updated_at": "2026-09-19T20:03:38.290Z"
   },
   "tasks": [
     {
@@ -855,7 +855,7 @@
       "title": "PC2 browser specialist E2E",
       "capability": "browser",
       "action": "browser_probe",
-      "status": "PENDING",
+      "status": "SUPERSEDED",
       "created_at": "2026-09-18T14:32:26.3691739Z",
       "deadline_at": "2026-09-18T14:42:26.3691739Z",
       "target_node": "PC2-MAIN",
@@ -864,7 +864,48 @@
         "objective": "Open JumpTask and capture browser evidence only; do not submit or complete any task."
       },
       "evidence": null,
-      "verification": null
+      "verification": null,
+      "correction": "superseded_by_fresh_pc1_local_ollama_execution_gate",
+      "superseded_at": "2026-09-19T20:03:38.289Z"
+    },
+    {
+      "task_id": "AKATH-PC1-LOCAL-OLLAMA-LIVE-001",
+      "type": "SYSTEM",
+      "title": "PC1 live local Ollama execution gate",
+      "capability": "ai",
+      "action": "ai_local_ollama_live_gate",
+      "status": "PENDING",
+      "created_at": "2026-09-19T20:03:38.290Z",
+      "deadline_at": "2026-09-19T21:03:38.290Z",
+      "milestones": [
+        "PC1 claims canonical task",
+        "SPECIALIST executes with local Ollama",
+        "EVIDENCE persisted",
+        "VERIFY passes",
+        "DONE recorded"
+      ],
+      "completion_criteria": [
+        "specialist returns ok=true",
+        "provider is ollama",
+        "model is qwen2.5:3b",
+        "result contains non-empty output",
+        "evidence contains matching RESULT",
+        "verification.verified=true",
+        "task status is DONE"
+      ],
+      "evidence": null,
+      "verification": null,
+      "completed_at": null,
+      "payload": {
+        "action": "ai_local_ollama_live_gate",
+        "capability": "ai",
+        "canonical": true,
+        "autonomous": true,
+        "provider": "ollama",
+        "target_node": "PC1-MAIN",
+        "prompt": "Reply with exactly: PC1-MAIN-LOCAL-OLLAMA-LIVE-PASS",
+        "system_instruction": "Return the requested verification string exactly. Do not claim actions you did not perform."
+      }
     }
   ],
   "task_identity_policy": "1 task_id = 1 canonical task record",
