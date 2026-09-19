@@ -6,6 +6,19 @@ import { resolve } from 'node:path';
 const execFileAsync = promisify(execFile);
 const CANONICAL = 'AKATH_CORE/CANONICAL_TASK_REGISTRY.json';
 
+async function pushCanonical(repoRoot) {
+  try {
+    await execFileAsync('git',['push','origin','HEAD:main'],{cwd:repoRoot});
+    return;
+  } catch (firstError) {
+    const message=String(firstError?.stderr||firstError?.message||firstError);
+    if (!/cannot lock ref|non-fast-forward|fetch first|rejected/i.test(message)) throw firstError;
+    await execFileAsync('git',['fetch','origin','main'],{cwd:repoRoot});
+    await execFileAsync('git',['rebase','origin/main'],{cwd:repoRoot});
+    await execFileAsync('git',['push','origin','HEAD:main'],{cwd:repoRoot});
+  }
+}
+
 export async function reconcileCanonicalTerminalTasks({ repoRoot, registry, now = new Date() }) {
   const show = await execFileAsync('git', ['show', 'origin/main:' + CANONICAL], { cwd: repoRoot });
   const remote = JSON.parse(show.stdout.replace(/^\uFEFF/,''));
@@ -36,7 +49,7 @@ export async function reconcileCanonicalTerminalTasks({ repoRoot, registry, now 
   try {
     await execFileAsync('git',['add','--',CANONICAL],{cwd:repoRoot});
     await execFileAsync('git',['-c','user.name=AX Runtime','-c','user.email=ax-runtime@aeris.local','commit','-m','AX reconcile canonical terminal tasks'],{cwd:repoRoot});
-    await execFileAsync('git',['push','origin','HEAD:main'],{cwd:repoRoot});
+    await pushCanonical(repoRoot);
   } finally {
     await execFileAsync('git',['checkout','--',CANONICAL],{cwd:repoRoot}).catch(()=>{});
   }
@@ -57,7 +70,7 @@ export async function writeBackCanonical({ repoRoot, job, evidence, verification
   try {
     await execFileAsync('git',['add','--',CANONICAL],{cwd:repoRoot});
     await execFileAsync('git',['-c','user.name=AX Runtime','-c','user.email=ax-runtime@aeris.local','commit','-m','AX canonical write-back: '+job.task_id],{cwd:repoRoot});
-    await execFileAsync('git',['push','origin','HEAD:main'],{cwd:repoRoot});
+    await pushCanonical(repoRoot);
   } finally {
     await execFileAsync('git',['checkout','--',CANONICAL],{cwd:repoRoot}).catch(()=>{});
   }
