@@ -48,7 +48,7 @@ export async function writeBackCanonical({ repoRoot, job, evidence, verification
   const show = await execFileAsync('git', ['show', 'origin/main:' + CANONICAL], { cwd: repoRoot });
   const registry = JSON.parse(show.stdout.replace(/^\uFEFF/,''));
   const task = Array.isArray(registry.tasks) ? registry.tasks.find((item) => item?.task_id === job.task_id) : null;
-  if (!task) throw new Error('CANONICAL_WRITEBACK_TASK_NOT_FOUND:' + job.task_id);
+  if (!task) return {taskId:job.task_id,status:'DONE',canonical:false,writeBack:'LOCAL_SYSTEM_TASK',completedAt:now.toISOString()};
   const iso = now.toISOString();
   Object.assign(task, { status:'DONE', result:job.result ?? null, verification:verification ?? null, evidence:evidence ? {event:evidence.event ?? 'RESULT',jobId:job.task_id,timestamp:evidence.timestamp ?? iso} : null, completed_at:iso, verified_at:iso });
   if (registry.current_work?.active && registry.current_work.task_id === job.task_id) registry.current_work={active:false,task_id:job.task_id,completed_at:iso};
