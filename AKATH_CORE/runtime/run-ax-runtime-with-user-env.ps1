@@ -13,11 +13,9 @@ $geminiKey = [Environment]::GetEnvironmentVariable('GEMINI_API_KEY', 'User')
 if ([string]::IsNullOrWhiteSpace($geminiKey)) {
   $geminiKey = (Get-ItemProperty -Path 'HKCU:\Environment' -Name 'GEMINI_API_KEY' -ErrorAction SilentlyContinue).GEMINI_API_KEY
 }
-if ([string]::IsNullOrWhiteSpace($geminiKey)) {
-  throw 'GEMINI_API_KEY is not set in the Windows User environment.'
+if (-not [string]::IsNullOrWhiteSpace($geminiKey)) {
+  $env:GEMINI_API_KEY = $geminiKey
 }
-
-$env:GEMINI_API_KEY = $geminiKey
 
 $nodeId = [Environment]::GetEnvironmentVariable('AX_PC1_NODE_ID', 'User')
 if ([string]::IsNullOrWhiteSpace($nodeId)) { $nodeId = 'PC1-MAIN' }
@@ -37,7 +35,10 @@ $logPath = Join-Path $logDir 'AX-Runtime.log'
 New-Item -ItemType Directory -Force -Path $logDir | Out-Null
 Add-Content -Path $logPath -Value "`n=== AX_RUNTIME START $(Get-Date -Format o) node=$nodeId pid=$PID ==="
 
+$previousErrorActionPreference = $ErrorActionPreference
+$ErrorActionPreference = 'Continue'
 & (Get-Command node).Source $Main 2>&1 | Tee-Object -FilePath $logPath -Append
 $exitCode = $LASTEXITCODE
+$ErrorActionPreference = $previousErrorActionPreference
 Add-Content -Path $logPath -Value "=== AX_RUNTIME EXIT $(Get-Date -Format o) code=$exitCode ==="
 exit $exitCode

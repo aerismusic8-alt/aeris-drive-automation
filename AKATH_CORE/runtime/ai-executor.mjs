@@ -2,8 +2,83 @@ const DEFAULT_BASE_URL = 'https://generativelanguage.googleapis.com/v1beta';
 const DEFAULT_MODEL = 'gemini-3.6-flash';
 const DEFAULT_OLLAMA_URL = 'http://127.0.0.1:11434';
 const DEFAULT_OLLAMA_MODEL = 'qwen2.5:3b';
-async function callJson(fetchImpl,url,options,label){const response=await fetchImpl(url,options);const payload=await response.json();if(!response.ok){const e=new Error(payload?.error?.message||`${label} HTTP ${response.status}`);e.provider=label.toLowerCase();e.status=response.status;throw e;}return payload;}
-export async function executeOllamaTask(job,{fetchImpl=globalThis.fetch,baseUrl=process.env.AX_OLLAMA_BASE_URL||DEFAULT_OLLAMA_URL,model=job?.model||job?.payload?.model||process.env.AX_OLLAMA_MODEL||DEFAULT_OLLAMA_MODEL}={}){if(typeof fetchImpl!=='function')throw new Error('AI executor requires fetch');const prompt=job?.prompt??job?.payload?.prompt;const systemInstruction=job?.system_instruction??job?.payload?.system_instruction;if(!prompt)throw new Error('AI task prompt is required');const payload=await callJson(fetchImpl,`${baseUrl.replace(/\/$/,'')}/api/generate`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({model,prompt,system:systemInstruction||undefined,stream:false,options:{temperature:0.2}})},'Ollama');const text=String(payload?.response||'').trim();if(!text)throw new Error('Ollama returned no text');return{provider:'ollama',model,text};}
-export async function executeGeminiTask(job,{fetchImpl=globalThis.fetch,apiKey=process.env.GEMINI_API_KEY,baseUrl=process.env.AX_AI_BASE_URL||DEFAULT_BASE_URL}={}){if(typeof fetchImpl!=='function')throw new Error('AI executor requires fetch');if(!apiKey)throw new Error('GEMINI_API_KEY is required for Gemini provider');const prompt=job?.prompt??job?.payload?.prompt;const systemInstruction=job?.system_instruction??job?.payload?.system_instruction;if(!prompt)throw new Error('AI task prompt is required');const model=job.model||process.env.AX_AI_MODEL||DEFAULT_MODEL;const endpoint=`${baseUrl.replace(/\/$/,'')}/models/${encodeURIComponent(model)}:generateContent`;const payload=await callJson(fetchImpl,endpoint,{method:'POST',headers:{'Content-Type':'application/json','x-goog-api-key':apiKey},body:JSON.stringify({contents:[{parts:[{text:prompt}]}],...(systemInstruction?{systemInstruction:{parts:[{text:systemInstruction}]}}:{})})},'Gemini');const text=payload?.candidates?.[0]?.content?.parts?.map(p=>p?.text||'').join('').trim();if(!text)throw new Error('Gemini API returned no text candidate');return{provider:'gemini',model,text};}
-export function isRecoverableAiError(error){const m=String(error?.message||error||'').toLowerCase();return/quota|rate.?limit|too many requests|resource exhausted|429|temporarily unavailable|timeout|timed out|econnrefused|fetch failed/.test(m);}
-export async function executeAiTask(job,options={}){const localFirst=String(process.env.AX_AI_LOCAL_FIRST??'true').toLowerCase()!=='false';const requested=String(job?.provider||job?.payload?.provider||process.env.AX_AI_PROVIDER||'auto').toLowerCase();const useOllama=requested==='ollama'||requested==='auto'||(localFirst&&requested!=='gemini-cloud'&&requested!=='openai');const attempts=[];if(useOllama){try{return await executeOllamaTask(job,options);}catch(e){attempts.push(`ollama: ${e.message}`);if(requested==='ollama')throw e;}}try{return await executeGeminiTask(job,options);}catch(e){attempts.push(`gemini: ${e.message}`);if(isRecoverableAiError(e)&&!useOllama){try{return await executeOllamaTask(job,options);}catch(f){attempts.push(`ollama-fallback: ${f.message}`);}}const finalError=new Error(`AI providers exhausted; ${attempts.join(' | ')}`);finalError.recoverable=isRecoverableAiError(e);finalError.providerAttempts=attempts;throw finalError;}}
+
+async function callJson(fetchImpl, url, options, label) {
+  const response = await fetchImpl(url, options);
+  const raw = await response.text();
+  let payload = {};
+  try { payload = raw ? JSON.parse(raw) : {}; } catch { payload = { raw }; }
+  if (!response.ok) {
+    const message = payload?.error?.message || payload?.error || payload?.raw || `${label} HTTP ${response.status}`;
+    const e = new Error(String(message));
+    e.provider = label.toLowerCase();
+    e.status = response.status;
+    e.recoverable = response.status >= 429 || response.status >= 500 || response.status === 404;
+    throw e;
+  }
+  return payload;
+}
+
+export async function executeOllamaTask(job, {fetchImpl=globalThis.fetch, baseUrl=process.env.AX_OLLAMA_BASE_URL||DEFAULT_OLLAMA_URL, model=job?.payload?.local_model||process.env.AX_OLLAMA_MODEL||DEFAULT_OLLAMA_MODEL}={}) {
+  if (typeof fetchImpl !== 'function') throw new Error('AI executor requires fetch');
+  const prompt = job?.prompt ?? job?.payload?.prompt;
+  const systemInstruction = job?.system_instruction ?? job?.payload?.system_instruction;
+  if (!prompt) throw new Error('AI task prompt is required');
+  const endpoint = `${baseUrl.replace(/\/$/,'')}/api/generate`;
+  let lastError;
+  for (let attempt=1; attempt<=3; attempt++) {
+    try {
+      const payload = await callJson(fetchImpl, endpoint, {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({model,prompt,system:systemInstruction||undefined,stream:false,options:{temperature:0.2}})}, 'Ollama');
+      const text = String(payload?.response||'').trim();
+      if (!text) throw new Error('Ollama returned no text');
+      return {provider:'ollama',model,text};
+    } catch (error) {
+      lastError = error;
+      if (attempt < 3 && (error?.recoverable || error?.status === 404)) await new Promise(resolve=>setTimeout(resolve,500*attempt));
+      else break;
+    }
+  }
+  throw lastError;
+}
+
+export async function executeGeminiTask(job, {fetchImpl=globalThis.fetch, apiKey=process.env.GEMINI_API_KEY, baseUrl=process.env.AX_AI_BASE_URL||DEFAULT_BASE_URL}={}) {
+  if (typeof fetchImpl !== 'function') throw new Error('AI executor requires fetch');
+  if (!apiKey) throw new Error('GEMINI_API_KEY is required for Gemini provider');
+  const prompt = job?.prompt ?? job?.payload?.prompt;
+  const systemInstruction = job?.system_instruction ?? job?.payload?.system_instruction;
+  if (!prompt) throw new Error('AI task prompt is required');
+  const model = job.model || process.env.AX_AI_MODEL || DEFAULT_MODEL;
+  const endpoint = `${baseUrl.replace(/\/$/,'')}/models/${encodeURIComponent(model)}:generateContent`;
+  const payload = await callJson(fetchImpl, endpoint, {method:'POST',headers:{'Content-Type':'application/json','x-goog-api-key':apiKey},body:JSON.stringify({contents:[{parts:[{text:prompt}]}],...(systemInstruction?{systemInstruction:{parts:[{text:systemInstruction}]}}:{})})}, 'Gemini');
+  const text = payload?.candidates?.[0]?.content?.parts?.map(p=>p?.text||'').join('').trim();
+  if (!text) throw new Error('Gemini API returned no text candidate');
+  return {provider:'gemini',model,text};
+}
+
+export function isRecoverableAiError(error) {
+  const m = String(error?.message||error||'').toLowerCase();
+  return Boolean(error?.recoverable) || /quota|rate.?limit|too many requests|resource exhausted|429|temporarily unavailable|timeout|timed out|econnrefused|fetch failed|404/.test(m);
+}
+
+export async function executeAiTask(job, options={}) {
+  const localFirst = String(process.env.AX_AI_LOCAL_FIRST??'true').toLowerCase() !== 'false';
+  const requested = String(job?.provider||job?.payload?.provider||process.env.AX_AI_PROVIDER||'auto').toLowerCase();
+  const useOllama = requested==='ollama' || requested==='auto' || (localFirst && requested!=='gemini-cloud' && requested!=='openai');
+  const attempts = [];
+  if (useOllama) {
+    try { return await executeOllamaTask(job, options); }
+    catch (e) { attempts.push(`ollama: ${e.message}`); if (requested==='ollama') throw e; }
+  }
+  try { return await executeGeminiTask(job, options); }
+  catch (e) {
+    attempts.push(`gemini: ${e.message}`);
+    if (isRecoverableAiError(e) && !useOllama) {
+      try { return await executeOllamaTask(job, options); }
+      catch (f) { attempts.push(`ollama-fallback: ${f.message}`); }
+    }
+    const finalError = new Error(`AI providers exhausted; ${attempts.join(' | ')}`);
+    finalError.recoverable = true;
+    finalError.providerAttempts = attempts;
+    throw finalError;
+  }
+}
