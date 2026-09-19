@@ -5,13 +5,14 @@ import { promisify } from 'node:util';
 import { loadRegistry, persistRegistry } from './task-store.mjs';
 import { appendEvidence } from './evidence-store.mjs';
 import { loadJson, persistJson } from './state-store.mjs';
-import { createLocalPc1Adapter, dispatchToPc1 } from './dispatcher.mjs';
+import { createAxNodeDispatcher } from './dispatcher.mjs';
 import { runOnce, startSupervisor } from './ax-runtime.mjs';
 import { planNextTask } from './autonomous-planner.mjs';
 import { mergeCanonicalTasks } from './canonical-sync.mjs';
 import { createLiveEmitter } from './live-console.mjs';
 import { resolveRuntimeRegistryPath } from './runtime-registry.mjs';
 import { reconcileCanonicalTerminalTasks } from './canonical-writeback.mjs';
+import { heartbeatNode } from './node-control.mjs';
 
 const execFileAsync = promisify(execFile);
 const root=dirname(fileURLToPath(import.meta.url));
@@ -22,7 +23,7 @@ const evidencePath=resolve(root,'evidence.jsonl');
 const telemetryPath=resolve(root,'runtime-telemetry.json');
 const canonicalRelativePath='AKATH_CORE/CANONICAL_TASK_REGISTRY.json';
 const state=await loadJson(statePath,{schemaVersion:'1.0',runtimeStatus:'STARTING',nodeId:process.env.AX_PC1_NODE_ID||'PC1-MAIN',lastHeartbeatAt:null,activeJob:null,lastVerifiedJob:null,recovery:{}});
-const adapter=createLocalPc1Adapter();
+const dispatch= createAxNodeDispatcher();
 const live=createLiveEmitter();
 let lastCanonicalSyncAt=0;
 let lastTelemetryPushAt=0;
@@ -41,6 +42,7 @@ async function publishTelemetry(force=false){
     state.runtimeStatus='ONLINE';
     const telemetry={schemaVersion:'1.0',nodeId:state.nodeId,runtimeStatus:state.runtimeStatus,lastHeartbeatAt:state.lastHeartbeatAt,pid:process.pid,activeJob:state.activeJob||null,lastVerifiedJob:state.lastVerifiedJob||null,recovery:state.recovery||{},updatedAt:state.lastHeartbeatAt};
     await persistJson(telemetryPath,telemetry);
+    await heartbeatNode(state.nodeId,{activeJob:state.activeJob||null,lastVerifiedJob:state.lastVerifiedJob||null});
     live('TELEMETRY_UPDATED',{detail:state.lastHeartbeatAt});
   } catch(error) {
     console.error(`[AX_RUNTIME] TELEMETRY_PUBLISH_FAILED ${error.message}`);
@@ -98,7 +100,7 @@ async function cycle(){
     live('JOB_FOUND',{taskId:planned.task_id,detail:planned.capability||'execution'});
     console.log(`[AX_RUNTIME] AUTONOMOUS_TASK ${planned.task_id}`);
   }
-  const result=await runOnce({registry,state,repoRoot,dispatch:(job)=>dispatchToPc1(job,adapter),appendEvidence:(record)=>appendEvidence(evidencePath,record),onEvent:live});
+  const result=await runOnce({registry,state,repoRoot,dispatch,appendEvidence:(record)=>appendEvidence(evidencePath,record),onEvent:live});
   await persistRegistry(runtimeRegistryPath,registry);
   await persistJson(statePath,state);
   await publishTelemetry();
