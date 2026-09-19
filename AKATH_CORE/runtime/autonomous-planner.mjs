@@ -68,7 +68,17 @@ export function planNextTask(registry, now = new Date()) {
   });
   if (hasExecutablePending) return null;
 
-  const failedCandidates = tasks.filter((task) => ['FAILED', 'OVERDUE'].includes(task.status));
+  // Autonomous system tasks are controller infrastructure, not productive
+  // workloads. Never create recovery/retry chains for recovery tasks or
+  // management ticks; doing so can produce unbounded RETRY nesting.
+  const failedCandidates = tasks.filter((task) => {
+    if (!['FAILED', 'OVERDUE'].includes(task.status)) return false;
+    if (task?.capability === 'recovery' || task?.capability === 'self_check') return false;
+    if (task?.payload?.autonomous === true) return false;
+    if (String(task?.task_id || '').startsWith('AKATH-AUTONOMOUS-RECOVERY-')) return false;
+    if (String(task?.task_id || '').startsWith('AKATH-AX-MANAGEMENT-TICK-')) return false;
+    return true;
+  });
   const failed = failedCandidates.find((task) => {
     const recoveryId = `AKATH-AUTONOMOUS-RECOVERY-${task.task_id}`;
     const recovery = tasks.find((item) => item.task_id === recoveryId);
