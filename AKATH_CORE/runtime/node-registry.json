@@ -1,0 +1,20 @@
+{
+  "schemaVersion":"1.0",
+  "updatedAt":null,
+  "nodes":{
+    "PC1-MAIN":{
+      "nodeId":"PC1-MAIN",
+      "role":"PRIMARY",
+      "transport":"local",
+      "status":"UNKNOWN",
+      "capabilities":["execution","ai","control","browser"]
+    },
+    "PC2-NIGHT":{
+      "nodeId":"PC2-NIGHT",
+      "role":"SECONDARY",
+      "transport":"http",
+      "status":"UNKNOWN",
+      "capabilities":["execution","ai","control","browser"]
+    }
+  }
+}
