@@ -25,7 +25,8 @@ export async function persistNodeRegistry(registry){
 export async function heartbeatNode(nodeId,patch={}){
   const registry=await loadNodeRegistry();
   const node=registry.nodes[nodeId] || {nodeId};
-  Object.assign(node,patch,{nodeId,lastHeartbeatAt:new Date().toISOString(),status:"ONLINE"});
+  Object.assign(node,{nodeId,lastHeartbeatAt:new Date().toISOString()},patch);
+  if (!patch.status) node.status="ONLINE";
   registry.nodes[nodeId]=node;
   await persistNodeRegistry(registry);
   return node;
