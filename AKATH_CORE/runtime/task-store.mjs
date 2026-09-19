@@ -13,15 +13,12 @@ export function claimNextEligibleJob(registry, now = new Date()) {
   const pendingTasks = registry.tasks.filter((item) => item.status === 'PENDING');
   const currentTaskId = registry?.current_work?.active ? registry.current_work.task_id : null;
   const currentTask = currentTaskId ? pendingTasks.find((item) => item.task_id === currentTaskId) : null;
-  // current_work is advisory, not an execution lock. Never let a stale
-  // canonical current_work pointer block a valid recovery/management task.
-  const currentEligible = currentTask && (!currentTask.deadline_at || new Date(currentTask.deadline_at) > now)
-    ? currentTask
-    : null;
-  const eligible = pendingTasks.filter((item) => !item.deadline_at || new Date(item.deadline_at) > now);
-  // Execution priority is explicit: real productive work first, recovery
-  // second, autonomous management ticks last. A self-check must never starve
-  // a newly-issued production task.
+  const currentEligible = currentTask && (!currentTask.retry_at || new Date(currentTask.retry_at) <= now) &&
+    (!currentTask.deadline_at || new Date(currentTask.deadline_at) > now) ? currentTask : null;
+  const eligible = pendingTasks.filter((item) =>
+    (!item.retry_at || new Date(item.retry_at) <= now) &&
+    (!item.deadline_at || new Date(item.deadline_at) > now)
+  );
   const priority = (task) => {
     if (task?.type === 'PRODUCTION' || task?.capability === 'ai' || task?.capability === 'execution') return 1;
     if (task?.capability === 'recovery') return 2;
@@ -34,9 +31,7 @@ export function claimNextEligibleJob(registry, now = new Date()) {
     if (rankDelta !== 0) return rankDelta;
     return new Date(a.created_at || 0) - new Date(b.created_at || 0);
   });
-  const job = currentEligible && priority(currentEligible) <= 1
-    ? currentEligible
-    : (ranked[0] ?? null);
+  const job = currentEligible && priority(currentEligible) <= 1 ? currentEligible : (ranked[0] ?? null);
   if (!job) return null;
   transitionJob(job,'EXECUTING',{started_at:now.toISOString(),attempt:(job.attempt ?? 0)+1});
   return job;
