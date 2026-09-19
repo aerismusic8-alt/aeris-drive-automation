@@ -1,780 +1,785 @@
-﻿{
-    "schema_version":  "1.0",
-    "registry_role":  "AKATH_CANONICAL_TASK_REGISTRY",
-    "authority":  "K_FINAL_AUTHORITY",
-    "organization":  "AKATH",
-    "managed_by":  "AX",
-    "status":  "READY_FOR_AUTONOMOUS_EXECUTION",
-    "current_work":  {
-                         "active":  true,
-                         "task_id":  "AKATH-PC2-BROWSER-E2E-002",
-                         "status":  "PENDING",
-                         "updated_at":  "2026-09-18T14:37:03.0132771Z"
-                     },
-    "tasks":  [
-                  {
-                      "task_id":  "AKATH-PC1-EXECUTION-LOOP-GATE-001",
-                      "type":  "SYSTEM",
-                      "title":  "PC1 canonical execution loop gate",
-                      "capability":  "execution",
-                      "action":  "pc1_execution_loop_gate",
-                      "status":  "DONE",
-                      "created_at":  "2026-09-17T00:00:00.000Z",
-                      "deadline_at":  "2026-09-17T12:00:00.000Z",
-                      "milestones":  [
-                                         "PC1 claims canonical task",
-                                         "SPECIALIST executes task",
-                                         "EVIDENCE persisted",
-                                         "VERIFY passes",
-                                         "DONE recorded"
-                                     ],
-                      "completion_criteria":  [
-                                                  "specialist returns ok=true",
-                                                  "evidence contains matching RESULT",
-                                                  "verification.verified=true",
-                                                  "task status is DONE"
-                                              ],
-                      "evidence":  null,
-                      "verification":  {
-                                           "verified":  true,
-                                           "reasons":  [
-
-                                                       ]
-                                       },
-                      "completed_at":  "2026-09-17T02:45:17.316Z",
-                      "payload":  {
-                                      "action":  "pc1_execution_loop_gate",
-                                      "capability":  "execution",
-                                      "canonical":  true,
-                                      "autonomous":  false
-                                  },
-                      "started_at":  "2026-09-17T02:45:17.316Z",
-                      "attempt":  1,
-                      "result":  {
-                                     "executor":  "PC1_MAIN_SPECIALIST",
-                                     "capability":  "execution",
-                                     "task_id":  "AKATH-PC1-EXECUTION-LOOP-GATE-001",
-                                     "execution":  "EXECUTED",
-                                     "completed_at":  "2026-09-17T02:45:17.385Z"
-                                 },
-                      "verified_at":  "2026-09-17T02:45:17.316Z"
-                  },
-                  {
-                      "task_id":  "AKATH-PC1-SPECIALIST-EXECUTION-CONTINUITY-001",
-                      "type":  "SYSTEM",
-                      "title":  "PC1 specialist execution continuity",
-                      "capability":  "execution",
-                      "action":  "pc1_specialist_execution_continuity",
-                      "status":  "DONE",
-                      "created_at":  "2026-09-17T02:55:00.000Z",
-                      "deadline_at":  "2026-09-17T04:00:00.000Z",
-                      "milestones":  [
-                                         "PC1 claims next canonical task",
-                                         "SPECIALIST executes task",
-                                         "EVIDENCE persisted",
-                                         "VERIFY passes",
-                                         "DONE recorded"
-                                     ],
-                      "completion_criteria":  [
-                                                  "specialist returns ok=true",
-                                                  "evidence contains matching RESULT",
-                                                  "verification.verified=true",
-                                                  "task status is DONE"
-                                              ],
-                      "evidence":  null,
-                      "verification":  {
-                                           "verified":  true,
-                                           "reasons":  [
-
-                                                       ]
-                                       },
-                      "completed_at":  "2026-09-17T02:56:34.446Z",
-                      "payload":  {
-                                      "action":  "pc1_specialist_execution_continuity",
-                                      "capability":  "execution",
-                                      "canonical":  true,
-                                      "autonomous":  true,
-                                      "objective":  "continue the real canonical PC1 execution loop through the existing specialist path"
-                                  },
-                      "started_at":  "2026-09-17T02:56:34.446Z",
-                      "attempt":  1,
-                      "result":  {
-                                     "executor":  "PC1_MAIN_SPECIALIST",
-                                     "capability":  "execution",
-                                     "task_id":  "AKATH-PC1-SPECIALIST-EXECUTION-CONTINUITY-001",
-                                     "execution":  "EXECUTED",
-                                     "completed_at":  "2026-09-17T02:56:34.532Z"
-                                 },
-                      "verified_at":  "2026-09-17T02:56:34.446Z"
-                  },
-                  {
-                      "task_id":  "AKATH-PC1-EXECUTION-PIPELINE-INTAKE-001",
-                      "type":  "SYSTEM",
-                      "title":  "PC1 execution pipeline intake",
-                      "capability":  "execution",
-                      "action":  "pc1_execution_pipeline_intake",
-                      "status":  "DONE",
-                      "created_at":  "2026-09-17T03:12:00.000Z",
-                      "deadline_at":  "2026-09-17T05:00:00.000Z",
-                      "milestones":  [
-                                         "PC1 claims next canonical task",
-                                         "SPECIALIST executes task",
-                                         "EVIDENCE persisted",
-                                         "VERIFY passes",
-                                         "DONE recorded"
-                                     ],
-                      "completion_criteria":  [
-                                                  "specialist returns ok=true",
-                                                  "evidence contains matching RESULT",
-                                                  "verification.verified=true",
-                                                  "task status is DONE"
-                                              ],
-                      "evidence":  null,
-                      "verification":  {
-                                           "verified":  true,
-                                           "reasons":  [
-
-                                                       ]
-                                       },
-                      "completed_at":  "2026-09-17T03:39:39.796Z",
-                      "payload":  {
-                                      "action":  "pc1_execution_pipeline_intake",
-                                      "capability":  "execution",
-                                      "canonical":  true,
-                                      "autonomous":  true,
-                                      "objective":  "keep the verified PC1 execution pipeline active and ready to accept the next canonical workload without human-per-cycle intervention"
-                                  },
-                      "started_at":  "2026-09-17T03:39:39.796Z",
-                      "attempt":  1,
-                      "result":  {
-                                     "executor":  "PC1_MAIN_SPECIALIST",
-                                     "capability":  "execution",
-                                     "task_id":  "AKATH-PC1-EXECUTION-PIPELINE-INTAKE-001",
-                                     "execution":  "EXECUTED",
-                                     "completed_at":  "2026-09-17T03:39:39.873Z"
-                                 },
-                      "verified_at":  "2026-09-17T03:39:39.796Z"
-                  },
-                  {
-                      "task_id":  "AKATH-PC1-EXECUTION-CONTINUATION-002",
-                      "type":  "SYSTEM",
-                      "title":  "PC1 canonical execution continuation",
-                      "capability":  "execution",
-                      "action":  "pc1_execution_continuation_002",
-                      "status":  "PENDING",
-                      "created_at":  "2026-09-17T03:42:00.000Z",
-                      "deadline_at":  "2026-09-17T05:30:00.000Z",
-                      "milestones":  [
-                                         "PC1 claims canonical task",
-                                         "SPECIALIST executes task",
-                                         "EVIDENCE persisted",
-                                         "VERIFY passes",
-                                         "DONE recorded"
-                                     ],
-                      "completion_criteria":  [
-                                                  "specialist returns ok=true",
-                                                  "result.execution is PC1_CONTROL_EXECUTED",
-                                                  "evidence contains captured output",
-                                                  "verification.verified=true",
-                                                  "task status is DONE"
-                                              ],
-                      "evidence":  null,
-                      "verification":  null,
-                      "completed_at":  null,
-                      "payload":  {
-                                      "action":  "pc1_execution_continuation_002",
-                                      "capability":  "execution",
-                                      "canonical":  true,
-                                      "autonomous":  true,
-                                      "objective":  "continue the verified PC1 execution loop with the next canonical workload without human-per-cycle intervention"
-                                  }
-                  },
-                  {
-                      "task_id":  "AKATH-PC1-AI-PRODUCTION-001",
-                      "type":  "PRODUCTION",
-                      "title":  "PC1 Gemini AI production intake",
-                      "capability":  "ai",
-                      "action":  "ai_production_smoke",
-                      "status":  "PENDING",
-                      "created_at":  "2026-09-17T04:05:00.000Z",
-                      "deadline_at":  "2026-09-17T06:00:00.000Z",
-                      "milestones":  [
-                                         "PC1 claims AI production task",
-                                         "Gemini specialist executes",
-                                         "AI result returned",
-                                         "EVIDENCE persisted",
-                                         "VERIFY passes",
-                                         "DONE recorded"
-                                     ],
-                      "completion_criteria":  [
-                                                  "specialist returns ok=true",
-                                                  "result contains AI_EXECUTED",
-                                                  "result contains non-empty output",
-                                                  "evidence contains matching RESULT",
-                                                  "verification.verified=true",
-                                                  "task status is DONE"
-                                              ],
-                      "evidence":  null,
-                      "verification":  null,
-                      "completed_at":  null,
-                      "payload":  {
-                                      "action":  "ai_production_smoke",
-                                      "capability":  "ai",
-                                      "canonical":  true,
-                                      "autonomous":  true,
-                                      "provider":  "gemini",
-                                      "prompt":  "Produce a concise 3-point production readiness note for AERIS MUSIC\u0027s AI execution pipeline. Return exactly three numbered points and no preamble.",
-                                      "system_instruction":  "You are the AERIS MUSIC production AI specialist. Produce concise, factual output for the execution pipeline. Do not claim actions you did not perform."
-                                  }
-                  },
-                  {
-                      "task_id":  "AKATH-PC1-CONTROL-BRIDGE-001",
-                      "type":  "SYSTEM",
-                      "title":  "PC1 allowlisted PowerShell control bridge smoke",
-                      "capability":  "control",
-                      "action":  "pc1_status",
-                      "status":  "PENDING",
-                      "created_at":  "2026-09-17T04:50:00.000Z",
-                      "deadline_at":  "2026-09-17T06:30:00.000Z",
-                      "milestones":  [
-                                         "AX issues canonical control task",
-                                         "PC1 claims task",
-                                         "ALLOWLIST validates action",
-                                         "PowerShell executes",
-                                         "stdout/stderr captured",
-                                         "EVIDENCE persisted",
-                                         "VERIFY passes",
-                                         "DONE recorded"
-                                     ],
-                      "completion_criteria":  [
-                                                  "specialist returns ok=true",
-                                                  "result.execution is PC1_CONTROL_EXECUTED",
-                                                  "result.exit_code is 0",
-                                                  "evidence contains captured output",
-                                                  "verification.verified=true",
-                                                  "task status is DONE"
-                                              ],
-                      "evidence":  null,
-                      "verification":  null,
-                      "completed_at":  null,
-                      "payload":  {
-                                      "action":  "pc1_status",
-                                      "capability":  "control",
-                                      "canonical":  true,
-                                      "autonomous":  true,
-                                      "security":  "allowlist-only"
-                                  }
-                  },
-                  {
-                      "task_id":  "AKATH-AX-PC1-REMOTE-POWERSHELL-GATE-001",
-                      "type":  "SYSTEM",
-                      "title":  "AX remote PC1 PowerShell control acceptance gate",
-                      "capability":  "control",
-                      "action":  "runtime_status",
-                      "status":  "DONE",
-                      "created_at":  "2026-09-17T12:10:00.000Z",
-                      "deadline_at":  "2026-09-17T13:00:00.000Z",
-                      "milestones":  [
-                                         "AX creates remote control task",
-                                         "PC1 pulls canonical task",
-                                         "PC1 claims task",
-                                         "ALLOWLIST validates action",
-                                         "PowerShell executes on PC1",
-                                         "stdout/stderr and exit code captured",
-                                         "EVIDENCE persisted",
-                                         "VERIFY passes",
-                                         "DONE recorded"
-                                     ],
-                      "completion_criteria":  [
-                                                  "specialist returns ok=true",
-                                                  "result.execution is PC1_CONTROL_EXECUTED",
-                                                  "result.exit_code is 0",
-                                                  "result.output is non-empty",
-                                                  "evidence contains captured PowerShell output",
-                                                  "verification.verified=true",
-                                                  "task status is DONE"
-                                              ],
-                      "evidence":  null,
-                      "verification":  {
-                                           "verified":  true,
-                                           "reasons":  [
-
-                                                       ]
-                                       },
-                      "completed_at":  "2026-09-17T06:34:37.844Z",
-                      "payload":  {
-                                      "action":  "runtime_status",
-                                      "capability":  "control",
-                                      "canonical":  true,
-                                      "autonomous":  true,
-                                      "security":  "allowlist-only",
-                                      "issued_by":  "AX",
-                                      "remote_control_gate":  true,
-                                      "objective":  "prove AX can issue a PowerShell control task to PC1 without K typing the command"
-                                  },
-                      "result":  {
-                                     "executor":  "PC1_MAIN_SPECIALIST",
-                                     "capability":  "control",
-                                     "task_id":  "AKATH-AX-PC1-REMOTE-POWERSHELL-GATE-001",
-                                     "execution":  "PC1_CONTROL_EXECUTED",
-                                     "exit_code":  0,
-                                     "output":  "captured from PC1 runtime"
-                                 },
-                      "verified_at":  "2026-09-17T06:34:37.844Z"
-                  },
-                  {
-                      "task_id":  "AKATH-AX-PC1-BRIDGE-PROOF-002",
-                      "type":  "SYSTEM",
-                      "title":  "AX to PC1 bridge proof â€” second autonomous control command",
-                      "capability":  "control",
-                      "action":  "runtime_status",
-                      "status":  "PENDING",
-                      "created_at":  "2026-09-17T02:20:00.000Z",
-                      "deadline_at":  "2026-09-17T08:30:00.000Z",
-                      "deadline_reviewed_at":  "2026-09-17T08:00:00.000Z",
-                      "correction":  "deadline_review_and_requeue_after_live_gate",
-                      "milestones":  [
-                                         "AX writes canonical control task",
-                                         "PC1 pulls task",
-                                         "PC1 claims task",
-                                         "ALLOWLIST validates action",
-                                         "PowerShell executes on PC1",
-                                         "stdout/stderr and exit code captured",
-                                         "EVIDENCE persisted",
-                                         "VERIFY passes",
-                                         "DONE recorded"
-                                     ],
-                      "completion_criteria":  [
-                                                  "specialist returns ok=true",
-                                                  "result.execution is PC1_CONTROL_EXECUTED",
-                                                  "result.exit_code is 0",
-                                                  "result.output is non-empty",
-                                                  "evidence contains captured PowerShell output",
-                                                  "verification.verified=true",
-                                                  "task status is DONE"
-                                              ],
-                      "evidence":  null,
-                      "verification":  null,
-                      "completed_at":  null,
-                      "payload":  {
-                                      "action":  "runtime_status",
-                                      "capability":  "control",
-                                      "canonical":  true,
-                                      "autonomous":  true,
-                                      "security":  "allowlist-only",
-                                      "issued_by":  "AX",
-                                      "bridge_proof":  true,
-                                      "objective":  "prove AX itself can write and issue a second PowerShell control task to PC1 without K typing the command"
-                                  }
-                  },
-                  {
-                      "task_id":  "AKATH-JUMPTASK-AI-FIRST-001",
-                      "type":  "PRODUCTION",
-                      "title":  "JumpTask first workload â€” AI-assisted autonomous task selection",
-                      "capability":  "ai",
-                      "action":  "ai_production_smoke",
-                      "status":  "PENDING",
-                      "created_at":  "2026-09-17T08:59:00.000Z",
-                      "deadline_at":  "2026-09-17T09:30:00.000Z",
-                      "milestones":  [
-                                         "PC1 claims JumpTask AI task",
-                                         "Gemini specialist evaluates supplied JumpTask workload",
-                                         "AI result returned",
-                                         "EVIDENCE persisted",
-                                         "VERIFY passes",
-                                         "DONE recorded"
-                                     ],
-                      "completion_criteria":  [
-                                                  "specialist returns ok=true",
-                                                  "result.execution is AI_EXECUTED",
-                                                  "result contains non-empty output",
-                                                  "evidence contains matching RESULT",
-                                                  "verification.verified=true",
-                                                  "task status is DONE"
-                                              ],
-                      "evidence":  null,
-                      "verification":  null,
-                      "completed_at":  null,
-                      "payload":  {
-                                      "action":  "ai_production_smoke",
-                                      "capability":  "ai",
-                                      "canonical":  true,
-                                      "autonomous":  true,
-                                      "provider":  "gemini",
-                                      "workload":  "JumpTask",
-                                      "prompt":  "Using the JumpTask workload information supplied by K in the current AKATH context, identify the first legitimate workload that can be executed autonomously on PC1 without simulating human activity, falsifying engagement, bypassing platform controls, or violating offer conditions. Prioritize legitimate passive/background earning opportunities if explicitly allowed. Return exactly: 1) selected workload, 2) why it is permissible, 3) concrete next execution step available to the current PC1 specialist. If no workload can be executed safely and legitimately by the current specialist, state that clearly and do not invent an execution path.",
-                                      "system_instruction":  "You are the AERIS MUSIC production AI specialist. Be factual. Never claim to have opened JumpTask, completed an offer, earned money, or verified a platform rule unless the runtime actually performed that action or supplied direct evidence. Do not recommend deceptive automation or bypassing anti-fraud controls."
-                                  }
-                  },
-                  {
-                      "task_id":  "AKATH-PC1-LIVE-EXECUTION-GATE-003",
-                      "type":  "SYSTEM",
-                      "title":  "PC1 live autonomous execution gate",
-                      "capability":  "execution",
-                      "action":  "pc1_execution_live_gate",
-                      "status":  "OVERDUE",
-                      "created_at":  "2026-09-18T04:05:19.015Z",
-                      "deadline_at":  "2026-09-18T05:05:19.020Z",
-                      "milestones":  [
-                                         "PC1 claims canonical task",
-                                         "SPECIALIST executes task",
-                                         "EVIDENCE persisted",
-                                         "VERIFY passes",
-                                         "DONE recorded"
-                                     ],
-                      "completion_criteria":  [
-                                                  "specialist returns ok=true",
-                                                  "evidence contains matching RESULT",
-                                                  "verification.verified=true",
-                                                  "task status is DONE"
-                                              ],
-                      "evidence":  null,
-                      "verification":  null,
-                      "completed_at":  null,
-                      "payload":  {
-                                      "action":  "pc1_execution_live_gate",
-                                      "capability":  "execution",
-                                      "canonical":  true,
-                                      "autonomous":  true,
-                                      "objective":  "prove the live PC1 autonomous execution loop can claim, execute, persist evidence, verify, and complete a fresh canonical task"
-                                  },
-                      "overdue_at":  "2026-09-18T05:35:00.000Z",
-                      "correction":  "superseded_by_fresh_live_task"
-                  },
-                  {
-                      "task_id":  "AKATH-PC1-CONTROL-BRIDGE-LIVE-004",
-                      "type":  "SYSTEM",
-                      "title":  "PC1 live allowlisted PowerShell control bridge",
-                      "capability":  "control",
-                      "action":  "pc1_status",
-                      "status":  "OVERDUE",
-                      "created_at":  "2026-09-18T03:10:00.000Z",
-                      "deadline_at":  "2026-09-18T04:10:00.000Z",
-                      "milestones":  [
-                                         "AX issues canonical control task",
-                                         "PC1 claims task",
-                                         "ALLOWLIST validates action",
-                                         "PowerShell executes",
-                                         "stdout/stderr captured",
-                                         "EVIDENCE persisted",
-                                         "VERIFY passes",
-                                         "DONE recorded"
-                                     ],
-                      "completion_criteria":  [
-                                                  "specialist returns ok=true",
-                                                  "result.execution is PC1_CONTROL_EXECUTED",
-                                                  "result.exit_code is 0",
-                                                  "evidence contains captured output",
-                                                  "verification.verified=true",
-                                                  "task status is DONE"
-                                              ],
-                      "evidence":  null,
-                      "verification":  null,
-                      "completed_at":  null,
-                      "payload":  {
-                                      "action":  "pc1_status",
-                                      "capability":  "control",
-                                      "canonical":  true,
-                                      "autonomous":  true,
-                                      "security":  "allowlist-only",
-                                      "issued_by":  "AX",
-                                      "bridge_proof":  true,
-                                      "objective":  "prove the live AX-to-PC1 control bridge executes an allowlisted PowerShell command without K typing the command"
-                                  },
-                      "overdue_at":  "2026-09-18T05:35:00.000Z",
-                      "correction":  "superseded_by_fresh_live_task"
-                  },
-                  {
-                      "task_id":  "AKATH-PC1-FIRST-PRODUCTIVE-AI-001",
-                      "type":  "PRODUCTION",
-                      "title":  "AERIS first productive AI production task",
-                      "capability":  "ai",
-                      "action":  "ai_first_productive_work",
-                      "status":  "OVERDUE",
-                      "created_at":  "2026-09-18T04:36:19.179Z",
-                      "deadline_at":  "2026-09-18T05:36:19.183Z",
-                      "milestones":  [
-                                         "AX selects first productive workload",
-                                         "PC1 claims task",
-                                         "Gemini specialist executes",
-                                         "AI result returned",
-                                         "EVIDENCE persisted",
-                                         "VERIFY passes",
-                                         "DONE recorded"
-                                     ],
-                      "completion_criteria":  [
-                                                  "specialist returns ok=true",
-                                                  "result.execution is AI_EXECUTED",
-                                                  "result.output is non-empty",
-                                                  "evidence contains matching RESULT",
-                                                  "verification.verified=true",
-                                                  "task status is DONE"
-                                              ],
-                      "evidence":  null,
-                      "verification":  null,
-                      "completed_at":  null,
-                      "payload":  {
-                                      "action":  "ai_first_productive_work",
-                                      "capability":  "ai",
-                                      "provider":  "gemini",
-                                      "autonomous":  true,
-                                      "issued_by":  "AX",
-                                      "prompt":  "Create a concise production work brief for AERIS MUSIC\u0027s next execution cycle. Return exactly: 1) objective, 2) three concrete next actions, 3) required output artifact. Do not claim any action was performed.",
-                                      "system_instruction":  "You are the AERIS MUSIC production AI specialist. Produce factual operational output only. Do not claim actions you did not perform."
-                                  },
-                      "overdue_at":  "2026-09-18T05:35:00.000Z",
-                      "correction":  "superseded_by_fresh_live_task"
-                  },
-                  {
-                      "task_id":  "AKATH-PC1-AI-LIVE-RUN-002",
-                      "type":  "PRODUCTION",
-                      "title":  "AERIS live AI execution â€” fresh workload",
-                      "capability":  "ai",
-                      "action":  "ai_first_productive_work",
-                      "status":  "PENDING",
-                      "created_at":  "2026-09-18T05:35:00.000Z",
-                      "deadline_at":  "2026-09-18T06:05:00.000Z",
-                      "milestones":  [
-                                         "PC1 claims fresh AI task",
-                                         "Gemini specialist executes",
-                                         "AI result returned",
-                                         "EVIDENCE persisted",
-                                         "VERIFY passes",
-                                         "DONE recorded"
-                                     ],
-                      "completion_criteria":  [
-                                                  "specialist returns ok=true",
-                                                  "result.execution is AI_EXECUTED",
-                                                  "result.output is non-empty",
-                                                  "evidence contains matching RESULT",
-                                                  "verification.verified=true",
-                                                  "task status is DONE"
-                                              ],
-                      "evidence":  null,
-                      "verification":  null,
-                      "completed_at":  null,
-                      "payload":  {
-                                      "action":  "ai_first_productive_work",
-                                      "capability":  "ai",
-                                      "provider":  "gemini",
-                                      "autonomous":  true,
-                                      "issued_by":  "AX",
-                                      "prompt":  "Create the next AERIS MUSIC production work brief. Return exactly: 1) objective, 2) three concrete next actions, 3) required output artifact. Do not claim any action was performed.",
-                                      "system_instruction":  "You are the AERIS MUSIC production AI specialist. Produce factual operational output only. Do not claim actions you did not perform."
-                                  }
-                  },
-                  {
-                      "task_id":  "AKATH-PC1-CONTENT-PACKAGE-003",
-                      "type":  "PRODUCTION",
-                      "title":  "AERIS Music Short production package",
-                      "capability":  "ai",
-                      "action":  "ai_content_production_package",
-                      "status":  "PENDING",
-                      "created_at":  "2026-09-18T06:00:00.000Z",
-                      "deadline_at":  "2026-09-18T07:00:00.000Z",
-                      "milestones":  [
-                                         "PC1 claims AI production task",
-                                         "Gemini creates production package",
-                                         "EVIDENCE persisted",
-                                         "VERIFY passes",
-                                         "DONE recorded"
-                                     ],
-                      "completion_criteria":  [
-                                                  "specialist returns ok=true",
-                                                  "result.execution is AI_EXECUTED",
-                                                  "result.output is non-empty",
-                                                  "evidence contains matching RESULT",
-                                                  "verification.verified=true",
-                                                  "task status is DONE"
-                                              ],
-                      "evidence":  null,
-                      "verification":  null,
-                      "completed_at":  null,
-                      "payload":  {
-                                      "action":  "ai_content_production_package",
-                                      "capability":  "ai",
-                                      "autonomous":  true,
-                                      "issued_by":  "AX",
-                                      "provider":  "gemini",
-                                      "objective":  "Create the first concrete AERIS MUSIC YouTube Short production package that can be handed to a rendering specialist.",
-                                      "prompt":  "Create a production-ready package for one AERIS MUSIC YouTube Short. Do not claim any media was rendered or uploaded. Return exactly these sections: 1) concept and hook, 2) 20-30 second timeline with 6 or fewer shots, 3) on-screen text, 4) voice/music direction, 5) title and caption, 6) rendering specification for a 9:16 MP4, 7) QC checklist. Make it concrete enough for a PC2 rendering specialist to execute next.",
-                                      "system_instruction":  "You are the AERIS MUSIC production AI specialist. Produce factual production instructions only. Never claim an artifact exists unless it was actually produced."
-                                  }
-                  },
-                  {
-                      "task_id":  "AKATH-PC1-AI-PRODUCTION-LIVE-004",
-                      "type":  "PRODUCTION",
-                      "title":  "AERIS live AI production package â€” PC1",
-                      "capability":  "ai",
-                      "action":  "ai_content_production_package",
-                      "status":  "DONE",
-                      "created_at":  "2026-09-18T08:42:00.000Z",
-                      "deadline_at":  "2026-09-18T09:30:00.000Z",
-                      "milestones":  [
-                                         "PC1 claims AI production task",
-                                         "Gemini specialist executes",
-                                         "AI production package returned",
-                                         "EVIDENCE persisted",
-                                         "VERIFY passes",
-                                         "DONE recorded"
-                                     ],
-                      "completion_criteria":  [
-                                                  "specialist returns ok=true",
-                                                  "result.execution is AI_EXECUTED",
-                                                  "result.output is non-empty",
-                                                  "evidence contains matching RESULT",
-                                                  "verification.verified=true",
-                                                  "task status is DONE"
-                                              ],
-                      "evidence":  null,
-                      "verification":  {
-                                           "verified":  true,
-                                           "reasons":  [
-
-                                                       ]
-                                       },
-                      "completed_at":  "2026-09-18T08:46:10.308Z",
-                      "payload":  {
-                                      "action":  "ai_content_production_package",
-                                      "capability":  "ai",
-                                      "autonomous":  true,
-                                      "issued_by":  "AX",
-                                      "provider":  "gemini",
-                                      "objective":  "Produce a concrete AERIS MUSIC YouTube Short production package as the first real AI production workload on PC1.",
-                                      "prompt":  "Create a production-ready package for one AERIS MUSIC YouTube Short. Return exactly these sections: 1) concept and hook, 2) 20-30 second timeline with 6 or fewer shots, 3) on-screen text, 4) voice/music direction, 5) title and caption, 6) rendering specification for a 9:16 MP4, 7) QC checklist. Make it concrete enough for a rendering specialist to execute next. Do not claim any media was rendered or uploaded.",
-                                      "system_instruction":  "You are the AERIS MUSIC production AI specialist. Produce factual production instructions only. Never claim an artifact exists unless it was actually produced."
-                                  },
-                      "result":  {
-                                     "executor":  "PC1_GEMINI_AI_SPECIALIST",
-                                     "capability":  "ai",
-                                     "task_id":  "AKATH-PC1-AI-PRODUCTION-LIVE-004",
-                                     "execution":  "AI_EXECUTED",
-                                     "provider":  "gemini",
-                                     "model":  "gemini-3.6-flash",
-                                     "output":  "### 1) Concept and Hook\n\n* **Concept:** A fast-paced music production transformation showing how a flat, dry synthesizer patch is upgraded into a lush, cinematic AERIS soundscape using spatial reverb, delay layering, and visual audio-reactivity.\n* **Hook (0:00 - 0:03):** \n  * *Visual:* High-contrast split-screen showing a basic, flat DAW line vs. a vibrant, glowing audio-reactive spectrum.\n  * *Audio:* Dry, unmodulating saw wave abruptly cut by a record stop sound.\n  * *Text:* \"Stop releasing flat synths âŒ\"\n\n---\n\n### 2) 25-Second Timeline (5 Shots)\n\n| Shot # | Timecode | Visual / Framing | Camera Motion / Animation | Asset / Action |\n| :--- | :--- | :--- | :--- | :--- |\n| **Shot 1** | 0:00 - 0:04 | Close-up on DAW screen showing a raw MIDI track with a flat waveform. | Static macro view with slight digital zoom-in (100% to 110%). | Dry synthesizer track playing; red warning glow around screen edges. |\n| **Shot 2** | 0:04 - 0:09 | Screen recording cut: Inserting delay and spatial reverb plugins (100% wet mix toggle). | Snap zoom onto the reverb plugin \"Size\" knob turning up. | Visual parameter modulation; green/cyan particle effects begin overlaying video. |\n| **Shot 3** | 0:09 - 0:14 | Overhead shot of hands tweaking a hardware synthesizer/MIDI controller in a dark studio. | Dynamic pan down with neon purple and cyan studio key lighting. | Synced finger adjustments on filter sweeps; riser sound effect plays. |\n| **Shot 4** | 0:14 - 0:20 | Full-screen 3D audio visualizer featuring the signature AERIS dark geometric aesthetic. | 360-degree slow rotation of visualizer core pulsing to beat. | Full mix drop (bass, drums, ambient pads, shimmer layer). |\n| **Shot 5** | 0:20 - 0:25 | Minimalist end-card with dark matte background, animated AERIS MUSIC logo, and wave outline. | Scale-in logo animation (0% to 100% spring ease); pulse on beat 1. | Call-to-action text overlay; music trail-off with spatial delay tail. |\n\n---\n\n### 3) On-Screen Text\n\nAll text formatted in bold sans-serif (e.g., Montserrat ExtraBold or Helvetica Now Display), center-aligned, within YouTube Shorts 9:16 safe zones (avoiding bottom 20% overlay area and top 15% UI header).\n\n* **0:00 - 0:04:** \n  * Text: `Stop releasing flat synths âŒ`\n  * Style: Yellow fills with a 4px black drop shadow.\n* **0:04 - 0:09:** \n  * Text: `Add Spatial Delay + 100% Reverb Tail âœ¨`\n  * Style: Cyan/White gradient text with soft neon outer glow.\n* **0:14 - 0:20:** \n  * Text: `The AERIS Soundscape ðŸŒŒ`\n  * Style: White text, top-center screen position, tracking expanding from 0 to +10.\n* **0:20 - 0:25:** \n  * Text: `Stream \"Nebula Drift\" Now | Link in Bio`\n  * Style: Dark semi-transparent pill container with bold white text.\n\n---\n\n### 4) Voice / Music Direction\n\n#### Voiceover Script \u0026 Tone\n* **Tone:** Energetic, confident, direct music producer cadence.\n* **0:00 - 0:04:** \"Stop releasing flat synths. Hereâ€™s how we turn a dry patch...\"\n* **0:04 - 0:09:** \"...into an atmospheric AERIS soundscape.\"\n* **0:14 - 0:20:** \"Layer spatial modulation and atmospheric depth to make your tracks breathe.\"\n* **0:20 - 0:25:** \"Stream the full track now on YouTube and Spotify.\"\n\n#### Audio Mixing \u0026 Track Cues\n* **Track:** *AERIS - Nebula Drift* (Key: F# Minor | BPM: 110)\n* **0:00 - 0:04:** Isolate dry lead synth stem. Apply low-pass filter at 1.5 kHz. Voiceover ducking music by -4 dB.\n* **0:04 - 0:09:** Open filter cutoff to 20 kHz; sweep stereo width parameter from 0% (Mono) to 100% (Stereo).\n* **0:09 - 0:14:** Transition white-noise riser swell starting at -12 dB ending at 0 dB on beat 1 of 0:14.\n* **0:14 - 0:20:** Full master track drop. Dynamic range normalized. Voiceover cut completely.\n* **0:20 - 0:25:** Master track fades over 2.0 seconds into reverb tail exit at -24 dB; UI click sound effect on logo reveal.\n\n---\n\n### 5) Title and Caption\n\n* **Video Title:** Turn ANY Dry Synth Into a Cinematic Soundscape ðŸŒŒ #Shorts #MusicProduction #AERISMUSIC\n* **Caption:**\n  \u003e Want your synths to sound massive? Here is the exact spatial processing chain behind our latest release \"Nebula Drift\". ðŸŽ§ \n  \u003e \n  \u003e Stream the full track on YouTube \u0026 Spotify now! Link in description/bio.\n  \u003e \n  \u003e #AERISMUSIC #SoundDesign #Synthesizer #ProducerTips #AmbientMusic #LoFi #StudioTech\n\n---\n\n### 6) Rendering Specification for 9:16 MP4\n\n* **Container:** MP4\n* **Video Codec:** H.264 (High Profile, Level 4.2)\n* **Resolution:** 1080 x 1920 (9:16 vertical aspect ratio)\n* **Frame Rate:** 30.00 fps (Progressive)\n* **Target Bitrate:** 18 Mbps (VBR 2-pass)\n* **Maximum Bitrate:** 22 Mbps\n* **Color Space:** Rec.709 / YUV 4:2:0\n* **Audio Codec:** AAC-LC\n* **Audio Channels:** Stereo (2.0)\n* **Audio Sample Rate:** 48.000 kHz\n* **Audio Bitrate:** 320 kbps\n* **Loudness Normalization:** Integrated -14.0 LUFS (Â±0.5 LUFS), True Peak \u003c= -1.0 dBFS\n\n---\n\n### 7) QC Checklist\n\n- [ ] **Aspect Ratio \u0026 Frame Limits:** Video renders strictly at 1080x1920 with no black letterboxing or pillarboxing.\n- [ ] **Text Safe Zones:** All on-screen text sits within the central safe zone (15% below top edge, 20% above bottom edge, 10% inside side edges).\n- [ ] **Audio Normalization:** Final integrated mix reads -14 LUFS with True Peak staying below -1.0 dBFS.\n- [ ] **Audio Sync:** Audio transition at 0:14 aligns frame-accurately with visual beat drop.\n- [ ] **Visual Clarity:** Plugin screen captures and text are crisp and legible on mobile screens.\n- [ ] **Color Check:** No color band clipping in dark backgrounds; contrast renders cleanly under Rec.709 profile.\n- [ ] **Looping Transition:** Last frame (0:25) visually transitions smoothly to Frame 1 (0:00) for seamless repeat playback.",
-                                     "completed_at":  "2026-09-18T08:46:32.030Z"
-                                 },
-                      "verified_at":  "2026-09-18T08:46:10.308Z"
-                  },
-                  {
-                      "task_id":  "AKATH-PC1-AI-PRODUCTION-RETRY-005",
-                      "type":  "PRODUCTION",
-                      "title":  "AERIS live AI production package â€” Gemini fallback model",
-                      "capability":  "ai",
-                      "action":  "ai_content_production_package",
-                      "status":  "PENDING",
-                      "created_at":  "2026-09-18T08:48:00.000Z",
-                      "deadline_at":  "2026-09-18T09:20:00.000Z",
-                      "milestones":  [
-                                         "PC1 claims AI production retry",
-                                         "Gemini specialist executes",
-                                         "AI production package returned",
-                                         "EVIDENCE persisted",
-                                         "VERIFY passes",
-                                         "DONE recorded"
-                                     ],
-                      "completion_criteria":  [
-                                                  "specialist returns ok=true",
-                                                  "result.execution is AI_EXECUTED",
-                                                  "result.output is non-empty",
-                                                  "evidence contains matching RESULT",
-                                                  "verification.verified=true",
-                                                  "task status is DONE"
-                                              ],
-                      "evidence":  null,
-                      "verification":  null,
-                      "completed_at":  null,
-                      "payload":  {
-                                      "action":  "ai_content_production_package",
-                                      "capability":  "ai",
-                                      "autonomous":  true,
-                                      "issued_by":  "AX",
-                                      "provider":  "gemini",
-                                      "model":  "gemini-2.5-flash",
-                                      "objective":  "Complete the first real AERIS MUSIC AI production workload on PC1 using an available Gemini model after the prior model returned a temporary high-demand error.",
-                                      "prompt":  "Create a production-ready package for one AERIS MUSIC YouTube Short. Return exactly these sections: 1) concept and hook, 2) 20-30 second timeline with 6 or fewer shots, 3) on-screen text, 4) voice/music direction, 5) title and caption, 6) rendering specification for a 9:16 MP4, 7) QC checklist. Make it concrete enough for a rendering specialist to execute next. Do not claim any media was rendered or uploaded.",
-                                      "system_instruction":  "You are the AERIS MUSIC production AI specialist. Produce factual production instructions only. Never claim an artifact exists unless it was actually produced."
-                                  }
-                  },
-                  {
-                      "task_id":  "AKATH-PC1-AI-PRODUCTION-RETRY-006",
-                      "type":  "PRODUCTION",
-                      "title":  "AERIS live AI production package â€” Gemini Lite",
-                      "capability":  "ai",
-                      "action":  "ai_content_production_package",
-                      "status":  "PENDING",
-                      "created_at":  "2026-09-18T08:52:00.000Z",
-                      "deadline_at":  "2026-09-18T09:25:00.000Z",
-                      "milestones":  [
-                                         "PC1 claims AI production retry",
-                                         "Gemini specialist executes",
-                                         "AI production package returned",
-                                         "EVIDENCE persisted",
-                                         "VERIFY passes",
-                                         "DONE recorded"
-                                     ],
-                      "completion_criteria":  [
-                                                  "specialist returns ok=true",
-                                                  "result.execution is AI_EXECUTED",
-                                                  "result.output is non-empty",
-                                                  "evidence contains matching RESULT",
-                                                  "verification.verified=true",
-                                                  "task status is DONE"
-                                              ],
-                      "evidence":  null,
-                      "verification":  null,
-                      "completed_at":  null,
-                      "payload":  {
-                                      "action":  "ai_content_production_package",
-                                      "capability":  "ai",
-                                      "autonomous":  true,
-                                      "issued_by":  "AX",
-                                      "provider":  "gemini",
-                                      "model":  "gemini-2.5-flash-lite",
-                                      "objective":  "Complete the first real AERIS MUSIC AI production workload on PC1 using a lower-demand Gemini model.",
-                                      "prompt":  "Create a production-ready package for one AERIS MUSIC YouTube Short. Return exactly these sections: 1) concept and hook, 2) 20-30 second timeline with 6 or fewer shots, 3) on-screen text, 4) voice/music direction, 5) title and caption, 6) rendering specification for a 9:16 MP4, 7) QC checklist. Make it concrete enough for a rendering specialist to execute next. Do not claim any media was rendered or uploaded.",
-                                      "system_instruction":  "You are the AERIS MUSIC production AI specialist. Produce factual production instructions only. Never claim an artifact exists unless it was actually produced."
-                                  }
-                  },
-                  {
-                      "task_id":  "AKATH-PC2-BROWSER-E2E-002",
-                      "type":  "SYSTEM",
-                      "title":  "PC2 browser specialist E2E",
-                      "capability":  "browser",
-                      "action":  "browser_probe",
-                      "status":  "PENDING",
-                      "created_at":  "2026-09-18T14:32:26.3691739Z",
-                      "deadline_at":  "2026-09-18T14:42:26.3691739Z",
-                      "target_node":  "PC2-MAIN",
-                      "payload":  {
-                                      "url":  "https://jumptask.io/",
-                                      "objective":  "Open JumpTask and capture browser evidence only; do not submit or complete any task."
-                                  },
-                      "evidence":  null,
-                      "verification":  null
-                  }
-              ],
-    "task_identity_policy":  "1 task_id = 1 canonical task record",
-    "time_governance":  {
-                            "required":  true,
-                            "fields":  [
-                                           "started_at",
-                                           "deadline_at",
-                                           "milestones",
-                                           "completion_criteria",
-                                           "evidence",
-                                           "verification",
-                                           "completed_at"
-                                       ],
-                            "overdue_policy":  "OVERDUE -\u003e cause analysis -\u003e corrective action -\u003e continue or escalate; never silently extend deadline"
-                        },
-    "completion_rule":  "DONE requires actual execution result, persisted evidence, and verification",
-    "execution_direction":  "AX -\u003e AX_RUNTIME -\u003e DISPATCHER -\u003e PC1_MAIN -\u003e SPECIALIST -\u003e EXECUTE -\u003e EVIDENCE -\u003e VERIFY -\u003e NEXT_JOB",
-    "clean_start_rule":  "Historical tasks are not current tasks. Experience may inform design but cannot create current state.",
-    "autonomous_continuation":  {
-                                    "enabled":  true,
-                                    "planner":  "autonomous-planner.mjs",
-                                    "specialist_registry":  "specialist-registry.mjs",
-                                    "requires_human_per_cycle":  false
-                                }
+{
+  "schema_version": "1.0",
+  "registry_role": "AKATH_CANONICAL_TASK_REGISTRY",
+  "authority": "K_FINAL_AUTHORITY",
+  "organization": "AKATH",
+  "managed_by": "AX",
+  "status": "READY_FOR_AUTONOMOUS_EXECUTION",
+  "current_work": {
+    "active": true,
+    "task_id": "AKATH-PC2-BROWSER-E2E-002",
+    "status": "PENDING",
+    "updated_at": "2026-09-18T14:37:03.0132771Z"
+  },
+  "tasks": [
+    {
+      "task_id": "AKATH-PC1-EXECUTION-LOOP-GATE-001",
+      "type": "SYSTEM",
+      "title": "PC1 canonical execution loop gate",
+      "capability": "execution",
+      "action": "pc1_execution_loop_gate",
+      "status": "DONE",
+      "created_at": "2026-09-17T00:00:00.000Z",
+      "deadline_at": "2026-09-17T12:00:00.000Z",
+      "milestones": [
+        "PC1 claims canonical task",
+        "SPECIALIST executes task",
+        "EVIDENCE persisted",
+        "VERIFY passes",
+        "DONE recorded"
+      ],
+      "completion_criteria": [
+        "specialist returns ok=true",
+        "evidence contains matching RESULT",
+        "verification.verified=true",
+        "task status is DONE"
+      ],
+      "evidence": null,
+      "verification": {
+        "verified": true,
+        "reasons": []
+      },
+      "completed_at": "2026-09-17T02:45:17.316Z",
+      "payload": {
+        "action": "pc1_execution_loop_gate",
+        "capability": "execution",
+        "canonical": true,
+        "autonomous": false
+      },
+      "started_at": "2026-09-17T02:45:17.316Z",
+      "attempt": 1,
+      "result": {
+        "executor": "PC1_MAIN_SPECIALIST",
+        "capability": "execution",
+        "task_id": "AKATH-PC1-EXECUTION-LOOP-GATE-001",
+        "execution": "EXECUTED",
+        "completed_at": "2026-09-17T02:45:17.385Z"
+      },
+      "verified_at": "2026-09-17T02:45:17.316Z"
+    },
+    {
+      "task_id": "AKATH-PC1-SPECIALIST-EXECUTION-CONTINUITY-001",
+      "type": "SYSTEM",
+      "title": "PC1 specialist execution continuity",
+      "capability": "execution",
+      "action": "pc1_specialist_execution_continuity",
+      "status": "DONE",
+      "created_at": "2026-09-17T02:55:00.000Z",
+      "deadline_at": "2026-09-17T04:00:00.000Z",
+      "milestones": [
+        "PC1 claims next canonical task",
+        "SPECIALIST executes task",
+        "EVIDENCE persisted",
+        "VERIFY passes",
+        "DONE recorded"
+      ],
+      "completion_criteria": [
+        "specialist returns ok=true",
+        "evidence contains matching RESULT",
+        "verification.verified=true",
+        "task status is DONE"
+      ],
+      "evidence": null,
+      "verification": {
+        "verified": true,
+        "reasons": []
+      },
+      "completed_at": "2026-09-17T02:56:34.446Z",
+      "payload": {
+        "action": "pc1_specialist_execution_continuity",
+        "capability": "execution",
+        "canonical": true,
+        "autonomous": true,
+        "objective": "continue the real canonical PC1 execution loop through the existing specialist path"
+      },
+      "started_at": "2026-09-17T02:56:34.446Z",
+      "attempt": 1,
+      "result": {
+        "executor": "PC1_MAIN_SPECIALIST",
+        "capability": "execution",
+        "task_id": "AKATH-PC1-SPECIALIST-EXECUTION-CONTINUITY-001",
+        "execution": "EXECUTED",
+        "completed_at": "2026-09-17T02:56:34.532Z"
+      },
+      "verified_at": "2026-09-17T02:56:34.446Z"
+    },
+    {
+      "task_id": "AKATH-PC1-EXECUTION-PIPELINE-INTAKE-001",
+      "type": "SYSTEM",
+      "title": "PC1 execution pipeline intake",
+      "capability": "execution",
+      "action": "pc1_execution_pipeline_intake",
+      "status": "DONE",
+      "created_at": "2026-09-17T03:12:00.000Z",
+      "deadline_at": "2026-09-17T05:00:00.000Z",
+      "milestones": [
+        "PC1 claims next canonical task",
+        "SPECIALIST executes task",
+        "EVIDENCE persisted",
+        "VERIFY passes",
+        "DONE recorded"
+      ],
+      "completion_criteria": [
+        "specialist returns ok=true",
+        "evidence contains matching RESULT",
+        "verification.verified=true",
+        "task status is DONE"
+      ],
+      "evidence": null,
+      "verification": {
+        "verified": true,
+        "reasons": []
+      },
+      "completed_at": "2026-09-17T03:39:39.796Z",
+      "payload": {
+        "action": "pc1_execution_pipeline_intake",
+        "capability": "execution",
+        "canonical": true,
+        "autonomous": true,
+        "objective": "keep the verified PC1 execution pipeline active and ready to accept the next canonical workload without human-per-cycle intervention"
+      },
+      "started_at": "2026-09-17T03:39:39.796Z",
+      "attempt": 1,
+      "result": {
+        "executor": "PC1_MAIN_SPECIALIST",
+        "capability": "execution",
+        "task_id": "AKATH-PC1-EXECUTION-PIPELINE-INTAKE-001",
+        "execution": "EXECUTED",
+        "completed_at": "2026-09-17T03:39:39.873Z"
+      },
+      "verified_at": "2026-09-17T03:39:39.796Z"
+    },
+    {
+      "task_id": "AKATH-PC1-EXECUTION-CONTINUATION-002",
+      "type": "SYSTEM",
+      "title": "PC1 canonical execution continuation",
+      "capability": "execution",
+      "action": "pc1_execution_continuation_002",
+      "status": "DONE",
+      "created_at": "2026-09-17T03:42:00.000Z",
+      "deadline_at": "2026-09-17T05:30:00.000Z",
+      "milestones": [
+        "PC1 claims canonical task",
+        "SPECIALIST executes task",
+        "EVIDENCE persisted",
+        "VERIFY passes",
+        "DONE recorded"
+      ],
+      "completion_criteria": [
+        "specialist returns ok=true",
+        "result.execution is PC1_CONTROL_EXECUTED",
+        "evidence contains captured output",
+        "verification.verified=true",
+        "task status is DONE"
+      ],
+      "evidence": {
+        "event": "RESULT",
+        "jobId": "AKATH-PC1-EXECUTION-CONTINUATION-002",
+        "timestamp": "2026-09-19T03:17:47.043Z"
+      },
+      "verification": {
+        "verified": true,
+        "reasons": []
+      },
+      "completed_at": "2026-09-19T03:17:47.043Z",
+      "payload": {
+        "action": "pc1_execution_continuation_002",
+        "capability": "execution",
+        "canonical": true,
+        "autonomous": true,
+        "objective": "continue the verified PC1 execution loop with the next canonical workload without human-per-cycle intervention"
+      },
+      "result": {
+        "executor": "PC1_MAIN_SPECIALIST",
+        "capability": "execution",
+        "task_id": "AKATH-PC1-EXECUTION-CONTINUATION-002",
+        "execution": "EXECUTED",
+        "completed_at": "2026-09-19T03:17:47.113Z"
+      },
+      "verified_at": "2026-09-19T03:17:47.043Z"
+    },
+    {
+      "task_id": "AKATH-PC1-AI-PRODUCTION-001",
+      "type": "PRODUCTION",
+      "title": "PC1 Gemini AI production intake",
+      "capability": "ai",
+      "action": "ai_production_smoke",
+      "status": "PENDING",
+      "created_at": "2026-09-17T04:05:00.000Z",
+      "deadline_at": "2026-09-17T06:00:00.000Z",
+      "milestones": [
+        "PC1 claims AI production task",
+        "Gemini specialist executes",
+        "AI result returned",
+        "EVIDENCE persisted",
+        "VERIFY passes",
+        "DONE recorded"
+      ],
+      "completion_criteria": [
+        "specialist returns ok=true",
+        "result contains AI_EXECUTED",
+        "result contains non-empty output",
+        "evidence contains matching RESULT",
+        "verification.verified=true",
+        "task status is DONE"
+      ],
+      "evidence": null,
+      "verification": null,
+      "completed_at": null,
+      "payload": {
+        "action": "ai_production_smoke",
+        "capability": "ai",
+        "canonical": true,
+        "autonomous": true,
+        "provider": "gemini",
+        "prompt": "Produce a concise 3-point production readiness note for AERIS MUSIC's AI execution pipeline. Return exactly three numbered points and no preamble.",
+        "system_instruction": "You are the AERIS MUSIC production AI specialist. Produce concise, factual output for the execution pipeline. Do not claim actions you did not perform."
+      }
+    },
+    {
+      "task_id": "AKATH-PC1-CONTROL-BRIDGE-001",
+      "type": "SYSTEM",
+      "title": "PC1 allowlisted PowerShell control bridge smoke",
+      "capability": "control",
+      "action": "pc1_status",
+      "status": "PENDING",
+      "created_at": "2026-09-17T04:50:00.000Z",
+      "deadline_at": "2026-09-17T06:30:00.000Z",
+      "milestones": [
+        "AX issues canonical control task",
+        "PC1 claims task",
+        "ALLOWLIST validates action",
+        "PowerShell executes",
+        "stdout/stderr captured",
+        "EVIDENCE persisted",
+        "VERIFY passes",
+        "DONE recorded"
+      ],
+      "completion_criteria": [
+        "specialist returns ok=true",
+        "result.execution is PC1_CONTROL_EXECUTED",
+        "result.exit_code is 0",
+        "evidence contains captured output",
+        "verification.verified=true",
+        "task status is DONE"
+      ],
+      "evidence": null,
+      "verification": null,
+      "completed_at": null,
+      "payload": {
+        "action": "pc1_status",
+        "capability": "control",
+        "canonical": true,
+        "autonomous": true,
+        "security": "allowlist-only"
+      }
+    },
+    {
+      "task_id": "AKATH-AX-PC1-REMOTE-POWERSHELL-GATE-001",
+      "type": "SYSTEM",
+      "title": "AX remote PC1 PowerShell control acceptance gate",
+      "capability": "control",
+      "action": "runtime_status",
+      "status": "DONE",
+      "created_at": "2026-09-17T12:10:00.000Z",
+      "deadline_at": "2026-09-17T13:00:00.000Z",
+      "milestones": [
+        "AX creates remote control task",
+        "PC1 pulls canonical task",
+        "PC1 claims task",
+        "ALLOWLIST validates action",
+        "PowerShell executes on PC1",
+        "stdout/stderr and exit code captured",
+        "EVIDENCE persisted",
+        "VERIFY passes",
+        "DONE recorded"
+      ],
+      "completion_criteria": [
+        "specialist returns ok=true",
+        "result.execution is PC1_CONTROL_EXECUTED",
+        "result.exit_code is 0",
+        "result.output is non-empty",
+        "evidence contains captured PowerShell output",
+        "verification.verified=true",
+        "task status is DONE"
+      ],
+      "evidence": null,
+      "verification": {
+        "verified": true,
+        "reasons": []
+      },
+      "completed_at": "2026-09-17T06:34:37.844Z",
+      "payload": {
+        "action": "runtime_status",
+        "capability": "control",
+        "canonical": true,
+        "autonomous": true,
+        "security": "allowlist-only",
+        "issued_by": "AX",
+        "remote_control_gate": true,
+        "objective": "prove AX can issue a PowerShell control task to PC1 without K typing the command"
+      },
+      "result": {
+        "executor": "PC1_MAIN_SPECIALIST",
+        "capability": "control",
+        "task_id": "AKATH-AX-PC1-REMOTE-POWERSHELL-GATE-001",
+        "execution": "PC1_CONTROL_EXECUTED",
+        "exit_code": 0,
+        "output": "captured from PC1 runtime"
+      },
+      "verified_at": "2026-09-17T06:34:37.844Z"
+    },
+    {
+      "task_id": "AKATH-AX-PC1-BRIDGE-PROOF-002",
+      "type": "SYSTEM",
+      "title": "AX to PC1 bridge proof â€” second autonomous control command",
+      "capability": "control",
+      "action": "runtime_status",
+      "status": "PENDING",
+      "created_at": "2026-09-17T02:20:00.000Z",
+      "deadline_at": "2026-09-17T08:30:00.000Z",
+      "deadline_reviewed_at": "2026-09-17T08:00:00.000Z",
+      "correction": "deadline_review_and_requeue_after_live_gate",
+      "milestones": [
+        "AX writes canonical control task",
+        "PC1 pulls task",
+        "PC1 claims task",
+        "ALLOWLIST validates action",
+        "PowerShell executes on PC1",
+        "stdout/stderr and exit code captured",
+        "EVIDENCE persisted",
+        "VERIFY passes",
+        "DONE recorded"
+      ],
+      "completion_criteria": [
+        "specialist returns ok=true",
+        "result.execution is PC1_CONTROL_EXECUTED",
+        "result.exit_code is 0",
+        "result.output is non-empty",
+        "evidence contains captured PowerShell output",
+        "verification.verified=true",
+        "task status is DONE"
+      ],
+      "evidence": null,
+      "verification": null,
+      "completed_at": null,
+      "payload": {
+        "action": "runtime_status",
+        "capability": "control",
+        "canonical": true,
+        "autonomous": true,
+        "security": "allowlist-only",
+        "issued_by": "AX",
+        "bridge_proof": true,
+        "objective": "prove AX itself can write and issue a second PowerShell control task to PC1 without K typing the command"
+      }
+    },
+    {
+      "task_id": "AKATH-JUMPTASK-AI-FIRST-001",
+      "type": "PRODUCTION",
+      "title": "JumpTask first workload â€” AI-assisted autonomous task selection",
+      "capability": "ai",
+      "action": "ai_production_smoke",
+      "status": "PENDING",
+      "created_at": "2026-09-17T08:59:00.000Z",
+      "deadline_at": "2026-09-17T09:30:00.000Z",
+      "milestones": [
+        "PC1 claims JumpTask AI task",
+        "Gemini specialist evaluates supplied JumpTask workload",
+        "AI result returned",
+        "EVIDENCE persisted",
+        "VERIFY passes",
+        "DONE recorded"
+      ],
+      "completion_criteria": [
+        "specialist returns ok=true",
+        "result.execution is AI_EXECUTED",
+        "result contains non-empty output",
+        "evidence contains matching RESULT",
+        "verification.verified=true",
+        "task status is DONE"
+      ],
+      "evidence": null,
+      "verification": null,
+      "completed_at": null,
+      "payload": {
+        "action": "ai_production_smoke",
+        "capability": "ai",
+        "canonical": true,
+        "autonomous": true,
+        "provider": "gemini",
+        "workload": "JumpTask",
+        "prompt": "Using the JumpTask workload information supplied by K in the current AKATH context, identify the first legitimate workload that can be executed autonomously on PC1 without simulating human activity, falsifying engagement, bypassing platform controls, or violating offer conditions. Prioritize legitimate passive/background earning opportunities if explicitly allowed. Return exactly: 1) selected workload, 2) why it is permissible, 3) concrete next execution step available to the current PC1 specialist. If no workload can be executed safely and legitimately by the current specialist, state that clearly and do not invent an execution path.",
+        "system_instruction": "You are the AERIS MUSIC production AI specialist. Be factual. Never claim to have opened JumpTask, completed an offer, earned money, or verified a platform rule unless the runtime actually performed that action or supplied direct evidence. Do not recommend deceptive automation or bypassing anti-fraud controls."
+      }
+    },
+    {
+      "task_id": "AKATH-PC1-LIVE-EXECUTION-GATE-003",
+      "type": "SYSTEM",
+      "title": "PC1 live autonomous execution gate",
+      "capability": "execution",
+      "action": "pc1_execution_live_gate",
+      "status": "OVERDUE",
+      "created_at": "2026-09-18T04:05:19.015Z",
+      "deadline_at": "2026-09-18T05:05:19.020Z",
+      "milestones": [
+        "PC1 claims canonical task",
+        "SPECIALIST executes task",
+        "EVIDENCE persisted",
+        "VERIFY passes",
+        "DONE recorded"
+      ],
+      "completion_criteria": [
+        "specialist returns ok=true",
+        "evidence contains matching RESULT",
+        "verification.verified=true",
+        "task status is DONE"
+      ],
+      "evidence": null,
+      "verification": null,
+      "completed_at": null,
+      "payload": {
+        "action": "pc1_execution_live_gate",
+        "capability": "execution",
+        "canonical": true,
+        "autonomous": true,
+        "objective": "prove the live PC1 autonomous execution loop can claim, execute, persist evidence, verify, and complete a fresh canonical task"
+      },
+      "overdue_at": "2026-09-18T05:35:00.000Z",
+      "correction": "superseded_by_fresh_live_task"
+    },
+    {
+      "task_id": "AKATH-PC1-CONTROL-BRIDGE-LIVE-004",
+      "type": "SYSTEM",
+      "title": "PC1 live allowlisted PowerShell control bridge",
+      "capability": "control",
+      "action": "pc1_status",
+      "status": "OVERDUE",
+      "created_at": "2026-09-18T03:10:00.000Z",
+      "deadline_at": "2026-09-18T04:10:00.000Z",
+      "milestones": [
+        "AX issues canonical control task",
+        "PC1 claims task",
+        "ALLOWLIST validates action",
+        "PowerShell executes",
+        "stdout/stderr captured",
+        "EVIDENCE persisted",
+        "VERIFY passes",
+        "DONE recorded"
+      ],
+      "completion_criteria": [
+        "specialist returns ok=true",
+        "result.execution is PC1_CONTROL_EXECUTED",
+        "result.exit_code is 0",
+        "evidence contains captured output",
+        "verification.verified=true",
+        "task status is DONE"
+      ],
+      "evidence": null,
+      "verification": null,
+      "completed_at": null,
+      "payload": {
+        "action": "pc1_status",
+        "capability": "control",
+        "canonical": true,
+        "autonomous": true,
+        "security": "allowlist-only",
+        "issued_by": "AX",
+        "bridge_proof": true,
+        "objective": "prove the live AX-to-PC1 control bridge executes an allowlisted PowerShell command without K typing the command"
+      },
+      "overdue_at": "2026-09-18T05:35:00.000Z",
+      "correction": "superseded_by_fresh_live_task"
+    },
+    {
+      "task_id": "AKATH-PC1-FIRST-PRODUCTIVE-AI-001",
+      "type": "PRODUCTION",
+      "title": "AERIS first productive AI production task",
+      "capability": "ai",
+      "action": "ai_first_productive_work",
+      "status": "OVERDUE",
+      "created_at": "2026-09-18T04:36:19.179Z",
+      "deadline_at": "2026-09-18T05:36:19.183Z",
+      "milestones": [
+        "AX selects first productive workload",
+        "PC1 claims task",
+        "Gemini specialist executes",
+        "AI result returned",
+        "EVIDENCE persisted",
+        "VERIFY passes",
+        "DONE recorded"
+      ],
+      "completion_criteria": [
+        "specialist returns ok=true",
+        "result.execution is AI_EXECUTED",
+        "result.output is non-empty",
+        "evidence contains matching RESULT",
+        "verification.verified=true",
+        "task status is DONE"
+      ],
+      "evidence": null,
+      "verification": null,
+      "completed_at": null,
+      "payload": {
+        "action": "ai_first_productive_work",
+        "capability": "ai",
+        "provider": "gemini",
+        "autonomous": true,
+        "issued_by": "AX",
+        "prompt": "Create a concise production work brief for AERIS MUSIC's next execution cycle. Return exactly: 1) objective, 2) three concrete next actions, 3) required output artifact. Do not claim any action was performed.",
+        "system_instruction": "You are the AERIS MUSIC production AI specialist. Produce factual operational output only. Do not claim actions you did not perform."
+      },
+      "overdue_at": "2026-09-18T05:35:00.000Z",
+      "correction": "superseded_by_fresh_live_task"
+    },
+    {
+      "task_id": "AKATH-PC1-AI-LIVE-RUN-002",
+      "type": "PRODUCTION",
+      "title": "AERIS live AI execution â€” fresh workload",
+      "capability": "ai",
+      "action": "ai_first_productive_work",
+      "status": "PENDING",
+      "created_at": "2026-09-18T05:35:00.000Z",
+      "deadline_at": "2026-09-18T06:05:00.000Z",
+      "milestones": [
+        "PC1 claims fresh AI task",
+        "Gemini specialist executes",
+        "AI result returned",
+        "EVIDENCE persisted",
+        "VERIFY passes",
+        "DONE recorded"
+      ],
+      "completion_criteria": [
+        "specialist returns ok=true",
+        "result.execution is AI_EXECUTED",
+        "result.output is non-empty",
+        "evidence contains matching RESULT",
+        "verification.verified=true",
+        "task status is DONE"
+      ],
+      "evidence": null,
+      "verification": null,
+      "completed_at": null,
+      "payload": {
+        "action": "ai_first_productive_work",
+        "capability": "ai",
+        "provider": "gemini",
+        "autonomous": true,
+        "issued_by": "AX",
+        "prompt": "Create the next AERIS MUSIC production work brief. Return exactly: 1) objective, 2) three concrete next actions, 3) required output artifact. Do not claim any action was performed.",
+        "system_instruction": "You are the AERIS MUSIC production AI specialist. Produce factual operational output only. Do not claim actions you did not perform."
+      }
+    },
+    {
+      "task_id": "AKATH-PC1-CONTENT-PACKAGE-003",
+      "type": "PRODUCTION",
+      "title": "AERIS Music Short production package",
+      "capability": "ai",
+      "action": "ai_content_production_package",
+      "status": "PENDING",
+      "created_at": "2026-09-18T06:00:00.000Z",
+      "deadline_at": "2026-09-18T07:00:00.000Z",
+      "milestones": [
+        "PC1 claims AI production task",
+        "Gemini creates production package",
+        "EVIDENCE persisted",
+        "VERIFY passes",
+        "DONE recorded"
+      ],
+      "completion_criteria": [
+        "specialist returns ok=true",
+        "result.execution is AI_EXECUTED",
+        "result.output is non-empty",
+        "evidence contains matching RESULT",
+        "verification.verified=true",
+        "task status is DONE"
+      ],
+      "evidence": null,
+      "verification": null,
+      "completed_at": null,
+      "payload": {
+        "action": "ai_content_production_package",
+        "capability": "ai",
+        "autonomous": true,
+        "issued_by": "AX",
+        "provider": "gemini",
+        "objective": "Create the first concrete AERIS MUSIC YouTube Short production package that can be handed to a rendering specialist.",
+        "prompt": "Create a production-ready package for one AERIS MUSIC YouTube Short. Do not claim any media was rendered or uploaded. Return exactly these sections: 1) concept and hook, 2) 20-30 second timeline with 6 or fewer shots, 3) on-screen text, 4) voice/music direction, 5) title and caption, 6) rendering specification for a 9:16 MP4, 7) QC checklist. Make it concrete enough for a PC2 rendering specialist to execute next.",
+        "system_instruction": "You are the AERIS MUSIC production AI specialist. Produce factual production instructions only. Never claim an artifact exists unless it was actually produced."
+      }
+    },
+    {
+      "task_id": "AKATH-PC1-AI-PRODUCTION-LIVE-004",
+      "type": "PRODUCTION",
+      "title": "AERIS live AI production package â€” PC1",
+      "capability": "ai",
+      "action": "ai_content_production_package",
+      "status": "DONE",
+      "created_at": "2026-09-18T08:42:00.000Z",
+      "deadline_at": "2026-09-18T09:30:00.000Z",
+      "milestones": [
+        "PC1 claims AI production task",
+        "Gemini specialist executes",
+        "AI production package returned",
+        "EVIDENCE persisted",
+        "VERIFY passes",
+        "DONE recorded"
+      ],
+      "completion_criteria": [
+        "specialist returns ok=true",
+        "result.execution is AI_EXECUTED",
+        "result.output is non-empty",
+        "evidence contains matching RESULT",
+        "verification.verified=true",
+        "task status is DONE"
+      ],
+      "evidence": null,
+      "verification": {
+        "verified": true,
+        "reasons": []
+      },
+      "completed_at": "2026-09-18T08:46:10.308Z",
+      "payload": {
+        "action": "ai_content_production_package",
+        "capability": "ai",
+        "autonomous": true,
+        "issued_by": "AX",
+        "provider": "gemini",
+        "objective": "Produce a concrete AERIS MUSIC YouTube Short production package as the first real AI production workload on PC1.",
+        "prompt": "Create a production-ready package for one AERIS MUSIC YouTube Short. Return exactly these sections: 1) concept and hook, 2) 20-30 second timeline with 6 or fewer shots, 3) on-screen text, 4) voice/music direction, 5) title and caption, 6) rendering specification for a 9:16 MP4, 7) QC checklist. Make it concrete enough for a rendering specialist to execute next. Do not claim any media was rendered or uploaded.",
+        "system_instruction": "You are the AERIS MUSIC production AI specialist. Produce factual production instructions only. Never claim an artifact exists unless it was actually produced."
+      },
+      "result": {
+        "executor": "PC1_GEMINI_AI_SPECIALIST",
+        "capability": "ai",
+        "task_id": "AKATH-PC1-AI-PRODUCTION-LIVE-004",
+        "execution": "AI_EXECUTED",
+        "provider": "gemini",
+        "model": "gemini-3.6-flash",
+        "output": "### 1) Concept and Hook\n\n* **Concept:** A fast-paced music production transformation showing how a flat, dry synthesizer patch is upgraded into a lush, cinematic AERIS soundscape using spatial reverb, delay layering, and visual audio-reactivity.\n* **Hook (0:00 - 0:03):** \n  * *Visual:* High-contrast split-screen showing a basic, flat DAW line vs. a vibrant, glowing audio-reactive spectrum.\n  * *Audio:* Dry, unmodulating saw wave abruptly cut by a record stop sound.\n  * *Text:* \"Stop releasing flat synths âŒ\"\n\n---\n\n### 2) 25-Second Timeline (5 Shots)\n\n| Shot # | Timecode | Visual / Framing | Camera Motion / Animation | Asset / Action |\n| :--- | :--- | :--- | :--- | :--- |\n| **Shot 1** | 0:00 - 0:04 | Close-up on DAW screen showing a raw MIDI track with a flat waveform. | Static macro view with slight digital zoom-in (100% to 110%). | Dry synthesizer track playing; red warning glow around screen edges. |\n| **Shot 2** | 0:04 - 0:09 | Screen recording cut: Inserting delay and spatial reverb plugins (100% wet mix toggle). | Snap zoom onto the reverb plugin \"Size\" knob turning up. | Visual parameter modulation; green/cyan particle effects begin overlaying video. |\n| **Shot 3** | 0:09 - 0:14 | Overhead shot of hands tweaking a hardware synthesizer/MIDI controller in a dark studio. | Dynamic pan down with neon purple and cyan studio key lighting. | Synced finger adjustments on filter sweeps; riser sound effect plays. |\n| **Shot 4** | 0:14 - 0:20 | Full-screen 3D audio visualizer featuring the signature AERIS dark geometric aesthetic. | 360-degree slow rotation of visualizer core pulsing to beat. | Full mix drop (bass, drums, ambient pads, shimmer layer). |\n| **Shot 5** | 0:20 - 0:25 | Minimalist end-card with dark matte background, animated AERIS MUSIC logo, and wave outline. | Scale-in logo animation (0% to 100% spring ease); pulse on beat 1. | Call-to-action text overlay; music trail-off with spatial delay tail. |\n\n---\n\n### 3) On-Screen Text\n\nAll text formatted in bold sans-serif (e.g., Montserrat ExtraBold or Helvetica Now Display), center-aligned, within YouTube Shorts 9:16 safe zones (avoiding bottom 20% overlay area and top 15% UI header).\n\n* **0:00 - 0:04:** \n  * Text: `Stop releasing flat synths âŒ`\n  * Style: Yellow fills with a 4px black drop shadow.\n* **0:04 - 0:09:** \n  * Text: `Add Spatial Delay + 100% Reverb Tail âœ¨`\n  * Style: Cyan/White gradient text with soft neon outer glow.\n* **0:14 - 0:20:** \n  * Text: `The AERIS Soundscape ðŸŒŒ`\n  * Style: White text, top-center screen position, tracking expanding from 0 to +10.\n* **0:20 - 0:25:** \n  * Text: `Stream \"Nebula Drift\" Now | Link in Bio`\n  * Style: Dark semi-transparent pill container with bold white text.\n\n---\n\n### 4) Voice / Music Direction\n\n#### Voiceover Script & Tone\n* **Tone:** Energetic, confident, direct music producer cadence.\n* **0:00 - 0:04:** \"Stop releasing flat synths. Hereâ€™s how we turn a dry patch...\"\n* **0:04 - 0:09:** \"...into an atmospheric AERIS soundscape.\"\n* **0:14 - 0:20:** \"Layer spatial modulation and atmospheric depth to make your tracks breathe.\"\n* **0:20 - 0:25:** \"Stream the full track now on YouTube and Spotify.\"\n\n#### Audio Mixing & Track Cues\n* **Track:** *AERIS - Nebula Drift* (Key: F# Minor | BPM: 110)\n* **0:00 - 0:04:** Isolate dry lead synth stem. Apply low-pass filter at 1.5 kHz. Voiceover ducking music by -4 dB.\n* **0:04 - 0:09:** Open filter cutoff to 20 kHz; sweep stereo width parameter from 0% (Mono) to 100% (Stereo).\n* **0:09 - 0:14:** Transition white-noise riser swell starting at -12 dB ending at 0 dB on beat 1 of 0:14.\n* **0:14 - 0:20:** Full master track drop. Dynamic range normalized. Voiceover cut completely.\n* **0:20 - 0:25:** Master track fades over 2.0 seconds into reverb tail exit at -24 dB; UI click sound effect on logo reveal.\n\n---\n\n### 5) Title and Caption\n\n* **Video Title:** Turn ANY Dry Synth Into a Cinematic Soundscape ðŸŒŒ #Shorts #MusicProduction #AERISMUSIC\n* **Caption:**\n  > Want your synths to sound massive? Here is the exact spatial processing chain behind our latest release \"Nebula Drift\". ðŸŽ§ \n  > \n  > Stream the full track on YouTube & Spotify now! Link in description/bio.\n  > \n  > #AERISMUSIC #SoundDesign #Synthesizer #ProducerTips #AmbientMusic #LoFi #StudioTech\n\n---\n\n### 6) Rendering Specification for 9:16 MP4\n\n* **Container:** MP4\n* **Video Codec:** H.264 (High Profile, Level 4.2)\n* **Resolution:** 1080 x 1920 (9:16 vertical aspect ratio)\n* **Frame Rate:** 30.00 fps (Progressive)\n* **Target Bitrate:** 18 Mbps (VBR 2-pass)\n* **Maximum Bitrate:** 22 Mbps\n* **Color Space:** Rec.709 / YUV 4:2:0\n* **Audio Codec:** AAC-LC\n* **Audio Channels:** Stereo (2.0)\n* **Audio Sample Rate:** 48.000 kHz\n* **Audio Bitrate:** 320 kbps\n* **Loudness Normalization:** Integrated -14.0 LUFS (Â±0.5 LUFS), True Peak <= -1.0 dBFS\n\n---\n\n### 7) QC Checklist\n\n- [ ] **Aspect Ratio & Frame Limits:** Video renders strictly at 1080x1920 with no black letterboxing or pillarboxing.\n- [ ] **Text Safe Zones:** All on-screen text sits within the central safe zone (15% below top edge, 20% above bottom edge, 10% inside side edges).\n- [ ] **Audio Normalization:** Final integrated mix reads -14 LUFS with True Peak staying below -1.0 dBFS.\n- [ ] **Audio Sync:** Audio transition at 0:14 aligns frame-accurately with visual beat drop.\n- [ ] **Visual Clarity:** Plugin screen captures and text are crisp and legible on mobile screens.\n- [ ] **Color Check:** No color band clipping in dark backgrounds; contrast renders cleanly under Rec.709 profile.\n- [ ] **Looping Transition:** Last frame (0:25) visually transitions smoothly to Frame 1 (0:00) for seamless repeat playback.",
+        "completed_at": "2026-09-18T08:46:32.030Z"
+      },
+      "verified_at": "2026-09-18T08:46:10.308Z"
+    },
+    {
+      "task_id": "AKATH-PC1-AI-PRODUCTION-RETRY-005",
+      "type": "PRODUCTION",
+      "title": "AERIS live AI production package â€” Gemini fallback model",
+      "capability": "ai",
+      "action": "ai_content_production_package",
+      "status": "PENDING",
+      "created_at": "2026-09-18T08:48:00.000Z",
+      "deadline_at": "2026-09-18T09:20:00.000Z",
+      "milestones": [
+        "PC1 claims AI production retry",
+        "Gemini specialist executes",
+        "AI production package returned",
+        "EVIDENCE persisted",
+        "VERIFY passes",
+        "DONE recorded"
+      ],
+      "completion_criteria": [
+        "specialist returns ok=true",
+        "result.execution is AI_EXECUTED",
+        "result.output is non-empty",
+        "evidence contains matching RESULT",
+        "verification.verified=true",
+        "task status is DONE"
+      ],
+      "evidence": null,
+      "verification": null,
+      "completed_at": null,
+      "payload": {
+        "action": "ai_content_production_package",
+        "capability": "ai",
+        "autonomous": true,
+        "issued_by": "AX",
+        "provider": "gemini",
+        "model": "gemini-2.5-flash",
+        "objective": "Complete the first real AERIS MUSIC AI production workload on PC1 using an available Gemini model after the prior model returned a temporary high-demand error.",
+        "prompt": "Create a production-ready package for one AERIS MUSIC YouTube Short. Return exactly these sections: 1) concept and hook, 2) 20-30 second timeline with 6 or fewer shots, 3) on-screen text, 4) voice/music direction, 5) title and caption, 6) rendering specification for a 9:16 MP4, 7) QC checklist. Make it concrete enough for a rendering specialist to execute next. Do not claim any media was rendered or uploaded.",
+        "system_instruction": "You are the AERIS MUSIC production AI specialist. Produce factual production instructions only. Never claim an artifact exists unless it was actually produced."
+      }
+    },
+    {
+      "task_id": "AKATH-PC1-AI-PRODUCTION-RETRY-006",
+      "type": "PRODUCTION",
+      "title": "AERIS live AI production package â€” Gemini Lite",
+      "capability": "ai",
+      "action": "ai_content_production_package",
+      "status": "PENDING",
+      "created_at": "2026-09-18T08:52:00.000Z",
+      "deadline_at": "2026-09-18T09:25:00.000Z",
+      "milestones": [
+        "PC1 claims AI production retry",
+        "Gemini specialist executes",
+        "AI production package returned",
+        "EVIDENCE persisted",
+        "VERIFY passes",
+        "DONE recorded"
+      ],
+      "completion_criteria": [
+        "specialist returns ok=true",
+        "result.execution is AI_EXECUTED",
+        "result.output is non-empty",
+        "evidence contains matching RESULT",
+        "verification.verified=true",
+        "task status is DONE"
+      ],
+      "evidence": null,
+      "verification": null,
+      "completed_at": null,
+      "payload": {
+        "action": "ai_content_production_package",
+        "capability": "ai",
+        "autonomous": true,
+        "issued_by": "AX",
+        "provider": "gemini",
+        "model": "gemini-2.5-flash-lite",
+        "objective": "Complete the first real AERIS MUSIC AI production workload on PC1 using a lower-demand Gemini model.",
+        "prompt": "Create a production-ready package for one AERIS MUSIC YouTube Short. Return exactly these sections: 1) concept and hook, 2) 20-30 second timeline with 6 or fewer shots, 3) on-screen text, 4) voice/music direction, 5) title and caption, 6) rendering specification for a 9:16 MP4, 7) QC checklist. Make it concrete enough for a rendering specialist to execute next. Do not claim any media was rendered or uploaded.",
+        "system_instruction": "You are the AERIS MUSIC production AI specialist. Produce factual production instructions only. Never claim an artifact exists unless it was actually produced."
+      }
+    },
+    {
+      "task_id": "AKATH-PC2-BROWSER-E2E-002",
+      "type": "SYSTEM",
+      "title": "PC2 browser specialist E2E",
+      "capability": "browser",
+      "action": "browser_probe",
+      "status": "PENDING",
+      "created_at": "2026-09-18T14:32:26.3691739Z",
+      "deadline_at": "2026-09-18T14:42:26.3691739Z",
+      "target_node": "PC2-MAIN",
+      "payload": {
+        "url": "https://jumptask.io/",
+        "objective": "Open JumpTask and capture browser evidence only; do not submit or complete any task."
+      },
+      "evidence": null,
+      "verification": null
+    }
+  ],
+  "task_identity_policy": "1 task_id = 1 canonical task record",
+  "time_governance": {
+    "required": true,
+    "fields": [
+      "started_at",
+      "deadline_at",
+      "milestones",
+      "completion_criteria",
+      "evidence",
+      "verification",
+      "completed_at"
+    ],
+    "overdue_policy": "OVERDUE -> cause analysis -> corrective action -> continue or escalate; never silently extend deadline"
+  },
+  "completion_rule": "DONE requires actual execution result, persisted evidence, and verification",
+  "execution_direction": "AX -> AX_RUNTIME -> DISPATCHER -> PC1_MAIN -> SPECIALIST -> EXECUTE -> EVIDENCE -> VERIFY -> NEXT_JOB",
+  "clean_start_rule": "Historical tasks are not current tasks. Experience may inform design but cannot create current state.",
+  "autonomous_continuation": {
+    "enabled": true,
+    "planner": "autonomous-planner.mjs",
+    "specialist_registry": "specialist-registry.mjs",
+    "requires_human_per_cycle": false
+  }
 }
