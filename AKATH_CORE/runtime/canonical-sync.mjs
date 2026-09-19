@@ -41,10 +41,7 @@ export function mergeCanonicalTasks(localRegistry, remoteRegistry) {
         && (remoteTask.type === 'PRODUCTION' || remoteTask.capability === 'ai' || remoteTask.capability === 'execution'))
     ) {
       Object.assign(localTask, structuredClone(remoteTask));
-      if (remoteTask.status === 'PENDING' && ['FAILED', 'OVERDUE'].includes(localTask.status)) {
-        localTask.status = 'PENDING';
-        localTask.deadline_at = null;
-      }
+      if (remoteTask.status === 'PENDING') localTask.deadline_at = null;
       requeued += 1;
       if (isFreshProductiveCurrent) currentRehydrated += 1;
     } else {
