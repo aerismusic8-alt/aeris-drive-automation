@@ -43,7 +43,11 @@ export function chooseNode(registry,{capability='execution',preferred}={}){
 
 export function nodeForTask(job,registry){
   const preferred=job?.target_node || process.env.AX_PREFERRED_NODE || null;
-  return chooseNode(registry,{capability:job?.capability||'execution',preferred});
+  const requested=job?.capability||'execution';
+  // Recovery is a control-plane concern, but it still requires an execution arm.
+  // Route recovery work through nodes that advertise execution capability.
+  const capability=requested==='recovery' ? 'execution' : requested;
+  return chooseNode(registry,{capability,preferred});
 }
 
 export { REGISTRY_PATH };
