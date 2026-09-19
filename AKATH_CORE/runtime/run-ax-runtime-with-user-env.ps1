@@ -30,6 +30,14 @@ $env:AX_RUNTIME_INTERVAL_MS = $runtimeInterval
 $syncInterval = [Environment]::GetEnvironmentVariable('AX_CANONICAL_SYNC_INTERVAL_MS', 'User')
 if ([string]::IsNullOrWhiteSpace($syncInterval)) { $syncInterval = '15000' }
 $env:AX_CANONICAL_SYNC_INTERVAL_MS = $syncInterval
+$env:AX_RUNTIME_LIVE_CONSOLE = 'true'
 
-& (Get-Command node).Source $Main
-exit $LASTEXITCODE
+$logDir = 'C:\AX-Runtime'
+$logPath = Join-Path $logDir 'AX-Runtime.log'
+New-Item -ItemType Directory -Force -Path $logDir | Out-Null
+Add-Content -Path $logPath -Value "`n=== AX_RUNTIME START $(Get-Date -Format o) node=$nodeId pid=$PID ==="
+
+& (Get-Command node).Source $Main 2>&1 | Tee-Object -FilePath $logPath -Append
+$exitCode = $LASTEXITCODE
+Add-Content -Path $logPath -Value "=== AX_RUNTIME EXIT $(Get-Date -Format o) code=$exitCode ==="
+exit $exitCode
