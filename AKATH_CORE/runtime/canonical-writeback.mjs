@@ -8,7 +8,7 @@ const CANONICAL = 'AKATH_CORE/CANONICAL_TASK_REGISTRY.json';
 
 export async function reconcileCanonicalTerminalTasks({ repoRoot, registry, now = new Date() }) {
   const show = await execFileAsync('git', ['show', 'origin/main:' + CANONICAL], { cwd: repoRoot });
-  const remote = JSON.parse(show.stdout);
+  const remote = JSON.parse(show.stdout.replace(/^\uFEFF/,''));
   let changed = false;
   for (const remoteTask of (remote.tasks || [])) {
     const localTask = (registry.tasks || []).find((item) => item?.task_id === remoteTask?.task_id);
@@ -46,7 +46,7 @@ export async function reconcileCanonicalTerminalTasks({ repoRoot, registry, now 
 export async function writeBackCanonical({ repoRoot, job, evidence, verification, now = new Date() }) {
   if (!job?.task_id) throw new Error('CANONICAL_WRITEBACK_MISSING_TASK_ID');
   const show = await execFileAsync('git', ['show', 'origin/main:' + CANONICAL], { cwd: repoRoot });
-  const registry = JSON.parse(show.stdout);
+  const registry = JSON.parse(show.stdout.replace(/^\uFEFF/,''));
   const task = Array.isArray(registry.tasks) ? registry.tasks.find((item) => item?.task_id === job.task_id) : null;
   if (!task) throw new Error('CANONICAL_WRITEBACK_TASK_NOT_FOUND:' + job.task_id);
   const iso = now.toISOString();
