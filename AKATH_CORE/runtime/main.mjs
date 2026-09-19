@@ -67,7 +67,7 @@ async function syncCanonicalQueue(registry){
     const {stdout:shaStdout}=await execFileAsync('git',['rev-parse','origin/main'],{cwd:repoRoot});
     const originSha=shaStdout.trim();
     const {stdout}=await execFileAsync('git',['show',`origin/main:${canonicalRelativePath}`],{cwd:repoRoot});
-    const remote=JSON.parse(stdout);
+    const remote=JSON.parse(stdout.replace(/^\uFEFF/,''));
     const currentTaskId=remote?.current_work?.active ? remote.current_work.task_id : 'none';
     const currentTask=Array.isArray(remote?.tasks) ? remote.tasks.find((task)=>task?.task_id===currentTaskId) : null;
     const localTask=Array.isArray(registry?.tasks) ? registry.tasks.find((task)=>task?.task_id===currentTaskId) : null;
