@@ -398,7 +398,7 @@
       "title": "JumpTask first workload â€” AI-assisted autonomous task selection",
       "capability": "ai",
       "action": "ai_production_smoke",
-      "status": "PENDING",
+      "status": "DONE",
       "created_at": "2026-09-17T08:59:00.000Z",
       "deadline_at": "2026-09-17T09:30:00.000Z",
       "milestones": [
@@ -417,9 +417,16 @@
         "verification.verified=true",
         "task status is DONE"
       ],
-      "evidence": null,
-      "verification": null,
-      "completed_at": null,
+      "evidence": {
+        "event": "RESULT",
+        "jobId": "AKATH-JUMPTASK-AI-FIRST-001",
+        "timestamp": "2026-09-19T03:29:21.030Z"
+      },
+      "verification": {
+        "verified": true,
+        "reasons": []
+      },
+      "completed_at": "2026-09-19T03:29:21.030Z",
       "payload": {
         "action": "ai_production_smoke",
         "capability": "ai",
@@ -429,7 +436,18 @@
         "workload": "JumpTask",
         "prompt": "Using the JumpTask workload information supplied by K in the current AKATH context, identify the first legitimate workload that can be executed autonomously on PC1 without simulating human activity, falsifying engagement, bypassing platform controls, or violating offer conditions. Prioritize legitimate passive/background earning opportunities if explicitly allowed. Return exactly: 1) selected workload, 2) why it is permissible, 3) concrete next execution step available to the current PC1 specialist. If no workload can be executed safely and legitimately by the current specialist, state that clearly and do not invent an execution path.",
         "system_instruction": "You are the AERIS MUSIC production AI specialist. Be factual. Never claim to have opened JumpTask, completed an offer, earned money, or verified a platform rule unless the runtime actually performed that action or supplied direct evidence. Do not recommend deceptive automation or bypassing anti-fraud controls."
-      }
+      },
+      "result": {
+        "executor": "PC1_GEMINI_AI_SPECIALIST",
+        "capability": "ai",
+        "task_id": "AKATH-JUMPTASK-AI-FIRST-001",
+        "execution": "AI_EXECUTED",
+        "provider": "ollama",
+        "model": "qwen2.5:3b",
+        "output": "No workload can be executed safely and legitimately by the current PC1 specialist without simulating human activity, falsifying engagement, bypassing platform controls, or violating offer conditions. Therefore, no selected workload, reason for its permissibility, or next execution step can be provided under the current AKATH context.",
+        "completed_at": "2026-09-19T03:29:44.385Z"
+      },
+      "verified_at": "2026-09-19T03:29:21.030Z"
     },
     {
       "task_id": "AKATH-PC1-LIVE-EXECUTION-GATE-003",
