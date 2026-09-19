@@ -895,13 +895,13 @@
       "evidence": {
         "event": "RESULT",
         "jobId": "AKATH-PC1-LOCAL-OLLAMA-LIVE-001",
-        "timestamp": "2026-09-19T20:04:35.042Z"
+        "timestamp": "2026-09-19T20:04:43.621Z"
       },
       "verification": {
         "verified": true,
         "reasons": []
       },
-      "completed_at": "2026-09-19T20:04:35.042Z",
+      "completed_at": "2026-09-19T20:04:43.621Z",
       "payload": {
         "action": "ai_local_ollama_live_gate",
         "capability": "ai",
@@ -920,9 +920,9 @@
         "provider": "ollama",
         "model": "qwen2.5:3b",
         "output": "PC1-MAIN-LOCAL-OLLAMA-LIVE-PASS",
-        "completed_at": "2026-09-19T20:04:40.561Z"
+        "completed_at": "2026-09-19T20:04:46.385Z"
       },
-      "verified_at": "2026-09-19T20:04:35.042Z"
+      "verified_at": "2026-09-19T20:04:43.621Z"
     }
   ],
   "task_identity_policy": "1 task_id = 1 canonical task record",
