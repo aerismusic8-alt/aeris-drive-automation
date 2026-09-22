@@ -1,0 +1,16 @@
+{
+  "schema": "AERIS-PC-SYNC/v1",
+  "updatedAt": "2026-09-22T04:01:11.762Z",
+  "nodes": {
+    "PC1": {
+      "name": "DESKTOP-RGK6JKB",
+      "status": "ONLINE"
+    },
+    "PC2": {
+      "name": "DESKTOP-M9M4818",
+      "status": "ONLINE"
+    }
+  },
+  "control": "PULL_AND_VERIFY",
+  "secrets": "LOCAL_ONLY"
+}
