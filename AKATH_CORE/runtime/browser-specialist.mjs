@@ -42,7 +42,7 @@ export async function executeBrowserTask(job) {
     });
     const pages=context.pages();
     const page=pages.find(p=>/jumptask/i.test(p.url()))||pages[0]||await context.newPage();
-    if(!job.use_current_page) await page.goto(url,{waitUntil:'domcontentloaded',timeout:30000});
+    if(!job.use_current_page || page.url()==='about:blank') await page.goto(url,{waitUntil:'domcontentloaded',timeout:30000});
 
     const action=job.action||'inspect_offer';
     const out={
