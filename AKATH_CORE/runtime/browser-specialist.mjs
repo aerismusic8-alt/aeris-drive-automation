@@ -35,7 +35,7 @@ export async function executeBrowserTask(job) {
   const url=job.url||'https://jumptask.io/';
   let context; let connected=false;
   try{
-    const cdpUrl=job.cdp_url||process.env.AX_BROWSER_CDP_URL;
+    const cdpUrl=job.cdp_url||process.env.AX_BROWSER_CDP_URL||(process.env.AX_PC1_NODE_ID==='PC1-MAIN'?'http://127.0.0.1:9222':null);
     if(cdpUrl){ const browser=await chromium.connectOverCDP(cdpUrl); context=browser.contexts()[0]; connected=true; }
     else context=await chromium.launchPersistentContext(profile,{
       headless:false,
