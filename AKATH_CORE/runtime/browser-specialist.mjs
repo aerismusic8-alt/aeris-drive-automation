@@ -27,14 +27,13 @@ async function selectNextOffer(page){
   ];
   for(const label of preferred){
     const found=await page.evaluate((target)=>{
-      const els=[...document.querySelectorAll('a,button,[role="button"],[role="link"]')];
+      const els=[...document.querySelectorAll('*')];
       const norm=s=>(s||'').replace(/\\s+/g,' ').trim();
-      const el=els.find(e=>norm(e.innerText||e.textContent)===target);
+      const el=els.find(e=>norm(e.innerText||e.textContent)===target && (()=>{const r=e.getBoundingClientRect(),s=getComputedStyle(e);return r.width>0&&r.height>0&&s.visibility!=='hidden'&&s.display!=='none'})());
       if(!el) return false;
-      const r=el.getBoundingClientRect(), st=getComputedStyle(el);
-      if(r.width<=0||r.height<=0||st.visibility==='hidden'||st.display==='none') return false;
-      el.scrollIntoView({block:'center',inline:'center'});
-      el.click();
+      const clickable=el.closest('a,button,[role="button"],[role="link"]')||el;
+      clickable.scrollIntoView({block:'center',inline:'center'});
+      clickable.click();
       return true;
     },label).catch(()=>false);
     if(found){
