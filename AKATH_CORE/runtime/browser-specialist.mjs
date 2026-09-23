@@ -17,7 +17,7 @@ async function findStartTask(page){
 }
 
 
-async function selectNextOffer(page){
+async function selectNextOffer(page,job={}){
   const excluded=new Set(job.exclude_labels||[]);
   const preferred=[
     'Follow JumpTask on X!',
@@ -88,7 +88,7 @@ export async function executeBrowserTask(job) {
 
     if(action==='inspect_offer'){
       Object.assign(out,await inspectOffer(page));
-    }else if(action==='select_next_offer'){ Object.assign(out,await selectNextOffer(page)); if(!out.selected) throw new Error('NO_NEXT_OFFER_FOUND'); }
+    }else if(action==='select_next_offer'){ Object.assign(out,await selectNextOffer(page,job)); if(!out.selected) throw new Error('NO_NEXT_OFFER_FOUND'); }
     else if(action==='inspect_and_start_offer'){
       const inspection=await inspectOffer(page);
       Object.assign(out,inspection);
