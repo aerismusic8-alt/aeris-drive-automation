@@ -18,6 +18,7 @@ async function findStartTask(page){
 
 
 async function selectNextOffer(page){
+  const excluded=new Set(job.exclude_labels||[]);
   const preferred=[
     'Follow JumpTask on X!',
     'Like Simply Bitcoin tweet on X!',
@@ -26,6 +27,7 @@ async function selectNextOffer(page){
     '#7230 Search, Follow & Earn!'
   ];
   for(const label of preferred){
+    if(excluded.has(label)) continue;
     const found=await page.evaluate((target)=>{
       const els=[...document.querySelectorAll('*')];
       const norm=s=>(s||'').replace(/\\s+/g,' ').trim();
