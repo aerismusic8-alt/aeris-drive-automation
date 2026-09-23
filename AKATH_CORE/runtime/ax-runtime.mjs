@@ -22,10 +22,22 @@ export async function runOnce({registry,state,now=new Date(),dispatch,appendEvid
     transitionJob(job,'COMPLETED',{completed_at:now.toISOString()});
     const verification=verifyJobResult(job,evidence);onEvent('VERIFY',{taskId:job.task_id,detail:verification.verified?'PASS':'FAIL'});
     if(!verification.verified){transitionJob(job,'FAILED',{verification,failed_at:now.toISOString()});state.activeJob=null;return{status:'FAILED',job,verification};}
-    transitionJob(job,'VERIFIED',{verification,verified_at:now.toISOString()});transitionJob(job,'DONE',{completed_at:now.toISOString()});
-    if(repoRoot){await writeBackCanonical({repoRoot,job,evidence,verification,now});onEvent('WRITE_BACK',{taskId:job.task_id,detail:'CANONICAL DONE'});}
-    state.lastVerifiedJob=job.task_id;state.activeJob=null;onEvent('DONE',{taskId:job.task_id,detail:'VERIFIED'});
-    return{status:'DONE',job,verification};
+    transitionJob(job,'VERIFIED',{verification,verified_at:now.toISOString()});
+    transitionJob(job,'DONE',{completed_at:now.toISOString()});
+    state.lastVerifiedJob=job.task_id;
+    state.activeJob=null;
+    onEvent('DONE',{taskId:job.task_id,detail:'VERIFIED'});
+    // Canonical persistence is control-plane work. It must never turn a verified
+    // execution into FAILED. Queue/write-back errors are observable and recoverable.
+    if(repoRoot){
+      try{
+        await writeBackCanonical({repoRoot,job,evidence,verification,now});
+        onEvent('WRITE_BACK',{taskId:job.task_id,detail:'CANONICAL DONE'});
+      }catch(writeBackError){
+        onEvent('WRITE_BACK_DEFERRED',{taskId:job.task_id,detail:String(writeBackError?.message||writeBackError)});
+      }
+    }
+    return{status:'DONE',job,verification,canonicalWriteBack:'DEFERRED_ON_FAILURE'};
   }catch(error){
     const recoverable=isRecoverable(error);
     if(['EXECUTING','COMPLETED'].includes(job.status))transitionJob(job,'FAILED',{error:error.message,failed_at:now.toISOString()});
