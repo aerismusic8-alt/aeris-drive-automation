@@ -24,7 +24,11 @@ async function selectNextOffer(page,job={}){
     'Like Simply Bitcoin tweet on X!',
     'Join Pepperstone on Telegram!',
     'Join Pepperstone Announcements on Telegram!',
-    '#7230 Search, Follow & Earn!'
+    '#7230 Search, Follow & Earn!',
+    'iPhone 17 Pro CPL Multigeo Incent',
+    'Modern Spin Quest - Complete multiple tasks!',
+    'Wood Nuts & Bolts Screw Puzzle - Complete multiple tasks!',
+    'Ultima Markets CPA Multigeo Android/iOS Incent'
   ];
   for(const label of preferred){
     if(excluded.has(label)) continue;
