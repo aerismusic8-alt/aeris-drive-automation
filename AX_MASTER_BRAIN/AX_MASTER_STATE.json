@@ -2,7 +2,7 @@
   "schema_version": "1.6",
   "storage_role": "A_MASTER_BRAIN_KNOWLEDGE_AND_EXPERIENCE",
   "status": "VERIFIED",
-  "last_updated_utc": "2026-09-23T18:39:04.659Z",
+  "last_updated_utc": "2026-09-23T18:43:19.851Z",
   "authority": "K_FINAL_AUTHORITY",
   "identity_authority": "AKATH_AX",
   "model_independence": true,
@@ -66,7 +66,9 @@
     "Every task is exactly SYSTEM or MISSION",
     "SYSTEM tasks are enduring components that must maintain their verified operational baseline continuously",
     "MISSION tasks are finite objectives that close after target achievement and verification",
-    "Categories organize canonical tasks but cannot create tasks"
+    "Categories organize canonical tasks but cannot create tasks",
+    "CONTROL_FIRST_EXECUTION: PC1 and PC2 execution is controlled through their respective local Control planes; AX does not treat chat, model reasoning, or direct ad-hoc actions as the primary node execution path.",
+    "THINK_BEFORE_ACT: Every operation must first use A MASTER BRAIN knowledge, canonical state, task details, node capabilities, and latest evidence to reason/plan before any Control command is dispatched."
   ],
   "company_priority": [
     "P1 Revenue",
@@ -204,7 +206,29 @@
       "Use node-specific verified capabilities when deciding whether a task is executable.",
       "Do not treat configuration flags as proof of capability.",
       "Desktop Commander may provide observation/control but is not required as the primary runtime dependency.",
-      "Every execution and completion claim requires node-specific evidence and verification."
+      "Every execution and completion claim requires node-specific evidence and verification.",
+      "Control is the primary execution mechanism for both PC1 and PC2; observation and action must flow through the corresponding local Control plane.",
+      "Before every execution, AX must think/plan using A MASTER BRAIN, canonical state, current evidence and node capability before dispatching Control."
     ]
+  },
+  "control_first_execution_contract": {
+    "status": "RECORDED",
+    "rule": "PC1 and PC2 are operated through separate local Control planes under AX. Control is the primary mechanism for observing, deciding, dispatching, executing, collecting evidence, verifying and recovering node work.",
+    "shared_brain_rule": "Both Control planes use shared A MASTER BRAIN knowledge and canonical task/evidence state, while retaining independent local execution.",
+    "pre_action_reasoning_gate": [
+      "LOAD canonical task and current state",
+      "LOAD latest evidence and verification",
+      "LOAD node-specific capability baseline",
+      "INSPECT current desktop/application state",
+      "REASON about objective, constraints, feasibility and next action",
+      "ONLY THEN dispatch a Control command"
+    ],
+    "no_action_without_thinking": "No execution command should be dispatched merely because a task exists or because a UI element is visible. AX must first determine the intended action and expected result.",
+    "post_action_cycle": "After each meaningful Control action: observe -> compare expected vs actual -> collect evidence -> verify -> decide next action.",
+    "node_rule": {
+      "PC1": "PC1 CONTROL is the primary execution/control path for PC1.",
+      "PC2": "PC2 CONTROL is the primary execution/control path for PC2."
+    },
+    "evidence_rule": "Control-reported success is not sufficient by itself; completion requires observable node-specific evidence and verification."
   }
 }
