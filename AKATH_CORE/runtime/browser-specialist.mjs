@@ -122,6 +122,12 @@ export async function executeBrowserTask(job) {
       started:out.started===true
     }};
   }finally{
-    if(context && !connected && job.keep_open!==true) await context.close();
+    if(context && job.close_after_task===true){
+      if(connected){
+        for(const p of context.pages()) await p.close().catch(()=>{});
+      } else {
+        await context.close().catch(()=>{});
+      }
+    } else if(context && !connected && job.keep_open!==true) await context.close();
   }
 }
