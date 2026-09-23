@@ -2,7 +2,7 @@
   "schema_version": "1.6",
   "storage_role": "A_MASTER_BRAIN_KNOWLEDGE_AND_EXPERIENCE",
   "status": "VERIFIED",
-  "last_updated_utc": "2026-09-23T18:48:44.336Z",
+  "last_updated_utc": "2026-09-24T00:00:00.000Z",
   "authority": "K_FINAL_AUTHORITY",
   "identity_authority": "AKATH_AX",
   "model_independence": true,
@@ -69,7 +69,9 @@
     "Categories organize canonical tasks but cannot create tasks",
     "CONTROL_FIRST_EXECUTION: PC1 and PC2 execution is controlled through their respective local Control planes; AX does not treat chat, model reasoning, or direct ad-hoc actions as the primary node execution path.",
     "THINK_BEFORE_ACT: Every operation must first use A MASTER BRAIN knowledge, canonical state, task details, node capabilities, and latest evidence to reason/plan before any Control command is dispatched.",
-    "CONTINUOUS_DATA_RESEARCH_FOR_BRAIN_UPGRADE: Continuous research and data acquisition is a core operating structure for upgrading A MASTER BRAIN; AX must continue gathering relevant evidence, knowledge, methods, failures and verified lessons over time."
+    "CONTINUOUS_DATA_RESEARCH_FOR_BRAIN_UPGRADE: Continuous research and data acquisition is a core operating structure for upgrading A MASTER BRAIN; AX must continue gathering relevant evidence, knowledge, methods, failures and verified lessons over time.",
+    "CONTROL_HARDENING: Control health must be supervised at layered cadences; heartbeat proves liveness only, while execution requires evidence and verification.",
+    "EXPERIENCE_FEEDBACK: Every evidence-backed execution outcome must feed reusable lessons, failure patterns and recovery knowledge back into A MASTER BRAIN."
   ],
   "company_priority": [
     "P1 Revenue",
@@ -249,7 +251,20 @@
     "priority_rule": "Research continues as an ongoing system function, not a one-time task, and must support current operational objectives without overriding K authority or canonical verified state.",
     "evidence_rule": "Unverified information remains research/input material and must not be promoted to verified brain knowledge until evidence supports it.",
     "integration_rule": "The upgraded brain feeds the pre-action reasoning gate for both PC1 CONTROL and PC2 CONTROL.",
-    "continuity_rule": "Research state, lessons, evidence references and verified knowledge must persist across sessions and model changes through canonical storage."
+    "continuity_rule": "Research state, lessons, evidence references and verified knowledge must persist across sessions and model changes through canonical storage.",
+    "control_integration": {
+      "status": "ENHANCED",
+      "input_sources": [
+        "verified execution outcomes",
+        "verified failures/root causes",
+        "recovery outcomes",
+        "node capability changes",
+        "desktop/control observations"
+      ],
+      "promotion_rule": "Research/input becomes durable verified knowledge only after evidence and verification.",
+      "reuse_rule": "Every comparable future Control action must consult accumulated lessons before dispatch.",
+      "feedback_rule": "Both PC1 and PC2 feed independent execution experience into the shared brain without sharing local execution state."
+    }
   },
   "offer_execution_operating_model": {
     "status": "RECORDED_AS_CORE_OPERATIONAL_OBJECTIVE",
@@ -268,5 +283,48 @@
     ],
     "success_metric": "Verified reward count, not number of opened Offers or attempted Starts.",
     "research_feedback": "Offer outcomes, blockers, successful methods and failure patterns feed the continuous research/brain-upgrade loop."
+  },
+  "control_hardening_contract": {
+    "status": "RECORDED_AS_CORE_STRUCTURE",
+    "spec": "AKATH_CORE/AX_CONTROL_HARDENING_SPEC.md",
+    "cadence": {
+      "heartbeat_seconds": 5,
+      "control_liveness_seconds": 30,
+      "integrity_check_seconds": 60,
+      "deep_ax_control_check_minutes": 15,
+      "immediate_post_action_verification": true
+    },
+    "loop": [
+      "OBSERVE",
+      "LOAD CANONICAL STATE",
+      "THINK/PLAN WITH A MASTER BRAIN",
+      "DISPATCH",
+      "EXECUTE",
+      "OBSERVE",
+      "COLLECT EVIDENCE",
+      "VERIFY",
+      "LEARN",
+      "WRITE BACK",
+      "RECOVER/CONTINUE"
+    ],
+    "learning_gate": "Only evidence-backed lessons may be promoted to durable verified brain knowledge; credentials/secrets are excluded.",
+    "recovery_ladder": [
+      "DETECT",
+      "FREEZE NEW ACTIONS",
+      "CAPTURE STATE",
+      "CLASSIFY",
+      "RESTART COMPONENT",
+      "RECONNECT",
+      "REVERIFY",
+      "RESUME SAME TASK ID"
+    ],
+    "independence": "PC1 and PC2 retain independent local Control and recovery while sharing A MASTER BRAIN knowledge.",
+    "evidence_boundaries": [
+      "HEARTBEAT != EXECUTION",
+      "CONTROL_ALIVE != LOGIN",
+      "LOGIN != TASK_SUCCESS",
+      "TASK_STARTED != REWARD",
+      "REPORTED_SUCCESS != VERIFIED_SUCCESS"
+    ]
   }
 }
