@@ -2,7 +2,7 @@
   "schema_version": "1.6",
   "storage_role": "A_MASTER_BRAIN_KNOWLEDGE_AND_EXPERIENCE",
   "status": "VERIFIED",
-  "last_updated_utc": "2026-09-08T01:48:18Z",
+  "last_updated_utc": "2026-09-23T18:39:04.659Z",
   "authority": "K_FINAL_AUTHORITY",
   "identity_authority": "AKATH_AX",
   "model_independence": true,
@@ -164,5 +164,47 @@
     "runtime_tests_job": 100498645623,
     "windows_prerequisite_job": 100498645808,
     "result": "PASS"
+  },
+  "device_capability_baseline": {
+    "status": "RECORDED",
+    "purpose": "Baseline capabilities used by AX to select work and control paths; hardware facts require node-specific verification.",
+    "independence_rule": "PC1 and PC2 have separate local Control planes and execute independently.",
+    "nodes": {
+      "PC1": {
+        "machine_identity": "DESKTOP-RGK6JKB",
+        "known_hardware": {
+          "cpu": "Intel Core i5-2400 @ 3.10GHz",
+          "ram_gb": 8,
+          "graphics": "Intel HD Graphics",
+          "storage_total_gb": 466,
+          "storage_used_gb_approx": 102,
+          "architecture": "64-bit"
+        },
+        "control_capabilities": [
+          "local runtime/control",
+          "desktop observation/capture",
+          "browser/application execution",
+          "evidence collection and verification"
+        ]
+      },
+      "PC2": {
+        "machine_identity": "DESKTOP-M9M4818",
+        "verified_capabilities": [
+          "online desktop control node",
+          "desktop capture/vision at 1024x768",
+          "Chrome execution",
+          "JumpTask web UI access",
+          "logged-in web session can be observed",
+          "screen contents can be inspected before task execution"
+        ],
+        "hardware_note": "Do not infer or copy hardware specifications from retired machine identities; hardware baseline remains pending node-specific verification."
+      }
+    },
+    "capability_policy": [
+      "Use node-specific verified capabilities when deciding whether a task is executable.",
+      "Do not treat configuration flags as proof of capability.",
+      "Desktop Commander may provide observation/control but is not required as the primary runtime dependency.",
+      "Every execution and completion claim requires node-specific evidence and verification."
+    ]
   }
 }
