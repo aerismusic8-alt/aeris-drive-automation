@@ -7,7 +7,7 @@ const ALLOWED_ACTIONS=Object.freeze({
   runtime_status:Object.freeze({script:'Get-Date -Format o; Get-Process node -ErrorAction SilentlyContinue | Select-Object -First 1 -ExpandProperty Id'})
 });
 
-export function listAllowedControlActions(){ return [...Object.keys(ALLOWED_ACTIONS),'offer_inspect','offer_inspect_and_start','offer_select_next']; }
+export function listAllowedControlActions(){ return [...Object.keys(ALLOWED_ACTIONS),'offer_inspect','offer_inspect_and_start','offer_select_next','offer_worker_cycle']; }
 
 function runProcess(command,args,timeoutMs){
   return new Promise((resolvePromise,reject)=>{
@@ -33,13 +33,13 @@ export async function executeControlTask(job,{
 }={}) {
   const action=job?.action||job?.payload?.action;
 
-  if(action==='offer_inspect' || action==='offer_inspect_and_start' || action==='offer_select_next'){
+  if(action==='offer_inspect' || action==='offer_inspect_and_start' || action==='offer_select_next' || action==='offer_worker_cycle'){
     const runtimeDir=dirname(fileURLToPath(import.meta.url));
     const executor=resolve(runtimeDir,'pc1-specialist.mjs');
     const browserJob={
       ...job,
       capability:'browser',
-      action:action==='offer_select_next'?'select_next_offer':action==='offer_inspect_and_start'?'inspect_and_start_offer':'inspect_offer',
+      action:action==='offer_worker_cycle'?'offer_worker_cycle':action==='offer_select_next'?'select_next_offer':action==='offer_inspect_and_start'?'inspect_and_start_offer':'inspect_offer',
       use_current_page:job.use_current_page!==false,
       keep_open:job.keep_open!==false,
       cdp_url:job.cdp_url||process.env.AX_BROWSER_CDP_URL||'http://127.0.0.1:9222'
