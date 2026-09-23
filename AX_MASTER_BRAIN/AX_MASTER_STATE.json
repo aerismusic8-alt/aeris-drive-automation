@@ -2,7 +2,7 @@
   "schema_version": "1.6",
   "storage_role": "A_MASTER_BRAIN_KNOWLEDGE_AND_EXPERIENCE",
   "status": "VERIFIED",
-  "last_updated_utc": "2026-09-23T18:43:19.851Z",
+  "last_updated_utc": "2026-09-23T18:45:09.277Z",
   "authority": "K_FINAL_AUTHORITY",
   "identity_authority": "AKATH_AX",
   "model_independence": true,
@@ -68,7 +68,8 @@
     "MISSION tasks are finite objectives that close after target achievement and verification",
     "Categories organize canonical tasks but cannot create tasks",
     "CONTROL_FIRST_EXECUTION: PC1 and PC2 execution is controlled through their respective local Control planes; AX does not treat chat, model reasoning, or direct ad-hoc actions as the primary node execution path.",
-    "THINK_BEFORE_ACT: Every operation must first use A MASTER BRAIN knowledge, canonical state, task details, node capabilities, and latest evidence to reason/plan before any Control command is dispatched."
+    "THINK_BEFORE_ACT: Every operation must first use A MASTER BRAIN knowledge, canonical state, task details, node capabilities, and latest evidence to reason/plan before any Control command is dispatched.",
+    "CONTINUOUS_DATA_RESEARCH_FOR_BRAIN_UPGRADE: Continuous research and data acquisition is a core operating structure for upgrading A MASTER BRAIN; AX must continue gathering relevant evidence, knowledge, methods, failures and verified lessons over time."
   ],
   "company_priority": [
     "P1 Revenue",
@@ -230,5 +231,24 @@
       "PC2": "PC2 CONTROL is the primary execution/control path for PC2."
     },
     "evidence_rule": "Control-reported success is not sufficient by itself; completion requires observable node-specific evidence and verification."
+  },
+  "brain_upgrade_learning_system": {
+    "status": "RECORDED_AS_CORE_STRUCTURE",
+    "role": "Continuous knowledge/research system for upgrading A MASTER BRAIN and improving AX decision quality.",
+    "core_loop": [
+      "IDENTIFY knowledge gaps and operational questions",
+      "RESEARCH relevant data and methods",
+      "COLLECT evidence and source context",
+      "ANALYZE and compare findings",
+      "TEST applicable methods when authorized and safe",
+      "VERIFY actual outcomes",
+      "EXTRACT lessons and reusable knowledge",
+      "WRITE_BACK verified knowledge to A MASTER BRAIN",
+      "REUSE upgraded knowledge in future THINK_BEFORE_ACT decisions"
+    ],
+    "priority_rule": "Research continues as an ongoing system function, not a one-time task, and must support current operational objectives without overriding K authority or canonical verified state.",
+    "evidence_rule": "Unverified information remains research/input material and must not be promoted to verified brain knowledge until evidence supports it.",
+    "integration_rule": "The upgraded brain feeds the pre-action reasoning gate for both PC1 CONTROL and PC2 CONTROL.",
+    "continuity_rule": "Research state, lessons, evidence references and verified knowledge must persist across sessions and model changes through canonical storage."
   }
 }
