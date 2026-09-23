@@ -2,7 +2,7 @@
   "schema_version": "1.6",
   "storage_role": "A_MASTER_BRAIN_KNOWLEDGE_AND_EXPERIENCE",
   "status": "VERIFIED",
-  "last_updated_utc": "2026-09-23T18:45:09.277Z",
+  "last_updated_utc": "2026-09-23T18:48:44.336Z",
   "authority": "K_FINAL_AUTHORITY",
   "identity_authority": "AKATH_AX",
   "model_independence": true,
@@ -250,5 +250,23 @@
     "evidence_rule": "Unverified information remains research/input material and must not be promoted to verified brain knowledge until evidence supports it.",
     "integration_rule": "The upgraded brain feeds the pre-action reasoning gate for both PC1 CONTROL and PC2 CONTROL.",
     "continuity_rule": "Research state, lessons, evidence references and verified knowledge must persist across sessions and model changes through canonical storage."
+  },
+  "offer_execution_operating_model": {
+    "status": "RECORDED_AS_CORE_OPERATIONAL_OBJECTIVE",
+    "objective": "Maximize verified reward count by processing all feasible Offers independently on PC1 and PC2, while skipping infeasible Offers with explicit reasons and performing Daily Reward checks every day.",
+    "execution_rules": [
+      "Use A MASTER BRAIN research and THINK_BEFORE_ACT before every Control action.",
+      "PC1 work is executed through PC1 CONTROL; PC2 work is executed through PC2 CONTROL.",
+      "Each PC/account operates independently; one node's state must not be treated as the other's.",
+      "Read Offer details before Start.",
+      "Run capability and feasibility checks before committing to an Offer.",
+      "Complete every feasible Offer until verified completion/reward or a legitimate blocker is reached.",
+      "If an Offer is not feasible, record SKIPPED with the concrete reason and continue.",
+      "Count only verified rewards/completions as achieved output.",
+      "Check and perform each account's Daily Reward every day when available and legitimately completable.",
+      "Capture evidence and verify before moving to the next Offer."
+    ],
+    "success_metric": "Verified reward count, not number of opened Offers or attempted Starts.",
+    "research_feedback": "Offer outcomes, blockers, successful methods and failure patterns feed the continuous research/brain-upgrade loop."
   }
 }
