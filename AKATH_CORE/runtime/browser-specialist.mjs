@@ -33,9 +33,11 @@ export async function executeBrowserTask(job) {
   const profile=path.join(root,'profile'), evidenceDir=path.join(root,'evidence');
   fs.mkdirSync(profile,{recursive:true}); fs.mkdirSync(evidenceDir,{recursive:true});
   const url=job.url||'https://jumptask.io/';
-  let context;
+  let context; let connected=false;
   try{
-    context=await chromium.launchPersistentContext(profile,{
+    const cdpUrl=job.cdp_url||process.env.AX_BROWSER_CDP_URL;
+    if(cdpUrl){ context=await chromium.connectOverCDP(cdpUrl); connected=true; }
+    else context=await chromium.launchPersistentContext(profile,{
       headless:false,
       executablePath:'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe',
       args:['--no-first-run','--no-default-browser-check']
@@ -84,6 +86,6 @@ export async function executeBrowserTask(job) {
       started:out.started===true
     }};
   }finally{
-    if(context && job.keep_open!==true) await context.close();
+    if(context && !connected && job.keep_open!==true) await context.close();
   }
 }
