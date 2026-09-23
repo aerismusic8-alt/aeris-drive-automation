@@ -41,7 +41,8 @@ export async function executeControlTask(job,{
       capability:'browser',
       action:action==='offer_inspect_and_start'?'inspect_and_start_offer':'inspect_offer',
       use_current_page:job.use_current_page!==false,
-      keep_open:job.keep_open!==false
+      keep_open:job.keep_open!==false,
+      cdp_url:job.cdp_url||process.env.AX_BROWSER_CDP_URL||'http://127.0.0.1:9222'
     };
     const result=await runProcess(process.execPath,[executor,JSON.stringify(browserJob)],timeoutMs);
     let parsed;
