@@ -16,6 +16,29 @@ async function findStartTask(page){
   return null;
 }
 
+
+async function selectNextOffer(page){
+  const preferred=[
+    /Follow JumpTask on X!/i,
+    /Like Simply Bitcoin tweet on X!/i,
+    /Join Pepperstone on Telegram!/i,
+    /Watch to earn/i
+  ];
+  for(const pattern of preferred){
+    const loc=page.getByText(pattern).first();
+    if(await loc.count() && await loc.isVisible().catch(()=>false)){
+      await loc.scrollIntoViewIfNeeded().catch(()=>{});
+      await loc.click().catch(async()=>{
+        const parent=loc.locator('xpath=ancestor::*[self::a or self::button or @role="button"][1]');
+        if(await parent.count()) await parent.click();
+      });
+      await page.waitForTimeout(1200);
+      return {selected:true,pattern:String(pattern),url:page.url(),text:(await visibleText(page)).slice(-12000)};
+    }
+  }
+  return {selected:false};
+}
+
 async function inspectOffer(page){
   const text=(await visibleText(page)).slice(0,30000);
   const start=await findStartTask(page);
@@ -58,7 +81,8 @@ export async function executeBrowserTask(job) {
 
     if(action==='inspect_offer'){
       Object.assign(out,await inspectOffer(page));
-    }else if(action==='inspect_and_start_offer'){
+    }else if(action==='select_next_offer'){ Object.assign(out,await selectNextOffer(page)); if(!out.selected) throw new Error('NO_NEXT_OFFER_FOUND'); }
+    else if(action==='inspect_and_start_offer'){
       const inspection=await inspectOffer(page);
       Object.assign(out,inspection);
       if(!inspection.start_task_visible) throw new Error('START_TASK_NOT_FOUND_AFTER_OFFER_INSPECTION');
