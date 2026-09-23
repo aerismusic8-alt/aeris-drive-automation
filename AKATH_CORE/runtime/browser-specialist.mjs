@@ -19,21 +19,29 @@ async function findStartTask(page){
 
 async function selectNextOffer(page){
   const preferred=[
-    /Follow JumpTask on X!/i,
-    /Like Simply Bitcoin tweet on X!/i,
-    /Join Pepperstone on Telegram!/i,
-    /Watch to earn/i
+    'Follow JumpTask on X!',
+    'Like Simply Bitcoin tweet on X!',
+    'Join Pepperstone on Telegram!',
+    'Join Pepperstone Announcements on Telegram!',
+    '#7230 Search, Follow & Earn!'
   ];
-  for(const pattern of preferred){
-    const loc=page.getByText(pattern).first();
+  for(const label of preferred){
+    const loc=page.getByText(label,{exact:true}).first();
     if(await loc.count() && await loc.isVisible().catch(()=>false)){
       await loc.scrollIntoViewIfNeeded().catch(()=>{});
-      await loc.click().catch(async()=>{
+      let clicked=false;
+      try{ await loc.click({timeout:5000}); clicked=true; }catch{}
+      if(!clicked){
         const parent=loc.locator('xpath=ancestor::*[self::a or self::button or @role="button"][1]');
-        if(await parent.count()) await parent.click();
-      });
-      await page.waitForTimeout(1200);
-      return {selected:true,pattern:String(pattern),url:page.url(),text:(await visibleText(page)).slice(-12000)};
+        if(await parent.count() && await parent.isVisible().catch(()=>false)){
+          await parent.click({timeout:5000}).catch(()=>{});
+          clicked=true;
+        }
+      }
+      if(clicked){
+        await page.waitForTimeout(1200);
+        return {selected:true,pattern:label,url:page.url(),text:(await visibleText(page)).slice(-12000)};
+      }
     }
   }
   return {selected:false};
