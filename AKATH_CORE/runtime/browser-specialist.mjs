@@ -36,7 +36,7 @@ export async function executeBrowserTask(job) {
   let context; let connected=false;
   try{
     const cdpUrl=job.cdp_url||process.env.AX_BROWSER_CDP_URL;
-    if(cdpUrl){ context=await chromium.connectOverCDP(cdpUrl); connected=true; }
+    if(cdpUrl){ const browser=await chromium.connectOverCDP(cdpUrl); context=browser.contexts()[0]; connected=true; }
     else context=await chromium.launchPersistentContext(profile,{
       headless:false,
       executablePath:'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe',
