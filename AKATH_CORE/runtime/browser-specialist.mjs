@@ -46,7 +46,8 @@ export async function executeBrowserTask(job) {
     const page=pages.find(p=>/jumptask/i.test(p.url()))||pages[0]||await context.newPage();
     if(!job.use_current_page || page.url()==='about:blank') await page.goto(url,{waitUntil:'domcontentloaded',timeout:30000});
 
-    const action=job.action||'inspect_offer';
+    const requestedAction=job.action||'inspect_offer';
+    const action=requestedAction==='start_task'?'inspect_and_start_offer':requestedAction;
     const out={
       startedAt:new Date().toISOString(),
       node:process.env.AX_PC1_NODE_ID||'PC1-MAIN',
