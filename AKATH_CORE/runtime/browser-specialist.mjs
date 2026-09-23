@@ -50,6 +50,54 @@ async function selectNextOffer(page,job={}){
   return {selected:false};
 }
 
+async function classifyOffer(inspection){
+  const t=(inspection.page_text||'').toLowerCase();
+  const blockers=[
+    /captcha|verify you are human|human verification/,
+    /one[- ]time password|otp|verification code/,
+    /credit card|payment method|deposit|pay now/,
+    /government id|passport|national id/,
+    /sign up|signup|register|create account/,
+    /phone number|mobile number/
+  ];
+  const hits=blockers.filter(r=>r.test(t)).map(String);
+  return {blocked:hits.length>0,blockers:hits};
+}
+
+async function workerCycle(page,job={}){
+  const maxAttempts=Math.max(1,Number(job.max_offer_attempts||5));
+  const tried=[];
+  for(let attempt=1;attempt<=maxAttempts;attempt++){
+    const inspection=await inspectOffer(page);
+    const classification=await classifyOffer(inspection);
+    tried.push({attempt,url:page.url(),start_task_visible:inspection.start_task_visible,classification});
+    if(classification.blocked || !inspection.start_task_visible){
+      const next=await selectNextOffer(page,{exclude_labels:job.exclude_labels||[]});
+      if(!next.selected) return {status:'NO_VIABLE_OFFER',tried};
+      continue;
+    }
+    const start=await findStartTask(page);
+    await start.click();
+    await page.waitForLoadState('domcontentloaded',{timeout:15000}).catch(()=>{});
+    await page.waitForTimeout(1500);
+    const afterText=(await visibleText(page)).slice(0,20000);
+    const afterBlocked=/captcha|verify you are human|verification code|one[- ]time|credit card|payment method|sign up|signup|register|create account/i.test(afterText);
+    if(afterBlocked){
+      const next=await selectNextOffer(page,{exclude_labels:job.exclude_labels||[]});
+      if(!next.selected) return {status:'STARTED_BUT_BLOCKED_NO_NEXT',tried,after_text:afterText};
+      continue;
+    }
+    return {
+      status:'STARTED_EXECUTION_REQUIRED',
+      tried,
+      started:true,
+      after_url:page.url(),
+      after_text:afterText
+    };
+  }
+  return {status:'MAX_ATTEMPTS_REACHED',tried};
+}
+
 async function inspectOffer(page){
   const text=(await visibleText(page)).slice(0,30000);
   const start=await findStartTask(page);
@@ -90,7 +138,8 @@ export async function executeBrowserTask(job) {
       action
     };
 
-    if(action==='inspect_offer'){
+    if(action==='offer_worker_cycle'){ Object.assign(out,await workerCycle(page,job)); }
+    else if(action==='inspect_offer'){
       Object.assign(out,await inspectOffer(page));
     }else if(action==='select_next_offer'){ Object.assign(out,await selectNextOffer(page,job)); if(!out.selected) throw new Error('NO_NEXT_OFFER_FOUND'); }
     else if(action==='inspect_and_start_offer'){
