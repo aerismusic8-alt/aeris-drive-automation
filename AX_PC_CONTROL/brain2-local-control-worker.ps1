@@ -17,6 +17,9 @@ while($true){
    if(-not $job.jobId){throw 'JOB_ID_MISSING'}
    if($job.expiresAt -and ([DateTime]$job.expiresAt) -lt [DateTime]::UtcNow){throw 'JOB_EXPIRED'}
    switch($job.command){
+    'NODE_HEALTH_CHECK' {
+     $details=@{computerName=$env:COMPUTERNAME;sshService=(Get-Service sshd).Status;controlWorker='ALIVE'}
+    }
     'CLOSE_STALE_TERMINALS' {
      $protected='brain2|brain-2|control2|control-2|akath|ax-runtime'
      $closed=@();$skipped=@()
