@@ -3,7 +3,7 @@ param(
 )
 
 $ErrorActionPreference = 'Stop'
-$expected = 'DESKTOP-O0AUKHG'
+$expected = 'DESKTOP-M9M4818'
 if ($env:COMPUTERNAME -ne $expected) { throw "PC2_EXECUTOR_IDENTITY_MISMATCH:$env:COMPUTERNAME" }
 
 $runtimeRoot = 'C:\AX-Runtime'
