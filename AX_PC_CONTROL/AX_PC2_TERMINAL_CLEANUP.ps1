@@ -71,3 +71,5 @@ $evidence | ConvertTo-Json -Depth 10 | Set-Content $path -Encoding UTF8
 if ($remaining.Count -ne 0) { throw "TERMINAL_CLEANUP_NOT_VERIFIED:$($remaining.Count)" }
 Write-Host 'PC2_TERMINAL_CLEANUP=VERIFIED'
 Write-Host "EVIDENCE=$path"
+
+# Evidence-gated cleanup: close only visible terminal-class windows and preserve AX runtime windows.
