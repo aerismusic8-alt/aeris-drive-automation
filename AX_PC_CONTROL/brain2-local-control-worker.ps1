@@ -5,13 +5,17 @@ $base=Join-Path $RuntimeRoot 'brain2-command-queue'
 $dirs=@('pending','running','done','failed')
 $dirs|%{New-Item -ItemType Directory -Path (Join-Path $base $_) -Force|Out-Null}
 $ev=Join-Path $RuntimeRoot 'evidence';New-Item -ItemType Directory -Path $ev -Force|Out-Null
+$hb=Join-Path $ev 'brain2-local-control-heartbeat.json'
 while($true){
+ @{protocol='AX PC2 BRAIN2 LOCAL CONTROL QUEUE v1';nodeId='PC2';computerName=$env:COMPUTERNAME;status='ALIVE';heartbeatAt=[DateTime]::UtcNow.ToString('o');pollSeconds=$PollSeconds;queueRoot=$base}|ConvertTo-Json|Set-Content $hb -Encoding UTF8
  Get-ChildItem (Join-Path $base 'pending') -Filter '*.json' -File|Sort LastWriteTime|%{
   $src=$_.FullName;$name=$_.Name;$run=Join-Path $base "running\$name"
   try{
    Move-Item $src $run -Force
    $job=Get-Content $run -Raw|ConvertFrom-Json
    if($job.targetNode -ne 'PC2'){throw 'TARGET_NODE_NOT_PC2'}
+   if(-not $job.jobId){throw 'JOB_ID_MISSING'}
+   if($job.expiresAt -and ([DateTime]$job.expiresAt) -lt [DateTime]::UtcNow){throw 'JOB_EXPIRED'}
    switch($job.command){
     'CLOSE_STALE_TERMINALS' {
      $protected='brain2|brain-2|control2|control-2|akath|ax-runtime'
