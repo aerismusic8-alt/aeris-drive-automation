@@ -1,0 +1,47 @@
+name: AX PC2 Brain2 Local Control Bootstrap
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'AX_PC_CONTROL/brain2-local-control-worker.ps1'
+      - 'AX_PC_CONTROL/install-brain2-local-control.ps1'
+      - '.github/workflows/ax-pc2-brain2-local-control-bootstrap.yml'
+  workflow_dispatch:
+  schedule:
+    - cron: '*/15 * * * *'
+
+permissions:
+  contents: read
+
+jobs:
+  bootstrap:
+    runs-on: [self-hosted, Windows, X64, PC2-CODING-EXECUTOR]
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v5
+      - name: Verify PC2 identity
+        shell: powershell
+        run: |
+          $ErrorActionPreference='Stop'
+          if($env:COMPUTERNAME -ne 'DESKTOP-M9M4818'){throw "PC2_IDENTITY_MISMATCH:$env:COMPUTERNAME"}
+          Write-Host 'PC2_IDENTITY=VERIFIED'
+      - name: Install and start Brain2 Local Control
+        shell: powershell
+        run: |
+          $ErrorActionPreference='Stop'
+          & powershell.exe -NoProfile -ExecutionPolicy Bypass -File "$env:GITHUB_WORKSPACE\AX_PC_CONTROL\install-brain2-local-control.ps1"
+          Start-Sleep -Seconds 2
+          $task=Get-ScheduledTask -TaskName 'AERIS-PC2-BRAIN2-LOCAL-CONTROL' -ErrorAction Stop
+          if($task.State -notin @('Running','Ready')){throw "BRAIN2_CONTROL_TASK_STATE:$($task.State)"}
+          Write-Host "BRAIN2_LOCAL_CONTROL_TASK=$($task.State)"
+      - name: Verify local heartbeat
+        shell: powershell
+        run: |
+          $ErrorActionPreference='Stop'
+          $hb='C:\AX-Runtime\evidence\brain2-local-control-heartbeat.json'
+          if(-not(Test-Path $hb)){throw 'BRAIN2_HEARTBEAT_MISSING'}
+          $d=Get-Content $hb -Raw|ConvertFrom-Json
+          if($d.nodeId -ne 'PC2' -or $d.computerName -ne 'DESKTOP-M9M4818'){throw 'BRAIN2_HEARTBEAT_IDENTITY_INVALID'}
+          Write-Host "BRAIN2_HEARTBEAT=$($d.heartbeatAt)"
+          Write-Host 'BRAIN2_LOCAL_CONTROL=VERIFIED'
