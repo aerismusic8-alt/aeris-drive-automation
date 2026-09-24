@@ -1,0 +1,23 @@
+name: AX PC2 Terminal Cleanup
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'AX_PC_CONTROL/AX_PC2_TERMINAL_CLEANUP.ps1'
+      - '.github/workflows/ax-pc2-terminal-cleanup.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  cleanup:
+    runs-on: [self-hosted, Windows, X64, PC2-CODING-EXECUTOR]
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v5
+      - name: Close non-runtime terminal windows
+        shell: powershell
+        run: |
+          & powershell.exe -NoProfile -ExecutionPolicy Bypass -File "$env:GITHUB_WORKSPACE\AX_PC_CONTROL\AX_PC2_TERMINAL_CLEANUP.ps1"
