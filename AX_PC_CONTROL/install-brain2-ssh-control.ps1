@@ -15,6 +15,12 @@ foreach($f in $files){
  if(-not(Test-Path $src)){throw "SOURCE_MISSING:$src"}
  Copy-Item $src (Join-Path $install (Split-Path $f -Leaf)) -Force
 }
+$controlTask='AERIS-PC2-BRAIN2-LOCAL-CONTROL'
+$controlArg='-NoProfile -ExecutionPolicy Bypass -File "' + $install + '\brain2-local-control-worker.ps1"'
+$controlAction=New-ScheduledTaskAction -Execute 'powershell.exe' -Argument $controlArg
+Register-ScheduledTask -TaskName $controlTask -Action $controlAction -Trigger $trigger -Principal $principal -Settings $settings -Force|Out-Null
+Start-ScheduledTask -TaskName $controlTask
+
 $task='AERIS-PC2-BRAIN2-DECISION'
 $arg='-NoProfile -ExecutionPolicy Bypass -File "' + $install + '\brain2-decision-worker.ps1"'
 $action=New-ScheduledTaskAction -Execute 'powershell.exe' -Argument $arg
@@ -28,4 +34,5 @@ $state=Get-ScheduledTask -TaskName $task
 if($state.State -eq 'Disabled'){throw 'BRAIN2_TASK_DISABLED'}
 Write-Host 'BRAIN2_INSTALL=VERIFIED'
 Write-Host "BRAIN2_TASK=$task"
+Write-Host "CONTROL2_TASK=$controlTask"
 Write-Host "BRAIN2_INSTALL_ROOT=$install"
