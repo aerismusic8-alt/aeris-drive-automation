@@ -4,20 +4,19 @@ param(
  [int]$TtlSeconds = 300
 )
 $ErrorActionPreference='Stop'
-$expected='DESKTOP-M9M4818'
-if($env:COMPUTERNAME -ne $expected){throw "PC2_IDENTITY_MISMATCH:$env:COMPUTERNAME"}
-$base='C:\AX-Runtime\brain2-command-queue'
+if($env:COMPUTERNAME -ne 'DESKTOP-M9M4818'){throw "PC2_IDENTITY_MISMATCH:$env:COMPUTERNAME"}
+$base='C:\AX-Runtime\brain2-intent-queue'
 $pending=Join-Path $base 'pending'
 New-Item -ItemType Directory -Path $pending -Force|Out-Null
-$job=[ordered]@{
- protocol='AX PC2 BRAIN2 SSH ENTRY v1'
+$intent=[ordered]@{
+ protocol='AX PC2 BRAIN2 INTENT QUEUE v1'
  jobId=$JobId
  targetNode='PC2'
- command=$Command
+ intent=$Command
  source='ssh'
  submittedAt=[DateTime]::UtcNow.ToString('o')
  expiresAt=[DateTime]::UtcNow.AddSeconds($TtlSeconds).ToString('o')
 }
 $path=Join-Path $pending "$JobId.json"
-$job|ConvertTo-Json -Depth 10|Set-Content $path -Encoding UTF8
-Write-Output ("BRAIN2_ACCEPTED jobId={0} command={1}" -f $JobId,$Command)
+$intent|ConvertTo-Json -Depth 10|Set-Content $path -Encoding UTF8
+Write-Output ("BRAIN2_INTENT_ACCEPTED jobId={0} intent={1}" -f $JobId,$Command)
