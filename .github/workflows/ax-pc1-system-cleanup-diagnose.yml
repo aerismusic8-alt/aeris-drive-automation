@@ -17,23 +17,33 @@ jobs:
           if ($env:COMPUTERNAME -ne 'DESKTOP-RGK6JKB') { throw "EXPECTED_PC1:$env:COMPUTERNAME" }
           Write-Host "PC1=VERIFIED"
 
-      - name: Run cleanup and terminal diagnosis
+      - name: Run foreground diagnosis
         shell: powershell
         run: |
           $url = "https://raw.githubusercontent.com/aerismusic8-alt/aeris-drive-automation/$env:GITHUB_SHA/AX_PC_CONTROL/pc1-system-cleanup-diagnose.ps1"
-          $p = Join-Path $env:TEMP "pc1-system-cleanup-diagnose.ps1"
+          $p = Join-Path $env:TEMP "pc1-foreground-diagnose.ps1"
           Invoke-WebRequest -Uri $url -OutFile $p
           & powershell.exe -NoProfile -ExecutionPolicy Bypass -File $p
-          if ($LASTEXITCODE -ne 0) { throw "CLEANUP_DIAGNOSE_EXIT:$LASTEXITCODE" }
+          if ($LASTEXITCODE -ne 0) { throw "FOREGROUND_DIAGNOSE_EXIT:$LASTEXITCODE" }
 
-      - name: Verify evidence
+      - name: Verify and expose root-cause evidence
         shell: powershell
         run: |
-          $p = Join-Path "C:\AX-Runtime" "evidence\pc1-system-cleanup-diagnosis.json"
-          if (!(Test-Path $p)) { throw "EVIDENCE_MISSING" }
+          $p = Join-Path "C:\AX-Runtime" "evidence\pc1-foreground-diagnosis.json"
+          if (!(Test-Path $p)) { throw "EVIDENCE_MISSING:$p" }
           $x = Get-Content $p -Raw | ConvertFrom-Json
-          Write-Host "TAILSCALE_BEFORE=$($x.tailscale.beforeCount)"
-          Write-Host "TAILSCALE_AFTER=$($x.tailscale.afterCount)"
-          Write-Host "TERMINAL_PROCESS_COUNT=$($x.terminal.processCount)"
-          Write-Host "SCHEDULED_TASK_COUNT=$($x.terminal.scheduledTaskCount)"
-          Write-Host "DIAGNOSIS_STATUS=$($x.status)"
+          Write-Host "SAMPLE_COUNT=$($x.sampleCount)"
+          Write-Host "UNIQUE_PROCESS_COUNT=$(@($x.uniqueProcesses).Count)"
+          Write-Host "TOP_FOREGROUND:"
+          @($x.uniqueProcesses | Group-Object ForegroundName | Sort-Object Count -Descending | Select-Object -First 15) | ForEach-Object {
+            Write-Host ("FG {0} COUNT={1}" -f $_.Name,$_.Count)
+          }
+          Write-Host "TERMINAL_PARENT_TRACE:"
+          @($x.parentTrace | Sort-Object Child,ChildPid -Unique) | ForEach-Object {
+            Write-Host ("CHILD={0} PID={1} PARENT={2} PPID={3} CMD={4}" -f $_.Child,$_.ChildPid,$_.Parent,$_.ParentPid,$_.ParentCommandLine)
+          }
+          Write-Host "RUNNER_SERVICES:"
+          Get-CimInstance Win32_Service -ErrorAction SilentlyContinue |
+            Where-Object { $_.Name -like 'actions.runner.*' -or $_.DisplayName -like '*GitHub Actions*' } |
+            Select-Object Name,State,StartMode,StartName,PathName |
+            Format-List | Out-String | Write-Host
