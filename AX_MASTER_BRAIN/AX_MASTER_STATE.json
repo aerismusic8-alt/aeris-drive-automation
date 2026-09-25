@@ -2,7 +2,7 @@
   "schema_version": "1.6",
   "storage_role": "A_MASTER_BRAIN_KNOWLEDGE_AND_EXPERIENCE",
   "status": "VERIFIED",
-  "last_updated_utc": "2026-09-25T10:37:46.236Z",
+  "last_updated_utc": "2026-09-25T10:48:53.513Z",
   "authority": "K_FINAL_AUTHORITY",
   "identity_authority": "AKATH_AX",
   "model_independence": true,
@@ -328,7 +328,7 @@
     ]
   },
   "pc_brain_control_architecture": {
-    "status": "IMPLEMENTED_PENDING_NODE_EXECUTION_VERIFICATION",
+    "status": "IMPLEMENTED_PENDING_RUNTIME_SOURCE_RECONCILIATION_AND_NODE_EXECUTION_VERIFICATION",
     "rule": "AX creates/upgrades Brain; Brain reasons and dispatches intents; local Control executes; Verifier proves.",
     "nodes": {
       "PC1": {
@@ -338,7 +338,9 @@
         "runtime_root": "C:\\AX-Runtime",
         "decision_worker": "AX_PC_CONTROL/brain1-decision-worker.ps1",
         "control_worker": "AX_PC_CONTROL/brain1-local-control-worker.ps1",
-        "watchdog": "AX_PC_CONTROL/brain1-watchdog.ps1"
+        "watchdog": "AX_PC_CONTROL/brain1-watchdog.ps1",
+        "control_worker_latest_commit": "99984c88c93c71ce6577316dd24e8cfe7853d82c",
+        "control_worker_policy": "EXECUTED_PENDING_VERIFICATION; Control cannot self-declare VERIFIED"
       },
       "PC2": {
         "machine_identity": "DESKTOP-M9M4818",
@@ -355,7 +357,8 @@
       "desktop observation and re-verification"
     ],
     "safety_rule": "Brain1 may dispatch only whitelisted intents; destructive process termination is not blanket-authorized and must be tied to an identified AX-owned target.",
-    "evidence_gate": "No PC1 Brain1 VERIFIED claim until node execution produces fresh heartbeats and command evidence."
+    "evidence_gate": "No PC1 Brain1 VERIFIED claim until node execution produces fresh heartbeats and command evidence.",
+    "runtime_reconciliation_contract": "AX_PC_CONTROL/PC1_RUNTIME_SOURCE_RECONCILIATION.md"
   },
   "meshcentral_pc1_integration": {
     "status": "TRANSPORT_AUTHENTICATED_NODE_DISCOVERY_VERIFIED_EXECUTION_PENDING",
