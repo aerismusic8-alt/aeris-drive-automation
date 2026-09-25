@@ -1,0 +1,37 @@
+{
+  "schemaVersion": "1.0",
+  "status": "CONTRACT_READY_RUNTIME_NOT_VERIFIED",
+  "nodeId": "PC1",
+  "computerName": "DESKTOP-RGK6JKB",
+  "authority": "PC1_LOCAL_BRAIN",
+  "adapter": "PC1_LOCAL_GATEWAY",
+  "bind": "127.0.0.1",
+  "port": 18761,
+  "endpoints": {
+    "health": {
+      "method": "GET",
+      "path": "/health"
+    },
+    "intent": {
+      "method": "POST",
+      "path": "/intent"
+    }
+  },
+  "allowedIntents": [
+    "NODE_HEALTH_CHECK",
+    "SYSTEM_DIAGNOSTIC",
+    "CLOSE_STALE_TERMINAL",
+    "CAPTURE_AND_REVERIFY",
+    "RESTART_OWNED_RUNTIME",
+    "INCIDENT_LOCAL_DIAGNOSE"
+  ],
+  "evidenceRequired": [
+    "local_node_identity",
+    "intent_received",
+    "action_result",
+    "post_action_evidence",
+    "verification"
+  ],
+  "evidenceLocality": "EVENT_NODE_SESSION",
+  "githubRole": "SOURCE_VERSION_CONTROL_ONLY"
+}
