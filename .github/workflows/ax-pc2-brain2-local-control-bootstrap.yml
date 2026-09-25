@@ -52,6 +52,17 @@ jobs:
           if($d.nodeId -ne 'PC2' -or $d.computerName -ne 'DESKTOP-M9M4818' -or $d.role -ne 'BRAIN'){throw 'BRAIN2_DECISION_HEARTBEAT_INVALID'}
           Write-Host "BRAIN2_DECISION_HEARTBEAT=$($d.heartbeatAt)"
           Write-Host 'BRAIN2_DECISION=VERIFIED'
+      - name: Verify Brain2 watchdog heartbeat
+        shell: powershell
+        run: |
+          $ErrorActionPreference='Stop'
+          $hb='C:\AX-Runtime\evidence\brain2-watchdog-heartbeat.json'
+          if(-not(Test-Path $hb)){throw 'BRAIN2_WATCHDOG_HEARTBEAT_MISSING'}
+          $d=Get-Content $hb -Raw|ConvertFrom-Json
+          if($d.nodeId -ne 'PC2' -or $d.computerName -ne 'DESKTOP-M9M4818' -or $d.role -ne 'WATCHDOG'){throw 'BRAIN2_WATCHDOG_HEARTBEAT_INVALID'}
+          Write-Host "BRAIN2_WATCHDOG_HEARTBEAT=$($d.heartbeatAt)"
+          Write-Host 'BRAIN2_WATCHDOG=VERIFIED'
+
       - name: Verify local heartbeat
         shell: powershell
         run: |
