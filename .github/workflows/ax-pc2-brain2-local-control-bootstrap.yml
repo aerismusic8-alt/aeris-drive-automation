@@ -19,7 +19,7 @@ permissions:
 
 jobs:
   bootstrap:
-    runs-on: [self-hosted, Windows, X64, PC2-CODING-EXECUTOR]
+    runs-on: self-hosted
     timeout-minutes: 5
     steps:
       - uses: actions/checkout@v5
