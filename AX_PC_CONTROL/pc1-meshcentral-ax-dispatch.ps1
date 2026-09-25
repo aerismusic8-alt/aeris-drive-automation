@@ -63,12 +63,18 @@ function Resolve-DeviceId {
   })
   if ($matches.Count -eq 0) { throw "MESH_DEVICE_NOT_FOUND:$ExpectedNode" }
 
-  $ordered = @($matches | Sort-Object @{Expression={ if ($_.agct) { [int64]$_.agct } else { 0 } }; Descending=$true})
+  # Prefer a currently interactive record (KVM/terminal session), then newest
+  # agent connection timestamp. This avoids first-match selection.
+  $ordered = @($matches | Sort-Object 
+    @{Expression={ if ($_.sessions -and ($_.sessions.kvm -or $_.sessions.terminal)) { 1 } else { 0 } }; Descending=$true}, 
+    @{Expression={ if ($_.agct) { [int64]$_.agct } else { 0 } }; Descending=$true})
   $top = $ordered[0]
+  $topInteractive = if ($top.sessions -and ($top.sessions.kvm -or $top.sessions.terminal)) { 1 } else { 0 }
   $topAgct = if ($top.agct) { [int64]$top.agct } else { 0 }
   $ties = @($ordered | Where-Object {
+    $interactive = if ($_.sessions -and ($_.sessions.kvm -or $_.sessions.terminal)) { 1 } else { 0 }
     $v = if ($_.agct) { [int64]$_.agct } else { 0 }
-    $v -eq $topAgct
+    ($interactive -eq $topInteractive) -and ($v -eq $topAgct)
   })
   if ($ties.Count -ne 1) { throw "MESH_DEVICE_AMBIGUOUS:$($ties.Count) matching PC1 node records" }
 
