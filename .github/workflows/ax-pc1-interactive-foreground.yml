@@ -1,0 +1,47 @@
+name: AX PC1 Interactive Foreground Capture
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - 'AX_PC_CONTROL/pc1-interactive-foreground.ps1'
+      - '.github/workflows/ax-pc1-interactive-foreground.yml'
+jobs:
+  capture:
+    runs-on: self-hosted
+    steps:
+      - name: Verify PC1
+        shell: powershell
+        run: |
+          if ($env:COMPUTERNAME -ne 'DESKTOP-RGK6JKB') { throw "EXPECTED_PC1:$env:COMPUTERNAME" }
+          Write-Host "PC1=VERIFIED"
+      - name: Create interactive capture task
+        shell: powershell
+        run: |
+          $u = (Get-CimInstance Win32_ComputerSystem).UserName
+          if (!$u) { throw "NO_INTERACTIVE_USER" }
+          $sid = ([System.Security.Principal.NTAccount]$u).Translate([System.Security.Principal.SecurityIdentifier]).Value
+          $url = "https://raw.githubusercontent.com/aerismusic8-alt/aeris-drive-automation/$env:GITHUB_SHA/AX_PC_CONTROL/pc1-interactive-foreground.ps1"
+          $p = Join-Path $env:TEMP "pc1-interactive-foreground.ps1"
+          Invoke-WebRequest -Uri $url -OutFile $p
+          $arg = '-NoProfile -NonInteractive -ExecutionPolicy Bypass -WindowStyle Hidden -File "' + $p + '"'
+          $action = New-ScheduledTaskAction -Execute "powershell.exe" -Argument $arg
+          $principal = New-ScheduledTaskPrincipal -UserId $sid -LogonType InteractiveToken -RunLevel Limited
+          $settings = New-ScheduledTaskSettingsSet -ExecutionTimeLimit (New-TimeSpan -Minutes 2)
+          $name = "AERIS-PC1-INTERACTIVE-FOREGROUND-CAPTURE"
+          Unregister-ScheduledTask -TaskName $name -Confirm:$false -ErrorAction SilentlyContinue
+          Register-ScheduledTask -TaskName $name -Action $action -Principal $principal -Settings $settings -Force | Out-Null
+          Start-ScheduledTask -TaskName $name
+          Write-Host "INTERACTIVE_USER=$u"
+          Write-Host "INTERACTIVE_SID=$sid"
+      - name: Wait and verify capture
+        shell: powershell
+        run: |
+          $p="C:\AX-Runtime\evidence\pc1-interactive-foreground.json"
+          $deadline=(Get-Date).AddSeconds(30)
+          while((Get-Date) -lt $deadline -and !(Test-Path $p)){Start-Sleep -Milliseconds 500}
+          if (!(Test-Path $p)) { throw "INTERACTIVE_CAPTURE_MISSING" }
+          $x=Get-Content $p -Raw|ConvertFrom-Json
+          Write-Host "INTERACTIVE_CAPTURE=PASS"
+          Write-Host "SAMPLE_COUNT=$(@($x).Count)"
+          @($x|Group-Object ForegroundName|Sort-Object Count -Descending) | Select-Object -First 10 | ForEach-Object { Write-Host ("FG {0} COUNT={1}" -f $_.Name,$_.Count) }
+          Unregister-ScheduledTask -TaskName "AERIS-PC1-INTERACTIVE-FOREGROUND-CAPTURE" -Confirm:$false -ErrorAction SilentlyContinue
