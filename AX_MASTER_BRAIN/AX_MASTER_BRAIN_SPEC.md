@@ -69,7 +69,6 @@ The temporary GPT bridge may remain only as a control/observation channel; ChatG
 
 The repository is undergoing migration from the obsolete A-as-executive model to AKATH/AX. The A MASTER BRAIN knowledge/experience layer is preserved during this migration.
 
-
 ## Independent PC Control Architecture — Canonical
 
 PC1 and PC2 are controlled by separate independent Control instances under AX. They share the same canonical knowledge/state layer but must not depend on each other for local execution.
@@ -94,3 +93,51 @@ If an offer cannot be completed because a required capability, service, device, 
 ### Independence rule
 
 PC1 CONTROL and PC2 CONTROL are separate execution authorities for their respective machines. Shared knowledge does not mean shared execution. A task dispatched to one node must not be treated as executed, completed or verified merely because the other node is healthy.
+
+## AX Autonomous Brain Upgrade Protocol — Canonical
+
+AX is the creator, maintainer and upgrader of A MASTER BRAIN. A MASTER BRAIN is the persistent cognitive layer used to direct local Control; it is not replaced by a chat session.
+
+For every autonomous upgrade cycle AX must:
+
+1. Load canonical AX state, Master Task Registry, latest evidence and verification records.
+2. Load current Brain knowledge, prior lessons and recovery rules.
+3. Detect capability gaps, recurring failures, contradictions, stale knowledge and missing recovery paths.
+4. Research candidate solutions when existing knowledge is insufficient.
+5. Separate verified facts from hypotheses and historical assumptions.
+6. Design the smallest safe Brain improvement that addresses the verified gap.
+7. Write the improvement to canonical Brain artifacts, without storing credentials or unverified operational truth as fact.
+8. Validate schema, precedence, compatibility and internal consistency.
+9. Run relevant tests and require direct evidence before marking the upgrade verified.
+10. Record the upgrade, evidence, result and reusable lesson in the Brain.
+11. Feed the verified Brain change into the THINK_BEFORE_ACT decision path used by local Control.
+12. Continue the cycle after chat termination when the local runtime is available.
+
+### Upgrade safety gates
+
+- CODE CHANGED is never equivalent to SYSTEM VERIFIED.
+- A Brain heartbeat is not proof of correct decision-making.
+- A Control heartbeat is not proof of task execution.
+- Task start is not proof of completion.
+- Completion is not proof of reward.
+- Reported success is not proof of verified success.
+- If required evidence is missing, the Brain must mark the state unverified and choose observation/recovery rather than inventing success.
+- Brain upgrades must be backward-compatible unless K explicitly authorizes a breaking architecture change.
+- Current canonical state and verified evidence always outrank historical Brain knowledge.
+- Failed experiments become lessons only when the failure and its evidence are recorded.
+- The Brain must not directly perform machine actions; it produces decisions/intents for the appropriate local Control.
+- Each node's Brain/Control boundary must remain independently recoverable.
+
+### THINK_BEFORE_ACT contract
+
+Before any consequential Control action:
+
+`LOAD STATE → LOAD TASK → LOAD EVIDENCE → LOAD CAPABILITIES → OBSERVE DESKTOP → REASON → DISPATCH INTENT → EXECUTE LOCALLY → CAPTURE POST-ACTION EVIDENCE → VERIFY → RECORD`
+
+If any required input is stale, contradictory or absent, the decision state is `STATE_NOT_VERIFIED` and the system must observe, recover or request the missing authority rather than guess.
+
+### Continuous learning contract
+
+Verified outcomes, verified failures, environmental changes and successful recovery procedures are reusable Brain experience. The Brain may periodically research for upgrades, but research findings remain candidate knowledge until validated against the canonical runtime and evidence.
+
+AX therefore upgrades the Brain; the Brain decides how Control should act; Control executes and proves the result.
