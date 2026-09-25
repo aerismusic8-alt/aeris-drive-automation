@@ -9,6 +9,8 @@ on:
       - 'AX_PC_CONTROL/brain2-decision-worker.ps1'
       - 'AX_PC_CONTROL/install-brain2-ssh-control.ps1'
       - 'AX_PC_CONTROL/PC2_SSH_BRAIN2_ENTRY.ps1'
+      - 'AX_PC_CONTROL/brain2-watchdog.ps1'
+      - 'AX_PC_CONTROL/install-brain2-watchdog.ps1'
       - '.github/workflows/ax-pc2-brain2-local-control-bootstrap.yml'
   workflow_dispatch:
   schedule:
@@ -35,6 +37,7 @@ jobs:
           $ErrorActionPreference='Stop'
           & powershell.exe -NoProfile -ExecutionPolicy Bypass -File "$env:GITHUB_WORKSPACE\AX_PC_CONTROL\install-brain2-local-control.ps1"
           & powershell.exe -NoProfile -ExecutionPolicy Bypass -File "$env:GITHUB_WORKSPACE\AX_PC_CONTROL\install-brain2-ssh-control.ps1"
+          & powershell.exe -NoProfile -ExecutionPolicy Bypass -File "$env:GITHUB_WORKSPACE\AX_PC_CONTROL\install-brain2-watchdog.ps1"
           Start-Sleep -Seconds 3
           $task=Get-ScheduledTask -TaskName 'AERIS-PC2-BRAIN2-LOCAL-CONTROL' -ErrorAction Stop
           if($task.State -notin @('Running','Ready')){throw "BRAIN2_CONTROL_TASK_STATE:$($task.State)"}
