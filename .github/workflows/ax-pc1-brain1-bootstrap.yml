@@ -51,6 +51,12 @@ jobs:
             if ($x.status -ne 'ALIVE') { throw "HEARTBEAT_NOT_ALIVE:$n" }
             Write-Host "$n=ALIVE"
           }
+          foreach ($n in $tasks) {
+            $a=(Get-ScheduledTask -TaskName $n).Actions
+            $text=($a | ForEach-Object { $_.Execute+" "+$_.Arguments }) -join " | "
+            if ($text -notmatch "-WindowStyle Hidden") { throw "TASK_NOT_HIDDEN:$n" }
+            Write-Host "$n=HIDDEN"
+          }
           Write-Host "BRAIN1_PC1=VERIFIED"
 
-# bootstrap-trigger-refresh
+# bootstrap-trigger-refresh-v2
