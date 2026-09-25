@@ -25,7 +25,7 @@ jobs:
           Invoke-WebRequest -Uri $url -OutFile $p
           $arg = '-NoProfile -NonInteractive -ExecutionPolicy Bypass -WindowStyle Hidden -File "' + $p + '"'
           $action = New-ScheduledTaskAction -Execute "powershell.exe" -Argument $arg
-          $principal = New-ScheduledTaskPrincipal -UserId $sid -LogonType InteractiveToken -RunLevel Limited
+          $principal = New-ScheduledTaskPrincipal -UserId $sid -LogonType Interactive -RunLevel Limited
           $settings = New-ScheduledTaskSettingsSet -ExecutionTimeLimit (New-TimeSpan -Minutes 2)
           $name = "AERIS-PC1-INTERACTIVE-FOREGROUND-CAPTURE"
           Unregister-ScheduledTask -TaskName $name -Confirm:$false -ErrorAction SilentlyContinue
