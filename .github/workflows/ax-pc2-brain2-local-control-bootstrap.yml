@@ -19,6 +19,8 @@ on:
 permissions:
   contents: read
 
+# TRANSPORT_PROBE: commit-triggered bootstrap is the canonical non-Commander path.
+
 jobs:
   bootstrap:
     runs-on: self-hosted
