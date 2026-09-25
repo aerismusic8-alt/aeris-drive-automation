@@ -1,0 +1,47 @@
+name: AX PC1 to PC2 SSH Transport Probe
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/ax-pc1-to-pc2-ssh-probe.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  probe:
+    runs-on: self-hosted
+    timeout-minutes: 3
+    steps:
+      - name: Probe PC1 identity and PC2 port
+        shell: powershell
+        run: |
+          $ErrorActionPreference='Stop'
+          if($env:COMPUTERNAME -ne 'DESKTOP-RGK6JKB'){throw "EXPECTED_PC1_GOT:$env:COMPUTERNAME"}
+          $tcp=Test-NetConnection -ComputerName '192.168.1.111' -Port 22 -WarningAction SilentlyContinue
+          Write-Host "PC1=VERIFIED"
+          Write-Host "PC2_TCP22=$($tcp.TcpTestSucceeded)"
+          if(-not $tcp.TcpTestSucceeded){throw 'PC2_SSH_PORT_UNREACHABLE'}
+      - name: Probe available SSH authentication without exposing keys
+        shell: powershell
+        run: |
+          $ErrorActionPreference='Stop'
+          $candidates=@(
+            "$env:USERPROFILE\.ssh\id_ed25519",
+            "$env:USERPROFILE\.ssh\id_rsa",
+            "C:\Users\User\.ssh\id_ed25519",
+            "C:\Users\User\.ssh\id_rsa"
+          ) | Select-Object -Unique
+          $keys=@($candidates | Where-Object {Test-Path $_})
+          Write-Host "SSH_KEY_COUNT=$($keys.Count)"
+          foreach($k in $keys){Write-Host "SSH_KEY_PRESENT=$([IO.Path]::GetFileName($k))"}
+          if($keys.Count -eq 0){throw 'NO_PC1_SSH_PRIVATE_KEY'}
+          $success=$false
+          foreach($k in $keys){
+            & ssh.exe -4 -i $k -o IdentitiesOnly=yes -o BatchMode=yes -o PasswordAuthentication=no -o KbdInteractiveAuthentication=no -o StrictHostKeyChecking=no User@192.168.1.111 "hostname" 2>$null
+            if($LASTEXITCODE -eq 0){$success=$true;break}
+          }
+          if(-not $success){throw 'PC1_TO_PC2_SSH_AUTH_FAILED'}
+          Write-Host 'PC1_TO_PC2_SSH=VERIFIED'
