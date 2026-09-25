@@ -20,19 +20,18 @@ jobs:
       - name: Run cleanup and terminal diagnosis
         shell: powershell
         run: |
-          $url="https://raw.githubusercontent.com/aerismusic8-alt/aeris-drive-automation/$env:GITHUB_SHA/AX_PC_CONTROL/pc1-system-cleanup-diagnose.ps1"
-          $p="C:AX-Bootstrappc1-system-cleanup-diagnose.ps1"
-          New-Item -ItemType Directory -Path (Split-Path $p) -Force | Out-Null
-          Invoke-WebRequest $url -OutFile $p
+          $url = "https://raw.githubusercontent.com/aerismusic8-alt/aeris-drive-automation/$env:GITHUB_SHA/AX_PC_CONTROL/pc1-system-cleanup-diagnose.ps1"
+          $p = Join-Path $env:TEMP "pc1-system-cleanup-diagnose.ps1"
+          Invoke-WebRequest -Uri $url -OutFile $p
           & powershell.exe -NoProfile -ExecutionPolicy Bypass -File $p
           if ($LASTEXITCODE -ne 0) { throw "CLEANUP_DIAGNOSE_EXIT:$LASTEXITCODE" }
 
       - name: Verify evidence
         shell: powershell
         run: |
-          $p='C:AX-Runtimeevidencepc1-system-cleanup-diagnosis.json'
+          $p = Join-Path "C:\AX-Runtime" "evidence\pc1-system-cleanup-diagnosis.json"
           if (!(Test-Path $p)) { throw "EVIDENCE_MISSING" }
-          $x=Get-Content $p -Raw | ConvertFrom-Json
+          $x = Get-Content $p -Raw | ConvertFrom-Json
           Write-Host "TAILSCALE_BEFORE=$($x.tailscale.beforeCount)"
           Write-Host "TAILSCALE_AFTER=$($x.tailscale.afterCount)"
           Write-Host "TERMINAL_PROCESS_COUNT=$($x.terminal.processCount)"
