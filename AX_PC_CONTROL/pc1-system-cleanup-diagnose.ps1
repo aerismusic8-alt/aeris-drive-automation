@@ -1,36 +1,37 @@
 $ErrorActionPreference='Continue'
 if($env:COMPUTERNAME -ne 'DESKTOP-RGK6JKB'){throw "PC1_IDENTITY_MISMATCH:$env:COMPUTERNAME"}
-$ev='C:\AX-Runtime\evidence';New-Item -ItemType Directory -Path $ev -Force|Out-Null
-$terminalNames=@('powershell.exe','pwsh.exe','cmd.exe','conhost.exe','WindowsTerminal.exe')
-$procs=@(Get-CimInstance Win32_Process -ErrorAction SilentlyContinue)
-$focus=@($procs|Where-Object {$terminalNames -contains $_.Name})
-$trace=@()
-foreach($p in $focus){
- $parent=$procs|Where-Object {$_.ProcessId -eq $p.ParentProcessId}|Select-Object -First 1
- $trace += [pscustomobject]@{Name=$p.Name;Pid=$p.ProcessId;ParentPid=$p.ParentProcessId;ParentName=$parent.Name;CommandLine=$p.CommandLine;ParentCommandLine=$parent.CommandLine;CreationDate=$p.CreationDate}
+$ev='C:\AX-Runtime\evidence\desktop-capture';New-Item -ItemType Directory -Path $ev -Force|Out-Null
+Add-Type -AssemblyName System.Drawing
+Add-Type @'
+using System;
+using System.Runtime.InteropServices;
+public static class DesktopCapture {
+ [DllImport("user32.dll")] public static extern IntPtr GetDesktopWindow();
+ [DllImport("user32.dll")] public static extern IntPtr GetWindowDC(IntPtr hWnd);
+ [DllImport("user32.dll")] public static extern int ReleaseDC(IntPtr hWnd, IntPtr hDC);
+ [DllImport("user32.dll")] public static extern IntPtr GetForegroundWindow();
+ [DllImport("user32.dll",SetLastError=true)] public static extern uint GetWindowThreadProcessId(IntPtr hWnd,out uint pid);
 }
-$services=@(Get-CimInstance Win32_Service -ErrorAction SilentlyContinue | Where-Object {$_.ProcessId -in @(2320,808)} | Select-Object Name,DisplayName,State,StartName,ProcessId,PathName)
-$taskEvents=@()
-try{
- $taskEvents=@(Get-WinEvent -LogName 'Microsoft-Windows-TaskScheduler/Operational' -MaxEvents 300 -ErrorAction Stop |
-   Where-Object {$_.TimeCreated -gt (Get-Date).AddMinutes(-5)} |
-   ForEach-Object {[pscustomobject]@{TimeCreated=$_.TimeCreated;Id=$_.Id;Message=$_.Message}})
-}catch{}
-$tasks=@()
-Get-ScheduledTask -ErrorAction SilentlyContinue | ForEach-Object {
- $t=$_
- $i=Get-ScheduledTaskInfo -TaskName $t.TaskName -TaskPath $t.TaskPath -ErrorAction SilentlyContinue
- $actions=@($t.Actions|ForEach-Object { [pscustomobject]@{Execute=$_.Execute;Arguments=$_.Arguments;WorkingDirectory=$_.WorkingDirectory} })
- $tasks += [pscustomobject]@{TaskName=$t.TaskName;TaskPath=$t.TaskPath;State=$t.State;Author=$t.Author;PrincipalUserId=$t.Principal.UserId;LogonType=$t.Principal.LogonType;RunLevel=$t.Principal.RunLevel;LastRunTime=$i.LastRunTime;LastTaskResult=$i.LastTaskResult;Actions=$actions}
+'@
+$rows=@();$deadline=(Get-Date).AddSeconds(60);$n=0
+while((Get-Date) -lt $deadline){
+ try{
+  $screen=[System.Windows.Forms.Screen]::PrimaryScreen
+ }catch{
+  Add-Type -AssemblyName System.Windows.Forms
+  $screen=[System.Windows.Forms.Screen]::PrimaryScreen
+ }
+ $bmp=New-Object System.Drawing.Bitmap($screen.Bounds.Width,$screen.Bounds.Height)
+ $g=[System.Drawing.Graphics]::FromImage($bmp)
+ $g.CopyFromScreen($screen.Bounds.Location,[System.Drawing.Point]::Empty,$screen.Bounds.Size)
+ $n++;$stamp=(Get-Date).ToUniversalTime().ToString('yyyyMMddTHHmmssfffZ')
+ $img=Join-Path $ev ("desktop-$stamp.png");$bmp.Save($img,[System.Drawing.Imaging.ImageFormat]::Png);$g.Dispose();$bmp.Dispose()
+ $fg=[DesktopCapture]::GetForegroundWindow();[uint32]$pid=0;[void][DesktopCapture]::GetWindowThreadProcessId($fg,[ref]$pid)
+ $p=if($pid){Get-CimInstance Win32_Process -Filter "ProcessId=$pid" -ErrorAction SilentlyContinue}else{$null}
+ $rows += [pscustomobject]@{TimestampUtc=(Get-Date).ToUniversalTime().ToString('o');Image=$img;ForegroundPid=$pid;ForegroundName=$p.Name;ForegroundCommandLine=$p.CommandLine}
+ Start-Sleep -Seconds 5
 }
-$interesting=@($tasks|Where-Object {$_.TaskName -match 'AERIS|AKATH|AX|BRAIN|RUNTIME|TERMINAL|NODE' -or ($_.Actions.Execute -match 'powershell|cmd|WindowsTerminal|wt.exe|node.exe')})
-[pscustomobject]@{protocol='AX PC1 FOREGROUND ROOT-CAUSE SNAPSHOT v2';nodeId='PC1';computerName=$env:COMPUTERNAME;timestampUtc=[DateTime]::UtcNow.ToString('o');terminalProcesses=$trace;serviceOwners=$services;taskEvents=$taskEvents;interestingTasks=$interesting}|ConvertTo-Json -Depth 10|Set-Content (Join-Path $ev 'pc1-foreground-rootcause.json') -Encoding UTF8
-Write-Host "SERVICE_OWNER_COUNT=$(@($services).Count)"
-$services|ForEach-Object{Write-Host ("SERVICE PID={0} NAME={1} DISPLAY={2} START={3} STATE={4}" -f $_.ProcessId,$_.Name,$_.DisplayName,$_.StartName,$_.State)}
-Write-Host "TASK_EVENT_COUNT=$(@($taskEvents).Count)"
-$taskEvents | Select-Object -First 80 | ForEach-Object { Write-Host ("TASK_EVENT {0} ID={1} {2}" -f $_.TimeCreated,$_.Id,($_.Message -replace "`r|`n"," ")) }
-Write-Host "TERMINAL_PROCESS_COUNT=$(@($trace).Count)"
-Write-Host "INTERESTING_TASK_COUNT=$(@($interesting).Count)"
-$trace|ForEach-Object{Write-Host ("PROC {0} PID={1} PARENT={2} PPID={3} CMD={4}" -f $_.Name,$_.Pid,$_.ParentName,$_.ParentPid,$_.CommandLine)}
-$interesting|ForEach-Object{Write-Host ("TASK {0} USER={1} LOGON={2} RUNLEVEL={3} STATE={4} EXEC={5} ARGS={6}" -f $_.TaskName,$_.PrincipalUserId,$_.LogonType,$_.RunLevel,$_.State,(($_.Actions|Select-Object -First 1).Execute),(($_.Actions|Select-Object -First 1).Arguments))}
-Write-Host "ROOTCAUSE_SNAPSHOT=PASS"
+$rows|ConvertTo-Json -Depth 6|Set-Content (Join-Path $ev 'desktop-capture-index.json') -Encoding UTF8
+Write-Host "DESKTOP_CAPTURE_PASS=1"
+Write-Host "CAPTURE_SECONDS=60"
+Write-Host "CAPTURE_COUNT=$n"
