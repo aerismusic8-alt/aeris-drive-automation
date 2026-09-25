@@ -6,6 +6,9 @@ on:
     paths:
       - 'AX_PC_CONTROL/brain2-local-control-worker.ps1'
       - 'AX_PC_CONTROL/install-brain2-local-control.ps1'
+      - 'AX_PC_CONTROL/brain2-decision-worker.ps1'
+      - 'AX_PC_CONTROL/install-brain2-ssh-control.ps1'
+      - 'AX_PC_CONTROL/PC2_SSH_BRAIN2_ENTRY.ps1'
       - '.github/workflows/ax-pc2-brain2-local-control-bootstrap.yml'
   workflow_dispatch:
   schedule:
@@ -31,10 +34,21 @@ jobs:
         run: |
           $ErrorActionPreference='Stop'
           & powershell.exe -NoProfile -ExecutionPolicy Bypass -File "$env:GITHUB_WORKSPACE\AX_PC_CONTROL\install-brain2-local-control.ps1"
-          Start-Sleep -Seconds 2
+          & powershell.exe -NoProfile -ExecutionPolicy Bypass -File "$env:GITHUB_WORKSPACE\AX_PC_CONTROL\install-brain2-ssh-control.ps1"
+          Start-Sleep -Seconds 3
           $task=Get-ScheduledTask -TaskName 'AERIS-PC2-BRAIN2-LOCAL-CONTROL' -ErrorAction Stop
           if($task.State -notin @('Running','Ready')){throw "BRAIN2_CONTROL_TASK_STATE:$($task.State)"}
           Write-Host "BRAIN2_LOCAL_CONTROL_TASK=$($task.State)"
+      - name: Verify Brain2 decision heartbeat
+        shell: powershell
+        run: |
+          $ErrorActionPreference='Stop'
+          $hb='C:\AX-Runtime\evidence\brain2-decision-heartbeat.json'
+          if(-not(Test-Path $hb)){throw 'BRAIN2_DECISION_HEARTBEAT_MISSING'}
+          $d=Get-Content $hb -Raw|ConvertFrom-Json
+          if($d.nodeId -ne 'PC2' -or $d.computerName -ne 'DESKTOP-M9M4818' -or $d.role -ne 'BRAIN'){throw 'BRAIN2_DECISION_HEARTBEAT_INVALID'}
+          Write-Host "BRAIN2_DECISION_HEARTBEAT=$($d.heartbeatAt)"
+          Write-Host 'BRAIN2_DECISION=VERIFIED'
       - name: Verify local heartbeat
         shell: powershell
         run: |
