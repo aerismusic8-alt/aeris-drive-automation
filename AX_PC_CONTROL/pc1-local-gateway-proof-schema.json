@@ -1,0 +1,17 @@
+{
+  "schemaVersion": "1.0",
+  "nodeId": "PC1",
+  "required": {
+    "status": "PASS",
+    "computerName": "DESKTOP-RGK6JKB",
+    "gatewayAlive": true,
+    "evidenceScope": "PC1_LOCAL_GATEWAY"
+  },
+  "requiredEvidence": [
+    "checkedUtc",
+    "gatewayTimestamp",
+    "nodeId",
+    "computerName"
+  ],
+  "verificationRule": "No runtime claim is valid without fresh local PC1 proof."
+}
