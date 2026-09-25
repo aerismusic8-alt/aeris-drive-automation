@@ -20,10 +20,12 @@ jobs:
         run: |
           $ErrorActionPreference='Stop'
           if($env:COMPUTERNAME -ne 'DESKTOP-RGK6JKB'){throw "EXPECTED_PC1_GOT:$env:COMPUTERNAME"}
-          $tcp=Test-NetConnection -ComputerName '192.168.1.111' -Port 22 -WarningAction SilentlyContinue
-          Write-Host "PC1=VERIFIED"
-          Write-Host "PC2_TCP22=$($tcp.TcpTestSucceeded)"
-          if(-not $tcp.TcpTestSucceeded){throw 'PC2_SSH_PORT_UNREACHABLE'}
+          $tcp=$false
+          $client=New-Object Net.Sockets.TcpClient
+          try { $iar=$client.BeginConnect('192.168.1.111',22,$null,$null); $tcp=$iar.AsyncWaitHandle.WaitOne(3000); if($tcp -and $client.Connected){$tcp=$true} else {$tcp=$false} } finally {$client.Close()}
+          Write-Host 'PC1=VERIFIED'
+          Write-Host "PC2_TCP22=$tcp"
+          if(-not $tcp){throw 'PC2_SSH_PORT_UNREACHABLE'}
       - name: Probe available SSH authentication without exposing keys
         shell: powershell
         run: |
