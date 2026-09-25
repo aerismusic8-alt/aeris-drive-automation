@@ -1,0 +1,28 @@
+{
+  "schemaVersion": "1.0",
+  "nodeId": "PC1",
+  "request": {
+    "targetNode": "PC1",
+    "jobId": "string",
+    "intent": "allowed-intent",
+    "requestedUtc": "ISO-8601",
+    "source": "PC1_LOCAL_BRAIN"
+  },
+  "response": {
+    "status": "ACCEPTED|REJECTED|FAILED|VERIFIED",
+    "nodeId": "PC1",
+    "jobId": "string",
+    "intent": "allowed-intent",
+    "acceptedUtc": "ISO-8601",
+    "completedUtc": "ISO-8601|null",
+    "evidencePath": "string|null",
+    "verification": "PENDING|PASS|FAIL"
+  },
+  "invariant": [
+    "Gateway never chooses an intent.",
+    "Gateway rejects non-PC1 targetNode.",
+    "Gateway rejects unknown intents.",
+    "Control executes only Brain-approved intents.",
+    "VERIFIED requires post-action local evidence."
+  ]
+}
