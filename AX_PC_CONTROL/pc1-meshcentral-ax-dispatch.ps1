@@ -24,7 +24,6 @@ $keyFile = [Environment]::GetEnvironmentVariable('AKATH_MESHCTRL_KEYFILE')
 $meshPass = [Environment]::GetEnvironmentVariable('AKATH_MESHCTRL_LOGINPASS')
 
 if (-not (Test-Path -LiteralPath $meshCtrl)) { throw "MESHCTRL_NOT_FOUND:$meshCtrl" }
-if (-not (Test-Path -LiteralPath $meshUrl)) { throw "MESH_URL_CONFIG_INVALID" }
 
 function Invoke-MeshCtrl([string[]]$Args) {
   $all = @($Args)
@@ -63,7 +62,7 @@ function Resolve-DeviceId {
 
 function Invoke-RemotePowerShell([string]$DeviceId,[string]$Script) {
   $b64 = [Convert]::ToBase64String([Text.Encoding]::UTF8.GetBytes($Script))
-  $remote = "$b=[Text.Encoding]::UTF8.GetString([Convert]::FromBase64String('$b64'));Invoke-Expression $b"
+  $remote = '$b=[Text.Encoding]::UTF8.GetString([Convert]::FromBase64String(''' + $b64 + '''));Invoke-Expression $b'
   $r = Invoke-MeshCtrl @('RunCommand','--id',$DeviceId,'--run',$remote,'--powershell','--reply')
   if ($r.ExitCode -ne 0) { throw "MESH_RUNCOMMAND_FAILED:$($r.Output)" }
   return $r.Output
@@ -71,7 +70,7 @@ function Invoke-RemotePowerShell([string]$DeviceId,[string]$Script) {
 
 if ($Action -eq 'Health') {
   $deviceId = Resolve-DeviceId
-  $out = Invoke-RemotePowerShell $deviceId "hostname"
+  $out = Invoke-RemotePowerShell $deviceId 'hostname'
   if ($out -notmatch [regex]::Escape($ExpectedNode)) { throw "MESH_REMOTE_IDENTITY_MISMATCH:$out" }
   [ordered]@{status='ALIVE';nodeId=$ExpectedNodeId;computerName=$ExpectedNode;deviceId=$deviceId;remoteOutput=$out.Trim();checkedAt=[DateTime]::UtcNow.ToString('o')} | ConvertTo-Json -Depth 5
   exit 0
@@ -97,7 +96,8 @@ if ($Action -eq 'DispatchIntent') {
     requestedAt=[DateTime]::UtcNow.ToString('o')
   } | ConvertTo-Json -Compress
   $b64 = [Convert]::ToBase64String([Text.Encoding]::UTF8.GetBytes($intentJson))
-  $remote = "$root='C:\AX-Runtime\brain1-intent-queue\pending';New-Item -ItemType Directory -Path $root -Force|Out-Null;$j=[Text.Encoding]::UTF8.GetString([Convert]::FromBase64String('$b64'));Set-Content -Path (Join-Path $root ('$JobId.json')) -Value $j -Encoding UTF8"
+  $safeJobId = $JobId -replace '[^A-Za-z0-9_.-]','_'
+  $remote = '$root=''C:\AX-Runtime\brain1-intent-queue\pending'';New-Item -ItemType Directory -Path $root -Force|Out-Null;$j=[Text.Encoding]::UTF8.GetString([Convert]::FromBase64String(''' + $b64 + '''));Set-Content -Path (Join-Path $root ''' + $safeJobId + '.json'') -Value $j -Encoding UTF8'
   $out = Invoke-RemotePowerShell $deviceId $remote
   [ordered]@{status='DISPATCHED';nodeId='PC1';computerName=$ExpectedNode;jobId=$JobId;intent=$Intent;deviceId=$deviceId;remoteOutput=$out.Trim();dispatchedAt=[DateTime]::UtcNow.ToString('o')} | ConvertTo-Json -Depth 5
   exit 0
