@@ -10,9 +10,9 @@ while($true){
   $n=$_.Name;$run=Join-Path $intent "running\$n"
   try{Move-Item $_.FullName $run -Force;$i=Get-Content $run -Raw|ConvertFrom-Json
    if($i.targetNode -ne 'PC1'){throw 'TARGET_NODE_NOT_PC1'};if(!$i.jobId){throw 'JOB_ID_MISSING'}; if($i.eventNode -and $i.eventNode -ne 'PC1'){throw 'EVENT_NODE_MISMATCH'}
-   $allowed=@('NODE_HEALTH_CHECK','SYSTEM_DIAGNOSTIC','CLOSE_STALE_TERMINAL','CAPTURE_AND_REVERIFY','RESTART_OWNED_RUNTIME')
+   $allowed=@('NODE_HEALTH_CHECK','SYSTEM_DIAGNOSTIC','CLOSE_STALE_TERMINAL','CAPTURE_AND_REVERIFY','RESTART_OWNED_RUNTIME','INCIDENT_LOCAL_DIAGNOSE')
    if($allowed -notcontains $i.intent){throw "BRAIN_INTENT_NOT_ALLOWED:$($i.intent)"}
-   $job=[ordered]@{protocol='AX PC1 BRAIN1 CONTROL COMMAND v1';jobId=$i.jobId;targetNode='PC1';command=$i.intent;source='brain1';brainDecision='APPROVED';evidenceScope='LOCAL_EVENT_NODE_ONLY';decidedAt=[DateTime]::UtcNow.ToString('o')}
+   $job=[ordered]@{protocol='AX PC1 BRAIN1 CONTROL COMMAND v1';jobId=$i.jobId;targetNode='PC1';command=$i.intent;source='brain1';brainDecision='APPROVED';evidenceScope='LOCAL_EVENT_NODE_ONLY';autonomousAfterChat=$true;decidedAt=[DateTime]::UtcNow.ToString('o')}
    $job|ConvertTo-Json|Set-Content (Join-Path $control "pending\$n") -Encoding UTF8
    $i|Add-Member status 'DISPATCHED_TO_CONTROL' -Force;$i|ConvertTo-Json|Set-Content (Join-Path $intent "done\$n") -Encoding UTF8;Remove-Item $run -Force
   }catch{if(Test-Path $run){$i=Get-Content $run -Raw|ConvertFrom-Json;$i|Add-Member status 'FAILED' -Force;$i|Add-Member error $_.Exception.Message -Force;$i|ConvertTo-Json|Set-Content (Join-Path $intent "failed\$n") -Encoding UTF8;Remove-Item $run -Force}}
