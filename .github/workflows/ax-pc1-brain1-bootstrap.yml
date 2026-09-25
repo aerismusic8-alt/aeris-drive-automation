@@ -1,0 +1,54 @@
+name: AX PC1 Brain1 Bootstrap
+
+on:
+  push:
+    paths:
+      - 'AX_PC_CONTROL/brain1-*.ps1'
+      - 'AX_PC_CONTROL/install-brain1-local-control.ps1'
+  workflow_dispatch:
+
+jobs:
+  install-pc1-brain1:
+    runs-on: self-hosted
+    steps:
+      - name: Verify PC1
+        shell: powershell
+        run: |
+          if ($env:COMPUTERNAME -ne 'DESKTOP-RGK6JKB') { throw "EXPECTED_PC1:$env:COMPUTERNAME" }
+          Write-Host "PC1=VERIFIED"
+      - name: Download Brain1 scripts
+        shell: powershell
+        run: |
+          $root = 'C:\AX-Bootstrap\brain1'
+          if (Test-Path $root) { Remove-Item $root -Recurse -Force }
+          New-Item -ItemType Directory -Path $root -Force | Out-Null
+          $base = "https://raw.githubusercontent.com/aerismusic8-alt/aeris-drive-automation/$env:GITHUB_SHA/AX_PC_CONTROL/"
+          foreach ($n in @('brain1-decision-worker.ps1','brain1-local-control-worker.ps1','brain1-watchdog.ps1','install-brain1-local-control.ps1')) {
+            Invoke-WebRequest ($base+$n) -OutFile (Join-Path $root $n)
+          }
+          Write-Host "DOWNLOAD=VERIFIED"
+      - name: Install Brain1 hidden runtime
+        shell: powershell
+        run: |
+          & powershell.exe -NoProfile -ExecutionPolicy Bypass -File 'C:\AX-Bootstrap\brain1\install-brain1-local-control.ps1'
+          if ($LASTEXITCODE -ne 0) { throw "INSTALL_EXIT:$LASTEXITCODE" }
+          Write-Host "INSTALL=VERIFIED"
+      - name: Verify Brain1 tasks and heartbeats
+        shell: powershell
+        run: |
+          Start-Sleep -Seconds 8
+          $tasks = @('AERIS-PC1-BRAIN1-DECISION','AERIS-PC1-BRAIN1-LOCAL-CONTROL','AERIS-PC1-BRAIN1-WATCHDOG')
+          foreach ($n in $tasks) {
+            $t = Get-ScheduledTask -TaskName $n -ErrorAction Stop
+            if ($t.State -eq 'Disabled') { throw "TASK_DISABLED:$n" }
+            Write-Host "$n=VERIFIED"
+          }
+          $ev='C:\AX-Runtime\evidence'
+          foreach ($n in @('brain1-decision-heartbeat.json','brain1-local-control-heartbeat.json','brain1-watchdog-heartbeat.json')) {
+            $p=Join-Path $ev $n
+            if (-not (Test-Path $p)) { throw "HEARTBEAT_MISSING:$n" }
+            $x=Get-Content $p -Raw | ConvertFrom-Json
+            if ($x.status -ne 'ALIVE') { throw "HEARTBEAT_NOT_ALIVE:$n" }
+            Write-Host "$n=ALIVE"
+          }
+          Write-Host "BRAIN1_PC1=VERIFIED"
