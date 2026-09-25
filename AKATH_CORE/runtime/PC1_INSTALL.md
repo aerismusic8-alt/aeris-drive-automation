@@ -1,47 +1,66 @@
-# PC1 Autonomous AX Runtime
+# PC1 Autonomous Runtime / Brain / Control
 
-AX Runtime is an external Node.js supervisor. It continues after the ChatGPT session closes.
+## Canonical execution path
+
+PC1 runs:
+
+PC → Runtime → Brain → Control → Vision / OS / Browser → Evidence → Verify → Write-back
+
+AX is the executive/orchestration and upgrade layer. A MASTER BRAIN provides durable knowledge and verified lessons. The local Brain is the decision layer; Control is the execution layer.
 
 ## Ownership
 
-- AX: decisions, task state, evidence rules, runtime behavior, canonical workload selection.
-- PC1: hosts the runtime continuously and executes the bound Specialist path.
-- K: one-time bootstrap only; after activation, K is not required for each execution cycle.
-- ChatGPT session: not required for the supervisor loop once PC1 Runtime is online.
+- K: final authority and approval boundary.
+- AX: architecture, orchestration, Brain upgrades, research direction, and canonical coordination.
+- A MASTER BRAIN: durable knowledge, procedures, lessons, and recovery knowledge.
+- PC1 Runtime: persistent local supervisor and heartbeat.
+- PC1 Brain: local autonomous decision/recovery loop.
+- PC1 Control: executes bounded Brain directives.
+- Desktop Vision: observes the real desktop/browser and produces evidence.
+- Verify: independently confirms effects before completion is recorded.
 
-## One-time PC1 activation
+## Runtime requirements
 
-1. Ensure Node.js 20+ is installed.
-2. On PC1, update the repository to `main`.
-3. Ensure `GEMINI_API_KEY` is available in the PC1 user environment for AI capability. Never commit the key.
-4. From the repository root, run:
+1. Node.js 20+.
+2. Windows Task Scheduler autostart.
+3. Persistent heartbeat.
+4. Brain and Control processes recoverable without ChatGPT.
+5. State/evidence persisted locally and synchronized to canonical state.
 
-```powershell
-& .\AKATH_CORE\runtime\install-ax-runtime-autostart.ps1 -StartNow
-```
+The runtime must continue after the ChatGPT session closes.
 
-The bootstrap registers the task `AERIS-AKATH-AX-RUNTIME` in Windows Task Scheduler for the current user, starts the runtime immediately, and configures automatic restart on failure. The runtime runs `main.mjs` directly and uses the existing PC1 Specialist path.
+## Autonomous loop
 
-5. Verify:
+REGISTER → HEARTBEAT → READY → RECONCILE → BRAIN DECISION → CONTROL DISPATCH → EXECUTE → EVIDENCE → VERIFY → WRITE-BACK → NEXT
 
-```powershell
-& .\AKATH_CORE\runtime\healthcheck.ps1
-```
+On failure:
 
-The expected live state is `RuntimeStatus = ONLINE` with a recent `LastHeartbeatAt` and a non-null `ActiveJob` while work is executing.
+INSPECT → RESEARCH/KNOWLEDGE → ROOT CAUSE → RECOVER/FIX → RUN → EVIDENCE → VERIFY → WRITE-BACK
 
-## What happens after bootstrap
+No unverified success is accepted.
 
-`PC1 Runtime → canonical sync → autonomous planner → CLAIM → SPECIALIST → EXECUTE → EVIDENCE → VERIFY → DONE → NEXT JOB`
+## PC1 identity
 
-The current canonical first workload is `AKATH-JUMPTASK-AI-FIRST-001`. The AI specialist must determine whether the supplied JumpTask workload contains a legitimate autonomous/background action before any external earning action is attempted.
+- nodeId: PC1-MAIN
+- machine: DESKTOP-RGK6JKB
+- role: PRIMARY
 
-## Removal
+## Verification gate
 
-```powershell
-& .\AKATH_CORE\runtime\uninstall-ax-runtime-autostart.ps1
-```
+The autonomous gate is PASS only when, with the ChatGPT session closed, PC1 independently maintains a changing heartbeat and completes a legitimate non-destructive job with persisted evidence and independent verification.
 
-## Autonomous gate
+A Git commit or configuration file alone is not runtime proof.
 
-The gate is PASS only when, with the ChatGPT session closed, PC1 independently shows a live heartbeat and completes a non-destructive job with persisted evidence and verification. A Git commit alone does not satisfy the gate.
+## Desktop Commander
+
+Desktop Commander is optional. It is not the authority, scheduler, Brain, or canonical state store.
+
+## Recovery
+
+If PC1 reconnects after interruption, it must report its local state and reconcile against canonical state before performing another side-effecting action.
+
+## Current target
+
+Bring the deployed PC1 runtime into conformance with the Brain → Control architecture, then verify:
+
+Runtime ONLINE → Brain ONLINE → Control ONLINE → Vision LIVE → Evidence changing → Verify PASS → Write-back changing.
