@@ -1,0 +1,28 @@
+{
+  "schemaVersion": "1.0",
+  "nodeId": "PC1",
+  "computerName": "DESKTOP-RGK6JKB",
+  "authority": "PC1_LOCAL_BRAIN",
+  "states": [
+    "NOT_VERIFIED",
+    "ALIVE",
+    "READY",
+    "EXECUTING",
+    "VERIFIED"
+  ],
+  "readiness": {
+    "gatewayHealth": "required_fresh_local_evidence",
+    "brainHeartbeat": "required_fresh_local_evidence",
+    "controlHeartbeat": "required_fresh_local_evidence",
+    "identity": "required_PC1",
+    "queueIntegrity": "required",
+    "evidenceScope": "PC1_LOCAL"
+  },
+  "failurePolicy": {
+    "missingEvidence": "NOT_VERIFIED",
+    "staleHeartbeat": "NOT_VERIFIED",
+    "identityMismatch": "NOT_VERIFIED",
+    "conflictingEvidence": "NOT_VERIFIED"
+  },
+  "rule": "No GitHub, ChatGPT, or remote adapter may assert PC1 READY/VERIFIED without fresh PC1-local evidence."
+}
