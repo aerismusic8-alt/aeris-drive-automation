@@ -2,7 +2,7 @@
   "schema_version": "1.6",
   "storage_role": "A_MASTER_BRAIN_KNOWLEDGE_AND_EXPERIENCE",
   "status": "VERIFIED",
-  "last_updated_utc": "2026-09-24T00:00:00.000Z",
+  "last_updated_utc": "2026-09-25T02:06:42.333Z",
   "authority": "K_FINAL_AUTHORITY",
   "identity_authority": "AKATH_AX",
   "model_independence": true,
@@ -326,5 +326,35 @@
       "TASK_STARTED != REWARD",
       "REPORTED_SUCCESS != VERIFIED_SUCCESS"
     ]
+  },
+  "pc_brain_control_architecture": {
+    "status": "IMPLEMENTED_PENDING_NODE_EXECUTION_VERIFICATION",
+    "rule": "AX creates/upgrades Brain; Brain reasons and dispatches intents; local Control executes; Verifier proves.",
+    "nodes": {
+      "PC1": {
+        "machine_identity": "DESKTOP-RGK6JKB",
+        "brain": "BRAIN1",
+        "control": "CONTROL1",
+        "runtime_root": "C:\\AX-Runtime",
+        "decision_worker": "AX_PC_CONTROL/brain1-decision-worker.ps1",
+        "control_worker": "AX_PC_CONTROL/brain1-local-control-worker.ps1",
+        "watchdog": "AX_PC_CONTROL/brain1-watchdog.ps1"
+      },
+      "PC2": {
+        "machine_identity": "DESKTOP-M9M4818",
+        "brain": "BRAIN2",
+        "control": "CONTROL2"
+      }
+    },
+    "system_problem_scope": [
+      "process/task diagnosis",
+      "unexpected terminal/foreground interference",
+      "runtime/queue failures",
+      "resource anomalies",
+      "browser/application recovery",
+      "desktop observation and re-verification"
+    ],
+    "safety_rule": "Brain1 may dispatch only whitelisted intents; destructive process termination is not blanket-authorized and must be tied to an identified AX-owned target.",
+    "evidence_gate": "No PC1 Brain1 VERIFIED claim until node execution produces fresh heartbeats and command evidence."
   }
 }
