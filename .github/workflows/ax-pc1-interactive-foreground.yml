@@ -36,12 +36,16 @@ jobs:
       - name: Wait and verify capture
         shell: powershell
         run: |
-          $p="C:\AX-Runtime\evidence\pc1-interactive-foreground.json"
-          $deadline=(Get-Date).AddSeconds(30)
+          $p="C:\AX-Runtime\evidence\pc1-interactive-desktop-capture-proof.json"
+          $deadline=(Get-Date).AddSeconds(105)
           while((Get-Date) -lt $deadline -and !(Test-Path $p)){Start-Sleep -Milliseconds 500}
           if (!(Test-Path $p)) { throw "INTERACTIVE_CAPTURE_MISSING" }
           $x=Get-Content $p -Raw|ConvertFrom-Json
+          $idx="C:\AX-Runtime\evidence\interactive-desktop\interactive-desktop-capture-index.json"
+          if (!(Test-Path $idx)) { throw "CAPTURE_INDEX_MISSING" }
+          $rows=Get-Content $idx -Raw|ConvertFrom-Json
           Write-Host "INTERACTIVE_CAPTURE=PASS"
-          Write-Host "SAMPLE_COUNT=$(@($x).Count)"
-          @($x|Group-Object ForegroundName|Sort-Object Count -Descending) | Select-Object -First 10 | ForEach-Object { Write-Host ("FG {0} COUNT={1}" -f $_.Name,$_.Count) }
+          Write-Host "CAPTURE_SECONDS=$($x.captureSeconds)"
+          Write-Host "SAMPLE_COUNT=$(@($rows).Count)"
+          @($rows|Group-Object ForegroundName|Sort-Object Count -Descending) | Select-Object -First 10 | ForEach-Object { Write-Host ("FG {0} COUNT={1}" -f $_.Name,$_.Count) }
           Unregister-ScheduledTask -TaskName "AERIS-PC1-INTERACTIVE-FOREGROUND-CAPTURE" -Confirm:$false -ErrorAction SilentlyContinue
