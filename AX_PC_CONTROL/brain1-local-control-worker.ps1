@@ -18,8 +18,8 @@ while($true){
     'RESTART_OWNED_RUNTIME' {$d=@{policy='owned targets only';restarted=@()}}
     default {throw "COMMAND_NOT_ALLOWED:$($j.command)"}
    }
-   $p=Join-Path $ev "$($j.jobId)-control.json";@{protocol='AX PC1 BRAIN1 CONTROL PROOF v1';nodeId='PC1';jobId=$j.jobId;command=$j.command;status='VERIFIED';completedAt=[DateTime]::UtcNow.ToString('o');details=$d}|ConvertTo-Json -Depth 10|Set-Content $p -Encoding UTF8
-   $j|Add-Member status 'VERIFIED' -Force;$j|Add-Member evidencePath $p -Force;$j|ConvertTo-Json|Set-Content (Join-Path $base "done\$n") -Encoding UTF8;Remove-Item $run -Force
+   $p=Join-Path $ev "$($j.jobId)-control.json";@{protocol='AX PC1 BRAIN1 CONTROL PROOF v1';nodeId='PC1';jobId=$j.jobId;command=$j.command;status='EXECUTED';completedAt=[DateTime]::UtcNow.ToString('o');details=$d}|ConvertTo-Json -Depth 10|Set-Content $p -Encoding UTF8
+   $j|Add-Member status 'EXECUTED_PENDING_VERIFICATION' -Force;$j|Add-Member evidencePath $p -Force;$j|ConvertTo-Json|Set-Content (Join-Path $base "done\$n") -Encoding UTF8;Remove-Item $run -Force
   }catch{if(Test-Path $run){$j=Get-Content $run -Raw|ConvertFrom-Json;$j|Add-Member status 'FAILED' -Force;$j|Add-Member error $_.Exception.Message -Force;$j|ConvertTo-Json|Set-Content (Join-Path $base "failed\$n") -Encoding UTF8;Remove-Item $run -Force}}
  }
  Start-Sleep $PollSeconds
