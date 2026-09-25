@@ -52,12 +52,27 @@ function Resolve-DeviceId {
       if ($p.Value -is [array]) { $items += @($p.Value) }
     }
   }
-  $match = $items | Where-Object {
-    $_.name -eq $ExpectedNode -or $_.computername -eq $ExpectedNode -or $_.computerName -eq $ExpectedNode
-  } | Select-Object -First 1
-  if (-not $match) { throw "MESH_DEVICE_NOT_FOUND:$ExpectedNode" }
-  if (-not $match.id) { throw 'MESH_DEVICE_ID_MISSING' }
-  return [string]$match.id
+
+  # Fail closed on ambiguous PC1 node records. Match hostname, known PC1 host,
+  # and the known MeshCentral device group, then prefer newest agent timestamp.
+  $matches = @($items | Where-Object {
+    ($_.name -eq $ExpectedNode -or $_.computername -eq $ExpectedNode -or $_.computerName -eq $ExpectedNode) -and
+      $_.host -eq '192.168.250.41' -and
+      $_.meshid -eq 'mesh//HUDxIAER8NjFSHwMsSgbnomozWA6r0POFmTffaFngdSiQVcm2deqn4tnseiBBaTV' -and
+      $_.id
+  })
+  if ($matches.Count -eq 0) { throw "MESH_DEVICE_NOT_FOUND:$ExpectedNode" }
+
+  $ordered = @($matches | Sort-Object @{Expression={ if ($_.agct) { [int64]$_.agct } else { 0 } }; Descending=$true})
+  $top = $ordered[0]
+  $topAgct = if ($top.agct) { [int64]$top.agct } else { 0 }
+  $ties = @($ordered | Where-Object {
+    $v = if ($_.agct) { [int64]$_.agct } else { 0 }
+    $v -eq $topAgct
+  })
+  if ($ties.Count -ne 1) { throw "MESH_DEVICE_AMBIGUOUS:$($ties.Count) matching PC1 node records" }
+
+  return [string]$top.id
 }
 
 function Invoke-RemotePowerShell([string]$DeviceId,[string]$Script) {
