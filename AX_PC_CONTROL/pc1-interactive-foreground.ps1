@@ -9,7 +9,7 @@ public static class FG2 {
  [DllImport("user32.dll",SetLastError=true)] public static extern uint GetWindowThreadProcessId(IntPtr hWnd,out uint pid);
 }
 '@
-$rows=@();$deadline=([DateTime]::UtcNow).AddSeconds(15)
+$rows=@();$deadline=([DateTime]::UtcNow).AddSeconds(90)
 while([DateTime]::UtcNow -lt $deadline){
  $fg=[FG2]::GetForegroundWindow();[uint32]$pid=0;[void][FG2]::GetWindowThreadProcessId($fg,[ref]$pid)
  $name='';$cmd='';$parent='';$ppid=0
