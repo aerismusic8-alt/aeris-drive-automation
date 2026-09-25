@@ -2,7 +2,7 @@
   "schema_version": "1.6",
   "storage_role": "A_MASTER_BRAIN_KNOWLEDGE_AND_EXPERIENCE",
   "status": "VERIFIED",
-  "last_updated_utc": "2026-09-25T02:06:42.333Z",
+  "last_updated_utc": "2026-09-25T10:37:46.236Z",
   "authority": "K_FINAL_AUTHORITY",
   "identity_authority": "AKATH_AX",
   "model_independence": true,
@@ -356,5 +356,20 @@
     ],
     "safety_rule": "Brain1 may dispatch only whitelisted intents; destructive process termination is not blanket-authorized and must be tied to an identified AX-owned target.",
     "evidence_gate": "No PC1 Brain1 VERIFIED claim until node execution produces fresh heartbeats and command evidence."
+  },
+  "meshcentral_pc1_integration": {
+    "status": "TRANSPORT_AUTHENTICATED_NODE_DISCOVERY_VERIFIED_EXECUTION_PENDING",
+    "node": "PC1",
+    "machine_identity": "DESKTOP-RGK6JKB",
+    "adapter": "AX_PC_CONTROL/pc1-meshcentral-ax-dispatch.ps1",
+    "server": "LAN_ONLY",
+    "authentication": "VERIFIED",
+    "device_group": "Akath-pc1",
+    "discovered_records": 2,
+    "duplicate_resolution": "MATCH_HOST_AND_MESH_GROUP_THEN_PREFER_ACTIVE_KVM_OR_TERMINAL_SESSION_THEN_NEWEST_AGENT_TIMESTAMP; FAIL_CLOSED_ON_TIE",
+    "latest_adapter_commit": "e33977c10e87555223e9f3ca860e0a14609ba043",
+    "execution_gate": "Health proof -> Brain intent dispatch -> local Brain/Control evidence -> Verifier",
+    "evidence_gate": "NO_VERIFIED_AUTONOMOUS_CONTROL_CLAIM_UNTIL_FRESH_NODE_LOCAL_EVIDENCE_AND_VERIFICATION",
+    "credentials_rule": "NO_CREDENTIALS_STORED_IN_BRAIN_OR_GIT"
   }
 }
