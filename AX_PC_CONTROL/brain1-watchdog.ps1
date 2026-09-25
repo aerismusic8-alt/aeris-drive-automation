@@ -7,6 +7,7 @@ while($true){
  foreach($n in @('AERIS-PC1-BRAIN1-DECISION','AERIS-PC1-BRAIN1-LOCAL-CONTROL')){
   try{$t=Get-ScheduledTask -TaskName $n -EA Stop;if($t.State -ne 'Running'){Start-ScheduledTask -TaskName $n;$a+="STARTED:$n"}}catch{$a+="MISSING:$n"}
  }
+ foreach($n in @('AERIS-PC1-BRAIN1-DECISION','AERIS-PC1-BRAIN1-LOCAL-CONTROL')){try{$p=Join-Path $ev (if($n -like '*DECISION*'){'brain1-decision-heartbeat.json'}else{'brain1-local-control-heartbeat.json'});if(Test-Path $p){$h=Get-Content $p -Raw|ConvertFrom-Json;$age=([DateTime]::UtcNow-[DateTime]::Parse($h.heartbeatAt)).TotalSeconds;if($age -gt 30){Stop-ScheduledTask -TaskName $n -ErrorAction SilentlyContinue;Start-ScheduledTask -TaskName $n;$a+="RESTART_STALE:$n"}}}catch{$a+="HEARTBEAT_CHECK_ERROR:$n"}}
  @{protocol='AX PC1 BRAIN1 WATCHDOG v1';nodeId='PC1';status='ALIVE';heartbeatAt=[DateTime]::UtcNow.ToString('o');actions=$a}|ConvertTo-Json|Set-Content (Join-Path $ev 'brain1-watchdog-heartbeat.json') -Encoding UTF8
  Start-Sleep $PollSeconds
 }
