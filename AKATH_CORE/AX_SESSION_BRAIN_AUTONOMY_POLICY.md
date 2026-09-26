@@ -61,3 +61,21 @@ The transition requires evidence that:
 Runtime, Brain, Control, Vision, Evidence, Verify, Write-back, recovery, and resource governance are functioning.
 
 No recurring ChatGPT timer is required for normal operation.
+
+## Tool selection rule
+
+Tool and program selection is a Brain responsibility and is part of the execution architecture. Brain must choose by:
+Capability + Resource Cost + Reliability + Integration + Recovery.
+
+Selection order:
+1. Reuse an existing approved session/process when sufficient.
+2. Prefer DOM/API/Playwright for browser state and structured web evidence when sufficient.
+3. Prefer lightweight Windows-native automation for desktop/window/input work.
+4. Use Desktop Vision/OCR when desktop visual state is required.
+5. Use a VLM only when DOM/OCR/other evidence is insufficient for the required semantic decision.
+
+Before starting or installing a tool, Brain must inspect resource pressure and avoid duplicate browsers/processes. Under RESOURCE_PRESSURE, reduce expensive capture/OCR/VLM work and defer non-essential launches. Under CRITICAL, enter recovery-only mode and do not start or install new heavy tools until resource health is restored.
+
+New tools must be benchmarked for resource cost, reliability, integration, and recovery behavior before becoming an approved execution path. A more powerful tool is not automatically a better tool.
+
+Tool selection must be recorded in current Brain evidence/state with selected tool, reason, resource state, and fallback.
