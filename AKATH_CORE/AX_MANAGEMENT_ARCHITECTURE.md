@@ -103,6 +103,24 @@ FAILURE → CLASSIFY → EVIDENCE → ESCALATE_TO_AX → WAIT_FOR_NEXT_AX_SESSIO
 
 Repeated failure must not become an infinite blind retry loop.
 
+## Tool and program selection
+
+Tool choice is part of Brain management. Brain must select execution methods by:
+Capability + Resource Cost + Reliability + Integration + Recovery.
+
+Preferred order:
+- reuse an existing approved process/session when sufficient;
+- DOM/API/Playwright for browser state and structured evidence when sufficient;
+- lightweight Windows-native automation for desktop/window/input tasks;
+- Desktop Vision/OCR when desktop visual evidence is required;
+- VLM only when DOM/OCR evidence is insufficient for semantic understanding.
+
+Brain must inspect resource health before starting or installing tools and must avoid duplicate browsers/processes. Under RESOURCE_PRESSURE it reduces expensive observation/OCR/VLM work and defers non-essential launches. Under CRITICAL it enters recovery-only mode and does not start or install new heavy tools until resources recover.
+
+New tools require benchmark evidence for resource cost, reliability, integration, and recovery before becoming an approved path. More powerful does not mean more suitable.
+
+The selected tool, reason, resource state, and fallback are written into current Brain evidence/state.
+
 ## Resource governance
 
 Resource health is a first-class execution constraint, not an afterthought.
