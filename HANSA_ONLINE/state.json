@@ -2,14 +2,14 @@
   "schema_version": "HANSA-ONLINE/v1",
   "runtime_status": "BLOCKED",
   "auth_status": "BLOCKED_AUTH",
-  "last_run_at": "2026-09-30T12:42:58.277Z",
+  "last_run_at": "2026-09-30T17:29:44.442Z",
   "last_success_at": null,
   "last_checkin_utc_date": null,
   "agent": null,
   "observations": {},
   "verification": {
     "verified": false,
-    "reason": "AGENTHANSA_API_KEY is not available to the online worker."
+    "reason": "AgentHansa rejected the configured API credential with HTTP 401."
   },
-  "next_action": "PROVISION_AGENTHANSA_API_KEY_AS_GITHUB_ACTIONS_SECRET"
+  "next_action": "PROVISION_OR_REPLACE_AGENTHANSA_API_KEY_AS_GITHUB_ACTIONS_SECRET"
 }

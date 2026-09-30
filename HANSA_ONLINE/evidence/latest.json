@@ -1,6 +1,6 @@
 {
   "schema_version": "HANSA-EVIDENCE/v1",
-  "captured_at": "2026-09-30T12:42:58.277Z",
+  "captured_at": "2026-09-30T17:29:44.442Z",
   "source": "AgentHansa HTTPS API",
   "run_mode": "scheduled_online",
   "checks": {
@@ -12,11 +12,18 @@
         "service": "ai-bounty-hub",
         "db": "connected"
       }
+    },
+    "me": {
+      "http_status": 401,
+      "ok": false,
+      "data": {
+        "detail": "Invalid API key"
+      }
     }
   },
   "mutations": [],
   "verification": {
     "verified": false,
-    "reason": "AGENTHANSA_API_KEY is not available to the online worker."
+    "reason": "AgentHansa rejected the configured API credential with HTTP 401."
   }
 }
