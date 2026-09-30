@@ -1,5 +1,5 @@
 param(
-    [string]$JobId = "AX-PC2-DISPATCH-$([DateTime]::UtcNow.ToString('yyyyMMddHHmmssfff'))",
+    [string]$JobId = $(if ($env:GITHUB_RUN_ID) { "AX-PC2-DISPATCH-$env:GITHUB_RUN_ID" } else { "AX-PC2-DISPATCH-$([DateTime]::UtcNow.ToString('yyyyMMddHHmmssfff'))" }),
     [ValidateSet('NODE_E2E_TEST')]
     [string]$Command = 'NODE_E2E_TEST'
 )
