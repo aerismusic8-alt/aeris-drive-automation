@@ -8,7 +8,8 @@ const EVIDENCE = "HANSA_ONLINE/evidence/latest.json";
 
 const now = new Date();
 const nowIso = now.toISOString();
-const today = nowIso.slice(0, 10);
+const HANSA_RESET_TZ = "America/Los_Angeles";
+const today = new Intl.DateTimeFormat("en-CA", { timeZone: HANSA_RESET_TZ, year: "numeric", month: "2-digit", day: "2-digit" }).format(now);
 
 function loadState() {
   if (!existsSync(STATE)) return {};
@@ -139,6 +140,7 @@ try {
       state.verification = { verified:false, reason:"AgentHansa returned a check-in challenge; check-in is not counted as completed yet." };
     } else if (checkin.http_status === 409) {
       state.last_checkin_utc_date = today;
+      evidence.mutations[evidence.mutations.length - 1].reason = "Server reported check-in already completed for the current Hansa reset day.";
     }
   }
 
