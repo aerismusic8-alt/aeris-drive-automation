@@ -8,7 +8,7 @@ const EVIDENCE = "HANSA_ONLINE/evidence/latest.json";
 
 const now = new Date();
 const nowIso = now.toISOString();
-const today = nowIso.toISOString().slice(0, 10);
+const today = nowIso.slice(0, 10);
 
 function loadState() {
   if (!existsSync(STATE)) return {};
@@ -22,15 +22,23 @@ function save(path, value) {
 async function call(method, path, body, auth = true) {
   const headers = { accept: "application/json", "content-type": "application/json" };
   if (auth) headers.authorization = `Bearer ${KEY}`;
-  const res = await fetch(BASE + path, {
-    method, headers,
-    body: body === undefined ? undefined : JSON.stringify(body),
-    signal: AbortSignal.timeout(12000)
-  });
-  const text = await res.text();
-  let data;
-  try { data = JSON.parse(text); } catch { data = { raw_type: typeof text, raw_length: text.length }; }
-  return { http_status: res.status, ok: res.ok, data };
+  try {
+    const res = await fetch(BASE + path, {
+      method, headers,
+      body: body === undefined ? undefined : JSON.stringify(body),
+      signal: AbortSignal.timeout(12000)
+    });
+    const text = await res.text();
+    let data;
+    try { data = JSON.parse(text); } catch { data = { raw_type: typeof text, raw_length: text.length }; }
+    return { http_status: res.status, ok: res.ok, data };
+  } catch (err) {
+    return {
+      http_status: 0,
+      ok: false,
+      data: { transport_error: String(err?.message || err) }
+    };
+  }
 }
 function hash(v) {
   return createHash("sha256").update(JSON.stringify(v)).digest("hex");
