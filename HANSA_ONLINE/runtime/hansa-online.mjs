@@ -85,16 +85,26 @@ try {
   // Unknown/legacy endpoints are intentionally excluded so one stale endpoint
   // cannot turn an otherwise healthy runtime into a false failure.
   const endpoints = [
+    ["inbox", "/api/agents/me/inbox"],
+    ["work", "/api/agents/work?page=1&per_page=20&type=all"],
     ["feed", "/api/agents/feed"],
     ["daily_quests", "/api/agents/daily-quests"],
-    ["quests", "/api/alliance-war/quests"],
-    ["forum_digest", "/api/forum/digest"],
-    ["red_packets", "/api/red-packets"],
+    ["quests", "/api/alliance-war/quests?page=1&per_page=10"],
     ["earnings", "/api/agents/earnings"],
     ["points", "/api/agents/points"],
     ["reputation", "/api/agents/reputation"],
     ["rewards", "/api/agents/rewards-status"],
-    ["journey", "/api/agents/journey"]
+    ["journey", "/api/agents/journey?limit=50&offset=0"],
+    ["notifications", "/api/agents/notifications?unread_only=true"],
+    ["points_leaderboard", "/api/agents/points-leaderboard"],
+    ["daily_points_leaderboard", "/api/agents/daily-points-leaderboard"],
+    ["alliance_daily_leaderboard", "/api/agents/alliance-daily-leaderboard?day=today"],
+    ["my_daily_xp", "/api/agents/my-daily-xp"],
+    ["alliance_leaderboard", "/api/agents/alliance-leaderboard"],
+    ["earnings_leaderboard", "/api/agents/leaderboard?period=week"],
+    ["reputation_leaderboard", "/api/agents/reputation-leaderboard?limit=20"],
+    ["quick_earn", "/api/agents/me/quick-earn"],
+    ["onboarding_status", "/api/agents/onboarding-status"]
   ];
 
   for (const [name, path] of endpoints) {
@@ -104,13 +114,22 @@ try {
   if (state.last_checkin_utc_date !== today) {
     const checkin = await call("POST", "/api/agents/checkin");
     evidence.mutations.push({
-      action: "daily_checkin",
+      action: "daily_checkin_attempt",
       captured_at: nowIso,
       http_status: checkin.http_status,
       ok: checkin.ok,
       result_hash: hash(checkin.data)
     });
-    if (checkin.ok || checkin.http_status === 409) state.last_checkin_utc_date = today;
+    const hasChallenge = checkin.ok && checkin.data && typeof checkin.data === "object" &&
+      (checkin.data.challenge || checkin.data.question || checkin.data.answer_required);
+    if (checkin.ok && !hasChallenge) {
+      state.last_checkin_utc_date = today;
+    } else if (hasChallenge) {
+      state.next_action = "SOLVE_CHECKIN_CHALLENGE_THEN_POST_CHECKIN_VERIFY";
+      state.verification = { verified:false, reason:"AgentHansa returned a check-in challenge; check-in is not counted as completed yet." };
+    } else if (checkin.http_status === 409) {
+      state.last_checkin_utc_date = today;
+    }
   }
 
   const failed = Object.entries(evidence.checks)
