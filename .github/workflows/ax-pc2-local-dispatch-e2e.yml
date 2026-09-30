@@ -55,9 +55,11 @@ jobs:
           $data = Get-Content $record.FullName -Raw | ConvertFrom-Json
           if ($data.dispatchStatus -ne 'COMPLETED') { throw "DISPATCH_NOT_COMPLETED:$($data.dispatchStatus)" }
           if ($data.verified -ne $true) { throw 'DISPATCH_RESULT_NOT_VERIFIED' }
+          if (-not $data.verification) { throw 'INDEPENDENT_VERIFICATION_RECORD_MISSING' }
           Write-Host "DISPATCH_RECORD=$($record.FullName)"
           Write-Host 'DISPATCH_ACCEPTED=VERIFIED'
           Write-Host 'PC2_EXECUTED=VERIFIED'
           Write-Host 'RESULT_VERIFIED=VERIFIED'
+          Write-Host 'LIVE_FINANCIAL_REWARD=NOT_EXECUTED'
           Write-Host 'STATE=COMPLETED'
           Write-Host 'WRITE_BACK=VERIFIED'
