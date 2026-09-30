@@ -54,14 +54,15 @@ jobs:
           $ErrorActionPreference = 'Stop'
           $dispatchDir = 'C:\AX-Runtime\dispatch'
           $records = Get-ChildItem $dispatchDir -File -ErrorAction SilentlyContinue | Sort-Object LastWriteTime -Descending
-          $record = $records | Where-Object { $_.BaseName -eq $env:GITHUB_RUN_ID } | Select-Object -First 1
-          if (-not $record) { throw "DISPATCH_RECORD_FOR_RUN_NOT_FOUND:$env:GITHUB_RUN_ID" }
+          $expectedRecordBaseName = "AX-PC2-DISPATCH-$env:GITHUB_RUN_ID"
+          $record = $records | Where-Object { $_.BaseName -eq $expectedRecordBaseName } | Select-Object -First 1
+          if (-not $record) { throw "DISPATCH_RECORD_FOR_RUN_NOT_FOUND:$expectedRecordBaseName" }
           $data = Get-Content $record.FullName -Raw | ConvertFrom-Json
           if ($data.dispatchStatus -ne 'COMPLETED') { throw "DISPATCH_NOT_COMPLETED:$($data.dispatchStatus)" }
           if ($data.verified -ne $true) { throw 'DISPATCH_RESULT_NOT_VERIFIED' }
           if (-not $data.verification) { throw 'INDEPENDENT_VERIFICATION_RECORD_MISSING' }
           Write-Host "DISPATCH_RECORD=$($record.FullName)"
-          Write-Host 'DISPATCH_ACCEPTED=VERIFIED'
+          Write-Host 'DISPATCH_ACCEPTED=ACCEPTED'
           Write-Host 'PC2_EXECUTED=VERIFIED'
           Write-Host 'RESULT_VERIFIED=VERIFIED'
           Write-Host 'LIVE_FINANCIAL_REWARD=NOT_EXECUTED'
