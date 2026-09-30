@@ -53,8 +53,9 @@ jobs:
         run: |
           $ErrorActionPreference = 'Stop'
           $dispatchDir = 'C:\AX-Runtime\dispatch'
-          $record = Get-ChildItem $dispatchDir -File -ErrorAction SilentlyContinue | Sort-Object LastWriteTime -Descending | Select-Object -First 1
-          if (-not $record) { throw 'DISPATCH_RECORD=NONE' }
+          $records = Get-ChildItem $dispatchDir -File -ErrorAction SilentlyContinue | Sort-Object LastWriteTime -Descending
+          $record = $records | Where-Object { $_.BaseName -eq $env:GITHUB_RUN_ID } | Select-Object -First 1
+          if (-not $record) { throw "DISPATCH_RECORD_FOR_RUN_NOT_FOUND:$env:GITHUB_RUN_ID" }
           $data = Get-Content $record.FullName -Raw | ConvertFrom-Json
           if ($data.dispatchStatus -ne 'COMPLETED') { throw "DISPATCH_NOT_COMPLETED:$($data.dispatchStatus)" }
           if ($data.verified -ne $true) { throw 'DISPATCH_RESULT_NOT_VERIFIED' }
