@@ -43,7 +43,17 @@ if ($state.status -ne 'COMPLETED') { throw "PC2_DISPATCH_NOT_COMPLETED:$($state.
 $proof = Get-ChildItem (Join-Path $runtimeRoot 'proof') -File | Where-Object { $_.BaseName -eq $JobId } | Select-Object -First 1
 if (-not $proof) { throw 'PC2_DISPATCH_PROOF_MISSING' }
 $proofData = Get-Content $proof.FullName -Raw | ConvertFrom-Json
-if ($proofData.verified -ne $true -or $proofData.nodeId -ne 'PC2') { throw 'PC2_DISPATCH_PROOF_NOT_VERIFIED' }
+if ($proofData.executed -ne $true -or $proofData.nodeId -ne 'PC2') { throw 'PC2_DISPATCH_PROOF_NOT_EXECUTED' }
+if ($proofData.verificationStatus -eq 'VERIFIED') { throw 'PC2_EXECUTOR_SELF_VERIFICATION_FORBIDDEN' }
+
+$verifier = Join-Path $PSScriptRoot 'AX_PC2_LOCAL_VERIFY_E2E.ps1'
+if (-not (Test-Path $verifier)) { throw 'PC2_INDEPENDENT_VERIFIER_MISSING' }
+& powershell.exe -NoProfile -ExecutionPolicy Bypass -File $verifier -JobId $JobId
+if ($LASTEXITCODE -ne 0) { throw "PC2_VERIFIER_EXIT:$LASTEXITCODE" }
+$verificationPath = Join-Path (Join-Path $runtimeRoot 'verification') "$JobId.json"
+if (-not (Test-Path $verificationPath)) { throw 'PC2_VERIFICATION_RECORD_MISSING' }
+$verification = Get-Content $verificationPath -Raw | ConvertFrom-Json
+if ($verification.verified -ne $true -or $verification.nodeId -ne 'PC2') { throw 'PC2_INDEPENDENT_VERIFICATION_FAILED' }
 
 $completedAt = [DateTime]::UtcNow
 $record.dispatchStatus = 'COMPLETED'
