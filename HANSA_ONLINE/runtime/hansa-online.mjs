@@ -49,6 +49,7 @@ function compactProfile(p) {
 }
 
 const state = loadState();
+let checkinChallenge = false;
 const evidence = {
   schema_version: "HANSA-EVIDENCE/v1",
   captured_at: nowIso,
@@ -125,6 +126,7 @@ try {
     if (checkin.ok && !hasChallenge) {
       state.last_checkin_utc_date = today;
     } else if (hasChallenge) {
+      checkinChallenge = true;
       state.next_action = "SOLVE_CHECKIN_CHALLENGE_THEN_POST_CHECKIN_VERIFY";
       state.verification = { verified:false, reason:"AgentHansa returned a check-in challenge; check-in is not counted as completed yet." };
     } else if (checkin.http_status === 409) {
@@ -138,7 +140,7 @@ try {
 
   state.last_run_at = nowIso;
 
-  if (failed.length === 0) {
+  if (failed.length === 0 && !checkinChallenge) {
     state.runtime_status = "ACTIVE";
     state.last_success_at = nowIso;
     state.observations = Object.fromEntries(
@@ -151,6 +153,11 @@ try {
       reason: "Authenticated Hansa observations completed and daily check-in was handled idempotently."
     };
     state.next_action = "RESEARCH_AND_SCORE_AVAILABLE_HANSA_WORK_WITHOUT_AUTO_SUBMISSION";
+    evidence.verification = state.verification;
+  } else if (checkinChallenge) {
+    state.runtime_status = "PENDING";
+    state.verification = { verified:false, reason:"Online observations succeeded, but daily check-in is awaiting challenge verification." };
+    state.next_action = "SOLVE_CHECKIN_CHALLENGE_THEN_POST_CHECKIN_VERIFY";
     evidence.verification = state.verification;
   } else {
     state.runtime_status = "UNKNOWN";
