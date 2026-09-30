@@ -1,0 +1,15 @@
+{
+  "schema_version": "HANSA-ONLINE/v1",
+  "runtime_status": "SETUP",
+  "auth_status": "UNKNOWN",
+  "last_run_at": null,
+  "last_success_at": null,
+  "last_checkin_utc_date": null,
+  "agent": null,
+  "observations": {},
+  "verification": {
+    "verified": false,
+    "reason": "No online execution evidence yet."
+  },
+  "next_action": "RUN_ONLINE_HEALTH_AND_AUTH_CHECK"
+}
