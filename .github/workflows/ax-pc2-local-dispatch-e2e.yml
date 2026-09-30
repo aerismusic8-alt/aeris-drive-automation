@@ -5,6 +5,8 @@ name: AX PC2 Local Dispatch E2E
 
 on:
   push:
+    branches: [main, 'qa/**']
+  pull_request:
     branches: [main]
     paths:
       - 'AX_PC_CONTROL/AX_PC2_LOCAL_DISPATCHER.ps1'
