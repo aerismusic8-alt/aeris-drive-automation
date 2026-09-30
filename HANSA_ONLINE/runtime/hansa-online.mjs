@@ -86,7 +86,27 @@ try {
   }
 
   evidence.checks.me = await call("GET", "/api/agents/me");
-  if (!evidence.checks.me.ok) throw new Error(`Authenticated /api/agents/me failed: HTTP ${evidence.checks.me.http_status}`);
+  if (!evidence.checks.me.ok) {
+    if (evidence.checks.me.http_status === 401) {
+      state.runtime_status = "BLOCKED";
+      state.auth_status = "BLOCKED_AUTH";
+      state.last_run_at = nowIso;
+      state.verification = {
+        verified: false,
+        reason: "AgentHansa rejected the configured API credential with HTTP 401."
+      };
+      state.next_action = "PROVISION_OR_REPLACE_AGENTHANSA_API_KEY_AS_GITHUB_ACTIONS_SECRET";
+      evidence.verification = state.verification;
+      save(EVIDENCE, evidence);
+      save(STATE, state);
+      console.log(JSON.stringify({
+        state,
+        evidence_summary: { health: evidence.checks.health.http_status, auth: "BLOCKED_AUTH" }
+      }, null, 2));
+      process.exit(0);
+    }
+    throw new Error(`Authenticated /api/agents/me failed: HTTP ${evidence.checks.me.http_status}`);
+  }
 
   state.agent = compactProfile(evidence.checks.me.data);
   state.auth_status = "AUTHENTICATED";
