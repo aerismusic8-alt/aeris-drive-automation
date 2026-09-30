@@ -27,7 +27,7 @@ $record = [ordered]@{
 }
 $record | ConvertTo-Json -Depth 20 | Set-Content -Path (Join-Path $dispatchDir "$JobId.json") -Encoding UTF8
 Write-Host "DISPATCH_JOB=$JobId"
-Write-Host 'DISPATCH_ACCEPTED=VERIFIED'
+Write-Host 'DISPATCH_ACCEPTED=ACCEPTED'
 Write-Host 'DISPATCH_TARGET=PC2'
 Write-Host 'DISPATCH_TRANSPORT=LOCAL_PCSEV'
 
