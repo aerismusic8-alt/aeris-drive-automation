@@ -60,6 +60,7 @@ $record.dispatchStatus = 'COMPLETED'
 $record.completedAt = $completedAt.ToString('o')
 $record.verified = $true
 $record.proof = $proof.FullName
+$record.verification = $verificationPath
 $record | ConvertTo-Json -Depth 20 | Set-Content -Path (Join-Path $dispatchDir "$JobId.json") -Encoding UTF8
 
 Write-Host 'PC2_EXECUTED=VERIFIED'
