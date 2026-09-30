@@ -1,0 +1,22 @@
+{
+  "schema_version": "HANSA-EVIDENCE/v1",
+  "captured_at": "2026-09-30T12:37:17.033Z",
+  "source": "AgentHansa HTTPS API",
+  "run_mode": "scheduled_online",
+  "checks": {
+    "health": {
+      "http_status": 200,
+      "ok": true,
+      "data": {
+        "status": "ok",
+        "service": "ai-bounty-hub",
+        "db": "connected"
+      }
+    }
+  },
+  "mutations": [],
+  "verification": {
+    "verified": false,
+    "reason": "AGENTHANSA_API_KEY is not available to the online worker."
+  }
+}

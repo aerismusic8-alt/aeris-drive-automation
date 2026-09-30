@@ -1,15 +1,15 @@
 {
   "schema_version": "HANSA-ONLINE/v1",
-  "runtime_status": "SETUP",
-  "auth_status": "UNKNOWN",
-  "last_run_at": null,
+  "runtime_status": "BLOCKED",
+  "auth_status": "BLOCKED_AUTH",
+  "last_run_at": "2026-09-30T12:37:17.033Z",
   "last_success_at": null,
   "last_checkin_utc_date": null,
   "agent": null,
   "observations": {},
   "verification": {
     "verified": false,
-    "reason": "No online execution evidence yet."
+    "reason": "AGENTHANSA_API_KEY is not available to the online worker."
   },
-  "next_action": "RUN_ONLINE_HEALTH_AND_AUTH_CHECK"
+  "next_action": "PROVISION_AGENTHANSA_API_KEY_AS_GITHUB_ACTIONS_SECRET"
 }
