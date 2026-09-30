@@ -1,6 +1,10 @@
 name: Agent Hansa — Online Control
 
 on:
+  push:
+    paths:
+      - "HANSA_ONLINE/**"
+      - ".github/workflows/hansa-online.yml"
   schedule:
     - cron: "7,37 * * * *"
   workflow_dispatch:
