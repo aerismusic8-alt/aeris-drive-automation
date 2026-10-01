@@ -5,6 +5,10 @@ const baseUrl = process.env.JT_APP_URL || 'https://app.jumptask.io';
 const storageB64 = process.env.JT_STORAGE_STATE_B64 || '';
 const evidencePath = process.env.JT_EVIDENCE_PATH || 'jt-evidence.json';
 
+function firstMatch(text, patterns) {
+  return patterns.some((rx) => rx.test(text));
+}
+
 async function main() {
   const browser = await chromium.launch({ headless: true });
   let context;
@@ -22,17 +26,34 @@ async function main() {
 
     const title = await page.title();
     const url = page.url();
-    const body = (await page.locator('body').innerText()).slice(0, 12000);
+    const body = (await page.locator('body').innerText()).slice(0, 16000);
 
-    const authIndicators = [
+    const authRequired = firstMatch(body, [
       /sign\s*in/i,
       /log\s*in/i,
-      /create\s*(an?\s*)?account/i
-    ];
-    const authenticated = !authIndicators.some((rx) => rx.test(body));
+      /create\s*(an?\s*)?account/i,
+      /connect\s+wallet/i
+    ]);
+
+    const accountSignals = firstMatch(body, [
+      /my\s+account/i,
+      /account\s+id/i,
+      /balance/i,
+      /credits/i,
+      /earn/i,
+      /tasks?/i
+    ]);
+
+    const authenticated = !authRequired && accountSignals;
+
+    const taskSignals = {
+      earnVisible: /earn/i.test(body),
+      taskVisible: /tasks?/i.test(body),
+      rewardVisible: /reward|credits|earnings/i.test(body)
+    };
 
     const evidence = {
-      schema: 'AERIS-JT-CLOUD-BROWSER-EVIDENCE/v1',
+      schema: 'AERIS-JT-CLOUD-BROWSER-EVIDENCE/v2',
       startedAt,
       finishedAt: new Date().toISOString(),
       runtime: 'github-hosted-ubuntu',
@@ -40,13 +61,21 @@ async function main() {
       browser: 'playwright-chromium',
       url,
       title,
+      storageStateSupplied: Boolean(storageB64),
       authenticated,
-      state: authenticated ? 'AUTHENTICATED_READY_CANDIDATE' : 'AUTH_REQUIRED',
-      rewardConfirmed: false,
+      authRequired,
+      accountSignals,
+      taskSignals,
+      state: authenticated
+        ? 'AUTHENTICATED_READY_FOR_INSPECTION'
+        : 'AUTH_REQUIRED_OR_NOT_VERIFIED',
+      currentOffer: null,
       taskCompleted: false,
+      rewardConfirmed: false,
+      rewardDeltaVerified: false,
       note: authenticated
-        ? 'Authenticated page reached; task execution is deliberately not attempted until current offer conditions and completion criteria are inspected.'
-        : 'No authenticated JumpTask session was supplied to this worker.'
+        ? 'Authenticated session appears usable. Current task/offer discovery is next; no task was started in this inspection.'
+        : 'Cloud worker could not verify an authenticated JumpTask session. No task or reward action was attempted.'
     };
 
     await fs.writeFile(evidencePath, JSON.stringify(evidence, null, 2));
@@ -60,11 +89,12 @@ async function main() {
 
 main().catch(async (error) => {
   const evidence = {
-    schema: 'AERIS-JT-CLOUD-BROWSER-EVIDENCE/v1',
+    schema: 'AERIS-JT-CLOUD-BROWSER-EVIDENCE/v2',
     finishedAt: new Date().toISOString(),
     runtime: 'github-hosted-ubuntu',
     pc2Dependency: false,
     state: 'FAILED',
+    taskCompleted: false,
     rewardConfirmed: false,
     error: String(error?.message || error)
   };
