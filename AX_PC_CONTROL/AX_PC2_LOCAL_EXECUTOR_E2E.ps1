@@ -59,7 +59,7 @@ $proof = [ordered]@{
     nodeId = 'PC2'
     command = 'NODE_E2E_TEST'
     executed = $true
-    verified = $true
+    verificationStatus = 'NOT_VERIFIED'
     liveFinancialExecution = $false
     startedAt = $started.ToString('o')
     completedAt = [DateTime]::UtcNow.ToString('o')
@@ -74,7 +74,8 @@ $state.updatedAt = [DateTime]::UtcNow.ToString('o')
 $state | ConvertTo-Json -Depth 20 | Set-Content -Path $statePath -Encoding UTF8
 
 Write-Host "PC2_LOCAL_EXECUTOR_JOB=$JobId"
-Write-Host 'PC2_LOCAL_EXECUTOR=VERIFIED'
-Write-Host 'PC2_WORKER_E2E=VERIFIED'
+Write-Host 'PC2_LOCAL_EXECUTOR=EXECUTED'
+Write-Host 'PC2_WORKER_E2E=EXECUTED'
 Write-Host 'STATE=COMPLETED'
+Write-Host 'VERIFICATION=DEFERRED_TO_INDEPENDENT_VERIFIER'
 Write-Host "PROOF=$proofPath"
