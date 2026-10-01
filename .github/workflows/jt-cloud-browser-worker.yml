@@ -1,6 +1,11 @@
 name: JT Cloud Browser Worker
 
 on:
+  push:
+    branches: [main]
+    paths:
+      - 'JT_CLOUD/**'
+      - '.github/workflows/jt-cloud-browser-worker.yml'
   workflow_dispatch:
   schedule:
     - cron: '17,47 * * * *'
