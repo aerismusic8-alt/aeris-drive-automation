@@ -2,7 +2,7 @@
   "schema_version": "HANSA-ONLINE/v1",
   "runtime_status": "BLOCKED",
   "auth_status": "BLOCKED_AUTH",
-  "last_run_at": "2026-10-02T11:17:36.868Z",
+  "last_run_at": "2026-10-02T16:48:06.576Z",
   "last_success_at": null,
   "last_checkin_utc_date": null,
   "agent": null,
