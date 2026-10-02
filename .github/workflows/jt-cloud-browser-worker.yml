@@ -30,6 +30,9 @@ jobs:
         with:
           node-version: 22
 
+      - name: Architecture self-test
+        run: node JT_CLOUD/self-test.mjs
+
       - name: Install Playwright
         run: |
           npm init -y
