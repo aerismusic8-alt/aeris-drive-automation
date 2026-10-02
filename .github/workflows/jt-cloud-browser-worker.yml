@@ -51,5 +51,7 @@ jobs:
         uses: actions/upload-artifact@v5
         with:
           name: jt-cloud-evidence-${{ github.run_id }}
-          path: jt-evidence.json
+          path: |
+            jt-evidence.json
+            JT_STATE/latest.json
           retention-days: 7
