@@ -27,11 +27,13 @@ async function main() {
   const browser = await chromium.launch({ headless: true });
   let context;
   try {
-    context = await browser.newContext(
-      storageB64
-        ? { storageState: Buffer.from(storageB64, 'base64').toString('utf8') }
-        : {}
-    );
+    let storageState;
+    if (storageB64) {
+      const decoded = Buffer.from(storageB64, 'base64').toString('utf8');
+      storageState = JSON.parse(decoded);
+    }
+
+    context = await browser.newContext(storageState ? { storageState } : {});
     const page = await context.newPage();
     const startedAt = new Date().toISOString();
 
@@ -118,7 +120,7 @@ async function main() {
   }
 }
 
-main().catch(async (error) => {
+main().catch(async () => {
   const evidence = {
     schema: 'AERIS-JT-CLOUD-BROWSER-EVIDENCE/v3',
     runId,
@@ -129,9 +131,8 @@ main().catch(async (error) => {
     taskCompleted: false,
     rewardConfirmed: false,
     executionMode: 'INSPECTION_ONLY',
-    error: String(error?.message || error)
+    error: 'Cloud worker failed while initializing or inspecting the authenticated session.'
   };
   await writeEvidence(evidence).catch(() => {});
-  console.error(JSON.stringify(evidence));
   process.exit(1);
 });
