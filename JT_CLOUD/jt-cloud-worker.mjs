@@ -16,6 +16,10 @@ function extractCredits(text) {
   return matches.slice(0, 5).map((m) => m[1]);
 }
 
+function cleanText(value) {
+  return String(value || '').replace(/\s+/g, ' ').trim().slice(0, 500);
+}
+
 async function writeEvidence(evidence) {
   await fs.mkdir('JT_STATE', { recursive: true });
   await fs.writeFile(evidencePath, JSON.stringify(evidence, null, 2));
@@ -30,13 +34,8 @@ async function main() {
     if (storageB64) {
       const decoded = Buffer.from(storageB64, 'base64').toString('utf8');
       storageState = JSON.parse(decoded);
-
-      if (
-        !storageState ||
-        typeof storageState !== 'object' ||
-        !Array.isArray(storageState.cookies) ||
-        !Array.isArray(storageState.origins)
-      ) {
+      if (!storageState || typeof storageState !== 'object' ||
+          !Array.isArray(storageState.cookies) || !Array.isArray(storageState.origins)) {
         throw new Error('Invalid Playwright storage state schema');
       }
     }
@@ -45,81 +44,67 @@ async function main() {
     const page = await context.newPage();
     const startedAt = new Date().toISOString();
 
-    const targetUrl = new URL('/my-account', baseUrl).toString();
-    await page.goto(targetUrl, { waitUntil: 'domcontentloaded', timeout: 60000 });
+    const accountUrl = new URL('/my-account', baseUrl).toString();
+    await page.goto(accountUrl, { waitUntil: 'domcontentloaded', timeout: 60000 });
     await page.waitForLoadState('networkidle', { timeout: 30000 }).catch(() => {});
 
-    const title = await page.title();
-    const url = page.url();
-    const body = (await page.locator('body').innerText()).slice(0, 24000);
+    const accountBody = (await page.locator('body').innerText()).slice(0, 24000);
+    const loginSignals = hasAny(accountBody, [/sign\s*in/i, /log\s*in/i, /create\s*(an?\s*)?account/i]);
+    const accountSignals = hasAny(accountBody, [/my\s+account/i, /account\s+id/i, /my\s+earnings/i, /my\s+rewards/i]);
+    const securityGate = hasAny(accountBody, [/captcha/i, /two[- ]factor|2fa/i, /security\s+(check|verification)/i, /verify\s+your\s+identity/i, /kyc/i]);
+    const accountRoute = /app\.jumptask\.io\/my-account/i.test(page.url());
+    const authenticated = Boolean(storageState) && accountRoute && accountSignals && !loginSignals && !securityGate;
 
-    const loginSignals = hasAny(body, [
-      /sign\s*in/i,
-      /log\s*in/i,
-      /create\s*(an?\s*)?account/i
-    ]);
-
-    const accountSignals = hasAny(body, [
-      /my\s+account/i,
-      /account\s+id/i,
-      /my\s+earnings/i,
-      /my\s+rewards/i
-    ]);
-
-    const securityGate = hasAny(body, [
-      /captcha/i,
-      /two[- ]factor|2fa/i,
-      /security\s+(check|verification)/i,
-      /verify\s+your\s+identity/i,
-      /kyc/i
-    ]);
-
-    const accountRoute = /app\.jumptask\.io\/my-account/i.test(url);
-    const authenticated = Boolean(storageState) &&
-      accountRoute &&
-      accountSignals &&
-      !loginSignals &&
-      !securityGate;
-
-    const taskSignals = {
-      earnVisible: /earn/i.test(body),
-      taskVisible: /tasks?/i.test(body),
-      rewardVisible: /reward|credits|earnings/i.test(body),
-      offerCompletedVisible: /offer\s+completed/i.test(body)
-    };
+    let offers = [];
+    if (authenticated) {
+      const earnUrl = new URL('/earn', baseUrl).toString();
+      await page.goto(earnUrl, { waitUntil: 'domcontentloaded', timeout: 60000 });
+      await page.waitForLoadState('networkidle', { timeout: 30000 }).catch(() => {});
+      const earnUrlObserved = page.url();
+      const candidates = await page.locator('a,button,[role="button"]').evaluateAll((els) =>
+        els.map((el) => ({
+          tag: el.tagName,
+          text: (el.innerText || el.textContent || '').replace(/\s+/g, ' ').trim(),
+          href: el instanceof HTMLAnchorElement ? el.href : ''
+        }))
+        .filter(x => x.text && x.text.length <= 500)
+        .slice(0, 250)
+      );
+      const body = (await page.locator('body').innerText()).slice(0, 30000);
+      const lines = body.split(/\n+/).map(x => x.replace(/\s+/g, ' ').trim()).filter(Boolean);
+      const likely = candidates.filter(x =>
+        /earn|reward|credit|watch|survey|game|offer|task|complete|\$[0-9]/i.test(x.text)
+      ).slice(0, 80);
+      offers = { earnUrlObserved, likelyControls: likely, bodyLines: lines.slice(0, 300) };
+    }
 
     const evidence = {
-      schema: 'AERIS-JT-CLOUD-BROWSER-EVIDENCE/v4',
+      schema: 'AERIS-JT-CLOUD-BROWSER-EVIDENCE/v5',
       runId,
       startedAt,
       finishedAt: new Date().toISOString(),
       runtime: 'github-hosted-ubuntu',
       pc2Dependency: false,
       browser: 'playwright-chromium',
-      url,
-      title,
+      accountUrl: page.url(),
       storageStateSupplied: Boolean(storageState),
       authenticated,
       authRequired: !authenticated,
       securityGate,
       accountSignals,
       accountRoute,
-      visibleCreditCandidates: extractCredits(body),
-      taskSignals,
+      visibleCreditCandidates: extractCredits(accountBody),
+      offerDiscovery: offers,
       currentOffer: null,
       taskCompleted: false,
       rewardConfirmed: false,
       rewardDeltaVerified: false,
-      executionMode: 'INSPECTION_ONLY',
-      state: securityGate
-        ? 'BLOCKED_BY_SECURITY_GATE'
-        : authenticated
-          ? 'AUTHENTICATED_READY_FOR_INSPECTION'
-          : 'AUTH_REQUIRED_OR_NOT_VERIFIED',
+      executionMode: 'OFFER_DISCOVERY_ONLY',
+      state: securityGate ? 'BLOCKED_BY_SECURITY_GATE' : authenticated ? 'OFFERS_DISCOVERED' : 'AUTH_REQUIRED_OR_NOT_VERIFIED',
       note: securityGate
         ? 'Security/identity gate detected. No task or reward action attempted.'
         : authenticated
-          ? 'Authenticated cloud session verified using the JumpTask account route and account-specific page signals. No earning task was executed in this inspection.'
+          ? 'Authenticated cloud session verified. Earn page inspected without starting, submitting, or automating any earning task.'
           : 'Cloud worker could not verify an authenticated JumpTask session. No task or reward action was attempted.'
     };
 
@@ -134,7 +119,7 @@ async function main() {
 
 main().catch(async () => {
   const evidence = {
-    schema: 'AERIS-JT-CLOUD-BROWSER-EVIDENCE/v4',
+    schema: 'AERIS-JT-CLOUD-BROWSER-EVIDENCE/v5',
     runId,
     finishedAt: new Date().toISOString(),
     runtime: 'github-hosted-ubuntu',
@@ -142,7 +127,7 @@ main().catch(async () => {
     state: 'FAILED',
     taskCompleted: false,
     rewardConfirmed: false,
-    executionMode: 'INSPECTION_ONLY',
+    executionMode: 'OFFER_DISCOVERY_ONLY',
     error: 'Cloud worker failed while initializing or inspecting the authenticated session.'
   };
   await writeEvidence(evidence).catch(() => {});
