@@ -14,7 +14,7 @@ for (const required of [
   "runtime: 'github-hosted-ubuntu'", 'pc2Dependency: false',
   "executionMode: 'OFFER_DISCOVERY_ONLY'", 'rewardConfirmed: false', 'rewardDeltaVerified: false',
   'JT_STORAGE_STATE_B64', "new URL('/my-account', baseUrl)",
-  'new URL('/earn', baseUrl)', 'Array.isArray(storageState.cookies)',
+  "new URL('/earn', baseUrl)", 'Array.isArray(storageState.cookies)',
   'Array.isArray(storageState.origins)', 'accountRoute', 'accountSignals', 'securityGate',
   'offerDiscovery', 'likelyControls'
 ]) if (!source.includes(required) && !workflow.includes(required)) throw new Error('Missing invariant: ' + required);
