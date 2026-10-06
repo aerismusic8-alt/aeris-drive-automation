@@ -1,6 +1,6 @@
 {
   "schema_version": "HANSA-EVIDENCE/v1",
-  "captured_at": "2026-10-06T02:27:26.089Z",
+  "captured_at": "2026-10-06T09:19:51.286Z",
   "source": "AgentHansa HTTPS API",
   "run_mode": "scheduled_online",
   "checks": {
