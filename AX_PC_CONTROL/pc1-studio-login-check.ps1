@@ -50,7 +50,12 @@ if (Test-Path -LiteralPath $logDir) {
     # Only lines whose subject is authentication. No value is printed, only the
     # line shape Roblox itself writes.
     Select-String -LiteralPath $lg.FullName -Pattern 'signin|sign-in|SignIn|logged in|Login|Authentication|WebAuthenticator|userId|UserId|GetUserId|not signed|SignedOut' -ErrorAction SilentlyContinue |
-      Select-Object -First 25 | ForEach-Object { Write-Host ("AUTH_LINE: " + $_.Line.Trim()) }
+      Select-Object -First 25 | ForEach-Object {
+        # Mask anything that looks like a credential before printing: these log
+        # lines sit next to tokens and private keys.
+        $shape = $_.Line.Trim() -replace '[A-Za-z0-9+/=_-]{24,}', '<redacted>'
+        Write-Host ("AUTH_LINE: " + $shape)
+      }
   }
 }
 
