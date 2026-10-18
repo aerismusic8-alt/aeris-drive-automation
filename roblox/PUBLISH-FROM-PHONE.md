@@ -32,17 +32,11 @@ job, and you drive it from the phone.
 
 6. Note the two numbers.
 
-## Step 2: tell the pipeline those numbers
+## Step 2: keep those numbers
 
-Edit `roblox/publish-config.json` and replace the two `null` values:
-
-```json
-{
-  "universeId": 1234567890,
-  "placeId": 9876543210,
-  "versionType": "Saved"
-}
-```
+Keep the two numbers. You type them into the run form in step 4, so you do not
+need to edit any file. If you would rather set them once, you can still edit
+`roblox/publish-config.json`; the run form wins when both are present.
 
 `Saved` means only you can see the result. Switch to `Published` when you are
 ready for players.
@@ -64,12 +58,20 @@ Then add it to the repository:
 ## Step 4: run it
 
 1. Open https://github.com/aerismusic8-alt/aeris-drive-automation/actions/workflows/ax-pc1-roblox-publish.yml
-2. **Run workflow**, pick `Saved` for a private test or `Published` to go live.
+2. **Run workflow** and fill the form:
+   - `version_type`: `Saved` for a private test, `Published` to go live
+   - `universe_id`: the first number from step 1
+   - `place_id`: the second number from step 1
+   - `ref`: leave as `ax-arena-roblox-game`
 3. Wait about a minute.
 
 The run prints the new version number, for example `PUBLISHED_VERSION=3`. That
 number is your proof it worked. If anything is missing the run says `BLOCKED`
 and lists what is absent, rather than pretending to succeed.
+
+Roblox Studio is not part of this path at all. PC1 builds the place, uploads
+it through the Open Cloud API, and Roblox publishes it. A phone browser is
+enough for every step.
 
 ## Step 5: check it
 
@@ -98,10 +100,13 @@ product, so a half-filled list is safe.
 
 ## What is already done
 
-- PC1 builds the place with Rojo: 15 scripts, all verified to carry real code
+- PC1 builds the place with Rojo: 19 scripts, all verified to carry real code
 - the Open Cloud publish path is wired and tested end to end
-- 145 automated tests pass
-- the farm loop, pets, rebirth, zones and six products are all implemented
+- 263 automated tests pass (177 unit, 47 integration, 39 wiring)
+- the farm loop, pets, rebirth, zones, daily rewards and promo codes are all
+  implemented, plus six monetization products
+- the publish run reports `BLOCKED` and names exactly what is missing, so a
+  missing key can never look like a successful publish
 
 ## What still needs you
 
