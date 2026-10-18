@@ -1,0 +1,51 @@
+name: AX PC1 Log ID Scan
+
+# Scan PC1's Studio logs for place and universe ids.
+#
+# Every Roblox account already owns a default starter place. If that place's id
+# is in the logs, the Open Cloud API can publish into it without creating an
+# experience and without an interactive sign-in.
+#
+# Only numeric ids are printed. Full log lines are never emitted: they can
+# carry tokens and private keys.
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - '.github/workflows/ax-pc1-log-id-scan.yml'
+
+jobs:
+  scan:
+    runs-on: self-hosted
+    steps:
+      - name: Verify PC1
+        shell: powershell
+        run: |
+          if ($env:COMPUTERNAME -ne 'DESKTOP-RGK6JKB') { throw "EXPECTED_PC1:$env:COMPUTERNAME" }
+          Write-Host "PC1=VERIFIED"
+
+      - name: Scan logs for ids
+        shell: powershell
+        run: |
+          $logDir = 'C:\Users\User\AppData\Local\Roblox\logs'
+          Write-Host "LOG_DIR=$logDir"
+          $ids = @{}
+          Get-ChildItem $logDir -Filter '*.log' -ErrorAction SilentlyContinue | ForEach-Object {
+            $name = $_.Name
+            $hits = Select-String -LiteralPath $_.FullName -Pattern 'placeId|PlaceId|placeid|universeId|UniverseId|universeid|rootPlace|RootPlace|assetId|AssetId' -ErrorAction SilentlyContinue
+            foreach ($h in $hits) {
+              foreach ($m in [regex]::Matches($h.Line, '(?i)(place|universe|rootplace|asset)id"?\s*[:=]\s*"?(\d{5,})')) {
+                $key = $m.Groups[1].Value.ToLower() + '=' + $m.Groups[2].Value
+                if (!$ids.ContainsKey($key)) { $ids[$key] = $name }
+              }
+            }
+          }
+          if ($ids.Count -eq 0) {
+            Write-Host 'NO_IDS_FOUND'
+          } else {
+            foreach ($k in ($ids.Keys | Sort-Object)) {
+              Write-Host ("ID: {0}  (seen in {1})" -f $k, $ids[$k])
+            }
+          }
+          Write-Host ("UNIQUE_ID_COUNT=" + $ids.Count)
