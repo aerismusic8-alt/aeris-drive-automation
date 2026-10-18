@@ -1,0 +1,44 @@
+name: AX PC1 Roblox Build
+
+# Builds the AX Arena place file on PC1 using Rojo, with no Roblox Studio
+# needed. The .rbxlx artifact is what a human opens once to publish.
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - 'AX_PC_CONTROL/pc1-roblox-build.ps1'
+      - '.github/workflows/ax-pc1-roblox-build.yml'
+
+jobs:
+  build:
+    runs-on: self-hosted
+    steps:
+      - name: Verify PC1
+        shell: powershell
+        run: |
+          if ($env:COMPUTERNAME -ne 'DESKTOP-RGK6JKB') { throw "EXPECTED_PC1:$env:COMPUTERNAME" }
+          Write-Host "PC1=VERIFIED"
+
+      - name: Build place with Rojo
+        shell: powershell
+        run: |
+          $url = "https://raw.githubusercontent.com/aerismusic8-alt/aeris-drive-automation/$env:GITHUB_SHA/AX_PC_CONTROL/pc1-roblox-build.ps1"
+          $p = Join-Path $env:TEMP "pc1-roblox-build.ps1"
+          Invoke-WebRequest -Uri $url -OutFile $p -UseBasicParsing
+          & powershell.exe -NoProfile -ExecutionPolicy Bypass -File $p
+          if ($LASTEXITCODE -ne 0) { throw "BUILD_EXIT:$LASTEXITCODE" }
+
+      - name: Upload place artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: AXArena-place
+          path: C:\AX-Build\AXArena.rbxlx
+          if-no-files-found: error
+
+      - name: Upload build evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: pc1-roblox-build-evidence
+          path: C:\AX-Runtime\evidence\pc1-roblox-build.json
+          if-no-files-found: error
