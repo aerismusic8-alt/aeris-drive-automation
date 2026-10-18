@@ -1,0 +1,46 @@
+name: AX PC1 Roblox Toolchain Survey
+
+# Read-only reconnaissance of PC1: does the Roblox publishing toolchain exist
+# there? Runs on the PC1 self-hosted Windows runner and uploads the JSON as an
+# artifact so AX can read the result without a reverse channel.
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - 'AX_PC_CONTROL/pc1-roblox-survey.ps1'
+      - '.github/workflows/ax-pc1-roblox-survey.yml'
+
+jobs:
+  survey:
+    runs-on: self-hosted
+    steps:
+      - name: Verify PC1
+        shell: powershell
+        run: |
+          if ($env:COMPUTERNAME -ne 'DESKTOP-RGK6JKB') { throw "EXPECTED_PC1:$env:COMPUTERNAME" }
+          Write-Host "PC1=VERIFIED"
+
+      - name: Run Roblox survey
+        shell: powershell
+        run: |
+          $url = "https://raw.githubusercontent.com/aerismusic8-alt/aeris-drive-automation/$env:GITHUB_SHA/AX_PC_CONTROL/pc1-roblox-survey.ps1"
+          $p = Join-Path $env:TEMP "pc1-roblox-survey.ps1"
+          Invoke-WebRequest -Uri $url -OutFile $p
+          & powershell.exe -NoProfile -ExecutionPolicy Bypass -File $p
+          if ($LASTEXITCODE -ne 0) { throw "SURVEY_EXIT:$LASTEXITCODE" }
+
+      - name: Show evidence
+        shell: powershell
+        run: |
+          $p = 'C:\AX-Runtime\evidence\pc1-roblox-survey.json'
+          if (!(Test-Path $p)) { throw "EVIDENCE_MISSING:$p" }
+          Get-Content $p -Raw | Write-Host
+          Write-Host "SURVEY_EVIDENCE=PRESENT"
+
+      - name: Upload evidence artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: pc1-roblox-survey
+          path: C:\AX-Runtime\evidence\pc1-roblox-survey.json
+          if-no-files-found: error
