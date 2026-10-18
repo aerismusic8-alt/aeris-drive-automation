@@ -1,0 +1,44 @@
+name: AX PC1 Studio Login QR Capture
+
+# Captures PC1's Studio sign-in screen so its QR code can be scanned from a
+# phone. Studio on PC1 is installed but not signed in; Roblox signs Studio in
+# with a QR code, which is a phone-native flow.
+#
+# This is not a credential read. A login QR is a one-time challenge that
+# expires in about two minutes; it is the same image Studio shows on screen.
+# The screenshots are uploaded as an artifact for the user to scan.
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - 'AX_PC_CONTROL/pc1-studio-login-qr.ps1'
+      - '.github/workflows/ax-pc1-studio-login-qr.yml'
+
+jobs:
+  capture:
+    runs-on: self-hosted
+    steps:
+      - name: Verify PC1
+        shell: powershell
+        run: |
+          if ($env:COMPUTERNAME -ne 'DESKTOP-RGK6JKB') { throw "EXPECTED_PC1:$env:COMPUTERNAME" }
+          Write-Host "PC1=VERIFIED"
+
+      - name: Capture Studio login screen
+        shell: powershell
+        run: |
+          $url = "https://raw.githubusercontent.com/aerismusic8-alt/aeris-drive-automation/$env:GITHUB_SHA/AX_PC_CONTROL/pc1-studio-login-qr.ps1"
+          $p = Join-Path $env:TEMP "pc1-studio-login-qr.ps1"
+          Invoke-WebRequest -Uri $url -OutFile $p -UseBasicParsing
+          & powershell.exe -NoProfile -ExecutionPolicy Bypass -File $p
+          if ($LASTEXITCODE -ne 0) { throw "LOGIN_QR_EXIT:$LASTEXITCODE" }
+
+      - name: Upload screenshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: pc1-studio-login-screen
+          path: C:\AX-Runtime\evidence\studio-login\*.png
+          if-no-files-found: warn
+          retention-days: 1
