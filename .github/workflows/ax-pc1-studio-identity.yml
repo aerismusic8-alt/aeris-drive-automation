@@ -1,0 +1,49 @@
+name: AX PC1 Studio Identity Probe
+
+# Answers one blocking question: is the Roblox Studio installed on PC1 signed
+# in, and can that account own a place? If yes, the whole "no computer" problem
+# disappears, because PC1 can publish with its own Studio session.
+#
+# Read-only. Studio reports its own user id; no credential is read or sent.
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - 'AX_PC_CONTROL/pc1-studio-identity.ps1'
+      - 'AX_PC_CONTROL/probe-identity.luau'
+      - '.github/workflows/ax-pc1-studio-identity.yml'
+
+jobs:
+  probe:
+    runs-on: self-hosted
+    steps:
+      - name: Verify PC1
+        shell: powershell
+        run: |
+          if ($env:COMPUTERNAME -ne 'DESKTOP-RGK6JKB') { throw "EXPECTED_PC1:$env:COMPUTERNAME" }
+          Write-Host "PC1=VERIFIED"
+
+      - name: Probe Studio identity
+        shell: powershell
+        run: |
+          $url = "https://raw.githubusercontent.com/aerismusic8-alt/aeris-drive-automation/$env:GITHUB_SHA/AX_PC_CONTROL/pc1-studio-identity.ps1"
+          $p = Join-Path $env:TEMP "pc1-studio-identity.ps1"
+          Invoke-WebRequest -Uri $url -OutFile $p -UseBasicParsing
+          & powershell.exe -NoProfile -ExecutionPolicy Bypass -File $p
+          if ($LASTEXITCODE -ne 0) { throw "IDENTITY_EXIT:$LASTEXITCODE" }
+
+      - name: Show evidence
+        if: always()
+        shell: powershell
+        run: |
+          $p = 'C:\AX-Runtime\evidence\pc1-studio-identity.json'
+          if (Test-Path $p) { Get-Content $p -Raw | Write-Host } else { Write-Host "NO_EVIDENCE" }
+
+      - name: Upload evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: pc1-studio-identity
+          path: C:\AX-Runtime\evidence\pc1-studio-identity.json
+          if-no-files-found: warn
