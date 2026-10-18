@@ -62,7 +62,7 @@ Config.Network = {
 }
 
 Config.Persistence = {
-	SchemaVersion = 2,
+	SchemaVersion = 3,
 	MinSupportedVersion = 1,
 	SaveIntervalSeconds = 90,
 }

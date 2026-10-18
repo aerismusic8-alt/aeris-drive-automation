@@ -5,6 +5,10 @@
 local Config = require("./Config")
 local Stats = require("./Stats")
 local Inventory = require("./Inventory")
+local Pets = require("./Pets")
+local Rebirth = require("./Rebirth")
+local Zones = require("./Zones")
+local Monetization = require("./Monetization")
 
 local SaveSchema = {}
 
@@ -14,6 +18,12 @@ export type SaveData = {
 	upgrades: { [string]: number },
 	inventory: { { itemId: string, count: number } },
 	stats: { kills: number, wavesCleared: number, deaths: number },
+	level: number,
+	xp: number,
+	rebirths: number,
+	zone: string,
+	pets: any,
+	entitlements: any,
 	updatedAt: number,
 }
 
@@ -27,6 +37,12 @@ function SaveSchema.new(): SaveData
 		upgrades = Stats.newUpgrades(),
 		inventory = {},
 		stats = { kills = 0, wavesCleared = 0, deaths = 0 },
+		level = 1,
+		xp = 0,
+		rebirths = 0,
+		zone = Zones.defaultZone(),
+		pets = Pets.snapshot(Pets.new()),
+		entitlements = Monetization.newEntitlements(),
 		updatedAt = 0,
 	}
 end
@@ -97,6 +113,38 @@ function SaveSchema.validate(data: any): (boolean, { string })
 		end
 	end
 
+	-- Progression fields (schema v3). Absent on older saves, which migrate.
+	if data.level ~= nil then
+		if not isFiniteNumber(data.level) or data.level < 1 or data.level > Config.Leveling.MaxLevel then
+			table.insert(problems, "INVALID_LEVEL")
+		end
+	end
+	if data.xp ~= nil then
+		if not isFiniteNumber(data.xp) or data.xp < 0 then
+			table.insert(problems, "INVALID_XP")
+		end
+	end
+	if data.rebirths ~= nil then
+		if not isFiniteNumber(data.rebirths) or data.rebirths < 0 or data.rebirths > Config.Rebirth.MaxRebirths then
+			table.insert(problems, "INVALID_REBIRTHS")
+		end
+	end
+	if data.zone ~= nil then
+		if type(data.zone) ~= "string" or Zones.getDef(data.zone) == nil then
+			table.insert(problems, "INVALID_ZONE")
+		end
+	end
+	if data.pets ~= nil then
+		if type(data.pets) ~= "table" then
+			table.insert(problems, "INVALID_PETS")
+		elseif #(data.pets.pets or {}) > Config.Pets.MaxInventory then
+			table.insert(problems, "PET_INVENTORY_OVER_CAPACITY")
+		end
+	end
+	if data.entitlements ~= nil and type(data.entitlements) ~= "table" then
+		table.insert(problems, "INVALID_ENTITLEMENTS")
+	end
+
 	return #problems == 0, problems
 end
 
@@ -122,12 +170,23 @@ function SaveSchema.migrate(data: any): SaveData?
 		upgrades[id] = math.min(math.floor(level), def.MaxLevel)
 	end
 
+	-- Older saves predate progression; fall back to fresh defaults so a
+	-- returning player starts the new systems cleanly instead of erroring.
+	local level = math.clamp(math.floor(tonumber(data.level) or 1), 1, Config.Leveling.MaxLevel)
+	local rebirths = math.clamp(math.floor(tonumber(data.rebirths) or 0), 0, Config.Rebirth.MaxRebirths)
+
 	local migrated: SaveData = {
 		version = CURRENT,
 		coins = isFiniteNumber(data.coins) and math.max(0, data.coins) or fresh.coins,
 		upgrades = upgrades,
 		inventory = data.inventory or {},
 		stats = data.stats or fresh.stats,
+		level = level,
+		xp = isFiniteNumber(data.xp) and math.max(0, data.xp) or 0,
+		rebirths = rebirths,
+		zone = (Zones.getDef(data.zone) and data.zone) or Zones.defaultZone(),
+		pets = Pets.snapshot(Pets.fromSnapshot(data.pets)),
+		entitlements = Monetization.fromSnapshot(data.entitlements),
 		updatedAt = isFiniteNumber(data.updatedAt) and data.updatedAt or 0,
 	}
 
@@ -150,12 +209,16 @@ end
 -- Emit deterministic JSON. Fixed key ordering keeps stored blobs diff-friendly.
 function SaveSchema.serialize(data: SaveData, now: number): string
 	return string.format(
-		'{"version":%d,"coins":%d,"upgrades":%s,"inventory":%s,"stats":%s,"updatedAt":%d}',
+		'{"version":%d,"coins":%d,"upgrades":%s,"inventory":%s,"stats":%s,"level":%d,"xp":%d,"rebirths":%d,"zone":"%s","updatedAt":%d}',
 		CURRENT,
 		math.floor(data.coins),
 		SaveSchema.encodeUpgrades(data.upgrades),
 		SaveSchema.encodeInventory(data.inventory),
 		SaveSchema.encodeStats(data.stats),
+		math.floor(data.level or 1),
+		math.floor(data.xp or 0),
+		math.floor(data.rebirths or 0),
+		data.zone or Zones.defaultZone(),
 		math.floor(now)
 	)
 end

@@ -19,6 +19,10 @@ export type Product = {
 	description: string,
 	-- One-time purchase (gamepass) or repeatable (dev product).
 	repeatable: boolean,
+	-- Roblox asset id for the gamepass or developer product. Filled in after
+	-- the items are created on the Roblox website; nil means "not on sale yet"
+	-- and the client refuses to prompt for it.
+	assetId: number?,
 }
 
 -- Robux prices. Keep these in one place: they are shown in the UI and used

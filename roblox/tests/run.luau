@@ -1275,4 +1275,134 @@ t.test("fromSnapshot tolerates garbage", function()
 	t.assertFalse(Monetization.owns(Monetization.fromSnapshot(nil), "Vip"))
 end)
 
+--------------------------------------------------------------------------
+t.suite("SaveSchema v3")
+--------------------------------------------------------------------------
+
+t.test("a new save carries every progression field", function()
+	local save = SaveSchema.new()
+	t.assertEqual(save.level, 1)
+	t.assertEqual(save.xp, 0)
+	t.assertEqual(save.rebirths, 0)
+	t.assertEqual(save.zone, Zones.defaultZone())
+	t.assertNotNil(save.pets)
+	t.assertNotNil(save.entitlements)
+end)
+
+t.test("a new save validates", function()
+	local ok, problems = SaveSchema.validate(SaveSchema.new())
+	t.assertTrue(ok, table.concat(problems, ","))
+end)
+
+t.test("rejects an out-of-range level", function()
+	local save = SaveSchema.new()
+	save.level = Config.Leveling.MaxLevel + 1
+	local ok, problems = SaveSchema.validate(save)
+	t.assertFalse(ok)
+	t.assertContains(table.concat(problems, ","), "INVALID_LEVEL")
+end)
+
+t.test("rejects negative XP", function()
+	local save = SaveSchema.new()
+	save.xp = -1
+	local ok, problems = SaveSchema.validate(save)
+	t.assertFalse(ok)
+	t.assertContains(table.concat(problems, ","), "INVALID_XP")
+end)
+
+t.test("rejects an impossible rebirth count", function()
+	local save = SaveSchema.new()
+	save.rebirths = Config.Rebirth.MaxRebirths + 1
+	local ok, problems = SaveSchema.validate(save)
+	t.assertFalse(ok)
+	t.assertContains(table.concat(problems, ","), "INVALID_REBIRTHS")
+end)
+
+t.test("rejects an unknown zone", function()
+	local save = SaveSchema.new()
+	save.zone = "Atlantis"
+	local ok, problems = SaveSchema.validate(save)
+	t.assertFalse(ok)
+	t.assertContains(table.concat(problems, ","), "INVALID_ZONE")
+end)
+
+t.test("rejects a pet blob over capacity", function()
+	local save = SaveSchema.new()
+	local pets = {}
+	for i = 1, Config.Pets.MaxInventory + 1 do
+		table.insert(pets, { uid = i, petId = "Pup", level = 1 })
+	end
+	save.pets = { pets = pets, equipped = {}, nextUid = #pets + 1 }
+	local ok, problems = SaveSchema.validate(save)
+	t.assertFalse(ok)
+	t.assertContains(table.concat(problems, ","), "PET_INVENTORY_OVER_CAPACITY")
+end)
+
+t.test("migrating a v2 save fills progression with defaults", function()
+	local legacy = {
+		version = 2,
+		coins = 900,
+		upgrades = { Damage = 2 },
+		inventory = {},
+		stats = { kills = 9, wavesCleared = 3, deaths = 1 },
+		updatedAt = 50,
+	}
+	local migrated = SaveSchema.migrate(legacy)
+	t.assertNotNil(migrated)
+	local data = migrated
+	t.assertEqual(data.version, Config.Persistence.SchemaVersion)
+	t.assertEqual(data.coins, 900)
+	t.assertEqual(data.upgrades.Damage, 2)
+	t.assertEqual(data.level, 1)
+	t.assertEqual(data.rebirths, 0)
+	t.assertEqual(data.zone, Zones.defaultZone())
+	t.assertEqual(#data.pets.pets, 0)
+
+	local ok, problems = SaveSchema.validate(data)
+	t.assertTrue(ok, table.concat(problems, ","))
+end)
+
+t.test("migration clamps a corrupt level and rebirth count", function()
+	local migrated = SaveSchema.migrate({
+		version = 3,
+		coins = 10,
+		upgrades = {},
+		inventory = {},
+		stats = { kills = 0, wavesCleared = 0, deaths = 0 },
+		level = 9999,
+		rebirths = -4,
+		zone = "Nowhere",
+	})
+	t.assertEqual(migrated.level, Config.Leveling.MaxLevel)
+	t.assertEqual(migrated.rebirths, 0)
+	t.assertEqual(migrated.zone, Zones.defaultZone())
+end)
+
+t.test("migration keeps a valid zone", function()
+	local migrated = SaveSchema.migrate({
+		version = 3,
+		coins = 10,
+		upgrades = {},
+		inventory = {},
+		stats = { kills = 0, wavesCleared = 0, deaths = 0 },
+		level = 40,
+		zone = "Volcano",
+	})
+	t.assertEqual(migrated.zone, "Volcano")
+end)
+
+t.test("serialize includes the progression fields", function()
+	local save = SaveSchema.new()
+	save.level = 7
+	save.xp = 42
+	save.rebirths = 2
+	save.zone = "Cavern"
+	local json = SaveSchema.serialize(save, 1234)
+	t.assertContains(json, '"level":7')
+	t.assertContains(json, '"xp":42')
+	t.assertContains(json, '"rebirths":2')
+	t.assertContains(json, '"zone":"Cavern"')
+	t.assertContains(json, '"updatedAt":1234')
+end)
+
 return t.finish()
