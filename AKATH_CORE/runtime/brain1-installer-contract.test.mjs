@@ -57,4 +57,21 @@ test('installer grants the interactive account write access to the runtime root'
   assert.match(installer, /Set-Acl -Path \$root/);
 });
 
+// Regression guard: RestartInterval is serialised into the task XML as an
+// ISO-8601 duration and Task Scheduler rejects anything under PT1M with
+// 0x80041318 ("value incorrectly formatted or out of range"). A 5-second
+// interval passed the enum check and only failed once the task was registered
+// on a real host, so the static check alone did not catch it.
+test('installer uses a restart interval Task Scheduler accepts', () => {
+  const match = installer.match(/-RestartInterval\s+\(New-TimeSpan\s+-(\w+)\s+(\d+)\)/);
+  assert.ok(match, 'installer must specify -RestartInterval');
+  const unit = match[1];
+  const value = Number(match[2]);
+  const seconds = unit === 'Minutes' ? value * 60 : unit === 'Hours' ? value * 3600 : unit === 'Seconds' ? value : NaN;
+  assert.ok(
+    Number.isFinite(seconds) && seconds >= 60,
+    `-RestartInterval must be at least PT1M (60s); got ${value} ${unit}`
+  );
+});
+
 console.log('PASS PC1 Brain1 installer contract');

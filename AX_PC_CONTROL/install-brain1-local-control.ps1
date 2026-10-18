@@ -4,10 +4,11 @@ $root='C:\AX-Runtime';New-Item -ItemType Directory -Path $root -Force|Out-Null
 
 # The Brain1 workers must run inside the interactive desktop session so that
 # Vision/desktop evidence is real. This installer is normally executed by the
-# GitHub self-hosted runner, which runs as NT AUTHORITY\NETWORK SERVICE, so
-# WindowsIdentity::GetCurrent() would resolve to the service account: the
-# -AtLogOn trigger would never fire and the tasks would never start. Resolve the
-# logged-on user instead and register the tasks against that account.
+# GitHub self-hosted runner, which runs as a service account (observed on PC1 as
+# NT AUTHORITY\SYSTEM, not the logged-on user), so WindowsIdentity::GetCurrent()
+# would resolve to that account: the -AtLogOn trigger would never fire and the
+# tasks would never start. Resolve the logged-on user instead and register the
+# tasks against that account.
 $interactiveUser=(Get-CimInstance Win32_ComputerSystem).UserName
 if([string]::IsNullOrWhiteSpace($interactiveUser)){throw 'NO_INTERACTIVE_USER'}
 $sid=([System.Security.Principal.NTAccount]$interactiveUser).Translate([System.Security.Principal.SecurityIdentifier]).Value
@@ -31,7 +32,10 @@ function Add-Hidden($name,$script){
 $arg='-NoProfile -NonInteractive -ExecutionPolicy Bypass -WindowStyle Hidden -File "'+$script+'"'
 $a=New-ScheduledTaskAction -Execute 'powershell.exe' -Argument $arg
 $t=New-ScheduledTaskTrigger -AtLogOn -User $interactiveUser
-$s=New-ScheduledTaskSettingsSet -Hidden -RestartCount 999 -RestartInterval (New-TimeSpan -Seconds 5)
+# RestartInterval is serialised into the task XML as an ISO-8601 duration and
+# Task Scheduler rejects anything below PT1M with 0x80041318, so a 5-second
+# restart is not expressible here.
+$s=New-ScheduledTaskSettingsSet -Hidden -RestartCount 999 -RestartInterval (New-TimeSpan -Minutes 1)
 $p=New-ScheduledTaskPrincipal -UserId $sid -LogonType Interactive -RunLevel Limited
 Register-ScheduledTask -TaskName $name -Action $a -Trigger $t -Settings $s -Principal $p -Force|Out-Null
 Start-ScheduledTask -TaskName $name
