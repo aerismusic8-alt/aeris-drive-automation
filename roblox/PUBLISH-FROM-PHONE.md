@@ -1,7 +1,8 @@
 # Publish AX Arena from a phone
 
-PC1 builds and publishes the game. You only need to create the experience
-once and copy two numbers. Roblox Studio is **not** required.
+PC1 builds and publishes the game. You only need to get one experience into
+your Roblox account and copy two numbers. Studio is needed once, for that one
+step, on any computer you can borrow; nothing after it needs a computer.
 
 ## How it works
 
@@ -11,26 +12,39 @@ repo  --Rojo-->  AXArena.rbxlx  --Open Cloud API-->  live Roblox place
 ```
 
 Roblox's Open Cloud API accepts a place file over HTTPS and publishes it as a
-new version. That is why no computer with Studio is needed: PC1 does the whole
-job, and you drive it from the phone.
+new version. So once the experience exists, no computer with Studio is needed
+again: PC1 does the whole job and you drive it from the phone.
 
-## Step 1: create the experience (phone browser)
+## Step 1: get an experience to publish into
 
-1. Go to https://create.roblox.com and sign in.
-2. Open **Creations -> Create New -> Experience**.
-3. Choose any template. The code replaces everything, so the template does not
-   matter.
-4. Name it something players search for, for example **AX Arena: Farm and
-   Fight**. The name and icon are what get you discovered.
-5. Open the experience. The address bar looks like:
+**This is the one step a phone cannot do.** The Creator Dashboard on a phone
+can manage an experience, but it cannot create the first one: the "Create
+experience" button launches Roblox Studio, and Studio has no mobile version.
+Roblox's own Studio Lite FAQ says it plainly: "Currently there is no way to
+create a new Experience on mobile." Open Cloud cannot help either, because it
+has no create-universe endpoint.
 
-   ```
-   https://create.roblox.com/dashboard/creations/experiences/1234567890/places/9876543210/overview
-                                                   ^^^^^^^^^^          ^^^^^^^^^^
-                                                   universeId          placeId
-   ```
+Pick whichever line applies:
 
-6. Note the two numbers.
+- **You already own an experience.** Go to step 2.
+- **Your account has a starter place.** Older accounts were given one
+  automatically, named `<username>'s Place`. Check the Places tab and the
+  Archived filter:
+  https://create.roblox.com/dashboard/creations?activeTab=Place
+- **You can reach any Windows or Mac for five minutes.** Install Roblox
+  Studio, `File > New`, then `File > Publish to Roblox As...` and create the
+  experience. That computer is never needed again; everything after this runs
+  on PC1.
+- **None of the above.** Create a second Roblox account. New accounts may come
+  with a starter place.
+
+Once the experience exists, open it and read the two numbers out of the URL:
+
+```
+https://create.roblox.com/dashboard/creations/experiences/<universeId>/places/<placeId>/overview
+```
+
+A phone browser is enough from here on.
 
 ## Step 2: keep those numbers
 
