@@ -1,0 +1,45 @@
+name: AX Arena Luau Tests
+
+on:
+  push:
+    paths:
+      - 'roblox/**'
+      - 'scripts/test-roblox.sh'
+      - 'scripts/install-luau.sh'
+      - '.github/workflows/ax-arena-tests.yml'
+  pull_request:
+    paths:
+      - 'roblox/**'
+      - 'scripts/test-roblox.sh'
+      - 'scripts/install-luau.sh'
+      - '.github/workflows/ax-arena-tests.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install Luau
+        run: bash scripts/install-luau.sh
+
+      - name: Syntax check Roblox glue
+        run: |
+          set -euo pipefail
+          ./tools/luau/luau-compile --binary roblox/src/server/init.server.luau > /dev/null
+          ./tools/luau/luau-compile --binary roblox/src/client/init.client.luau > /dev/null
+          echo "syntax OK"
+
+      - name: Run shared logic tests
+        run: ./tools/luau/luau roblox/tests/run.luau
+
+      - name: Run integration tests
+        run: ./tools/luau/luau roblox/tests/integration.luau
+
+      - name: Check client, HUD and server agree on names
+        run: python3 scripts/check-hud-wiring.py
