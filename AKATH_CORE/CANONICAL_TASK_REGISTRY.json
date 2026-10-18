@@ -989,6 +989,92 @@
         "completed_at": "2026-09-19T20:08:56.331Z"
       },
       "verified_at": "2026-09-19T20:08:55.484Z"
+    },
+    {
+      "task_id": "AKATH-ROBLOX-GOAL-PLAYABLE-001",
+      "type": "PRODUCT",
+      "title": "Ship a Roblox game anyone can enter and play",
+      "capability": "product",
+      "action": "roblox_game_playable_by_all",
+      "status": "IN_PROGRESS",
+      "created_at": "2026-10-18T00:00:00.000Z",
+      "deadline_at": null,
+      "milestones": [
+        "Game world and spawn exist so a player lands somewhere",
+        "Core loop runs server-side without errors on a live server",
+        "First-time player can earn, level up and see progress",
+        "Published to Roblox and reachable by public join"
+      ],
+      "completion_criteria": [
+        "A player who has never seen the game can join and play",
+        "The game runs a full session without server errors",
+        "Progress saves and reloads across sessions"
+      ],
+      "evidence": null,
+      "verification": {
+        "verified": false,
+        "reasons": [
+          "Not published to Roblox yet"
+        ]
+      },
+      "completed_at": null,
+      "payload": {
+        "action": "roblox_game_playable_by_all",
+        "capability": "product",
+        "canonical": true,
+        "autonomous": true,
+        "standing_goal": true,
+        "repo": "aerismusic8-alt/aeris-drive-automation",
+        "path": "roblox/",
+        "blocker": "Publishing requires Roblox Studio (desktop only)"
+      },
+      "started_at": "2026-10-18T00:00:00.000Z",
+      "attempt": 1,
+      "result": null,
+      "verified_at": null
+    },
+    {
+      "task_id": "AKATH-ROBLOX-GOAL-REVENUE-001",
+      "type": "PRODUCT",
+      "title": "Generate real revenue from the Roblox game",
+      "capability": "product",
+      "action": "roblox_game_revenue",
+      "status": "IN_PROGRESS",
+      "created_at": "2026-10-18T00:00:00.000Z",
+      "deadline_at": null,
+      "milestones": [
+        "Monetization catalogue defined with server-side prices",
+        "Gamepasses and developer products created on Roblox",
+        "Purchases grant entitlements and survive a rejoin",
+        "First real Robux earned"
+      ],
+      "completion_criteria": [
+        "At least one paid product is live and purchasable",
+        "A purchase grants its entitlement and persists",
+        "Revenue is visible in the Roblox dashboard"
+      ],
+      "evidence": null,
+      "verification": {
+        "verified": false,
+        "reasons": [
+          "No Roblox asset ids set yet"
+        ]
+      },
+      "completed_at": null,
+      "payload": {
+        "action": "roblox_game_revenue",
+        "capability": "product",
+        "canonical": true,
+        "autonomous": true,
+        "standing_goal": true,
+        "repo": "aerismusic8-alt/aeris-drive-automation",
+        "path": "roblox/src/shared/Monetization.luau",
+        "blocker": "Needs gamepass/product asset ids from the Roblox website"
+      },
+      "started_at": "2026-10-18T00:00:00.000Z",
+      "attempt": 1,
+      "result": null,
+      "verified_at": null
     }
   ],
   "task_identity_policy": "1 task_id = 1 canonical task record",
