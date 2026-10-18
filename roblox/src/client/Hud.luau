@@ -8,9 +8,6 @@
 -- so a tap and a scripted call behave identically.
 
 local Players = game:GetService("Players")
-local ReplicatedStorage = game:GetService("ReplicatedStorage")
-
-local Config = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("Config"))
 
 local Hud = {}
 
@@ -117,7 +114,7 @@ function Hud.build(): ScreenGui
 	label(stats, "Rebirth", "Rebirth 0", UDim2.new(1, -20, 0, 22), UDim2.new(0, 12, 0, 108), 16)
 
 	-- Wave banner, top centre.
-	local wave = panel(gui, "Wave", UDim2.new(0, 300, 0, 40), UDim2.new(0.5, 0, 0, 16), Vector2.new(0.5, 0))
+	local wave = panel(gui, "WavePanel", UDim2.new(0, 300, 0, 40), UDim2.new(0.5, 0, 0, 16), Vector2.new(0.5, 0))
 	local waveLabel = label(wave, "Wave", "Wave 1", UDim2.new(1, -16, 1, 0), UDim2.new(0, 8, 0, 0), 20)
 	waveLabel.TextXAlignment = Enum.TextXAlignment.Center
 

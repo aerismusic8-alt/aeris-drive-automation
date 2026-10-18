@@ -37,3 +37,9 @@ jobs:
 
       - name: Run shared logic tests
         run: ./tools/luau/luau roblox/tests/run.luau
+
+      - name: Run integration tests
+        run: ./tools/luau/luau roblox/tests/integration.luau
+
+      - name: Check client, HUD and server agree on names
+        run: python3 scripts/check-hud-wiring.py

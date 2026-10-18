@@ -247,6 +247,9 @@ local function onPlayerAdded(player: Player)
 	records[player.UserId] = record
 
 	player.CharacterAdded:Connect(function(character)
+		-- Place the character on the arena spawn. The part in Workspace is only a
+		-- marker; this call is what actually decides where they stand.
+		World.attachPlayer(player, character)
 		local humanoid = character:WaitForChild("Humanoid") :: Humanoid
 		-- Recompute per spawn so purchases and rebirths apply on the next life.
 		local derived = applySpawnStats(record)

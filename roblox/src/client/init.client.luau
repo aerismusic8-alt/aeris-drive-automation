@@ -60,7 +60,9 @@ local function formatCoins(value: number): string
 end
 
 local function setLabel(gui: Instance, name: string, text: string)
-	local label = gui:FindFirstChild(name)
+	-- The labels live inside panels, not directly under the ScreenGui, so the
+	-- search has to recurse or every stat silently keeps its placeholder text.
+	local label = gui:FindFirstChild(name, true)
 	if label and label:IsA("TextLabel") then
 		label.Text = text
 	end

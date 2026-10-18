@@ -22,4 +22,8 @@ fi
 
 # Integration tests replay a real game loop, so a broken reward path fails
 # here even when every unit test passes.
-exec "$LUAU" "$ROOT/roblox/tests/integration.luau"
+"$LUAU" "$ROOT/roblox/tests/integration.luau" || exit 1
+
+# Wiring checks read the source, because the HUD cannot be executed outside
+# Roblox. This is what catches a renamed label or an unbound button.
+exec python3 "$ROOT/scripts/check-hud-wiring.py"
