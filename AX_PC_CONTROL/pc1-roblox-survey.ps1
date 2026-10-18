@@ -18,12 +18,29 @@ function Test-PathSafe($p) {
 }
 
 # --- Roblox Studio ---------------------------------------------------------
-$studioRoot = Join-Path $env:LOCALAPPDATA 'Roblox\Versions'
-$studioExes = @()
-if (Test-PathSafe $studioRoot) {
-  $studioExes = @(Get-ChildItem -Path $studioRoot -Recurse -Filter 'RobloxStudioBeta.exe' -ErrorAction SilentlyContinue |
-    Select-Object -ExpandProperty FullName)
+# The runner may execute as SYSTEM, so LOCALAPPDATA points at systemprofile
+# and would miss a Studio install in the real user's profile. Check every
+# profile on the machine.
+$profileRoots = @()
+$usersRoot = 'C:\Users'
+if (Test-PathSafe $usersRoot) {
+  foreach ($dir in (Get-ChildItem -Path $usersRoot -Directory -ErrorAction SilentlyContinue)) {
+    $local = Join-Path $dir.FullName 'AppData\Local'
+    if (Test-PathSafe $local) { $profileRoots += $local }
+  }
 }
+$profileRoots += $env:LOCALAPPDATA
+$profileRoots = @($profileRoots | Select-Object -Unique)
+
+$studioExes = @()
+foreach ($local in $profileRoots) {
+  $root = Join-Path $local 'Roblox\Versions'
+  if (Test-PathSafe $root) {
+    $studioExes += @(Get-ChildItem -Path $root -Recurse -Filter 'RobloxStudioBeta.exe' -ErrorAction SilentlyContinue |
+      Select-Object -ExpandProperty FullName)
+  }
+}
+$studioExes = @($studioExes | Select-Object -Unique)
 
 $studioVersion = $null
 if ($studioExes.Count -gt 0) {
@@ -32,10 +49,14 @@ if ($studioExes.Count -gt 0) {
 
 # --- Roblox Player ---------------------------------------------------------
 $playerExes = @()
-if (Test-PathSafe $studioRoot) {
-  $playerExes = @(Get-ChildItem -Path $studioRoot -Recurse -Filter 'RobloxPlayerBeta.exe' -ErrorAction SilentlyContinue |
-    Select-Object -ExpandProperty FullName)
+foreach ($local in $profileRoots) {
+  $root = Join-Path $local 'Roblox\Versions'
+  if (Test-PathSafe $root) {
+    $playerExes += @(Get-ChildItem -Path $root -Recurse -Filter 'RobloxPlayerBeta.exe' -ErrorAction SilentlyContinue |
+      Select-Object -ExpandProperty FullName)
+  }
 }
+$playerExes = @($playerExes | Select-Object -Unique)
 
 # --- Roblox Studio presence in registry (install marker only) --------------
 $studioRegistry = Test-PathSafe 'HKCU:\Software\Roblox\RobloxStudioBrowser'
@@ -80,7 +101,7 @@ $result = [ordered]@{
     exePaths      = $studioExes
     version       = $studioVersion
     registryMarker = $studioRegistry
-    versionsRoot  = $studioRoot
+    versionsRoot  = ($profileRoots | ForEach-Object { Join-Path $_ "Roblox\Versions" })
   }
 
   player = [ordered]@{
