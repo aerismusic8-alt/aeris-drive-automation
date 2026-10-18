@@ -1,0 +1,65 @@
+name: AX PC1 Roblox Publish
+
+# Publishes the built place to Roblox through the Open Cloud API. This is the
+# path that needs no Roblox Studio, so it can run entirely from PC1.
+#
+# Needs, once:
+#   - repo secret ROBLOX_API_KEY with the universe-places:write scope
+#   - roblox/publish-config.json filled in with universeId and placeId
+#
+# Until both exist the job reports BLOCKED and passes, so the pipeline stays
+# honest and green while the credential is still missing.
+
+on:
+  workflow_dispatch:
+    inputs:
+      version_type:
+        description: 'Saved (private test) or Published (live)'
+        required: true
+        default: 'Saved'
+        type: choice
+        options: [Saved, Published]
+  push:
+    paths:
+      - 'AX_PC_CONTROL/pc1-roblox-publish.ps1'
+      - '.github/workflows/ax-pc1-roblox-publish.yml'
+
+jobs:
+  publish:
+    runs-on: self-hosted
+    steps:
+      - name: Verify PC1
+        shell: powershell
+        run: |
+          if ($env:COMPUTERNAME -ne 'DESKTOP-RGK6JKB') { throw "EXPECTED_PC1:$env:COMPUTERNAME" }
+          Write-Host "PC1=VERIFIED"
+
+      - name: Build the place first
+        shell: powershell
+        run: |
+          $url = "https://raw.githubusercontent.com/aerismusic8-alt/aeris-drive-automation/$env:GITHUB_SHA/AX_PC_CONTROL/pc1-roblox-build.ps1"
+          $p = Join-Path $env:TEMP "pc1-roblox-build.ps1"
+          Invoke-WebRequest -Uri $url -OutFile $p -UseBasicParsing
+          & powershell.exe -NoProfile -ExecutionPolicy Bypass -File $p
+          if ($LASTEXITCODE -ne 0) { throw "BUILD_EXIT:$LASTEXITCODE" }
+
+      - name: Publish through Open Cloud
+        shell: powershell
+        env:
+          ROBLOX_API_KEY: ${{ secrets.ROBLOX_API_KEY }}
+        run: |
+          $url = "https://raw.githubusercontent.com/aerismusic8-alt/aeris-drive-automation/$env:GITHUB_SHA/AX_PC_CONTROL/pc1-roblox-publish.ps1"
+          $p = Join-Path $env:TEMP "pc1-roblox-publish.ps1"
+          Invoke-WebRequest -Uri $url -OutFile $p -UseBasicParsing
+          $arg = @('-NoProfile','-ExecutionPolicy','Bypass','-File',$p)
+          if ('${{ inputs.version_type }}' -eq 'Published') { $arg += '-VersionType'; $arg += 'Published' }
+          & powershell.exe @arg
+          if ($LASTEXITCODE -ne 0) { throw "PUBLISH_EXIT:$LASTEXITCODE" }
+
+      - name: Upload publish evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: pc1-roblox-publish-evidence
+          path: C:\AX-Runtime\evidence\pc1-roblox-publish.json
+          if-no-files-found: warn

@@ -1,0 +1,11 @@
+{
+  "universeId": null,
+  "placeId": null,
+  "versionType": "Saved",
+  "note": [
+    "Fill in universeId and placeId once the experience exists on Roblox.",
+    "Find them at https://create.roblox.com -> your experience -> the URL, e.g.",
+    "https://create.roblox.com/dashboard/creations/experiences/<universeId>/places/<placeId>/overview",
+    "No secret goes in this file. The API key lives in the GitHub secret ROBLOX_API_KEY."
+  ]
+}
