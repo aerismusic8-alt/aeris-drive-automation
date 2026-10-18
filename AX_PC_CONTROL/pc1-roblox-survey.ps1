@@ -62,12 +62,28 @@ $playerExes = @($playerExes | Select-Object -Unique)
 $studioRegistry = Test-PathSafe 'HKCU:\Software\Roblox\RobloxStudioBrowser'
 
 # --- Does a signed-in Roblox session exist? (presence only, never contents) -
-$localStorage = Join-Path $env:LOCALAPPDATA 'Roblox\LocalStorage'
-$hasSessionMarker = Test-PathSafe $localStorage
+# Presence is all we report. The cookie itself is never read, copied or sent.
+$sessionProfiles = @()
+foreach ($local in $profileRoots) {
+  $ls = Join-Path $local 'Roblox\LocalStorage'
+  if (Test-PathSafe $ls) {
+    $sessionProfiles += [ordered]@{
+      profile      = $local
+      localStorage = $true
+      studioCookie = (Test-PathSafe (Join-Path $local 'Roblox\LocalStorage\RobloxStudioBrowser'))
+      logs         = (Test-PathSafe (Join-Path $local 'Roblox\logs'))
+    }
+  }
+}
+$hasSessionMarker = ($sessionProfiles.Count -gt 0)
 
-# --- Roblox Studio plugins / published place cache ------------------------
-$studioPlugins = Join-Path $env:LOCALAPPDATA 'Roblox\Plugins'
-$hasPlugins = Test-PathSafe $studioPlugins
+# --- Roblox Studio plugins -------------------------------------------------
+$pluginProfiles = @()
+foreach ($local in $profileRoots) {
+  $pl = Join-Path $local 'Roblox\Plugins'
+  if (Test-PathSafe $pl) { $pluginProfiles += $pl }
+}
+$hasPlugins = ($pluginProfiles.Count -gt 0)
 
 # --- Rojo (the tool that turns this repo into a .rbxl) --------------------
 $rojo = Get-Command rojo -ErrorAction SilentlyContinue
@@ -111,7 +127,9 @@ $result = [ordered]@{
 
   session = [ordered]@{
     localStoragePresent = $hasSessionMarker
+    profiles            = $sessionProfiles
     pluginsPresent      = $hasPlugins
+    pluginPaths         = $pluginProfiles
   }
 
   rojo = [ordered]@{
@@ -137,6 +155,10 @@ Write-Host "STUDIO_VERSION=$studioVersion"
 Write-Host "STUDIO_EXE_COUNT=$($studioExes.Count)"
 Write-Host "PLAYER_INSTALLED=$($result.player.installed)"
 Write-Host "SESSION_MARKER=$hasSessionMarker"
+Write-Host "SESSION_PROFILES=$($sessionProfiles.Count)"
+foreach ($sp in $sessionProfiles) {
+  Write-Host ("SESSION_PROFILE={0} studioCookie={1}" -f $sp.profile, $sp.studioCookie)
+}
 Write-Host "ROJO_INSTALLED=$($result.rojo.installed)"
 foreach ($k in $tools.Keys) {
   Write-Host ("TOOL_{0}={1}" -f $k.ToUpper(), $(if ($tools[$k]) { 'PRESENT' } else { 'MISSING' }))
