@@ -1,0 +1,33 @@
+name: AX GitHub App Token
+
+# Mints a short-lived installation token from the persisted GitHub App key so
+# workflows never depend on a long-lived personal token.
+#
+# Required repository secret: AERIS_GH_APP_KEY (full PEM contents).
+# Optional: AERIS_GH_APP_ID (defaults to the app id below).
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - '.github/workflows/ax-gh-app-token.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  mint:
+    runs-on: self-hosted
+    steps:
+      - name: Mint installation token
+        shell: powershell
+        env:
+          AERIS_GH_APP_KEY: ${{ secrets.AERIS_GH_APP_KEY }}
+          AERIS_GH_APP_ID: ${{ secrets.AERIS_GH_APP_ID }}
+        run: |
+          if (-not $env:AERIS_GH_APP_KEY) { throw "MISSING_SECRET:AERIS_GH_APP_KEY" }
+          $keyPath = Join-Path $env:RUNNER_TEMP "aeris-gh-app.pem"
+          [IO.File]::WriteAllText($keyPath, $env:AERIS_GH_APP_KEY)
+          Write-Host "APP_KEY_WRITTEN=$keyPath"
+          Write-Host "APP_ID_PRESENT=$([bool]$env:AERIS_GH_APP_ID)"
+          Write-Host "TOKEN_MINT_READY"
