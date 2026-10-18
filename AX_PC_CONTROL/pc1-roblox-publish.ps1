@@ -37,7 +37,14 @@ if (!(Test-Path $configFile)) { throw "PUBLISH_CONFIG_MISSING:$configFile" }
 $config = Get-Content $configFile -Raw | ConvertFrom-Json
 $universeId = $config.universeId
 $placeId = $config.placeId
-$versionType = if ($config.versionType) { $config.versionType } else { 'Saved' }
+
+# Workflow inputs win over the file. The user drives this from a phone, where
+# editing a file in the repo is awkward; typing two numbers into the run form
+# is not.
+if ($env:UNIVERSE_ID) { $universeId = $env:UNIVERSE_ID }
+if ($env:PLACE_ID) { $placeId = $env:PLACE_ID }
+
+$versionType = if ($VersionType) { $VersionType } elseif ($config.versionType) { $config.versionType } else { 'Saved' }
 
 Write-Host "UNIVERSE_ID=$universeId"
 Write-Host "PLACE_ID=$placeId"
@@ -58,7 +65,7 @@ if ($missing.Count -gt 0) {
     status        = 'BLOCKED'
     missing       = $missing
     placeFile     = $placeFile
-    guidance      = 'Create the experience on create.roblox.com, copy universeId/placeId into roblox/publish-config.json, and store an Open Cloud key with universe-places:write as ROBLOX_API_KEY.'
+    guidance      = 'Create the experience on create.roblox.com, then run this workflow again with universeId and placeId filled in, and store an Open Cloud key with universe-places:write as ROBLOX_API_KEY.'
   })
   Write-Host "PUBLISH_EVIDENCE=$evidencePath"
   exit 0
