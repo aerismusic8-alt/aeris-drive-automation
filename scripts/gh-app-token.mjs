@@ -7,15 +7,39 @@
 //
 // Key lookup order:
 //   1. $AERIS_GH_APP_KEY / $AERIS_GH_APP_CONFIG
-//   2. ~/.config/aeris/gh-app.pem + gh-app.json
+//   2. /workspace/.secrets/gh-app/gh-app.pem + gh-app.json  (durable)
+//   3. ~/.config/aeris/gh-app.pem + gh-app.json             (legacy)
 import { createSign } from 'node:crypto';
-import { readFileSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import { homedir } from 'node:os';
 import { join } from 'node:path';
 
 const HOME = homedir();
-const KEY_PATH = process.env.AERIS_GH_APP_KEY || join(HOME, '.config/aeris/gh-app.pem');
-const CFG_PATH = process.env.AERIS_GH_APP_CONFIG || join(HOME, '.config/aeris/gh-app.json');
+
+// Lookup order: explicit env override, then the durable workspace location,
+// then the older home-directory location. The workspace path survives
+// container restarts; /tmp does not.
+const CANDIDATE_DIRS = [
+  '/workspace/.secrets/gh-app',
+  join(HOME, '.config/aeris'),
+];
+
+function resolveCreds() {
+  if (process.env.AERIS_GH_APP_KEY && process.env.AERIS_GH_APP_CONFIG) {
+    return { key: process.env.AERIS_GH_APP_KEY, cfg: process.env.AERIS_GH_APP_CONFIG };
+  }
+  for (const dir of CANDIDATE_DIRS) {
+    const key = join(dir, 'gh-app.pem');
+    const cfg = join(dir, 'gh-app.json');
+    if (existsSync(key) && existsSync(cfg)) return { key, cfg };
+  }
+  throw new Error(
+    `No app credentials found. Looked in:\n  ${CANDIDATE_DIRS.join('\n  ')}\n` +
+      'Set AERIS_GH_APP_KEY and AERIS_GH_APP_CONFIG to override.',
+  );
+}
+
+const { key: KEY_PATH, cfg: CFG_PATH } = resolveCreds();
 
 const b64url = (buf) =>
   Buffer.from(buf).toString('base64').replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
@@ -45,7 +69,11 @@ async function api(url, token, method = 'GET') {
 
 const cfg = JSON.parse(readFileSync(CFG_PATH, 'utf8'));
 const pem = readFileSync(KEY_PATH, 'utf8');
-const jwt = appJwt(cfg.client_id, pem);
+// GitHub wants the App ID as the JWT issuer; client_id is accepted as a
+// fallback for configs written before app_id was captured.
+const issuer = cfg.app_id || cfg.client_id;
+if (!issuer) throw new Error(`No app_id or client_id in ${CFG_PATH}`);
+const jwt = appJwt(issuer, pem);
 
 let installationId = cfg.installation_id;
 if (!installationId) {

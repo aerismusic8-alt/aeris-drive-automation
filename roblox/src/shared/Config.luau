@@ -70,4 +70,75 @@ Config.Persistence = {
 -- Ordered list keeps iteration deterministic across server restarts.
 Config.UpgradeOrder = { "Damage", "Health", "Speed", "CritChance" }
 
+--------------------------------------------------------------------------
+-- Progression: levels, pets, rebirths, zones.
+-- These are what turn a wave shooter into a farm-and-grow game, which is the
+-- loop that keeps a Roblox front page session long enough to trend.
+--------------------------------------------------------------------------
+
+Config.Leveling = {
+	MaxLevel = 100,
+	-- XP needed for the next level: BaseXp * Growth^(level-1).
+	BaseXp = 50,
+	XpGrowth = 1.15,
+	-- XP granted per kill, scaled by the enemy's wave.
+	BaseXpPerKill = 8,
+	-- Growth must be at least 1 + 1/BaseXpPerKill, otherwise rounding to a
+	-- whole number leaves the reward flat for several waves at a time.
+	XpGrowthPerWave = 1.15,
+	-- Each level adds a small permanent coin bonus.
+	CoinBonusPerLevel = 0.01,
+}
+
+Config.Pets = {
+	MaxEquipped = 4,
+	MaxInventory = 200,
+	-- A pet's coin/damage contribution is its rarity factor times power.
+	RarityOrder = { "Common", "Uncommon", "Rare", "Epic", "Legendary", "Mythic" },
+	RarityFactor = {
+		Common = 1,
+		Uncommon = 1.5,
+		Rare = 2.5,
+		Epic = 4,
+		Legendary = 7,
+		Mythic = 12,
+	},
+}
+
+Config.Rebirth = {
+	-- Level required for the first rebirth; grows each time.
+	BaseLevelRequirement = 25,
+	LevelGrowth = 1.35,
+	MaxRebirths = 20,
+	-- Permanent multipliers, additive per rebirth.
+	CoinMultiplierPerRebirth = 0.5,
+	DamageMultiplierPerRebirth = 0.25,
+	-- Rebirth resets level, XP and coins but keeps pets and upgrades.
+	ResetLevel = true,
+	ResetCoins = true,
+	ResetUpgrades = false,
+	StartingCoinsAfterRebirth = 250,
+}
+
+Config.Zones = {
+	Default = "Meadow",
+	-- Switching zones costs nothing; unlocking is level gated.
+	SwitchCooldownSeconds = 3,
+}
+
+Config.Monetization = {
+	-- Robux catalogue. Prices live here so the server is the single
+	-- source of truth and the client cannot invent a cheaper purchase.
+	Enabled = true,
+	-- Premium/VIP style perks are expressed as multipliers.
+	VipCoinMultiplier = 2.0,
+	VipXpMultiplier = 1.5,
+	VipExtraPetSlots = 2,
+}
+
+Config.Codes = {
+	-- Promo codes reward engagement (Roblox trending rewards active play).
+	MaxRedemptionsPerPlayer = 1,
+}
+
 return Config

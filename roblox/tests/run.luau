@@ -12,6 +12,11 @@ local Combat = require("../src/shared/Combat")
 local WaveDirector = require("../src/shared/WaveDirector")
 local SaveSchema = require("../src/shared/SaveSchema")
 local RateLimiter = require("../src/shared/RateLimiter")
+local Leveling = require("../src/shared/Leveling")
+local Pets = require("../src/shared/Pets")
+local Rebirth = require("../src/shared/Rebirth")
+local Zones = require("../src/shared/Zones")
+local Monetization = require("../src/shared/Monetization")
 
 --------------------------------------------------------------------------
 t.suite("Random")
@@ -701,6 +706,573 @@ t.test("economy and capacity limits are sane", function()
 	t.assertTrue(Config.Economy.MaxCoins > Config.Economy.StartingCoins)
 	t.assertTrue(Config.Inventory.DefaultCapacity > 0)
 	t.assertTrue(Config.Inventory.MaxCapacity >= Config.Inventory.DefaultCapacity)
+end)
+
+--------------------------------------------------------------------------
+t.suite("Leveling")
+--------------------------------------------------------------------------
+
+t.test("first level requires the base XP", function()
+	t.assertEqual(Leveling.xpForNext(1), Config.Leveling.BaseXp)
+end)
+
+t.test("XP requirement grows with level", function()
+	local prev = Leveling.xpForNext(1)
+	for level = 2, 12 do
+		local cur = Leveling.xpForNext(level)
+		t.assertGreater(cur, prev, "level " .. level)
+		prev = cur
+	end
+end)
+
+t.test("cap returns infinity so callers stop levelling", function()
+	t.assertEqual(Leveling.xpForNext(Config.Leveling.MaxLevel), math.huge)
+	t.assertEqual(Leveling.xpForNext(Config.Leveling.MaxLevel + 5), math.huge)
+end)
+
+t.test("awarding XP below the threshold does not level up", function()
+	local progress, gained = Leveling.addXp(Leveling.new(), Config.Leveling.BaseXp - 1)
+	t.assertEqual(progress.level, 1)
+	t.assertEqual(gained, 0)
+	t.assertEqual(progress.xp, Config.Leveling.BaseXp - 1)
+end)
+
+t.test("awarding exactly the threshold levels up once", function()
+	local progress, gained = Leveling.addXp(Leveling.new(), Config.Leveling.BaseXp)
+	t.assertEqual(progress.level, 2)
+	t.assertEqual(gained, 1)
+	t.assertEqual(progress.xp, 0)
+end)
+
+t.test("a large award carries across multiple levels", function()
+	local huge = Leveling.totalXpToReach(6)
+	local progress, gained = Leveling.addXp(Leveling.new(), huge)
+	t.assertEqual(progress.level, 6)
+	t.assertEqual(gained, 5)
+end)
+
+t.test("XP never exceeds the cap", function()
+	local progress = Leveling.addXp(Leveling.new(), 1e15)
+	t.assertEqual(progress.level, Config.Leveling.MaxLevel)
+	t.assertEqual(progress.xp, 0)
+end)
+
+t.test("negative XP is rejected", function()
+	t.assertThrows(function()
+		Leveling.addXp(Leveling.new(), -1)
+	end)
+end)
+
+t.test("kill XP increases with wave", function()
+	t.assertGreater(Leveling.xpFromKill(2), Leveling.xpFromKill(1))
+	t.assertEqual(Leveling.xpFromKill(1), Config.Leveling.BaseXpPerKill)
+end)
+
+t.test("coin multiplier grows with level and is 1 at level 1", function()
+	t.assertEqual(Leveling.coinMultiplier(1), 1)
+	t.assertGreater(Leveling.coinMultiplier(50), Leveling.coinMultiplier(10))
+end)
+
+t.test("progress ratio stays within 0 and 1", function()
+	t.assertEqual(Leveling.progressRatio(Leveling.new()), 0)
+	local half = { level = 1, xp = Config.Leveling.BaseXp / 2 }
+	t.assertNear(Leveling.progressRatio(half), 0.5, 1e-9)
+	local capped = { level = Config.Leveling.MaxLevel, xp = 0 }
+	t.assertEqual(Leveling.progressRatio(capped), 1)
+end)
+
+t.test("total XP to reach level 1 is zero", function()
+	t.assertEqual(Leveling.totalXpToReach(1), 0)
+end)
+
+--------------------------------------------------------------------------
+t.suite("Pets")
+--------------------------------------------------------------------------
+
+t.test("every egg references a real pet", function()
+	for _, egg in ipairs(Pets.listEggs()) do
+		t.assertTrue(#egg.weights > 0, egg.id .. " has weights")
+		for _, entry in ipairs(egg.weights) do
+			t.assertNotNil(Pets.getDef(entry.petId), egg.id .. " -> " .. entry.petId)
+		end
+	end
+end)
+
+t.test("every pet has a rarity listed in config", function()
+	local known = {}
+	for _, r in ipairs(Config.Pets.RarityOrder) do
+		known[r] = true
+	end
+	for _, def in ipairs(Pets.listDefs()) do
+		t.assertTrue(known[def.rarity] == true, def.id .. " rarity " .. def.rarity)
+	end
+end)
+
+t.test("rolling an egg only ever yields pets from that egg", function()
+	local rng = Random.new(7)
+	local allowed = {}
+	for _, entry in ipairs(Pets.getEgg("Basic").weights) do
+		allowed[entry.petId] = true
+	end
+	for _ = 1, 300 do
+		local def = Pets.roll(rng, "Basic")
+		t.assertNotNil(def)
+		t.assertTrue(allowed[def.id] == true, "unexpected " .. tostring(def and def.id))
+	end
+end)
+
+t.test("rolling an unknown egg returns nil", function()
+	t.assertNil(Pets.roll(Random.new(1), "Nope"))
+end)
+
+t.test("hatching spends coins and adds a pet", function()
+	local inv = Pets.new()
+	local def, remaining, err = Pets.hatch(inv, Random.new(3), "Basic", 1000, 1)
+	t.assertNotNil(def)
+	t.assertNil(err)
+	t.assertEqual(remaining, 1000 - Pets.getEgg("Basic").cost)
+	t.assertEqual(#inv.pets, 1)
+	t.assertEqual(inv.hatches, 1)
+end)
+
+t.test("hatching without enough coins is refused", function()
+	local inv = Pets.new()
+	local def, remaining, err = Pets.hatch(inv, Random.new(3), "Basic", 0, 1)
+	t.assertNil(def)
+	t.assertNil(remaining)
+	t.assertEqual(err, "INSUFFICIENT_COINS")
+	t.assertEqual(#inv.pets, 0)
+end)
+
+t.test("hatching below the level requirement is refused", function()
+	local inv = Pets.new()
+	local _, _, err = Pets.hatch(inv, Random.new(3), "Mythic", 1e9, 1)
+	t.assertEqual(err, "LEVEL_TOO_LOW")
+end)
+
+t.test("unknown egg is refused", function()
+	local _, _, err = Pets.hatch(Pets.new(), Random.new(3), "Ghost", 1e9, 99)
+	t.assertEqual(err, "UNKNOWN_EGG")
+end)
+
+t.test("pet uid never repeats", function()
+	local inv = Pets.new()
+	for _ = 1, 30 do
+		Pets.hatch(inv, Random.new(11), "Basic", 1e6, 1)
+	end
+	local seen = {}
+	for _, pet in ipairs(inv.pets) do
+		t.assertNil(seen[pet.uid], "duplicate uid " .. pet.uid)
+		seen[pet.uid] = true
+	end
+end)
+
+t.test("equipping respects the slot limit", function()
+	local inv = Pets.new()
+	for _ = 1, 20 do
+		Pets.hatch(inv, Random.new(5), "Basic", 1e6, 1)
+	end
+	for i = 1, Config.Pets.MaxEquipped do
+		local ok = Pets.equip(inv, inv.pets[i].uid, false)
+		t.assertTrue(ok, "slot " .. i)
+	end
+	local ok, reason = Pets.equip(inv, inv.pets[Config.Pets.MaxEquipped + 1].uid, false)
+	t.assertFalse(ok)
+	t.assertEqual(reason, "NO_SLOTS")
+end)
+
+t.test("VIP grants extra pet slots", function()
+	local inv = Pets.new()
+	for _ = 1, 20 do
+		Pets.hatch(inv, Random.new(5), "Basic", 1e6, 1)
+	end
+	for i = 1, Pets.maxEquipped(true) do
+		local ok = Pets.equip(inv, inv.pets[i].uid, true)
+		t.assertTrue(ok, "vip slot " .. i)
+	end
+	t.assertGreater(Pets.maxEquipped(true), Pets.maxEquipped(false))
+end)
+
+t.test("equipping a pet you do not own is refused", function()
+	local ok, reason = Pets.equip(Pets.new(), 999, false)
+	t.assertFalse(ok)
+	t.assertEqual(reason, "NOT_OWNED")
+end)
+
+t.test("equipping twice is idempotent", function()
+	local inv = Pets.new()
+	Pets.hatch(inv, Random.new(5), "Basic", 1e6, 1)
+	local uid = inv.pets[1].uid
+	t.assertTrue(Pets.equip(inv, uid, false))
+	t.assertTrue(Pets.equip(inv, uid, false))
+	t.assertEqual(#inv.equipped, 1)
+end)
+
+t.test("unequip removes the pet from the active list", function()
+	local inv = Pets.new()
+	Pets.hatch(inv, Random.new(5), "Basic", 1e6, 1)
+	local uid = inv.pets[1].uid
+	Pets.equip(inv, uid, false)
+	t.assertTrue(Pets.unequip(inv, uid))
+	t.assertEqual(#inv.equipped, 0)
+	t.assertFalse(Pets.unequip(inv, uid))
+end)
+
+t.test("no equipped pets means no bonus", function()
+	local coin, damage = Pets.equippedMultipliers(Pets.new())
+	t.assertEqual(coin, 1)
+	t.assertEqual(damage, 1)
+end)
+
+t.test("equipped multipliers compound", function()
+	local inv = Pets.new()
+	Pets.hatch(inv, Random.new(5), "Basic", 1e6, 1)
+	Pets.equip(inv, inv.pets[1].uid, false)
+	local coin, damage = Pets.equippedMultipliers(inv)
+	local def = Pets.getDef(inv.pets[1].petId)
+	t.assertNear(coin, def.coinMultiplier, 1e-9)
+	t.assertNear(damage, def.damageMultiplier, 1e-9)
+end)
+
+t.test("snapshot round trip preserves pets and equips", function()
+	local inv = Pets.new()
+	for _ = 1, 5 do
+		Pets.hatch(inv, Random.new(9), "Basic", 1e6, 1)
+	end
+	Pets.equip(inv, inv.pets[1].uid, false)
+	Pets.equip(inv, inv.pets[2].uid, false)
+
+	local restored = Pets.fromSnapshot(Pets.snapshot(inv))
+	t.assertEqual(#restored.pets, #inv.pets)
+	t.assertEqual(#restored.equipped, 2)
+	t.assertEqual(restored.nextUid, inv.nextUid)
+end)
+
+t.test("fromSnapshot drops unknown pets and stale equips", function()
+	local restored = Pets.fromSnapshot({
+		pets = {
+			{ uid = 1, petId = "Pup", level = 1 },
+			{ uid = 2, petId = "NotAPet", level = 1 },
+		},
+		equipped = { 1, 2, 99 },
+		nextUid = 3,
+	})
+	t.assertEqual(#restored.pets, 1)
+	t.assertEqual(#restored.equipped, 1)
+	t.assertEqual(restored.pets[1].petId, "Pup")
+end)
+
+t.test("fromSnapshot repairs duplicate and missing uids", function()
+	local restored = Pets.fromSnapshot({
+		pets = {
+			{ petId = "Pup" },
+			{ uid = 1, petId = "Kitten" },
+		},
+		equipped = {},
+	})
+	t.assertEqual(#restored.pets, 2)
+	t.assertNotEqual(restored.pets[1].uid, restored.pets[2].uid)
+	t.assertGreater(restored.nextUid, restored.pets[2].uid)
+end)
+
+t.test("fromSnapshot tolerates garbage", function()
+	t.assertEqual(#Pets.fromSnapshot(nil).pets, 0)
+	t.assertEqual(#Pets.fromSnapshot("nope").pets, 0)
+end)
+
+t.test("pet inventory capacity is enforced", function()
+	local inv = Pets.new()
+	inv.pets = {}
+	for i = 1, Config.Pets.MaxInventory do
+		table.insert(inv.pets, { uid = i, petId = "Pup", level = 1 })
+	end
+	local _, _, err = Pets.hatch(inv, Random.new(1), "Basic", 1e9, 1)
+	t.assertEqual(err, "PET_INVENTORY_FULL")
+end)
+
+--------------------------------------------------------------------------
+t.suite("Rebirth")
+--------------------------------------------------------------------------
+
+t.test("first rebirth requirement matches config", function()
+	t.assertEqual(Rebirth.levelRequirement(0), Config.Rebirth.BaseLevelRequirement)
+end)
+
+t.test("requirement grows with each rebirth", function()
+	local prev = Rebirth.levelRequirement(0)
+	for c = 1, 6 do
+		local cur = Rebirth.levelRequirement(c)
+		t.assertGreater(cur, prev, "rebirth " .. c)
+		prev = cur
+	end
+end)
+
+t.test("requirement is infinite at the cap", function()
+	t.assertEqual(Rebirth.levelRequirement(Config.Rebirth.MaxRebirths), math.huge)
+end)
+
+t.test("rebirth is refused below the level requirement", function()
+	local ok, reason = Rebirth.canRebirth(Rebirth.new(), 1)
+	t.assertFalse(ok)
+	t.assertEqual(reason, "LEVEL_TOO_LOW")
+end)
+
+t.test("rebirth is refused at the cap", function()
+	local state = { count = Config.Rebirth.MaxRebirths }
+	local ok, reason = Rebirth.canRebirth(state, 1e6)
+	t.assertFalse(ok)
+	t.assertEqual(reason, "MAX_REBIRTHS")
+end)
+
+t.test("performing a rebirth increments the count and resets progress", function()
+	local outcome, err = Rebirth.perform(Rebirth.new(), Config.Rebirth.BaseLevelRequirement)
+	t.assertNil(err)
+	t.assertNotNil(outcome)
+	t.assertEqual(outcome.state.count, 1)
+	t.assertEqual(outcome.level, 1)
+	t.assertEqual(outcome.xp, 0)
+	t.assertEqual(outcome.coins, Config.Rebirth.StartingCoinsAfterRebirth)
+end)
+
+t.test("performing a rebirth without the level fails", function()
+	local outcome, reason = Rebirth.perform(Rebirth.new(), 1)
+	t.assertNil(outcome)
+	t.assertEqual(reason, "LEVEL_TOO_LOW")
+end)
+
+t.test("multipliers start at 1 and grow", function()
+	local coin0, damage0 = Rebirth.multipliers(0)
+	t.assertEqual(coin0, 1)
+	t.assertEqual(damage0, 1)
+
+	local coin1, damage1 = Rebirth.multipliers(1)
+	t.assertGreater(coin1, coin0)
+	t.assertGreater(damage1, damage0)
+end)
+
+t.test("multipliers are clamped at the cap", function()
+	local coinCap = Rebirth.multipliers(Config.Rebirth.MaxRebirths)
+	local coinOver = Rebirth.multipliers(Config.Rebirth.MaxRebirths + 50)
+	t.assertEqual(coinCap, coinOver)
+end)
+
+t.test("rebirth keeps upgrades unless configured otherwise", function()
+	local outcome = Rebirth.perform(Rebirth.new(), 1e6)
+	t.assertEqual(outcome.resetUpgrades, Config.Rebirth.ResetUpgrades)
+end)
+
+t.test("fromSnapshot clamps a corrupt count", function()
+	t.assertEqual(Rebirth.fromSnapshot({ count = -5 }).count, 0)
+	t.assertEqual(Rebirth.fromSnapshot({ count = 1e9 }).count, Config.Rebirth.MaxRebirths)
+	t.assertEqual(Rebirth.fromSnapshot(nil).count, 0)
+end)
+
+--------------------------------------------------------------------------
+t.suite("Zones")
+--------------------------------------------------------------------------
+
+t.test("the default zone exists and is first", function()
+	t.assertNotNil(Zones.getDef(Zones.defaultZone()))
+	t.assertEqual(Zones.list()[1].id, Zones.defaultZone())
+end)
+
+t.test("zone order is strictly ascending by requirement", function()
+	local prev = 0
+	for _, def in ipairs(Zones.list()) do
+		t.assertGreater(def.levelRequirement, prev, def.id)
+		prev = def.levelRequirement
+	end
+end)
+
+t.test("zone rewards increase with difficulty", function()
+	local prev = 0
+	for _, def in ipairs(Zones.list()) do
+		t.assertGreater(def.coinMultiplier, prev, def.id)
+		prev = def.coinMultiplier
+	end
+end)
+
+t.test("the first zone is unlocked at level 1", function()
+	t.assertTrue(Zones.isUnlocked(Zones.defaultZone(), 1))
+end)
+
+t.test("a high zone is locked at low level", function()
+	t.assertFalse(Zones.isUnlocked("Heaven", 1))
+end)
+
+t.test("a zone pass unlocks everything", function()
+	for _, def in ipairs(Zones.list()) do
+		t.assertTrue(Zones.isUnlocked(def.id, 1, true), def.id)
+	end
+end)
+
+t.test("travel to a locked zone is denied", function()
+	local zone, reason = Zones.resolveTravel("Void", 1)
+	t.assertNil(zone)
+	t.assertEqual(reason, "ZONE_LOCKED")
+end)
+
+t.test("travel to an unknown zone is denied", function()
+	local zone, reason = Zones.resolveTravel("Atlantis", 100)
+	t.assertNil(zone)
+	t.assertEqual(reason, "UNKNOWN_ZONE")
+end)
+
+t.test("travel to an unlocked zone succeeds", function()
+	local zone, reason = Zones.resolveTravel("Cavern", 10)
+	t.assertEqual(zone, "Cavern")
+	t.assertNil(reason)
+end)
+
+t.test("multipliers fall back to 1 for unknown zones", function()
+	t.assertEqual(Zones.coinMultiplier("Nowhere"), 1)
+	t.assertEqual(Zones.difficultyMultiplier("Nowhere"), 1)
+end)
+
+--------------------------------------------------------------------------
+t.suite("Monetization")
+--------------------------------------------------------------------------
+
+t.test("every product has a positive price and description", function()
+	for _, product in ipairs(Monetization.list()) do
+		t.assertTrue(product.robux > 0, product.id)
+		t.assertTrue(#product.description > 0, product.id)
+	end
+end)
+
+t.test("unknown products cannot be granted", function()
+	local result, reason = Monetization.grant(Monetization.newEntitlements(), "FreeRobux", 0)
+	t.assertNil(result)
+	t.assertEqual(reason, "UNKNOWN_PRODUCT")
+end)
+
+t.test("granting a gamepass marks it owned", function()
+	local result, err = Monetization.grant(Monetization.newEntitlements(), "Vip", 1000)
+	t.assertNil(err)
+	t.assertTrue(Monetization.owns(result.entitlements, "Vip"))
+	t.assertEqual(result.effect, "GRANTED_PERMANENT")
+end)
+
+t.test("a gamepass cannot be granted twice", function()
+	local first = Monetization.grant(Monetization.newEntitlements(), "Vip", 0)
+	local second, reason = Monetization.grant(first.entitlements, "Vip", 0)
+	t.assertNil(second)
+	t.assertEqual(reason, "ALREADY_OWNED")
+end)
+
+t.test("granting does not mutate the input entitlements", function()
+	local ent = Monetization.newEntitlements()
+	Monetization.grant(ent, "Vip", 0)
+	t.assertFalse(Monetization.owns(ent, "Vip"))
+end)
+
+t.test("VIP multiplies coins and XP", function()
+	local ent = Monetization.newEntitlements()
+	t.assertEqual(Monetization.coinMultiplier(ent, 0), 1)
+	t.assertEqual(Monetization.xpMultiplier(ent), 1)
+
+	local result = Monetization.grant(ent, "Vip", 0)
+	t.assertNear(
+		Monetization.coinMultiplier(result.entitlements, 0),
+		Config.Monetization.VipCoinMultiplier,
+		1e-9
+	)
+	t.assertNear(
+		Monetization.xpMultiplier(result.entitlements),
+		Config.Monetization.VipXpMultiplier,
+		1e-9
+	)
+end)
+
+t.test("the coin boost expires", function()
+	local result = Monetization.grant(Monetization.newEntitlements(), "DoubleCoins1h", 1000)
+	local ent = result.entitlements
+	t.assertEqual(Monetization.coinMultiplier(ent, 1000), 2)
+	t.assertEqual(Monetization.coinMultiplier(ent, 1000 + 3599), 2)
+	t.assertEqual(Monetization.coinMultiplier(ent, 1000 + 3600), 1)
+end)
+
+t.test("buying the coin boost again extends it", function()
+	local first = Monetization.grant(Monetization.newEntitlements(), "DoubleCoins1h", 1000)
+	-- The first purchase expires at 1000 + 3600.
+	t.assertEqual(first.entitlements.boosts["DoubleCoins1h"], 1000 + 3600)
+
+	-- Buying again mid-boost stacks onto the remaining time rather than
+	-- resetting it, so the player never loses paid time.
+	local second = Monetization.grant(first.entitlements, "DoubleCoins1h", 1200)
+	t.assertEqual(second.entitlements.boosts["DoubleCoins1h"], 1000 + 3600 + 3600)
+end)
+
+t.test("the coin boost stacks with VIP", function()
+	local vip = Monetization.grant(Monetization.newEntitlements(), "Vip", 0)
+	local both = Monetization.grant(vip.entitlements, "DoubleCoins1h", 0)
+	t.assertNear(
+		Monetization.coinMultiplier(both.entitlements, 0),
+		Config.Monetization.VipCoinMultiplier * 2,
+		1e-9
+	)
+end)
+
+t.test("a lucky boost grants charges that are consumed one at a time", function()
+	local result = Monetization.grant(Monetization.newEntitlements(), "LuckyBoost", 0)
+	local ent = result.entitlements
+	t.assertEqual(ent.luckyCharges, 10)
+
+	local luck = Monetization.takeLuck(ent)
+	t.assertEqual(luck, 2)
+	t.assertEqual(ent.luckyCharges, 9)
+
+	for _ = 1, 9 do
+		Monetization.takeLuck(ent)
+	end
+	t.assertEqual(ent.luckyCharges, 0)
+	t.assertEqual(Monetization.takeLuck(ent), 1)
+end)
+
+t.test("walk speed bonus only applies with the gamepass", function()
+	local ent = Monetization.newEntitlements()
+	t.assertEqual(Monetization.walkSpeedBonus(ent), 0)
+	local result = Monetization.grant(ent, "FastWalk", 0)
+	t.assertGreater(Monetization.walkSpeedBonus(result.entitlements), 0)
+end)
+
+t.test("zone pass and auto hatch flags follow ownership", function()
+	local ent = Monetization.newEntitlements()
+	t.assertFalse(Monetization.hasZonePass(ent))
+	t.assertFalse(Monetization.hasAutoHatch(ent))
+
+	local zoned = Monetization.grant(ent, "ZonePass", 0).entitlements
+	t.assertTrue(Monetization.hasZonePass(zoned))
+	t.assertFalse(Monetization.hasAutoHatch(zoned))
+end)
+
+t.test("snapshot round trip keeps entitlements and boosts", function()
+	local vip = Monetization.grant(Monetization.newEntitlements(), "Vip", 0).entitlements
+	local withBoost = Monetization.grant(vip, "LuckyBoost", 0).entitlements
+	withBoost.boosts["DoubleCoins1h"] = 5000
+
+	local restored = Monetization.fromSnapshot(withBoost)
+	t.assertTrue(Monetization.owns(restored, "Vip"))
+	t.assertEqual(restored.luckyCharges, 10)
+	t.assertEqual(restored.boosts["DoubleCoins1h"], 5000)
+end)
+
+t.test("fromSnapshot ignores unknown products and bad values", function()
+	local restored = Monetization.fromSnapshot({
+		owned = { Vip = true, FreeRobux = true },
+		boosts = { Nope = 999, DoubleCoins1h = -5 },
+		luckyCharges = -3,
+	})
+	t.assertTrue(Monetization.owns(restored, "Vip"))
+	t.assertFalse(Monetization.owns(restored, "FreeRobux"))
+	t.assertNil(restored.boosts["Nope"])
+	t.assertNil(restored.boosts["DoubleCoins1h"])
+	t.assertEqual(restored.luckyCharges, 0)
+end)
+
+t.test("fromSnapshot tolerates garbage", function()
+	t.assertEqual(#Monetization.list(), 6)
+	t.assertFalse(Monetization.owns(Monetization.fromSnapshot(nil), "Vip"))
 end)
 
 return t.finish()
