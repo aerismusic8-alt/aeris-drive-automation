@@ -24,12 +24,17 @@ Roblox's own Studio Lite FAQ says it plainly: "Currently there is no way to
 create a new Experience on mobile." Open Cloud cannot help either, because it
 has no create-universe endpoint.
 
-Pick whichever line applies:
+Check the filter before anything else. The Creations page defaults to
+**Show: Public**, which hides private places, and a starter place is private.
+Set **Show** to **All** (or clear it) and it should appear. An empty page with
+the Public filter on does not mean the account has no place.
+
+Then pick whichever line applies:
 
 - **You already own an experience.** Go to step 2.
 - **Your account has a starter place.** Older accounts were given one
-  automatically, named `<username>'s Place`. Check the Places tab and the
-  Archived filter:
+  automatically, named `<username>'s Place`. Look on the Places tab with the
+  Public filter cleared:
   https://create.roblox.com/dashboard/creations?activeTab=Place
 - **You can reach any Windows or Mac for five minutes.** Install Roblox
   Studio, `File > New`, then `File > Publish to Roblox As...` and create the
