@@ -45,8 +45,8 @@ jobs:
           $sid = ([System.Security.Principal.NTAccount]$u).Translate([System.Security.Principal.SecurityIdentifier]).Value
           New-Item -ItemType Directory -Path 'C:\AX-Build' -Force | Out-Null
           $runner = 'C:\AX-Build\start-studio.ps1'
-          Set-Content -LiteralPath $runner -Encoding UTF8 -Value 'param([string]$StudioExe)
-Start-Process -FilePath $StudioExe | Out-Null'
+          $body = 'param([string]$StudioExe); Start-Process -FilePath $StudioExe | Out-Null'
+          Set-Content -LiteralPath $runner -Encoding UTF8 -Value $body
           $name = 'AERIS-PC1-START-STUDIO'
           Unregister-ScheduledTask -TaskName $name -Confirm:$false -ErrorAction SilentlyContinue
           $arg = '-NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -File "{0}" -StudioExe "{1}"' -f $runner, $studio
