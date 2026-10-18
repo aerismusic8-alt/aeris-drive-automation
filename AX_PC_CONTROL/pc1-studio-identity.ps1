@@ -65,8 +65,17 @@ $runner = 'C:\AX-Build\probe-identity-run.ps1'
 $runnerBody = @'
 param([string]$StudioExe, [string]$Probe, [string]$Out)
 $ErrorActionPreference = 'Continue'
-& $StudioExe --task RunScript --runScriptFile $Probe --outputFile $Out --quitAfterExecution
-Write-Host "STUDIO_EXIT=$LASTEXITCODE"
+$runLog = 'C:\AX-Build\studio-run.log'
+"START $(Get-Date -Format o)" | Set-Content -LiteralPath $runLog -Encoding UTF8
+try {
+  # Studio writes verbose logs to stdout; capture both streams so a failure is
+  # visible instead of silent.
+  & $StudioExe --task RunScript --runScriptFile $Probe --outputFile $Out --quitAfterExecution *>> $runLog
+  "EXIT=$LASTEXITCODE" | Add-Content -LiteralPath $runLog -Encoding UTF8
+} catch {
+  "EXCEPTION=$($_.Exception.Message)" | Add-Content -LiteralPath $runLog -Encoding UTF8
+}
+"END $(Get-Date -Format o)" | Add-Content -LiteralPath $runLog -Encoding UTF8
 '@
 Set-Content -LiteralPath $runner -Value $runnerBody -Encoding UTF8
 
@@ -84,6 +93,20 @@ $deadline = (Get-Date).AddSeconds(240)
 while ((Get-Date) -lt $deadline -and !(Test-Path $outLog)) { Start-Sleep -Milliseconds 1000 }
 if (!(Test-Path $outLog)) {
   Write-Host "PROBE=NO_OUTPUT"
+  $runLog = 'C:\AX-Build\studio-run.log'
+  if (Test-Path $runLog) {
+    Write-Host "--- studio-run.log (tail) ---"
+    Get-Content -LiteralPath $runLog -Tail 40 | Write-Host
+    Write-Host "--- end ---"
+  } else {
+    Write-Host "STUDIO_RUN_LOG=MISSING (Studio process never started)"
+  }
+  $latestLog = Get-ChildItem 'C:\Users\User\AppData\Local\Roblox\logs' -Filter '*.log' -ErrorAction SilentlyContinue |
+    Sort-Object LastWriteTime -Descending | Select-Object -First 1
+  if ($latestLog) {
+    Write-Host "ROBLOX_LOG=$($latestLog.FullName)"
+    Get-Content -LiteralPath $latestLog.FullName -Tail 25 | Write-Host
+  }
   Write-Evidence ([ordered]@{ status = 'NO_OUTPUT'; studioExe = $studioExe; interactiveUser = $u })
   Unregister-ScheduledTask -TaskName $name -Confirm:$false -ErrorAction SilentlyContinue
   exit 0
