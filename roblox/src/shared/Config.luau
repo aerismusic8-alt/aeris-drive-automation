@@ -36,6 +36,14 @@ Config.Player = {
 	RespawnDelay = 4,
 }
 
+-- Mobile-first combat: the player never has to tap to fight, so a session
+-- works with one hand. Range is generous because the arena is small.
+Config.Combat = {
+        AttackRange = 30,
+        AttackInterval = 0.8,
+        AutoAttack = true,
+}
+
 Config.Economy = {
 	StartingCoins = 150,
 	MaxCoins = 1e9,
@@ -62,9 +70,33 @@ Config.Network = {
 }
 
 Config.Persistence = {
-	SchemaVersion = 3,
+	SchemaVersion = 4,
 	MinSupportedVersion = 1,
 	SaveIntervalSeconds = 90,
+}
+
+-- Daily login rewards. The streak resets if a player misses more than the
+-- grace window, which is what makes the daily habit stick.
+Config.Daily = {
+	CooldownSeconds = 20 * 60 * 60, -- 20h: forgiving, but still once a day
+	StreakGraceSeconds = 48 * 60 * 60, -- 48h before the streak breaks
+	MaxStreak = 365,
+	CycleLength = 7,
+	CycleGrowth = 1.25,
+	-- Day 1..7 of each cycle. Later cycles scale by CycleGrowth.
+	Rewards = {
+		{ coins = 500, xp = 50, luckCharges = 0 },
+		{ coins = 900, xp = 90, luckCharges = 0 },
+		{ coins = 1400, xp = 140, luckCharges = 1 },
+		{ coins = 2000, xp = 200, luckCharges = 0 },
+		{ coins = 2800, xp = 280, luckCharges = 1 },
+		{ coins = 4000, xp = 400, luckCharges = 1 },
+		{ coins = 6000, xp = 600, luckCharges = 2 },
+	},
+}
+
+Config.Codes = {
+	MaxAttemptsPerMinute = 10,
 }
 
 -- Ordered list keeps iteration deterministic across server restarts.

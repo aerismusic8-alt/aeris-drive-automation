@@ -99,6 +99,10 @@ $markers = [ordered]@{
   serverLoop    = 'Heartbeat'
   clientIntent  = 'InvokeServer'
   rateLimiter   = 'RateLimiter'
+  world         = 'buildArena'
+  hud           = 'AXArenaHUD'
+  dailyRewards  = 'canClaim'
+  codes         = 'hasRedeemed'
 }
 $checks = [ordered]@{ sourceBlocks = $sourceBlocks }
 foreach ($k in $markers.Keys) {

@@ -17,4 +17,9 @@ else
 	exit 127
 fi
 
-exec "$LUAU" "$ROOT/roblox/tests/run.luau"
+# Unit tests cover the pure modules in isolation.
+"$LUAU" "$ROOT/roblox/tests/run.luau" || exit 1
+
+# Integration tests replay a real game loop, so a broken reward path fails
+# here even when every unit test passes.
+exec "$LUAU" "$ROOT/roblox/tests/integration.luau"

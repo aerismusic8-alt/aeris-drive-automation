@@ -100,6 +100,9 @@ export type Entitlements = {
 	luckyCharges: number,
 }
 
+-- A ceiling keeps luck a boost rather than a permanent state.
+Monetization.MaxLuckyCharges = 100
+
 function Monetization.newEntitlements(): Entitlements
 	return { owned = {}, boosts = {}, luckyCharges = 0 }
 end
@@ -195,6 +198,16 @@ end
 
 function Monetization.hasAutoHatch(ent: Entitlements): boolean
 	return Monetization.owns(ent, "AutoHatch")
+end
+
+-- Add lucky charges from a non-Robux source (daily streak, promo code).
+-- Charges are capped so a long streak cannot make luck infinite.
+function Monetization.addLuckCharges(ent: Entitlements, amount: number): Entitlements
+        if type(amount) ~= "number" or amount ~= amount or amount <= 0 then
+                return ent
+        end
+        ent.luckyCharges = math.min(Monetization.MaxLuckyCharges, ent.luckyCharges + math.floor(amount))
+        return ent
 end
 
 -- Consume one lucky charge if available. Returns the luck multiplier to use.

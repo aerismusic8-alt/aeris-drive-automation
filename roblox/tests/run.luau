@@ -17,6 +17,8 @@ local Pets = require("../src/shared/Pets")
 local Rebirth = require("../src/shared/Rebirth")
 local Zones = require("../src/shared/Zones")
 local Monetization = require("../src/shared/Monetization")
+local DailyRewards = require("../src/shared/DailyRewards")
+local Codes = require("../src/shared/Codes")
 
 --------------------------------------------------------------------------
 t.suite("Random")
@@ -1403,6 +1405,286 @@ t.test("serialize includes the progression fields", function()
 	t.assertContains(json, '"rebirths":2')
 	t.assertContains(json, '"zone":"Cavern"')
 	t.assertContains(json, '"updatedAt":1234')
+end)
+
+--------------------------------------------------------------------------
+t.suite("DailyRewards")
+--------------------------------------------------------------------------
+
+t.test("a fresh state has no streak and can claim immediately", function()
+	local state = DailyRewards.new()
+	t.assertEqual(state.streak, 0)
+	t.assertEqual(state.lastClaimAt, 0)
+	local ok, reason = DailyRewards.canClaim(state, 1000)
+	t.assertTrue(ok)
+	t.assertEqual(reason, "FIRST_CLAIM")
+end)
+
+t.test("the first claim starts the streak at day one", function()
+	local state, reward, err = DailyRewards.claim(DailyRewards.new(), 1000)
+	t.assertNil(err)
+	t.assertNotNil(state)
+	t.assertEqual(state.streak, 1)
+	t.assertEqual(state.totalClaims, 1)
+	t.assertEqual(reward.day, 1)
+	t.assertEqual(reward.coins, Config.Daily.Rewards[1].coins)
+end)
+
+t.test("claiming twice in a row is refused", function()
+	local state = select(1, DailyRewards.claim(DailyRewards.new(), 1000))
+	local ok, reason = DailyRewards.canClaim(state, 1000 + 60)
+	t.assertFalse(ok)
+	t.assertEqual(reason, "TOO_SOON")
+end)
+
+t.test("the cooldown must pass before the next claim", function()
+	local cfg = Config.Daily
+	local state = select(1, DailyRewards.claim(DailyRewards.new(), 1000))
+	local ok = DailyRewards.canClaim(state, 1000 + cfg.CooldownSeconds)
+	t.assertTrue(ok)
+end)
+
+t.test("a claim inside the grace window advances the streak", function()
+	local cfg = Config.Daily
+	local state = select(1, DailyRewards.claim(DailyRewards.new(), 1000))
+	local second = select(1, DailyRewards.claim(state, 1000 + cfg.CooldownSeconds + 60))
+	t.assertEqual(second.streak, 2)
+end)
+
+t.test("missing the grace window resets the streak", function()
+	local cfg = Config.Daily
+	local state = select(1, DailyRewards.claim(DailyRewards.new(), 1000))
+	local late = 1000 + cfg.StreakGraceSeconds + 1
+	local second = select(1, DailyRewards.claim(state, late))
+	t.assertEqual(second.streak, 1)
+end)
+
+t.test("a later cycle pays more than the first cycle", function()
+	local cfg = Config.Daily
+	local day1 = DailyRewards.rewardForDay(1)
+	local day8 = DailyRewards.rewardForDay(cfg.CycleLength + 1)
+	t.assertTrue(day8.coins > day1.coins, "day 8 must beat day 1")
+end)
+
+t.test("a full cycle of rewards is strictly increasing", function()
+	local cfg = Config.Daily
+	local prev = 0
+	for day = 1, cfg.CycleLength do
+		local reward = DailyRewards.rewardForDay(day)
+		t.assertTrue(reward.coins > prev, "day " .. day .. " did not increase")
+		prev = reward.coins
+	end
+end)
+
+t.test("the streak is capped at MaxStreak", function()
+	local cfg = Config.Daily
+	local state = { streak = cfg.MaxStreak, lastClaimAt = 1000, totalClaims = 1 }
+	local next = select(1, DailyRewards.claim(state, 1000 + cfg.CooldownSeconds + 10))
+	t.assertEqual(next.streak, cfg.MaxStreak)
+end)
+
+t.test("timeUntilClaim counts down to zero", function()
+	local cfg = Config.Daily
+	local state = select(1, DailyRewards.claim(DailyRewards.new(), 1000))
+	t.assertEqual(DailyRewards.timeUntilClaim(state, 1000), cfg.CooldownSeconds)
+	t.assertEqual(DailyRewards.timeUntilClaim(state, 1000 + cfg.CooldownSeconds), 0)
+end)
+
+t.test("snapshot survives a round trip", function()
+	local state = select(1, DailyRewards.claim(DailyRewards.new(), 1000))
+	local restored = DailyRewards.fromSnapshot(DailyRewards.snapshot(state))
+	t.assertEqual(restored.streak, state.streak)
+	t.assertEqual(restored.lastClaimAt, state.lastClaimAt)
+	t.assertEqual(restored.totalClaims, state.totalClaims)
+end)
+
+t.test("fromSnapshot tolerates garbage", function()
+	local empty = DailyRewards.fromSnapshot(nil)
+	t.assertEqual(empty.streak, 0)
+	local junk = DailyRewards.fromSnapshot({ streak = "lots", lastClaimAt = {}, totalClaims = -9 })
+	t.assertEqual(junk.streak, 0)
+	t.assertEqual(junk.lastClaimAt, 0)
+	t.assertEqual(junk.totalClaims, 0)
+end)
+
+t.test("fromSnapshot clamps an impossible streak", function()
+	local state = DailyRewards.fromSnapshot({ streak = 99999, lastClaimAt = 1, totalClaims = 1 })
+	t.assertEqual(state.streak, Config.Daily.MaxStreak)
+end)
+
+--------------------------------------------------------------------------
+t.suite("Codes")
+--------------------------------------------------------------------------
+
+t.test("a known code is found regardless of case and spacing", function()
+	t.assertNotNil(Codes.get("release"))
+	t.assertNotNil(Codes.get("ReLeAsE"))
+	t.assertNotNil(Codes.get(" RELEASE "))
+end)
+
+t.test("an unknown code is rejected", function()
+	t.assertNil(Codes.get("NOPE"))
+	local _, _, reason = Codes.redeem({}, "NOPE", 1000)
+	t.assertEqual(reason, "UNKNOWN_CODE")
+end)
+
+t.test("redeeming a code grants it and records the use", function()
+	local map, def, err = Codes.redeem({}, "RELEASE", 1000)
+	t.assertNil(err)
+	t.assertNotNil(def)
+	t.assertEqual(def.code, "RELEASE")
+	t.assertNotNil(map.RELEASE)
+	t.assertEqual(map.RELEASE.at, 1000)
+end)
+
+t.test("the same code cannot be redeemed twice", function()
+	local map = select(1, Codes.redeem({}, "RELEASE", 1000))
+	local _, _, reason = Codes.redeem(map, "RELEASE", 2000)
+	t.assertEqual(reason, "ALREADY_REDEEMED")
+end)
+
+t.test("case does not let a player redeem twice", function()
+	local map = select(1, Codes.redeem({}, "RELEASE", 1000))
+	local _, _, reason = Codes.redeem(map, "release", 2000)
+	t.assertEqual(reason, "ALREADY_REDEEMED")
+end)
+
+t.test("an expired code is refused", function()
+	local def = Codes.get("RELEASE")
+	local savedExpiry = def.expiresAt
+	def.expiresAt = 500
+	local _, _, reason = Codes.redeem({}, "RELEASE", 1000)
+	def.expiresAt = savedExpiry
+	t.assertEqual(reason, "CODE_EXPIRED")
+end)
+
+t.test("every listed code is redeemable", function()
+	local all = Codes.list()
+	t.assertTrue(#all >= 5)
+	for _, def in ipairs(all) do
+		local map, got, err = Codes.redeem({}, def.code, 1000)
+		t.assertNil(err, def.code .. " failed to redeem")
+		t.assertNotNil(map)
+		t.assertEqual(got.code, def.code)
+	end
+end)
+
+t.test("hasRedeemed reports the truth", function()
+	local map = select(1, Codes.redeem({}, "AXARENA", 1000))
+	t.assertTrue(Codes.hasRedeemed(map, "AXARENA"))
+	t.assertFalse(Codes.hasRedeemed(map, "TRENDING"))
+end)
+
+t.test("snapshot drops codes that no longer exist", function()
+	local dirty = { RELEASE = { code = "RELEASE", at = 5 }, GONE = { code = "GONE", at = 9 } }
+	local clean = Codes.snapshot(dirty)
+	t.assertNotNil(clean.RELEASE)
+	t.assertNil(clean.GONE)
+end)
+
+t.test("snapshot and fromSnapshot round trip", function()
+	local map = select(1, Codes.redeem({}, "FARM2026", 1234))
+	local restored = Codes.fromSnapshot(Codes.snapshot(map))
+	t.assertEqual(restored.FARM2026.at, 1234)
+end)
+
+t.test("fromSnapshot tolerates garbage", function()
+	t.assertEqual(next(Codes.fromSnapshot(nil)), nil)
+	t.assertEqual(next(Codes.fromSnapshot("nope")), nil)
+	t.assertEqual(next(Codes.fromSnapshot({ BAD = 5 })), nil)
+end)
+
+--------------------------------------------------------------------------
+t.suite("SaveSchema v4: daily streak and redeemed codes")
+--------------------------------------------------------------------------
+
+t.test("a new save carries an empty streak and no redemptions", function()
+	local save = SaveSchema.new()
+	t.assertEqual(save.daily.streak, 0)
+	t.assertEqual(save.daily.totalClaims, 0)
+	t.assertEqual(next(save.redeemed), nil)
+end)
+
+t.test("a v3 save with no daily or redeemed migrates to defaults", function()
+	local v3 = {
+		version = 3,
+		coins = 500,
+		upgrades = { Damage = 3, Health = 2, Speed = 1, CritChance = 0 },
+		inventory = {},
+		stats = { kills = 10, wavesCleared = 2, deaths = 1 },
+		level = 5,
+		xp = 120,
+		rebirths = 1,
+		zone = "Cavern",
+		updatedAt = 1000,
+	}
+	local data = SaveSchema.migrate(v3)
+	t.assertNotNil(data)
+	t.assertEqual(data.version, Config.Persistence.SchemaVersion)
+	t.assertEqual(data.daily.streak, 0)
+	t.assertEqual(next(data.redeemed), nil)
+	-- The v3 fields must survive the v4 migration untouched.
+	t.assertEqual(data.level, 5)
+	t.assertEqual(data.rebirths, 1)
+	t.assertEqual(data.zone, "Cavern")
+end)
+
+t.test("a daily streak above the cap is rejected by validation", function()
+	local save = SaveSchema.new()
+	save.daily.streak = Config.Daily.MaxStreak + 1
+	local ok, problems = SaveSchema.validate(save)
+	t.assertFalse(ok)
+	t.assertEqual(problems[1], "INVALID_DAILY_STREAK")
+end)
+
+t.test("a negative claim time is rejected by validation", function()
+	local save = SaveSchema.new()
+	save.daily.lastClaimAt = -5
+	local ok, problems = SaveSchema.validate(save)
+	t.assertFalse(ok)
+	t.assertEqual(problems[1], "INVALID_DAILY_CLAIM_TIME")
+end)
+
+t.test("a non-table daily block is rejected by validation", function()
+	local save = SaveSchema.new()
+	save.daily = "tomorrow"
+	local ok, problems = SaveSchema.validate(save)
+	t.assertFalse(ok)
+	t.assertEqual(problems[1], "INVALID_DAILY")
+end)
+
+t.test("a non-table redeemed map is rejected by validation", function()
+	local save = SaveSchema.new()
+	save.redeemed = 42
+	local ok, problems = SaveSchema.validate(save)
+	t.assertFalse(ok)
+	t.assertEqual(problems[1], "INVALID_REDEEMED")
+end)
+
+t.test("serialization carries the daily streak and redeemed codes", function()
+	local save = SaveSchema.new()
+	save.daily = { streak = 3, lastClaimAt = 999, totalClaims = 3 }
+	save.redeemed = { RELEASE = { code = "RELEASE", at = 555 } }
+	local text = SaveSchema.serialize(save, 1234)
+	t.assertNotNil(string.find(text, '"daily"', 1, true))
+	t.assertNotNil(string.find(text, '"streak":3', 1, true))
+	t.assertNotNil(string.find(text, '"redeemed"', 1, true))
+	t.assertNotNil(string.find(text, '"RELEASE":555', 1, true))
+end)
+
+t.test("the migrated save is a valid v4 save", function()
+	local v2 = {
+		version = 2,
+		coins = 100,
+		upgrades = { Damage = 1, Health = 1, Speed = 0, CritChance = 0 },
+		inventory = {},
+		stats = { kills = 0, wavesCleared = 0, deaths = 0 },
+		updatedAt = 50,
+	}
+	local data, problems = SaveSchema.load(v2)
+	t.assertNotNil(data, problems and table.concat(problems, ","))
+	t.assertEqual(data.version, Config.Persistence.SchemaVersion)
+	t.assertEqual(data.daily.streak, 0)
 end)
 
 return t.finish()

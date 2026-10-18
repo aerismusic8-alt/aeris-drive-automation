@@ -9,6 +9,8 @@ local Pets = require("./Pets")
 local Rebirth = require("./Rebirth")
 local Zones = require("./Zones")
 local Monetization = require("./Monetization")
+local DailyRewards = require("./DailyRewards")
+local Codes = require("./Codes")
 
 local SaveSchema = {}
 
@@ -24,6 +26,8 @@ export type SaveData = {
 	zone: string,
 	pets: any,
 	entitlements: any,
+	daily: any,
+	redeemed: any,
 	updatedAt: number,
 }
 
@@ -43,6 +47,8 @@ function SaveSchema.new(): SaveData
 		zone = Zones.defaultZone(),
 		pets = Pets.snapshot(Pets.new()),
 		entitlements = Monetization.newEntitlements(),
+		daily = DailyRewards.new(),
+		redeemed = {},
 		updatedAt = 0,
 	}
 end
@@ -145,6 +151,26 @@ function SaveSchema.validate(data: any): (boolean, { string })
 		table.insert(problems, "INVALID_ENTITLEMENTS")
 	end
 
+	-- Daily streak and redeemed codes (schema v4).
+	if data.daily ~= nil then
+		if type(data.daily) ~= "table" then
+			table.insert(problems, "INVALID_DAILY")
+		else
+			local streak = data.daily.streak
+			if streak ~= nil and (not isFiniteNumber(streak) or streak < 0
+				or streak > Config.Daily.MaxStreak) then
+				table.insert(problems, "INVALID_DAILY_STREAK")
+			end
+			local lastClaimAt = data.daily.lastClaimAt
+			if lastClaimAt ~= nil and (not isFiniteNumber(lastClaimAt) or lastClaimAt < 0) then
+				table.insert(problems, "INVALID_DAILY_CLAIM_TIME")
+			end
+		end
+	end
+	if data.redeemed ~= nil and type(data.redeemed) ~= "table" then
+		table.insert(problems, "INVALID_REDEEMED")
+	end
+
 	return #problems == 0, problems
 end
 
@@ -187,6 +213,8 @@ function SaveSchema.migrate(data: any): SaveData?
 		zone = (Zones.getDef(data.zone) and data.zone) or Zones.defaultZone(),
 		pets = Pets.snapshot(Pets.fromSnapshot(data.pets)),
 		entitlements = Monetization.fromSnapshot(data.entitlements),
+		daily = DailyRewards.fromSnapshot(data.daily),
+		redeemed = Codes.fromSnapshot(data.redeemed),
 		updatedAt = isFiniteNumber(data.updatedAt) and data.updatedAt or 0,
 	}
 
@@ -209,7 +237,7 @@ end
 -- Emit deterministic JSON. Fixed key ordering keeps stored blobs diff-friendly.
 function SaveSchema.serialize(data: SaveData, now: number): string
 	return string.format(
-		'{"version":%d,"coins":%d,"upgrades":%s,"inventory":%s,"stats":%s,"level":%d,"xp":%d,"rebirths":%d,"zone":"%s","updatedAt":%d}',
+		'{"version":%d,"coins":%d,"upgrades":%s,"inventory":%s,"stats":%s,"level":%d,"xp":%d,"rebirths":%d,"zone":"%s","daily":%s,"redeemed":%s,"updatedAt":%d}',
 		CURRENT,
 		math.floor(data.coins),
 		SaveSchema.encodeUpgrades(data.upgrades),
@@ -219,6 +247,8 @@ function SaveSchema.serialize(data: SaveData, now: number): string
 		math.floor(data.xp or 0),
 		math.floor(data.rebirths or 0),
 		data.zone or Zones.defaultZone(),
+		SaveSchema.encodeDaily(data.daily),
+		SaveSchema.encodeRedeemed(data.redeemed),
 		math.floor(now)
 	)
 end
@@ -237,6 +267,28 @@ function SaveSchema.encodeInventory(slots): string
 		table.insert(parts, string.format('{"itemId":"%s","count":%d}', slot.itemId, slot.count))
 	end
 	return "[" .. table.concat(parts, ",") .. "]"
+end
+
+function SaveSchema.encodeDaily(daily: any): string
+	local d = DailyRewards.snapshot(daily or DailyRewards.new())
+	return string.format(
+		'{"streak":%d,"lastClaimAt":%d,"totalClaims":%d}',
+		d.streak, d.lastClaimAt, d.totalClaims
+	)
+end
+
+function SaveSchema.encodeRedeemed(redeemed: any): string
+	local clean = Codes.snapshot(redeemed)
+	local codes = {}
+	for code, _ in pairs(clean) do
+		table.insert(codes, code)
+	end
+	table.sort(codes)
+	local parts = {}
+	for _, code in ipairs(codes) do
+		table.insert(parts, string.format('"%s":%d', code, clean[code].at))
+	end
+	return "{" .. table.concat(parts, ",") .. "}"
 end
 
 function SaveSchema.encodeStats(stats): string

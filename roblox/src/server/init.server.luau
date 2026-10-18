@@ -24,6 +24,9 @@ local Pets = require(Shared.Pets)
 local Rebirth = require(Shared.Rebirth)
 local Zones = require(Shared.Zones)
 local Monetization = require(Shared.Monetization)
+local DailyRewards = require(Shared.DailyRewards)
+local World = require(script.World)
+local Codes = require(Shared.Codes)
 
 -- Remotes are created here so the client can rely on WaitForChild alone.
 local function ensureRemote(container: Instance, className: "RemoteEvent" | "RemoteFunction", name: string): Instance
@@ -51,6 +54,8 @@ local EquipPet = ensureRemote(Remotes, "RemoteFunction", "EquipPet") :: RemoteFu
 local UnequipPet = ensureRemote(Remotes, "RemoteFunction", "UnequipPet") :: RemoteFunction
 local DoRebirth = ensureRemote(Remotes, "RemoteFunction", "Rebirth") :: RemoteFunction
 local TravelZone = ensureRemote(Remotes, "RemoteFunction", "TravelZone") :: RemoteFunction
+local ClaimDaily = ensureRemote(Remotes, "RemoteFunction", "ClaimDaily") :: RemoteFunction
+local RedeemCode = ensureRemote(Remotes, "RemoteFunction", "RedeemCode") :: RemoteFunction
 local WaveState = ensureRemote(Remotes, "RemoteEvent", "WaveState") :: RemoteEvent
 local PlayerState = ensureRemote(Remotes, "RemoteEvent", "PlayerState") :: RemoteEvent
 local Notify = ensureRemote(Remotes, "RemoteEvent", "Notify") :: RemoteEvent
@@ -70,7 +75,11 @@ type PlayerRecord = {
 	zone: string,
 	pets: any,
 	entitlements: any,
+	daily: any,
+	redeemed: any,
 	combatant: any,
+	lastAttackAt: number,
+	waveAtKill: number,
 	lastZoneChange: number,
 	dirty: boolean,
 }
@@ -120,6 +129,11 @@ local function pushPlayerState(player: Player, record: PlayerRecord)
 		maxEquipped = Pets.maxEquipped(Monetization.owns(record.entitlements, "Vip")),
 
 		entitlements = record.entitlements,
+		dailyStreak = record.daily.streak,
+		dailyReady = select(1, DailyRewards.canClaim(record.daily, now)),
+		dailySecondsLeft = DailyRewards.timeUntilClaim(record.daily, now),
+		dailyNextReward = DailyRewards.rewardForDay(record.daily.streak + 1),
+		redeemed = record.redeemed,
 		coinMultiplier = coinMultiplier(record, now),
 		rebirthCoin = rebirthCoin,
 		rebirthDamage = rebirthDamage,
@@ -146,8 +160,12 @@ local function buildRecord(userId: number, saved: any): PlayerRecord
 		zone = data.zone,
 		pets = Pets.fromSnapshot(data.pets),
 		entitlements = Monetization.fromSnapshot(data.entitlements),
+		daily = DailyRewards.fromSnapshot(data.daily),
+		redeemed = Codes.fromSnapshot(data.redeemed),
 		combatant = Combat.createCombatant(Stats.derive(data.upgrades).maxHealth),
 		lastZoneChange = 0,
+		lastAttackAt = 0,
+		waveAtKill = 1,
 		dirty = false,
 	}
 	return record
@@ -177,6 +195,8 @@ local function saveRecord(record: PlayerRecord): boolean
 		zone = record.zone,
 		pets = Pets.snapshot(record.pets),
 		entitlements = record.entitlements,
+		daily = DailyRewards.snapshot(record.daily),
+		redeemed = Codes.snapshot(record.redeemed),
 		updatedAt = os.time(),
 	}
 	local ok, err = pcall(function()
@@ -188,6 +208,18 @@ local function saveRecord(record: PlayerRecord): boolean
 	end
 	record.dirty = false
 	return true
+end
+
+-- One place for "an enemy died": the kill credit goes to the player who
+-- landed the last hit, and every reward scales with their multipliers.
+local function rewardKill(record: PlayerRecord, wave: number, reward: number)
+	local now = os.time()
+	local scaled = math.floor(reward * coinMultiplier(record, now) + 0.5)
+	record.coins = math.min(Config.Economy.MaxCoins, record.coins + scaled)
+	record.stats.kills += 1
+	local xp = math.floor(Leveling.xpFromKill(wave) * Monetization.xpMultiplier(record.entitlements) + 0.5)
+	awardXp(record, xp)
+	record.dirty = true
 end
 
 -- Award XP and, on level up, tell the player. Returns the levels gained.
@@ -425,6 +457,65 @@ TravelZone.OnServerInvoke = function(player: Player, zoneId: any): (boolean, str
 	return true, nil
 end
 
+-- Daily login reward. The server owns the clock and the streak; the client only
+-- asks. A rejected claim returns a stable reason the UI can translate.
+ClaimDaily.OnServerInvoke = function(player: Player): (boolean, any, string?)
+	local record, err = guard(player)
+	if not record then
+		return false, nil, err
+	end
+
+	local now = os.time()
+	local next, reward, reason = DailyRewards.claim(record.daily, now)
+	if not next or not reward then
+		return false, nil, reason
+	end
+
+	record.daily = next
+	record.coins = math.min(Config.Economy.MaxCoins, record.coins + reward.coins)
+	if reward.luckCharges > 0 then
+		record.entitlements = Monetization.addLuckCharges(record.entitlements, reward.luckCharges)
+	end
+	record.dirty = true
+	awardXp(record, reward.xp)
+	pushPlayerState(player, record)
+	notify(player, string.format("Daily day %d: +%d coins", reward.day, reward.coins))
+	return true, reward, nil
+end
+
+-- Promo code redemption. The attempt is rate limited by guard, so a player
+-- cannot brute force codes, and each code is single use per player.
+RedeemCode.OnServerInvoke = function(player: Player, code: any): (boolean, any, string?)
+	local record, err = guard(player)
+	if not record then
+		return false, nil, err
+	end
+	if type(code) ~= "string" then
+		return false, nil, "BAD_REQUEST"
+	end
+	-- Codes are short; a long string is either a mistake or an attack.
+	if #code > 32 then
+		return false, nil, "BAD_REQUEST"
+	end
+
+	local now = os.time()
+	local next, def, reason = Codes.redeem(record.redeemed, code, now)
+	if not next or not def then
+		return false, nil, reason
+	end
+
+	record.redeemed = next
+	record.coins = math.min(Config.Economy.MaxCoins, record.coins + def.coins)
+	if def.luckCharges > 0 then
+		record.entitlements = Monetization.addLuckCharges(record.entitlements, def.luckCharges)
+	end
+	record.dirty = true
+	awardXp(record, def.xp)
+	pushPlayerState(player, record)
+	notify(player, string.format("Code %s: +%d coins", def.code, def.coins))
+	return true, { code = def.code, coins = def.coins, xp = def.xp, luckCharges = def.luckCharges }, nil
+end
+
 -- Robux purchases. MarketplaceService is the only authority on whether money
 -- changed hands; we only decide what the player is owed.
 local function grantPurchase(player: Player, productId: string): boolean
@@ -478,26 +569,10 @@ RunService.Heartbeat:Connect(function(dt)
 		local events, completed = director:update(TICK_STEP)
 
 		for _, plan in ipairs(events) do
-			local enemy = Combat.createEnemy(plan, os.clock())
+			-- Spawn a real, visible enemy. It is damaged by players, not by
+			-- this loop, so a kill always means somebody actually fought.
+			World.spawnEnemy(plan, World.aliveCount() + 1, plan.enemyCount, os.clock())
 			director:notifyEnemySpawned()
-
-			-- Enemies are resolved immediately in the reference loop; the
-			-- reward path is what matters here, and it must stay in one place.
-			local killed, reward = Combat.damageEnemy(enemy, math.huge)
-			if killed then
-				director:notifyEnemyRemoved()
-				local now = os.time()
-				for _, record in pairs(records) do
-					local scaled = math.floor(reward * coinMultiplier(record, now) + 0.5)
-					record.coins = math.min(Config.Economy.MaxCoins, record.coins + scaled)
-					record.stats.kills += 1
-					local xp = math.floor(
-						Leveling.xpFromKill(plan.wave) * Monetization.xpMultiplier(record.entitlements) + 0.5
-					)
-					awardXp(record, xp)
-					record.dirty = true
-				end
-			end
 		end
 
 		if completed then
@@ -508,11 +583,70 @@ RunService.Heartbeat:Connect(function(dt)
 		end
 	end
 
+	-- Mobile-first auto attack: the nearest enemy in range takes a hit on a
+	-- fixed cadence. The server picks the target and rolls the damage.
+	for _, player in ipairs(Players:GetPlayers()) do
+		local record = records[player.UserId]
+		local character = player.Character
+		local root = character and character:FindFirstChild("HumanoidRootPart")
+		if record and root and root:IsA("BasePart") and record.combatant.alive then
+			local now = os.clock()
+			if now - record.lastAttackAt >= Config.Combat.AttackInterval then
+				local targetId, targetDistance = nil, math.huge
+				for _, enemy in ipairs(World.snapshot()) do
+					local model = World.getEnemyModel(enemy.id)
+					local body = model and model:FindFirstChild("Body")
+					if body and body:IsA("BasePart") then
+						local distance = (body.Position - root.Position).Magnitude
+						if distance <= Config.Combat.AttackRange and distance < targetDistance then
+							targetId, targetDistance = enemy.id, distance
+						end
+					end
+				end
+				if targetId then
+					record.lastAttackAt = now
+					local damage = Stats.rollDamage(Stats.derive(record.upgrades), rng)
+					local killed, reward = World.damageEnemy(targetId, damage)
+					if killed then
+						director:notifyEnemyRemoved()
+						rewardKill(record, record.waveAtKill, reward)
+					end
+				end
+			end
+		end
+	end
+
+	-- Enemies chase and hit players. Keeping the damage and reward rules
+	-- here keeps all combat maths in one place.
+	World.updateEnemies(TICK_STEP, os.clock(), function(target, damage)
+		local record = records[target.UserId]
+		if not record then
+			return
+		end
+		local died = Combat.damageCombatant(record.combatant, damage)
+		if died then
+			local character = target.Character
+			local humanoid = character and character:FindFirstChildOfClass("Humanoid")
+			if humanoid then
+				humanoid.Health = 0
+			end
+			record.stats.deaths += 1
+			record.dirty = true
+		end
+	end)
+
 	local snapshot = director:snapshot()
+	snapshot.aliveEnemies = World.aliveCount()
+	for _, record in pairs(records) do
+		record.waveAtKill = math.max(1, snapshot.wave)
+	end
 	for _, player in ipairs(Players:GetPlayers()) do
 		WaveState:FireClient(player, snapshot)
 	end
 end)
+
+-- Build the playable world before anyone can join.
+World.buildArena()
 
 -- Periodic persistence.
 task.spawn(function()
