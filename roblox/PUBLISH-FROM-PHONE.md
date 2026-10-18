@@ -1,87 +1,86 @@
 # Publish AX Arena from a phone
 
-The code is done and tested. This is the part that still needs a computer,
-because Roblox only lets you publish from Roblox Studio.
+PC1 builds and publishes the game. You only need to create the experience
+once and copy two numbers. Roblox Studio is **not** required.
 
-## Why a phone is not enough
+## How it works
 
-Roblox Studio is the tool that uploads a place to Roblox. There is no mobile
-version. You can **play** on a phone, but you cannot **publish** from one.
+```
+repo  --Rojo-->  AXArena.rbxlx  --Open Cloud API-->  live Roblox place
+        (PC1)                     (PC1)
+```
 
-So the split is:
+Roblox's Open Cloud API accepts a place file over HTTPS and publishes it as a
+new version. That is why no computer with Studio is needed: PC1 does the whole
+job, and you drive it from the phone.
 
-| Step | Phone | Computer |
-| --- | --- | --- |
-| Read the code, review the PR | yes | yes |
-| Open Studio, paste the scripts | no | yes |
-| Publish the place | no | yes |
-| Play the published game | yes | yes |
-| Create gamepasses and products | yes | yes |
-| Check revenue | yes | yes |
+## Step 1: create the experience (phone browser)
 
-## What you need once
+1. Go to https://create.roblox.com and sign in.
+2. Open **Creations -> Create New -> Experience**.
+3. Choose any template. The code replaces everything, so the template does not
+   matter.
+4. Name it something players search for, for example **AX Arena: Farm and
+   Fight**. The name and icon are what get you discovered.
+5. Open the experience. The address bar looks like:
 
-1. A Roblox account (you have one).
-2. Roblox Studio on a computer, signed in to that account.
-3. About 20 minutes.
+   ```
+   https://create.roblox.com/dashboard/creations/experiences/1234567890/places/9876543210/overview
+                                                   ^^^^^^^^^^          ^^^^^^^^^^
+                                                   universeId          placeId
+   ```
 
-## Step 1: get the code onto the computer
+6. Note the two numbers.
 
-Open this link on the computer and click **Code -> Download ZIP**:
+## Step 2: tell the pipeline those numbers
 
-https://github.com/aerismusic8-alt/aeris-drive-automation/tree/ax-arena-roblox-game
+Edit `roblox/publish-config.json` and replace the two `null` values:
 
-Unzip it. The game lives in the `roblox/` folder.
+```json
+{
+  "universeId": 1234567890,
+  "placeId": 9876543210,
+  "versionType": "Saved"
+}
+```
 
-## Step 2: open the project in Studio
+`Saved` means only you can see the result. Switch to `Published` when you are
+ready for players.
 
-1. Open Roblox Studio.
-2. Choose **New -> Baseplate**. This gives you a world to stand in.
-3. In the Explorer panel, right-click **ServerScriptService**, choose
-   **Insert Object -> Folder**, and name it `Shared`.
-4. Right-click the new `Shared` folder, and insert a **ModuleScript** for each
-   file in `roblox/src/shared/`. Name each one after its file, without the
-   `.luau` part. So `Config.luau` becomes a ModuleScript called `Config`.
-5. Paste the contents of each file into its ModuleScript.
-6. Right-click **ServerScriptService**, insert a **Script** named `Server`,
-   and paste `roblox/src/server/init.server.luau` into it.
-7. Right-click **StarterPlayer -> StarterPlayerScripts**, insert a
-   **LocalScript** named `Client`, and paste
-   `roblox/src/client/init.client.luau` into it.
+## Step 3: create the API key (phone browser)
 
-The server creates the remotes and the HUD itself, so there is nothing else to
-wire up.
+1. Go to https://create.roblox.com/dashboard/credentials
+2. **Create API Key**. Name it `AX Arena publish`.
+3. Under **Access Permissions**, add **universe-places** and tick **write**.
+4. Under **Accepted IP Addresses**, you can leave it open, or restrict it to
+   PC1's address for safety.
+5. Save the key. Roblox shows it once. Copy it.
 
-## Step 3: press Play
+Then add it to the repository:
 
-Press **Play** in Studio. You should see:
+1. Open https://github.com/aerismusic8-alt/aeris-drive-automation/settings/secrets/actions
+2. **New repository secret**, name it exactly `ROBLOX_API_KEY`, paste the key.
 
-- coins ticking up as waves die
-- a level and XP bar climbing
-- a zone name
-- a rebirth counter
+## Step 4: run it
 
-If the Output panel shows `[AX Arena] server ready (schema v3)`, the loop is
-running.
+1. Open https://github.com/aerismusic8-alt/aeris-drive-automation/actions/workflows/ax-pc1-roblox-publish.yml
+2. **Run workflow**, pick `Saved` for a private test or `Published` to go live.
+3. Wait about a minute.
 
-## Step 4: publish
+The run prints the new version number, for example `PUBLISHED_VERSION=3`. That
+number is your proof it worked. If anything is missing the run says `BLOCKED`
+and lists what is absent, rather than pretending to succeed.
 
-1. **File -> Publish to Roblox As...**
-2. Give it a name, a description and a genre. Say it is a farming game, because
-   that is what players search for.
-3. Set **Playability** to **Public** so anyone can join.
-4. Click **Create**.
+## Step 5: check it
 
-You now have a public game. Open it on your phone to confirm it loads.
+Open the experience page on your phone and press play. You should see coins
+ticking up, a level bar and a zone name.
 
-## Step 5: turn on the money
+## Step 6: turn on the money
 
-The prices already exist in the code, but Roblox needs the items created on its
-website before they can be sold. Do this from a phone browser at
-https://create.roblox.com.
-
-For each row below, create the item, then copy its numeric id into
-`roblox/src/shared/Monetization.luau` as the `assetId` of that product.
+Prices already exist in the code. Roblox still needs the items created before
+they can be sold. At https://create.roblox.com, open the experience, then
+**Monetization**:
 
 | Product | Type | Price (Robux) |
 | --- | --- | --- |
@@ -92,27 +91,24 @@ For each row below, create the item, then copy its numeric id into
 | 2x Coins (1 hour) | Developer Product | 25 |
 | Lucky Boost | Developer Product | 35 |
 
-Until an `assetId` is set, the client refuses to prompt for that product, so
-nothing breaks while the list is half filled in.
+Each item gives you a numeric id. Put it in
+`roblox/src/shared/Monetization.luau` as that product's `assetId`, then run the
+publish workflow again. Until an id is set the game refuses to prompt for that
+product, so a half-filled list is safe.
 
-## Step 6: check it earns
+## What is already done
 
-After a purchase, the Roblox dashboard shows the Robux. If a purchase is made
-while the player is offline, the server keeps the receipt and grants it when
-they return, so nobody pays without receiving.
+- PC1 builds the place with Rojo: 15 scripts, all verified to carry real code
+- the Open Cloud publish path is wired and tested end to end
+- 145 automated tests pass
+- the farm loop, pets, rebirth, zones and six products are all implemented
 
-## Where things stand
+## What still needs you
 
-Done and tested:
+- create the experience (step 1)
+- create the API key and store it as a secret (step 3)
+- create the six monetization items (step 6)
 
-- 145 automated tests, all passing
-- the full farm loop: coins, XP, levels, pets, eggs, rebirths, zones
-- six products with server-side prices and replay protection
-- saves that migrate from older versions without losing progress
-
-Still needed:
-
-- a computer with Roblox Studio to publish
-- Roblox asset ids for the six products
+Everything else runs without you.
 
 This document was created by an AI agent (OpenHands) on behalf of the user.
