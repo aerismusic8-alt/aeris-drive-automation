@@ -54,7 +54,7 @@ $proc = Start-Process -FilePath $StudioExe -PassThru
 "LAUNCHED_PID=$($proc.Id)" | Write-Host
 
 # Studio needs time to paint the start page and fetch its login QR.
-$shots = @(15, 20, 25, 30, 35, 40, 45)
+$shots = @(12, 16, 20, 24, 28, 32, 36, 40)
 $prev = 0
 foreach ($t in $shots) {
   Start-Sleep -Seconds ($t - $prev)
@@ -100,7 +100,7 @@ Start-ScheduledTask -TaskName $name
 Write-Host "CAPTURE_TASK_STARTED=1"
 
 $deadline = (Get-Date).AddSeconds(60)
-while ((Get-Date) -lt $deadline -and !(Test-Path (Join-Path $ev 'login-45s.png'))) { Start-Sleep -Milliseconds 700 }
+while ((Get-Date) -lt $deadline -and !(Test-Path (Join-Path $ev 'login-40s.png'))) { Start-Sleep -Milliseconds 700 }
 
 $shots = @(Get-ChildItem -LiteralPath $ev -Filter '*.png' -ErrorAction SilentlyContinue)
 Write-Host "PNG_COUNT=$($shots.Count)"
