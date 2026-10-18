@@ -77,22 +77,46 @@ Write-Host "BUILD_OUTPUT=$outFile"
 Write-Host "BUILD_SIZE_BYTES=$outSize"
 
 # --- 4. Sanity check the place actually contains our scripts -------------
+# Rojo stores Luau source in <string name="Source">, not ProtectedString.
+# Checking for a script's *name* alone is not enough: an empty script still
+# has a name. So we count real source blocks and look for markers that only
+# appear in our code.
 $xml = Get-Content $outFile -Raw
-$checks = [ordered]@{
-  hasServerScript = $xml.Contains('AXArenaServer') -or $xml.Contains('init.server')
-  hasClientScript = $xml.Contains('AXArenaClient') -or $xml.Contains('init.client')
-  hasSharedConfig = $xml.Contains('Config')
-  hasLeveling     = $xml.Contains('Leveling')
-  hasPets         = $xml.Contains('Pets')
-  hasRebirth      = $xml.Contains('Rebirth')
-  hasZones        = $xml.Contains('Zones')
-  hasMonetization = $xml.Contains('Monetization')
+
+$sourceBlocks = ([regex]::Matches($xml, '<string\s+name="Source">')).Count
+Write-Host "SOURCE_BLOCKS=$sourceBlocks"
+if ($sourceBlocks -lt 15) { throw "SOURCE_BLOCKS_TOO_FEW:$sourceBlocks (expected >=15)" }
+
+# Markers prove the *code* made it in, not just the instance names.
+$markers = [ordered]@{
+  config        = 'BaseXp'
+  leveling      = 'xpFromKill'
+  pets          = 'rarity'
+  rebirth       = 'MaxRebirths'
+  zones         = 'coinMultiplier'
+  monetization  = 'ProcessReceipt'
+  saveSchema    = 'SchemaVersion'
+  serverLoop    = 'Heartbeat'
+  clientIntent  = 'InvokeServer'
+  rateLimiter   = 'RateLimiter'
 }
-foreach ($k in $checks.Keys) {
-  Write-Host ("CHECK_{0}={1}" -f $k.ToUpper(), $checks[$k])
+$checks = [ordered]@{ sourceBlocks = $sourceBlocks }
+foreach ($k in $markers.Keys) {
+  $found = $xml.Contains($markers[$k])
+  $checks[$k] = $found
+  Write-Host ("CHECK_{0}={1}" -f $k.ToUpper(), $found)
 }
-$allChecks = -not ($checks.Values -contains $false)
-if (!$allChecks) { throw "PLACE_CONTENT_INCOMPLETE" }
+if ($checks.Values -contains $false) {
+  $bad = @($checks.Keys | Where-Object { $checks[$_] -eq $false })
+  throw "PLACE_CONTENT_INCOMPLETE:$($bad -join ',')"
+}
+
+# Every script instance must carry a non-empty source block.
+$scriptTags = ([regex]::Matches($xml, 'class="(ModuleScript|Script|LocalScript)"')).Count
+Write-Host "SCRIPT_INSTANCES=$scriptTags"
+if ($sourceBlocks -lt $scriptTags) {
+  throw "EMPTY_SCRIPT_PRESENT:instances=$scriptTags sources=$sourceBlocks"
+}
 
 $result = [ordered]@{
   schemaVersion = 1
