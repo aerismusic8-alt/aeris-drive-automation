@@ -1,0 +1,90 @@
+name: AX PC1 Studio Login Code
+
+# Print the Quick Sign-In code from PC1's Studio log.
+#
+# Studio logs the cross-device code itself when it shows the sign-in QR:
+#   [FLog::QuickSignInUtil] QR Create ... body={"code":"XXXXXX",...}
+# Reading that log is far faster than screenshotting the window and decoding
+# the image, and the code only lives about two minutes, so latency matters.
+#
+# The code is credential-equivalent. It is printed only so the account owner
+# can type it into the Roblox app on their own phone.
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - '.github/workflows/ax-pc1-studio-login-code.yml'
+
+jobs:
+  code:
+    runs-on: self-hosted
+    steps:
+      - name: Verify PC1
+        shell: powershell
+        run: |
+          if ($env:COMPUTERNAME -ne 'DESKTOP-RGK6JKB') { throw "EXPECTED_PC1:$env:COMPUTERNAME" }
+          Write-Host "PC1=VERIFIED"
+
+      - name: Read the cross-device code from Studio's log
+        shell: powershell
+        run: |
+          $studio = Get-ChildItem 'C:\Users\User\AppData\Local\Roblox\Versions' -Recurse -Filter 'RobloxStudioBeta.exe' -ErrorAction SilentlyContinue |
+            Select-Object -First 1 -ExpandProperty FullName
+          if (!$studio) { throw 'STUDIO_NOT_FOUND' }
+          Write-Host "STUDIO_EXE=$studio"
+
+          Get-Process -Name 'RobloxStudioBeta' -ErrorAction SilentlyContinue |
+            ForEach-Object { Stop-Process -Id $_.Id -Force -ErrorAction SilentlyContinue }
+          Start-Sleep -Seconds 2
+
+          $logDir = 'C:\Users\User\AppData\Local\Roblox\logs'
+          $start = (Get-Date).ToUniversalTime()
+
+          $u = (Get-CimInstance Win32_ComputerSystem).UserName
+          $sid = ([System.Security.Principal.NTAccount]$u).Translate([System.Security.Principal.SecurityIdentifier]).Value
+          New-Item -ItemType Directory -Path 'C:\AX-Build' -Force | Out-Null
+          $runner = 'C:\AX-Build\start-studio.ps1'
+          Set-Content -LiteralPath $runner -Encoding UTF8 -Value 'param([string]$StudioExe)
+Start-Process -FilePath $StudioExe | Out-Null'
+          $name = 'AERIS-PC1-START-STUDIO'
+          Unregister-ScheduledTask -TaskName $name -Confirm:$false -ErrorAction SilentlyContinue
+          $arg = '-NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -File "{0}" -StudioExe "{1}"' -f $runner, $studio
+          $action = New-ScheduledTaskAction -Execute 'powershell.exe' -Argument $arg
+          $principal = New-ScheduledTaskPrincipal -UserId $sid -LogonType Interactive -RunLevel Limited
+          $settings = New-ScheduledTaskSettingsSet -ExecutionTimeLimit (New-TimeSpan -Minutes 3)
+          Register-ScheduledTask -TaskName $name -Action $action -Principal $principal -Settings $settings -Force | Out-Null
+          Start-ScheduledTask -TaskName $name
+          Write-Host "STUDIO_STARTED=1"
+
+          $deadline = (Get-Date).AddSeconds(120)
+          $code = $null
+          while ((Get-Date) -lt $deadline -and !$code) {
+            Start-Sleep -Seconds 4
+            $logs = Get-ChildItem $logDir -Filter '*.log' -ErrorAction SilentlyContinue |
+              Where-Object { $_.LastWriteTimeUtc -gt $start.AddSeconds(-10) } |
+              Sort-Object LastWriteTime -Descending
+            foreach ($lg in $logs) {
+              $hit = Select-String -LiteralPath $lg.FullName -Pattern 'QuickSignInUtil' -ErrorAction SilentlyContinue |
+                Select-Object -Last 1
+              if ($hit) {
+                $m = [regex]::Match($hit.Line, '"code"\s*:\s*"([A-Z0-9]{4,8})"')
+                if ($m.Success) {
+                  $code = $m.Groups[1].Value
+                  Write-Host ("LOG_SOURCE=" + $lg.Name)
+                  # Deliberately not printing the log line: it also carries a
+                  # privateKey. Only the code itself is emitted.
+                  break
+                }
+              }
+            }
+          }
+
+          Unregister-ScheduledTask -TaskName $name -Confirm:$false -ErrorAction SilentlyContinue
+
+          if ($code) {
+            Write-Host "QUICK_SIGN_IN_CODE=$code"
+            Write-Host "CODE_ISSUED_UTC=$((Get-Date).ToUniversalTime().ToString('o'))"
+          } else {
+            Write-Host 'NO_CODE_IN_LOG'
+          }
