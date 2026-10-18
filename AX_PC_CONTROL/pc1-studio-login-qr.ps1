@@ -15,7 +15,7 @@ if ($env:COMPUTERNAME -ne 'DESKTOP-RGK6JKB') { throw "EXPECTED_PC1:$env:COMPUTER
 
 $ev = 'C:\AX-Runtime\evidence\studio-login'
 New-Item -ItemType Directory -Path $ev -Force | Out-Null
-Get-ChildItem -LiteralPath $ev -Filter '*.png' -ErrorAction SilentlyContinue | Remove-Item -Force -ErrorAction SilentlyContinue
+Get-ChildItem -LiteralPath $ev -Filter '*.jpg' -ErrorAction SilentlyContinue | Remove-Item -Force -ErrorAction SilentlyContinue
 
 $studioExe = $null
 foreach ($dir in (Get-ChildItem -Path 'C:\Users' -Directory -ErrorAction SilentlyContinue)) {
@@ -64,8 +64,15 @@ foreach ($t in $shots) {
     $bmp = New-Object System.Drawing.Bitmap($screen.Bounds.Width, $screen.Bounds.Height)
     $g = [System.Drawing.Graphics]::FromImage($bmp)
     $g.CopyFromScreen($screen.Bounds.Location, [System.Drawing.Point]::Empty, $screen.Bounds.Size)
-    $file = Join-Path $OutDir ("login-$t" + "s.png")
-    $bmp.Save($file, [System.Drawing.Imaging.ImageFormat]::Png)
+    $file = Join-Path $OutDir ("login-$t" + "s.jpg")
+    # Crop to the middle band where Studio paints the code and store as JPEG:
+    # the full-screen PNG takes ~25s to upload, the code expires in ~120s.
+    $band = New-Object System.Drawing.Rectangle(
+      [int]($screen.Bounds.Width * 0.5), [int]($screen.Bounds.Height * 0.35),
+      [int]($screen.Bounds.Width * 0.3), [int]($screen.Bounds.Height * 0.4))
+    $crop = $bmp.Clone($band, $bmp.PixelFormat)
+    $crop.Save($file, [System.Drawing.Imaging.ImageFormat]::Jpeg)
+    $crop.Dispose()
     $g.Dispose(); $bmp.Dispose()
     "SHOT=$file BYTES=$((Get-Item $file).Length) AT=$((Get-Date).ToUniversalTime().ToString('o'))" | Write-Host
   } catch {
@@ -93,9 +100,9 @@ Start-ScheduledTask -TaskName $name
 Write-Host "CAPTURE_TASK_STARTED=1"
 
 $deadline = (Get-Date).AddSeconds(90)
-while ((Get-Date) -lt $deadline -and !(Test-Path (Join-Path $ev 'login-45s.png'))) { Start-Sleep -Seconds 5 }
+while ((Get-Date) -lt $deadline -and !(Test-Path (Join-Path $ev 'login-45s.jpg'))) { Start-Sleep -Milliseconds 700 }
 
-$shots = @(Get-ChildItem -LiteralPath $ev -Filter '*.png' -ErrorAction SilentlyContinue)
+$shots = @(Get-ChildItem -LiteralPath $ev -Filter '*.jpg' -ErrorAction SilentlyContinue)
 Write-Host "PNG_COUNT=$($shots.Count)"
 foreach ($s in $shots) { Write-Host ("PNG={0} BYTES={1}" -f $s.FullName, $s.Length) }
 

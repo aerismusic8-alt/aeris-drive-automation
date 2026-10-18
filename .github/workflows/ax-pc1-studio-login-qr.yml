@@ -39,6 +39,6 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: pc1-studio-login-screen
-          path: C:\AX-Runtime\evidence\studio-login\*.png
+          path: C:\AX-Runtime\evidence\studio-login\*.jpg
           if-no-files-found: warn
           retention-days: 1
