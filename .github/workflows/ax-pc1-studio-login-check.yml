@@ -1,0 +1,35 @@
+name: AX PC1 Studio Login Check
+
+# Decisive read-only check: is the Studio on PC1 signed in to a Roblox account?
+#
+# The identity probe showed Studio launching but producing no output. The most
+# likely cause is a sign-in wall: Studio cannot load or run a place when no
+# account is signed in. This check looks for the on-disk evidence of a session
+# (LocalStorage LevelDB, log auth lines) without reading or transmitting any
+# credential value. It reports file names and sizes, never contents.
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - 'AX_PC_CONTROL/pc1-studio-login-check.ps1'
+      - '.github/workflows/ax-pc1-studio-login-check.yml'
+
+jobs:
+  check:
+    runs-on: self-hosted
+    steps:
+      - name: Verify PC1
+        shell: powershell
+        run: |
+          if ($env:COMPUTERNAME -ne 'DESKTOP-RGK6JKB') { throw "EXPECTED_PC1:$env:COMPUTERNAME" }
+          Write-Host "PC1=VERIFIED"
+
+      - name: Check Studio login state
+        shell: powershell
+        run: |
+          $url = "https://raw.githubusercontent.com/aerismusic8-alt/aeris-drive-automation/$env:GITHUB_SHA/AX_PC_CONTROL/pc1-studio-login-check.ps1"
+          $p = Join-Path $env:TEMP "pc1-studio-login-check.ps1"
+          Invoke-WebRequest -Uri $url -OutFile $p -UseBasicParsing
+          & powershell.exe -NoProfile -ExecutionPolicy Bypass -File $p
+          if ($LASTEXITCODE -ne 0) { throw "LOGIN_CHECK_EXIT:$LASTEXITCODE" }
