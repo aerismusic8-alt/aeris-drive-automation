@@ -94,14 +94,40 @@ The shape that matters:
 - Bump `Config.Persistence.SchemaVersion` when the save shape changes and
   extend `SaveSchema.migrate` so older saves keep their progress.
 
-Run the tests before every push:
+Run the tests before every push. All three suites, not just the first:
 
 ```bash
-cd roblox && ../tools/luau/luau tests/run.luau
+bash scripts/test-roblox.sh          # unit + integration + wiring
+cd roblox && ../tools/luau/luau tests/run.luau          # 177 unit
+cd roblox && ../tools/luau/luau tests/integration.luau  # 47 integration
+python3 scripts/check-hud-wiring.py                     # 39 wiring
 ```
 
-Publishing needs Roblox Studio, which is desktop-only. `roblox/PUBLISH-FROM-PHONE.md`
-covers what can and cannot be done from a phone.
+The wiring check exists because the Luau VM sandboxes globals per module, so
+`Hud.build()` cannot be run against a fake Roblox tree from a plain script.
+Anything that is a *name* bug — a label the client writes that the HUD never
+declares, a panel shadowing a label of the same name, a module function that
+is defined but never called — is invisible to the other two suites and is
+caught here. Add a case there whenever you add a name the client and server
+must agree on.
+
+`FindFirstChild(name)` on the ScreenGui returns nothing, because the HUD
+labels live inside panels. Use `FindFirstChild(name, true)`.
+
+Publishing does **not** need Roblox Studio. PC1 builds the place and uploads
+it through the Roblox Open Cloud API; the user only needs a phone browser.
+`roblox/PUBLISH-FROM-PHONE.md` is the guide. The publish job needs three
+things it does not have yet: an experience on create.roblox.com (gives
+`universeId` and `placeId`) and an Open Cloud key with `universe-places:write`
+stored as the `ROBLOX_API_KEY` secret. Until then the run reports `BLOCKED`
+and names what is missing, so a missing credential never looks like success.
+`universe_id` and `place_id` can be passed as Run workflow inputs, which beat
+`publish-config.json` when both are set.
+
+The App installation token can write contents, workflows and pull requests,
+but it **cannot** read or write repository secrets (`403 Resource not
+accessible by integration`). Never promise to set a secret; only the repo
+owner can.
 
 ## Workflows
 
