@@ -239,6 +239,9 @@ local function applySpawnStats(record: PlayerRecord)
 	local _, petDamage = Pets.equippedMultipliers(record.pets)
 	record.combatant.maxHealth = math.floor(derived.maxHealth * rebirthDamage)
 	record.combatant.health = record.combatant.maxHealth
+	-- Death clears this flag and nothing else sets it, so without this line a
+	-- player could never attack again after their first death.
+	record.combatant.alive = true
 	return derived, rebirthDamage * petDamage
 end
 

@@ -298,6 +298,34 @@ do
 end
 
 --------------------------------------------------------------------------
+section("SIM 8: death does not permanently disarm the player")
+--------------------------------------------------------------------------
+
+do
+	-- The server clears `combatant.alive` on death and only the respawn path
+	-- sets it back. If that is missed, a player attacks until their first death
+	-- and then never again, which reads as "the game is broken".
+	local combatant = Combat.createCombatant(100)
+
+	local died = Combat.damageCombatant(combatant, 500)
+	check("lethal damage kills", died, "not killed")
+	check("the flag is cleared on death", combatant.alive == false, "alive=" .. tostring(combatant.alive))
+
+	-- Simulate applySpawnStats: full health and alive again.
+	combatant.maxHealth = 100
+	combatant.health = combatant.maxHealth
+	combatant.alive = true
+	check("respawn restores health", combatant.health == 100, "health=" .. combatant.health)
+	check("respawn restores the attack flag", combatant.alive == true, "alive=" .. tostring(combatant.alive))
+
+	-- And the player can fight again.
+	local enemy = Combat.createEnemy({ wave = 1, enemyCount = 1, enemyHealth = 10, enemyDamage = 1, rewardPerKill = 5, spawnInterval = 1 }, 0)
+	local killed, reward = Combat.damageEnemy(enemy, 50)
+	check("the player can kill again after respawning", killed, "not killed")
+	check("the kill still pays", reward == 5, "reward=" .. tostring(reward))
+end
+
+--------------------------------------------------------------------------
 print(string.format("\nINTEGRATION: %d passed, %d failed", passed, failures))
 if failures > 0 then
 	error(string.format("%d integration check(s) failed", failures), 0)

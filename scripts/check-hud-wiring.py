@@ -117,7 +117,13 @@ check("the arena creates a baseplate", '"Baseplate"' in world, "no Baseplate par
 check("the arena creates a spawn", '"ArenaSpawn"' in world or 'Instance.new("SpawnLocation")' in world, "no spawn")
 check("the server owns enemy damage", "World.damageEnemy" in server, "no server-side damage")
 
-print("\nWIRING 8: the build verifier covers every module")
+print("\nWIRING 8: a respawn revives the combatant")
+
+# Death clears this flag and only the spawn path sets it back. Without it a
+# player attacks until their first death and then never again.
+check("the spawn path revives the combatant", "combatant.alive = true" in server, "never reset")
+
+print("\nWIRING 9: the build verifier covers every module")
 
 build_script = read(ROOT / "AX_PC_CONTROL/pc1-roblox-build.ps1")
 for marker in ("world", "hud", "dailyRewards", "codes"):
