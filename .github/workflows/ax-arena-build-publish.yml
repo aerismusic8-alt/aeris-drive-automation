@@ -32,6 +32,7 @@ on:
       - 'scripts/build-place-linux.sh'
       - 'scripts/publish-place-linux.sh'
       - 'scripts/name-experience-linux.sh'
+      - 'scripts/probe-scopes-linux.sh'
       - '.github/workflows/ax-arena-build-publish.yml'
 
 permissions:
@@ -94,6 +95,23 @@ jobs:
         env:
           ROBLOX_API_KEY: ${{ secrets.ROBLOX_API_KEY }}
         run: bash scripts/name-experience-linux.sh
+
+  probe:
+    needs: test
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      # What the automation can do is a property of the key, and the key is a
+      # list of ticked scopes. This asks Roblox which ones are live instead of
+      # assuming, so a missing scope shows up as a named gap and not as a
+      # mystery failure later. Read-only probes; safe to run against the live
+      # experience.
+      - name: Report which scopes the key has
+        env:
+          ROBLOX_API_KEY: ${{ secrets.ROBLOX_API_KEY }}
+        run: bash scripts/probe-scopes-linux.sh
 
   publish:
     needs: [test, build]
