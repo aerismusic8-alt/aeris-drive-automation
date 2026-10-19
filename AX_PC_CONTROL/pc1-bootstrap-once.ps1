@@ -11,9 +11,16 @@
 #   1. Starts the Actions runner service. This alone unblocks every queued job.
 #   2. Installs and starts the winremote MCP server, so an agent can drive the
 #      desktop instead of needing a person at the keyboard.
-#   3. Enables Tailscale SSH and serves the MCP port over the tailnet. This is
-#      the durable path in: it does not depend on the runner at all.
+#   3. Puts two independent paths onto the machine in place: Windows OpenSSH
+#      Server bound to the tailnet, and the MCP port served over the tailnet.
+#      Neither depends on the runner, which is the point — the runner is what
+#      failed, and every recovery route went through it.
 #   4. Writes evidence of what it found and what it changed.
+#
+# On step 3: Tailscale SSH is not an option on Windows. Its server component
+# only runs on Linux and macOS, so `tailscale set --ssh` does nothing here.
+# Windows OpenSSH Server is the equivalent, with Tailscale providing the
+# network path and OpenSSH the shell.
 #
 # Nothing here is destructive. A service that is already running is left alone.
 # Nothing is uninstalled or reconfigured beyond adding the pieces above.
@@ -186,12 +193,50 @@ if ($SkipTailscale -or -not $ts) {
   $tailnetIp = ($status.Self.TailscaleIPs | Select-Object -First 1)
   Write-Host "TAILNET_IP=$tailnetIp DNS_NAME=$dnsName"
 
-  # Tailscale SSH gives a second way onto the machine that does not involve the
-  # runner, the MeshCentral agent, or a screen. It is governed by tailnet
-  # identity and the ACL, not by keys on disk.
-  & $ts set --ssh 2>&1 | Out-String | ForEach-Object { Write-Host "SSH_SET_OUTPUT=$($_.Trim())" }
-  if ($LASTEXITCODE -eq 0) { $actions.Add('TAILSCALE_SSH_ENABLED'); Write-Host 'TAILSCALE_SSH=enabled' }
-  else { Write-Host 'TAILSCALE_SSH=failed' }
+  # Tailscale SSH is NOT usable here. Its server component only runs on Linux
+  # and macOS (Tailscale docs, "Limitations / Devices"), so `tailscale set --ssh`
+  # does nothing on Windows. Windows OpenSSH Server is the equivalent: Tailscale
+  # supplies the network path and OpenSSH supplies the shell. This is what makes
+  # the machine reachable later without the runner and without a screen.
+  Write-Host 'STEP=WINDOWS_OPENSSH'
+  try {
+    $sshd = Get-Service -Name sshd -ErrorAction SilentlyContinue
+    if (-not $sshd) {
+      Write-Host 'OPENSSH_SERVER_ABSENT - adding the optional Windows capability'
+      $cap = Add-WindowsCapability -Online -Name 'OpenSSH.Server~~~~0.0.1.0' -ErrorAction Stop
+      Write-Host "OPENSSH_CAPABILITY_STATE=$($cap.RestartNeeded)"
+      $sshd = Get-Service -Name sshd -ErrorAction SilentlyContinue
+    }
+    if ($sshd) {
+      Set-Service -Name sshd -StartupType Automatic -ErrorAction SilentlyContinue
+      if ($sshd.Status -ne 'Running') { Start-Service -Name sshd -ErrorAction Stop }
+      $actions.Add('OPENSSH_SERVER_RUNNING')
+      Write-Host 'OPENSSH_SERVER=running'
+      # Scope the firewall rule to the tailnet range so the port is not open to
+      # the local LAN or anything else. Tailscale traffic arrives on the same
+      # interface, so an unscoped rule would be wider than needed.
+      $fw = Get-NetFirewallRule -Name 'AX-PC1-OpenSSH-Tailnet' -ErrorAction SilentlyContinue
+      if (-not $fw) {
+        New-NetFirewallRule -Name 'AX-PC1-OpenSSH-Tailnet' -DisplayName 'AX PC1 OpenSSH (tailnet only)' `
+          -Direction Inbound -Protocol TCP -LocalPort 22 -Action Allow `
+          -RemoteAddress 100.64.0.0/10 -ErrorAction Stop | Out-Null
+        $actions.Add('OPENSSH_FIREWALL_SCOPED_TO_TAILNET')
+        Write-Host 'OPENSSH_FIREWALL=tailnet-only'
+      }
+    }
+  } catch {
+    $actions.Add("OPENSSH_SETUP_FAILED:$($_.Exception.Message)")
+    Write-Host "OPENSSH_SETUP_FAILED=$($_.Exception.Message)"
+  }
+
+  # Report whether the built-in remote desktop is reachable, because that is the
+  # only way onto this machine from a phone before any of the above exists.
+  Write-Host 'STEP=RDP_STATE'
+  $rdpDenied = (Get-ItemProperty -Path 'HKLM:\System\CurrentControlSet\Control\Terminal Server' `
+    -Name fDenyTSConnections -ErrorAction SilentlyContinue).fDenyTSConnections
+  $rdpOn = ($rdpDenied -eq 0)
+  Write-Host "RDP_ENABLED=$rdpOn"
+  Write-Host "TAILNET_RDP_TARGET=$tailnetIp"
 
   # Serve the MCP port over HTTPS inside the tailnet. serve, never funnel:
   # funnel would publish the endpoint to the whole internet.
@@ -238,6 +283,8 @@ $report = [ordered]@{
   runnerProcesses = @($runnerProcs | ForEach-Object { $_.Id })
   mcpPort        = $Port
   mcpLocalUrl    = "http://127.0.0.1:$Port/mcp"
+  openSshRunning = $null -ne (Get-Service -Name sshd -ErrorAction SilentlyContinue | Where-Object { $_.Status -eq 'Running' })
+  rdpEnabled     = $rdpOn
   tailnetIp      = if ($tsFinal) { ($tsFinal.Self.TailscaleIPs | Select-Object -First 1) } else { $null }
   dnsName        = if ($tsFinal) { $tsFinal.Self.DNSName } else { $null }
   mcpUrlOverTailnet = if ($tsFinal -and $tsFinal.Self.DNSName) { "https://$($tsFinal.Self.DNSName)/mcp" } else { $null }
