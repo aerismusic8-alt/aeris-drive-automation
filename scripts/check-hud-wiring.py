@@ -357,7 +357,9 @@ check("the stats panel folds", 'fold(stats,' in hud, "the stats panel cannot be 
 check("the wave banner folds", 'fold(wave,' in hud, "the wave banner cannot be put away")
 check("the action panel folds", 'fold(actions,' in hud, "the action panel cannot be put away")
 check("the combat panel folds", 'fold(combat,' in hud, "the combat panel cannot be put away")
-check("the client tracks folded panels", "folded = {}" in client, "the client forgets the folds")
+check("the client tracks folded panels", re.search(r"folded = \{", client) is not None,
+      "the client forgets the folds")
+check("the quest panel folds", "fold(quest," in hud, "the quest tracker cannot be put away")
 check("the caret toggles the panel", "state.folded[name]" in client, "the caret does nothing")
 check("every foldable panel is wired", 'for _, panelName in ipairs({ "Stats", "WavePanel", "Actions", "Combat" })' in client,
       "a caret is drawn but not wired")
@@ -438,6 +440,61 @@ for kind, reason in (
     ("EQUIP", "equipping an item never advances the story"),
 ):
     check(f"the server raises a {kind} quest event", f'questEvent(record, "{kind}"' in server, reason)
+
+print("\nWIRING P: the phone screen is not covered in panels")
+
+# A phone screen is small, and the HUD used to open every panel at once: five
+# panels, three of them permanent, plus the attack buttons. It read as a
+# spreadsheet rather than a game. These checks read the layout, because no Luau
+# test can see a screen.
+
+check("the quest tracker exists", '"QuestPanel"' in hud, "no quest panel was built")
+check("the quest tracker is on screen by default",
+      "quest.Visible = false" not in hud, "the quest tracker starts hidden")
+
+# Every overlay is opened by a button, so every overlay must start hidden.
+for literal, reason in (
+    ("boss.Visible = false", "the boss bar is on screen from the start"),
+    ("rewards.Visible = false", "the rewards overlay is on screen from the start"),
+    ("travel.Visible = false", "the travel list is on screen from the start"),
+    ("charPanel.Visible = false", "the character sheet is on screen from the start"),
+):
+    check(f"hidden at build time: {literal}", literal in hud, reason)
+
+check("the six-button actions menu starts folded, not open",
+      "folded = { Actions = true }" in client,
+      "the actions menu opens on the phone at start")
+check("only the actions menu is folded by default",
+      client.count("folded = { Actions = true }") == 1,
+      "the default fold state is not the single actions menu")
+
+# Measure the real widths from the source rather than a copy, so a widened panel
+# is caught here instead of on a phone.
+widths = {}
+for match in re.finditer(r'panel\(gui, "([A-Za-z]+)", UDim2\.new\(0, (\d+),', hud):
+    widths[match.group(1)] = int(match.group(2))
+
+check("the quest panel was measured", "QuestPanel" in widths, "QuestPanel width not found")
+check("the stats panel was measured", "Stats" in widths, "Stats width not found")
+
+# Layout is built against a 1280x720 reference. The stats panel is anchored top
+# right and the quest tracker top left, so their edges must not meet in the
+# middle, or the quest text runs under the stat readout.
+if "QuestPanel" in widths and "Stats" in widths:
+    quest_edge = 12 + widths["QuestPanel"]
+    stats_edge = 1280 - 12 - widths["Stats"]
+    check("the top-left quest panel does not reach the top-right stats panel",
+          quest_edge < stats_edge,
+          f"quest reaches {quest_edge}px, stats begin at {stats_edge}px on a 1280px screen")
+
+# The attack button is bottom centre and the actions menu is bottom right, so an
+# open menu must not cover the button the game is played with.
+if "Actions" in widths and "Combat" in widths:
+    combat_right = 640 + widths["Combat"] / 2
+    actions_left = 1280 - 16 - widths["Actions"]
+    check("the actions menu does not cover the attack button",
+          combat_right < actions_left,
+          f"attack button ends at {combat_right}px, menu begins at {actions_left}px")
 
 print(f"\nWIRING: {passed} passed, {len(failures)} failed")
 for failure in failures:

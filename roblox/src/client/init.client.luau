@@ -115,7 +115,13 @@ local state = {
 	rewardsOpen = false,
 	-- Which standing panels are folded down to a bar. Keyed by panel name,
 	-- so a panel remembers whether the player put it away.
-	folded = {},
+        --
+	-- Actions starts folded. It is a menu of six buttons and 412 pixels tall,
+	-- and with it open a phone held five panels at once and looked like a
+	-- spreadsheet. The panels that stay open are the ones a player reads or
+	-- presses while fighting: the wave banner, the quest tracker, the stats,
+	-- and the attack buttons.
+	folded = { Actions = true },
 	-- True while the player stands in the first field, which cannot kill
 	-- them. The server is the authority on this, not the client.
 	fieldLethal = true,
