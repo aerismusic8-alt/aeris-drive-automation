@@ -47,30 +47,15 @@ jobs:
       - name: Check client, HUD and server agree on names
         run: python3 scripts/check-hud-wiring.py
 
-      # Green tests are the gate for the live place. The publish workflow used
-      # to run only by hand, so a merge could sit on the branch while players
-      # saw the old game. Dispatching it here keeps that from happening again.
-      - name: Publish the place when the tests pass
-        if: github.event_name == 'push' && github.ref == 'refs/heads/ax-arena-roblox-game'
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          # A failed dispatch must not fail the tests. The tests answer "is the
-          # code good"; a dispatch is a side effect, and letting it turn the run
-          # red hides the answer the run exists to give.
-          #
-          # The target is also checked first. Dispatching a workflow that is not
-          # on the default branch returns 404, and that is the case here, so an
-          # unguarded dispatch would fail on every push to this branch.
-          set -uo pipefail
-          TARGET=ax-pc1-roblox-publish.yml
-          if ! gh api "repos/${{ github.repository }}/actions/workflows/$TARGET" >/dev/null 2>&1; then
-            echo "DISPATCH=SKIPPED reason=$TARGET_not_on_default_branch"
-            exit 0
-          fi
-          gh workflow run "$TARGET" \
-            --ref "${{ github.ref_name }}" \
-            -f version_type=Published \
-            -f ref="${{ github.sha }}" \
-            && echo "DISPATCHED=$TARGET ref=${{ github.sha }}" \
-            || echo "DISPATCH=SKIPPED reason=dispatch_failed"
+      # Publishing is deliberately not dispatched from here.
+      #
+      # This workflow answers "is the code good" and runs on every push, as does
+      # the shipping pipeline. That pipeline runs this same suite as its first
+      # job and publishes only when it passes, so the gate holds without a
+      # cross-workflow dispatch.
+      #
+      # A dispatch from here was also the wrong shape. The target has to exist
+      # on the default branch to be dispatchable, and ax-pc1-roblox-publish.yml
+      # is a PC1-bound workflow, so every push queued a job that can never run
+      # while PC1 is down. Those jobs pile up and the publish they were meant to
+      # trigger does not happen.
