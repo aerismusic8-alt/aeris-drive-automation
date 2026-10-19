@@ -21,6 +21,7 @@ local STRINGS: { [string]: string } = {
         field = "แผนที่",
         zone = "โซน",
         rebirth = "รีเบิร์ธ",
+        version = "เวอร์ชัน",
         combo = "คอมโบ",
         wave = "เวฟ",
         menu = "เมนู",

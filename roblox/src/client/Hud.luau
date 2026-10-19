@@ -24,6 +24,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 -- Every visible word comes from here, so the language lives in one file.
 local Text = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("Text"))
+local Config = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("Config"))
 
 local Hud = {}
 
@@ -213,7 +214,7 @@ function Hud.build(): ScreenGui
 	-- by hand, and on a phone with a taller topbar it was not enough: the panel
 	-- slid back under the buttons. It used to sit top left, which is where the
 	-- chat window is, and covered the chat's drag handle.
-	local stats = panel(gui, "Stats", UDim2.new(0, 216, 0, 202), UDim2.new(1, -12, 0, 8), Vector2.new(1, 0))
+	local stats = panel(gui, "Stats", UDim2.new(0, 216, 0, 244), UDim2.new(1, -12, 0, 8), Vector2.new(1, 0))
 	-- The stats panel is the one panel worth keeping open while playing, so its
 	-- fold button is a small caret in the corner rather than a title bar.
 	fold(stats, Text.get("stats"))
@@ -229,6 +230,21 @@ function Hud.build(): ScreenGui
 	safeBadge.Visible = false
 	label(stats, "Zone", Text.get("zone") .. ": " .. Text.placeName("Meadow"), UDim2.new(1, -20, 0, 26), UDim2.new(0, 12, 0, 160), 16)
 	label(stats, "Rebirth", Text.get("rebirth") .. " 0", UDim2.new(1, -20, 0, 26), UDim2.new(0, 12, 0, 188), 16)
+
+	-- The build stamp. It exists because there was no way to tell from inside
+	-- the game which build was live: a publish can fail, and publishing
+	-- identical bytes makes Roblox deduplicate them without a new version, so
+	-- the running place looked the same either way. Reading this line answers
+	-- that at a glance.
+	local versionLabel = label(
+		stats,
+		"Version",
+		Text.get("version") .. " " .. Config.Version,
+		UDim2.new(1, -20, 0, 22),
+		UDim2.new(0, 12, 0, 214),
+		14
+	)
+	versionLabel.TextColor3 = COLORS.muted
 
 	-- Wave banner, top centre.
 	local wave = panel(gui, "WavePanel", UDim2.new(0, 320, 0, 48), UDim2.new(0.5, 0, 0, 16), Vector2.new(0.5, 0))
