@@ -19,6 +19,15 @@ local Zones = require("../src/shared/Zones")
 local Monetization = require("../src/shared/Monetization")
 local DailyRewards = require("../src/shared/DailyRewards")
 local Codes = require("../src/shared/Codes")
+local Farm = require("../src/shared/Farm")
+local Enemies = require("../src/shared/Enemies")
+local Fields = require("../src/shared/Fields")
+local Axe = require("../src/shared/Axe")
+local Text = require("../src/shared/Text")
+local Attributes = require("../src/shared/Attributes")
+local Classes = require("../src/shared/Classes")
+local Skills = require("../src/shared/Skills")
+local Items = require("../src/shared/Items")
 
 --------------------------------------------------------------------------
 t.suite("Random")
@@ -1685,6 +1694,1239 @@ t.test("the migrated save is a valid v4 save", function()
 	t.assertNotNil(data, problems and table.concat(problems, ","))
 	t.assertEqual(data.version, Config.Persistence.SchemaVersion)
 	t.assertEqual(data.daily.streak, 0)
+end)
+
+--------------------------------------------------------------------------
+t.suite("Farm")
+--------------------------------------------------------------------------
+
+t.test("a new farm has the configured number of empty plots", function()
+	local farm = Farm.new()
+	t.assertEqual(#farm.plots, Config.Farm.PlotCount)
+	t.assertEqual(Farm.plantedCount(farm), 0)
+	t.assertEqual(Farm.readyCount(farm, 0), 0)
+end)
+
+t.test("planting fills a plot and starts a timer", function()
+	local farm = Farm.new()
+	local ok, reason = Farm.plant(farm, 1, "Wheat", 100)
+	t.assertTrue(ok, reason)
+	local plot = Farm.getPlot(farm, 1)
+	t.assertNotNil(plot)
+	t.assertEqual(plot.cropId, "Wheat")
+	t.assertEqual(plot.readyAt, 100 + Config.Farm.Crops[1].growSeconds)
+end)
+
+t.test("a crop is not ready before its grow time", function()
+	local farm = Farm.new()
+	Farm.plant(farm, 1, "Wheat", 0)
+	local grow = Config.Farm.Crops[1].growSeconds
+	t.assertFalse(Farm.isReady(Farm.getPlot(farm, 1), grow - 1))
+	t.assertTrue(Farm.isReady(Farm.getPlot(farm, 1), grow))
+end)
+
+t.test("harvesting early is refused and leaves the crop in place", function()
+	local farm = Farm.new()
+	Farm.plant(farm, 1, "Wheat", 0)
+	local reward, reason = Farm.harvest(farm, 1, 0)
+	t.assertNil(reward)
+	t.assertEqual(reason, "NOT_READY")
+	-- A mistap must not cost the player their crop.
+	t.assertEqual(Farm.getPlot(farm, 1).cropId, "Wheat")
+end)
+
+t.test("harvesting a ripe crop pays out and clears the plot", function()
+	local farm = Farm.new()
+	Farm.plant(farm, 2, "Carrot", 0)
+	local grow = Config.Farm.Crops[2].growSeconds
+	local reward, reason = Farm.harvest(farm, 2, grow + 1)
+	t.assertNotNil(reward, reason)
+	t.assertEqual(reward.cropId, "Carrot")
+	t.assertEqual(reward.coins, Config.Farm.Crops[2].coins)
+	t.assertEqual(Farm.getPlot(farm, 2).cropId, nil)
+	t.assertEqual(Farm.readyCount(farm, grow + 1), 0)
+end)
+
+t.test("an occupied plot refuses a second planting", function()
+	local farm = Farm.new()
+	Farm.plant(farm, 1, "Wheat", 0)
+	local ok, reason = Farm.plant(farm, 1, "Star", 0)
+	t.assertFalse(ok)
+	t.assertEqual(reason, "PLOT_OCCUPIED")
+end)
+
+t.test("an unknown crop and a bad plot index are rejected", function()
+	local farm = Farm.new()
+	local ok, reason = Farm.plant(farm, 1, "Banana", 0)
+	t.assertFalse(ok)
+	t.assertEqual(reason, "UNKNOWN_CROP")
+	ok, reason = Farm.plant(farm, 999, "Wheat", 0)
+	t.assertFalse(ok)
+	t.assertEqual(reason, "BAD_PLOT")
+end)
+
+t.test("the snapshot reports the countdown for each plot", function()
+	local farm = Farm.new()
+	Farm.plant(farm, 1, "Wheat", 0)
+	local snap = Farm.snapshot(farm, 0)
+	t.assertEqual(#snap, Config.Farm.PlotCount)
+	t.assertEqual(snap[1].cropId, "Wheat")
+	t.assertEqual(snap[1].secondsLeft, Config.Farm.Crops[1].growSeconds)
+	t.assertFalse(snap[1].ready)
+	t.assertEqual(snap[2].cropId, nil)
+end)
+
+t.test("crops are listed in config order", function()
+	local list = Farm.list()
+	t.assertEqual(#list, #Config.Farm.Crops)
+	t.assertEqual(list[1].id, Config.Farm.Crops[1].id)
+end)
+
+--------------------------------------------------------------------------
+t.suite("Axe")
+--------------------------------------------------------------------------
+
+t.test("a new axe has no charges", function()
+	local axe = Axe.new()
+	t.assertEqual(axe.charges, 0)
+	t.assertFalse(Axe.isReady(axe))
+end)
+
+t.test("charges accumulate up to the cap", function()
+	local axe = Axe.new()
+	for _ = 1, Axe.maxCharges() + 3 do
+		Axe.addCharges(axe, 1)
+	end
+	t.assertEqual(axe.charges, Axe.maxCharges())
+end)
+
+t.test("an empty swing does nothing", function()
+	local axe = Axe.new()
+	local charges, damage = Axe.swing(axe, 12)
+	t.assertEqual(charges, 0)
+	t.assertEqual(damage, 0)
+end)
+
+t.test("a swing spends every charge at once and hits harder", function()
+	local axe = Axe.new()
+	Axe.addCharges(axe, 3)
+	local charges, damage = Axe.swing(axe, 10)
+	t.assertEqual(charges, 3)
+	t.assertEqual(damage, math.floor(10 * (1 + 3 * Config.Farm.AxeDamagePerCharge) + 0.5))
+	-- The burst is the whole point, so the stack is emptied.
+	t.assertEqual(axe.charges, 0)
+end)
+
+t.test("swing damage grows with charges", function()
+	local one = Axe.swingDamage(1, 10)
+	local five = Axe.swingDamage(5, 10)
+	t.assertGreater(five, one)
+	t.assertEqual(Axe.swingDamage(0, 10), 0)
+end)
+
+--------------------------------------------------------------------------
+t.suite("Broadcast cadence")
+
+-- The HUD snapshots used to be sent from the top level of the Heartbeat
+-- connection, which meant once per frame. On a phone that is a flood of events
+-- for a bar that moves a few times a second. The source-level guard lives in
+-- scripts/check-hud-wiring.py; the cadence itself belongs here.
+
+t.test("the HUD cadence is slower than the frame rate", function()
+        t.assertTrue(Config.Tick.BroadcastInterval > 0)
+        t.assertTrue(Config.Tick.BroadcastInterval >= 1 / 30)
+        t.assertTrue(Config.Tick.BroadcastInterval <= 1 / 4)
+        t.assertTrue(Config.Tick.BroadcastInterval > 1 / Config.Tick.Rate)
+end)
+
+t.test("the farm broadcast is no faster than the HUD", function()
+        t.assertTrue(Config.Tick.FarmBroadcastInterval >= Config.Tick.BroadcastInterval)
+end)
+
+t.suite("Fields")
+--------------------------------------------------------------------------
+
+t.test("there are five fields, matching the five zones", function()
+	t.assertEqual(#Fields.list(), 5)
+	t.assertEqual(#Fields.list(), #Zones.list())
+end)
+
+t.test("every field lines up with a zone of the same id", function()
+	for _, field in ipairs(Fields.list()) do
+		local zone = Zones.getDef(field.id)
+		t.assertNotNil(zone, field.id)
+		t.assertEqual(field.name, zone.name)
+		t.assertEqual(field.levelRequirement, zone.levelRequirement)
+		t.assertEqual(field.coinMultiplier, zone.coinMultiplier)
+	end
+end)
+
+t.test("fields are ordered by requirement and pay more as they go", function()
+	local previousRequirement = 0
+	local previousCoins = 0
+	for _, field in ipairs(Fields.list()) do
+		t.assertGreater(field.levelRequirement, previousRequirement - 1, field.id)
+		t.assertGreater(field.coinMultiplier, previousCoins - 1, field.id)
+		previousRequirement = field.levelRequirement
+		previousCoins = field.coinMultiplier
+	end
+end)
+
+t.test("the town is safe and sits at the origin", function()
+	local town = Fields.town()
+	t.assertTrue(town.safe)
+	t.assertEqual(town.position.x, 0)
+	t.assertEqual(town.position.z, 0)
+	t.assertTrue(Fields.isTown("Town"))
+	t.assertNil(Fields.getDef("Town"))
+end)
+
+t.test("no field sits on top of the town or another field", function()
+	local seen = {}
+	for _, field in ipairs(Fields.list()) do
+		local key = string.format("%d:%d", field.position.x, field.position.z)
+		t.assertNil(seen[key], "two fields share a position: " .. field.id)
+		seen[key] = field.id
+		-- The ring radius must clear the town radius plus the field arena.
+		local distance = math.sqrt(field.position.x ^ 2 + field.position.z ^ 2)
+		t.assertGreater(distance, Config.Town.Radius + Config.Fields.ArenaRadius)
+	end
+end)
+
+t.test("entering the town is always allowed", function()
+	local ok = Fields.canEnter("Town", 1)
+	t.assertTrue(ok)
+end)
+
+t.test("a locked field is refused and names the reason", function()
+	local ok, reason = Fields.canEnter("Void", 1)
+	t.assertFalse(ok)
+	t.assertEqual(reason, "FIELD_LOCKED")
+end)
+
+t.test("an unknown field is refused", function()
+	local ok, reason = Fields.canEnter("Atlantis", 99)
+	t.assertFalse(ok)
+	t.assertEqual(reason, "UNKNOWN_FIELD")
+end)
+
+t.test("a zone pass opens every field", function()
+	for _, field in ipairs(Fields.list()) do
+		local ok = Fields.canEnter(field.id, 1, true)
+		t.assertTrue(ok, field.id)
+	end
+end)
+
+t.test("the next locked field is the first one out of reach", function()
+	local next = Fields.nextLocked(1)
+	t.assertNotNil(next)
+	t.assertEqual(next.id, "Cavern")
+	t.assertNil(Fields.nextLocked(999, true))
+end)
+
+t.test("monsters spawn inside the field and never on the arrival point", function()
+	local arrival = Fields.arrivalOf("Meadow")
+	for index = 1, 10 do
+		local point = Fields.spawnPoint("Meadow", index, 10)
+		local centre = Fields.positionOf("Meadow")
+		local dx = point.x - centre.x
+		local dz = point.z - centre.z
+		local radius = math.sqrt(dx * dx + dz * dz)
+		t.assertLess(radius, Config.Fields.SpawnRadius + 1, "spawn outside the field")
+		local ax = point.x - arrival.x
+		local az = point.z - arrival.z
+		t.assertGreater(math.sqrt(ax * ax + az * az), 10, "spawn on the arrival point")
+	end
+end)
+
+t.test("the field snapshot reports locks against the level", function()
+	local snap = Fields.snapshot(1)
+	t.assertEqual(#snap, 5)
+	t.assertTrue(snap[1].unlocked)
+	t.assertFalse(snap[5].unlocked)
+end)
+
+--------------------------------------------------------------------------
+t.suite("Enemies")
+--------------------------------------------------------------------------
+
+t.test("every field has a roster and a boss", function()
+	for _, field in ipairs(Fields.list()) do
+		t.assertGreater(#Enemies.roster(field.id), 0, field.id)
+		t.assertTrue(Enemies.boss(field.id).boss, field.id)
+	end
+end)
+
+t.test("rosters are distinct between fields", function()
+	local meadow = Enemies.roster("Meadow")
+	local cavern = Enemies.roster("Cavern")
+	t.assertNotEqual(meadow[1].id, cavern[1].id)
+end)
+
+t.test("a boss wave is every fifth wave", function()
+	t.assertFalse(Enemies.isBossWave(1))
+	t.assertFalse(Enemies.isBossWave(4))
+	t.assertTrue(Enemies.isBossWave(5))
+	t.assertTrue(Enemies.isBossWave(10))
+end)
+
+t.test("a boss wave opens with the field boss", function()
+	local rng = Random.new(11)
+	local picked = Enemies.pick("Cavern", 5, rng, true)
+	t.assertTrue(picked.boss)
+	t.assertEqual(picked.id, Enemies.boss("Cavern").id)
+end)
+
+t.test("a normal wave never opens with a boss", function()
+	local rng = Random.new(3)
+	for _ = 1, 20 do
+		local picked = Enemies.pick("Meadow", 3, rng, true)
+		t.assertFalse(picked.boss)
+	end
+end)
+
+t.test("picked monsters always come from the field roster", function()
+	local rng = Random.new(5)
+	local ids = {}
+	for _, archetype in ipairs(Enemies.roster("Volcano")) do
+		ids[archetype.id] = true
+	end
+	for _ = 1, 30 do
+		local picked = Enemies.pick("Volcano", 2, rng, false)
+		t.assertTrue(ids[picked.id], picked.id)
+	end
+end)
+
+t.test("scaling applies the archetype and the field difficulty", function()
+	local plan = { enemyHealth = 100, enemyDamage = 10, rewardPerKill = 20 }
+	local slime = Enemies.getDef("Slime")
+	local scaled = Enemies.scale(slime, plan, 2)
+	t.assertEqual(scaled.health, math.floor(100 * slime.healthMul * 2 + 0.5))
+	t.assertEqual(scaled.damage, math.floor(10 * slime.damageMul * 2 + 0.5))
+	t.assertEqual(scaled.name, "Slime")
+	t.assertFalse(scaled.boss)
+end)
+
+t.test("a boss is worth far more than a normal monster", function()
+	local plan = { enemyHealth = 100, enemyDamage = 10, rewardPerKill = 20 }
+	local normal = Enemies.scale(Enemies.getDef("Slime"), plan, 1)
+	local boss = Enemies.scale(Enemies.boss("Meadow"), plan, 1)
+	t.assertGreater(boss.health, normal.health)
+	t.assertGreater(boss.reward, normal.reward)
+	t.assertGreater(boss.sizeMul, normal.sizeMul)
+	t.assertTrue(boss.boss)
+end)
+
+t.test("scaled stats never round down to zero", function()
+	local plan = { enemyHealth = 1, enemyDamage = 1, rewardPerKill = 1 }
+	local scaled = Enemies.scale(Enemies.getDef("Hornet"), plan, 1)
+	t.assertGreater(scaled.health, 0)
+	t.assertGreater(scaled.damage, 0)
+	t.assertGreater(scaled.reward, 0)
+end)
+
+--------------------------------------------------------------------------
+t.suite("Streak")
+--------------------------------------------------------------------------
+
+t.test("the streak bonus is capped", function()
+	t.assertGreater(Config.Streak.MaxBonus, 0)
+	local capped = math.min(Config.Streak.MaxBonus, 1000 * Config.Streak.BonusPerKill)
+	t.assertEqual(capped, Config.Streak.MaxBonus)
+end)
+
+t.test("a kill inside the window extends the streak", function()
+	-- Mirrors the server rule in rewardKill: a kill inside the window extends
+	-- the streak, a kill after a pause restarts it at one.
+	local function nextStreak(current, secondsSinceLast)
+		if secondsSinceLast <= Config.Streak.WindowSeconds then
+			return current + 1
+		end
+		return 1
+	end
+	t.assertEqual(nextStreak(7, 1), 8)
+	t.assertEqual(nextStreak(7, Config.Streak.WindowSeconds + 1), 1)
+end)
+
+--------------------------------------------------------------------------
+t.suite("WaveDirector travel")
+--------------------------------------------------------------------------
+
+t.test("skipIntermission starts the wave immediately", function()
+	local director = WaveDirector.new(Random.new(11))
+	t.assertEqual(director:snapshot().phase, "INTERMISSION")
+	local plan = director:skipIntermission()
+	t.assertNotNil(plan)
+	t.assertEqual(director:snapshot().wave, 1)
+	t.assertEqual(director:snapshot().phase, "ACTIVE")
+end)
+
+t.test("skipIntermission does nothing during a fight", function()
+	local director = WaveDirector.new(Random.new(12))
+	director:skipIntermission()
+	t.assertNil(director:skipIntermission())
+	t.assertEqual(director:snapshot().wave, 1)
+end)
+
+t.test("two directors keep independent waves", function()
+	-- One director per field is the whole point: the Volcano must not be
+	-- dragged to the Meadow wave just because both are running.
+	local meadow = WaveDirector.new(Random.new(21))
+	local volcano = WaveDirector.new(Random.new(22))
+	meadow:skipIntermission()
+	volcano:skipIntermission()
+	t.assertEqual(meadow:snapshot().wave, 1)
+	t.assertEqual(volcano:snapshot().wave, 1)
+end)
+
+t.test("ticking one field never advances another", function()
+	-- This is what a single shared director could never do. Ticking the
+	-- Meadow hard must leave the Volcano exactly where it was.
+	local meadow = WaveDirector.new(Random.new(31))
+	local volcano = WaveDirector.new(Random.new(32))
+	meadow:skipIntermission()
+	for _ = 1, 20 do
+		meadow:update(0.1)
+	end
+	t.assertEqual(meadow:snapshot().wave, 1)
+	t.assertEqual(volcano:snapshot().wave, 0)
+	t.assertEqual(volcano:snapshot().phase, "INTERMISSION")
+	t.assertEqual(volcano:snapshot().elapsed, 0)
+end)
+
+--------------------------------------------------------------------------
+t.suite("Thai text")
+--------------------------------------------------------------------------
+
+t.test("every field and the town has a Thai name", function()
+        -- The travel menu and the arrival signs both go through placeName, so a
+        -- missing entry would show the English id to a Thai player.
+        t.assertEqual(Text.placeName("Town"), Text.get("PronteraTown"))
+        for _, field in ipairs(Fields.list()) do
+                local name = Text.placeName(field.id)
+                t.assertNotEqual(name, field.id, field.id .. " has no Thai name")
+                t.assertTrue(#name > 0, field.id .. " has an empty Thai name")
+        end
+end)
+
+t.test("every field has a Thai tagline", function()
+        for _, field in ipairs(Fields.list()) do
+                local line = Text.tagline(field.id)
+                t.assertNotEqual(line, "", field.id .. " has no Thai tagline")
+        end
+end)
+
+t.test("every crop has a Thai name", function()
+        for _, crop in ipairs(Farm.list()) do
+                t.assertNotEqual(Text.cropName(crop.id), crop.id, crop.id .. " has no Thai name")
+        end
+end)
+
+t.test("every monster archetype has a Thai name", function()
+        -- The kill flash and the boss bar send the English display name, so the
+        -- lookup is keyed by name rather than id.
+        for _, field in ipairs(Fields.list()) do
+                for _, archetype in ipairs(Enemies.roster(field.id)) do
+                        local name = Text.enemyName(archetype.name)
+                        t.assertNotEqual(name, archetype.name, archetype.name .. " has no Thai name")
+                end
+                local boss = Enemies.boss(field.id)
+                t.assertNotEqual(Text.enemyName(boss.name), boss.name, boss.name .. " has no Thai name")
+        end
+end)
+
+t.test("the buttons and panels all have text", function()
+        local keys = {
+                "coins", "level", "health", "field", "zone", "rebirth", "combo", "wave", "boss", "max",
+                "rewards", "dailyReward", "dailyClaim", "dailyWait", "redeemCode", "enterCode",
+                "codePlaceholder", "redeem", "cancel", "axe", "axeEmpty", "farm", "farmReady", "map",
+                "chooseField", "townPickField", "waveNext", "waveFighting", "bossDown",
+                "town", "here", "locked", "returnToTown", "plot", "ready",
+                "rebirthDone", "returnedToTown", "entered", "dailyGain", "codeGain",
+                "harvestGain", "purchaseApplied",
+        }
+        local missing = Text.missingKeys(keys)
+        t.assertEqual(#missing, 0, "missing translations: " .. table.concat(missing, ", "))
+end)
+
+t.test("a format line keeps its placeholders", function()
+        -- A translation that drops %d would print a literal or error at runtime.
+        t.assertContains(Text.get("dailyClaim", 3), "3")
+        t.assertContains(Text.get("dailyWait", 2, 5), "2")
+        t.assertContains(Text.get("dailyWait", 2, 5), "5")
+        t.assertContains(Text.get("waveNext", "ทุ่งหญ้าอรุณ", 4, 30), "4")
+        t.assertContains(Text.get("waveFighting", "ถ้ำคริสตัล", 2, 7), "7")
+        t.assertContains(Text.get("farmReady", 4), "4")
+        t.assertContains(Text.get("plot", 6), "6")
+        t.assertContains(Text.get("entered", "ถ้ำคริสตัล"), "ถ้ำคริสตัล")
+end)
+
+t.test("an unknown key falls back to the key, not to blank", function()
+        -- A blank label is invisible in a screenshot; the key is not.
+        t.assertEqual(Text.get("NoSuchKey"), "NoSuchKey")
+        t.assertEqual(Text.placeName("NoSuchField"), "NoSuchField")
+        t.assertEqual(Text.enemyName("NoSuchMonster"), "NoSuchMonster")
+end)
+
+t.test("the Thai lines are actually Thai", function()
+        -- Guards against a copy-paste that leaves the English in place. Thai
+        -- lives in U+0E00..U+0E7F, so at least one character must land there.
+        local function hasThai(value: string): boolean
+                for _, code in utf8.codes(value) do
+                        if code >= 0x0E00 and code <= 0x0E7F then
+                                return true
+                        end
+                end
+                return false
+        end
+
+        local keys = {
+                "coins", "level", "health", "field", "zone", "rebirth", "wave", "rewards", "axe",
+                "farm", "map", "chooseField", "townPickField", "redeem", "cancel", "returnToTown",
+                "here", "PronteraTown", "Meadow", "Cavern", "Volcano", "Void", "Heaven",
+                "Wheat", "Carrot", "Star",
+        }
+        for _, key in ipairs(keys) do
+                t.assertTrue(hasThai(Text.get(key)), key .. " is not Thai")
+        end
+end)
+
+--------------------------------------------------------------------------
+t.suite("Attributes")
+--------------------------------------------------------------------------
+
+t.test("a new sheet starts at the configured minimum", function()
+	local sheet = Attributes.new()
+	for _, name in ipairs(Attributes.NAMES) do
+		t.assertEqual(sheet[name], Config.Attributes.BaseValue, name)
+	end
+end)
+
+t.test("stat points come from the level", function()
+	-- The bank is derived, not stored, so a stale save cannot hold spare points.
+	t.assertEqual(Attributes.available(Attributes.new(), 1), Attributes.pointsForLevel(1))
+	t.assertGreater(Attributes.available(Attributes.new(), 20), Attributes.pointsForLevel(1))
+end)
+
+t.test("raising a stat spends points and raises the stat", function()
+	local sheet = Attributes.new()
+	local bank = Attributes.pointsForLevel(30)
+	local ok, next, left, reason = Attributes.raise(sheet, bank, "STR", 1)
+	t.assertTrue(ok, reason)
+	t.assertEqual(next.STR, Config.Attributes.BaseValue + 1)
+	t.assertLess(left, bank, "points must be spent")
+	t.assertEqual(sheet.STR, Config.Attributes.BaseValue, "the input sheet must not mutate")
+end)
+
+t.test("a raise beyond the bank is refused", function()
+	local ok, _, _, reason = Attributes.raise(Attributes.new(), 0, "STR", 1)
+	t.assertFalse(ok)
+	t.assertEqual(reason, "NOT_ENOUGH_POINTS")
+end)
+
+t.test("an unknown stat is refused", function()
+	local ok, _, _, reason = Attributes.raise(Attributes.new(), 99, "MANA", 1)
+	t.assertFalse(ok)
+	t.assertEqual(reason, "UNKNOWN_STAT")
+end)
+
+t.test("every raisable stat appears in NAMES", function()
+	for stat, raisable in pairs(Config.Attributes.Raisable) do
+		if raisable then
+			local found = false
+			for _, name in ipairs(Attributes.NAMES) do
+				if name == stat then
+					found = true
+				end
+			end
+			t.assertTrue(found, stat .. " is raisable but not listed in NAMES")
+		end
+	end
+end)
+
+t.test("a point costs more as the stat climbs", function()
+	t.assertLess(Attributes.pointCost(1), Attributes.pointCost(50))
+	t.assertEqual(Attributes.pointCost(Config.Attributes.MaxValue), math.huge)
+end)
+
+t.test("a raise never passes the maximum", function()
+	local sheet = Attributes.copy(Attributes.new())
+	sheet.STR = Config.Attributes.MaxValue
+	local ok, _, _, reason = Attributes.raise(sheet, 10 ^ 6, "STR", 1)
+	t.assertFalse(ok)
+	t.assertEqual(reason, "MAX_STAT")
+end)
+
+t.test("derived values grow with the stats that feed them", function()
+	local low = Attributes.derive(Attributes.new(), 1)
+
+	local strong = Attributes.copy(Attributes.new())
+	strong.STR = 40
+	t.assertGreater(Attributes.derive(strong, 1).attack, low.attack)
+
+	local tough = Attributes.copy(Attributes.new())
+	tough.VIT = 40
+	t.assertGreater(Attributes.derive(tough, 1).maxHealth, low.maxHealth)
+
+	local smart = Attributes.copy(Attributes.new())
+	smart.INT = 40
+	t.assertGreater(Attributes.derive(smart, 1).maxSp, low.maxSp)
+
+	local quick = Attributes.copy(Attributes.new())
+	quick.AGI = 40
+	t.assertLess(Attributes.derive(quick, 1).attackInterval, low.attackInterval)
+end)
+
+t.test("a level-up raises health even with no points spent", function()
+	local sheet = Attributes.new()
+	t.assertGreater(Attributes.derive(sheet, 30).maxHealth, Attributes.derive(sheet, 1).maxHealth)
+end)
+
+t.test("derived values never round to zero", function()
+	local derived = Attributes.derive(Attributes.new(), 1)
+	t.assertGreater(derived.maxHealth, 0)
+	t.assertGreater(derived.attack, 0)
+	t.assertGreater(derived.hit, 0)
+	t.assertGreater(derived.flee, 0)
+	t.assertGreater(derived.attackInterval, 0)
+end)
+
+t.test("attack speed has a floor", function()
+	local sheet = Attributes.copy(Attributes.new())
+	sheet.AGI = Config.Attributes.MaxValue
+	sheet.DEX = Config.Attributes.MaxValue
+	t.assertNear(Attributes.derive(sheet, 1).attackInterval, Config.Attributes.MinAttackInterval, 0.0001)
+end)
+
+t.test("hit chance stays a probability", function()
+	for hit = 1, 400, 37 do
+		for flee = 1, 400, 53 do
+			local chance = Attributes.hitChance(hit, flee)
+			t.assertTrue(chance >= 0 and chance <= 1, string.format("%d vs %d gave %f", hit, flee, chance))
+		end
+	end
+end)
+
+t.test("a more accurate attacker lands more often", function()
+	t.assertGreater(Attributes.hitChance(200, 50), Attributes.hitChance(20, 50))
+end)
+
+t.test("defense reduces damage but never below one", function()
+	t.assertLess(Attributes.mitigate(100, 50), 100)
+	t.assertEqual(Attributes.mitigate(10, 100000), 1)
+end)
+
+t.test("bonuses stack through one path", function()
+	local base = Attributes.new()
+	local withClass = Attributes.applyBonus(base, { STR = 4 })
+	local withBoth = Attributes.applyBonus(withClass, { STR = 2, VIT = 3 })
+	t.assertEqual(withBoth.STR, Config.Attributes.BaseValue + 6)
+	t.assertEqual(withBoth.VIT, Config.Attributes.BaseValue + 3)
+	t.assertEqual(base.STR, Config.Attributes.BaseValue, "the input sheet must not mutate")
+end)
+
+--------------------------------------------------------------------------
+t.suite("Classes")
+--------------------------------------------------------------------------
+
+t.test("the starting class is a real class", function()
+	t.assertNotNil(Classes.getDef(Classes.starting().id))
+	t.assertEqual(Classes.starting().id, Config.Classes.StartingClass)
+end)
+
+t.test("the tree covers all five first jobs and their second jobs", function()
+	local expected = {
+		"Swordsman", "Archer", "Mage", "Thief", "Acolyte",
+		"Knight", "Hunter", "Wizard", "Assassin", "Priest",
+	}
+	for _, id in ipairs(expected) do
+		t.assertNotNil(Classes.getDef(id), id .. " is missing")
+	end
+end)
+
+t.test("every class is reachable from the starting class", function()
+	-- A class nobody can reach is content nobody can play.
+	local seen = { [Config.Classes.StartingClass] = true }
+	local changed = true
+	while changed do
+		changed = false
+		for _, def in ipairs(Classes.list()) do
+			if seen[def.id] then
+				for _, next in ipairs(def.advancesTo) do
+					if not seen[next] then
+						seen[next] = true
+						changed = true
+					end
+				end
+			end
+		end
+	end
+	for _, def in ipairs(Classes.list()) do
+		t.assertTrue(seen[def.id], def.id .. " cannot be reached")
+	end
+end)
+
+t.test("advancing needs both levels, not just one", function()
+	local cfg = Config.Classes
+	local ok = Classes.canAdvance("Novice", "Swordsman", cfg.FirstJobLevel, 1)
+	t.assertFalse(ok)
+	ok = Classes.canAdvance("Novice", "Swordsman", 1, cfg.FirstJobJobLevel)
+	t.assertFalse(ok)
+	ok = Classes.canAdvance("Novice", "Swordsman", cfg.FirstJobLevel, cfg.FirstJobJobLevel)
+	t.assertTrue(ok)
+end)
+
+t.test("a second job needs a higher gate than a first job", function()
+	local cfg = Config.Classes
+	t.assertGreater(cfg.SecondJobLevel, cfg.FirstJobLevel)
+	t.assertGreater(cfg.SecondJobJobLevel, cfg.FirstJobJobLevel)
+end)
+
+t.test("a class cannot be skipped", function()
+	local ok, reason = Classes.canAdvance("Novice", "Knight", 99, 99)
+	t.assertFalse(ok)
+	t.assertEqual(reason, "NOT_A_BRANCH")
+end)
+
+t.test("advancing resets the job level", function()
+	local next = Classes.advance("Knight")
+	t.assertEqual(next.class, "Knight")
+	t.assertEqual(next.jobLevel, 1)
+	t.assertEqual(next.jobXp, 0)
+end)
+
+t.test("job XP accumulates and levels up", function()
+	local jobLevel, jobXp, levels = Classes.addJobXp(1, 0, 5)
+	t.assertEqual(jobLevel, 1)
+	t.assertEqual(jobXp, 5)
+	t.assertEqual(levels, 0)
+
+	local need = Classes.jobXpForNext(1)
+	jobLevel, jobXp, levels = Classes.addJobXp(1, 0, need)
+	t.assertEqual(jobLevel, 2)
+	t.assertEqual(levels, 1)
+	t.assertEqual(jobXp, 0)
+end)
+
+t.test("one big award can cross several job levels", function()
+	local total = 0
+	for level = 1, 5 do
+		total += Classes.jobXpForNext(level)
+	end
+	local jobLevel, _, levels = Classes.addJobXp(1, 0, total)
+	t.assertEqual(jobLevel, 6)
+	t.assertEqual(levels, 5)
+end)
+
+t.test("job level is capped", function()
+	local jobLevel, _, _ = Classes.addJobXp(Config.Classes.MaxJobLevel, 0, 10 ^ 9)
+	t.assertEqual(jobLevel, Config.Classes.MaxJobLevel)
+end)
+
+t.test("skill points grow with the job level", function()
+	t.assertGreater(Classes.skillPointsForJobLevel(20), Classes.skillPointsForJobLevel(1))
+end)
+
+t.test("every class but the starting one has a bonus", function()
+	for _, def in ipairs(Classes.list()) do
+		if def.id ~= Config.Classes.StartingClass then
+			local total = 0
+			for _, value in pairs(def.bonus) do
+				total += value
+			end
+			t.assertGreater(total, 0, def.id .. " has no class bonus")
+		end
+	end
+end)
+
+t.test("class bonuses only use real attribute names", function()
+	for _, def in ipairs(Classes.list()) do
+		for stat, _ in pairs(def.bonus) do
+			local found = false
+			for _, name in ipairs(Attributes.NAMES) do
+				if name == stat then
+					found = true
+				end
+			end
+			t.assertTrue(found, def.id .. " bonuses unknown stat " .. stat)
+		end
+	end
+end)
+
+t.test("a class bonus reaches the sheet through the shared path", function()
+	local base = Attributes.new()
+	local bonus = Classes.bonus("Swordsman")
+	local effective = Attributes.applyBonus(base, bonus)
+	t.assertGreater(effective.STR, base.STR)
+	t.assertGreater(effective.VIT, base.VIT)
+end)
+
+t.test("the branch shows the whole path, not just the next step", function()
+	local branch = Classes.branch("Novice")
+	t.assertGreater(#branch, 5, "the Novice branch should list every reachable class")
+end)
+
+--------------------------------------------------------------------------
+t.suite("Skills")
+--------------------------------------------------------------------------
+
+t.test("every skill id resolves to a definition", function()
+	for _, def in ipairs(Skills.list()) do
+		t.assertEqual(Skills.getDef(def.id).id, def.id)
+	end
+end)
+
+t.test("a skill can be learned and then levelled", function()
+	local learned = {}
+	local ok, next, left, reason = Skills.learn(learned, "Novice", "FirstAid", 3)
+	t.assertTrue(ok, reason)
+	t.assertEqual(next.FirstAid, 1)
+	t.assertEqual(left, 2)
+
+	ok, next, left = Skills.learn(next, "Novice", "FirstAid", left)
+	t.assertTrue(ok)
+	t.assertEqual(next.FirstAid, 2)
+end)
+
+t.test("learning without points is refused", function()
+	local ok, _, _, reason = Skills.learn({}, "Novice", "FirstAid", 0)
+	t.assertFalse(ok)
+	t.assertEqual(reason, "NO_SKILL_POINTS")
+end)
+
+t.test("a skill from another class is refused", function()
+	local ok, _, _, reason = Skills.learn({}, "Novice", "SonicBlow", 50)
+	t.assertFalse(ok)
+	t.assertEqual(reason, "WRONG_CLASS")
+end)
+
+t.test("a universal Novice skill is learnable by any class", function()
+	local ok, _, _, reason = Skills.learn({}, "Knight", "FirstAid", 50)
+	t.assertTrue(ok, reason)
+end)
+
+t.test("a skill cannot pass its max level", function()
+	local def = Skills.getDef("FirstAid")
+	local learned = { FirstAid = def.maxLevel }
+	local ok, _, _, reason = Skills.learn(learned, "Novice", "FirstAid", 50)
+	t.assertFalse(ok)
+	t.assertEqual(reason, "MAX_LEVEL")
+end)
+
+t.test("a prerequisite must be learned first", function()
+	-- Find a skill that gates another, then try to skip the gate.
+	local gated, prerequisite = nil, nil
+	for _, def in ipairs(Skills.list()) do
+		if def.requires then
+			gated, prerequisite = def, def.requires
+			break
+		end
+	end
+	t.assertNotNil(gated, "no gated skill found to test")
+
+	local ok, _, _, reason = Skills.learn({}, gated.class, gated.id, 50)
+	t.assertFalse(ok)
+	t.assertEqual(reason, "PREREQUISITE")
+
+	-- With the gate learned past its required level it passes.
+	local learned = { [prerequisite] = gated.requiresLevel }
+	local ok2, _, _, reason2 = Skills.learn(learned, gated.class, gated.id, 50)
+	t.assertTrue(ok2, reason2)
+end)
+
+t.test("every class has at least one skill", function()
+	for _, def in ipairs(Classes.list()) do
+		t.assertGreater(#Skills.forClass(def.id), 0, def.id .. " has no skills")
+	end
+end)
+
+t.test("every prerequisite names a real skill", function()
+	for _, def in ipairs(Skills.list()) do
+		if def.requires then
+			t.assertNotNil(Skills.getDef(def.requires), def.id .. " requires unknown skill " .. def.requires)
+		end
+	end
+end)
+
+t.test("a passive has no SP cost and nothing to cast", function()
+	local passives = 0
+	for _, def in ipairs(Skills.list()) do
+		if def.kind == "passive" then
+			passives += 1
+			t.assertEqual(Skills.spCost(def, 1), 0)
+		end
+	end
+	t.assertGreater(passives, 0, "no passive skills exist")
+end)
+
+t.test("an attack skill scales with its stat", function()
+	local def = Skills.getDef("FireBolt")
+	local weak = Skills.resolve(def, 1, { magicAttack = 10, attack = 10, maxHealth = 100 })
+	local strong = Skills.resolve(def, 1, { magicAttack = 200, attack = 200, maxHealth = 100 })
+	t.assertGreater(strong.damage, weak.damage)
+end)
+
+t.test("a higher skill level hits harder and costs more", function()
+	local def = Skills.getDef("FireBolt")
+	local sheet = { magicAttack = 100, attack = 100, maxHealth = 100 }
+	local low = Skills.resolve(def, 1, sheet)
+	local high = Skills.resolve(def, def.maxLevel, sheet)
+	t.assertGreater(high.damage, low.damage)
+	t.assertGreater(high.spCost, low.spCost)
+end)
+
+t.test("a heal skill scales with max health", function()
+	local def = Skills.getDef("Heal")
+	local small = Skills.resolve(def, 1, { magicAttack = 10, attack = 10, maxHealth = 100 })
+	local big = Skills.resolve(def, 1, { magicAttack = 10, attack = 10, maxHealth = 10000 })
+	t.assertGreater(big.heal, small.heal)
+end)
+
+t.test("a buff raises attack and defense", function()
+	local def = Skills.getDef("Blessing")
+	local cast = Skills.resolve(def, 1, { magicAttack = 10, attack = 10, maxHealth = 100 })
+	t.assertGreater(cast.buff.attackMul, 1)
+	t.assertGreater(cast.buff.defenseMul, 1)
+	t.assertGreater(cast.duration, 0)
+end)
+
+t.test("cooldown is positive and falls with level", function()
+	local def = Skills.getDef("FireBolt")
+	t.assertGreater(Skills.cooldown(def, 1), 0)
+	t.assertLess(Skills.cooldown(def, def.maxLevel), Skills.cooldown(def, 1))
+end)
+
+t.test("a passive adds its bonus when learned", function()
+	t.assertEqual(Skills.passiveBonus({}).damageMul, 1)
+
+	local owl = Skills.getDef("OwlEyes")
+	local bonus = Skills.passiveBonus({ [owl.id] = owl.maxLevel })
+	t.assertGreater(bonus.damageMul, 1, "Owl's Eye should raise damage")
+	t.assertGreater(bonus.hitBonus, 0, "Owl's Eye should raise accuracy")
+end)
+
+t.test("the hotbar only holds learned, non-passive skills", function()
+	local learned = { FirstAid = 2, Bash = 1, Endure = 3 }
+	local hotbar = Skills.hotbar(learned, "Swordsman", { attack = 10, magicAttack = 10, maxHealth = 100 })
+	t.assertEqual(#hotbar, 3, "all three learned, castable skills should be on the hotbar")
+	for _, entry in ipairs(hotbar) do
+		t.assertNotNil(learned[entry.id], entry.id .. " is not learned")
+		t.assertNotEqual(Skills.getDef(entry.id).kind, "passive", entry.id .. " is passive")
+		t.assertGreater(entry.level, 0)
+	end
+end)
+
+t.test("the hotbar skips passives", function()
+	local owl = Skills.getDef("OwlEyes")
+	t.assertEqual(owl.kind, "passive")
+	local hotbar = Skills.hotbar({ [owl.id] = 1 }, "Archer", { attack = 10, magicAttack = 10, maxHealth = 100 })
+	t.assertEqual(#hotbar, 0, "a passive must not be castable")
+end)
+
+t.test("every skill has a Thai name", function()
+	for _, def in ipairs(Skills.list()) do
+		t.assertNotEqual(Text.skillName(def.id), def.id, def.id .. " has no Thai name")
+	end
+end)
+
+--------------------------------------------------------------------------
+t.suite("Items and equipment")
+--------------------------------------------------------------------------
+
+t.test("every item has a definition", function()
+	for _, def in ipairs(Items.list()) do
+		t.assertEqual(Items.getDef(def.id).id, def.id)
+	end
+end)
+
+t.test("every droppable item has a Thai name", function()
+	-- An item the player can only ever see in a drop or a bag needs a Thai name;
+	-- the reference-only ones may pass through.
+	for _, field in ipairs(Fields.list()) do
+		for _, archetype in ipairs(Enemies.roster(field.id)) do
+			for _, entry in ipairs(Items.dropsFor(archetype.id)) do
+				t.assertNotEqual(Text.itemName(entry.itemId), entry.itemId, entry.itemId .. " has no Thai name")
+			end
+		end
+	end
+end)
+
+t.test("equipment fits a real slot", function()
+	local slots = {}
+	for _, slot in ipairs(Items.slots()) do
+		slots[slot] = true
+	end
+	for _, def in ipairs(Items.list()) do
+		if def.kind == "equipment" then
+			t.assertTrue(slots[def.slot], def.id .. " uses unknown slot " .. tostring(def.slot))
+		end
+	end
+end)
+
+t.test("every class can arm itself at level 1", function()
+	-- A class with no usable weapon is unplayable, so there must be a weapon
+	-- with no level requirement.
+	local found = false
+	for _, item in ipairs(Items.list()) do
+		if item.kind == "equipment" and item.slot == "Weapon" and item.levelRequirement <= 1 then
+			found = true
+		end
+	end
+	t.assertTrue(found, "no level-1 weapon exists")
+end)
+
+t.test("an item above the level is refused", function()
+	local gated = nil
+	for _, def in ipairs(Items.list()) do
+		if def.kind == "equipment" and def.levelRequirement > 1 then
+			gated = def
+			break
+		end
+	end
+	t.assertNotNil(gated, "no gated equipment exists")
+	local ok, reason = Items.canEquip(gated.id, 1, {})
+	t.assertFalse(ok)
+	t.assertEqual(reason, "LEVEL_TOO_LOW")
+end)
+
+t.test("a consumable cannot be worn", function()
+	local ok, reason = Items.canEquip("RedPotion", 99, {})
+	t.assertFalse(ok)
+	t.assertEqual(reason, "NOT_EQUIPMENT")
+end)
+
+t.test("equipping fills the slot and unequipping clears it", function()
+	local worn = Items.equipTo({}, "ShortSword")
+	t.assertEqual(worn.Weapon, "ShortSword")
+	worn = Items.unequipFrom(worn, "Weapon")
+	t.assertNil(worn.Weapon)
+end)
+
+t.test("a two-handed weapon fills the shield slot too", function()
+	local twoHanded = nil
+	for _, def in ipairs(Items.list()) do
+		if def.kind == "equipment" and def.twoHanded then
+			twoHanded = def
+			break
+		end
+	end
+	t.assertNotNil(twoHanded, "no two-handed weapon exists")
+
+	local worn = Items.equipTo({ Shield = "WoodenShield" }, twoHanded.id)
+	t.assertEqual(worn.Weapon, twoHanded.id)
+	t.assertEqual(worn.Shield, twoHanded.id, "a two-handed weapon occupies both slots")
+end)
+
+t.test("removing a two-handed weapon clears both slots", function()
+	local twoHanded = nil
+	for _, def in ipairs(Items.list()) do
+		if def.kind == "equipment" and def.twoHanded then
+			twoHanded = def
+			break
+		end
+	end
+	local worn = Items.equipTo({}, twoHanded.id)
+	worn = Items.unequipFrom(worn, "Weapon")
+	t.assertNil(worn.Weapon)
+	t.assertNil(worn.Shield, "the ghost shield slot must go too")
+end)
+
+t.test("a shield is refused while a two-handed weapon is worn", function()
+	local twoHanded = nil
+	for _, def in ipairs(Items.list()) do
+		if def.kind == "equipment" and def.twoHanded then
+			twoHanded = def
+			break
+		end
+	end
+	local ok, reason = Items.canEquip("WoodenShield", 99, { Weapon = twoHanded.id })
+	t.assertFalse(ok)
+	t.assertEqual(reason, "WEAPON_IS_TWO_HANDED")
+end)
+
+t.test("equipment raises the sheet it feeds", function()
+	local bare = Items.equipmentCombat({})
+	local armed = Items.equipmentCombat({ Weapon = "Claymore" })
+	t.assertGreater(armed.attack, bare.attack)
+
+	local bonus = Items.equipmentBonus({ Body = "PlateArmor" })
+	local total = 0
+	for _, value in pairs(bonus) do
+		total += value
+	end
+	t.assertGreater(total, 0, "PlateArmor gives no attribute bonus")
+end)
+
+t.test("every monster's drop table names real items", function()
+	for _, field in ipairs(Fields.list()) do
+		for _, archetype in ipairs(Enemies.roster(field.id)) do
+			for _, entry in ipairs(Items.dropsFor(archetype.id)) do
+				t.assertNotNil(Items.getDef(entry.itemId), archetype.id .. " drops unknown " .. entry.itemId)
+				t.assertTrue(entry.chance > 0 and entry.chance <= 1, entry.itemId .. " has a bad chance")
+			end
+		end
+		local boss = Enemies.boss(field.id)
+		for _, entry in ipairs(Items.dropsFor(boss.id)) do
+			t.assertNotNil(Items.getDef(entry.itemId), boss.id .. " drops unknown " .. entry.itemId)
+		end
+	end
+end)
+
+t.test("a roll only ever returns real items and sensible counts", function()
+	local rng = Random.new(4242)
+	local rolls = 0
+	for _, field in ipairs(Fields.list()) do
+		for _, archetype in ipairs(Enemies.roster(field.id)) do
+			for _ = 1, 40 do
+				for _, drop in ipairs(Items.rollDrops(archetype.id, rng, 1)) do
+					rolls += 1
+					t.assertNotNil(Items.getDef(drop.itemId), "rolled unknown " .. drop.itemId)
+					t.assertGreater(drop.count, 0)
+				end
+			end
+		end
+	end
+	t.assertGreater(rolls, 0, "no drop ever rolled in 40 attempts per monster")
+end)
+
+t.test("luck raises the drop rate without breaking it", function()
+	-- Two runs with the same seed: the lucky run must collect at least as much,
+	-- and must never roll an invalid item.
+	local plainRng = Random.new(31337)
+	local luckyRng = Random.new(31337)
+	local plain, lucky = 0, 0
+	for _, archetype in ipairs(Enemies.roster("Cavern")) do
+		for _ = 1, 200 do
+			local drops = Items.rollDrops(archetype.id, plainRng, 1)
+			plain += #drops
+			local luckyDrops = Items.rollDrops(archetype.id, luckyRng, 8)
+			lucky += #luckyDrops
+			for _, drop in ipairs(luckyDrops) do
+				t.assertNotNil(Items.getDef(drop.itemId), "luck rolled unknown " .. drop.itemId)
+				t.assertGreater(drop.count, 0)
+			end
+		end
+	end
+	t.assertGreater(lucky, plain, "luck made no difference")
+end)
+
+t.test("a multi-word monster keeps its own drop table", function()
+	-- The drop tables are keyed by archetype id, but the display name of many
+	-- monsters contains a space ("Rock Golem"). Keying loot off the name silently
+	-- falls back to the generic potions, so this guards the keying.
+	local rock = Enemies.getDef("RockGolem")
+	t.assertNotNil(rock)
+	t.assertContains(rock.name, " ", "this test needs a multi-word name")
+	t.assertNotEqual(rock.name, rock.id)
+
+	local ids = {}
+	for _, entry in ipairs(Items.dropsFor(rock.id)) do
+		ids[entry.itemId] = true
+	end
+	t.assertTrue(ids.Stone, "Rock Golem should drop Stone")
+
+	-- The name-keyed lookup is the bug: it must not see the same table.
+	local byName = {}
+	for _, entry in ipairs(Items.dropsFor(rock.name)) do
+		byName[entry.itemId] = true
+	end
+	t.assertNil(byName.Stone, "the name lookup unexpectedly found the id table")
+end)
+
+t.test("a boss drops more than a common monster", function()
+	local rng = Random.new(7)
+	local function average(name: string): number
+		local total = 0
+		for _ = 1, 300 do
+			total += #Items.rollDrops(name, rng, 1)
+		end
+		return total / 300
+	end
+	local boss = Enemies.boss("Meadow")
+	t.assertGreater(average(boss.id), average("Poring"))
+end)
+
+--------------------------------------------------------------------------
+t.suite("Monsters")
+--------------------------------------------------------------------------
+
+t.test("every field has a varied roster", function()
+	for _, field in ipairs(Fields.list()) do
+		local roster = Enemies.roster(field.id)
+		t.assertGreater(#roster, 2, field.id .. " has too few monsters")
+	end
+end)
+
+t.test("the first field is gentle on a level-1 character", function()
+	-- A level-1 Novice deals about ten damage a swing. A first monster that
+	-- survives a dozen hits, or one-shots the player, is a bad first fight.
+	local first = Fields.list()[1]
+	local plan = { enemyHealth = Config.Wave.BaseEnemyHealth, enemyDamage = Config.Wave.BaseEnemyDamage, rewardPerKill = Config.Wave.BaseReward }
+	local derived = Attributes.derive(Attributes.new(), 1)
+	for _, archetype in ipairs(Enemies.roster(first.id)) do
+		local scaled = Enemies.scale(archetype, plan, Zones.difficultyMultiplier(first.id))
+		t.assertGreater(scaled.health, 0)
+		t.assertGreater(scaled.damage, 0)
+		t.assertLess(scaled.health, derived.maxHealth, archetype.name .. " survives longer than the player")
+		t.assertLess(scaled.damage, derived.maxHealth, archetype.name .. " can one-shot a new player")
+	end
+end)
+
+t.test("later fields are harder than the first", function()
+	local fields = Fields.list()
+	local first = fields[1]
+	local last = fields[#fields]
+	local plan = { enemyHealth = Config.Wave.BaseEnemyHealth, enemyDamage = Config.Wave.BaseEnemyDamage, rewardPerKill = Config.Wave.BaseReward }
+	local function power(field: any): number
+		local total = 0
+		for _, archetype in ipairs(Enemies.roster(field.id)) do
+			total += Enemies.scale(archetype, plan, Zones.difficultyMultiplier(field.id)).health
+		end
+		return total
+	end
+	t.assertGreater(power(last), power(first), "the last field is not harder than the first")
+end)
+
+t.test("a boss is much tougher than its field's monsters", function()
+	local plan = { enemyHealth = Config.Wave.BaseEnemyHealth, enemyDamage = Config.Wave.BaseEnemyDamage, rewardPerKill = Config.Wave.BaseReward }
+	for _, field in ipairs(Fields.list()) do
+		local mul = Zones.difficultyMultiplier(field.id)
+		local boss = Enemies.scale(Enemies.boss(field.id), plan, mul)
+		local toughest = 0
+		for _, archetype in ipairs(Enemies.roster(field.id)) do
+			local scaled = Enemies.scale(archetype, plan, mul)
+			if scaled.health > toughest then
+				toughest = scaled.health
+			end
+		end
+		t.assertGreater(boss.health, toughest, field.id .. " boss is not tougher than its monsters")
+	end
+end)
+
+t.test("scaling never produces a zero or negative stat", function()
+	local plan = { enemyHealth = 1, enemyDamage = 1, rewardPerKill = 1 }
+	for _, field in ipairs(Fields.list()) do
+		for _, archetype in ipairs(Enemies.roster(field.id)) do
+			local scaled = Enemies.scale(archetype, plan, Zones.difficultyMultiplier(field.id))
+			t.assertGreater(scaled.health, 0, archetype.name)
+			t.assertGreater(scaled.damage, 0, archetype.name)
+			t.assertGreater(scaled.reward, 0, archetype.name)
+			t.assertGreater(scaled.speed, 0, archetype.name)
+		end
+	end
+end)
+
+t.test("a harder wave makes a monster tougher", function()
+	local director = WaveDirector.new(Random.new(5))
+	local easy = director:planFor(1)
+	local hard = director:planFor(20)
+	for _, field in ipairs(Fields.list()) do
+		for _, archetype in ipairs(Enemies.roster(field.id)) do
+			local mul = Zones.difficultyMultiplier(field.id)
+			t.assertGreater(Enemies.scale(archetype, hard, mul).health,
+				Enemies.scale(archetype, easy, mul).health, archetype.name)
+		end
+	end
 end)
 
 return t.finish()

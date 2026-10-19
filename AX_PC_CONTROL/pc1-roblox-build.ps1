@@ -85,7 +85,7 @@ $xml = Get-Content $outFile -Raw
 
 $sourceBlocks = ([regex]::Matches($xml, '<string\s+name="Source">')).Count
 Write-Host "SOURCE_BLOCKS=$sourceBlocks"
-if ($sourceBlocks -lt 15) { throw "SOURCE_BLOCKS_TOO_FEW:$sourceBlocks (expected >=15)" }
+if ($sourceBlocks -lt 24) { throw "SOURCE_BLOCKS_TOO_FEW:$sourceBlocks (expected >=24)" }
 
 # Markers prove the *code* made it in, not just the instance names.
 $markers = [ordered]@{
@@ -99,10 +99,17 @@ $markers = [ordered]@{
   serverLoop    = 'Heartbeat'
   clientIntent  = 'InvokeServer'
   rateLimiter   = 'RateLimiter'
-  world         = 'buildArena'
+  world         = 'buildWorld'
+  fields        = 'spawnPoint'
+  travel        = 'TravelZone'
+  boss          = 'bossInfo'
   hud           = 'AXArenaHUD'
+  travelPanel   = 'TravelPanel'
   dailyRewards  = 'canClaim'
   codes         = 'hasRedeemed'
+  farm          = 'plantedCount'
+  axe           = 'swingDamage'
+  text          = 'placeName'
 }
 $checks = [ordered]@{ sourceBlocks = $sourceBlocks }
 foreach ($k in $markers.Keys) {

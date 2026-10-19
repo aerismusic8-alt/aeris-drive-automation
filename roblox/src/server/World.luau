@@ -1,350 +1,972 @@
 --!strict
--- The playable world: ground, spawn, and enemies you can actually hit.
+-- The playable world: a safe town, five monster fields, and enemies you can
+-- actually hit.
 --
--- The wave logic is pure Luau and lives in WaveDirector/Combat. This module is
--- the thin Roblox layer that turns those numbers into parts in Workspace, so a
--- player who joins sees a place to stand and something to fight.
+-- The map layout is data (Fields.luau) and the monster stats are data
+-- (Enemies.luau); this module is the thin Roblox layer that turns both into
+-- parts in Workspace. Keeping the geometry out of the logic means the map can
+-- change without touching combat, and combat can change without moving a wall.
 --
--- The server owns every enemy's health. Clients only see the result, which is
--- why the "immediately kill" shortcut in the reference loop is replaced here.
+-- The server owns every enemy's health. Clients only see the result.
 
 local Workspace = game:GetService("Workspace")
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
-local Config = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("Config"))
+local Shared = ReplicatedStorage:WaitForChild("Shared")
+local Config = require(Shared:WaitForChild("Config"))
+local Fields = require(Shared:WaitForChild("Fields"))
+local Enemies = require(Shared:WaitForChild("Enemies"))
+local Items = require(Shared:WaitForChild("Items"))
+local Text = require(Shared:WaitForChild("Text"))
 
 local World = {}
 
-local ARENA_SIZE = 220
-local ARENA_Y = 0
-local SPAWN_POSITION = Vector3.new(0, 4, 40)
-local ENEMY_RING_RADIUS = 70
+local SPAWN_HEIGHT = 4
 local ENEMY_HEIGHT_OFFSET = 3
-local ENEMY_SIZE = Vector3.new(4, 5, 4)
+local ENEMY_BASE_SIZE = Vector3.new(4, 5, 4)
+local PLATFORM_HEIGHT = 4
 
 local enemies: { [number]: any } = {}
 local enemyModels: { [number]: Model } = {}
 local nextEnemyId = 0
 
-local arenaRoot: Model? = nil
+local worldRoot: Model? = nil
 
--- A flat, readable arena. Bright and simple: this is the first thing a new
--- player sees, and a confusing first frame loses them immediately.
+-- Farm plots. The server owns the crop state (Farm.luau); this table only
+-- holds the parts used to draw it, keyed by plot index.
+local plotCrops: { [number]: BasePart } = {}
+local plotLabels: { [number]: TextLabel } = {}
+
+-- Dropped items on the ground, keyed by drop id. Each is a small glowing part
+-- with a billboard, so loot is visible without opening the bag.
+type Drop = {
+        id: number,
+        itemId: string,
+        count: number,
+        fieldId: string?,
+        position: Vector3,
+        expiresAt: number,
+        model: Model,
+}
+local drops: { [number]: Drop } = {}
+local nextDropId = 0
+
+-- Set by the server: the function a portal touch calls to move a player. Kept
+-- as a callback so World never has to know how travel is validated.
+local portalTravel: ((Player, string) -> ())? = nil
+
+function World.setPortalHandler(handler: (Player, string) -> ())
+        portalTravel = handler
+end
+
+-- Floating damage numbers, keyed by player. Each player only sees their own,
+-- which keeps the screen readable in a crowded field.
+local damageGuis: { [number]: BillboardGui } = {}
+
+local CROP_COLOR: { [string]: Color3 } = {}
+for _, crop in ipairs(Config.Farm.Crops) do
+        CROP_COLOR[crop.id] = Color3.fromRGB(crop.color[1], crop.color[2], crop.color[3])
+end
+
+-- Enemies stop at this distance rather than walking into the player, so
+-- they stay in melee range without shoving the character around.
+local ENEMY_STOP_DISTANCE = Config.Wave.EnemyMeleeRange * 0.75
+
+local function rgb(color: { number }): Color3
+        return Color3.fromRGB(color[1], color[2], color[3])
+end
+
+local function vec(point: { x: number, y: number, z: number }, yOffset: number?): Vector3
+        return Vector3.new(point.x, (point.y or 0) + (yOffset or 0), point.z)
+end
+
+-- A floor slab for one place: the town or a field.
+local function makeFloor(parent: Model, name: string, centre: Vector3, radius: number, color: Color3): Part
+        local floor = Instance.new("Part")
+        floor.Name = name
+        floor.Shape = Enum.PartType.Cylinder
+        floor.Size = Vector3.new(PLATFORM_HEIGHT, radius * 2, radius * 2)
+        floor.CFrame = CFrame.new(centre - Vector3.new(0, PLATFORM_HEIGHT / 2, 0)) * CFrame.Angles(0, 0, math.rad(90))
+        floor.Anchored = true
+        floor.Material = Enum.Material.Grass
+        floor.Color = color
+        floor.TopSurface = Enum.SurfaceType.Smooth
+        floor.BottomSurface = Enum.SurfaceType.Smooth
+        floor.Parent = parent
+        return floor
+end
+
+-- A ring wall so the edge of a place is visible. CanCollide is off: a wall the
+-- player can walk through is friendlier than one that traps them on a cliff.
+local function makeRim(parent: Model, name: string, centre: Vector3, radius: number, color: Color3)
+        local rim = Instance.new("Part")
+        rim.Name = name
+        rim.Shape = Enum.PartType.Cylinder
+        rim.Size = Vector3.new(14, radius * 2, radius * 2)
+        rim.CFrame = CFrame.new(centre) * CFrame.Angles(0, 0, math.rad(90))
+        rim.Anchored = true
+        rim.Material = Enum.Material.Slate
+        rim.Color = color
+        rim.Transparency = 0.55
+        rim.CanCollide = false
+        rim.Parent = parent
+end
+
+-- A labelled billboard. Used for field names and portals so the map is legible
+-- from a distance without opening a menu.
+local function makeSign(parent: Instance, text: string, height: number, width: number, color: Color3): TextLabel
+        local billboard = Instance.new("BillboardGui")
+        billboard.Name = "Sign"
+        billboard.Size = UDim2.new(width, 0, 1.6, 0)
+        billboard.StudsOffsetWorldSpace = Vector3.new(0, height, 0)
+        billboard.AlwaysOnTop = true
+        billboard.Parent = parent
+
+        local label = Instance.new("TextLabel")
+        label.Name = "Text"
+        label.Size = UDim2.new(1, 0, 1, 0)
+        label.BackgroundTransparency = 1
+        label.Font = Enum.Font.GothamBold
+        label.TextScaled = true
+        label.TextColor3 = color
+        label.TextStrokeTransparency = 0.35
+        label.Text = text
+        label.Parent = billboard
+        return label
+end
+
+-- A travel portal. Touching it asks the server to move the player, so travel
+-- is never decided by the client.
+local function makePortal(parent: Model, fieldId: string, label: string, position: Vector3, color: Color3): Part
+        local portal = Instance.new("Part")
+        portal.Name = "Portal_" .. fieldId
+        portal.Size = Vector3.new(Config.Fields.PortalRadius * 2, 14, 2)
+        portal.Position = position + Vector3.new(0, 7, 0)
+        portal.Anchored = true
+        portal.CanCollide = false
+        portal.Material = Enum.Material.Neon
+        portal.Color = color
+        portal.Transparency = 0.25
+        portal.Parent = parent
+        makeSign(portal, label, 5, 8, Color3.fromRGB(255, 255, 255))
+
+        -- Walking into a portal is the travel interaction. The touch only *asks*;
+        -- the server still validates the level lock and applies the cooldown.
+        portal.Touched:Connect(function(other)
+                if not portalTravel then
+                        return
+                end
+                local character = other and other.Parent
+                local player = character and Players:GetPlayerFromCharacter(character)
+                if player then
+                        portalTravel(player, fieldId)
+                end
+        end)
+
+        return portal
+end
+
+-- Apply a place's look to the world. Roblox has one global Lighting service,
+-- so the look follows the player: entering a field re-lights the world for
+-- that field. This is what makes the maps feel like different places.
+local function applyLook(placeId: string)
+        local look = Fields.look(placeId)
+        local Lighting = game:GetService("Lighting")
+
+        Lighting.Ambient = rgb(look.ambient)
+        Lighting.OutdoorAmbient = rgb(look.outdoorAmbient)
+        Lighting.Brightness = look.brightness
+        Lighting.FogColor = rgb(look.fog)
+        Lighting.FogEnd = look.fogEnd
+        Lighting.FogStart = look.fogEnd * 0.25
+        Lighting.ClockTime = placeId == "Void" and 0 or (placeId == "Heaven" and 12 or 14)
+        Lighting.GlobalShadows = true
+end
+
+World.applyLook = applyLook
+
+-- A ring of floating light motes around a place. Purely visual, but it is what
+-- makes a map read as "somewhere" instead of a lit disc.
+local function makeMotes(parent: Instance, centre: Vector3, radius: number, accent: Color3, count: number)
+        -- The emitter lives on an invisible box covering the place, so the
+        -- motes stay inside it instead of drifting across the whole world.
+        local volume = Instance.new("Part")
+        volume.Name = "MoteVolume"
+        volume.Size = Vector3.new(radius * 1.6, 40, radius * 1.6)
+        volume.Position = centre + Vector3.new(0, 18, 0)
+        volume.Anchored = true
+        volume.CanCollide = false
+        volume.Transparency = 1
+        volume.Parent = parent
+
+        local emitter = Instance.new("ParticleEmitter")
+        emitter.Name = "Motes"
+        emitter.Texture = "rbxasset://textures/particles/sparkles_main.dds"
+        emitter.Rate = count
+        emitter.Lifetime = NumberRange.new(4, 7)
+        emitter.Speed = NumberRange.new(1, 3)
+        emitter.SpreadAngle = Vector2.new(180, 180)
+        emitter.Color = ColorSequence.new(accent)
+        emitter.LightEmission = 1
+        emitter.LightInfluence = 0
+        emitter.Size = NumberSequence.new({
+                NumberSequenceKeypoint.new(0, 0),
+                NumberSequenceKeypoint.new(0.5, 1.1),
+                NumberSequenceKeypoint.new(1, 0),
+        })
+        emitter.Transparency = NumberSequence.new({
+                NumberSequenceKeypoint.new(0, 1),
+                NumberSequenceKeypoint.new(0.5, 0.35),
+                NumberSequenceKeypoint.new(1, 1),
+        })
+        -- Motes drift upward and fade, which reads as magic rather than debris.
+        emitter.Acceleration = Vector3.new(0, 1.2, 0)
+        emitter.Parent = volume
+end
+
+-- Build the town: a safe hub with the farm plots, a spawn pad and the portals
+-- out to every field. This is where a player lands and where they respawn.
+local function buildTown(parent: Model): Model
+        local town = Instance.new("Model")
+        town.Name = "Town"
+
+        local def = Fields.town()
+        local centre = vec(def.position, 0)
+        makeFloor(town, "TownFloor", centre, def.radius, rgb(def.groundColor))
+        makeRim(town, "TownRim", centre, def.radius, Color3.fromRGB(120, 104, 84))
+
+        -- A spawn pad at the arrival point, so "you are home" is obvious.
+        local arrival = vec(Fields.arrivalOf("Town"), SPAWN_HEIGHT)
+        local spawn = Instance.new("SpawnLocation")
+        spawn.Name = "TownSpawn"
+        spawn.Size = Vector3.new(18, 1, 18)
+        spawn.Position = arrival
+        spawn.Anchored = true
+        spawn.Material = Enum.Material.Neon
+        spawn.Color = Color3.fromRGB(255, 214, 92)
+        spawn.Neutral = true
+        spawn.Duration = 0
+        spawn.Parent = town
+        makeSign(spawn, Text.placeName("Town"), 8, 12, Color3.fromRGB(255, 236, 170))
+
+        -- A landmark in the middle: the obelisk the town is built around.
+        local obelisk = Instance.new("Part")
+        obelisk.Name = "Obelisk"
+        obelisk.Shape = Enum.PartType.Cylinder
+        obelisk.Size = Vector3.new(1, 10, 10)
+        obelisk.CFrame = CFrame.new(centre + Vector3.new(0, 9, 0)) * CFrame.Angles(0, 0, math.rad(90))
+        obelisk.Anchored = true
+        obelisk.Material = Enum.Material.Neon
+        obelisk.Color = Color3.fromRGB(150, 210, 255)
+        obelisk.Parent = town
+
+        local townLook = Fields.look("Town")
+        if townLook.motes then
+                makeMotes(town, centre, def.radius, rgb(townLook.accent), 30)
+        end
+
+        -- Farm plots ring the town centre. Farming happens in town because town
+        -- is the one place nothing is trying to kill you.
+        for i = 1, Config.Farm.PlotCount do
+                local angle = ((i - 1) / Config.Farm.PlotCount) * math.pi * 2
+                local bedPos = centre + Vector3.new(
+                        math.cos(angle) * Config.Farm.PlotRingRadius,
+                        1.5,
+                        math.sin(angle) * Config.Farm.PlotRingRadius
+                )
+
+                local bed = Instance.new("Part")
+                bed.Name = "Plot_" .. i
+                bed.Size = Vector3.new(9, 1, 9)
+                bed.Position = bedPos
+                bed.Anchored = true
+                bed.Material = Enum.Material.Ground
+                bed.Color = Color3.fromRGB(104, 76, 54)
+                bed.TopSurface = Enum.SurfaceType.Smooth
+                bed.Parent = town
+
+                local crop = Instance.new("Part")
+                crop.Name = "Crop"
+                crop.Shape = Enum.PartType.Ball
+                crop.Size = Vector3.new(3.4, 3.4, 3.4)
+                crop.Position = bedPos + Vector3.new(0, 2.2, 0)
+                crop.Anchored = true
+                crop.CanCollide = false
+                crop.Material = Enum.Material.Neon
+                crop.Transparency = 1
+                crop.Parent = bed
+                plotCrops[i] = crop
+
+                local text = makeSign(bed, Text.get("plot", i), 5, 6, Color3.fromRGB(255, 255, 255))
+                plotLabels[i] = text
+        end
+
+        -- One portal per field, on the ring edge facing that field. Walking into
+        -- it is the whole interaction; no menu is needed to travel.
+        for _, field in ipairs(Fields.list()) do
+                local dx = field.position.x
+                local dz = field.position.z
+                local length = math.max(1, math.sqrt(dx * dx + dz * dz))
+                local edge = centre + Vector3.new(dx / length, 0, dz / length) * (def.radius - 8)
+                local label = string.format("%s (%s %d)", Text.placeName(field.id), Text.get("level"),
+                        field.levelRequirement)
+                makePortal(town, field.id, label, edge, rgb(Fields.look(field.id).accent))
+        end
+
+        town.Parent = parent
+        return town
+end
+
+-- Build one monster field: floor, rim, arrival pad, a portal home, and its
+-- monsters' colour so the five maps are told apart at a glance.
+local function buildField(parent: Model, field): Model
+        local model = Instance.new("Model")
+        model.Name = "Field_" .. field.id
+
+        local centre = vec(field.position, 0)
+        local look = Fields.look(field.id)
+        makeFloor(model, "FieldFloor", centre, Config.Fields.ArenaRadius, rgb(field.groundColor))
+        -- The rim glows in the field's accent colour, so each map has its own
+        -- signature light even from a distance.
+        makeRim(model, "FieldRim", centre, Config.Fields.ArenaRadius, rgb(look.accent))
+        if look.motes then
+                makeMotes(model, centre, Config.Fields.ArenaRadius, rgb(look.accent), 40)
+        end
+
+        local arrival = vec(Fields.arrivalOf(field.id), SPAWN_HEIGHT)
+        local pad = Instance.new("Part")
+        pad.Name = "ArrivalPad"
+        pad.Size = Vector3.new(14, 1, 14)
+        pad.Position = arrival
+        pad.Anchored = true
+        pad.Material = Enum.Material.Neon
+        pad.Color = Color3.fromRGB(255, 214, 92)
+        pad.Parent = model
+
+        local sign = string.format("%s  -  %s %d+\n%s", Text.placeName(field.id), Text.get("level"),
+                        field.levelRequirement, Text.tagline(field.id))
+        makeSign(pad, sign, 10, 16, Color3.fromRGB(255, 255, 255))
+
+        -- A portal home, so leaving a field never needs a menu either.
+        makePortal(model, "Town", Text.get("returnToTown"), arrival + Vector3.new(14, 0, 0),
+                Color3.fromRGB(255, 214, 92))
+
+        model.Parent = parent
+        return model
+end
+
+-- Build the whole world once. Returns the root model.
+function World.buildWorld(): Model
+        if worldRoot and worldRoot.Parent then
+                return worldRoot
+        end
+
+        local root = Instance.new("Model")
+        root.Name = "AXArenaWorld"
+
+        -- A large ground slab so the ring of fields never looks like it floats.
+        local ground = Instance.new("Part")
+        ground.Name = "WorldGround"
+        ground.Size = Vector3.new(Config.Fields.RingRadius * 3, 4, Config.Fields.RingRadius * 3)
+        ground.Position = Vector3.new(0, -6, 0)
+        ground.Anchored = true
+        ground.Material = Enum.Material.Grass
+        ground.Color = Color3.fromRGB(66, 108, 74)
+        ground.TopSurface = Enum.SurfaceType.Smooth
+        ground.Parent = root
+
+        buildTown(root)
+        for _, field in ipairs(Fields.list()) do
+                buildField(root, field)
+        end
+
+        root.Parent = Workspace
+        worldRoot = root
+        -- The world starts lit as the town. Entering a field re-lights it.
+        applyLook("Town")
+        return root
+end
+
+-- Kept as the old entry point so existing callers keep working.
 function World.buildArena(): Model
-	if arenaRoot and arenaRoot.Parent then
-		return arenaRoot
-	end
-
-	local folder = Instance.new("Model")
-	folder.Name = "AXArenaWorld"
-
-	local base = Instance.new("Part")
-	base.Name = "Baseplate"
-	base.Size = Vector3.new(ARENA_SIZE, 4, ARENA_SIZE)
-	base.Position = Vector3.new(0, ARENA_Y - 2, 0)
-	base.Anchored = true
-	base.Material = Enum.Material.Grass
-	base.Color = Color3.fromRGB(88, 152, 92)
-	base.TopSurface = Enum.SurfaceType.Smooth
-	base.BottomSurface = Enum.SurfaceType.Smooth
-	base.Parent = folder
-
-	-- A visible boundary so players understand the arena is finite.
-	for _, side in ipairs({
-		{ name = "WallNorth", size = Vector3.new(ARENA_SIZE, 18, 4), pos = Vector3.new(0, 9, -ARENA_SIZE / 2) },
-		{ name = "WallSouth", size = Vector3.new(ARENA_SIZE, 18, 4), pos = Vector3.new(0, 9, ARENA_SIZE / 2) },
-		{ name = "WallEast", size = Vector3.new(4, 18, ARENA_SIZE), pos = Vector3.new(ARENA_SIZE / 2, 9, 0) },
-		{ name = "WallWest", size = Vector3.new(4, 18, ARENA_SIZE), pos = Vector3.new(-ARENA_SIZE / 2, 9, 0) },
-	}) do
-		local wall = Instance.new("Part")
-		wall.Name = side.name
-		wall.Size = side.size
-		wall.Position = side.pos
-		wall.Anchored = true
-		wall.Material = Enum.Material.Slate
-		wall.Color = Color3.fromRGB(70, 78, 92)
-		wall.Transparency = 0.25
-		wall.CanCollide = false
-		wall.Parent = folder
-	end
-
-	local spawn = Instance.new("SpawnLocation")
-	spawn.Name = "ArenaSpawn"
-	spawn.Size = Vector3.new(16, 1, 16)
-	spawn.Position = SPAWN_POSITION
-	spawn.Anchored = true
-	spawn.Material = Enum.Material.Neon
-	spawn.Color = Color3.fromRGB(255, 214, 92)
-	spawn.Neutral = true
-	spawn.Duration = 0
-	spawn.Parent = folder
-
-	-- A readable centre marker so the player has a landmark.
-	local beacon = Instance.new("Part")
-	beacon.Name = "Beacon"
-	beacon.Shape = Enum.PartType.Cylinder
-	beacon.Size = Vector3.new(1, 6, 6)
-	beacon.CFrame = CFrame.new(0, 3, 0) * CFrame.Angles(0, 0, math.rad(90))
-	beacon.Anchored = true
-	beacon.Material = Enum.Material.Neon
-	beacon.Color = Color3.fromRGB(120, 200, 255)
-	beacon.Parent = folder
-
-	folder.Parent = Workspace
-	arenaRoot = folder
-	return folder
+        return World.buildWorld()
 end
 
--- Where enemies stand for this wave. A ring keeps them off the spawn point, so
--- a new player is never killed before they can react.
-local function ringPosition(index: number, total: number): Vector3
-	local angle = (index / math.max(1, total)) * math.pi * 2
-	local radius = ENEMY_RING_RADIUS * (0.75 + 0.25 * ((index % 3) / 2))
-	return Vector3.new(math.cos(angle) * radius, ENEMY_HEIGHT_OFFSET, math.sin(angle) * radius)
+-- Draw one plot from server state. A nil cropId clears the bed.
+function World.updatePlot(index: number, cropId: string?, ready: boolean, secondsLeft: number)
+        local crop = plotCrops[index]
+        local text = plotLabels[index]
+        if not crop then
+                return
+        end
+
+        if not cropId then
+                crop.Transparency = 1
+                if text then
+                        text.Text = Text.get("plot", index)
+                        text.TextColor3 = Color3.fromRGB(220, 220, 220)
+                end
+                return
+        end
+
+        crop.Transparency = ready and 0 or 0.35
+        crop.Color = CROP_COLOR[cropId] or Color3.fromRGB(236, 200, 96)
+        -- A ripe crop glows and reads READY, so it is visible from across the town.
+        crop.Material = ready and Enum.Material.Neon or Enum.Material.SmoothPlastic
+        if text then
+                if ready then
+                        text.Text = Text.get("ready") .. " - " .. Text.cropName(cropId)
+                        text.TextColor3 = Color3.fromRGB(140, 255, 170)
+                else
+                        text.Text = string.format("%s %ds", Text.cropName(cropId), math.max(0, math.floor(secondsLeft)))
+                        text.TextColor3 = Color3.fromRGB(255, 255, 255)
+                end
+        end
 end
 
+-- Centre of a plot, used to place the axe burst.
+function World.plotPosition(index: number): Vector3?
+        local crop = plotCrops[index]
+        if crop then
+                return crop.Position
+        end
+        return nil
+end
+
+-- A monster's model. Size and colour come from the archetype, so a Slime and a
+-- Rock Golem are different creatures rather than the same cube twice.
 local function buildEnemyModel(enemy: any, position: Vector3): Model
-	local model = Instance.new("Model")
-	model.Name = "Enemy_" .. enemy.id
+        local model = Instance.new("Model")
+        model.Name = "Enemy_" .. enemy.id
 
-	local body = Instance.new("Part")
-	body.Name = "Body"
-	body.Size = ENEMY_SIZE
-	body.Position = position
-	body.Anchored = true
-	body.Material = Enum.Material.Neon
-	-- Colour by wave so later, harder waves read as more dangerous.
-	body.Color = Color3.fromRGB(220, 70, 70):Lerp(Color3.fromRGB(160, 60, 220), math.min(1, enemy.wave / 25))
-	body.Parent = model
+        local size = ENEMY_BASE_SIZE * (enemy.sizeMul or 1)
+        local body = Instance.new("Part")
+        body.Name = "Body"
+        body.Size = size
+        body.Position = position + Vector3.new(0, size.Y / 2, 0)
+        body.Anchored = true
+        body.Material = enemy.boss and Enum.Material.Neon or Enum.Material.SmoothPlastic
+        body.Color = enemy.color or Color3.fromRGB(220, 70, 70)
+        body.Parent = model
 
-	-- A health bar in the world, so the player can see progress without a UI.
-	local bar = Instance.new("BillboardGui")
-	bar.Name = "HealthBar"
-	bar.Size = UDim2.new(4, 0, 0.6, 0)
-	bar.StudsOffsetWorldSpace = Vector3.new(0, 4, 0)
-	bar.AlwaysOnTop = true
-	bar.Parent = body
+        -- A boss gets a glow ring so it is unmistakable in a crowd.
+        if enemy.boss then
+                local aura = Instance.new("Part")
+                aura.Name = "BossAura"
+                aura.Shape = Enum.PartType.Cylinder
+                aura.Size = Vector3.new(1, size.X * 2.2, size.X * 2.2)
+                aura.CFrame = CFrame.new(position + Vector3.new(0, 1, 0)) * CFrame.Angles(0, 0, math.rad(90))
+                aura.Anchored = true
+                aura.CanCollide = false
+                aura.Material = Enum.Material.Neon
+                aura.Color = body.Color
+                aura.Transparency = 0.6
+                aura.Parent = model
+        end
 
-	local track = Instance.new("Frame")
-	track.Name = "Track"
-	track.Size = UDim2.new(1, 0, 1, 0)
-	track.BackgroundColor3 = Color3.fromRGB(30, 30, 34)
-	track.BorderSizePixel = 0
-	track.Parent = bar
+        -- A health bar in the world, so progress is visible without a UI.
+        local bar = Instance.new("BillboardGui")
+        bar.Name = "HealthBar"
+        bar.Size = UDim2.new(enemy.boss and 10 or 4, 0, 0.6, 0)
+        bar.StudsOffsetWorldSpace = Vector3.new(0, size.Y * 0.8 + 2, 0)
+        bar.AlwaysOnTop = true
+        bar.Parent = body
 
-	local fill = Instance.new("Frame")
-	fill.Name = "Fill"
-	fill.Size = UDim2.new(1, 0, 1, 0)
-	fill.BackgroundColor3 = Color3.fromRGB(90, 220, 120)
-	fill.BorderSizePixel = 0
-	fill.Parent = track
+        local track = Instance.new("Frame")
+        track.Name = "Track"
+        track.Size = UDim2.new(1, 0, 1, 0)
+        track.BackgroundColor3 = Color3.fromRGB(30, 30, 34)
+        track.BorderSizePixel = 0
+        track.Parent = bar
 
-	local label = Instance.new("TextLabel")
-	label.Name = "Label"
-	label.Size = UDim2.new(1, 0, 1, 0)
-	label.BackgroundTransparency = 1
-	label.TextScaled = true
-	label.Font = Enum.Font.GothamBold
-	label.TextColor3 = Color3.fromRGB(255, 255, 255)
-	label.Text = "W" .. enemy.wave
-	label.Parent = bar
+        local fill = Instance.new("Frame")
+        fill.Name = "Fill"
+        fill.Size = UDim2.new(1, 0, 1, 0)
+        fill.BackgroundColor3 = Color3.fromRGB(90, 220, 120)
+        fill.BorderSizePixel = 0
+        fill.Parent = track
 
-	model.PrimaryPart = body
-	model.Parent = Workspace
-	return model
+        local label = Instance.new("TextLabel")
+        label.Name = "Label"
+        label.Size = UDim2.new(1, 0, 1, 0)
+        label.BackgroundTransparency = 1
+        label.TextScaled = true
+        label.Font = Enum.Font.GothamBold
+        label.TextColor3 = Color3.fromRGB(255, 255, 255)
+        label.Text = (enemy.name or "Monster") .. (enemy.boss and "  [BOSS]" or "")
+        label.Parent = bar
+
+        model.PrimaryPart = body
+        model.Parent = Workspace
+        return model
 end
 
 local function refreshHealthBar(enemy: any, model: Model)
-	local body = model:FindFirstChild("Body")
-	if not body then
-		return
-	end
-	local bar = body:FindFirstChild("HealthBar")
-	if not bar then
-		return
-	end
-	local fill = bar:FindFirstChild("Track") and bar.Track:FindFirstChild("Fill")
-	if not fill then
-		return
-	end
-	local ratio = 0
-	if enemy.maxHealth > 0 then
-		ratio = math.clamp(enemy.health / enemy.maxHealth, 0, 1)
-	end
-	fill.Size = UDim2.new(ratio, 0, 1, 0)
-	-- Green when healthy, red when nearly dead: readable at a glance.
-	fill.BackgroundColor3 = Color3.fromRGB(220, 90, 90):Lerp(Color3.fromRGB(90, 220, 120), ratio)
+        local body = model:FindFirstChild("Body")
+        if not body then
+                return
+        end
+        local bar = body:FindFirstChild("HealthBar")
+        if not bar then
+                return
+        end
+        local fill = bar:FindFirstChild("Track") and bar.Track:FindFirstChild("Fill")
+        if not fill then
+                return
+        end
+        local ratio = 0
+        if enemy.maxHealth > 0 then
+                ratio = math.clamp(enemy.health / enemy.maxHealth, 0, 1)
+        end
+        fill.Size = UDim2.new(ratio, 0, 1, 0)
+        -- Green when healthy, red when nearly dead: readable at a glance.
+        fill.BackgroundColor3 = Color3.fromRGB(220, 90, 90):Lerp(Color3.fromRGB(90, 220, 120), ratio)
 end
 
--- Spawn one enemy from a wave plan. Returns the enemy record.
-function World.spawnEnemy(plan: any, index: number, total: number, now: number)
-	nextEnemyId += 1
-	local enemy = {
-		id = nextEnemyId,
-		wave = plan.wave,
-		health = plan.enemyHealth,
-		maxHealth = plan.enemyHealth,
-		damage = plan.enemyDamage,
-		reward = plan.rewardPerKill,
-		nextAttackAt = now + Config.Wave.EnemyAttackInterval,
-		alive = true,
-	}
+-- Spawn one monster in a field. `scaled` comes from Enemies.scale, so all the
+-- stat maths stays in the pure module and this only places parts.
+function World.spawnEnemy(fieldId: string, scaled: any, wave: number, index: number, total: number, now: number)
+        nextEnemyId += 1
+        local enemy = {
+                id = nextEnemyId,
+                fieldId = fieldId,
+                wave = wave,
+                name = scaled.name,
+                archetype = scaled.id,
+                boss = scaled.boss,
+                health = scaled.health,
+                maxHealth = scaled.health,
+                damage = scaled.damage,
+                reward = scaled.reward,
+                speed = scaled.speed,
+                sizeMul = scaled.sizeMul,
+                color = rgb(scaled.color),
+                -- The grace window stops a freshly spawned enemy hitting on arrival.
+                spawnedAt = now,
+                nextAttackAt = now + Config.Wave.SpawnGraceSeconds,
+                alive = true,
+        }
 
-	local model = buildEnemyModel(enemy, ringPosition(index, total))
-	enemies[enemy.id] = enemy
-	enemyModels[enemy.id] = model
-	return enemy
+        local point = Fields.spawnPoint(fieldId, index, total)
+        local model = buildEnemyModel(enemy, vec(point, ENEMY_HEIGHT_OFFSET))
+        enemies[enemy.id] = enemy
+        enemyModels[enemy.id] = model
+        return enemy
 end
 
 function World.getEnemy(id: number)
-	return enemies[id]
+        return enemies[id]
 end
 
 function World.getEnemyModel(id: number): Model?
-	return enemyModels[id]
+        return enemyModels[id]
 end
 
 -- Apply damage and reflect it in the world. Returns killed, reward.
 function World.damageEnemy(id: number, amount: number): (boolean, number)
-	local enemy = enemies[id]
-	if not enemy or not enemy.alive then
-		return false, 0
-	end
+        local enemy = enemies[id]
+        if not enemy or not enemy.alive then
+                return false, 0
+        end
 
-	enemy.health -= amount
-	if enemy.health > 0 then
-		local model = enemyModels[id]
-		if model then
-			refreshHealthBar(enemy, model)
-		end
-		return false, 0
-	end
+        enemy.health -= amount
+        if enemy.health > 0 then
+                local model = enemyModels[id]
+                if model then
+                        refreshHealthBar(enemy, model)
+                end
+                return false, 0
+        end
 
-	enemy.health = 0
-	enemy.alive = false
-	local reward = enemy.reward
+        enemy.health = 0
+        enemy.alive = false
+        local reward = enemy.reward
 
-	local model = enemyModels[id]
-	if model then
-		-- A short burst so the kill is visible rather than an instant vanish.
-		local body = model:FindFirstChild("Body")
-		if body and body:IsA("BasePart") then
-			body.Material = Enum.Material.SmoothPlastic
-			body.Color = Color3.fromRGB(255, 240, 180)
-			body.Size = body.Size * 1.4
-		end
-		task.delay(0.12, function()
-			if model and model.Parent then
-				model:Destroy()
-			end
-		end)
-	end
+        local model = enemyModels[id]
+        if model then
+                -- A short burst so the kill is visible rather than an instant vanish.
+                local body = model:FindFirstChild("Body")
+                if body and body:IsA("BasePart") then
+                        body.Material = Enum.Material.SmoothPlastic
+                        body.Color = Color3.fromRGB(255, 240, 180)
+                        body.Size = body.Size * 1.4
+                end
+                task.delay(0.12, function()
+                        if model and model.Parent then
+                                model:Destroy()
+                        end
+                end)
+        end
 
-	enemies[id] = nil
-	enemyModels[id] = nil
-	return true, reward
+        enemies[id] = nil
+        enemyModels[id] = nil
+        return true, reward
 end
 
 function World.removeEnemy(id: number)
-	local model = enemyModels[id]
-	if model then
-		model:Destroy()
-	end
-	enemies[id] = nil
-	enemyModels[id] = nil
+        local model = enemyModels[id]
+        if model then
+                model:Destroy()
+        end
+        enemies[id] = nil
+        enemyModels[id] = nil
+end
+
+-- Remove every monster in one field. Used when a field empties or a wave
+-- resets, so a stale monster never follows a player to town.
+function World.clearField(fieldId: string)
+        for id, enemy in pairs(enemies) do
+                if enemy.fieldId == fieldId then
+                        local model = enemyModels[id]
+                        if model then
+                                model:Destroy()
+                        end
+                        enemies[id] = nil
+                        enemyModels[id] = nil
+                end
+        end
 end
 
 function World.clearEnemies()
-	for id, model in pairs(enemyModels) do
-		if model and model.Parent then
-			model:Destroy()
-		end
-		enemies[id] = nil
-	end
-	enemyModels = {}
+        for id, model in pairs(enemyModels) do
+                if model and model.Parent then
+                        model:Destroy()
+                end
+                enemies[id] = nil
+        end
+        enemyModels = {}
 end
 
-function World.aliveCount(): number
-	local count = 0
+function World.aliveCount(fieldId: string?): number
+        local count = 0
+        for _, enemy in pairs(enemies) do
+                if enemy.alive and (fieldId == nil or enemy.fieldId == fieldId) then
+                        count += 1
+                end
+        end
+        return count
+end
+
+-- Where the player stands when they arrive somewhere. Town and field arrivals
+-- both come from Fields, so the layout lives in one place.
+function World.attachPlayer(player: Player, character: Model, placeId: string?)
+        local humanoid = character:WaitForChild("Humanoid", 5)
+        local root = character:WaitForChild("HumanoidRootPart", 5)
+        if not humanoid or not root then
+                return
+        end
+
+        local id = placeId or "Town"
+        root.CFrame = CFrame.new(vec(Fields.arrivalOf(id), SPAWN_HEIGHT + 2))
+end
+
+-- Move a player to another place. The client asks; the server decides.
+function World.placePlayer(player: Player, placeId: string)
+        local character = player.Character
+        local root = character and character:FindFirstChild("HumanoidRootPart")
+        if root and root:IsA("BasePart") then
+                root.CFrame = CFrame.new(vec(Fields.arrivalOf(placeId), SPAWN_HEIGHT + 2))
+        end
+end
+
+-- Move enemies toward the nearest player *in the same field*, and let them
+-- attack, but only from melee range.
+--
+-- Enemies are tied to a field so a monster in the Volcano cannot chase someone
+-- standing in town. That was invisible while the world was one arena, and it
+-- would be very visible now.
+function World.updateEnemies(dt: number, now: number, fieldOfPlayer: (Player) -> string?, onAttack: (Player, number) -> ())
+        local players = Players:GetPlayers()
+        if #players == 0 then
+                return
+        end
+
+        for id, enemy in pairs(enemies) do
+                if enemy.alive then
+                        local model = enemyModels[id]
+                        local body = model and model:FindFirstChild("Body")
+                        if body and body:IsA("BasePart") then
+                                -- Nearest player standing in this enemy's field.
+                                local target: Player? = nil
+                                local targetRoot: BasePart? = nil
+                                local bestDistance = math.huge
+                                for _, player in ipairs(players) do
+                                        if fieldOfPlayer(player) == enemy.fieldId then
+                                                local character = player.Character
+                                                local root = character and character:FindFirstChild("HumanoidRootPart")
+                                                if root and root:IsA("BasePart") then
+                                                        local distance = (root.Position - body.Position).Magnitude
+                                                        if distance < bestDistance then
+                                                                bestDistance = distance
+                                                                target = player
+                                                                targetRoot = root
+                                                        end
+                                                end
+                                        end
+                                end
+
+                                local distance = bestDistance
+                                if targetRoot then
+                                        -- Chase on the flat plane so enemies never climb or sink, and
+                                        -- stop just inside melee range so they do not shove the player.
+                                        local offset = targetRoot.Position - body.Position
+                                        local flat = Vector3.new(offset.X, 0, offset.Z)
+                                        local flatDistance = flat.Magnitude
+                                        if flatDistance > ENEMY_STOP_DISTANCE then
+                                                local speed = enemy.speed or Config.Wave.EnemyMoveSpeed
+                                                local step = math.min(speed * dt, flatDistance - ENEMY_STOP_DISTANCE)
+                                                body.CFrame = body.CFrame + flat.Unit * step
+                                                -- Face the player, so the chase reads as intent.
+                                                body.CFrame = CFrame.lookAt(body.Position, body.Position + flat.Unit)
+                                        end
+                                end
+
+                                local pastGrace = (now - enemy.spawnedAt) >= Config.Wave.SpawnGraceSeconds
+                                if target and pastGrace and distance <= Config.Wave.EnemyMeleeRange and now >= enemy.nextAttackAt then
+                                        enemy.nextAttackAt = now + Config.Wave.EnemyAttackInterval
+                                        onAttack(target, enemy.damage)
+                                end
+                        end
+                end
+        end
+end
+
+-- The boss standing in a field, if there is one, with its remaining
+-- health as a fraction. The HUD draws one bar from this and nothing else.
+function World.bossInfo(fieldId: string?)
+	local found = nil
 	for _, enemy in pairs(enemies) do
-		if enemy.alive then
-			count += 1
+		if enemy.alive and enemy.boss and (fieldId == nil or enemy.fieldId == fieldId) then
+			found = enemy
+			break
 		end
 	end
-	return count
+	if not found then
+		return nil
+	end
+	return {
+		name = found.name,
+		health = found.health,
+		maxHealth = found.maxHealth,
+		fraction = found.maxHealth > 0 and (found.health / found.maxHealth) or 0,
+	}
 end
 
--- Keep every player inside the arena and standing, whatever they do.
-function World.attachPlayer(player: Player, character: Model)
-	local humanoid = character:WaitForChild("Humanoid", 5)
-	local root = character:WaitForChild("HumanoidRootPart", 5)
-	if not humanoid or not root then
-		return
-	end
-
-	-- The character spawns at the SpawnLocation; a fallback guards the case
-	-- where the place has no spawn at all.
-	root.CFrame = CFrame.new(SPAWN_POSITION + Vector3.new(0, 2, 0))
+function World.snapshot(fieldId: string?)
+        local out = {}
+        for _, enemy in pairs(enemies) do
+                if fieldId == nil or enemy.fieldId == fieldId then
+                        table.insert(out, {
+                                id = enemy.id,
+                                fieldId = enemy.fieldId,
+                                wave = enemy.wave,
+                                name = enemy.name,
+                                boss = enemy.boss,
+                                health = enemy.health,
+                                maxHealth = enemy.maxHealth,
+                                alive = enemy.alive,
+                        })
+                end
+        end
+        table.sort(out, function(a, b)
+                return a.id < b.id
+        end)
+        return out
 end
 
--- Move enemies toward the nearest player and let them attack. Called from the
--- server tick, so enemy pressure is real and cannot be skipped by the client.
-function World.updateEnemies(dt: number, now: number, onAttack: (Player, number) -> ())
-	local players = Players:GetPlayers()
-	if #players == 0 then
-		return
-	end
+--------------------------------------------------------------------------
+-- Dropped items. A kill leaves loot on the ground; the player walks over it or
+-- taps PICKUP. The server owns the drop list, so the client cannot invent one.
+--------------------------------------------------------------------------
 
-	for id, enemy in pairs(enemies) do
-		if enemy.alive then
-			local target: Player? = nil
-			local bestDistance = math.huge
-			for _, player in ipairs(players) do
-				local character = player.Character
-				local root = character and character:FindFirstChild("HumanoidRootPart")
-				if root and root:IsA("BasePart") then
-					local distance = (root.Position - Vector3.new(0, ENEMY_HEIGHT_OFFSET, 0)).Magnitude
-					if distance < bestDistance then
-						bestDistance = distance
-						target = player
-					end
-				end
-			end
+local RARITY_COLOR: { [string]: Color3 } = {
+        common = Color3.fromRGB(200, 205, 215),
+        uncommon = Color3.fromRGB(120, 220, 140),
+        rare = Color3.fromRGB(110, 180, 255),
+        epic = Color3.fromRGB(200, 130, 255),
+        legendary = Color3.fromRGB(255, 200, 90),
+}
 
-			local model = enemyModels[id]
-			local body = model and model:FindFirstChild("Body")
-			if body and body:IsA("BasePart") then
-				-- Drift slowly toward the arena centre: readable and non-lethal.
-				local direction = (Vector3.new(0, body.Position.Y, 0) - body.Position)
-				if direction.Magnitude > 1 then
-					body.CFrame = body.CFrame + direction.Unit * math.min(14, direction.Magnitude) * dt
-				end
-			end
+-- Leave an item on the ground at a position. Returns the drop id.
+function World.spawnDrop(itemId: string, count: number, position: Vector3, fieldId: string?, now: number): number
+        nextDropId += 1
+        local id = nextDropId
 
-			if target and now >= enemy.nextAttackAt then
-				enemy.nextAttackAt = now + Config.Wave.EnemyAttackInterval
-				onAttack(target, enemy.damage)
-			end
-		end
-	end
+        local model = Instance.new("Model")
+        model.Name = "Drop_" .. id
+
+        local def = Items.getDef(itemId)
+        local color = RARITY_COLOR[def and def.rarity or "common"] or Color3.fromRGB(220, 220, 220)
+
+        local part = Instance.new("Part")
+        part.Name = "Item"
+        part.Shape = Enum.PartType.Ball
+        part.Size = Vector3.new(1.6, 1.6, 1.6)
+        part.Position = position + Vector3.new(0, 2.4, 0)
+        part.Anchored = true
+        part.CanCollide = false
+        part.Material = Enum.Material.Neon
+        part.Color = color
+        part.Parent = model
+
+        -- A light so a rare drop is visible across the field.
+        local light = Instance.new("PointLight")
+        light.Brightness = 1.6
+        light.Range = 14
+        light.Color = color
+        light.Parent = part
+
+        local billboard = Instance.new("BillboardGui")
+        billboard.Name = "Tag"
+        billboard.Size = UDim2.new(6, 0, 1.4, 0)
+        billboard.StudsOffsetWorldSpace = Vector3.new(0, 2.6, 0)
+        billboard.AlwaysOnTop = true
+        billboard.Parent = part
+
+        local label = Instance.new("TextLabel")
+        label.Size = UDim2.new(1, 0, 1, 0)
+        label.BackgroundTransparency = 1
+        label.Font = Enum.Font.GothamBold
+        label.TextScaled = true
+        label.TextColor3 = color
+        label.TextStrokeTransparency = 0.4
+        label.Text = Text.itemName(itemId) .. (count > 1 and (" x" .. count) or "")
+        label.Parent = billboard
+
+        model.PrimaryPart = part
+        model.Parent = Workspace
+
+        drops[id] = {
+                id = id,
+                itemId = itemId,
+                count = count,
+                fieldId = fieldId,
+                position = part.Position,
+                expiresAt = now + Config.Items.DropLifetimeSeconds,
+                model = model,
+        }
+        return id
 end
 
-function World.snapshot()
-	local out = {}
-	for _, enemy in pairs(enemies) do
-		table.insert(out, {
-			id = enemy.id,
-			wave = enemy.wave,
-			health = enemy.health,
-			maxHealth = enemy.maxHealth,
-			alive = enemy.alive,
-		})
-	end
-	table.sort(out, function(a, b)
-		return a.id < b.id
-	end)
-	return out
+function World.getDrop(id: number)
+        return drops[id]
+end
+
+-- Every drop still on the ground, so the client can show or auto-collect them.
+function World.dropSnapshot(fieldId: string?): { any }
+        local out = {}
+        for _, drop in pairs(drops) do
+                if fieldId == nil or drop.fieldId == fieldId then
+                        table.insert(out, {
+                                id = drop.id,
+                                itemId = drop.itemId,
+                                count = drop.count,
+                                position = drop.position,
+                        })
+                end
+        end
+        table.sort(out, function(a, b)
+                return a.id < b.id
+        end)
+        return out
+end
+
+function World.removeDrop(id: number)
+        local drop = drops[id]
+        if not drop then
+                return nil
+        end
+        if drop.model and drop.model.Parent then
+                drop.model:Destroy()
+        end
+        drops[id] = nil
+        return drop
+end
+
+-- Expire old drops. Called from the server tick.
+function World.pruneDrops(now: number)
+        for id, drop in pairs(drops) do
+                if now >= drop.expiresAt then
+                        World.removeDrop(id)
+                end
+        end
+end
+
+--------------------------------------------------------------------------
+-- Floating damage numbers. A hit that does not move a bar on screen is easy to
+-- miss on a phone, so every hit spawns a short-lived number above the target.
+--------------------------------------------------------------------------
+
+function World.showDamage(position: Vector3, amount: number, kind: string?, color: Color3?)
+        local anchor = Instance.new("Part")
+        anchor.Name = "DamageAnchor"
+        anchor.Size = Vector3.new(0.2, 0.2, 0.2)
+        anchor.Position = position + Vector3.new(0, 3.4, 0)
+        anchor.Anchored = true
+        anchor.CanCollide = false
+        anchor.Transparency = 1
+        anchor.Parent = Workspace
+
+        local billboard = Instance.new("BillboardGui")
+        billboard.Size = UDim2.new(5, 0, 1.6, 0)
+        billboard.AlwaysOnTop = true
+        billboard.Parent = anchor
+
+        local label = Instance.new("TextLabel")
+        label.Size = UDim2.new(1, 0, 1, 0)
+        label.BackgroundTransparency = 1
+        label.Font = Enum.Font.GothamBlack
+        label.TextScaled = true
+        label.TextStrokeTransparency = 0.2
+        label.TextColor3 = color or Color3.fromRGB(255, 255, 255)
+
+        if kind == "crit" then
+                label.Text = tostring(amount) .. "!"
+                label.TextColor3 = Color3.fromRGB(255, 210, 90)
+        elseif kind == "heal" then
+                label.Text = "+" .. tostring(amount)
+                label.TextColor3 = Color3.fromRGB(120, 255, 150)
+        elseif kind == "miss" then
+                label.Text = "MISS"
+                label.TextColor3 = Color3.fromRGB(190, 190, 200)
+        else
+                label.Text = tostring(amount)
+        end
+        label.Parent = billboard
+
+        -- Rise and fade, then clean up. Short, because several hits land at once.
+        local startY = anchor.Position.Y
+        task.spawn(function()
+                local elapsed = 0
+                while elapsed < 0.7 do
+                        local dt = task.wait(0.03)
+                        elapsed += dt
+                        if not anchor.Parent then
+                                return
+                        end
+                        anchor.Position = Vector3.new(anchor.Position.X, startY + elapsed * 6, anchor.Position.Z)
+                        label.TextTransparency = math.clamp(elapsed / 0.7, 0, 1)
+                        label.TextStrokeTransparency = 0.2 + math.clamp(elapsed / 0.7, 0, 0.8)
+                end
+                if anchor.Parent then
+                        anchor:Destroy()
+                end
+        end)
+end
+
+-- Field id a world position is standing in, or nil for town. Used to work out
+-- which field's monsters may attack a given player.
+function World.fieldAt(position: Vector3): string?
+        for _, field in ipairs(Fields.list()) do
+                local centre = vec(field.position, 0)
+                local dx = position.X - centre.X
+                local dz = position.Z - centre.Z
+                if math.sqrt(dx * dx + dz * dz) <= Config.Fields.ArenaRadius then
+                        return field.id
+                end
+        end
+        return nil
 end
 
 return World

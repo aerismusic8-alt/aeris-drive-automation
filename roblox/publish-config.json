@@ -1,11 +1,11 @@
 {
-  "universeId": null,
-  "placeId": null,
-  "versionType": "Saved",
+  "universeId": 10771844216,
+  "placeId": 79945905295644,
+  "versionType": "Published",
   "note": [
-    "Fill in universeId and placeId once the experience exists on Roblox.",
-    "Find them at https://create.roblox.com -> your experience -> the URL, e.g.",
-    "https://create.roblox.com/dashboard/creations/experiences/<universeId>/places/<placeId>/overview",
-    "No secret goes in this file. The API key lives in the GitHub secret ROBLOX_API_KEY."
+    "AX Arena: Farm and Fight, created 2026-10-19.",
+    "universeId and placeId come from the Creator Dashboard URL.",
+    "No secret goes in this file. The API key lives in the GitHub secret ROBLOX_API_KEY.",
+    "A run form input still wins over these values when one is given."
   ]
 }

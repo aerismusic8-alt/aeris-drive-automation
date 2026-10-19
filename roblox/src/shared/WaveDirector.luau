@@ -77,6 +77,16 @@ function WaveDirector:startWave()
 	return plan
 end
 
+-- Start the next wave now instead of waiting out the intermission. Used when a
+-- player walks into a field: the first fight should begin on arrival, not
+-- twelve seconds later. Returns the new plan, or nil when a wave is running.
+function WaveDirector:skipIntermission(): SpawnPlan?
+	if self._phase ~= "INTERMISSION" then
+		return nil
+	end
+	return self:startWave()
+end
+
 -- Called by the combat layer when an enemy dies or is removed.
 function WaveDirector:notifyEnemyRemoved()
 	if self._alive > 0 then
