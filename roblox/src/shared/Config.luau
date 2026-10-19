@@ -115,9 +115,6 @@ Config.Daily = {
 	},
 }
 
-Config.Codes = {
-	MaxAttemptsPerMinute = 10,
-}
 
 -- Ordered list keeps iteration deterministic across server restarts.
 Config.UpgradeOrder = { "Damage", "Health", "Speed", "CritChance" }
@@ -372,6 +369,10 @@ Config.Monetization = {
 Config.Codes = {
 	-- Promo codes reward engagement (Roblox trending rewards active play).
 	MaxRedemptionsPerPlayer = 1,
+	-- Attempts allowed per minute per player. This used to sit in a second
+	-- Config.Codes table higher up the file, which this one replaced
+	-- wholesale: assigning the same key twice drops the first silently.
+	MaxAttemptsPerMinute = 10,
 }
 
 --------------------------------------------------------------------------

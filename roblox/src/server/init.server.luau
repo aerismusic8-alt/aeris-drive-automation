@@ -213,8 +213,19 @@ local function activeBuffs(record: PlayerRecord, now: number): { any }
 	return out
 end
 
-local function pushPlayerState(player: Player, record: PlayerRecord)
+-- `now` is the wall clock the economy uses; the farm counts growth against a
+-- monotonic clock instead, so the two are separate. This function used to
+-- reach for `broadcastNow`, a local belonging to the heartbeat loop, which is
+-- nil here -- so Farm.secondsUntilReady did arithmetic on nil and threw the
+-- moment any plot held a crop.
+-- The buff-folded combat sheet. Declared ahead of pushPlayerState because the
+-- combat maths it is built from sits further down the file, and a local is
+-- only visible after its declaration.
+local combatSheet: (PlayerRecord, number) -> any
+
+local function pushPlayerState(player: Player, record: PlayerRecord, clock: number?)
 	local now = os.time()
+	local farmClock = clock or os.clock()
 	local derived = Stats.derive(record.upgrades)
 	local petCoin, petDamage = Pets.equippedMultipliers(record.pets)
 	local rebirthCoin, rebirthDamage = Rebirth.multipliers(record.rebirth.count)
@@ -254,9 +265,34 @@ local function pushPlayerState(player: Player, record: PlayerRecord)
 		coinMultiplier = coinMultiplier(record, now),
 		rebirthCoin = rebirthCoin,
 		rebirthDamage = rebirthDamage,
-		farm = Farm.snapshot(record.farm, broadcastNow),
+		farm = Farm.snapshot(record.farm, farmClock),
 		axe = Axe.snapshot(record.axe),
 		crops = Farm.list(),
+		-- The character sheet. Every one of these is read by the client's Stats,
+		-- Skills, Job and Bag tabs, which used to fall back to their empty
+		-- defaults because the payload carried none of them.
+		attributes = record.attributes,
+		attributeSheet = combatSheet(record, now),
+		attributePoints = Attributes.available(record.attributes, record.level),
+		attributeNames = Attributes.NAMES,
+		class = record.class,
+		className = Text.className(record.class),
+		classTagline = Text.classTagline(record.class),
+		classDef = Classes.getDef(record.class),
+		jobLevel = record.jobLevel,
+		jobXp = record.jobXp,
+		jobXpForNext = Classes.jobXpForNext(record.jobLevel),
+		skillPoints = skillPointsLeft(record),
+		skills = record.skills,
+		hotbar = Skills.hotbar(record.skills, record.class, combatSheet(record, now)),
+		sp = record.sp,
+		maxSp = record.maxSp,
+		equipment = record.equipment,
+		bag = record.inventory:snapshot(),
+		bagCapacity = record.inventory:capacity(),
+		autoAttack = record.autoAttack,
+		autoPickup = record.autoPickup,
+		buffs = activeBuffs(record, now),
 		quest = Quests.snapshot(record.quests),
 	})
 end
@@ -510,7 +546,7 @@ end
 
 -- The player's own sheet, with any running buffs folded in. Combat reads this
 -- rather than deriveCombat directly, so a Blessing actually changes the numbers.
-local function combatSheet(record: PlayerRecord, now: number)
+combatSheet = function(record: PlayerRecord, now: number)
 	local sheet = deriveCombat(record)
 	for id, buff in pairs(record.buffs) do
 		if now >= buff.until_ then

@@ -44,6 +44,21 @@ jobs:
       - name: Run integration tests
         run: ./tools/luau/luau roblox/tests/integration.luau
 
+      - name: Run quest and balance tests
+        run: |
+          ./tools/luau/luau roblox/tests/quests.luau
+          ./tools/luau/luau roblox/tests/balance.luau
+
+      # Boots the real server, builds the real world and loads the real client
+      # under a headless engine shim. The unit, integration, quest and balance
+      # suites all passed while the game was unplayable, because none of them
+      # executed World.luau, init.server.luau or the client. This one does.
+      - name: Generate Roblox source bundle
+        run: python3 scripts/gen-roblox-sources.py
+
+      - name: Run runtime tests
+        run: ./tools/luau/luau roblox/tests/runtime.luau
+
       - name: Check client, HUD and server agree on names
         run: python3 scripts/check-hud-wiring.py
 

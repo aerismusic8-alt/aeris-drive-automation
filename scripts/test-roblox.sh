@@ -33,6 +33,12 @@ fi
 # asked whether the two curves met. This one does.
 "$LUAU" "$ROOT/roblox/tests/balance.luau" || exit 1
 
+# The runtime suite boots the real server, builds the real world and loads the
+# real client under a headless engine shim. It needs the sources as a Luau table
+# because the standalone CLI has no file I/O, so they are generated first.
+python3 "$ROOT/scripts/gen-roblox-sources.py" || exit 1
+"$LUAU" "$ROOT/roblox/tests/runtime.luau" || exit 1
+
 # Wiring checks read the source, because the HUD cannot be executed outside
 # Roblox. This is what catches a renamed label or an unbound button.
 exec python3 "$ROOT/scripts/check-hud-wiring.py"

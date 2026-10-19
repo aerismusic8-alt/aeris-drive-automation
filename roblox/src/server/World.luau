@@ -295,6 +295,25 @@ end
 -- for them. A landmark's own footprint is the radius, trimmed slightly so the
 -- scatter is not starved; props that are a floor rather than an obstacle (the
 -- paving) reserve nothing, so props may stand on them.
+-- Scenery is pure Luau, so it takes plain { x, y, z } tables, never a Vector3.
+-- The world works in Vector3, so the arrival point is converted once here
+-- rather than at each call. Passing the Vector3 straight through read as
+-- arrival.x == nil and threw inside Scenery, which killed the server script
+-- before it could serve a single player.
+local function landmarkOpts(opts: any): any
+        if not opts then
+                return nil
+        end
+        local out = {}
+        for key, value in pairs(opts) do
+                out[key] = value
+        end
+        if opts.arrival then
+                out.arrival = { x = opts.arrival.X, y = opts.arrival.Y, z = opts.arrival.Z }
+        end
+        return out
+end
+
 local function reserveLandmarks(
         keepOut: { any },
         placeId: string,
@@ -302,7 +321,7 @@ local function reserveLandmarks(
         radius: number,
         opts: any
 )
-        for _, spot in ipairs(Scenery.landmarks(placeId, { x = centre.X, y = centre.Y, z = centre.Z }, radius, opts)) do
+        for _, spot in ipairs(Scenery.landmarks(placeId, { x = centre.X, y = centre.Y, z = centre.Z }, radius, landmarkOpts(opts))) do
                 local def = Scenery.kindDef(spot.kind)
                 if not def or def.reserve ~= false then
                         local prop = Scenery.build(spot.kind, spot.size)
@@ -321,7 +340,7 @@ end
 -- scatter's keep-out list on the next build.
 local function buildLandmarks(parent: Model, placeId: string, centre: Vector3, radius: number, opts: any)
         local palette = Scenery.palette(placeId)
-        local placements = Scenery.landmarks(placeId, { x = centre.X, y = centre.Y, z = centre.Z }, radius, opts)
+        local placements = Scenery.landmarks(placeId, { x = centre.X, y = centre.Y, z = centre.Z }, radius, landmarkOpts(opts))
 
         local group = Instance.new("Model")
         group.Name = "Landmarks"
