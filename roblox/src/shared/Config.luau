@@ -5,7 +5,7 @@
 local Config = {}
 
 Config.Version = "1.0.1"
-Config.GameName = "AX Arena"
+Config.GameName = "AX Arena: Farm and Fight"
 
 Config.Tick = {
 	Rate = 30,

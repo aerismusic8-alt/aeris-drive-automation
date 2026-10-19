@@ -31,6 +31,7 @@ on:
       - 'roblox/**'
       - 'scripts/build-place-linux.sh'
       - 'scripts/publish-place-linux.sh'
+      - 'scripts/name-experience-linux.sh'
       - '.github/workflows/ax-arena-build-publish.yml'
 
 permissions:
@@ -76,6 +77,23 @@ jobs:
           name: AXArena-place
           path: ${{ runner.temp }}/AXArena.rbxlx
           if-no-files-found: error
+
+  name:
+    needs: test
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      # Publishing a place does not name the experience, so its page read
+      # "Title-Unavailable" and there was no way to open the game from a phone.
+      # This sets the name from Config.luau. It is best effort: the key may only
+      # carry place-publishing scope, and the script reports that without
+      # failing the job.
+      - name: Set the experience name
+        env:
+          ROBLOX_API_KEY: ${{ secrets.ROBLOX_API_KEY }}
+        run: bash scripts/name-experience-linux.sh
 
   publish:
     needs: [test, build]
