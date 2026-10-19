@@ -27,6 +27,8 @@ local Monetization = require(Shared.Monetization)
 local DailyRewards = require(Shared.DailyRewards)
 local World = require(script.World)
 local Codes = require(Shared.Codes)
+local Farm = require(Shared.Farm)
+local Axe = require(Shared.Axe)
 
 -- Remotes are created here so the client can rely on WaitForChild alone.
 local function ensureRemote(container: Instance, className: "RemoteEvent" | "RemoteFunction", name: string): Instance
@@ -56,6 +58,10 @@ local DoRebirth = ensureRemote(Remotes, "RemoteFunction", "Rebirth") :: RemoteFu
 local TravelZone = ensureRemote(Remotes, "RemoteFunction", "TravelZone") :: RemoteFunction
 local ClaimDaily = ensureRemote(Remotes, "RemoteFunction", "ClaimDaily") :: RemoteFunction
 local RedeemCode = ensureRemote(Remotes, "RemoteFunction", "RedeemCode") :: RemoteFunction
+local PlantCrop = ensureRemote(Remotes, "RemoteFunction", "PlantCrop") :: RemoteFunction
+local HarvestCrop = ensureRemote(Remotes, "RemoteFunction", "HarvestCrop") :: RemoteFunction
+local UseAxe = ensureRemote(Remotes, "RemoteFunction", "UseAxe") :: RemoteFunction
+local FarmState = ensureRemote(Remotes, "RemoteEvent", "FarmState") :: RemoteEvent
 local WaveState = ensureRemote(Remotes, "RemoteEvent", "WaveState") :: RemoteEvent
 local PlayerState = ensureRemote(Remotes, "RemoteEvent", "PlayerState") :: RemoteEvent
 local Notify = ensureRemote(Remotes, "RemoteEvent", "Notify") :: RemoteEvent
@@ -81,6 +87,8 @@ type PlayerRecord = {
 	lastAttackAt: number,
 	waveAtKill: number,
 	lastZoneChange: number,
+	farm: any,
+	axe: any,
 	dirty: boolean,
 }
 
@@ -137,6 +145,9 @@ local function pushPlayerState(player: Player, record: PlayerRecord)
 		coinMultiplier = coinMultiplier(record, now),
 		rebirthCoin = rebirthCoin,
 		rebirthDamage = rebirthDamage,
+		farm = Farm.snapshot(record.farm, now),
+		axe = Axe.snapshot(record.axe),
+		crops = Farm.list(),
 	})
 end
 
@@ -163,6 +174,8 @@ local function buildRecord(userId: number, saved: any): PlayerRecord
 		daily = DailyRewards.fromSnapshot(data.daily),
 		redeemed = Codes.fromSnapshot(data.redeemed),
 		combatant = Combat.createCombatant(Stats.derive(data.upgrades).maxHealth),
+		farm = Farm.new(),
+		axe = Axe.new(),
 		lastZoneChange = 0,
 		lastAttackAt = 0,
 		waveAtKill = 1,
@@ -260,11 +273,18 @@ local function onPlayerAdded(player: Player)
 		humanoid.Health = record.combatant.health
 		humanoid.WalkSpeed = derived.walkSpeed + Monetization.walkSpeedBonus(record.entitlements)
 
+		-- Keep the avatar in one piece on death. Roblox breaks the joints by
+		-- default, which sends the head rolling; that reads far more violent
+		-- than a farm-and-fight game wants.
+		humanoid.BreakJointsOnDeath = false
 		humanoid.Died:Connect(function()
 			record.stats.deaths += 1
 			record.dirty = true
+			-- Death clears the combatant flag and only the spawn path sets it back, so
+			-- revive before respawning or the player can never fight again.
 			task.delay(Config.Player.RespawnDelay, function()
 				if player.Parent then
+					applySpawnStats(record)
 					player:LoadCharacter()
 				end
 			end)
@@ -272,6 +292,7 @@ local function onPlayerAdded(player: Player)
 	end)
 
 	pushPlayerState(player, record)
+	FarmState:FireClient(player, { plots = Farm.snapshot(record.farm, os.clock()), axe = Axe.snapshot(record.axe) })
 end
 
 local function onPlayerRemoving(player: Player)
@@ -522,6 +543,85 @@ RedeemCode.OnServerInvoke = function(player: Player, code: any): (boolean, any, 
 	return true, { code = def.code, coins = def.coins, xp = def.xp, luckCharges = def.luckCharges }, nil
 end
 
+-- Farm remotes. The server owns crop timers, so a client cannot speed
+-- growth up or harvest early. Every call is rate limited by guard.
+PlantCrop.OnServerInvoke = function(player: Player, plotIndex: any, cropId: any): (boolean, string?)
+	local record, err = guard(player)
+	if not record then
+		return false, err
+	end
+	local ok, reason = Farm.plant(record.farm, plotIndex, cropId, os.clock())
+	if not ok then
+		return false, reason
+	end
+	record.dirty = true
+	pushPlayerState(player, record)
+	return true, nil
+end
+
+HarvestCrop.OnServerInvoke = function(player: Player, plotIndex: any): (boolean, any, string?)
+	local record, err = guard(player)
+	if not record then
+		return false, nil, err
+	end
+	local reward, reason = Farm.harvest(record.farm, plotIndex, os.clock())
+	if not reward then
+		return false, nil, reason
+	end
+	-- Harvest pays coins and XP, and it is what charges the axe.
+	local now = os.time()
+	record.coins = math.min(Config.Economy.MaxCoins, record.coins + math.floor(reward.coins * coinMultiplier(record, now) + 0.5))
+	awardXp(record, reward.xp)
+	Axe.addCharges(record.axe, Config.Farm.AxeChargePerHarvest)
+	record.dirty = true
+	pushPlayerState(player, record)
+	notify(player, string.format("Harvested %s: +%d coins", reward.cropId, reward.coins))
+	return true, reward, nil
+end
+
+-- The axe spends every charge at once and hits everything near the player.
+-- Farming is therefore not a side activity: it is how you charge the weapon.
+UseAxe.OnServerInvoke = function(player: Player): (boolean, any, string?)
+	local record, err = guard(player)
+	if not record then
+		return false, nil, err
+	end
+	if not Axe.isReady(record.axe) then
+		return false, nil, "NO_CHARGES"
+	end
+	
+	local character = player.Character
+	local root = character and character:FindFirstChild("HumanoidRootPart")
+	if not root or not root:IsA("BasePart") then
+		return false, nil, "NO_CHARACTER"
+	end
+	
+	local baseDamage = Stats.derive(record.upgrades).damage
+	local charges, damage = Axe.swing(record.axe, baseDamage)
+	
+	-- Hit every enemy inside the axe radius, not just the nearest one.
+	local hits, kills = 0, 0
+	for _, enemy in ipairs(World.snapshot()) do
+		local model = World.getEnemyModel(enemy.id)
+		local body = model and model:FindFirstChild("Body")
+		if body and body:IsA("BasePart") then
+			if (body.Position - root.Position).Magnitude <= Config.Farm.AxeRadius then
+				hits += 1
+				local killed, reward = World.damageEnemy(enemy.id, damage)
+				if killed then
+					kills += 1
+					director:notifyEnemyRemoved()
+					rewardKill(record, record.waveAtKill, reward)
+				end
+			end
+		end
+	end
+	
+	record.dirty = true
+	pushPlayerState(player, record)
+	return true, { charges = charges, damage = damage, hits = hits, kills = kills }, nil
+end
+
 -- Robux purchases. MarketplaceService is the only authority on whether money
 -- changed hands; we only decide what the player is owed.
 local function grantPurchase(player: Player, productId: string): boolean
@@ -648,6 +748,27 @@ RunService.Heartbeat:Connect(function(dt)
 	end
 	for _, player in ipairs(Players:GetPlayers()) do
 		WaveState:FireClient(player, snapshot)
+	end
+
+	-- Draw the plots each tick. The beds are shared world parts, so they are
+	-- drawn once from the first player's farm rather than once per player.
+	local farmNow = os.clock()
+	for _, player in ipairs(Players:GetPlayers()) do
+		local record = records[player.UserId]
+		if record then
+			for _, plot in ipairs(Farm.snapshot(record.farm, farmNow)) do
+				World.updatePlot(plot.index, plot.cropId, plot.ready, plot.secondsLeft)
+			end
+		end
+		break
+	end
+
+	for _, player in ipairs(Players:GetPlayers()) do
+		local record = records[player.UserId]
+		if record then
+			local plots = Farm.snapshot(record.farm, farmNow)
+			FarmState:FireClient(player, { plots = plots, axe = Axe.snapshot(record.axe) })
+		end
 	end
 end)
 

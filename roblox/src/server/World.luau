@@ -29,6 +29,20 @@ local nextEnemyId = 0
 
 local arenaRoot: Model? = nil
 
+-- Farm plots. The server owns the crop state (Farm.luau); this table only
+-- holds the parts used to draw it, keyed by plot index.
+local plotCrops: { [number]: BasePart } = {}
+local plotLabels: { [number]: TextLabel } = {}
+
+local CROP_COLOR: { [string]: Color3 } = {}
+for _, crop in ipairs(Config.Farm.Crops) do
+	CROP_COLOR[crop.id] = Color3.fromRGB(crop.color[1], crop.color[2], crop.color[3])
+end
+
+-- Enemies stop at this distance rather than walking into the player, so
+-- they stay in melee range without shoving the character around.
+local ENEMY_STOP_DISTANCE = Config.Wave.EnemyMeleeRange * 0.75
+
 -- A flat, readable arena. Bright and simple: this is the first thing a new
 -- player sees, and a confusing first frame loses them immediately.
 function World.buildArena(): Model
@@ -91,10 +105,103 @@ function World.buildArena(): Model
 	beacon.Color = Color3.fromRGB(120, 200, 255)
 	beacon.Parent = folder
 
+	-- Farm plots: a ring of soil beds around the spawn. Each bed has a crop
+	-- marker that stays hidden until something is planted.
+	for i = 1, Config.Farm.PlotCount do
+		local angle = ((i - 1) / Config.Farm.PlotCount) * math.pi * 2
+		local bedPos = Vector3.new(
+			math.cos(angle) * Config.Farm.PlotRingRadius,
+			1.5,
+			math.sin(angle) * Config.Farm.PlotRingRadius
+		)
+		local bed = Instance.new("Part")
+		bed.Name = "Plot_" .. i
+		bed.Size = Vector3.new(9, 1, 9)
+		bed.Position = bedPos
+		bed.Anchored = true
+		bed.Material = Enum.Material.Ground
+		bed.Color = Color3.fromRGB(104, 76, 54)
+		bed.TopSurface = Enum.SurfaceType.Smooth
+		bed.Parent = folder
+
+		local crop = Instance.new("Part")
+		crop.Name = "Crop"
+		crop.Shape = Enum.PartType.Ball
+		crop.Size = Vector3.new(3.4, 3.4, 3.4)
+		crop.Position = bedPos + Vector3.new(0, 2.2, 0)
+		crop.Anchored = true
+		crop.CanCollide = false
+		crop.Material = Enum.Material.Neon
+		crop.Transparency = 1
+		crop.Parent = bed
+		plotCrops[i] = crop
+
+		local billboard = Instance.new("BillboardGui")
+		billboard.Name = "PlotLabel"
+		billboard.Size = UDim2.new(6, 0, 1.4, 0)
+		billboard.StudsOffsetWorldSpace = Vector3.new(0, 5, 0)
+		billboard.AlwaysOnTop = true
+		billboard.Parent = bed
+
+		local text = Instance.new("TextLabel")
+		text.Name = "Text"
+		text.Size = UDim2.new(1, 0, 1, 0)
+		text.BackgroundTransparency = 1
+		text.Font = Enum.Font.GothamBold
+		text.TextScaled = true
+		text.TextColor3 = Color3.fromRGB(255, 255, 255)
+		text.TextStrokeTransparency = 0.4
+		text.Text = "PLOT " .. i
+		text.Parent = billboard
+		plotLabels[i] = text
+	end
+
 	folder.Parent = Workspace
 	arenaRoot = folder
 	return folder
 end
+
+-- Draw one plot from server state. A nil cropId clears the bed.
+function World.updatePlot(index: number, cropId: string?, ready: boolean, secondsLeft: number)
+	local crop = plotCrops[index]
+	local text = plotLabels[index]
+	if not crop then
+		return
+	end
+
+	if not cropId then
+		crop.Transparency = 1
+		if text then
+			text.Text = "PLOT " .. index
+			text.TextColor3 = Color3.fromRGB(220, 220, 220)
+		end
+		return
+	end
+
+	crop.Transparency = ready and 0 or 0.35
+	crop.Color = CROP_COLOR[cropId] or Color3.fromRGB(236, 200, 96)
+	-- A ripe crop glows and reads READY, so it is visible from across the arena.
+	crop.Material = ready and Enum.Material.Neon or Enum.Material.SmoothPlastic
+	if text then
+		if ready then
+			text.Text = "READY - " .. cropId
+			text.TextColor3 = Color3.fromRGB(140, 255, 170)
+		else
+			text.Text = string.format("%s %ds", cropId, math.max(0, math.floor(secondsLeft)))
+			text.TextColor3 = Color3.fromRGB(255, 255, 255)
+		end
+	end
+end
+
+-- Centre of a plot, used to place the axe burst.
+function World.plotPosition(index: number): Vector3?
+	local crop = plotCrops[index]
+	if crop then
+		return crop.Position
+	end
+	return nil
+end
+
 
 -- Where enemies stand for this wave. A ring keeps them off the spawn point, so
 -- a new player is never killed before they can react.
@@ -187,7 +294,9 @@ function World.spawnEnemy(plan: any, index: number, total: number, now: number)
 		maxHealth = plan.enemyHealth,
 		damage = plan.enemyDamage,
 		reward = plan.rewardPerKill,
-		nextAttackAt = now + Config.Wave.EnemyAttackInterval,
+		-- The grace window stops a freshly spawned enemy hitting on arrival.
+		spawnedAt = now,
+		nextAttackAt = now + Config.Wave.SpawnGraceSeconds,
 		alive = true,
 	}
 
@@ -288,8 +397,12 @@ function World.attachPlayer(player: Player, character: Model)
 	root.CFrame = CFrame.new(SPAWN_POSITION + Vector3.new(0, 2, 0))
 end
 
--- Move enemies toward the nearest player and let them attack. Called from the
--- server tick, so enemy pressure is real and cannot be skipped by the client.
+-- Move enemies toward the nearest player and let them attack, but only
+-- from melee range. Called from the server tick, so enemy pressure is real
+-- and cannot be skipped by the client.
+--
+-- The range gate matters: without it every enemy on the map damaged the
+-- player from any distance, which killed a new player seconds after joining.
 function World.updateEnemies(dt: number, now: number, onAttack: (Player, number) -> ())
 	local players = Players:GetPlayers()
 	if #players == 0 then
@@ -298,33 +411,46 @@ function World.updateEnemies(dt: number, now: number, onAttack: (Player, number)
 
 	for id, enemy in pairs(enemies) do
 		if enemy.alive then
-			local target: Player? = nil
-			local bestDistance = math.huge
-			for _, player in ipairs(players) do
-				local character = player.Character
-				local root = character and character:FindFirstChild("HumanoidRootPart")
-				if root and root:IsA("BasePart") then
-					local distance = (root.Position - Vector3.new(0, ENEMY_HEIGHT_OFFSET, 0)).Magnitude
-					if distance < bestDistance then
-						bestDistance = distance
-						target = player
-					end
-				end
-			end
-
 			local model = enemyModels[id]
 			local body = model and model:FindFirstChild("Body")
 			if body and body:IsA("BasePart") then
-				-- Drift slowly toward the arena centre: readable and non-lethal.
-				local direction = (Vector3.new(0, body.Position.Y, 0) - body.Position)
-				if direction.Magnitude > 1 then
-					body.CFrame = body.CFrame + direction.Unit * math.min(14, direction.Magnitude) * dt
+				-- Nearest player, measured from this enemy.
+				local target: Player? = nil
+				local targetRoot: BasePart? = nil
+				local bestDistance = math.huge
+				for _, player in ipairs(players) do
+					local character = player.Character
+					local root = character and character:FindFirstChild("HumanoidRootPart")
+					if root and root:IsA("BasePart") then
+						local distance = (root.Position - body.Position).Magnitude
+						if distance < bestDistance then
+							bestDistance = distance
+							target = player
+							targetRoot = root
+						end
+					end
 				end
-			end
 
-			if target and now >= enemy.nextAttackAt then
-				enemy.nextAttackAt = now + Config.Wave.EnemyAttackInterval
-				onAttack(target, enemy.damage)
+				local distance = bestDistance
+				if targetRoot then
+					-- Chase on the flat plane so enemies never climb or sink, and stop
+					-- just inside melee range so they do not shove the player around.
+					local offset = targetRoot.Position - body.Position
+					local flat = Vector3.new(offset.X, 0, offset.Z)
+					local flatDistance = flat.Magnitude
+					if flatDistance > ENEMY_STOP_DISTANCE then
+						local step = math.min(Config.Wave.EnemyMoveSpeed * dt, flatDistance - ENEMY_STOP_DISTANCE)
+						body.CFrame = body.CFrame + flat.Unit * step
+						-- Face the player, so the chase reads as intent rather than drift.
+						body.CFrame = CFrame.lookAt(body.Position, body.Position + flat.Unit)
+					end
+				end
+
+				local pastGrace = (now - enemy.spawnedAt) >= Config.Wave.SpawnGraceSeconds
+				if target and pastGrace and distance <= Config.Wave.EnemyMeleeRange and now >= enemy.nextAttackAt then
+					enemy.nextAttackAt = now + Config.Wave.EnemyAttackInterval
+					onAttack(target, enemy.damage)
+				end
 			end
 		end
 	end

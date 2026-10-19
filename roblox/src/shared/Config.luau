@@ -24,6 +24,15 @@ Config.Wave = {
 	RewardGrowth = 1.08,
 	IntermissionSeconds = 12,
 	EnemyAttackInterval = 1.5,
+	-- An enemy only lands a hit when it is close enough to touch the player.
+	-- Without this gate every enemy on the map hits from any distance, which
+	-- killed a new player before they could read the screen.
+	EnemyMeleeRange = 9,
+	-- Studs per second while chasing. Slower than a walking player, so running
+	-- away is always an option.
+	EnemyMoveSpeed = 13,
+	-- Grace period after spawning, so an enemy cannot hit on arrival.
+	SpawnGraceSeconds = 2.5,
 }
 
 Config.Player = {
@@ -172,5 +181,31 @@ Config.Codes = {
 	-- Promo codes reward engagement (Roblox trending rewards active play).
 	MaxRedemptionsPerPlayer = 1,
 }
+
+--------------------------------------------------------------------------
+-- The farm loop: plant, wait, harvest. This is the "farm" half of farm and
+-- fight, and it is what gives a session a reason to stay longer than one wave.
+--------------------------------------------------------------------------
+
+Config.Farm = {
+	-- Plots sit in a ring around the spawn, so farming happens inside the fight
+	-- rather than in a menu.
+	PlotCount = 6,
+	PlotRingRadius = 26,
+	-- Crops differ in patience and payout, which gives the player a choice.
+	Crops = {
+		{ id = "Wheat", growSeconds = 8, coins = 60, xp = 10, color = { 236, 200, 96 } },
+		{ id = "Carrot", growSeconds = 18, coins = 190, xp = 26, color = { 240, 140, 70 } },
+		{ id = "Star", growSeconds = 34, coins = 520, xp = 70, color = { 150, 220, 255 } },
+	},
+	-- Harvesting charges the axe. A full swing spends every charge at once.
+	AxeChargePerHarvest = 1,
+	AxeMaxCharges = 5,
+	-- Each charge multiplies the next axe hit, and the hit strikes everything
+	-- close to the player.
+	AxeDamagePerCharge = 6,
+	AxeRadius = 26,
+}
+
 
 return Config

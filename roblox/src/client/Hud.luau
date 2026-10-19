@@ -126,6 +126,16 @@ function Hud.build(): ScreenGui
 	local daily = button(rewards, "Daily", "Daily Reward", UDim2.new(1, -24, 0, 42), UDim2.new(0, 12, 0, 34), COLORS.gold)
 	local code = button(rewards, "Code", "Redeem Code", UDim2.new(1, -24, 0, 42), UDim2.new(0, 12, 0, 82), COLORS.blue)
 
+	-- Action panel, bottom right: the two taps the game is built around.
+	-- It sits under the thumb rather than in the middle of the screen, and the
+	-- axe button carries the charge count so the player knows when to swing.
+	local actions = panel(gui, "Actions", UDim2.new(0, 200, 0, 176), UDim2.new(1, -16, 1, -24), Vector2.new(1, 1))
+	local axeLabel = label(actions, "AxeCharges", "Axe: 0/5", UDim2.new(1, -20, 0, 24), UDim2.new(0, 12, 0, 6), 16)
+	axeLabel.TextColor3 = COLORS.muted
+	local axe = button(actions, "Axe", "AXE", UDim2.new(1, -24, 0, 56), UDim2.new(0, 12, 0, 32), COLORS.blue)
+	local farm = button(actions, "Farm", "FARM", UDim2.new(1, -24, 0, 56), UDim2.new(0, 12, 0, 94), COLORS.green)
+	local crop = button(actions, "Crop", "Wheat", UDim2.new(1, -24, 0, 20), UDim2.new(0, 12, 0, 154), COLORS.disabled)
+
 	return gui
 end
 

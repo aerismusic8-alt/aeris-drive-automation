@@ -19,6 +19,8 @@ local Zones = require("../src/shared/Zones")
 local Monetization = require("../src/shared/Monetization")
 local DailyRewards = require("../src/shared/DailyRewards")
 local Codes = require("../src/shared/Codes")
+local Farm = require("../src/shared/Farm")
+local Axe = require("../src/shared/Axe")
 
 --------------------------------------------------------------------------
 t.suite("Random")
@@ -1685,6 +1687,134 @@ t.test("the migrated save is a valid v4 save", function()
 	t.assertNotNil(data, problems and table.concat(problems, ","))
 	t.assertEqual(data.version, Config.Persistence.SchemaVersion)
 	t.assertEqual(data.daily.streak, 0)
+end)
+
+--------------------------------------------------------------------------
+t.suite("Farm")
+--------------------------------------------------------------------------
+
+t.test("a new farm has the configured number of empty plots", function()
+	local farm = Farm.new()
+	t.assertEqual(#farm.plots, Config.Farm.PlotCount)
+	t.assertEqual(Farm.plantedCount(farm), 0)
+	t.assertEqual(Farm.readyCount(farm, 0), 0)
+end)
+
+t.test("planting fills a plot and starts a timer", function()
+	local farm = Farm.new()
+	local ok, reason = Farm.plant(farm, 1, "Wheat", 100)
+	t.assertTrue(ok, reason)
+	local plot = Farm.getPlot(farm, 1)
+	t.assertNotNil(plot)
+	t.assertEqual(plot.cropId, "Wheat")
+	t.assertEqual(plot.readyAt, 100 + Config.Farm.Crops[1].growSeconds)
+end)
+
+t.test("a crop is not ready before its grow time", function()
+	local farm = Farm.new()
+	Farm.plant(farm, 1, "Wheat", 0)
+	local grow = Config.Farm.Crops[1].growSeconds
+	t.assertFalse(Farm.isReady(Farm.getPlot(farm, 1), grow - 1))
+	t.assertTrue(Farm.isReady(Farm.getPlot(farm, 1), grow))
+end)
+
+t.test("harvesting early is refused and leaves the crop in place", function()
+	local farm = Farm.new()
+	Farm.plant(farm, 1, "Wheat", 0)
+	local reward, reason = Farm.harvest(farm, 1, 0)
+	t.assertNil(reward)
+	t.assertEqual(reason, "NOT_READY")
+	-- A mistap must not cost the player their crop.
+	t.assertEqual(Farm.getPlot(farm, 1).cropId, "Wheat")
+end)
+
+t.test("harvesting a ripe crop pays out and clears the plot", function()
+	local farm = Farm.new()
+	Farm.plant(farm, 2, "Carrot", 0)
+	local grow = Config.Farm.Crops[2].growSeconds
+	local reward, reason = Farm.harvest(farm, 2, grow + 1)
+	t.assertNotNil(reward, reason)
+	t.assertEqual(reward.cropId, "Carrot")
+	t.assertEqual(reward.coins, Config.Farm.Crops[2].coins)
+	t.assertEqual(Farm.getPlot(farm, 2).cropId, nil)
+	t.assertEqual(Farm.readyCount(farm, grow + 1), 0)
+end)
+
+t.test("an occupied plot refuses a second planting", function()
+	local farm = Farm.new()
+	Farm.plant(farm, 1, "Wheat", 0)
+	local ok, reason = Farm.plant(farm, 1, "Star", 0)
+	t.assertFalse(ok)
+	t.assertEqual(reason, "PLOT_OCCUPIED")
+end)
+
+t.test("an unknown crop and a bad plot index are rejected", function()
+	local farm = Farm.new()
+	local ok, reason = Farm.plant(farm, 1, "Banana", 0)
+	t.assertFalse(ok)
+	t.assertEqual(reason, "UNKNOWN_CROP")
+	ok, reason = Farm.plant(farm, 999, "Wheat", 0)
+	t.assertFalse(ok)
+	t.assertEqual(reason, "BAD_PLOT")
+end)
+
+t.test("the snapshot reports the countdown for each plot", function()
+	local farm = Farm.new()
+	Farm.plant(farm, 1, "Wheat", 0)
+	local snap = Farm.snapshot(farm, 0)
+	t.assertEqual(#snap, Config.Farm.PlotCount)
+	t.assertEqual(snap[1].cropId, "Wheat")
+	t.assertEqual(snap[1].secondsLeft, Config.Farm.Crops[1].growSeconds)
+	t.assertFalse(snap[1].ready)
+	t.assertEqual(snap[2].cropId, nil)
+end)
+
+t.test("crops are listed in config order", function()
+	local list = Farm.list()
+	t.assertEqual(#list, #Config.Farm.Crops)
+	t.assertEqual(list[1].id, Config.Farm.Crops[1].id)
+end)
+
+--------------------------------------------------------------------------
+t.suite("Axe")
+--------------------------------------------------------------------------
+
+t.test("a new axe has no charges", function()
+	local axe = Axe.new()
+	t.assertEqual(axe.charges, 0)
+	t.assertFalse(Axe.isReady(axe))
+end)
+
+t.test("charges accumulate up to the cap", function()
+	local axe = Axe.new()
+	for _ = 1, Axe.maxCharges() + 3 do
+		Axe.addCharges(axe, 1)
+	end
+	t.assertEqual(axe.charges, Axe.maxCharges())
+end)
+
+t.test("an empty swing does nothing", function()
+	local axe = Axe.new()
+	local charges, damage = Axe.swing(axe, 12)
+	t.assertEqual(charges, 0)
+	t.assertEqual(damage, 0)
+end)
+
+t.test("a swing spends every charge at once and hits harder", function()
+	local axe = Axe.new()
+	Axe.addCharges(axe, 3)
+	local charges, damage = Axe.swing(axe, 10)
+	t.assertEqual(charges, 3)
+	t.assertEqual(damage, math.floor(10 * (1 + 3 * Config.Farm.AxeDamagePerCharge) + 0.5))
+	-- The burst is the whole point, so the stack is emptied.
+	t.assertEqual(axe.charges, 0)
+end)
+
+t.test("swing damage grows with charges", function()
+	local one = Axe.swingDamage(1, 10)
+	local five = Axe.swingDamage(5, 10)
+	t.assertGreater(five, one)
+	t.assertEqual(Axe.swingDamage(0, 10), 0)
 end)
 
 return t.finish()

@@ -22,6 +22,10 @@ local DoRebirth = Remotes:WaitForChild("Rebirth") :: RemoteFunction
 local TravelZone = Remotes:WaitForChild("TravelZone") :: RemoteFunction
 local ClaimDaily = Remotes:WaitForChild("ClaimDaily") :: RemoteFunction
 local RedeemCode = Remotes:WaitForChild("RedeemCode") :: RemoteFunction
+local PlantCrop = Remotes:WaitForChild("PlantCrop") :: RemoteFunction
+local HarvestCrop = Remotes:WaitForChild("HarvestCrop") :: RemoteFunction
+local UseAxe = Remotes:WaitForChild("UseAxe") :: RemoteFunction
+local FarmState = Remotes:WaitForChild("FarmState") :: RemoteEvent
 local WaveState = Remotes:WaitForChild("WaveState") :: RemoteEvent
 local PlayerState = Remotes:WaitForChild("PlayerState") :: RemoteEvent
 local Notify = Remotes:WaitForChild("Notify") :: RemoteEvent
@@ -49,6 +53,10 @@ local state = {
 	dailyReady = false,
 	dailyStreak = 0,
 	dailySecondsLeft = 0,
+	plots = {},
+	axe = { charges = 0, maxCharges = 5 },
+	crops = {},
+	cropIndex = 1,
 	wave = { phase = "INTERMISSION", wave = 0, timeRemaining = 0, aliveEnemies = 0 },
 }
 
@@ -103,6 +111,38 @@ local function render()
 		end
 	end
 
+	-- The axe button is only useful when charged, so it says how many
+	-- charges are banked and greys out when a swing would do nothing.
+	local actions = gui:FindFirstChild("Actions")
+	if actions then
+		local chargeLabel = actions:FindFirstChild("AxeCharges")
+		if chargeLabel and chargeLabel:IsA("TextLabel") then
+			chargeLabel.Text = string.format("Axe: %d/%d", state.axe.charges, state.axe.maxCharges)
+			chargeLabel.TextColor3 = state.axe.charges > 0 and Color3.fromRGB(140, 255, 170) or Color3.fromRGB(150, 158, 176)
+		end
+		local axeButton = actions:FindFirstChild("Axe")
+		if axeButton and axeButton:IsA("TextButton") then
+			axeButton.Active = state.axe.charges > 0
+			axeButton.Text = state.axe.charges > 0 and string.format("AXE  x%d", state.axe.charges) or "AXE (empty)"
+		end
+		local cropButton = actions:FindFirstChild("Crop")
+		local crop = state.crops[state.cropIndex]
+		if cropButton and cropButton:IsA("TextButton") and crop then
+			cropButton.Text = string.format("%s (%ds)", crop.id, crop.growSeconds)
+		end
+		-- A count of ripe crops, so the player knows a harvest is waiting.
+		local ready = 0
+		for _, plot in ipairs(state.plots) do
+			if plot.ready then
+				ready += 1
+			end
+		end
+		local farmButton = actions:FindFirstChild("Farm")
+		if farmButton and farmButton:IsA("TextButton") then
+			farmButton.Text = ready > 0 and string.format("FARM (%d ready)", ready) or "FARM"
+		end
+	end
+
 	local w = state.wave
 	if w.phase == "INTERMISSION" then
 		setLabel(gui, "Wave", string.format("Wave %d starts in %ds", w.wave + 1, math.ceil(w.timeRemaining)))
@@ -130,11 +170,20 @@ PlayerState.OnClientEvent:Connect(function(payload)
 	state.dailyReady = payload.dailyReady == true
 	state.dailyStreak = payload.dailyStreak or 0
 	state.dailySecondsLeft = payload.dailySecondsLeft or 0
+	state.crops = payload.crops or state.crops
 	render()
 end)
 
 WaveState.OnClientEvent:Connect(function(snapshot)
 	state.wave = snapshot
+	render()
+end)
+
+-- Plot timers and axe charges arrive on their own channel, because they
+-- change every second and would otherwise drag the whole stat panel along.
+FarmState.OnClientEvent:Connect(function(payload)
+	state.plots = payload.plots or {}
+	state.axe = payload.axe or state.axe
 	render()
 end)
 
@@ -195,6 +244,18 @@ function Intent.redeemCode(code: string): (boolean, any, string?)
 		return false, nil, "EMPTY_CODE"
 	end
 	return invoke(RedeemCode, code)
+end
+
+function Intent.plantCrop(plotIndex: number, cropId: string): (boolean, string?)
+	return invoke(PlantCrop, plotIndex, cropId)
+end
+
+function Intent.harvestCrop(plotIndex: number): (boolean, any, string?)
+	return invoke(HarvestCrop, plotIndex)
+end
+
+function Intent.useAxe(): (boolean, any, string?)
+	return invoke(UseAxe)
 end
 
 -- Roblox has no native text prompt, so this is the smallest screen that can
@@ -302,12 +363,59 @@ end
 
 -- Wire the reward buttons. Each tap calls the same Intent the rest of the
 -- client uses, so the button and the API cannot drift apart.
+-- The player should never have to walk to a plot and tap it. One tap on
+-- FARM does the obvious thing: harvest a ripe plot if there is one,
+-- otherwise plant the selected crop in the nearest free plot.
+local function onFarmTap()
+	local ripe: number? = nil
+	local free: number? = nil
+	for _, plot in ipairs(state.plots) do
+		if plot.ready and not ripe then
+			ripe = plot.index
+		end
+		if not plot.cropId and not free then
+			free = plot.index
+		end
+	end
+
+	if ripe then
+		Intent.harvestCrop(ripe)
+		return
+	end
+	if free then
+		local crop = state.crops[state.cropIndex]
+		if crop then
+			Intent.plantCrop(free, crop.id)
+		end
+	end
+end
+
 local function wireButtons()
 	local gui = Hud.build()
 
 	local rewards = gui:WaitForChild("Rewards")
 	local daily = rewards:WaitForChild("Daily") :: TextButton
 	local code = rewards:WaitForChild("Code") :: TextButton
+
+	local actions = gui:WaitForChild("Actions")
+	local axeButton = actions:WaitForChild("Axe") :: TextButton
+	local farmButton = actions:WaitForChild("Farm") :: TextButton
+	local cropButton = actions:WaitForChild("Crop") :: TextButton
+
+	axeButton.Activated:Connect(function()
+		Intent.useAxe()
+	end)
+
+	farmButton.Activated:Connect(onFarmTap)
+
+	-- Cycling the crop is local: it only changes what FARM will plant next.
+	cropButton.Activated:Connect(function()
+		if #state.crops == 0 then
+			return
+		end
+		state.cropIndex = state.cropIndex % #state.crops + 1
+		render()
+	end)
 
 	daily.Activated:Connect(function()
 		-- The server confirms and pushes new state back, so the button updates

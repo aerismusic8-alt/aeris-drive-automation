@@ -129,6 +129,46 @@ build_script = read(ROOT / "AX_PC_CONTROL/pc1-roblox-build.ps1")
 for marker in ("world", "hud", "dailyRewards", "codes"):
     check(f"the build verifier checks {marker}", f"{marker}" in build_script, "marker missing")
 
+print("\nWIRING 10: the death scene stays intact and death is not instant")
+
+# Two reported bugs. Both are one-line omissions that are invisible until
+# somebody actually plays, so they are guarded by reading the source.
+check(
+    "death does not break the avatar's joints",
+    "BreakJointsOnDeath = false" in server,
+    "the head rolls off on death",
+)
+check(
+    "enemies only attack from melee range",
+    "Config.Wave.EnemyMeleeRange" in world,
+    "every enemy damages the player from anywhere",
+)
+check(
+    "enemies chase the nearest player",
+    "EnemyMoveSpeed" in world,
+    "enemies never move toward the player",
+)
+check(
+    "a spawned enemy cannot hit immediately",
+    "Config.Wave.SpawnGraceSeconds" in world,
+    "enemies hit on arrival",
+)
+
+print("\nWIRING 11: the farm loop is reachable from the client")
+
+check("the client requires the farm remotes", "PlantCrop" in client and "HarvestCrop" in client, "missing")
+check("the client requires the axe remote", "UseAxe" in client, "missing")
+check("the server exposes PlantCrop", "PlantCrop.OnServerInvoke" in server, "no handler")
+check("the server exposes HarvestCrop", "HarvestCrop.OnServerInvoke" in server, "no handler")
+check("the server exposes UseAxe", "UseAxe.OnServerInvoke" in server, "no handler")
+check("the server sends farm state", "FarmState:FireClient" in server, "no farm state")
+check("the server builds the plots", "Plot_" in world, "no plot parts")
+check("the server draws the plots", "World.updatePlot" in server, "plots never drawn")
+check("the HUD has a FARM button", re.search(r'button\([\w]+,\s*"Farm"', hud) is not None, "missing")
+check("the HUD has an AXE button", re.search(r'button\([\w]+,\s*"Axe"', hud) is not None, "missing")
+check("the FARM button is wired", "farmButton.Activated" in client, "not wired")
+check("the AXE button is wired", "axeButton.Activated" in client, "not wired")
+
 print(f"\nWIRING: {passed} passed, {len(failures)} failed")
 for failure in failures:
     print(f"  FAIL  {failure}")
