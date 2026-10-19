@@ -18,25 +18,44 @@ $evidenceDir = 'C:\AX-Runtime\evidence'
 New-Item -ItemType Directory -Path $evidenceDir -Force | Out-Null
 $evidencePath = Join-Path $evidenceDir 'pc1-roblox-list-places.json'
 
+$headers = @{ 'x-api-key' = $env:ROBLOX_API_KEY }
+
+function Get-Json($uri) {
+  try {
+    return @{ code = 200; body = (Invoke-RestMethod -Uri $uri -Method Get -Headers $headers -TimeoutSec 60) }
+  } catch {
+    if ($_.Exception.Response) {
+      $code = [int]$_.Exception.Response.StatusCode
+      $text = $_.Exception.Message
+      try {
+        $reader = New-Object System.IO.StreamReader($_.Exception.Response.GetResponseStream())
+        $text = $reader.ReadToEnd()
+      } catch { }
+      return @{ code = $code; body = $text }
+    }
+    return @{ code = 0; body = $_.Exception.Message }
+  }
+}
+
+# The universe resource carries the name and the visibility flag. Visibility is
+# read-only over the API, but reading it says whether the game is live yet.
+$uniUri = "https://apis.roblox.com/cloud/v2/universes/$universeId"
+$uni = Get-Json $uniUri
+Write-Host "UNIVERSE_HTTP_STATUS=$($uni.code)"
+if ($uni.code -eq 200) {
+  Write-Host "UNIVERSE_NAME=$($uni.body.displayName)"
+  Write-Host "UNIVERSE_VISIBILITY=$($uni.body.visibility)"
+  Write-Host "UNIVERSE_DESCRIPTION=$($uni.body.description)"
+} else {
+  Write-Host "UNIVERSE_ERROR=$(($uni.body | ConvertTo-Json -Depth 6 -Compress))"
+}
+
 $uri = "https://apis.roblox.com/cloud/v2/universes/$universeId/places?maxPageSize=50"
 Write-Host "LIST_URL=$uri"
 
-$statusCode = $null
-$body = $null
-try {
-  $body = Invoke-RestMethod -Uri $uri -Method Get -Headers @{ 'x-api-key' = $env:ROBLOX_API_KEY } -TimeoutSec 60
-  $statusCode = 200
-} catch {
-  if ($_.Exception.Response) {
-    $statusCode = [int]$_.Exception.Response.StatusCode
-    try {
-      $reader = New-Object System.IO.StreamReader($_.Exception.Response.GetResponseStream())
-      $body = $reader.ReadToEnd()
-    } catch { $body = $_.Exception.Message }
-  } else {
-    $body = $_.Exception.Message
-  }
-}
+$placesResult = Get-Json $uri
+$statusCode = $placesResult.code
+$body = $placesResult.body
 
 Write-Host "HTTP_STATUS=$statusCode"
 $raw = ($body | ConvertTo-Json -Depth 8 -Compress)
