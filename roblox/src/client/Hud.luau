@@ -246,6 +246,18 @@ function Hud.build(): ScreenGui
 	)
 	versionLabel.TextColor3 = COLORS.muted
 
+	-- Quest tracker, top left. This is the answer to "I do not know what to do":
+	-- one objective, always on screen, in Thai. Top left because the stats live
+	-- top right and the travel list is centred, so it covers no control.
+	local quest = panel(gui, "QuestPanel", UDim2.new(0, 300, 0, 100), UDim2.new(0, 12, 0, 96), Vector2.new(0, 0))
+	fold(quest, Text.get("quest"))
+	local questTitle = label(quest, "QuestTitle", Text.get("quest"), UDim2.new(1, -56, 0, 26),
+		UDim2.new(0, 8, 0, 6), 17)
+	questTitle.TextColor3 = COLORS.gold
+	local questBody = label(quest, "QuestBody", "", UDim2.new(1, -16, 0, 60), UDim2.new(0, 8, 0, 34), 15)
+	questBody.TextWrapped = true
+	questBody.TextYAlignment = Enum.TextYAlignment.Top
+
 	-- Wave banner, top centre.
 	local wave = panel(gui, "WavePanel", UDim2.new(0, 320, 0, 48), UDim2.new(0.5, 0, 0, 16), Vector2.new(0.5, 0))
 	fold(wave, Text.get("wave"))

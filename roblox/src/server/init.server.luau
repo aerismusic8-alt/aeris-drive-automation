@@ -30,6 +30,7 @@ local World = require(script.World)
 local Codes = require(Shared.Codes)
 local Farm = require(Shared.Farm)
 local Axe = require(Shared.Axe)
+	local Quests = require(Shared.Quests)
 local Fields = require(Shared.Fields)
 local Enemies = require(Shared.Enemies)
 local Attributes = require(Shared.Attributes)
@@ -137,6 +138,9 @@ type PlayerRecord = {
 	-- Auto modes. The player can switch either off and play by hand.
 	autoAttack: boolean,
 	autoPickup: boolean,
+	-- The story spine: which objective is active and how far along. On the record
+	-- so it saves and restores with everything else.
+	quests: any,
 	dirty: boolean,
 }
 
@@ -253,6 +257,7 @@ local function pushPlayerState(player: Player, record: PlayerRecord)
 		farm = Farm.snapshot(record.farm, broadcastNow),
 		axe = Axe.snapshot(record.axe),
 		crops = Farm.list(),
+		quest = Quests.snapshot(record.quests),
 	})
 end
 
@@ -289,6 +294,7 @@ local function buildRecord(player: Player, saved: any): PlayerRecord
 		combatant = Combat.createCombatant(math.max(1, startingHealth)),
 		farm = Farm.new(),
 		axe = Axe.new(),
+		quests = Quests.fromSnapshot(data.quests),
 		attributes = attributes,
 		attributePoints = data.attributePoints,
 		class = data.class,
@@ -347,6 +353,7 @@ local function saveRecord(record: PlayerRecord): boolean
 		entitlements = record.entitlements,
 		daily = DailyRewards.snapshot(record.daily),
 		redeemed = Codes.snapshot(record.redeemed),
+		quests = record.quests,
 		updatedAt = os.time(),
 	}
 	local ok, err = pcall(function()
@@ -373,6 +380,43 @@ local function awardXp(record: PlayerRecord, amount: number): number
 	return gained
 end
 
+-- Advance the story spine by one event and pay the quest if it completes.
+-- Called from the places that already know something happened: a kill, a
+-- harvest, a travel, a class choice, an equip. Nothing polls.
+local function questEvent(record: PlayerRecord, kind: string, target: string?, count: number?)
+	local reward = Quests.onEvent(record.quests, kind, target, count)
+	if not reward then
+		record.dirty = true
+		return
+	end
+
+	record.coins = math.min(Config.Economy.MaxCoins, record.coins + reward.coins)
+	awardXp(record, reward.xp)
+	if reward.item then
+		local added = record.inventory:add(reward.item, math.max(1, reward.itemCount))
+		-- A full bag must not swallow the reward, so a failed add is reported
+		-- rather than ignored; the quest still completes.
+		if added ~= 0 then
+			notify(record.player, Text.get("full"))
+		end
+	end
+
+	if reward.item then
+		notify(record.player, Text.get("questItemReward", reward.coins, reward.xp,
+			Text.itemName(reward.item), math.max(1, reward.itemCount)))
+	else
+		notify(record.player, Text.get("questReward", reward.coins, reward.xp))
+	end
+
+	local nextDef = Quests.current(record.quests)
+	if nextDef then
+		notify(record.player, Text.get("questComplete") .. "  " .. Text.get(nextDef.titleKey))
+	else
+		notify(record.player, Text.get("questAllDone"))
+	end
+	record.dirty = true
+end
+
 -- One place for "an enemy died": the kill credit goes to the player who
 -- landed the last hit, and every reward scales with their multipliers.
 -- Returns the coin and XP the kill actually paid, so the client can show it.
@@ -394,6 +438,13 @@ local function rewardKill(record: PlayerRecord, wave: number, reward: number, bo
 	record.stats.kills += 1
 	if boss then
 		record.stats.bossKills = (record.stats.bossKills or 0) + 1
+	end
+
+	-- The story spine hears about the kill, including which monster it was and
+	-- whether it was the field boss, so a KILL_BOSS quest needs no extra state.
+	questEvent(record, "KILL", nil, 1)
+	if boss then
+		questEvent(record, "KILL_BOSS", record.field, 1)
 	end
 
 	local xp = Leveling.xpFromKill(wave) * Monetization.xpMultiplier(record.entitlements)
@@ -763,6 +814,7 @@ TravelZone.OnServerInvoke = function(player: Player, placeId: any): (boolean, st
 		-- A field is a place you fight in, so start the first wave on arrival
 		-- instead of leaving the player standing alone for the intermission.
 		directorFor(destination):skipIntermission()
+		questEvent(record, "ENTER_FIELD", destination, 1)
 	end
 	record.lastZoneChange = now
 	record.dirty = true
@@ -869,6 +921,7 @@ HarvestCrop.OnServerInvoke = function(player: Player, plotIndex: any): (boolean,
 	record.coins = math.min(Config.Economy.MaxCoins, record.coins + math.floor(reward.coins * coinMultiplier(record, now) + 0.5))
 	awardXp(record, reward.xp)
 	Axe.addCharges(record.axe, Config.Farm.AxeChargePerHarvest)
+	questEvent(record, "HARVEST", nil, 1)
 	record.dirty = true
 	pushPlayerState(player, record)
 	notify(player, Text.get("harvestGain", Text.cropName(reward.cropId), reward.coins))
@@ -1171,6 +1224,7 @@ AdvanceJob.OnServerInvoke = function(player: Player, target: any): (boolean, str
 	-- class bonus changes what the same skill scales off.
 	record.dirty = true
 	applySpawnStats(record)
+	questEvent(record, "CHOOSE_CLASS", nil, 1)
 	local character = player.Character
 	if character then
 		World.applyClassLook(character, record.class)
@@ -1335,6 +1389,10 @@ EquipItem.OnServerInvoke = function(player: Player, itemId: any): (boolean, stri
 		humanoid.MaxHealth = record.combatant.maxHealth
 		humanoid.Health = math.min(humanoid.Health, humanoid.MaxHealth)
 	end
+	-- Wearing something is a story step, so the spine hears about it. The slot
+	-- is passed through so a quest can ask for a weapon specifically.
+	local wornDef = Items.getDef(itemId)
+	questEvent(record, "EQUIP", wornDef and wornDef.slot or nil, 1)
 	pushPlayerState(player, record)
 	notify(player, Text.get("equipped", Text.itemName(itemId)))
 	return true, nil

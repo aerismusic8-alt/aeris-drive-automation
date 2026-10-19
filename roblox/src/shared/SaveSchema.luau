@@ -34,6 +34,9 @@ export type SaveData = {
 	skills: { [string]: number },
 	equipment: { [string]: string? },
 	stats: { kills: number, wavesCleared: number, deaths: number },
+	-- The story spine. Stored as a plain snapshot so this schema never has to
+	-- know what a quest is; the quest layer clamps it when it loads.
+	quests: any,
 	level: number,
 	xp: number,
 	rebirths: number,
@@ -63,6 +66,7 @@ function SaveSchema.new(): SaveData
 		skills = { BasicAttack = 1 },
 		equipment = {},
 		stats = { kills = 0, wavesCleared = 0, deaths = 0 },
+	quests = { index = 1, progress = 0, done = {} },
 		level = 1,
 		xp = 0,
 		rebirths = 0,
@@ -365,6 +369,7 @@ function SaveSchema.migrate(data: any): SaveData?
 		skills = skills,
 		equipment = equipment,
 		stats = data.stats or fresh.stats,
+		quests = type(data.quests) == "table" and data.quests or fresh.quests,
 		level = level,
 		xp = isFiniteNumber(data.xp) and math.max(0, data.xp) or 0,
 		rebirths = rebirths,

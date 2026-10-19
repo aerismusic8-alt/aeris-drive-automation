@@ -24,6 +24,10 @@ fi
 # here even when every unit test passes.
 "$LUAU" "$ROOT/roblox/tests/integration.luau" || exit 1
 
+# The story spine: every objective reachable, every reward paid once, every
+# objective translated, and a corrupt save cannot lock a player out.
+"$LUAU" "$ROOT/roblox/tests/quests.luau" || exit 1
+
 # Balance tests compare the player's power curve against the monster curve. The
 # whole suite passed while bosses were mathematically unkillable, because no test
 # asked whether the two curves met. This one does.

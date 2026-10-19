@@ -163,6 +163,27 @@ local function render()
 	setLabel(gui, "Rebirth", string.format("%s %d  %s x%d", Text.get("rebirth"), state.rebirths,
 		Text.get("combo"), state.killStreak))
 
+	-- The quest tracker. The server sends a snapshot of the active objective, so
+	-- the client only has to draw it. A finished story says so rather than showing
+	-- a stale objective forever.
+	local quest = state.quest
+	if type(quest) == "table" then
+		if quest.complete then
+			setLabel(gui, "QuestTitle", Text.get("quest"))
+			setLabel(gui, "QuestBody", Text.get("questAllDone"))
+		else
+			setLabel(gui, "QuestTitle", string.format("%d/%d  %s", quest.done or 0, quest.total or 0,
+				Text.get(quest.titleKey)))
+			-- The objective line carries its own progress, so the count is visible
+			-- without a second label.
+			local body = Text.get(quest.bodyKey)
+			if (quest.count or 1) > 1 then
+				body = Text.get("questProgress", body, quest.progress or 0, quest.count)
+			end
+			setLabel(gui, "QuestBody", body)
+		end
+	end
+
 	-- The badge only shows in the first field, where a monster cannot land the
 	-- last hit. Without it a player at 1 HP wonders why they are still alive.
 	local safeBadge = gui:FindFirstChild("SafeBadge")

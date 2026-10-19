@@ -413,6 +413,32 @@ check("the wall runs along the wall", "math.pi / 2 - angle" in scenery,
 check("the field gate faces the road", "math.atan2(gx / gl, gz / gl)" in scenery,
       "the gate is turned away from the road")
 
+print("\nWIRING N: the story spine is actually driven by the server")
+
+# A quest module can be perfect and still never run if no server event calls it.
+# That is the same class of bug as World.attachPlayer() existing but never being
+# called, so it is checked the same way: by reading the source.
+check("the server requires the quest module", "require(Shared.Quests)" in server,
+      "the quest module is never loaded")
+check("the server restores quests from the save", "Quests.fromSnapshot(" in server,
+      "quest progress is not restored on load")
+check("the server persists quests", "quests = record.quests" in server,
+      "quest progress is not saved")
+check("the client receives the quest snapshot", "quest = Quests.snapshot(" in server,
+      "the quest never reaches the client")
+
+# Every objective kind the spine defines needs a server event that produces it,
+# or that quest can never complete and the story dead-ends.
+for kind, reason in (
+    ("KILL", "killing a monster never advances the story"),
+    ("KILL_BOSS", "killing a boss never advances the story"),
+    ("HARVEST", "harvesting never advances the story"),
+    ("ENTER_FIELD", "travelling never advances the story"),
+    ("CHOOSE_CLASS", "choosing a class never advances the story"),
+    ("EQUIP", "equipping an item never advances the story"),
+):
+    check(f"the server raises a {kind} quest event", f'questEvent(record, "{kind}"' in server, reason)
+
 print(f"\nWIRING: {passed} passed, {len(failures)} failed")
 for failure in failures:
     print(f"  FAIL  {failure}")
