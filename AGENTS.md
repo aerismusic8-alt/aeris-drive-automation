@@ -538,3 +538,25 @@ therefore runs as the first job of `ax-arena-build-publish.yml`, with build and
 publish depending on it. The dispatch left in `ax-arena-tests.yml` still points
 at the PC1-bound workflow on purpose: repointing it would 404 here and turn the
 tests workflow red for reasons unrelated to the tests.
+
+### The experience name needs a scope the publish key does not have
+
+Publishing a place does not name the experience. The place created by the first
+publish had no name, so `https://www.roblox.com/games/<placeId>` redirected to
+`/Title-Unavailable`. A page with no title cannot be opened from a phone, which
+left the game effectively unreachable even though the publish worked.
+
+`scripts/name-experience-linux.sh` sets it through the Universes API
+(`PATCH /universes/v1/universes/{id}`), reading the name from `Config.GameName`.
+It is wired into `ax-arena-build-publish.yml` as a best-effort job.
+
+It returns `NAME_HTTP=404`. Setting a name needs `universe:write`; the key
+carries `universe-places:write` only, and this endpoint answers 404 for a key it
+will not accept, which is the same response as an unknown path. Confirmed on run
+39267768716: `NAME_TARGET=AX Arena: Farm and Fight`, `NAME_HTTP=404`,
+`NAME=SKIPPED reason=key_lacks_universe_write_scope_or_unknown_endpoint`, and
+the public page still redirects to `/Title-Unavailable`.
+
+Either add `universe:write` (Universes API, Read and Write) to the existing API
+key, or set the name once in the Creator Dashboard. The first keeps it
+automatic.
