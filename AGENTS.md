@@ -144,7 +144,9 @@ a Thai string lives; every screen, sign and notification reads from it.
 - **An unknown key returns the key**, not an empty string. A missing line then
   shows as `Cavern` in a screenshot instead of a blank button.
 - **Monsters arrive as display names**, not ids, because the server sends
-  `Enemies.scale().name`. `Text.enemyName` maps those English names.
+  `Enemies.scale().name`. `Text.enemyName` maps those English names. Loot is
+  the exception: `Enemies.scale()` also carries `id`, and drop tables are keyed
+  by that id (see below).
 - **Thai needs more vertical room than Latin.** A tone mark sits above the
   baseline and a vowel below it, so a label row sized for `Coins: 0` clips
   `เงิน`. Row heights in `Hud.luau` are set for Thai, not for the English the
@@ -241,3 +243,21 @@ client work. Now:
   the cadence values in `Config.luau`.
 - `roblox/tests/run.luau` asserts the cadence is slower than the tick rate.
   A frame-rate snapshot is the bug, so the two clocks must differ.
+
+### Loot is keyed by archetype id, never by display name
+
+`Items.DROPS` is keyed by archetype id, but a monster's display name is not its
+id: `Enemies.def("RockGolem", "Rock Golem", ...)`. Passing the display name into
+`Items.rollDrops` misses the table and silently falls back to the generic
+potions, so a rare monster becomes a recoloured common one and nobody notices.
+
+- `Enemies.scale()` returns `id` alongside `name`; `World.spawnEnemy` stores it
+  as `enemy.archetype`, and the kill path rolls `enemy.archetype or enemy.name`.
+- Key every drop lookup off `id` in tests too. `roblox/tests/run.luau` has a
+  "multi-word monster keeps its own drop table" test that pins the difference.
+
+`Skills.hotbar` had the same shape of bug from the other direction: it iterated
+the `ORDER` id list but read definition fields (`def.id`, `def.kind`) off the
+strings, so it always returned an empty hotbar. Resolve an id to its definition
+before reading any field. When a lookup can silently return "nothing", assert
+the result is non-empty in a test, not just that it is well-formed.
