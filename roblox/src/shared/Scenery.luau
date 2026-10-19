@@ -42,6 +42,7 @@ export type ColorRole =
     | "glow"
     | "pale"
     | "soil"
+    | "water"
 
 export type Part = {
     name: string,
@@ -50,6 +51,9 @@ export type Part = {
     at: { number },
     color: ColorRole,
     rot: { number }?,
+    -- How see-through the part is, 0..1. Only water and glass use it; the
+    -- default 0 keeps every other prop opaque.
+    alpha: number?,
 }
 
 export type Prop = {
@@ -67,9 +71,10 @@ local function part(
     size: { number },
     at: { number },
     color: ColorRole,
-    rot: { number }?
+    rot: { number }?,
+    alpha: number?
 ): Part
-    return { name = name, shape = shape, size = size, at = at, color = color, rot = rot }
+    return { name = name, shape = shape, size = size, at = at, color = color, rot = rot, alpha = alpha }
 end
 
 -- A tapered column: stacked discs of decreasing width, standing on the ground.
@@ -136,6 +141,7 @@ local PALETTES: { [string]: { [string]: { number } } } = {
         glow = { 255, 214, 92 },
         pale = { 232, 226, 210 },
         soil = { 104, 76, 54 },
+        water = { 96, 150, 190 },
     },
     Meadow = {
         wood = { 140, 108, 70 },
@@ -150,6 +156,7 @@ local PALETTES: { [string]: { [string]: { number } } } = {
         glow = { 140, 255, 170 },
         pale = { 226, 232, 216 },
         soil = { 110, 82, 58 },
+        water = { 96, 158, 198 },
     },
     Cavern = {
         wood = { 92, 84, 84 },
@@ -164,6 +171,7 @@ local PALETTES: { [string]: { [string]: { number } } } = {
         glow = { 150, 200, 255 },
         pale = { 196, 206, 224 },
         soil = { 74, 78, 96 },
+        water = { 92, 132, 178 },
     },
     Volcano = {
         wood = { 96, 66, 54 },
@@ -178,6 +186,7 @@ local PALETTES: { [string]: { [string]: { number } } } = {
         glow = { 255, 138, 62 },
         pale = { 208, 180, 160 },
         soil = { 88, 58, 48 },
+        water = { 220, 110, 62 },
     },
     Void = {
         wood = { 78, 70, 104 },
@@ -192,6 +201,7 @@ local PALETTES: { [string]: { [string]: { number } } } = {
         glow = { 180, 130, 255 },
         pale = { 198, 186, 232 },
         soil = { 70, 62, 96 },
+        water = { 132, 96, 196 },
     },
     Heaven = {
         wood = { 210, 198, 168 },
@@ -206,6 +216,7 @@ local PALETTES: { [string]: { [string]: { number } } } = {
         glow = { 255, 246, 200 },
         pale = { 244, 246, 255 },
         soil = { 206, 202, 196 },
+        water = { 190, 222, 240 },
     },
 }
 
@@ -231,6 +242,7 @@ local MATERIALS: { [string]: string } = {
     glow = "Neon",
     pale = "Marble",
     soil = "Ground",
+    water = "Glass",
 }
 
 function Scenery.materialFor(role: string): string
@@ -573,6 +585,280 @@ local function spire(height: number): Prop
 end
 
 --------------------------------------------------------------------------
+-- Prontera furniture. The town in Ragnarok Online is a walled city of pale
+-- stone with red tiled roofs, built around a market square and a fountain,
+-- with the roads running out of the square to the gates. These recipes are
+-- that vocabulary, so the town reads as a city rather than a field with
+-- houses on it.
+--------------------------------------------------------------------------
+
+-- The central fountain: a stepped basin with a column and a jet. This is the
+-- landmark every Ragnarok town is built around, so it is the biggest single
+-- prop in the town.
+local function fountain(size: number): Prop
+    local parts = {
+        part("Basin", "Cylinder", { size * 0.5, size * 1.5, size * 1.5 }, { 0, size * 0.25, 0 }, "stone", { 0, 0, 90 }),
+        part("BasinLip", "Cylinder", { size * 0.16, size * 1.72, size * 1.72 }, { 0, size * 0.5, 0 }, "stoneDark", { 0, 0, 90 }),
+        part("Water", "Cylinder", { size * 0.44, size * 1.3, size * 1.3 }, { 0, size * 0.44, 0 }, "water", { 0, 0, 90 }, 0.45),
+        part("Pedestal", "Cylinder", { size * 0.4, size * 0.5, size * 0.5 }, { 0, size * 0.7, 0 }, "stone", { 0, 0, 90 }),
+        part("Column", "Cylinder", { size * 0.7, size * 0.28, size * 0.28 }, { 0, size * 1.15, 0 }, "pale", { 0, 0, 90 }),
+        part("Bowl", "Cylinder", { size * 0.2, size * 0.8, size * 0.8 }, { 0, size * 1.55, 0 }, "stoneDark", { 0, 0, 90 }),
+        part("Jet", "Cylinder", { size * 0.5, size * 0.14, size * 0.14 }, { 0, size * 1.85, 0 }, "glow", { 0, 0, 90 }, 0.35),
+    }
+    return { footprint = size * 1.8, height = size * 2.1, parts = parts }
+end
+
+-- A run of city wall: a stone band with a walkway and a crenellated top. The
+-- town is walled, and a wall is what tells the player where the city ends.
+local function wallPanel(width: number): Prop
+    local parts = {
+        part("Base", "Block", { width, width * 0.18, width * 0.34 }, { 0, width * 0.09, 0 }, "stoneDark"),
+        part("Body", "Block", { width, width * 0.62, width * 0.3 }, { 0, width * 0.49, 0 }, "stone"),
+        part("Walkway", "Block", { width, width * 0.1, width * 0.42 }, { 0, width * 0.85, 0 }, "stoneDark"),
+    }
+    -- Merlons along the top, spaced so the gaps read as battlements.
+    local count = 5
+    for i = 1, count do
+        local t = (i - 0.5) / count
+        table.insert(parts, part("Merlon" .. i, "Block", { width * 0.09, width * 0.2, width * 0.36 },
+            { -width * 0.5 + width * t, width * 1.0, 0 }, "stone"))
+    end
+    return { footprint = width * 1.05, height = width * 1.1, parts = parts }
+end
+
+-- A gate tower: a squat tower wider at the top than the wall, with a red
+-- tiled cap. Flanks the city gates.
+local function gateTower(size: number): Prop
+    return {
+        footprint = size * 1.1,
+        height = size * 2.2,
+        parts = {
+            part("Body", "Block", { size, size * 1.5, size }, { 0, size * 0.75, 0 }, "stone"),
+            part("Belt", "Block", { size * 1.12, size * 0.14, size * 1.12 }, { 0, size * 1.45, 0 }, "stoneDark"),
+            part("Cap", "Block", { size * 1.2, size * 0.16, size * 1.2 }, { 0, size * 1.6, 0 }, "roof"),
+            part("RoofA", "Wedge", { size * 1.24, size * 0.5, size * 1.24 }, { 0, size * 1.9, 0 }, "roof"),
+            part("Window", "Block", { size * 0.22, size * 0.3, size * 0.06 }, { 0, size * 0.95, -size * 0.52 }, "glow"),
+        },
+    }
+end
+
+-- A gate arch: two piers with a lintel, the way into the city. Solid, so the
+-- player walks through the gap rather than over the top.
+local function gateArch(size: number): Prop
+    local half = size * 0.5
+    return {
+        footprint = size * 1.1,
+        height = size * 1.5,
+        parts = {
+            part("PierL", "Block", { size * 0.22, size * 1.1, size * 0.4 }, { -half, size * 0.55, 0 }, "stone"),
+            part("PierR", "Block", { size * 0.22, size * 1.1, size * 0.4 }, { half, size * 0.55, 0 }, "stone"),
+            part("Lintel", "Block", { size * 1.05, size * 0.26, size * 0.46 }, { 0, size * 1.2, 0 }, "stoneDark"),
+            part("Banner", "Block", { size * 0.3, size * 0.42, size * 0.04 }, { 0, size * 0.86, -size * 0.22 }, "cloth"),
+        },
+    }
+end
+
+-- The church: a tall hall with a steep red roof and a spire. Ragnarok's
+-- Prontera Church is the tallest thing on the skyline, so it is here too.
+local function church(size: number): Prop
+    local parts = {
+        part("Nave", "Block", { size * 1.5, size * 0.9, size * 0.8 }, { 0, size * 0.45, 0 }, "pale"),
+        part("Roof", "Wedge", { size * 1.6, size * 0.7, size * 0.92 }, { 0, size * 1.2, 0 }, "roof"),
+        part("Door", "Block", { size * 0.3, size * 0.5, size * 0.06 }, { 0, size * 0.25, -size * 0.42 }, "bark"),
+        part("Rose", "Ball", { size * 0.24, size * 0.24, size * 0.06 }, { 0, size * 0.66, -size * 0.42 }, "glow"),
+        part("Tower", "Block", { size * 0.42, size * 1.7, size * 0.42 }, { -size * 0.68, size * 0.85, 0 }, "pale"),
+    }
+    for _, p in ipairs(taper(size * 0.5, size * 0.9, 4, "roof")) do
+        table.insert(parts, part(p.name, p.shape, p.size, { p.at[1] - size * 0.68, p.at[2] + size * 1.7, p.at[3] }, p.color, p.rot))
+    end
+    table.insert(parts, part("Cross", "Block", { size * 0.06, size * 0.3, size * 0.06 }, { -size * 0.68, size * 2.75, 0 }, "metal"))
+    table.insert(parts, part("CrossArm", "Block", { size * 0.22, size * 0.06, size * 0.06 }, { -size * 0.68, size * 2.8, 0 }, "metal"))
+    return { footprint = size * 1.9, height = size * 2.9, parts = parts }
+end
+
+-- A hero statue on a plinth. Squares have them; this one is the town's.
+local function statue(size: number): Prop
+    return {
+        footprint = size * 1.1,
+        height = size * 2.4,
+        parts = {
+            part("Plinth", "Block", { size, size * 0.5, size }, { 0, size * 0.25, 0 }, "stoneDark"),
+            part("Step", "Block", { size * 1.15, size * 0.12, size * 1.15 }, { 0, size * 0.56, 0 }, "stone"),
+            part("Legs", "Block", { size * 0.34, size * 0.6, size * 0.3 }, { 0, size * 0.92, 0 }, "metal"),
+            part("Torso", "Block", { size * 0.5, size * 0.55, size * 0.36 }, { 0, size * 1.48, 0 }, "metal"),
+            part("Head", "Ball", { size * 0.3, size * 0.32, size * 0.3 }, { 0, size * 1.88, 0 }, "metal"),
+            part("Arm", "Block", { size * 0.14, size * 0.5, size * 0.14 }, { size * 0.36, size * 1.55, 0 }, "metal", { 0, 0, -24 }),
+            part("Sword", "Block", { size * 0.08, size * 0.9, size * 0.08 }, { size * 0.52, size * 1.9, 0 }, "pale", { 0, 0, -18 }),
+        },
+    }
+end
+
+-- A signpost: a post with two boards. Marks where the roads leave the square.
+local function signpost(size: number): Prop
+    return {
+        footprint = size * 0.9,
+        height = size * 2.2,
+        parts = {
+            part("Post", "Block", { size * 0.14, size * 1.8, size * 0.14 }, { 0, size * 0.9, 0 }, "bark"),
+            part("BoardA", "Block", { size * 1.1, size * 0.28, size * 0.08 }, { size * 0.36, size * 1.66, 0 }, "wood"),
+            part("BoardB", "Block", { size * 0.9, size * 0.26, size * 0.08 }, { -size * 0.3, size * 1.3, 0 }, "wood"),
+        },
+    }
+end
+
+-- A stone bench. Street furniture, so the square is somewhere people sit.
+local function bench(size: number): Prop
+    return {
+        footprint = size * 1.2,
+        height = size * 0.8,
+        parts = {
+            part("Seat", "Block", { size * 1.1, size * 0.12, size * 0.4 }, { 0, size * 0.44, 0 }, "wood"),
+            part("Back", "Block", { size * 1.1, size * 0.34, size * 0.1 }, { 0, size * 0.66, size * 0.16 }, "wood"),
+            part("LegA", "Block", { size * 0.12, size * 0.4, size * 0.36 }, { -size * 0.44, size * 0.2, 0 }, "stoneDark"),
+            part("LegB", "Block", { size * 0.12, size * 0.4, size * 0.36 }, { size * 0.44, size * 0.2, 0 }, "stoneDark"),
+        },
+    }
+end
+
+-- A hand cart with sacks on it. Market trade, and the reason the square has
+-- clutter in it rather than only buildings.
+local function cart(size: number): Prop
+    return {
+        footprint = size * 1.5,
+        height = size * 1.1,
+        parts = {
+            part("Bed", "Block", { size * 1.3, size * 0.12, size * 0.7 }, { 0, size * 0.5, 0 }, "wood"),
+            part("WallF", "Block", { size * 1.3, size * 0.3, size * 0.08 }, { 0, size * 0.7, -size * 0.3 }, "wood"),
+            part("WallB", "Block", { size * 1.3, size * 0.3, size * 0.08 }, { 0, size * 0.7, size * 0.3 }, "wood"),
+            part("SackA", "Ball", { size * 0.4, size * 0.34, size * 0.4 }, { -size * 0.3, size * 0.7, 0 }, "cloth"),
+            part("SackB", "Ball", { size * 0.34, size * 0.3, size * 0.34 }, { size * 0.25, size * 0.68, size * 0.06 }, "cloth"),
+            part("WheelA", "Cylinder", { size * 0.1, size * 0.5, size * 0.5 }, { -size * 0.34, size * 0.26, -size * 0.36 }, "bark", { 0, 0, 90 }),
+            part("WheelB", "Cylinder", { size * 0.1, size * 0.5, size * 0.5 }, { size * 0.34, size * 0.26, -size * 0.36 }, "bark", { 0, 0, 90 }),
+        },
+    }
+end
+
+-- A hanging banner on two posts. Marks a shop or a guild, and adds height
+-- and colour to a street that would otherwise be stone.
+local function banner(size: number): Prop
+    return {
+        footprint = size * 0.8,
+        height = size * 2.4,
+        parts = {
+            part("Post", "Block", { size * 0.1, size * 2.2, size * 0.1 }, { 0, size * 1.1, 0 }, "bark"),
+            part("Arm", "Block", { size * 0.8, size * 0.08, size * 0.08 }, { size * 0.4, size * 2.1, 0 }, "bark"),
+            part("Cloth", "Block", { size * 0.6, size * 0.9, size * 0.05 }, { size * 0.5, size * 1.6, 0 }, "cloth"),
+        },
+    }
+end
+
+-- A paved square: a flat stone disc laid on the ground. Non-solid, so it is
+-- the one prop the player walks over rather than around.
+local function paving(size: number): Prop
+    return {
+        footprint = size * 2,
+        height = 1,
+        parts = {
+            part("Pave", "Cylinder", { 0.4, size * 2, size * 2 }, { 0, 0.2, 0 }, "stoneDark", { 0, 0, 90 }),
+            part("Inlay", "Cylinder", { 0.5, size * 1.2, size * 1.2 }, { 0, 0.22, 0 }, "stone", { 0, 0, 90 }),
+        },
+    }
+end
+
+-- A still pond with a stone rim and reeds. The Meadow and the Cavern both
+-- want standing water that is not a lava pool.
+local function pond(size: number): Prop
+    return {
+        footprint = size * 2.2,
+        height = size * 0.4,
+        parts = {
+            part("Water", "Cylinder", { 0.4, size * 2, size * 2 }, { 0, 0.22, 0 }, "water", { 0, 0, 90 }, 0.35),
+            part("Rim", "Cylinder", { 0.5, size * 2.2, size * 2.2 }, { 0, 0.14, 0 }, "stoneDark", { 0, 0, 90 }),
+        },
+    }
+end
+
+-- A well: a stone drum, two posts and a tiled hood.
+local function well(size: number): Prop
+    return {
+        footprint = size * 1.2,
+        height = size * 1.6,
+        parts = {
+            part("Drum", "Cylinder", { size * 0.7, size, size }, { 0, size * 0.35, 0 }, "stone", { 0, 0, 90 }),
+            part("Lip", "Cylinder", { size * 0.14, size * 1.15, size * 1.15 }, { 0, size * 0.74, 0 }, "stoneDark", { 0, 0, 90 }),
+            part("PostL", "Block", { size * 0.12, size * 0.8, size * 0.12 }, { -size * 0.44, size * 1.15, 0 }, "bark"),
+            part("PostR", "Block", { size * 0.12, size * 0.8, size * 0.12 }, { size * 0.44, size * 1.15, 0 }, "bark"),
+            part("Hood", "Wedge", { size * 1.2, size * 0.4, size * 0.9 }, { 0, size * 1.7, 0 }, "roof"),
+        },
+    }
+end
+
+-- A field gate: a wooden arch at the edge of a monster field. Every field
+-- gets one, so walking in reads as entering somewhere.
+local function fieldGate(size: number): Prop
+    local half = size * 0.5
+    return {
+        footprint = size * 1.1,
+        height = size * 1.4,
+        parts = {
+            part("PostL", "Block", { size * 0.16, size * 1.1, size * 0.16 }, { -half, size * 0.55, 0 }, "bark"),
+            part("PostR", "Block", { size * 0.16, size * 1.1, size * 0.16 }, { half, size * 0.55, 0 }, "bark"),
+            part("Lintel", "Block", { size * 1.08, size * 0.16, size * 0.2 }, { 0, size * 1.2, 0 }, "wood"),
+            part("Sign", "Block", { size * 0.5, size * 0.3, size * 0.06 }, { 0, size * 0.95, 0 }, "wood"),
+        },
+    }
+end
+
+-- A shrine: a small stone plinth with a glowing offering. The thing a
+-- monster field has instead of a fountain.
+local function shrine(size: number): Prop
+    return {
+        footprint = size * 1.1,
+        height = size * 1.4,
+        parts = {
+            part("Base", "Block", { size, size * 0.3, size }, { 0, size * 0.15, 0 }, "stoneDark"),
+            part("Body", "Block", { size * 0.6, size * 0.6, size * 0.6 }, { 0, size * 0.6, 0 }, "stone"),
+            part("Relic", "Ball", { size * 0.4, size * 0.4, size * 0.4 }, { 0, size * 1.05, 0 }, "glow"),
+        },
+    }
+end
+
+-- A monolith: one tall slab, leaning slightly. The Void's landmark.
+local function monolith(size: number): Prop
+    local parts = {
+        part("Base", "Block", { size * 1.4, size * 0.3, size * 1.2 }, { 0, size * 0.15, 0 }, "stoneDark"),
+        part("Slab", "Block", { size * 0.8, size * 2.6, size * 0.5 }, { size * 0.1, size * 1.45, 0 }, "stone", { 4, 12, 0 }),
+        part("Rune", "Block", { size * 0.3, size * 1.2, size * 0.06 }, { size * 0.22, size * 1.6, -size * 0.26 }, "glow", { 4, 12, 0 }),
+    }
+    return { footprint = size * 1.5, height = size * 2.9, parts = parts }
+end
+
+-- A hanging stalactite: an inverted taper, for the Cavern's ceiling.
+local function stalactite(height: number): Prop
+    local parts = {}
+    for _, p in ipairs(taper(height * 0.4, height, 5, "stoneDark")) do
+        -- Flip the stack upside down and hang it from the top.
+        table.insert(parts, part(p.name, p.shape, p.size,
+            { p.at[1], height - p.at[2], p.at[3] }, p.color, p.rot))
+    end
+    return { footprint = height * 0.5, height = height, parts = parts }
+end
+
+-- A lava vent: a cracked mound with a glowing throat. The Volcano's hazard.
+local function vent(size: number): Prop
+    local parts = {
+        part("Mound", "Ball", { size * 1.8, size * 0.7, size * 1.8 }, { 0, size * 0.2, 0 }, "stoneDark"),
+        part("Throat", "Cylinder", { 0.5, size * 0.9, size * 0.9 }, { 0, size * 0.55, 0 }, "glow", { 0, 0, 90 }),
+    }
+    for i = 1, 4 do
+        local angle = (i - 1) / 4 * math.pi * 2
+        table.insert(parts, part("Crack" .. i, "Block", { size * 0.9, size * 0.1, size * 0.16 },
+            { math.cos(angle) * size * 0.75, size * 0.42, math.sin(angle) * size * 0.75 }, "glow", { 0, math.deg(angle), 0 }, 0.3))
+    end
+    return { footprint = size * 2, height = size * 1.1, parts = parts }
+end
+
+--------------------------------------------------------------------------
 -- The catalogue. `base` is the prop's own size in studs and `variation` is how
 -- much the scatter may change it, so one recipe covers a sapling and a great
 -- tree.
@@ -590,6 +876,10 @@ export type KindDef = {
     solid: boolean,
     -- Whether the prop hangs above the ground rather than standing on it.
     floating: boolean?,
+    -- Whether the scatter must leave this prop's footprint clear when it is
+    -- placed as a landmark. Paving is a floor, so props may stand on it; the
+    -- default is true because a tree inside a church does not read as a city.
+    reserve: boolean?,
 }
 
 local KINDS: { [string]: KindDef } = {}
@@ -618,6 +908,25 @@ kind({
 kind({ id = "Bush", weight = 3, base = 4, variation = 0.35, build = bush, solid = false })
 kind({ id = "Flowers", weight = 2, base = 4, variation = 0.4, build = flowers, solid = false })
 
+-- Town, continued: the street furniture that turns a scatter of houses into a
+-- city. Ragnarok's Prontera is a market square with roads out to the gates, so
+-- the square needs stalls, benches, carts and paving, and the streets need
+-- signs and banners.
+kind({ id = "Signpost", weight = 2, base = 7, variation = 0.2, build = signpost, solid = true })
+kind({ id = "Bench", weight = 3, base = 6, variation = 0.25, build = bench, solid = false })
+kind({ id = "Cart", weight = 2, base = 8, variation = 0.25, build = cart, solid = true })
+kind({ id = "Banner", weight = 2, base = 10, variation = 0.25, build = banner, solid = false })
+kind({ id = "Paving", weight = 2, base = 9, variation = 0.3, build = paving, solid = false, reserve = false })
+kind({ id = "Well", weight = 1, base = 8, variation = 0.2, build = well, solid = true })
+-- Built by the world at the centre of the square rather than scattered, but
+-- registered here so it has a recipe like everything else.
+kind({ id = "Fountain", weight = 1, base = 14, variation = 0, build = fountain, solid = true })
+kind({ id = "Wall", weight = 1, base = 16, variation = 0.1, build = wallPanel, solid = true })
+kind({ id = "GateTower", weight = 1, base = 14, variation = 0.1, build = gateTower, solid = true })
+kind({ id = "GateArch", weight = 1, base = 16, variation = 0.1, build = gateArch, solid = true })
+kind({ id = "Church", weight = 1, base = 26, variation = 0.1, build = church, solid = true })
+kind({ id = "Statue", weight = 1, base = 8, variation = 0.15, build = statue, solid = true })
+
 -- Meadow: forest.
 kind({ id = "Pine", weight = 4, base = 30, variation = 0.3, build = pine, solid = true })
 kind({
@@ -635,6 +944,12 @@ kind({ id = "Mushroom", weight = 2, base = 7, variation = 0.4, build = mushroom,
 kind({ id = "MeadowRock", weight = 2, base = 7, variation = 0.4, build = rocks, solid = true })
 kind({ id = "MeadowBush", weight = 3, base = 5, variation = 0.4, build = bush, solid = false })
 kind({ id = "MeadowFlowers", weight = 3, base = 4, variation = 0.45, build = flowers, solid = false })
+-- A pond and a shrine give the Meadow somewhere to be other than a corridor
+-- of trees, and the shrine is what the arrival pad looks out at.
+kind({ id = "MeadowPond", weight = 2, base = 11, variation = 0.3, build = pond, solid = false })
+kind({ id = "MeadowShrine", weight = 1, base = 8, variation = 0.15, build = shrine, solid = true })
+kind({ id = "MeadowGate", weight = 1, base = 12, variation = 0.1, build = fieldGate, solid = true })
+kind({ id = "MeadowBench", weight = 2, base = 6, variation = 0.25, build = bench, solid = false })
 
 -- Cavern: stone teeth.
 kind({ id = "Stalagmite", weight = 4, base = 14, variation = 0.5, build = spike, solid = true })
@@ -642,6 +957,12 @@ kind({ id = "CaveRock", weight = 3, base = 9, variation = 0.45, build = rocks, s
 kind({ id = "Crystal", weight = 3, base = 6, variation = 0.4, build = crystals, solid = false })
 kind({ id = "IceSpire", weight = 2, base = 13, variation = 0.35, build = spire, solid = true })
 kind({ id = "CaveRuin", weight = 1, base = 12, variation = 0.25, build = ruin, solid = true })
+-- The ceiling hangs as well as the floor: stalactites give the Cavern a roof,
+-- and a shrine marks where the road in ends.
+kind({ id = "Stalactite", weight = 3, base = 16, variation = 0.4, build = stalactite, solid = false })
+kind({ id = "CavernPond", weight = 2, base = 10, variation = 0.3, build = pond, solid = false })
+kind({ id = "CavernShrine", weight = 1, base = 8, variation = 0.15, build = shrine, solid = true })
+kind({ id = "CavernGate", weight = 1, base = 12, variation = 0.1, build = fieldGate, solid = true })
 
 -- Volcano: burnt and glowing.
 kind({ id = "DeadTree", weight = 3, base = 22, variation = 0.3, build = deadTree, solid = true })
@@ -649,6 +970,11 @@ kind({ id = "VolcanoRock", weight = 3, base = 10, variation = 0.45, build = rock
 kind({ id = "LavaPool", weight = 2, base = 9, variation = 0.4, build = pool, solid = false })
 kind({ id = "VolcanoCrystal", weight = 2, base = 6, variation = 0.4, build = crystals, solid = false })
 kind({ id = "AshSpike", weight = 2, base = 12, variation = 0.45, build = spike, solid = true })
+-- Vents are the Volcano's own hazard: the ground itself is cracked and lit.
+kind({ id = "VolcanoVent", weight = 3, base = 9, variation = 0.4, build = vent, solid = false })
+kind({ id = "VolcanoShrine", weight = 1, base = 8, variation = 0.15, build = shrine, solid = true })
+kind({ id = "VolcanoGate", weight = 1, base = 12, variation = 0.1, build = fieldGate, solid = true })
+kind({ id = "VolcanoRuin", weight = 1, base = 13, variation = 0.25, build = ruin, solid = true })
 
 -- Void: broken and floating.
 kind({ id = "VoidCrystal", weight = 3, base = 7, variation = 0.45, build = crystals, solid = false })
@@ -657,6 +983,11 @@ kind({ id = "VoidPillar", weight = 2, base = 20, variation = 0.3, build = pillar
 kind({ id = "VoidRuin", weight = 2, base = 13, variation = 0.3, build = ruin, solid = true })
 kind({ id = "VoidTree", weight = 2, base = 20, variation = 0.3, build = deadTree, solid = true })
 kind({ id = "VoidPool", weight = 1, base = 8, variation = 0.4, build = pool, solid = false })
+-- The Void's landmark is a monolith, and its gate is the only thing standing
+-- straight on the map.
+kind({ id = "VoidMonolith", weight = 2, base = 10, variation = 0.3, build = monolith, solid = true })
+kind({ id = "VoidShrine", weight = 1, base = 8, variation = 0.15, build = shrine, solid = true })
+kind({ id = "VoidGate", weight = 1, base = 12, variation = 0.1, build = fieldGate, solid = true })
 
 -- Heaven: colonnades and cloud.
 kind({ id = "Pillar", weight = 4, base = 24, variation = 0.25, build = pillar, solid = true })
@@ -664,6 +995,12 @@ kind({ id = "HeavenRuin", weight = 2, base = 14, variation = 0.25, build = ruin,
 kind({ id = "HeavenCloud", weight = 3, base = 18, variation = 0.4, build = cloud, solid = false, floating = true })
 kind({ id = "HeavenCrystal", weight = 2, base = 6, variation = 0.4, build = crystals, solid = false })
 kind({ id = "HeavenBush", weight = 2, base = 5, variation = 0.4, build = bush, solid = false })
+-- Heaven's landmark is a statue, and its paving is what makes the colonnade
+-- read as a built place rather than a ring of columns on grass.
+kind({ id = "HeavenStatue", weight = 1, base = 10, variation = 0.15, build = statue, solid = true })
+kind({ id = "HeavenPaving", weight = 3, base = 10, variation = 0.3, build = paving, solid = false, reserve = false })
+kind({ id = "HeavenShrine", weight = 1, base = 8, variation = 0.15, build = shrine, solid = true })
+kind({ id = "HeavenGate", weight = 1, base = 12, variation = 0.1, build = fieldGate, solid = true })
 
 -- The prop for a kind id, built at the given size, or nil for an unknown id.
 function Scenery.build(kindId: string, size: number?): Prop?
@@ -709,48 +1046,66 @@ export type Plan = {
 
 local PLANS: { [string]: Plan } = {
     Town = {
-        count = 46,
+        count = 62,
         inner = 0.42,
         outer = 0.94,
         spacing = 11,
-        kinds = { "House", "Stall", "Lamp", "Barrel", "Crate", "Fence", "TownTree", "Bush", "Flowers" },
+        kinds = {
+            "House", "Stall", "Lamp", "Barrel", "Crate", "Fence", "TownTree", "Bush", "Flowers",
+            "Signpost", "Bench", "Cart", "Banner", "Paving", "Well",
+        },
     },
     Meadow = {
-        count = 62,
+        count = 78,
         inner = 0.22,
         outer = 0.96,
         spacing = 12,
-        kinds = { "Pine", "Oak", "Palm", "Mushroom", "MeadowRock", "MeadowBush", "MeadowFlowers" },
+        kinds = {
+            "Pine", "Oak", "Palm", "Mushroom", "MeadowRock", "MeadowBush", "MeadowFlowers",
+            "MeadowPond", "MeadowShrine", "MeadowGate", "MeadowBench",
+        },
     },
     Cavern = {
-        count = 56,
+        count = 72,
         inner = 0.2,
         outer = 0.96,
         spacing = 11,
-        kinds = { "Stalagmite", "CaveRock", "Crystal", "IceSpire", "CaveRuin" },
+        kinds = {
+            "Stalagmite", "CaveRock", "Crystal", "IceSpire", "CaveRuin",
+            "Stalactite", "CavernPond", "CavernShrine", "CavernGate",
+        },
     },
     Volcano = {
-        count = 54,
+        count = 70,
         inner = 0.22,
         outer = 0.96,
         spacing = 12,
-        kinds = { "DeadTree", "VolcanoRock", "LavaPool", "VolcanoCrystal", "AshSpike" },
+        kinds = {
+            "DeadTree", "VolcanoRock", "LavaPool", "VolcanoCrystal", "AshSpike",
+            "VolcanoVent", "VolcanoShrine", "VolcanoGate", "VolcanoRuin",
+        },
     },
     Void = {
-        count = 54,
+        count = 68,
         inner = 0.22,
         outer = 0.96,
         spacing = 12,
         floatHeight = 10,
-        kinds = { "VoidCrystal", "VoidShard", "VoidPillar", "VoidRuin", "VoidTree", "VoidPool" },
+        kinds = {
+            "VoidCrystal", "VoidShard", "VoidPillar", "VoidRuin", "VoidTree", "VoidPool",
+            "VoidMonolith", "VoidShrine", "VoidGate",
+        },
     },
     Heaven = {
-        count = 50,
+        count = 64,
         inner = 0.24,
         outer = 0.96,
         spacing = 13,
         floatHeight = 26,
-        kinds = { "Pillar", "HeavenRuin", "HeavenCloud", "HeavenCrystal", "HeavenBush" },
+        kinds = {
+            "Pillar", "HeavenRuin", "HeavenCloud", "HeavenCrystal", "HeavenBush",
+            "HeavenStatue", "HeavenPaving", "HeavenShrine", "HeavenGate",
+        },
     },
 }
 
@@ -892,6 +1247,253 @@ function Scenery.seedFor(placeId: string): number
         seed = bit32.band(seed * 16777619, 0xFFFFFFFF)
     end
     return seed
+end
+
+--------------------------------------------------------------------------
+-- Landmarks. The scatter makes a place look inhabited; the landmarks make it
+-- look built. These are placed on purpose rather than at random: a fountain
+-- belongs at the centre of the square, a church on the skyline, and a wall on
+-- the rim, and a random scatter would put any of them anywhere.
+--
+-- Ragnarok's Prontera is the model: a walled city with gates, a market square
+-- and a fountain at its heart, a church on the high ground, and roads running
+-- out of the square to the gates.
+--------------------------------------------------------------------------
+
+export type Landmark = Placement
+
+-- How many wall segments ring the town. Sixteen gives a panel every 22.5
+-- degrees, which at the town's radius is a wall about 25 studs long: wide
+-- enough to read as a wall, short enough to follow the curve.
+local WALL_SEGMENTS = 16
+
+export type LandmarkOpts = {
+    -- Where the player arrives, so a field's gate can be built over it.
+    arrival: { x: number, y: number, z: number }?,
+    -- Directions (radians) the town's gates face. The world passes the field
+    -- directions in, so every road out of the square leads to a real portal
+    -- instead of to a wall the player has to walk around.
+    gates: { number }?,
+}
+
+-- The town layout: square, fountain, church, walls and gates.
+local function townLandmarks(
+    centre: { x: number, y: number, z: number },
+    radius: number,
+    gates: { number }?
+): { Landmark }
+    local out: { Landmark } = {}
+    local y = centre.y or 0
+
+    local function add(kind: string, size: number, x: number, z: number, yaw: number)
+        local def = KINDS[kind]
+        table.insert(out, {
+            kind = kind,
+            x = x,
+            y = y,
+            z = z,
+            size = size,
+            yaw = yaw,
+            solid = def and def.solid or true,
+        })
+    end
+
+    -- The fountain is the centre of the square, exactly as in Prontera.
+    add("Fountain", 15, centre.x, centre.z, 0)
+
+    -- A paved apron around the fountain, so the market square reads as a floor
+    -- rather than as grass with a fountain on it. It stops short of the farm
+    -- plots at PlotRingRadius, so a paving stone never sits under a plot.
+    for i = 1, 8 do
+        local angle = (i - 1) / 8 * math.pi * 2
+        add("Paving", 6, centre.x + math.cos(angle) * 14, centre.z + math.sin(angle) * 14, math.deg(angle))
+    end
+
+    -- The church sits on the skyline in the gap between two gates, with its
+    -- door facing the square. The gates are cut at the field directions and the
+    -- farm plots ring the square every 60 degrees, so the church goes on a
+    -- bearing that clears both: at 36 degrees it is 24 degrees off the nearest
+    -- plot and 36 off the nearest gate.
+    local churchAngle = math.rad(36)
+    local churchR = radius * 0.6
+    add(
+        "Church",
+        15,
+        centre.x + math.cos(churchAngle) * churchR,
+        centre.z + math.sin(churchAngle) * churchR,
+        math.deg(churchAngle) - 90
+    )
+
+    -- A statue in the gap between two farm plots, facing the fountain. The
+    -- plots ring the square at PlotRingRadius, so the statue is placed on the
+    -- half-angle between two of them rather than at a plot's own bearing.
+    local plotGap = math.pi / 6
+    add(
+        "Statue",
+        8,
+        centre.x + math.cos(plotGap) * 21,
+        centre.z + math.sin(plotGap) * 21,
+        math.deg(plotGap) - 90
+    )
+
+    -- The city wall: a ring of panels with a gate wherever a road leaves the
+    -- city. The gate directions come from the caller, so a gate always lines up
+    -- with the portal behind it and the player walks straight out.
+    local wallR = radius * 0.93
+    local gateAngles = gates or {}
+    local segmentWidth = 2 * math.pi * wallR / WALL_SEGMENTS
+    local gateHalf = segmentWidth * 0.85
+
+    -- Panels first: every segment that is not inside a gate opening.
+    for step = 1, WALL_SEGMENTS do
+        local angle = (step - 0.5) / WALL_SEGMENTS * math.pi * 2
+        local blocked = false
+        for _, gate in ipairs(gateAngles) do
+            local delta = math.abs(((angle - gate + math.pi) % (math.pi * 2)) - math.pi)
+            if delta * wallR < gateHalf then
+                blocked = true
+                break
+            end
+        end
+        if not blocked then
+            add(
+                "Wall",
+                segmentWidth * 0.98,
+                centre.x + math.cos(angle) * wallR,
+                centre.z + math.sin(angle) * wallR,
+                -- 90 - angle lines the panel's long axis up with the tangent,
+                -- so a run of panels traces the ring. angle + 90 would stand
+                -- every panel on end and point its thin edge along the wall.
+                math.deg(math.pi / 2 - angle)
+            )
+        end
+    end
+
+    -- Then a gate in each opening: an arch with a tower butted against each
+    -- side of it, so the wall, the towers and the arch close the gap rather
+    -- than leaving a slit the player can slip through beside the gate.
+    --
+    -- The arch's opening runs along its local Z axis, so its yaw lines that
+    -- axis up with the road: the radial direction. The towers are wall pieces,
+    -- so they take the wall's tangent yaw instead.
+    local archHalf = 18 * 1.1 * 0.5
+    for _, gate in ipairs(gateAngles) do
+        add(
+            "GateArch",
+            18,
+            centre.x + math.cos(gate) * wallR,
+            centre.z + math.sin(gate) * wallR,
+            math.deg(math.atan2(math.cos(gate), math.sin(gate)))
+        )
+        for _, side in ipairs({ -1, 1 }) do
+            local offset = (archHalf + 6.6) / wallR
+            local ta = gate + side * offset
+            add(
+                "GateTower",
+                12,
+                centre.x + math.cos(ta) * wallR,
+                centre.z + math.sin(ta) * wallR,
+                math.deg(math.pi / 2 - ta)
+            )
+        end
+    end
+
+    return out
+end
+
+-- A monster field's layout: a gate where the road comes in, a landmark at the
+-- centre, and paving on the approach.
+local function fieldLandmarks(
+    placeId: string,
+    centre: { x: number, y: number, z: number },
+    radius: number,
+    arrival: { x: number, y: number, z: number }?
+): { Landmark }
+    local out: { Landmark } = {}
+    local y = centre.y or 0
+
+    local function add(kind: string, size: number, x: number, z: number, yaw: number)
+        local def = KINDS[kind]
+        table.insert(out, {
+            kind = kind,
+            x = x,
+            y = y,
+            z = z,
+            size = size,
+            yaw = yaw,
+            solid = def and def.solid or true,
+        })
+    end
+
+    -- The landmark a field is known by. The Void gets a monolith and Heaven a
+    -- statue; the rest get a shrine, which is a landmark without being a
+    -- second town square.
+    local landmarks: { [string]: string } = {
+        Meadow = "MeadowShrine",
+        Cavern = "CavernShrine",
+        Volcano = "VolcanoShrine",
+        Void = "VoidMonolith",
+        Heaven = "HeavenStatue",
+    }
+    local gates: { [string]: string } = {
+        Meadow = "MeadowGate",
+        Cavern = "CavernGate",
+        Volcano = "VolcanoGate",
+        Void = "VoidGate",
+        Heaven = "HeavenGate",
+    }
+    local pavings: { [string]: string } = {
+        Meadow = "Paving",
+        Cavern = "Paving",
+        Volcano = "Paving",
+        Void = "Paving",
+        Heaven = "HeavenPaving",
+    }
+
+    local landmark = landmarks[placeId]
+    if landmark then
+        add(landmark, KINDS[landmark].base, centre.x, centre.z, 0)
+    end
+
+    -- The gate stands over the arrival point and faces the middle of the map,
+    -- so the player walks in under the arch and straight down the road. The
+    -- arch's opening runs along its local Z axis, so the yaw is chosen to line
+    -- that axis up with the direction from the gate to the middle.
+    local gate = gates[placeId]
+    if gate and arrival then
+        local gx, gz = centre.x - arrival.x, centre.z - arrival.z
+        local gl = math.max(1, math.sqrt(gx * gx + gz * gz))
+        add(gate, KINDS[gate].base, arrival.x, arrival.z, math.deg(math.atan2(gx / gl, gz / gl)))
+    end
+
+    -- A paved approach from the gate toward the landmark.
+    local paving = pavings[placeId]
+    if paving and arrival then
+        local dx, dz = centre.x - arrival.x, centre.z - arrival.z
+        local length = math.max(1, math.sqrt(dx * dx + dz * dz))
+        local ux, uz = dx / length, dz / length
+        local yaw = math.deg(math.atan2(dz, dx))
+        for step = 1, 4 do
+            local t = step / 5
+            add(paving, 9, arrival.x + ux * length * t, arrival.z + uz * length * t, yaw)
+        end
+    end
+
+    return out
+end
+
+-- The structural props for a place, placed on purpose.
+function Scenery.landmarks(
+    placeId: string,
+    centre: { x: number, y: number, z: number },
+    radius: number,
+    opts: LandmarkOpts?
+): { Landmark }
+    local options = opts or {}
+    if placeId == "Town" then
+        return townLandmarks(centre, radius, options.gates)
+    end
+    return fieldLandmarks(placeId, centre, radius, options.arrival)
 end
 
 return Scenery

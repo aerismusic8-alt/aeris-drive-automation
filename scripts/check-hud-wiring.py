@@ -263,17 +263,30 @@ check("the icon is built from a recipe", "ItemIcons.get" in item_view, "no icon 
 check("the icon uses a viewport", "ViewportFrame" in item_view, "no 3D icon")
 check("the equipped gear shows as icons", "ItemView.emptyTile" in client, "empty slots not drawn")
 
-print("\nWIRING 13: the status panel is clear of the chat and the movement stick")
+print("\nWIRING 13: the status panel is clear of the chat, the topbar and the stick")
 
 # The reported bug: the status panel sat on the chat, so the chat could not be
 # read or dragged, and the reward buttons sat on the phone's movement stick.
+# The follow-up bug: the panel was moved to the top right, but the HUD drew
+# from the physical screen top (IgnoreGuiInset = true), so on a phone with a
+# taller topbar the panel slid back under the buttons.
 stats_line = re.search(r'panel\(gui, "Stats",[^\n]*', hud)
 check("the status panel exists", stats_line is not None, "no Stats panel")
 if stats_line:
     line = stats_line.group(0)
     check("the status panel is not top left", 'UDim2.new(0, 16, 0, 16)' not in line, "still on the chat")
     check("the status panel is anchored right", "UDim2.new(1, -" in line, "not moved right")
-    check("the status panel clears the topbar", "0, 58" in line or "0, 6" in line, "still under the topbar")
+    check("the status panel is near the top", "UDim2.new(1, -12, 0, 8)" in line, "not against the top-right corner")
+
+# The HUD must measure from the safe area, not the raw screen. IgnoreGuiInset
+# true is the exact bug that put the panel under the topbar, and CoreUISafeInsets
+# is what makes Roblox keep it clear of the topbar and the device cutout.
+check("the HUD measures from the safe area", "IgnoreGuiInset = true" not in hud,
+      "the HUD draws from the physical screen edge, under the topbar")
+check("the HUD asks for the core-UI safe area", "Enum.ScreenInsets.CoreUISafeInsets" in hud,
+      "no ScreenInsets, so nothing keeps the HUD off the topbar")
+check("the HUD clips to the device safe area", "ClipToDeviceSafeArea" in hud,
+      "a panel can still hang off a notch")
 
 check("the reward buttons are behind a button", '"RewardsButton"' in hud, "rewards still on the stick")
 check("the rewards overlay can close", '"CloseRewards"' in hud, "no way out of the overlay")
@@ -285,6 +298,8 @@ print("\nWIRING 14: the maps are built with scenery and air, not a bare disc")
 
 scenery = read(ROOT / "roblox/src/shared/Scenery.luau")
 atmosphere = read(ROOT / "roblox/src/shared/Atmosphere.luau")
+zones = read(ROOT / "roblox/src/shared/Zones.luau")
+combat = read(ROOT / "roblox/src/shared/Combat.luau")
 
 check("the world requires the scenery module", "require(Shared:WaitForChild(\"Scenery\"))" in world, "Scenery not required")
 check("the world requires the atmosphere module", "require(Shared:WaitForChild(\"Atmosphere\"))" in world, "Atmosphere not required")
@@ -328,6 +343,75 @@ check("the hovering set is declared", "HOVERING" in monster_shapes, "no hovering
 check("the hovering set is queryable", "MonsterShapes.hovers" in monster_shapes, "no hovers()")
 check("a cone is drawn as stacked discs", "local function taper" in scenery, "no taper helper")
 check("a leaning shard is drawn as stacked discs", "local function lean" in scenery, "no lean helper")
+
+print("\nWIRING 16: every standing panel can be folded out of the way")
+
+# K asked for the on-screen panels and signs to collapse to an icon so they do
+# not clutter the play area. Each standing panel carries a fold caret, and the
+# client remembers which ones the player put away.
+check("the HUD can fold a panel", "local function fold(" in hud, "no fold helper")
+check("the HUD restores a folded panel", "function Hud.applyFolds(" in hud, "folds never reapply")
+check("the fold remembers the open size", "entry.openWidth" in hud, "unfolding loses the size")
+check("the fold only restores what it hid", "entry.hidden" in hud, "unfolding force-shows hidden parts")
+check("the stats panel folds", 'fold(stats,' in hud, "the stats panel cannot be put away")
+check("the wave banner folds", 'fold(wave,' in hud, "the wave banner cannot be put away")
+check("the action panel folds", 'fold(actions,' in hud, "the action panel cannot be put away")
+check("the combat panel folds", 'fold(combat,' in hud, "the combat panel cannot be put away")
+check("the client tracks folded panels", "folded = {}" in client, "the client forgets the folds")
+check("the caret toggles the panel", "state.folded[name]" in client, "the caret does nothing")
+check("every foldable panel is wired", 'for _, panelName in ipairs({ "Stats", "WavePanel", "Actions", "Combat" })' in client,
+      "a caret is drawn but not wired")
+check("the fold is applied on render", "Hud.applyFolds(state.folded)" in client, "the fold never shows")
+
+print("\nWIRING 17: the first field cannot kill the player")
+
+# K asked that the level-1 map never kill, so a player can grind there forever
+# and build a character. The rule lives in the zone table and is applied at the
+# one place a monster damages a player.
+check("the zone table marks safety", "lethal: boolean" in zones, "zones have no safety flag")
+check("the first field is safe", "lethal = false" in zones, "no field is safe")
+check("safety is queryable", "function Zones.isLethal(" in zones, "no isLethal()")
+check("an unknown field is lethal", "return true" in zones, "an unknown field is safe")
+check("damage can be non-lethal", "nonLethal: boolean?" in combat, "damage cannot be floored")
+check("a non-lethal hit floors at 1", "nonLethal and 1 or 0" in combat, "the floor is missing")
+check("the server asks the zone", "Zones.isLethal(record.field" in server, "the server ignores the safety flag")
+check("the server passes the flag", "damage, safeField" in server, "the flag never reaches the damage call")
+check("the HUD knows the field is safe", "fieldLethal = record.field" in server, "the HUD cannot tell the player")
+check("the player is told they are safe", 'Text.get("safeField")' in hud, "no safe-field notice")
+check("travel heals the player", "applySpawnStats(record)\n\tWorld.placePlayer" in server,
+      "a player at 1 HP can travel into a lethal field and die instantly")
+
+print("\nWIRING 18: the maps are built as places, not as scattered props")
+
+check("the world places landmarks", "Scenery.landmarks(" in world, "landmarks are never placed")
+check("the world builds the landmarks", "buildLandmarks(" in world, "landmarks are placed but not built")
+check("the town gets landmarks", 'buildLandmarks(town, "Town"' in world, "the town has no square or wall")
+check("a field gets landmarks", "buildLandmarks(model, field.id" in world, "a field has no gate")
+check("the scatter is kept off the landmarks", "reserveLandmarks(" in world,
+      "a tree can grow through the church")
+check("a landmark can decline to reserve", "reserve ~= false" in world,
+      "the paving reserves the whole square")
+check("the paving does not reserve", "reserve = false" in scenery, "the paving starves the scatter")
+check("the town's gates follow the roads", "gateAngles" in world,
+      "a gate is built somewhere with no portal")
+check("a gate is an arch between towers", "GateArch" in scenery and "GateTower" in scenery,
+      "the gate has no arch or no towers")
+check("the town has a fountain", '"Fountain"' in scenery, "the square has no fountain")
+check("the town has a church", '"Church"' in scenery, "the city has no church")
+check("the town has a wall", '"Wall"' in scenery, "the city is unwalled")
+check("the town has a statue", '"Statue"' in scenery, "the square has no statue")
+check("every field has a gate kind", all(
+    f'"{place}Gate"' in scenery for place in ("Meadow", "Cavern", "Volcano", "Void", "Heaven")
+), "a field has no gate prop")
+check("every field has a shrine or landmark", all(
+    f'"{place}Shrine"' in scenery for place in ("Meadow", "Cavern", "Volcano", "Void", "Heaven")
+), "a field has no landmark prop")
+check("water is see-through", 'water = "Glass"' in scenery, "water is drawn as stone")
+check("the world honours a prop's alpha", "spec.alpha" in world, "a pond is opaque")
+check("the wall runs along the wall", "math.pi / 2 - angle" in scenery,
+      "a wall panel is turned across the wall")
+check("the field gate faces the road", "math.atan2(gx / gl, gz / gl)" in scenery,
+      "the gate is turned away from the road")
 
 print(f"\nWIRING: {passed} passed, {len(failures)} failed")
 for failure in failures:

@@ -61,13 +61,19 @@ function Combat.damageEnemy(enemy: Enemy, amount: number): (boolean, number, num
 end
 
 -- Apply damage to a player combatant. Returns (died, remainingHealth).
-function Combat.damageCombatant(target: Combatant, amount: number): (boolean, number)
+--
+-- `nonLethal` is the first-field rule: the monster can hurt and chase, but the
+-- hit is floored so it can never take the last point of health. A new character
+-- can therefore stand in the Meadow forever and grind, which is what the
+-- tutorial field is for. Every later field passes nothing here and kills.
+function Combat.damageCombatant(target: Combatant, amount: number, nonLethal: boolean?): (boolean, number)
 	if not target.alive or amount <= 0 then
 		return false, target.health
 	end
 
-	target.health = math.max(0, target.health - amount)
-	if target.health == 0 then
+	local floor = nonLethal and 1 or 0
+	target.health = math.max(floor, target.health - amount)
+	if target.health <= 0 then
 		target.alive = false
 		return true, 0
 	end

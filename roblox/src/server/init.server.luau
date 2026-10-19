@@ -230,6 +230,9 @@ local function pushPlayerState(player: Player, record: PlayerRecord)
 		rebirthRequirement = Rebirth.levelRequirement(record.rebirth.count),
 		zone = record.zone,
 		field = record.field,
+		-- False only in the first field, which is the safe practice map. The HUD
+		-- uses this to tell the player they cannot die here.
+		fieldLethal = record.field == nil or Zones.isLethal(record.field),
 		fields = Fields.snapshot(record.level, Monetization.hasZonePass(record.entitlements)),
 		killStreak = record.killStreak,
 
@@ -764,6 +767,11 @@ TravelZone.OnServerInvoke = function(player: Player, placeId: any): (boolean, st
 	record.lastZoneChange = now
 	record.dirty = true
 
+	-- Arriving somewhere new is a fresh start. Without this, a player who grinds
+	-- the safe first field down to its 1 HP floor and then travels to a real
+	-- field dies to the first hit before they can react. The safe field's whole
+	-- purpose is to be left, so leaving it must not be a trap.
+	applySpawnStats(record)
 	World.placePlayer(player, destination)
 	World.applyLook(destination)
 	pushPlayerState(player, record)
@@ -1584,7 +1592,12 @@ RunService.Heartbeat:Connect(function(dt)
 		if not record then
 			return
 		end
-		local died = Combat.damageCombatant(record.combatant, damage)
+		-- The first field cannot kill. A monster still lands its hit and the
+		-- health bar still drops, but the last point is floored, so a new
+		-- character can grind there for as long as they like. Every later field
+		-- passes nothing here and is lethal.
+		local safeField = not Zones.isLethal(record.field or "")
+		local died = Combat.damageCombatant(record.combatant, damage, safeField)
 		if died then
 			local character = target.Character
 			local humanoid = character and character:FindFirstChildOfClass("Humanoid")

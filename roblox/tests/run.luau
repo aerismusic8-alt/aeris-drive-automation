@@ -279,6 +279,35 @@ t.test("player damage floors at zero and reports death", function()
 	t.assertFalse(player.alive)
 end)
 
+t.test("a non-lethal hit floors at 1 HP instead of killing", function()
+        -- The first field is the practice map: a monster there can hurt the
+        -- player but never finish them, so a new character can grind forever.
+        local player = Combat.createCombatant(100)
+        local died, health = Combat.damageCombatant(player, 999, true)
+        t.assertFalse(died, "the first field killed the player")
+        t.assertEqual(health, 1)
+        t.assertTrue(player.alive, "the player died in the safe field")
+
+        -- Another hit must not sneak through the floor either.
+        died, health = Combat.damageCombatant(player, 999, true)
+        t.assertFalse(died, "a second hit killed the player")
+        t.assertEqual(health, 1)
+end)
+
+t.test("a lethal hit in a later field still kills", function()
+        local player = Combat.createCombatant(100)
+        local died, health = Combat.damageCombatant(player, 999, false)
+        t.assertTrue(died)
+        t.assertEqual(health, 0)
+        t.assertFalse(player.alive)
+
+        -- And the default is lethal, so a caller that forgets the flag cannot
+        -- accidentally make the whole game safe.
+        local other = Combat.createCombatant(100)
+        died = Combat.damageCombatant(other, 999)
+        t.assertTrue(died)
+end)
+
 t.test("healing cannot exceed max health or revive the dead", function()
 	local player = Combat.createCombatant(100)
 	Combat.damageCombatant(player, 30)
@@ -3453,6 +3482,204 @@ end)
 t.test("a solid prop collides and a small one does not", function()
         t.assertTrue(Scenery.kindDef("Pine").solid, "a pine is walk-through")
         t.assertFalse(Scenery.kindDef("Flowers").solid, "flowers block the player")
+end)
+
+t.test("the town is a walled city with a square, not just houses", function()
+        -- Ragnarok's Prontera is walled, built around a market square with a
+        -- fountain at its heart. These are the props that say so.
+        local gates: { number } = {}
+        for _, field in ipairs(Fields.list()) do
+                table.insert(gates, math.atan2(field.position.z, field.position.x))
+        end
+        local marks = Scenery.landmarks("Town", { x = 0, y = 0, z = 0 }, Config.Town.Radius, { gates = gates })
+
+        local seen: { [string]: number } = {}
+        for _, spot in ipairs(marks) do
+                seen[spot.kind] = (seen[spot.kind] or 0) + 1
+        end
+
+        t.assertGreater(seen.Fountain or 0, 0, "the square has no fountain")
+        t.assertGreater(seen.Church or 0, 0, "the city has no church")
+        t.assertGreater(seen.Wall or 0, 4, "the city has no wall")
+        t.assertGreater(seen.GateArch or 0, 0, "the wall has no gate")
+        t.assertGreater(seen.GateTower or 0, 1, "the gates have no towers")
+end)
+
+t.test("a town gate lines up with the portal behind it", function()
+        -- A gate the player cannot walk through is worse than no gate: the
+        -- road out of the square has to lead to the portal, not to a wall.
+        local gates: { number } = {}
+        for _, field in ipairs(Fields.list()) do
+                table.insert(gates, math.atan2(field.position.z, field.position.x))
+        end
+        local marks = Scenery.landmarks("Town", { x = 0, y = 0, z = 0 }, Config.Town.Radius, { gates = gates })
+
+        local arches: { any } = {}
+        for _, spot in ipairs(marks) do
+                if spot.kind == "GateArch" then
+                        table.insert(arches, spot)
+                end
+        end
+        t.assertEqual(#arches, #gates, "one gate per road, no more")
+
+        for _, gate in ipairs(gates) do
+                local edge = Config.Town.Radius - 8
+                local px, pz = math.cos(gate) * edge, math.sin(gate) * edge
+                local best = math.huge
+                for _, arch in ipairs(arches) do
+                        local dx, dz = arch.x - px, arch.z - pz
+                        best = math.min(best, math.sqrt(dx * dx + dz * dz))
+                end
+                -- The arch stands on the wall ring, the portal just inside it,
+                -- so the two are a few studs apart rather than coincident.
+                t.assertLess(best, 12, "a gate is not on the road to its portal")
+        end
+end)
+
+t.test("no landmark is built on a farm plot or the arrival pad", function()
+        -- The plots are gameplay and the pad is where the player lands. A
+        -- church on a plot would hide the crop and block the harvest.
+        local gates: { number } = {}
+        for _, field in ipairs(Fields.list()) do
+                table.insert(gates, math.atan2(field.position.z, field.position.x))
+        end
+        local marks = Scenery.landmarks("Town", { x = 0, y = 0, z = 0 }, Config.Town.Radius, { gates = gates })
+        local arrival = Fields.arrivalOf("Town")
+
+        for _, spot in ipairs(marks) do
+                local prop = Scenery.build(spot.kind, spot.size)
+                local half = prop.footprint / 2
+                for i = 1, Config.Farm.PlotCount do
+                        local angle = ((i - 1) / Config.Farm.PlotCount) * math.pi * 2
+                        local px = math.cos(angle) * Config.Farm.PlotRingRadius
+                        local pz = math.sin(angle) * Config.Farm.PlotRingRadius
+                        local dx, dz = spot.x - px, spot.z - pz
+                        t.assertGreater(math.sqrt(dx * dx + dz * dz), half,
+                                spot.kind .. " is built on farm plot " .. i)
+                end
+                local ax, az = spot.x - arrival.x, spot.z - arrival.z
+                t.assertGreater(math.sqrt(ax * ax + az * az), half,
+                        spot.kind .. " is built on the arrival pad")
+        end
+end)
+
+t.test("every monster field gets a gate and a landmark", function()
+        for _, field in ipairs(Fields.list()) do
+                local centre = Fields.positionOf(field.id)
+                local arrival = Fields.arrivalOf(field.id)
+                local marks = Scenery.landmarks(field.id, centre, Config.Fields.ArenaRadius, { arrival = arrival })
+
+                local seen: { [string]: boolean } = {}
+                for _, spot in ipairs(marks) do
+                        seen[spot.kind] = true
+                end
+
+                local hasGate = false
+                local hasLandmark = false
+                for kind in pairs(seen) do
+                        if string.find(kind, "Gate") then
+                                hasGate = true
+                        end
+                        if string.find(kind, "Shrine") or kind == "VoidMonolith" or kind == "HeavenStatue" then
+                                hasLandmark = true
+                        end
+                end
+                t.assertTrue(hasGate, field.id .. " has no gate")
+                t.assertTrue(hasLandmark, field.id .. " has no landmark")
+        end
+end)
+
+t.test("a wall panel runs along the wall, not through it", function()
+        -- A panel laid radially would stand on end and leave a gap between
+        -- neighbours. The panel's long axis is its X, so its yaw must put X
+        -- along the ring's tangent.
+        local gates: { number } = {}
+        local marks = Scenery.landmarks("Town", { x = 0, y = 0, z = 0 }, Config.Town.Radius, { gates = gates })
+        local walls = 0
+        for _, spot in ipairs(marks) do
+                if spot.kind ~= "Wall" then
+                        continue
+                end
+                walls += 1
+                local radial = math.atan2(spot.z, spot.x)
+                local yaw = math.rad(spot.yaw)
+                -- The panel's local X axis after a yaw of t is (cos t, -sin t).
+                local x1, x2 = math.cos(yaw), -math.sin(yaw)
+                local dotRadial = x1 * math.cos(radial) + x2 * math.sin(radial)
+                t.assertNear(dotRadial, 0, 0.001, "a wall panel is turned across the wall")
+        end
+        t.assertGreater(walls, 4, "the town has almost no wall")
+end)
+
+t.test("landmarks are placed on purpose, so they never move", function()
+        -- The scatter is seeded; the landmarks are not random at all. Two
+        -- builds must agree, or a returning player finds the church moved.
+        local gates: { number } = {}
+        for _, field in ipairs(Fields.list()) do
+                table.insert(gates, math.atan2(field.position.z, field.position.x))
+        end
+        local first = Scenery.landmarks("Town", { x = 0, y = 0, z = 0 }, Config.Town.Radius, { gates = gates })
+        local second = Scenery.landmarks("Town", { x = 0, y = 0, z = 0 }, Config.Town.Radius, { gates = gates })
+        t.assertEqual(#first, #second, "the town grew a landmark")
+        for i = 1, #first do
+                t.assertEqual(first[i].kind, second[i].kind, "landmark " .. i .. " changed kind")
+                t.assertNear(first[i].x, second[i].x, 0.0001, "landmark " .. i .. " moved")
+        end
+end)
+
+t.test("water is drawn as water, not as stone", function()
+        local palette = Scenery.palette("Town")
+        t.assertNotNil(palette.water, "the town has no water colour")
+        t.assertEqual(Scenery.materialFor("water"), "Glass", "water is not see-through")
+end)
+
+t.test("every place has landmarks and they name real props", function()
+        local places: { string } = { "Town" }
+        for _, field in ipairs(Fields.list()) do
+                table.insert(places, field.id)
+        end
+        for _, place in ipairs(places) do
+                local radius = (place == "Town") and Config.Town.Radius or Config.Fields.ArenaRadius
+                local marks = Scenery.landmarks(place, { x = 0, y = 0, z = 0 }, radius, { arrival = { x = 0, y = 0, z = 18 } })
+                t.assertGreater(#marks, 0, place .. " has no landmarks")
+                for _, spot in ipairs(marks) do
+                        t.assertNotNil(Scenery.kindDef(spot.kind), place .. " builds unknown landmark " .. spot.kind)
+                end
+        end
+end)
+
+t.test("only the first field is safe and each later field is deadlier", function()
+        local zones = Zones.list()
+        t.assertGreater(#zones, 1, "there is only one field")
+
+        -- The first field is the tutorial, so it must not kill.
+        t.assertFalse(Zones.isLethal(zones[1].id), "the first field can kill the player")
+        t.assertEqual(zones[1].id, "Meadow")
+
+        -- Every later field must be lethal and must hit harder than the one
+        -- before it, so moving on is always a real step up.
+        for i = 2, #zones do
+                t.assertTrue(Zones.isLethal(zones[i].id), zones[i].id .. " cannot kill the player")
+                t.assertGreater(zones[i].difficultyMultiplier, zones[i - 1].difficultyMultiplier,
+                        zones[i].id .. " is not harder than " .. zones[i - 1].id)
+                t.assertGreater(zones[i].coinMultiplier, zones[i - 1].coinMultiplier,
+                        zones[i].id .. " does not pay better than " .. zones[i - 1].id)
+                t.assertGreater(zones[i].levelRequirement, zones[i - 1].levelRequirement,
+                        zones[i].id .. " does not need a higher level than " .. zones[i - 1].id)
+        end
+
+        -- An unknown zone is treated as lethal, so a typo cannot make the game
+        -- safe by accident.
+        t.assertTrue(Zones.isLethal("NoSuchField"), "an unknown field was treated as safe")
+end)
+
+t.test("the safe field still deals damage, it just cannot finish the player", function()
+        -- A safe field that deals nothing would be a broken field. The rule is
+        -- about the killing blow, not about immunity.
+        local player = Combat.createCombatant(100)
+        local died, health = Combat.damageCombatant(player, 30, true)
+        t.assertFalse(died)
+        t.assertEqual(health, 70, "the safe field dealt no damage")
 end)
 
 --------------------------------------------------------------------------

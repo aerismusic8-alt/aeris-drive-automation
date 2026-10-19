@@ -10,6 +10,18 @@
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
+-- The status panel sits in the top-right corner, which is where the Roblox
+-- topbar keeps its experience controls and where the player list opens. The
+-- panel used to clear the topbar by counting pixels down from the physical
+-- screen top (IgnoreGuiInset was on), so on a phone with a taller topbar or a
+-- notch it slid back under the buttons and could not be read.
+--
+-- ScreenInsets does that arithmetic for us: CoreUISafeInsets shrinks the whole
+-- HUD to the area that is guaranteed to be clear of both the device cutout and
+-- every core UI element, and it tracks the topbar when it hides or grows. The
+-- offsets below are therefore measured from the safe area, not the screen, and
+-- stay small.
+
 -- Every visible word comes from here, so the language lives in one file.
 local Text = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("Text"))
 
@@ -95,6 +107,89 @@ local function panel(parent: Instance, name: string, size: UDim2, position: UDim
 	return p
 end
 
+-- Every standing panel can fold down to its own title bar. A phone screen is
+-- small and the middle of it is where the player is looking, so a panel that is
+-- not needed right now shrinks to a bar and gets out of the way. The bar keeps
+-- the fold button, so one tap brings the panel back.
+--
+-- `open` is the panel's full size, remembered so unfolding restores it exactly.
+local FOLDS: { any } = {}
+
+local function fold(target: Frame, label: string)
+	local open = target.Size
+	local b = button(target, "Fold", "\u{25BE}", UDim2.new(0, 34, 0, 30), UDim2.new(1, -40, 0, 4), COLORS.disabled)
+	b.TextSize = 18
+	b.ZIndex = 40
+	table.insert(FOLDS, {
+		target = target,
+		label = label,
+		open = open,
+		openWidth = open.X,
+		openHeight = open.Y,
+	})
+	return b
+end
+
+-- Fold or unfold every panel that has a fold button. Called from render, so
+-- the screen follows the client's state rather than hiding things behind its
+-- back. A folded panel keeps only its fold button, and the button says what it
+-- will bring back.
+function Hud.applyFolds(collapsed: { [string]: boolean })
+	for _, entry in ipairs(FOLDS) do
+		local target = entry.target
+		local folded = collapsed[target.Name] == true
+		local b = target:FindFirstChild("Fold")
+		if folded then
+			-- Fold once. A second pass would find every child already hidden and
+			-- record an empty set, so unfolding would restore nothing and the
+			-- panel would come back blank.
+			if not entry.folded then
+				entry.folded = true
+				-- Remember exactly which children were on screen, so unfolding does
+				-- not force-show a badge or a bar that some other rule had hidden.
+				entry.hidden = {}
+				for _, child in ipairs(target:GetChildren()) do
+					if child ~= b and child.Visible then
+						table.insert(entry.hidden, child)
+						child.Visible = false
+					end
+				end
+			end
+			target.Size = UDim2.new(entry.openWidth.Scale, entry.openWidth.Offset, 0, 44)
+			if b and b:IsA("TextButton") then
+				b.Text = "\u{25B8}  " .. entry.label
+				-- Folded, the button becomes the whole bar: full width, left aligned.
+				b.Position = UDim2.new(0, 6, 0, 4)
+				b.Size = UDim2.new(1, -12, 0, 36)
+				b.TextXAlignment = Enum.TextXAlignment.Left
+				b.BackgroundColor3 = COLORS.panelEdge
+			end
+		else
+			for _, child in ipairs(entry.hidden or {}) do
+				child.Visible = true
+			end
+			entry.hidden = nil
+			entry.folded = false
+			target.Size = entry.open
+			if b and b:IsA("TextButton") then
+				b.Text = "\u{25BE}"
+				b.Position = UDim2.new(1, -40, 0, 4)
+				b.Size = UDim2.new(0, 34, 0, 30)
+				b.TextXAlignment = Enum.TextXAlignment.Center
+				b.BackgroundColor3 = COLORS.disabled
+			end
+		end
+	end
+end
+
+-- Whether a panel is folded, so a render step can avoid showing a child of a
+-- panel that is currently put away.
+function Hud.isFolded(collapsed: { [string]: boolean }, panelName: string): boolean
+	return collapsed[panelName] == true
+end
+
+Hud.FOLDS = FOLDS
+
 -- Build the screen once. Returns the ScreenGui.
 function Hud.build(): ScreenGui
 	local existing = player:FindFirstChild("PlayerGui") and player.PlayerGui:FindFirstChild("AXArenaHUD")
@@ -105,24 +200,40 @@ function Hud.build(): ScreenGui
 	local gui = Instance.new("ScreenGui")
 	gui.Name = "AXArenaHUD"
 	gui.ResetOnSpawn = false
-	gui.IgnoreGuiInset = true
+	-- The HUD is laid out against the safe area, not the raw screen, so no
+	-- panel can end up under the topbar or a device cutout.
+	gui.IgnoreGuiInset = false
+	gui.ScreenInsets = Enum.ScreenInsets.CoreUISafeInsets
+	gui.ClipToDeviceSafeArea = true
 	gui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
 	gui.Parent = player:WaitForChild("PlayerGui")
 
-	-- Stats, top right, below the Roblox topbar. It used to sit top left,
-	-- which is where the chat window is: the panel covered the chat and
-	-- blocked its drag handle, so the chat could not be moved out of the way.
-	local stats = panel(gui, "Stats", UDim2.new(0, 216, 0, 168), UDim2.new(1, -12, 0, 58), Vector2.new(1, 0))
-	label(stats, "Coins", Text.get("coins") .. ": 0", UDim2.new(1, -20, 0, 30), UDim2.new(0, 12, 0, 8), 20)
+	-- Stats, top right. The safe area already excludes the topbar, so the panel
+	-- only needs a small margin. The old 58px offset existed to clear the topbar
+	-- by hand, and on a phone with a taller topbar it was not enough: the panel
+	-- slid back under the buttons. It used to sit top left, which is where the
+	-- chat window is, and covered the chat's drag handle.
+	local stats = panel(gui, "Stats", UDim2.new(0, 216, 0, 202), UDim2.new(1, -12, 0, 8), Vector2.new(1, 0))
+	-- The stats panel is the one panel worth keeping open while playing, so its
+	-- fold button is a small caret in the corner rather than a title bar.
+	fold(stats, Text.get("stats"))
+	label(stats, "Coins", Text.get("coins") .. ": 0", UDim2.new(1, -58, 0, 30), UDim2.new(0, 12, 0, 8), 20)
 	label(stats, "Level", Text.get("level") .. " 1", UDim2.new(1, -20, 0, 28), UDim2.new(0, 12, 0, 42), 18)
 	label(stats, "Health", Text.get("health") .. " 100/100", UDim2.new(1, -20, 0, 28), UDim2.new(0, 12, 0, 72), 18)
 	label(stats, "Field", Text.get("field") .. ": " .. Text.placeName("Town"), UDim2.new(1, -20, 0, 28), UDim2.new(0, 12, 0, 102), 18)
-	label(stats, "Zone", Text.get("zone") .. ": " .. Text.placeName("Meadow"), UDim2.new(1, -20, 0, 26), UDim2.new(0, 12, 0, 132), 16)
-	label(stats, "Rebirth", Text.get("rebirth") .. " 0", UDim2.new(1, -20, 0, 26), UDim2.new(0, 12, 0, 160), 16)
+	-- The safe-field badge: only visible in the first field, where the player
+	-- cannot die. It is the answer to "why am I not dying here".
+	local safeBadge = label(stats, "SafeBadge", Text.get("safeField"), UDim2.new(1, -24, 0, 28), UDim2.new(0, 12, 0, 132), 14)
+	safeBadge.TextColor3 = COLORS.green
+	safeBadge.TextWrapped = true
+	safeBadge.Visible = false
+	label(stats, "Zone", Text.get("zone") .. ": " .. Text.placeName("Meadow"), UDim2.new(1, -20, 0, 26), UDim2.new(0, 12, 0, 160), 16)
+	label(stats, "Rebirth", Text.get("rebirth") .. " 0", UDim2.new(1, -20, 0, 26), UDim2.new(0, 12, 0, 188), 16)
 
 	-- Wave banner, top centre.
 	local wave = panel(gui, "WavePanel", UDim2.new(0, 320, 0, 48), UDim2.new(0.5, 0, 0, 16), Vector2.new(0.5, 0))
-	local waveLabel = label(wave, "Wave", Text.get("wave") .. " 1", UDim2.new(1, -16, 1, 0), UDim2.new(0, 8, 0, 0), 20)
+	fold(wave, Text.get("wave"))
+	local waveLabel = label(wave, "Wave", Text.get("wave") .. " 1", UDim2.new(1, -56, 1, 0), UDim2.new(0, 8, 0, 0), 20)
 	waveLabel.TextXAlignment = Enum.TextXAlignment.Center
 
 	-- Boss bar, just under the wave banner. Hidden unless a boss is alive, so
@@ -168,20 +279,21 @@ function Hud.build(): ScreenGui
 	-- Action panel, bottom right: the two taps the game is built around.
 	-- It sits under the thumb rather than in the middle of the screen, and the
 	-- axe button carries the charge count so the player knows when to swing.
-	local actions = panel(gui, "Actions", UDim2.new(0, 200, 0, 372), UDim2.new(1, -16, 1, -24), Vector2.new(1, 1))
-	local axeLabel = label(actions, "AxeCharges", Text.get("axe") .. ": 0/5", UDim2.new(1, -20, 0, 26), UDim2.new(0, 12, 0, 6), 16)
+	local actions = panel(gui, "Actions", UDim2.new(0, 200, 0, 412), UDim2.new(1, -16, 1, -24), Vector2.new(1, 1))
+	fold(actions, Text.get("menu"))
+	local axeLabel = label(actions, "AxeCharges", Text.get("axe") .. ": 0/5", UDim2.new(1, -20, 0, 26), UDim2.new(0, 12, 0, 42), 16)
 	axeLabel.TextColor3 = COLORS.muted
-	local axe = button(actions, "Axe", Text.get("axe"), UDim2.new(1, -24, 0, 56), UDim2.new(0, 12, 0, 34), COLORS.blue)
-	local farm = button(actions, "Farm", Text.get("farm"), UDim2.new(1, -24, 0, 56), UDim2.new(0, 12, 0, 96), COLORS.green)
+	local axe = button(actions, "Axe", Text.get("axe"), UDim2.new(1, -24, 0, 56), UDim2.new(0, 12, 0, 70), COLORS.blue)
+	local farm = button(actions, "Farm", Text.get("farm"), UDim2.new(1, -24, 0, 56), UDim2.new(0, 12, 0, 132), COLORS.green)
 	-- Travel sits behind a button rather than on screen: a permanent map list
 	-- would eat the middle of a phone screen, which is where the player looks.
-	local map = button(actions, "Map", Text.get("map"), UDim2.new(1, -24, 0, 56), UDim2.new(0, 12, 0, 158), COLORS.gold)
-	local crop = button(actions, "Crop", Text.cropName("Wheat"), UDim2.new(1, -24, 0, 24), UDim2.new(0, 12, 0, 220), COLORS.disabled)
+	local map = button(actions, "Map", Text.get("map"), UDim2.new(1, -24, 0, 56), UDim2.new(0, 12, 0, 194), COLORS.gold)
+	local crop = button(actions, "Crop", Text.cropName("Wheat"), UDim2.new(1, -24, 0, 24), UDim2.new(0, 12, 0, 256), COLORS.disabled)
 	-- Rewards sits behind a button too, so the bottom-left thumb zone stays
 	-- clear for the movement stick.
-	local rewardsButton = button(actions, "RewardsButton", Text.get("rewards"), UDim2.new(1, -24, 0, 46), UDim2.new(0, 12, 0, 252), COLORS.gold)
+	local rewardsButton = button(actions, "RewardsButton", Text.get("rewards"), UDim2.new(1, -24, 0, 46), UDim2.new(0, 12, 0, 288), COLORS.gold)
 	-- The character sheet lives behind this button: stats, skills, job and bag.
-	local character = button(actions, "Character", Text.get("character"), UDim2.new(1, -24, 0, 56), UDim2.new(0, 12, 0, 306), COLORS.blue)
+	local character = button(actions, "Character", Text.get("character"), UDim2.new(1, -24, 0, 56), UDim2.new(0, 12, 0, 342), COLORS.blue)
 
 	-- Travel overlay: town plus every field. Built here, filled and wired by
 	-- the client, which owns the intent calls.
@@ -203,14 +315,15 @@ function Hud.build(): ScreenGui
 	-- Combat panel, bottom centre: the button the game is actually played
 	-- with. Attack is the largest target on screen, because on a phone the
 	-- thumb has to find it without looking.
-	local combat = panel(gui, "Combat", UDim2.new(0, 190, 0, 244), UDim2.new(0.5, 0, 1, -24), Vector2.new(0.5, 1))
-	local combatTitle = label(combat, "CombatTitle", Text.get("attackButton"), UDim2.new(1, -20, 0, 24), UDim2.new(0, 12, 0, 4), 16)
+	local combat = panel(gui, "Combat", UDim2.new(0, 190, 0, 286), UDim2.new(0.5, 0, 1, -24), Vector2.new(0.5, 1))
+	fold(combat, Text.get("attackButton"))
+	local combatTitle = label(combat, "CombatTitle", Text.get("attackButton"), UDim2.new(1, -56, 0, 24), UDim2.new(0, 12, 0, 42), 16)
 	combatTitle.TextColor3 = COLORS.muted
-	local attack = button(combat, "Attack", Text.get("attackButton"), UDim2.new(1, -24, 0, 68), UDim2.new(0, 12, 0, 30), COLORS.gold)
+	local attack = button(combat, "Attack", Text.get("attackButton"), UDim2.new(1, -24, 0, 68), UDim2.new(0, 12, 0, 72), COLORS.gold)
 	attack.TextSize = 26
-	local autoAttack = button(combat, "AutoAttack", Text.get("auto"), UDim2.new(1, -24, 0, 44), UDim2.new(0, 12, 0, 104), COLORS.disabled)
-	local autoPickup = button(combat, "AutoPickup", Text.get("pickup"), UDim2.new(1, -24, 0, 44), UDim2.new(0, 12, 0, 152), COLORS.disabled)
-	local pickup = button(combat, "Pickup", Text.get("pickup"), UDim2.new(1, -24, 0, 40), UDim2.new(0, 12, 0, 200), COLORS.green)
+	local autoAttack = button(combat, "AutoAttack", Text.get("auto"), UDim2.new(1, -24, 0, 44), UDim2.new(0, 12, 0, 146), COLORS.disabled)
+	local autoPickup = button(combat, "AutoPickup", Text.get("pickup"), UDim2.new(1, -24, 0, 44), UDim2.new(0, 12, 0, 194), COLORS.disabled)
+	local pickup = button(combat, "Pickup", Text.get("pickup"), UDim2.new(1, -24, 0, 40), UDim2.new(0, 12, 0, 242), COLORS.green)
 
 	-- Character panel: one overlay, four tabs. Attributes, skills, job and the
 	-- bag all live here rather than on the main screen, because a phone screen

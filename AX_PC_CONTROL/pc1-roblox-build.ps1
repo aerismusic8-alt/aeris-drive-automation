@@ -117,6 +117,7 @@ $markers = [ordered]@{
   itemView      = 'ItemView'
   scenery       = 'Scenery'
   atmosphere    = 'Atmosphere'
+  landmarks     = 'buildLandmarks'
 }
 $checks = [ordered]@{ sourceBlocks = $sourceBlocks }
 foreach ($k in $markers.Keys) {

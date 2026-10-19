@@ -239,6 +239,11 @@ local function sceneryPart(spec: any, palette: { [string]: { number } }): BasePa
         instance.Anchored = true
         instance.Material = material(Scenery.materialFor(spec.color))
         instance.Color = sceneryColor(spec.color, palette)
+        -- Water and glass are the only see-through props; the default 0 keeps
+        -- everything else solid-looking.
+        if spec.alpha then
+                instance.Transparency = spec.alpha
+        end
         instance.TopSurface = Enum.SurfaceType.Smooth
         instance.BottomSurface = Enum.SurfaceType.Smooth
 
@@ -264,6 +269,62 @@ local function buildScenery(parent: Model, placeId: string, centre: Vector3, rad
 
         local group = Instance.new("Model")
         group.Name = "Scenery"
+
+        for index, spot in ipairs(placements) do
+                local prop = Scenery.build(spot.kind, spot.size)
+                if prop then
+                        local model = Instance.new("Model")
+                        model.Name = string.format("%s_%d", spot.kind, index)
+                        for _, spec in ipairs(prop.parts) do
+                                local piece = sceneryPart(spec, palette)
+                                piece.CanCollide = spot.solid
+                                piece.CanQuery = false
+                                piece.CanTouch = false
+                                piece.Parent = model
+                        end
+                        model:PivotTo(CFrame.new(spot.x, spot.y, spot.z) * CFrame.Angles(0, math.rad(spot.yaw), 0))
+                        model.Parent = group
+                end
+        end
+
+        group.Parent = parent
+        return group
+end
+
+-- Turn a place's landmarks into keep-out circles, so the scatter leaves room
+-- for them. A landmark's own footprint is the radius, trimmed slightly so the
+-- scatter is not starved; props that are a floor rather than an obstacle (the
+-- paving) reserve nothing, so props may stand on them.
+local function reserveLandmarks(
+        keepOut: { any },
+        placeId: string,
+        centre: Vector3,
+        radius: number,
+        opts: any
+)
+        for _, spot in ipairs(Scenery.landmarks(placeId, { x = centre.X, y = centre.Y, z = centre.Z }, radius, opts)) do
+                local def = Scenery.kindDef(spot.kind)
+                if not def or def.reserve ~= false then
+                        local prop = Scenery.build(spot.kind, spot.size)
+                        local footprint = prop and prop.footprint or 12
+                        table.insert(keepOut, { x = spot.x, z = spot.z, radius = footprint * 0.6 })
+                end
+        end
+end
+
+-- Build the structural props for a place: the fountain, the walls and gates,
+-- the church, the shrines and the paved approaches.
+--
+-- These are placed on purpose by Scenery.landmarks rather than scattered, and
+-- they are built after the scatter so the scatter can be told to keep clear of
+-- them. Returns the circles they occupy, so the caller can add them to the
+-- scatter's keep-out list on the next build.
+local function buildLandmarks(parent: Model, placeId: string, centre: Vector3, radius: number, opts: any)
+        local palette = Scenery.palette(placeId)
+        local placements = Scenery.landmarks(placeId, { x = centre.X, y = centre.Y, z = centre.Z }, radius, opts)
+
+        local group = Instance.new("Model")
+        group.Name = "Landmarks"
 
         for index, spot in ipairs(placements) do
                 local prop = Scenery.build(spot.kind, spot.size)
@@ -416,16 +477,9 @@ local function buildTown(parent: Model): Model
         spawn.Parent = town
         makeSign(spawn, Text.placeName("Town"), 8, 12, Color3.fromRGB(255, 236, 170))
 
-        -- A landmark in the middle: the obelisk the town is built around.
-        local obelisk = Instance.new("Part")
-        obelisk.Name = "Obelisk"
-        obelisk.Shape = Enum.PartType.Cylinder
-        obelisk.Size = Vector3.new(1, 10, 10)
-        obelisk.CFrame = CFrame.new(centre + Vector3.new(0, 9, 0)) * CFrame.Angles(0, 0, math.rad(90))
-        obelisk.Anchored = true
-        obelisk.Material = Enum.Material.Neon
-        obelisk.Color = Color3.fromRGB(150, 210, 255)
-        obelisk.Parent = town
+        -- The town centre is the market fountain, built by buildLandmarks from
+        -- the Scenery catalogue. It used to be a bare neon obelisk, which read
+        -- as a marker rather than as a town square.
 
         local townLook = Fields.look("Town")
         if townLook.motes then
@@ -498,7 +552,17 @@ local function buildTown(parent: Model): Model
                 })
         end
 
+        -- The structural props are placed on purpose, and the scatter must not
+        -- grow through them. They are reserved here, before the scatter runs,
+        -- so a tree never ends up inside the church or on the fountain.
+        local gateAngles: { number } = {}
+        for _, field in ipairs(Fields.list()) do
+                table.insert(gateAngles, math.atan2(field.position.z, field.position.x))
+        end
+        reserveLandmarks(keepOut, "Town", centre, def.radius, { gates = gateAngles })
+
         buildScenery(town, "Town", centre, def.radius, keepOut)
+        buildLandmarks(town, "Town", centre, def.radius, { gates = gateAngles })
 
         town.Parent = parent
         return town
@@ -534,8 +598,9 @@ local function buildField(parent: Model, field): Model
                         field.levelRequirement, Text.tagline(field.id))
         makeSign(pad, sign, 10, 16, Color3.fromRGB(255, 255, 255))
 
-        -- A portal home, so leaving a field never needs a menu either.
-        local home = arrival + Vector3.new(14, 0, 0)
+        -- A portal home, so leaving a field never needs a menu either. It sits
+        -- far enough to the side to clear the gate arch the player arrives under.
+        local home = arrival + Vector3.new(26, 0, 0)
         makePortal(model, "Town", Text.get("returnToTown"), home, Color3.fromRGB(255, 214, 92))
 
         -- The arrival pad and the portal home stay clear, so a monster field
@@ -562,7 +627,13 @@ local function buildField(parent: Model, field): Model
                 end
         end
 
+        -- The field's own landmarks (its gate, landmark and paved approach) are
+        -- reserved before the scatter, so a tree never grows through the arch
+        -- the player walks in under.
+        reserveLandmarks(keepOut, field.id, centre, Config.Fields.ArenaRadius, { arrival = arrival })
+
         buildScenery(model, field.id, centre, Config.Fields.ArenaRadius, keepOut)
+        buildLandmarks(model, field.id, centre, Config.Fields.ArenaRadius, { arrival = arrival })
 
         model.Parent = parent
         return model

@@ -222,6 +222,40 @@ implicit in "one arena" are written down here.
   in the `TravelZone` handler, and the client shows the same lock state from
   `Fields.snapshot`, so a button never promises a trip the server will refuse.
 
+### The first field cannot kill, and later fields ramp up
+
+- `Zones` carries a `lethal` flag per zone. `Meadow` is `lethal = false`; every
+  later field is `lethal = true`. `Zones.isLethal(id)` is the only reader, and
+  it answers `true` for an unknown id so a typo cannot make the game safe.
+- `Combat.damageCombatant(target, amount, nonLethal)` floors health at 1 instead
+  of 0 when `nonLethal` is set. The safe field still deals damage and still
+  drains the health bar; it just cannot land the killing blow. Do not turn this
+  into immunity, or the first field stops teaching anything.
+- The server passes the flag at the one place a monster damages a player
+  (`RunService.Heartbeat`). There is exactly one player-damage call site, so a
+  new source of player damage must pass the flag too.
+- Travel calls `applySpawnStats`, which heals to full. A player who grinds the
+  safe field down to 1 HP and then walks into a lethal map would otherwise die
+  to the first hit, which would make the safe field a trap.
+- Difficulty is already ordered by `Zones.difficultyMultiplier` (1.0, 1.5, 2.4,
+  4.0, 7.0), and `Enemies.scale` applies it. A test asserts the ramp is strictly
+  increasing in difficulty, coin payout and unlock level, so the fields cannot
+  silently flatten.
+
+### Every standing panel folds away
+
+- `Hud` has a `fold(panel, label)` helper and `Hud.applyFolds(collapsed)`. A
+  folded panel shrinks to a 44px bar holding one caret button; the bar names the
+  panel so the player knows what comes back.
+- `applyFolds` records exactly which children were visible and restores only
+  those, so unfolding does not force-show a badge that some other rule hid.
+- Folding is idempotent: `entry.folded` guards the hide pass. Without it a
+  second render would record an empty child list and unfolding would leave a
+  blank panel.
+- `applyFolds` runs at the end of `render`, because it hides children. Anything
+  set visible earlier in the frame is subject to it, so a conditional element
+  (the safe-field badge) must also check `Hud.isFolded` before showing itself.
+
 ### Waves are per field
 
 - `WaveDirector` keeps its own wave state, and the server keeps one director

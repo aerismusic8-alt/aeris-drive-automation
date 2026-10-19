@@ -23,6 +23,7 @@ local STRINGS: { [string]: string } = {
         rebirth = "รีเบิร์ธ",
         combo = "คอมโบ",
         wave = "เวฟ",
+        menu = "เมนู",
         boss = "บอส",
         max = "สูงสุด",
 
@@ -48,6 +49,8 @@ local STRINGS: { [string]: string } = {
         waveNext = "%s: เวฟ %d ใน %d วิ",
         waveFighting = "%s: เวฟ %d - เหลือ %d ตัว",
         bossDown = "สังหารบอสได้!",
+        -- Shown while standing in the first field, which cannot kill the player.
+        safeField = "สนามฝึก: ศัตรูฆ่าเราไม่ได้ เก็บเวลได้เรื่อยๆ",
 
         -- Travel list
         town = "เมือง",

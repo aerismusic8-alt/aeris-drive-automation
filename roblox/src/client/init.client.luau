@@ -113,6 +113,12 @@ local state = {
 	charOpen = false,
 	-- Whether the rewards overlay (daily, code) is up.
 	rewardsOpen = false,
+	-- Which standing panels are folded down to a bar. Keyed by panel name,
+	-- so a panel remembers whether the player put it away.
+	folded = {},
+	-- True while the player stands in the first field, which cannot kill
+	-- them. The server is the authority on this, not the client.
+	fieldLethal = true,
 }
 
 local function formatCoins(value: number): string
@@ -156,6 +162,20 @@ local function render()
 		state.coinMultiplier))
 	setLabel(gui, "Rebirth", string.format("%s %d  %s x%d", Text.get("rebirth"), state.rebirths,
 		Text.get("combo"), state.killStreak))
+
+	-- The badge only shows in the first field, where a monster cannot land the
+	-- last hit. Without it a player at 1 HP wonders why they are still alive.
+	local safeBadge = gui:FindFirstChild("SafeBadge")
+	if safeBadge and safeBadge:IsA("TextLabel") then
+		-- Guarded on the fold: this runs before applyFolds, so without the
+		-- check the badge would reappear on the collapsed stats bar.
+		safeBadge.Visible = state.field ~= nil and not state.fieldLethal
+			and not Hud.isFolded(state.folded, "Stats")
+	end
+
+	-- Folding is applied last, because it walks each panel's children and hides
+	-- them; anything set visible above would be undone if this ran first.
+	Hud.applyFolds(state.folded)
 
 	-- The daily button says what will happen before the tap, so a tap is
 	-- never a surprise and a disabled button is obviously disabled.
@@ -650,6 +670,7 @@ PlayerState.OnClientEvent:Connect(function(payload)
 	state.rebirthRequirement = payload.rebirthRequirement
 	state.zone = payload.zone
 	state.field = payload.field
+	state.fieldLethal = payload.fieldLethal ~= false
 	state.fields = payload.fields or {}
 	state.killStreak = payload.killStreak or 0
 	state.pets = payload.pets
@@ -1037,6 +1058,21 @@ local function wireButtons()
 	local autoAttackButton = combatPanel:WaitForChild("AutoAttack") :: TextButton
 	local autoPickupButton = combatPanel:WaitForChild("AutoPickup") :: TextButton
 	local pickupButton = combatPanel:WaitForChild("Pickup") :: TextButton
+
+	-- Every panel with a fold caret: a tap puts it away or brings it back.
+	-- The caret is a child of the panel, so this must be wired before any
+	-- handler that reads the panel's contents.
+	for _, panelName in ipairs({ "Stats", "WavePanel", "Actions", "Combat" }) do
+		local panelFrame = gui:FindFirstChild(panelName)
+		local caret = panelFrame and panelFrame:FindFirstChild("Fold")
+		if caret and caret:IsA("TextButton") then
+			local name = panelName
+			caret.Activated:Connect(function()
+				state.folded[name] = not state.folded[name]
+				render()
+			end)
+		end
+	end
 
 	local charPanel = gui:WaitForChild("CharPanel") :: Frame
 	local charClose = charPanel:WaitForChild("CloseChar") :: TextButton
