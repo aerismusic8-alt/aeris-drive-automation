@@ -602,6 +602,34 @@ Two traps this table exists to prevent:
   `universe-places:write`, which is why the publish job is the proof and not a
   probe row.
 
+### Editing a key can silently drop the scope that ships the game
+
+After the key was edited to add permissions, the next run (39271289227) changed
+in two ways at once:
+
+- `team_create` went 403 to 200, so `legacy-team-collaboration:manage` was
+  genuinely added.
+- `publish` went from success to `PUBLISH_HTTP=403` with
+  `{"errors":[{"code":0,"message":"Scope not authorized."}]}`.
+
+Publishing needs `universe-places:write`. Adding permissions to the key removed
+that one, and nothing warned about it. The key gained scopes and lost the one
+that ships the game.
+
+Two consequences worth remembering:
+
+- No probe can catch this in advance. The publish endpoint is the only endpoint
+  that uses `universe-places:write` and it is a POST, so there is no read call
+  sharing the scope that could report it. Publishing is the test.
+- 403 on the publish endpoint has exactly one cause, so the script now prints
+  the fix when it sees one rather than leaving a bare failure.
+
+The official steps, from the place publishing guide: add **universe-places** to
+Access Permissions and tick **Write** for the selected experience.
+
+After a key edit, re-run the pipeline before believing anything else about it.
+The measured table above is a snapshot, and a key edit invalidates it.
+
 ### Some things cannot be done by API at all
 
 Roblox lists these as not exposed through any REST API, so no scope unlocks

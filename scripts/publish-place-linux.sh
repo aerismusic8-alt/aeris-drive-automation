@@ -64,6 +64,24 @@ echo "PUBLISH_RESPONSE=$BODY"
 
 if [ "$HTTP_CODE" != "200" ]; then
   echo "PUBLISH=FAILED"
+  # 403 is the one failure with a known, fixed cause: the key does not carry
+  # universe-places:write. Nothing else on this endpoint returns 403.
+  #
+  # It is worth spelling out because no probe can catch it earlier. This is the
+  # only endpoint that uses this scope and it is a POST, so there is no read
+  # call that shares the scope and could report it in advance. Publishing is
+  # the test.
+  #
+  # Editing a key's permissions can also drop this scope without any warning,
+  # which is how it went missing here: the key gained other scopes and lost the
+  # one that ships the game.
+  if [ "$HTTP_CODE" = "403" ]; then
+    echo "PUBLISH_DIAGNOSIS=key_lacks_universe-places:write"
+    echo "PUBLISH_FIX_1=Creator Dashboard > Open Cloud > API Keys > edit the key used by ROBLOX_API_KEY"
+    echo "PUBLISH_FIX_2=Access Permissions: add API system 'universe-places'"
+    echo "PUBLISH_FIX_3=For that system, tick the 'Write' operation for this experience"
+    echo "PUBLISH_FIX_4=Keep 'Restrict by Experience' on, with this experience selected"
+  fi
   exit 4
 fi
 
