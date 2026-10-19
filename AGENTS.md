@@ -560,3 +560,89 @@ the public page still redirects to `/Title-Unavailable`.
 Either add `universe:write` (Universes API, Read and Write) to the existing API
 key, or set the name once in the Creator Dashboard. The first keeps it
 automatic.
+
+### What the key can actually do, measured
+
+`scripts/probe-scopes-linux.sh` calls one read-only endpoint per capability and
+reports GRANTED or DENIED next to the scope the docs name for it. Read-only
+throughout, so it is safe against the live experience. Run 39271289227:
+
+| Capability | HTTP | Verdict | Scope the docs name |
+| --- | --- | --- | --- |
+| universe_read | 200 | GRANTED | `universe:read` |
+| place_read | 200 | GRANTED | `universe.place:read` |
+| data_stores | 403 | DENIED | `universe-datastores.control:list` |
+| secrets | 403 | DENIED | `universe.secret:read` |
+| place_history | 403 | DENIED | `place-version-history:read` |
+| team_create | 403 | DENIED | `legacy-team-collaboration:manage` |
+| universe_stats | 404 | DENIED | `universe:read` |
+| universe_config | 404 | DENIED | `universe:read` |
+| badges | 404 | DENIED | `legacy-badge:manage` |
+| game_passes | 404 | DENIED | `legacy-game-pass:manage` |
+| developer_products | 404 | DENIED | `legacy-developer-product:manage` |
+| localization | 404 | DENIED | `legacy-universe:manage` |
+| publish_place | - | SEE_JOB | `universe-places:write` |
+
+So the key carries `universe:read`, `universe.place:read` and
+`universe-places:write`. That is enough to build and ship the place, and nothing
+else.
+
+The 404s are not missing endpoints. Roblox answers 404 for a key it will not
+accept, the same status as a path that does not exist, so from outside the two
+cannot be told apart. The 403s are the clearer signal, and they come from the
+endpoints that do report scope failures honestly.
+
+Two traps this table exists to prevent:
+
+- `universe_stats` and `universe_config` both name `universe:read`, which is
+  granted, yet both return 404. Those are legacy `develop.roblox.com` endpoints
+  and the key is not valid for that domain at all. Reading a 404 here as "the
+  scope is missing" would send someone to add a scope they already have.
+- A GET can never show a write scope. Publishing is the only honest test of
+  `universe-places:write`, which is why the publish job is the proof and not a
+  probe row.
+
+### Some things cannot be done by API at all
+
+Roblox lists these as not exposed through any REST API, so no scope unlocks
+them and no amount of automation will either. They need the Creator Dashboard:
+
+- Daily and monthly active users, and engagement analytics
+- Revenue breakdowns, earnings reports and payout history
+- Moderation history, content review status and appeals
+- Experience ratings and review management
+- Team Create collaborator permissions (Studio)
+- Marketplace fee and tax settings
+
+Worth knowing before adding scopes: for these, scopes change nothing.
+
+### Scopes to add, if the key should manage more than the place
+
+The full official list lives at
+`https://create.roblox.com/docs/cloud/reference/scopes` and per-feature pages at
+`https://create.roblox.com/docs/cloud/reference/features/<feature>.md`. Names
+below are taken from those pages, not guessed.
+
+| What it unlocks | Scope |
+| --- | --- |
+| Experience name, description, playability, social links | `universe:write` |
+| Read and write player data (the game's saves) | `universe-datastores.objects:read`, `universe-datastores.objects:write` |
+| List and inspect data stores | `universe-datastores.control:list`, `universe-datastores.control:create` |
+| Read and roll back place versions | `place-version-history:read`, `versions:rollback` |
+| Upload icons, thumbnails, models, audio | `asset:write`, `asset:read` |
+| Read thumbnails (confirm the icon actually rendered) | `thumbnail:read` |
+| Restart servers after a publish | `universe:write` (`:restartServers`) |
+| Badges | `legacy-badge:manage` |
+| Game passes | `game-pass:read`, `game-pass:write` |
+| Developer products | `developer-product:read`, `developer-product:write` |
+| Analytics, DAU and retention | `universe.analytics:read` |
+| Run Luau inside a live server (read or set state without a deploy) | `universe.place.luau-execution-session:read`, `universe.place.luau-execution-session:write` |
+| Ban and unban players | `universe.user-restriction:read`, `universe.user-restriction:write` |
+| In-experience notifications | `user.user-notification:write` |
+| Configs, feature flags and rollout | `universe:read`, `universe:write` |
+| Secrets used by the experience | `universe.secret:read`, `universe.secret:write` |
+| Per-place settings and playability | `universe.place:read`, `universe.place:write` |
+
+A key is capped by its target restrictions as well as its scopes: the selected
+resources limit what the scopes can act on, so the experience has to stay
+selected for any of the above to apply.
