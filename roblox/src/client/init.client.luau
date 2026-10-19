@@ -34,6 +34,7 @@ local WaveState = Remotes:WaitForChild("WaveState") :: RemoteEvent
 local PlayerState = Remotes:WaitForChild("PlayerState") :: RemoteEvent
 local Notify = Remotes:WaitForChild("Notify") :: RemoteEvent
 local CombatFx = Remotes:WaitForChild("CombatFx") :: RemoteEvent
+local AttackFx = Remotes:WaitForChild("AttackFx") :: RemoteEvent
 local RaiseAttribute = Remotes:WaitForChild("RaiseAttribute") :: RemoteFunction
 local LearnSkill = Remotes:WaitForChild("LearnSkill") :: RemoteFunction
 local AdvanceJob = Remotes:WaitForChild("AdvanceJob") :: RemoteFunction
@@ -46,6 +47,8 @@ local ManualAttack = Remotes:WaitForChild("ManualAttack") :: RemoteFunction
 local SetAuto = Remotes:WaitForChild("SetAuto") :: RemoteFunction
 
 local Hud = require(script.Hud)
+local AttackAnim = require(script.AttackAnim)
+local ItemView = require(script.ItemView)
 
 local player = Players.LocalPlayer
 
@@ -108,6 +111,8 @@ local state = {
 	-- Which character tab is open, and whether the panel is up at all.
 	charTab = "Stats",
 	charOpen = false,
+	-- Whether the rewards overlay (daily, code) is up.
+	rewardsOpen = false,
 }
 
 local function formatCoins(value: number): string
@@ -155,6 +160,11 @@ local function render()
 	-- The daily button says what will happen before the tap, so a tap is
 	-- never a surprise and a disabled button is obviously disabled.
 	local rewardsFolder = gui:FindFirstChild("Rewards")
+	if rewardsFolder and rewardsFolder:IsA("Frame") then
+		-- The overlay is shown from state, so opening the character sheet or
+		-- travelling cannot leave it stuck on screen.
+		rewardsFolder.Visible = state.rewardsOpen and not state.charOpen
+	end
 	local daily = rewardsFolder and rewardsFolder:FindFirstChild("Daily")
 	if daily and daily:IsA("TextButton") then
 		if state.dailyReady then
@@ -463,74 +473,123 @@ local function renderJobTab(list: Instance)
 	list.CanvasSize = UDim2.new(0, 0, 0, row * 54 + 20)
 end
 
--- Bag tab: worn gear at the top with an UNEQUIP per slot, then the bag with
--- EQUIP for equipment and USE for consumables.
+-- Bag tab: worn gear as icon tiles, then the bag as a grid of icon tiles. A
+-- tile shows the object itself, and a tap does the one thing that item can do
+-- -- equip a weapon, use a potion -- so the grid needs no per-row buttons and a
+-- phone gets its screen back.
+--
+-- Both boards wrap at four columns: there are eight equipment slots and the
+-- character panel is 340px wide, so a single row of tiles would run off the
+-- edge of the screen.
+local TILE = 68
+local GAP = 8
+local COLUMNS = 4
+local CELL_HEIGHT = TILE + 16 + GAP
+
+local function gridPosition(index: number): UDim2
+        local column = (index - 1) % COLUMNS
+        local rowIndex = math.floor((index - 1) / COLUMNS)
+        return UDim2.new(0, 6 + column * (TILE + GAP), 0, 6 + rowIndex * CELL_HEIGHT)
+end
+
+local function gridHeight(count: number): number
+        local rows = math.max(1, math.ceil(count / COLUMNS))
+        return rows * CELL_HEIGHT + 12
+end
+
+-- One labelled board of icon tiles. `entries` is a list of { itemId, count },
+-- with itemId nil for an empty slot.
+local function renderGrid(list: Instance, name: string, top: number, entries: { any }, onTap: (any) -> ())
+        local board = Instance.new("Frame")
+        board.Name = name
+        board.Size = UDim2.new(1, -8, 0, gridHeight(#entries))
+        board.Position = UDim2.new(0, 4, 0, top)
+        board.BackgroundTransparency = 1
+        board.ZIndex = 22
+        board.Parent = list
+
+        for index, entry in ipairs(entries) do
+                if entry.itemId then
+                        local def = Items.getDef(entry.itemId)
+                        local cell = ItemView.cell(board, name .. "_" .. tostring(index), gridPosition(index), TILE,
+                                entry.itemId, def, entry.caption)
+                        ItemView.badge(cell, entry.count)
+                        cell.Activated:Connect(function()
+                                onTap(entry)
+                        end)
+                else
+                        ItemView.emptyTile(board, name .. "_" .. tostring(index), gridPosition(index), TILE)
+                        local caption = Instance.new("TextLabel")
+                        caption.Name = "Caption"
+                        caption.Size = UDim2.new(0, TILE, 0, 14)
+                        caption.Position = UDim2.new(gridPosition(index).X, 0, gridPosition(index).Y, TILE + 2)
+                        caption.BackgroundTransparency = 1
+                        caption.Font = Enum.Font.GothamBold
+                        caption.TextSize = 12
+                        caption.TextColor3 = Hud.COLORS.muted
+                        caption.Text = entry.caption
+                        caption.ZIndex = 23
+                        caption.Parent = board
+                end
+        end
+
+        return gridHeight(#entries)
+end
+
 local function renderBagTab(list: Instance)
-	list:ClearAllChildren()
-	local row = 0
+        list:ClearAllChildren()
 
-	local equipHeader = charRow(list, "EquipHeader", row + 1, 30)
-	equipHeader.Text = Text.get("equipment")
-	equipHeader.TextColor3 = Hud.COLORS.muted
-	row += 1
+        -- Worn gear first, so the player sees what is on before what is carried.
+        local equipHeader = charRow(list, "EquipHeader", 1, 26)
+        equipHeader.Text = Text.get("equipment")
+        equipHeader.TextColor3 = Hud.COLORS.muted
 
-	for _, slot in ipairs(Items.slots()) do
-		local itemId = state.equipment[slot]
-		local line = charRow(list, "Slot_" .. slot, row + 1, 36)
-		line.Text = string.format("%s: %s", Text.slotName(slot), itemId and Text.itemName(itemId) or Text.get("slotEmpty"))
-		line.TextColor3 = itemId and Hud.COLORS.text or Hud.COLORS.muted
-		row += 1
+        local worn = {}
+        for _, slot in ipairs(Items.slots()) do
+                table.insert(worn, {
+                        itemId = state.equipment[slot],
+                        slot = slot,
+                        caption = Text.slotName(slot),
+                })
+        end
+        local equipHeight = renderGrid(list, "EquipBoard", 32, worn, function(entry)
+                Intent.unequipItem(entry.slot)
+        end)
 
-		if itemId then
-			local off = Hud.button(list, "Unequip_" .. slot, Text.get("unequip"), UDim2.new(0, 74, 0, 30),
-				UDim2.new(1, -86, 0, row * 42 - 36), Hud.COLORS.disabled)
-			off.ZIndex = 23
-			off.TextSize = 15
-			off.Activated:Connect(function()
-				Intent.unequipItem(slot)
-			end)
-		end
-	end
+        local bagTop = 32 + equipHeight + 12
 
-	local bagHeader = charRow(list, "BagHeader", row + 1, 30)
-	bagHeader.Text = string.format("%s  %d/%d", Text.get("inventory"), #state.bag, state.bagCapacity)
-	bagHeader.TextColor3 = Hud.COLORS.muted
-	row += 1
+        local bagHeader = charRow(list, "BagHeader", 2, 26)
+        bagHeader.Text = string.format("%s  %d/%d", Text.get("inventory"), #state.bag, state.bagCapacity)
+        bagHeader.TextColor3 = Hud.COLORS.muted
+        bagHeader.Position = UDim2.new(0, 4, 0, bagTop)
 
-	if #state.bag == 0 then
-		local empty = charRow(list, "EmptyBag", row + 1, 30)
-		empty.Text = Text.get("empty")
-		empty.TextColor3 = Hud.COLORS.muted
-		row += 1
-	end
+        if #state.bag == 0 then
+                local empty = charRow(list, "EmptyBag", 3, 26)
+                empty.Text = Text.get("empty")
+                empty.TextColor3 = Hud.COLORS.muted
+                empty.Position = UDim2.new(0, 4, 0, bagTop + 30)
+                list.CanvasSize = UDim2.new(0, 0, 0, bagTop + 70)
+                return
+        end
 
-	for index, slot in ipairs(state.bag) do
-		local def = Items.getDef(slot.itemId)
-		local line = charRow(list, "Bag_" .. tostring(index), row + 1, 36)
-		line.Text = string.format("%s x%d", Text.itemName(slot.itemId), slot.count)
-		line.TextColor3 = Hud.COLORS.text
-		row += 1
+        local carried = {}
+        for _, slot in ipairs(state.bag) do
+                table.insert(carried, {
+                        itemId = slot.itemId,
+                        count = slot.count,
+                        caption = Text.itemName(slot.itemId),
+                })
+        end
+        local bagHeight = renderGrid(list, "BagBoard", bagTop + 30, carried, function(entry)
+                local def = Items.getDef(entry.itemId)
+                if def and def.kind == "equipment" then
+                        Intent.equipItem(entry.itemId)
+                elseif def and def.kind == "consumable" then
+                        Intent.useItem(entry.itemId)
+                end
+        end)
 
-		if def and def.kind == "equipment" then
-			local equip = Hud.button(list, "Equip_" .. tostring(index), Text.get("equip"), UDim2.new(0, 74, 0, 30),
-				UDim2.new(1, -86, 0, row * 42 - 36), Hud.COLORS.blue)
-			equip.ZIndex = 23
-			equip.TextSize = 15
-			equip.Activated:Connect(function()
-				Intent.equipItem(slot.itemId)
-			end)
-		elseif def and def.kind == "consumable" then
-			local use = Hud.button(list, "Use_" .. tostring(index), Text.get("use"), UDim2.new(0, 74, 0, 30),
-				UDim2.new(1, -86, 0, row * 42 - 36), Hud.COLORS.green)
-			use.ZIndex = 23
-			use.TextSize = 15
-			use.Activated:Connect(function()
-				Intent.useItem(slot.itemId)
-			end)
-		end
-	end
-
-	list.CanvasSize = UDim2.new(0, 0, 0, row * 42 + 20)
+        list.CanvasSize = UDim2.new(0, 0, 0, bagTop + 40 + bagHeight)
 end
 
 -- The character panel. Tabs are rebuilt on open and after every state change,
@@ -645,6 +704,15 @@ Notify.OnClientEvent:Connect(function(message)
 	print("[AX Arena] " .. tostring(message))
 end)
 
+-- Every swing is broadcast, so a monster taking damage is visible to the
+-- whole field rather than only to the player who tapped.
+AttackFx.OnClientEvent:Connect(function(payload)
+	if type(payload) ~= "table" or payload.kind ~= "attack" then
+		return
+	end
+	AttackAnim.playForUserId(payload.userId, payload.style)
+end)
+
 -- Kills arrive on their own channel: they are per-player and far too
 -- frequent to ride along with the whole player state.
 CombatFx.OnClientEvent:Connect(function(payload)
@@ -730,6 +798,8 @@ function Intent.useAxe(): (boolean, any, string?)
 end
 
 -- The attack button. One tap, one swing; the server decides whether it lands.
+-- The swing itself is drawn from the server broadcast, so a manual tap and
+-- an auto-attack animate through exactly the same path.
 function Intent.attack(): (boolean, string?)
 	return invoke(ManualAttack)
 end
@@ -975,11 +1045,25 @@ local function wireButtons()
 
 	mapButton.Activated:Connect(function()
 		buildTravelList(travel)
+		state.rewardsOpen = false
 		travel.Visible = not travel.Visible
 	end)
 
 	closeTravel.Activated:Connect(function()
 		travel.Visible = false
+	end)
+
+	-- Rewards: open from the action panel, close from the overlay itself.
+	local rewardsButton = actions:WaitForChild("RewardsButton") :: TextButton
+	local rewardsPanel = gui:WaitForChild("Rewards") :: Frame
+	local closeRewards = rewardsPanel:WaitForChild("CloseRewards") :: TextButton
+	rewardsButton.Activated:Connect(function()
+		state.rewardsOpen = not state.rewardsOpen
+		render()
+	end)
+	closeRewards.Activated:Connect(function()
+		state.rewardsOpen = false
+		render()
 	end)
 
 	axeButton.Activated:Connect(function()
@@ -1020,6 +1104,7 @@ local function wireButtons()
 	-- The character sheet: open, close, and switch tabs.
 	charButton.Activated:Connect(function()
 		state.charOpen = not state.charOpen
+		state.rewardsOpen = false
 		render()
 	end)
 

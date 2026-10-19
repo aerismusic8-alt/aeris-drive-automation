@@ -109,8 +109,10 @@ function Hud.build(): ScreenGui
 	gui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
 	gui.Parent = player:WaitForChild("PlayerGui")
 
-	-- Stats, top left.
-	local stats = panel(gui, "Stats", UDim2.new(0, 250, 0, 194), UDim2.new(0, 16, 0, 16), Vector2.new(0, 0))
+	-- Stats, top right, below the Roblox topbar. It used to sit top left,
+	-- which is where the chat window is: the panel covered the chat and
+	-- blocked its drag handle, so the chat could not be moved out of the way.
+	local stats = panel(gui, "Stats", UDim2.new(0, 216, 0, 168), UDim2.new(1, -12, 0, 58), Vector2.new(1, 0))
 	label(stats, "Coins", Text.get("coins") .. ": 0", UDim2.new(1, -20, 0, 30), UDim2.new(0, 12, 0, 8), 20)
 	label(stats, "Level", Text.get("level") .. " 1", UDim2.new(1, -20, 0, 28), UDim2.new(0, 12, 0, 42), 18)
 	label(stats, "Health", Text.get("health") .. " 100/100", UDim2.new(1, -20, 0, 28), UDim2.new(0, 12, 0, 72), 18)
@@ -145,18 +147,28 @@ function Hud.build(): ScreenGui
 	bossFill.Parent = bossTrack
 	corner(bossFill, 5)
 
-	-- Reward buttons, bottom left: above the jump button and clear of the thumb.
-	local rewards = panel(gui, "Rewards", UDim2.new(0, 200, 0, 142), UDim2.new(0, 16, 1, -24), Vector2.new(0, 1))
-	local title = label(rewards, "Title", Text.get("rewards"), UDim2.new(1, -20, 0, 26), UDim2.new(0, 12, 0, 6), 16)
+	-- Rewards overlay: the daily and code buttons used to sit bottom left,
+	-- which is exactly where the phone's movement stick appears, so they
+	-- covered it and stole the drag. They now live behind a button in the
+	-- action panel and open in the middle of the screen.
+	local rewards = panel(gui, "Rewards", UDim2.new(0, 300, 0, 206), UDim2.new(0.5, 0, 0.5, 0), Vector2.new(0.5, 0.5))
+	rewards.Visible = false
+	rewards.ZIndex = 20
+	local title = label(rewards, "RewardsTitle", Text.get("rewards"), UDim2.new(1, -80, 0, 30), UDim2.new(0, 12, 0, 8), 18)
 	title.TextColor3 = COLORS.muted
+	title.ZIndex = 21
+	local closeRewards = button(rewards, "CloseRewards", "X", UDim2.new(0, 38, 0, 30), UDim2.new(1, -46, 0, 8), COLORS.disabled)
+	closeRewards.ZIndex = 21
 
-	local daily = button(rewards, "Daily", Text.get("dailyReward"), UDim2.new(1, -24, 0, 46), UDim2.new(0, 12, 0, 36), COLORS.gold)
-	local code = button(rewards, "Code", Text.get("redeemCode"), UDim2.new(1, -24, 0, 46), UDim2.new(0, 12, 0, 88), COLORS.blue)
+	local daily = button(rewards, "Daily", Text.get("dailyReward"), UDim2.new(1, -24, 0, 56), UDim2.new(0, 12, 0, 52), COLORS.gold)
+	daily.ZIndex = 21
+	local code = button(rewards, "Code", Text.get("redeemCode"), UDim2.new(1, -24, 0, 56), UDim2.new(0, 12, 0, 120), COLORS.blue)
+	code.ZIndex = 21
 
 	-- Action panel, bottom right: the two taps the game is built around.
 	-- It sits under the thumb rather than in the middle of the screen, and the
 	-- axe button carries the charge count so the player knows when to swing.
-	local actions = panel(gui, "Actions", UDim2.new(0, 200, 0, 318), UDim2.new(1, -16, 1, -24), Vector2.new(1, 1))
+	local actions = panel(gui, "Actions", UDim2.new(0, 200, 0, 372), UDim2.new(1, -16, 1, -24), Vector2.new(1, 1))
 	local axeLabel = label(actions, "AxeCharges", Text.get("axe") .. ": 0/5", UDim2.new(1, -20, 0, 26), UDim2.new(0, 12, 0, 6), 16)
 	axeLabel.TextColor3 = COLORS.muted
 	local axe = button(actions, "Axe", Text.get("axe"), UDim2.new(1, -24, 0, 56), UDim2.new(0, 12, 0, 34), COLORS.blue)
@@ -165,8 +177,11 @@ function Hud.build(): ScreenGui
 	-- would eat the middle of a phone screen, which is where the player looks.
 	local map = button(actions, "Map", Text.get("map"), UDim2.new(1, -24, 0, 56), UDim2.new(0, 12, 0, 158), COLORS.gold)
 	local crop = button(actions, "Crop", Text.cropName("Wheat"), UDim2.new(1, -24, 0, 24), UDim2.new(0, 12, 0, 220), COLORS.disabled)
+	-- Rewards sits behind a button too, so the bottom-left thumb zone stays
+	-- clear for the movement stick.
+	local rewardsButton = button(actions, "RewardsButton", Text.get("rewards"), UDim2.new(1, -24, 0, 46), UDim2.new(0, 12, 0, 252), COLORS.gold)
 	-- The character sheet lives behind this button: stats, skills, job and bag.
-	local character = button(actions, "Character", Text.get("character"), UDim2.new(1, -24, 0, 56), UDim2.new(0, 12, 0, 252), COLORS.blue)
+	local character = button(actions, "Character", Text.get("character"), UDim2.new(1, -24, 0, 56), UDim2.new(0, 12, 0, 306), COLORS.blue)
 
 	-- Travel overlay: town plus every field. Built here, filled and wired by
 	-- the client, which owns the intent calls.

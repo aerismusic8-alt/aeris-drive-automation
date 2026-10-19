@@ -13,6 +13,7 @@ local MarketplaceService = game:GetService("MarketplaceService")
 
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local Config = require(Shared.Config)
+local ClassLook = require(Shared:WaitForChild("ClassLook"))
 local Random = require(Shared.Random)
 local Stats = require(Shared.Stats)
 local Combat = require(Shared.Combat)
@@ -85,6 +86,7 @@ local WaveState = ensureRemote(Remotes, "RemoteEvent", "WaveState") :: RemoteEve
 local PlayerState = ensureRemote(Remotes, "RemoteEvent", "PlayerState") :: RemoteEvent
 local Notify = ensureRemote(Remotes, "RemoteEvent", "Notify") :: RemoteEvent
 local CombatFx = ensureRemote(Remotes, "RemoteEvent", "CombatFx") :: RemoteEvent
+local AttackFx = ensureRemote(Remotes, "RemoteEvent", "AttackFx") :: RemoteEvent
 
 local store = DataStoreService:GetDataStore("AXArena_v3")
 local rateLimiter = RateLimiter.new()
@@ -531,6 +533,9 @@ local function onPlayerAdded(player: Player)
 		-- still in one, otherwise town.
 		World.attachPlayer(player, character, record.field or "Town")
 		World.applyLook(record.field or "Town")
+		-- The job decides what the character wears, so it is applied on
+		-- every spawn rather than only when the job changes.
+		World.applyClassLook(character, record.class)
 		local humanoid = character:WaitForChild("Humanoid") :: Humanoid
 		-- Recompute per spawn so purchases and rebirths apply on the next life.
 		local derived = applySpawnStats(record)
@@ -969,6 +974,17 @@ local function resolveHit(record: PlayerRecord, sheet: any, enemy: any, power: n
 	return dealt, isCrit
 end
 
+-- Tell everyone else that somebody swung, so a swing is visible to the
+-- whole field and not only to the player who tapped.
+local function broadcastAttack(player: Player, record: PlayerRecord)
+	local look = ClassLook.get(record.class)
+	AttackFx:FireAllClients({
+		kind = "attack",
+		userId = player.UserId,
+		style = look.swing,
+	})
+end
+
 -- Damage one enemy and, on a kill, run the shared reward path. Returns
 -- (killed, coins, xp).
 local function strike(player: Player, record: PlayerRecord, enemy: any, amount: number, isCrit: boolean)
@@ -1025,6 +1041,7 @@ local function performAttack(player: Player, record: PlayerRecord): (boolean, st
 		return true, nil
 	end
 
+	broadcastAttack(player, record)
 	strike(player, record, target, amount, isCrit)
 	record.dirty = true
 	return true, nil
@@ -1142,6 +1159,10 @@ AdvanceJob.OnServerInvoke = function(player: Player, target: any): (boolean, str
 	-- class bonus changes what the same skill scales off.
 	record.dirty = true
 	applySpawnStats(record)
+	local character = player.Character
+	if character then
+		World.applyClassLook(character, record.class)
+	end
 	pushPlayerState(player, record)
 	notify(player, Text.get("jobAdvanceOk", Text.className(target)))
 	return true, nil

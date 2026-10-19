@@ -229,6 +229,58 @@ check("the HUD has an AXE button", re.search(r'button\([\w]+,\s*"Axe"', hud) is 
 check("the FARM button is wired", "farmButton.Activated" in client, "not wired")
 check("the AXE button is wired", "axeButton.Activated" in client, "not wired")
 
+print("\nWIRING 12: monsters, classes, items and attacks are all drawn")
+
+# Five reported gaps: monsters looked alike, jobs looked alike, the bag was
+# text, a tap had no animation, and the status panel sat on the chat. Each is
+# a wiring question -- does the thing that was written actually get called --
+# so each is checked by reading the source.
+
+monster_shapes = read(ROOT / "roblox/src/shared/MonsterShapes.luau")
+class_look = read(ROOT / "roblox/src/shared/ClassLook.luau")
+item_icons = read(ROOT / "roblox/src/shared/ItemIcons.luau")
+item_view = read(ROOT / "roblox/src/client/ItemView.luau")
+attack_anim = read(ROOT / "roblox/src/client/AttackAnim.luau")
+
+check("the world builds monsters from shapes", "MonsterShapes.get" in world, "monsters are still cubes")
+check("the shape recipe decides the primary part", "recipe.primary" in world, "no primary part")
+check("every colour role is honoured", "roleColor" in world, "one flat colour per monster")
+
+check("the server applies a class look", "World.applyClassLook" in server, "jobs look identical")
+check("the look is applied on spawn", server.count("World.applyClassLook") >= 2, "only applied on job change")
+check("the look module has every class", "ClassLook.get" in world, "no look lookup")
+check("the look changes the body", "bodyScale" in world or "Humanoid" in world, "no body change")
+
+check("the server broadcasts every swing", "AttackFx:FireAllClients" in server, "swings are invisible")
+check("the client listens for swings", "AttackFx.OnClientEvent" in client, "no swing listener")
+check("the swing style comes from the class", "ClassLook.get(record.class)" in server and "look.swing" in server, "one swing for every job")
+check("the client plays the style the server sent", "payload.style" in client, "style is ignored")
+check("the animation module moves an arm", "Motor6D" in attack_anim, "no joint animation")
+check("the animation draws a slash", "AXSlash" in attack_anim, "no visible swing")
+
+check("the bag renders real item icons", "ItemView.cell" in client, "bag is still text")
+check("the icon is built from a recipe", "ItemIcons.get" in item_view, "no icon recipe")
+check("the icon uses a viewport", "ViewportFrame" in item_view, "no 3D icon")
+check("the equipped gear shows as icons", "ItemView.emptyTile" in client, "empty slots not drawn")
+
+print("\nWIRING 13: the status panel is clear of the chat and the movement stick")
+
+# The reported bug: the status panel sat on the chat, so the chat could not be
+# read or dragged, and the reward buttons sat on the phone's movement stick.
+stats_line = re.search(r'panel\(gui, "Stats",[^\n]*', hud)
+check("the status panel exists", stats_line is not None, "no Stats panel")
+if stats_line:
+    line = stats_line.group(0)
+    check("the status panel is not top left", 'UDim2.new(0, 16, 0, 16)' not in line, "still on the chat")
+    check("the status panel is anchored right", "UDim2.new(1, -" in line, "not moved right")
+    check("the status panel clears the topbar", "0, 58" in line or "0, 6" in line, "still under the topbar")
+
+check("the reward buttons are behind a button", '"RewardsButton"' in hud, "rewards still on the stick")
+check("the rewards overlay can close", '"CloseRewards"' in hud, "no way out of the overlay")
+check("the rewards overlay starts hidden", "rewards.Visible = false" in hud, "overlay covers the game")
+check("the client toggles the overlay", "state.rewardsOpen" in client, "overlay never opens")
+check("opening the character sheet closes it", "state.rewardsOpen = false" in client, "two overlays stack")
+
 print(f"\nWIRING: {passed} passed, {len(failures)} failed")
 for failure in failures:
     print(f"  FAIL  {failure}")

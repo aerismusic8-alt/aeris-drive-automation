@@ -93,6 +93,13 @@ The shape that matters:
   `coinMultiplier()`. Add new multipliers there, not at the call site.
 - Bump `Config.Persistence.SchemaVersion` when the save shape changes and
   extend `SaveSchema.migrate` so older saves keep their progress.
+- Appearance is data, not code in the builder. A monster's body comes from
+  `MonsterShapes`, a job's clothes and held weapon from `ClassLook`, and an
+  item's icon from `ItemIcons`. All three are pure shared modules, so a new
+  monster or item is a recipe entry and a test, not a change to `World.luau`.
+- The HUD is built in code and read by `scripts/check-hud-wiring.py`. That
+  script cannot run the HUD, so it reads the source: rename a node and it fails
+  CI. Any new panel, button or label the client touches must appear there.
 
 Run the tests before every push:
 

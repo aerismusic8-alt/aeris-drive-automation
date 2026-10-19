@@ -2929,4 +2929,226 @@ t.test("a harder wave makes a monster tougher", function()
 	end
 end)
 
+--------------------------------------------------------------------------
+t.suite("MonsterShapes")
+--------------------------------------------------------------------------
+
+local MonsterShapes = require("../src/shared/MonsterShapes")
+
+t.test("every monster in the game has its own silhouette", function()
+        for _, field in ipairs(Fields.list()) do
+                local roster = Enemies.roster(field.id)
+                table.insert(roster, Enemies.boss(field.id))
+                for _, archetype in ipairs(roster) do
+                        t.assertTrue(MonsterShapes.PLANS[archetype.id] ~= nil,
+                                archetype.id .. " falls back to the generic shape")
+                end
+        end
+end)
+
+t.test("an unknown monster still gets a usable shape", function()
+        local recipe = MonsterShapes.get("NoSuchMonster")
+        t.assertGreater(#recipe.parts, 0, "no fallback parts")
+        t.assertNotNil(recipe.parts[1].name, "a part has no name")
+end)
+
+t.test("every recipe part is well formed", function()
+        for _, id in ipairs(MonsterShapes.knownIds()) do
+                local recipe = MonsterShapes.get(id)
+                t.assertGreater(#recipe.parts, 0, id .. " has no parts")
+                for _, part in ipairs(recipe.parts) do
+                        t.assertEqual(#part.size, 3, id .. "/" .. part.name .. " size is not a 3-vector")
+                        t.assertEqual(#part.at, 3, id .. "/" .. part.name .. " position is not a 3-vector")
+                        for axis = 1, 3 do
+                                t.assertGreater(part.size[axis], 0, id .. "/" .. part.name .. " has a zero dimension")
+                        end
+                        t.assertGreater(part.at[2], -0.01, id .. "/" .. part.name .. " starts below the ground")
+                end
+        end
+end)
+
+t.test("the recipe's primary part exists", function()
+        for _, id in ipairs(MonsterShapes.knownIds()) do
+                local recipe = MonsterShapes.get(id)
+                local found = false
+                for _, part in ipairs(recipe.parts) do
+                        if part.name == recipe.primary then
+                                found = true
+                        end
+                end
+                t.assertTrue(found, id .. " primary part " .. recipe.primary .. " is missing")
+        end
+end)
+
+t.test("no two monsters look the same", function()
+        -- A shared body plan is fine, but two monsters must never be the same
+        -- drawing in the same colour: the whole point of the shapes is that a
+        -- player reads which monster is in front of them at a glance.
+        local ids: { string } = {}
+        for _, field in ipairs(Fields.list()) do
+                for _, archetype in ipairs(Enemies.roster(field.id)) do
+                        table.insert(ids, archetype.id)
+                end
+                table.insert(ids, Enemies.boss(field.id).id)
+        end
+
+        local function signature(id: string): string
+                local recipe = MonsterShapes.get(id)
+                local def = Enemies.getDef(id)
+                local colour = def and def.color or { 0, 0, 0 }
+                local out = string.format("%d,%d,%d|", colour[1], colour[2], colour[3])
+                for _, part in ipairs(recipe.parts) do
+                        out = out .. part.name .. tostring(part.size[1]) .. tostring(part.size[2]) .. ","
+                end
+                return out
+        end
+
+        local seen: { [string]: string } = {}
+        for _, id in ipairs(ids) do
+                local key = signature(id)
+                t.assertNil(seen[key], id .. " looks identical to " .. tostring(seen[key]))
+                seen[key] = id
+        end
+end)
+
+--------------------------------------------------------------------------
+t.suite("ClassLook")
+--------------------------------------------------------------------------
+
+local ClassLook = require("../src/shared/ClassLook")
+
+t.test("every class in the game has a look", function()
+        for _, def in ipairs(Classes.list()) do
+                local look = ClassLook.get(def.id)
+                t.assertNotNil(look, def.id .. " has no look")
+                t.assertEqual(#look.bodyScale, 3, def.id .. " bodyScale is not a 3-vector")
+                t.assertNotNil(look.swing, def.id .. " has no swing style")
+        end
+end)
+
+t.test("a class look never falls back to the default silently", function()
+        local named: { [string]: boolean } = {}
+        for _, id in ipairs(ClassLook.knownIds()) do
+                named[id] = true
+        end
+        for _, def in ipairs(Classes.list()) do
+                t.assertTrue(named[def.id] == true, def.id .. " is missing from ClassLook.knownIds")
+        end
+end)
+
+t.test("every accent is well formed", function()
+        for _, id in ipairs(ClassLook.knownIds()) do
+                local look = ClassLook.get(id)
+                for _, accent in ipairs(look.accents) do
+                        t.assertEqual(#accent.size, 3, id .. "/" .. accent.name .. " size is not a 3-vector")
+                        t.assertEqual(#accent.at, 3, id .. "/" .. accent.name .. " position is not a 3-vector")
+                        t.assertEqual(#accent.color, 3, id .. "/" .. accent.name .. " colour is not a 3-vector")
+                        for axis = 1, 3 do
+                                t.assertGreater(accent.size[axis], 0, id .. "/" .. accent.name .. " has a zero dimension")
+                        end
+                end
+        end
+end)
+
+t.test("each job looks different from the one it came from", function()
+        for _, def in ipairs(Classes.list()) do
+                if def.parent then
+                        local mine = ClassLook.get(def.id)
+                        local parent = ClassLook.get(def.parent)
+                        local sameShirt = mine.shirt[1] == parent.shirt[1]
+                                and mine.shirt[2] == parent.shirt[2]
+                                and mine.shirt[3] == parent.shirt[3]
+                        local sameAccents = #mine.accents == #parent.accents
+                        t.assertFalse(sameShirt and sameAccents, def.id .. " looks identical to " .. def.parent)
+                end
+        end
+end)
+
+t.test("a swing style is one the animation module can draw", function()
+        local known = { slash = true, thrust = true, cast = true, stab = true, smite = true }
+        for _, id in ipairs(ClassLook.knownIds()) do
+                local look = ClassLook.get(id)
+                t.assertTrue(known[look.swing] == true, id .. " uses unknown swing " .. tostring(look.swing))
+        end
+end)
+
+--------------------------------------------------------------------------
+t.suite("ItemIcons")
+--------------------------------------------------------------------------
+
+local ItemIcons = require("../src/shared/ItemIcons")
+
+t.test("every item in the catalogue has an icon", function()
+        for _, def in ipairs(Items.list()) do
+                local icon = ItemIcons.get(def.id, def)
+                t.assertGreater(#icon.parts, 0, def.id .. " has no icon parts")
+                t.assertEqual(#icon.tilt, 3, def.id .. " tilt is not a 3-vector")
+        end
+end)
+
+t.test("every icon part is well formed", function()
+        for _, def in ipairs(Items.list()) do
+                local icon = ItemIcons.get(def.id, def)
+                for _, part in ipairs(icon.parts) do
+                        t.assertEqual(#part.size, 3, def.id .. "/" .. part.name .. " size is not a 3-vector")
+                        t.assertEqual(#part.at, 3, def.id .. "/" .. part.name .. " position is not a 3-vector")
+                        t.assertEqual(#part.color, 3, def.id .. "/" .. part.name .. " colour is not a 3-vector")
+                        for axis = 1, 3 do
+                                t.assertGreater(part.size[axis], 0, def.id .. "/" .. part.name .. " has a zero dimension")
+                        end
+                end
+        end
+end)
+
+t.test("a weapon is not drawn with an armour icon", function()
+        for _, def in ipairs(Items.list()) do
+                if def.kind == "equipment" and def.slot == "Weapon" then
+                        local icon = ItemIcons.get(def.id, def)
+                        local names: { [string]: boolean } = {}
+                        for _, part in ipairs(icon.parts) do
+                                names[part.name] = true
+                        end
+                        t.assertTrue(names.Blade or names.Orb or names.Head or names.Bow,
+                                def.id .. " has no weapon-shaped part")
+                end
+        end
+end)
+
+t.test("a bigger weapon draws a longer blade", function()
+        local function bladeLength(id: string): number
+                local def = Items.getDef(id)
+                local icon = ItemIcons.get(id, def)
+                for _, part in ipairs(icon.parts) do
+                        if part.name == "Blade" then
+                                return part.size[2]
+                        end
+                end
+                return 0
+        end
+        t.assertGreater(bladeLength("DragonSlayer"), bladeLength("ShortSword"),
+                "the Dragon Slayer is not longer than a Short Sword")
+end)
+
+t.test("a potion and a material do not share a silhouette", function()
+        local function names(id: string): { [string]: boolean }
+                local def = Items.getDef(id)
+                local icon = ItemIcons.get(id, def)
+                local out: { [string]: boolean } = {}
+                for _, part in ipairs(icon.parts) do
+                        out[part.name] = true
+                end
+                return out
+        end
+        local potion = names("RedPotion")
+        local shard = names("Crystal")
+        local shared = 0
+        for name in pairs(shard) do
+                if potion[name] then
+                        shared += 1
+                end
+        end
+        t.assertEqual(shared, 0, "a potion and a shard share part names")
+end)
+
+
 return t.finish()
