@@ -103,6 +103,34 @@ cd roblox && ../tools/luau/luau tests/run.luau
 Publishing needs Roblox Studio, which is desktop-only. `roblox/PUBLISH-FROM-PHONE.md`
 covers what can and cannot be done from a phone.
 
+## Shipping to Roblox
+
+The live place can lag the branch in two different ways, and both look the same
+to a player: "the game is still the old game". Check them in this order.
+
+1. **Was a version published for this commit?** Open the latest
+   `AX PC1 Roblox Publish` run and read `HEAD is now at <sha>` plus
+   `PUBLISHED_VERSION`. If the SHA is old, the build used a stale ref.
+2. **Is the experience playable at all?** A version can be published and still
+   be unplayable. Roblox keeps a new experience private until the account
+   holder submits the Maturity & Compliance questionnaire. Query
+   `https://games.roblox.com/v1/games/multiget-playability-status?universeIds=<id>`
+   and expect `isPlayable: true`. `ContextualPlayabilityUnrated` means the
+   questionnaire is outstanding, and only the account owner can fix it.
+
+Rules learned the hard way:
+
+- The publish workflow must **not** carry a `workflow_run` trigger here. GitHub
+  only honours `workflow_run` when the workflow carrying it exists on the
+  **default branch**, and the publish workflow lives on `ax-arena-roblox-game`.
+  The trigger never fired and nothing failed. The test workflow dispatches the
+  publish instead, with the tested SHA as the ref.
+- The publish workflow must **not** carry a `push` trigger on its own files
+  either. It bypasses the tests, and it races the dispatch, so one commit
+  produces two publishes.
+- A red test run must never reach players, so the dispatch sits after the last
+  test step and only runs for a push to `ax-arena-roblox-game`.
+
 ## Workflows
 
 `runs-on: self-hosted` is a **Windows** machine (PC1, `DESKTOP-RGK6JKB`), so
