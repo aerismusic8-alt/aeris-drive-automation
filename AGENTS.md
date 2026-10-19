@@ -428,6 +428,48 @@ runner, so it cannot recover a dead runner. The first install has to be done by
 hand on PC1. After that the scheduled task keeps the machine reachable.
 `AX_PC_CONTROL/REMOTE-FROM-PHONE.md` is the phone-facing guide.
 
+### Tailscale is a path, not a door
+
+This distinction cost real time, so it is written down. Tailscale gives an
+encrypted route between machines. It does not give anyone a way to run a
+command on a machine that has nothing listening.
+
+Reachability and executability are separate questions:
+
+- *Can a packet get to PC1?* Tailscale answers this. It is up on PC1 today.
+- *Is anything on PC1 going to answer?* This is the question that matters,
+  and Tailscale does not answer it. With the runner stopped, no MCP server
+  installed and no SSH server enabled, PC1 is reachable and inert.
+
+There is no supported way to make Tailscale start a process on a peer. The
+admin console can toggle Tailscale's own features for a device, but not run
+arbitrary code, and its SSH console needs Tailscale SSH, which brings us to:
+
+**Tailscale SSH cannot run on Windows as a server.** Its server component is
+Linux and macOS (open-source `tailscaled`) only. `tailscale set --ssh` on
+Windows does nothing. Windows OpenSSH Server is the equivalent, with Tailscale
+carrying the connection. Confirmed against Tailscale's own docs plus three
+independent write-ups.
+
+**Wake-on-LAN does not cross Tailscale.** WoL is a layer-2 broadcast and
+Tailscale is layer 3, so a tailnet node cannot wake a sleeping PC1. Every
+working setup sends the magic packet from an always-on machine already on the
+same LAN. Without one, a sleeping PC1 needs a person.
+
+The practical consequence: if PC1 is off, or on with nothing listening and no
+one to run a command, no amount of network configuration reaches it. That is
+a property of the situation, not a gap in the tooling, and saying so is more
+useful than another workaround.
+
+What does make PC1 durable, in order of value:
+
+1. An always-on LAN device (a Pi, a NAS, a router) that can run WoL and hold a
+   tailnet route. This removes the "person at the desk" requirement for good.
+2. A remote-desktop agent that dials out and starts at boot, so it survives a
+   reboot without anyone logging in.
+3. The keepalive, which recovers a stopped runner or agent service as long as
+   the machine is on.
+
 ### Driving PC1 through MCP
 
 MeshCentral gives a *person* the screen. `winremote-mcp` gives an *agent* the
