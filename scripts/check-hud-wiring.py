@@ -27,6 +27,7 @@ HUD = ROOT / "roblox/src/client/Hud.luau"
 CLIENT = ROOT / "roblox/src/client/init.client.luau"
 SERVER = ROOT / "roblox/src/server/init.server.luau"
 WORLD = ROOT / "roblox/src/server/World.luau"
+TEXT = ROOT / "roblox/src/shared/Text.luau"
 
 passed = 0
 failures: list[str] = []
@@ -51,6 +52,7 @@ hud = read(HUD)
 client = read(CLIENT)
 server = read(SERVER)
 world = read(WORLD)
+text = read(TEXT)
 
 print("\nWIRING 1: the client can reach the HUD module")
 
@@ -117,7 +119,8 @@ check("the world creates the town", '"Town"' in world, "no town")
 check("the world creates a ground slab", '"WorldGround"' in world, "no ground")
 check("the world creates a spawn", '"TownSpawn"' in world or 'Instance.new("SpawnLocation")' in world, "no spawn")
 check("the world creates one model per field", '"Field_" .. field.id' in world, "no field models")
-check("the world creates a portal back to town", "Return to Town" in world, "no portal home")
+check("the world creates a portal back to town", 'Text.get("returnToTown")' in world, "no portal home")
+check("the Thai text module is loaded", text != "", "Text.luau missing")
 check("the server owns enemy damage", "World.damageEnemy" in server, "no server-side damage")
 
 print("\nWIRING 7b: one director per field, and travel between them")
@@ -149,7 +152,7 @@ check("the server reports every kill", "CombatFx:FireClient" in server, "no kill
 check("the client listens for kills", "CombatFx.OnClientEvent" in client, "no kill listener")
 check("the HUD has a kill flash", re.search(r'label\([\w]+, "KillFlash"', hud) is not None, "missing")
 check("the server tracks the kill streak", "killStreak" in server, "no streak")
-check("the client shows the combo", "Combat x" in client or "combo x" in client, "no combo display")
+check("the client shows the combo", 'Text.get("combo")' in client, "no combo display")
 
 print("\nWIRING 7d: the HUD does not flood a phone")
 

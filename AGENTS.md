@@ -131,6 +131,29 @@ Rules learned the hard way:
 - A red test run must never reach players, so the dispatch sits after the last
   test step and only runs for a push to `ax-arena-roblox-game`.
 
+## Language
+
+The player-facing text is Thai. `roblox/src/shared/Text.luau` is the only place
+a Thai string lives; every screen, sign and notification reads from it.
+
+- **Ids stay English.** `Fields`, `Zones`, `Enemies`, `Farm` and the client
+  intents key off `id`, and a save stores the zone by id. Renaming an id to
+  translate it would break saves, travel and the tests. Translate the display
+  text only, through `Text.placeName` / `Text.cropName` / `Text.enemyName` /
+  `Text.tagline`.
+- **An unknown key returns the key**, not an empty string. A missing line then
+  shows as `Cavern` in a screenshot instead of a blank button.
+- **Monsters arrive as display names**, not ids, because the server sends
+  `Enemies.scale().name`. `Text.enemyName` maps those English names.
+- **Thai needs more vertical room than Latin.** A tone mark sits above the
+  baseline and a vowel below it, so a label row sized for `Coins: 0` clips
+  `เงิน`. Row heights in `Hud.luau` are set for Thai, not for the English the
+  layout was first drawn with.
+- **`roblox/tests/run.luau` guards this.** The "Thai text" suite asserts every
+  field, crop and monster has a translation, that the format lines keep their
+  `%d` placeholders, and that each line actually contains a Thai codepoint
+  (U+0E00-U+0E7F). Add a key to the checked list when you add a string.
+
 ## Workflows
 
 `runs-on: self-hosted` is a **Windows** machine (PC1, `DESKTOP-RGK6JKB`), so

@@ -31,6 +31,7 @@ local Farm = require(Shared.Farm)
 local Axe = require(Shared.Axe)
 local Fields = require(Shared.Fields)
 local Enemies = require(Shared.Enemies)
+local Text = require(Shared.Text)
 
 -- Remotes are created here so the client can rely on WaitForChild alone.
 local function ensureRemote(container: Instance, className: "RemoteEvent" | "RemoteFunction", name: string): Instance
@@ -520,7 +521,7 @@ DoRebirth.OnServerInvoke = function(player: Player): (boolean, string?)
 	record.dirty = true
 	applySpawnStats(record)
 	pushPlayerState(player, record)
-	notify(player, string.format("Rebirth %d complete!", record.rebirth.count))
+	notify(player, Text.get("rebirthDone", record.rebirth.count))
 	return true, nil
 end
 
@@ -562,7 +563,8 @@ TravelZone.OnServerInvoke = function(player: Player, placeId: any): (boolean, st
 
 	World.placePlayer(player, destination)
 	pushPlayerState(player, record)
-	notify(player, Fields.isTown(destination) and "Returned to town" or ("Entered " .. destination))
+	notify(player, Fields.isTown(destination) and Text.get("returnedToTown")
+            or Text.get("entered", Text.placeName(destination)))
 	return true, nil
 end
 
@@ -588,7 +590,7 @@ ClaimDaily.OnServerInvoke = function(player: Player): (boolean, any, string?)
 	record.dirty = true
 	awardXp(record, reward.xp)
 	pushPlayerState(player, record)
-	notify(player, string.format("Daily day %d: +%d coins", reward.day, reward.coins))
+	notify(player, Text.get("dailyGain", reward.day, reward.coins))
 	return true, reward, nil
 end
 
@@ -621,7 +623,7 @@ RedeemCode.OnServerInvoke = function(player: Player, code: any): (boolean, any, 
 	record.dirty = true
 	awardXp(record, def.xp)
 	pushPlayerState(player, record)
-	notify(player, string.format("Code %s: +%d coins", def.code, def.coins))
+	notify(player, Text.get("codeGain", def.code, def.coins))
 	return true, { code = def.code, coins = def.coins, xp = def.xp, luckCharges = def.luckCharges }, nil
 end
 
@@ -657,7 +659,7 @@ HarvestCrop.OnServerInvoke = function(player: Player, plotIndex: any): (boolean,
 	Axe.addCharges(record.axe, Config.Farm.AxeChargePerHarvest)
 	record.dirty = true
 	pushPlayerState(player, record)
-	notify(player, string.format("Harvested %s: +%d coins", reward.cropId, reward.coins))
+	notify(player, Text.get("harvestGain", Text.cropName(reward.cropId), reward.coins))
 	return true, reward, nil
 end
 
@@ -730,7 +732,7 @@ local function grantPurchase(player: Player, productId: string): boolean
 	record.dirty = true
 	applySpawnStats(record)
 	pushPlayerState(player, record)
-	notify(player, "Purchase applied: " .. productId)
+	notify(player, Text.get("purchaseApplied", productId))
 	return true
 end
 

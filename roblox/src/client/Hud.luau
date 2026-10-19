@@ -8,6 +8,10 @@
 -- so a tap and a scripted call behave identically.
 
 local Players = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
+-- Every visible word comes from here, so the language lives in one file.
+local Text = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("Text"))
 
 local Hud = {}
 
@@ -106,24 +110,24 @@ function Hud.build(): ScreenGui
 	gui.Parent = player:WaitForChild("PlayerGui")
 
 	-- Stats, top left.
-	local stats = panel(gui, "Stats", UDim2.new(0, 250, 0, 160), UDim2.new(0, 16, 0, 16), Vector2.new(0, 0))
-	label(stats, "Coins", "Coins: 0", UDim2.new(1, -20, 0, 26), UDim2.new(0, 12, 0, 8), 20)
-	label(stats, "Level", "Lv 1", UDim2.new(1, -20, 0, 22), UDim2.new(0, 12, 0, 38), 18)
-	label(stats, "Health", "HP 100/100", UDim2.new(1, -20, 0, 22), UDim2.new(0, 12, 0, 62), 18)
-	label(stats, "Field", "Field: Town", UDim2.new(1, -20, 0, 22), UDim2.new(0, 12, 0, 86), 18)
-	label(stats, "Zone", "Zone: Meadow", UDim2.new(1, -20, 0, 22), UDim2.new(0, 12, 0, 110), 16)
-	label(stats, "Rebirth", "Rebirth 0", UDim2.new(1, -20, 0, 20), UDim2.new(0, 12, 0, 132), 16)
+	local stats = panel(gui, "Stats", UDim2.new(0, 250, 0, 194), UDim2.new(0, 16, 0, 16), Vector2.new(0, 0))
+	label(stats, "Coins", Text.get("coins") .. ": 0", UDim2.new(1, -20, 0, 30), UDim2.new(0, 12, 0, 8), 20)
+	label(stats, "Level", Text.get("level") .. " 1", UDim2.new(1, -20, 0, 28), UDim2.new(0, 12, 0, 42), 18)
+	label(stats, "Health", Text.get("health") .. " 100/100", UDim2.new(1, -20, 0, 28), UDim2.new(0, 12, 0, 72), 18)
+	label(stats, "Field", Text.get("field") .. ": " .. Text.placeName("Town"), UDim2.new(1, -20, 0, 28), UDim2.new(0, 12, 0, 102), 18)
+	label(stats, "Zone", Text.get("zone") .. ": " .. Text.placeName("Meadow"), UDim2.new(1, -20, 0, 26), UDim2.new(0, 12, 0, 132), 16)
+	label(stats, "Rebirth", Text.get("rebirth") .. " 0", UDim2.new(1, -20, 0, 26), UDim2.new(0, 12, 0, 160), 16)
 
 	-- Wave banner, top centre.
-	local wave = panel(gui, "WavePanel", UDim2.new(0, 300, 0, 40), UDim2.new(0.5, 0, 0, 16), Vector2.new(0.5, 0))
-	local waveLabel = label(wave, "Wave", "Wave 1", UDim2.new(1, -16, 1, 0), UDim2.new(0, 8, 0, 0), 20)
+	local wave = panel(gui, "WavePanel", UDim2.new(0, 320, 0, 48), UDim2.new(0.5, 0, 0, 16), Vector2.new(0.5, 0))
+	local waveLabel = label(wave, "Wave", Text.get("wave") .. " 1", UDim2.new(1, -16, 1, 0), UDim2.new(0, 8, 0, 0), 20)
 	waveLabel.TextXAlignment = Enum.TextXAlignment.Center
 
 	-- Boss bar, just under the wave banner. Hidden unless a boss is alive, so
 	-- it never steals attention from a normal wave.
-	local boss = panel(gui, "BossPanel", UDim2.new(0, 320, 0, 46), UDim2.new(0.5, 0, 0, 182), Vector2.new(0.5, 0))
+	local boss = panel(gui, "BossPanel", UDim2.new(0, 320, 0, 54), UDim2.new(0.5, 0, 0, 190), Vector2.new(0.5, 0))
 	boss.Visible = false
-	local bossLabel = label(boss, "BossName", "BOSS", UDim2.new(1, -16, 0, 22), UDim2.new(0, 8, 0, 4), 18)
+	local bossLabel = label(boss, "BossName", Text.get("boss"), UDim2.new(1, -16, 0, 28), UDim2.new(0, 8, 0, 4), 18)
 	bossLabel.TextXAlignment = Enum.TextXAlignment.Center
 	local bossTrack = Instance.new("Frame")
 	bossTrack.Name = "BossTrack"
@@ -142,47 +146,47 @@ function Hud.build(): ScreenGui
 	corner(bossFill, 5)
 
 	-- Reward buttons, bottom left: above the jump button and clear of the thumb.
-	local rewards = panel(gui, "Rewards", UDim2.new(0, 200, 0, 132), UDim2.new(0, 16, 1, -24), Vector2.new(0, 1))
-	local title = label(rewards, "Title", "Rewards", UDim2.new(1, -20, 0, 24), UDim2.new(0, 12, 0, 6), 16)
+	local rewards = panel(gui, "Rewards", UDim2.new(0, 200, 0, 142), UDim2.new(0, 16, 1, -24), Vector2.new(0, 1))
+	local title = label(rewards, "Title", Text.get("rewards"), UDim2.new(1, -20, 0, 26), UDim2.new(0, 12, 0, 6), 16)
 	title.TextColor3 = COLORS.muted
 
-	local daily = button(rewards, "Daily", "Daily Reward", UDim2.new(1, -24, 0, 42), UDim2.new(0, 12, 0, 34), COLORS.gold)
-	local code = button(rewards, "Code", "Redeem Code", UDim2.new(1, -24, 0, 42), UDim2.new(0, 12, 0, 82), COLORS.blue)
+	local daily = button(rewards, "Daily", Text.get("dailyReward"), UDim2.new(1, -24, 0, 46), UDim2.new(0, 12, 0, 36), COLORS.gold)
+	local code = button(rewards, "Code", Text.get("redeemCode"), UDim2.new(1, -24, 0, 46), UDim2.new(0, 12, 0, 88), COLORS.blue)
 
 	-- Action panel, bottom right: the two taps the game is built around.
 	-- It sits under the thumb rather than in the middle of the screen, and the
 	-- axe button carries the charge count so the player knows when to swing.
-	local actions = panel(gui, "Actions", UDim2.new(0, 200, 0, 240), UDim2.new(1, -16, 1, -24), Vector2.new(1, 1))
-	local axeLabel = label(actions, "AxeCharges", "Axe: 0/5", UDim2.new(1, -20, 0, 24), UDim2.new(0, 12, 0, 6), 16)
+	local actions = panel(gui, "Actions", UDim2.new(0, 200, 0, 252), UDim2.new(1, -16, 1, -24), Vector2.new(1, 1))
+	local axeLabel = label(actions, "AxeCharges", Text.get("axe") .. ": 0/5", UDim2.new(1, -20, 0, 26), UDim2.new(0, 12, 0, 6), 16)
 	axeLabel.TextColor3 = COLORS.muted
-	local axe = button(actions, "Axe", "AXE", UDim2.new(1, -24, 0, 56), UDim2.new(0, 12, 0, 32), COLORS.blue)
-	local farm = button(actions, "Farm", "FARM", UDim2.new(1, -24, 0, 56), UDim2.new(0, 12, 0, 94), COLORS.green)
+	local axe = button(actions, "Axe", Text.get("axe"), UDim2.new(1, -24, 0, 56), UDim2.new(0, 12, 0, 34), COLORS.blue)
+	local farm = button(actions, "Farm", Text.get("farm"), UDim2.new(1, -24, 0, 56), UDim2.new(0, 12, 0, 96), COLORS.green)
 	-- Travel sits behind a button rather than on screen: a permanent map list
 	-- would eat the middle of a phone screen, which is where the player looks.
-	local map = button(actions, "Map", "MAP", UDim2.new(1, -24, 0, 56), UDim2.new(0, 12, 0, 154), COLORS.gold)
-	local crop = button(actions, "Crop", "Wheat", UDim2.new(1, -24, 0, 20), UDim2.new(0, 12, 0, 214), COLORS.disabled)
+	local map = button(actions, "Map", Text.get("map"), UDim2.new(1, -24, 0, 56), UDim2.new(0, 12, 0, 158), COLORS.gold)
+	local crop = button(actions, "Crop", Text.cropName("Wheat"), UDim2.new(1, -24, 0, 24), UDim2.new(0, 12, 0, 220), COLORS.disabled)
 
 	-- Travel overlay: town plus every field. Built here, filled and wired by
 	-- the client, which owns the intent calls.
-	local travel = panel(gui, "TravelPanel", UDim2.new(0, 300, 0, 300), UDim2.new(0.5, 0, 0.5, 0), Vector2.new(0.5, 0.5))
+	local travel = panel(gui, "TravelPanel", UDim2.new(0, 320, 0, 320), UDim2.new(0.5, 0, 0.5, 0), Vector2.new(0.5, 0.5))
 	travel.Visible = false
 	travel.ZIndex = 10
-	local travelTitle = label(travel, "TravelTitle", "Choose a field", UDim2.new(1, -70, 0, 26), UDim2.new(0, 12, 0, 8), 18)
+	local travelTitle = label(travel, "TravelTitle", Text.get("chooseField"), UDim2.new(1, -80, 0, 30), UDim2.new(0, 12, 0, 8), 18)
 	travelTitle.ZIndex = 11
-	local close = button(travel, "CloseTravel", "X", UDim2.new(0, 34, 0, 26), UDim2.new(1, -42, 0, 8), COLORS.disabled)
+	local close = button(travel, "CloseTravel", "X", UDim2.new(0, 38, 0, 30), UDim2.new(1, -46, 0, 8), COLORS.disabled)
 	close.ZIndex = 11
 
 	-- Kill flash, under the wave banner. Hidden most of the time; the client
 	-- turns it on for a moment after a kill.
-	local killFlash = label(gui, "KillFlash", "", UDim2.new(0, 360, 0, 30), UDim2.new(0.5, 0, 0, 234), 22)
+	local killFlash = label(gui, "KillFlash", "", UDim2.new(0, 380, 0, 36), UDim2.new(0.5, 0, 0, 246), 22)
 	killFlash.AnchorPoint = Vector2.new(0.5, 0)
 	killFlash.TextXAlignment = Enum.TextXAlignment.Center
 	killFlash.TextColor3 = COLORS.gold
 	killFlash.Visible = false
 	local list = Instance.new("ScrollingFrame")
 	list.Name = "FieldList"
-	list.Size = UDim2.new(1, -24, 1, -48)
-	list.Position = UDim2.new(0, 12, 0, 40)
+	list.Size = UDim2.new(1, -24, 1, -54)
+	list.Position = UDim2.new(0, 12, 0, 46)
 	list.BackgroundTransparency = 1
 	list.BorderSizePixel = 0
 	list.ScrollBarThickness = 6

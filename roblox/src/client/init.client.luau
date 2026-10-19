@@ -11,6 +11,7 @@ local MarketplaceService = game:GetService("MarketplaceService")
 
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local Config = require(Shared.Config)
+local Text = require(Shared.Text)
 
 local Remotes = ReplicatedStorage:WaitForChild("Remotes")
 local RequestUpgrade = Remotes:WaitForChild("RequestUpgrade") :: RemoteFunction
@@ -94,13 +95,17 @@ local function render()
 		return
 	end
 
-	setLabel(gui, "Coins", "Coins: " .. formatCoins(state.coins))
-	setLabel(gui, "Level", string.format("Lv %d  (%d/%s XP)", state.level, math.floor(state.xp),
-		state.xpForNext == math.huge and "MAX" or tostring(math.floor(state.xpForNext))))
-	setLabel(gui, "Health", string.format("HP %d/%d", math.floor(state.health), math.floor(state.maxHealth)))
-	setLabel(gui, "Field", "Field: " .. (state.field or "Town"))
-	setLabel(gui, "Zone", string.format("Zone: %s  (x%.1f)", state.zone, state.coinMultiplier))
-	setLabel(gui, "Rebirth", string.format("Rebirth %d  Combo x%d", state.rebirths, state.killStreak))
+	setLabel(gui, "Coins", Text.get("coins") .. ": " .. formatCoins(state.coins))
+	local xpNext = state.xpForNext == math.huge and Text.get("max") or tostring(math.floor(state.xpForNext))
+	setLabel(gui, "Level", string.format("%s %d  (%d/%s XP)", Text.get("level"), state.level,
+		math.floor(state.xp), xpNext))
+	setLabel(gui, "Health", string.format("%s %d/%d", Text.get("health"), math.floor(state.health),
+		math.floor(state.maxHealth)))
+	setLabel(gui, "Field", Text.get("field") .. ": " .. Text.placeName(state.field or "Town"))
+	setLabel(gui, "Zone", string.format("%s: %s  (x%.1f)", Text.get("zone"), Text.placeName(state.zone),
+		state.coinMultiplier))
+	setLabel(gui, "Rebirth", string.format("%s %d  %s x%d", Text.get("rebirth"), state.rebirths,
+		Text.get("combo"), state.killStreak))
 
 	-- The daily button says what will happen before the tap, so a tap is
 	-- never a surprise and a disabled button is obviously disabled.
@@ -108,13 +113,13 @@ local function render()
 	local daily = rewardsFolder and rewardsFolder:FindFirstChild("Daily")
 	if daily and daily:IsA("TextButton") then
 		if state.dailyReady then
-			daily.Text = string.format("Claim Daily (day %d)", state.dailyStreak + 1)
+			daily.Text = Text.get("dailyClaim", state.dailyStreak + 1)
 			daily.BackgroundColor3 = Color3.fromRGB(255, 206, 84)
 			daily.Active = true
 		else
 			local hours = math.floor(state.dailySecondsLeft / 3600)
 			local minutes = math.floor((state.dailySecondsLeft % 3600) / 60)
-			daily.Text = string.format("Daily in %dh %dm", hours, minutes)
+			daily.Text = Text.get("dailyWait", hours, minutes)
 			daily.BackgroundColor3 = Color3.fromRGB(70, 74, 88)
 			daily.Active = false
 		end
@@ -126,18 +131,21 @@ local function render()
 	if actions then
 		local chargeLabel = actions:FindFirstChild("AxeCharges")
 		if chargeLabel and chargeLabel:IsA("TextLabel") then
-			chargeLabel.Text = string.format("Axe: %d/%d", state.axe.charges, state.axe.maxCharges)
+			chargeLabel.Text = string.format("%s: %d/%d", Text.get("axe"), state.axe.charges,
+				state.axe.maxCharges)
 			chargeLabel.TextColor3 = state.axe.charges > 0 and Color3.fromRGB(140, 255, 170) or Color3.fromRGB(150, 158, 176)
 		end
 		local axeButton = actions:FindFirstChild("Axe")
 		if axeButton and axeButton:IsA("TextButton") then
 			axeButton.Active = state.axe.charges > 0
-			axeButton.Text = state.axe.charges > 0 and string.format("AXE  x%d", state.axe.charges) or "AXE (empty)"
+			axeButton.Text = state.axe.charges > 0
+				and string.format("%s  x%d", Text.get("axe"), state.axe.charges)
+				or Text.get("axeEmpty")
 		end
 		local cropButton = actions:FindFirstChild("Crop")
 		local crop = state.crops[state.cropIndex]
 		if cropButton and cropButton:IsA("TextButton") and crop then
-			cropButton.Text = string.format("%s (%ds)", crop.id, crop.growSeconds)
+			cropButton.Text = string.format("%s (%ds)", Text.cropName(crop.id), crop.growSeconds)
 		end
 		-- A count of ripe crops, so the player knows a harvest is waiting.
 		local ready = 0
@@ -148,17 +156,18 @@ local function render()
 		end
 		local farmButton = actions:FindFirstChild("Farm")
 		if farmButton and farmButton:IsA("TextButton") then
-			farmButton.Text = ready > 0 and string.format("FARM (%d ready)", ready) or "FARM"
+			farmButton.Text = ready > 0 and Text.get("farmReady", ready) or Text.get("farm")
 		end
 	end
 
 	local w = state.wave
 	if w.phase == "TOWN" then
-		setLabel(gui, "Wave", "Town - pick a field with MAP")
+		setLabel(gui, "Wave", Text.get("townPickField"))
 	elseif w.phase == "INTERMISSION" then
-		setLabel(gui, "Wave", string.format("%s: wave %d in %ds", w.field or "Field", w.wave + 1, math.ceil(w.timeRemaining)))
+		setLabel(gui, "Wave", Text.get("waveNext", Text.placeName(w.field), w.wave + 1,
+			math.ceil(w.timeRemaining)))
 	else
-		setLabel(gui, "Wave", string.format("%s: wave %d - %d enemies", w.field or "Field", w.wave, w.aliveEnemies))
+		setLabel(gui, "Wave", Text.get("waveFighting", Text.placeName(w.field), w.wave, w.aliveEnemies))
 	end
 
 	-- The boss bar is the only element that appears and disappears on its own.
@@ -167,7 +176,8 @@ local function render()
 		local boss = w.boss
 		if boss then
 			bossPanel.Visible = true
-			setLabel(gui, "BossName", string.format("%s  %d/%d", boss.name, math.floor(boss.health), boss.maxHealth))
+			setLabel(gui, "BossName", string.format("%s  %d/%d", Text.enemyName(boss.name),
+				math.floor(boss.health), boss.maxHealth))
 			local track = bossPanel:FindFirstChild("BossTrack")
 			local fill = track and track:FindFirstChild("BossFill")
 			if fill and fill:IsA("Frame") then
@@ -183,12 +193,13 @@ local function render()
 	if killLabel and killLabel:IsA("TextLabel") then
 		if state.lastKill and os.clock() - state.lastKillAt < 1.2 then
 			killLabel.Visible = true
-			local text = string.format("+%d  %s", state.lastKill.coins, state.lastKill.name)
+			local text = string.format("+%d  %s", state.lastKill.coins,
+				Text.enemyName(state.lastKill.name))
 			if state.lastKill.boss then
-				text = "BOSS DOWN  " .. text
+				text = Text.get("bossDown") .. "  " .. text
 			end
 			if state.killStreak > 1 then
-				text = text .. string.format("   combo x%d", state.killStreak)
+				text = text .. string.format("   %s x%d", Text.get("combo"), state.killStreak)
 			end
 			killLabel.Text = text
 		else
@@ -347,7 +358,7 @@ local function promptForCode(onSubmit: (string) -> ())
 	shade.Parent = gui
 
 	local box = Instance.new("Frame")
-	box.Size = UDim2.new(0, 300, 0, 180)
+	box.Size = UDim2.new(0, 300, 0, 190)
 	box.Position = UDim2.new(0.5, 0, 0.5, 0)
 	box.AnchorPoint = Vector2.new(0.5, 0.5)
 	box.BackgroundColor3 = Color3.fromRGB(18, 20, 28)
@@ -359,26 +370,26 @@ local function promptForCode(onSubmit: (string) -> ())
 	corner.Parent = box
 
 	local title = Instance.new("TextLabel")
-	title.Size = UDim2.new(1, -24, 0, 30)
+	title.Size = UDim2.new(1, -24, 0, 34)
 	title.Position = UDim2.new(0, 12, 0, 8)
 	title.BackgroundTransparency = 1
 	title.Font = Enum.Font.GothamBold
 	title.TextSize = 18
 	title.TextColor3 = Color3.fromRGB(236, 240, 248)
 	title.TextXAlignment = Enum.TextXAlignment.Left
-	title.Text = "Enter a promo code"
+	title.Text = Text.get("enterCode")
 	title.Parent = box
 
 	local entry = Instance.new("TextBox")
 	entry.Name = "Entry"
 	entry.Size = UDim2.new(1, -24, 0, 46)
-	entry.Position = UDim2.new(0, 12, 0, 42)
+	entry.Position = UDim2.new(0, 12, 0, 46)
 	entry.BackgroundColor3 = Color3.fromRGB(32, 36, 48)
 	entry.BorderSizePixel = 0
 	entry.Font = Enum.Font.GothamBold
 	entry.TextSize = 22
 	entry.TextColor3 = Color3.fromRGB(255, 255, 255)
-	entry.PlaceholderText = "CODE"
+	entry.PlaceholderText = Text.get("codePlaceholder")
 	entry.Text = ""
 	entry.ClearTextOnFocus = false
 	entry.Parent = box
@@ -398,7 +409,7 @@ local function promptForCode(onSubmit: (string) -> ())
 	submit.Font = Enum.Font.GothamBold
 	submit.TextSize = 20
 	submit.TextColor3 = Color3.fromRGB(12, 14, 20)
-	submit.Text = "Redeem"
+	submit.Text = Text.get("redeem")
 	submit.Parent = box
 	local submitCorner = Instance.new("UICorner")
 	submitCorner.CornerRadius = UDim.new(0, 10)
@@ -411,7 +422,7 @@ local function promptForCode(onSubmit: (string) -> ())
 	cancel.Font = Enum.Font.GothamBold
 	cancel.TextSize = 20
 	cancel.TextColor3 = Color3.fromRGB(236, 240, 248)
-	cancel.Text = "Cancel"
+	cancel.Text = Text.get("cancel")
 	cancel.Parent = box
 	local cancelCorner = Instance.new("UICorner")
 	cancelCorner.CornerRadius = UDim.new(0, 10)
@@ -466,24 +477,24 @@ local function buildTravelList(travel: Frame)
 	end
 	list:ClearAllChildren()
 
-	local places = { { id = "Town", name = "Town", unlocked = true, levelRequirement = 0 } }
+	local places = { { id = "Town", unlocked = true, levelRequirement = 0 } }
 	for _, field in ipairs(state.fields) do
 		table.insert(places, field)
 	end
 
 	for index, place in ipairs(places) do
 		local current = (state.field == place.id) or (not state.field and place.id == "Town")
-		local label = place.name
+		local label = Text.placeName(place.id)
 		if not place.unlocked then
-			label = string.format("%s (Lv %d)", place.name, place.levelRequirement or 1)
+			label = string.format("%s (%s %d)", label, Text.get("level"), place.levelRequirement or 1)
 		end
 		if current then
-			label = label .. "  <- here"
+			label = label .. "  " .. Text.get("here")
 		end
 		local color = place.unlocked and (current and Hud.COLORS.disabled or Hud.COLORS.blue) or Hud.COLORS.disabled
-		local row = Hud.button(list, "Place_" .. place.id, label, UDim2.new(1, 0, 0, 46), UDim2.new(0, 0, 0, (index - 1) * 52), color)
+		local row = Hud.button(list, "Place_" .. place.id, label, UDim2.new(1, 0, 0, 56), UDim2.new(0, 0, 0, (index - 1) * 62), color)
 		row.ZIndex = 12
-		row.TextSize = 18
+		row.TextSize = 16
 		row.Active = place.unlocked and not current
 		if row.Active then
 			row.Activated:Connect(function()
@@ -496,7 +507,7 @@ local function buildTravelList(travel: Frame)
 			end)
 		end
 	end
-	list.CanvasSize = UDim2.new(0, 0, 0, #places * 52)
+	list.CanvasSize = UDim2.new(0, 0, 0, #places * 62)
 end
 
 local function wireButtons()

@@ -23,6 +23,7 @@ local Farm = require("../src/shared/Farm")
 local Enemies = require("../src/shared/Enemies")
 local Fields = require("../src/shared/Fields")
 local Axe = require("../src/shared/Axe")
+local Text = require("../src/shared/Text")
 
 --------------------------------------------------------------------------
 t.suite("Random")
@@ -2087,6 +2088,103 @@ t.test("ticking one field never advances another", function()
 	t.assertEqual(volcano:snapshot().wave, 0)
 	t.assertEqual(volcano:snapshot().phase, "INTERMISSION")
 	t.assertEqual(volcano:snapshot().elapsed, 0)
+end)
+
+--------------------------------------------------------------------------
+t.suite("Thai text")
+--------------------------------------------------------------------------
+
+t.test("every field and the town has a Thai name", function()
+        -- The travel menu and the arrival signs both go through placeName, so a
+        -- missing entry would show the English id to a Thai player.
+        t.assertEqual(Text.placeName("Town"), Text.get("PronteraTown"))
+        for _, field in ipairs(Fields.list()) do
+                local name = Text.placeName(field.id)
+                t.assertNotEqual(name, field.id, field.id .. " has no Thai name")
+                t.assertTrue(#name > 0, field.id .. " has an empty Thai name")
+        end
+end)
+
+t.test("every field has a Thai tagline", function()
+        for _, field in ipairs(Fields.list()) do
+                local line = Text.tagline(field.id)
+                t.assertNotEqual(line, "", field.id .. " has no Thai tagline")
+        end
+end)
+
+t.test("every crop has a Thai name", function()
+        for _, crop in ipairs(Farm.list()) do
+                t.assertNotEqual(Text.cropName(crop.id), crop.id, crop.id .. " has no Thai name")
+        end
+end)
+
+t.test("every monster archetype has a Thai name", function()
+        -- The kill flash and the boss bar send the English display name, so the
+        -- lookup is keyed by name rather than id.
+        for _, field in ipairs(Fields.list()) do
+                for _, archetype in ipairs(Enemies.roster(field.id)) do
+                        local name = Text.enemyName(archetype.name)
+                        t.assertNotEqual(name, archetype.name, archetype.name .. " has no Thai name")
+                end
+                local boss = Enemies.boss(field.id)
+                t.assertNotEqual(Text.enemyName(boss.name), boss.name, boss.name .. " has no Thai name")
+        end
+end)
+
+t.test("the buttons and panels all have text", function()
+        local keys = {
+                "coins", "level", "health", "field", "zone", "rebirth", "combo", "wave", "boss", "max",
+                "rewards", "dailyReward", "dailyClaim", "dailyWait", "redeemCode", "enterCode",
+                "codePlaceholder", "redeem", "cancel", "axe", "axeEmpty", "farm", "farmReady", "map",
+                "chooseField", "townPickField", "waveNext", "waveFighting", "bossDown",
+                "town", "here", "locked", "returnToTown", "plot", "ready",
+                "rebirthDone", "returnedToTown", "entered", "dailyGain", "codeGain",
+                "harvestGain", "purchaseApplied",
+        }
+        local missing = Text.missingKeys(keys)
+        t.assertEqual(#missing, 0, "missing translations: " .. table.concat(missing, ", "))
+end)
+
+t.test("a format line keeps its placeholders", function()
+        -- A translation that drops %d would print a literal or error at runtime.
+        t.assertContains(Text.get("dailyClaim", 3), "3")
+        t.assertContains(Text.get("dailyWait", 2, 5), "2")
+        t.assertContains(Text.get("dailyWait", 2, 5), "5")
+        t.assertContains(Text.get("waveNext", "ทุ่งหญ้าอรุณ", 4, 30), "4")
+        t.assertContains(Text.get("waveFighting", "ถ้ำคริสตัล", 2, 7), "7")
+        t.assertContains(Text.get("farmReady", 4), "4")
+        t.assertContains(Text.get("plot", 6), "6")
+        t.assertContains(Text.get("entered", "ถ้ำคริสตัล"), "ถ้ำคริสตัล")
+end)
+
+t.test("an unknown key falls back to the key, not to blank", function()
+        -- A blank label is invisible in a screenshot; the key is not.
+        t.assertEqual(Text.get("NoSuchKey"), "NoSuchKey")
+        t.assertEqual(Text.placeName("NoSuchField"), "NoSuchField")
+        t.assertEqual(Text.enemyName("NoSuchMonster"), "NoSuchMonster")
+end)
+
+t.test("the Thai lines are actually Thai", function()
+        -- Guards against a copy-paste that leaves the English in place. Thai
+        -- lives in U+0E00..U+0E7F, so at least one character must land there.
+        local function hasThai(value: string): boolean
+                for _, code in utf8.codes(value) do
+                        if code >= 0x0E00 and code <= 0x0E7F then
+                                return true
+                        end
+                end
+                return false
+        end
+
+        local keys = {
+                "coins", "level", "health", "field", "zone", "rebirth", "wave", "rewards", "axe",
+                "farm", "map", "chooseField", "townPickField", "redeem", "cancel", "returnToTown",
+                "here", "PronteraTown", "Meadow", "Cavern", "Volcano", "Void", "Heaven",
+                "Wheat", "Carrot", "Star",
+        }
+        for _, key in ipairs(keys) do
+                t.assertTrue(hasThai(Text.get(key)), key .. " is not Thai")
+        end
 end)
 
 return t.finish()

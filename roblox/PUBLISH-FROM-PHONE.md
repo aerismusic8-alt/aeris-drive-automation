@@ -124,9 +124,11 @@ product, so a half-filled list is safe.
 
 ## What is already done
 
-- PC1 builds the place with Rojo: 23 scripts, all verified to carry real code
+- PC1 builds the place with Rojo: 24 scripts, all verified to carry real code
 - the Open Cloud publish path is wired and tested end to end
-- 359 automated tests pass (220 unit, 47 integration, 92 wiring)
+- 368 automated tests pass (228 unit, 47 integration, 93 wiring)
+- the whole in-game UI is in Thai, including the menus, the field names, the
+  monster names and the on-screen signs
 - a town plus five monster fields, per-field waves, travel, bosses, the farm
   loop, pets, rebirth, zones, daily rewards and promo codes are implemented,
   plus six monetization products

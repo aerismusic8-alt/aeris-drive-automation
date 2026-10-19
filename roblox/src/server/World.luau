@@ -17,6 +17,7 @@ local Shared = ReplicatedStorage:WaitForChild("Shared")
 local Config = require(Shared:WaitForChild("Config"))
 local Fields = require(Shared:WaitForChild("Fields"))
 local Enemies = require(Shared:WaitForChild("Enemies"))
+local Text = require(Shared:WaitForChild("Text"))
 
 local World = {}
 
@@ -148,7 +149,7 @@ local function buildTown(parent: Model): Model
         spawn.Neutral = true
         spawn.Duration = 0
         spawn.Parent = town
-        makeSign(spawn, def.name, 8, 12, Color3.fromRGB(255, 236, 170))
+        makeSign(spawn, Text.placeName("Town"), 8, 12, Color3.fromRGB(255, 236, 170))
 
         -- A landmark in the middle: the obelisk the town is built around.
         local obelisk = Instance.new("Part")
@@ -193,7 +194,7 @@ local function buildTown(parent: Model): Model
                 crop.Parent = bed
                 plotCrops[i] = crop
 
-                local text = makeSign(bed, "PLOT " .. i, 5, 6, Color3.fromRGB(255, 255, 255))
+                local text = makeSign(bed, Text.get("plot", i), 5, 6, Color3.fromRGB(255, 255, 255))
                 plotLabels[i] = text
         end
 
@@ -204,7 +205,8 @@ local function buildTown(parent: Model): Model
                 local dz = field.position.z
                 local length = math.max(1, math.sqrt(dx * dx + dz * dz))
                 local edge = centre + Vector3.new(dx / length, 0, dz / length) * (def.radius - 8)
-                local label = string.format("%s (Lv %d)", field.name, field.levelRequirement)
+                local label = string.format("%s (%s %d)", Text.placeName(field.id), Text.get("level"),
+                        field.levelRequirement)
                 makePortal(town, field.id, label, edge, rgb(field.groundColor))
         end
 
@@ -232,11 +234,12 @@ local function buildField(parent: Model, field): Model
         pad.Color = Color3.fromRGB(255, 214, 92)
         pad.Parent = model
 
-        local sign = string.format("%s  -  Lv %d+\n%s", field.name, field.levelRequirement, field.tagline)
+        local sign = string.format("%s  -  %s %d+\n%s", Text.placeName(field.id), Text.get("level"),
+                        field.levelRequirement, Text.tagline(field.id))
         makeSign(pad, sign, 10, 16, Color3.fromRGB(255, 255, 255))
 
         -- A portal home, so leaving a field never needs a menu either.
-        makePortal(model, "Town", "Return to Town", arrival + Vector3.new(14, 0, 0),
+        makePortal(model, "Town", Text.get("returnToTown"), arrival + Vector3.new(14, 0, 0),
                 Color3.fromRGB(255, 214, 92))
 
         model.Parent = parent
@@ -289,7 +292,7 @@ function World.updatePlot(index: number, cropId: string?, ready: boolean, second
         if not cropId then
                 crop.Transparency = 1
                 if text then
-                        text.Text = "PLOT " .. index
+                        text.Text = Text.get("plot", index)
                         text.TextColor3 = Color3.fromRGB(220, 220, 220)
                 end
                 return
@@ -301,10 +304,10 @@ function World.updatePlot(index: number, cropId: string?, ready: boolean, second
         crop.Material = ready and Enum.Material.Neon or Enum.Material.SmoothPlastic
         if text then
                 if ready then
-                        text.Text = "READY - " .. cropId
+                        text.Text = Text.get("ready") .. " - " .. Text.cropName(cropId)
                         text.TextColor3 = Color3.fromRGB(140, 255, 170)
                 else
-                        text.Text = string.format("%s %ds", cropId, math.max(0, math.floor(secondsLeft)))
+                        text.Text = string.format("%s %ds", Text.cropName(cropId), math.max(0, math.floor(secondsLeft)))
                         text.TextColor3 = Color3.fromRGB(255, 255, 255)
                 end
         end
