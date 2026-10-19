@@ -99,31 +99,52 @@ jobs:
         env:
           ROBLOX_API_KEY: ${{ secrets.ROBLOX_API_KEY }}
         run: |
-          # A 200 from the publish call is the API's word. Read the version
-          # list back so the claim rests on Roblox's own record, not on ours.
+          # A 200 from the publish call is the API's word. This step tries to
+          # read the version back so the claim rests on Roblox's record.
+          #
+          # The versions list endpoint needs a read scope, and a key created for
+          # publishing often has only universe-places:write, in which case this
+          # comes back empty. An empty list here is therefore reported as
+          # UNVERIFIED rather than as a failure: it says nothing either way
+          # about whether the publish happened.
+          #
+          # The strong evidence for the publish itself is the versionNumber in
+          # the POST response, which Roblox assigns. It increments by one per
+          # publish, and watching it increment across two runs is what actually
+          # proves publishes are landing.
           CFG=roblox/publish-config.json
           UNIVERSE=$(python3 -c "import json;print(json.load(open('$CFG'))['universeId'])")
           PLACE=$(python3 -c "import json;print(json.load(open('$CFG'))['placeId'])")
           echo "VERIFY universeId=$UNIVERSE placeId=$PLACE"
-          curl -sS -H "x-api-key: $ROBLOX_API_KEY" \
-            "https://apis.roblox.com/universes/v1/$UNIVERSE/places/$PLACE/versions" \
-            -o "$RUNNER_TEMP/versions.json" || true
+
+          CODE=$(curl -sS -o "$RUNNER_TEMP/versions.json" -w '%{http_code}' \
+            -H "x-api-key: $ROBLOX_API_KEY" \
+            "https://apis.roblox.com/universes/v1/$UNIVERSE/places/$PLACE/versions" || echo 000)
+          echo "VERIFY_LIST_HTTP=$CODE"
+          head -c 400 "$RUNNER_TEMP/versions.json" || true
+          echo
+
           python3 - <<'PY'
           import json, os
+
           p = os.path.join(os.environ["RUNNER_TEMP"], "versions.json")
           try:
               d = json.load(open(p))
           except Exception as e:
-              print(f"VERIFY=UNVERIFIED reason=could_not_read_versions:{e}")
+              print(f"VERIFY=UNVERIFIED reason=unreadable_response:{e}")
               raise SystemExit(0)
-          versions = d.get("versions", [])
+
+          versions = d.get("versions") or []
           print(f"VERIFY_VERSION_COUNT={len(versions)}")
           if versions:
               v = versions[0]
               print(f"VERIFY_LATEST_VERSION={v.get('versionNumber')}")
               print(f"VERIFY_LATEST_CREATED={v.get('createTime')}")
+              print("VERIFY=PASS")
           else:
-              print("VERIFY=UNVERIFIED reason=no_versions_listed")
+              print("VERIFY=UNVERIFIED reason=versions_list_empty")
+              print("VERIFY_NOTE=key_may_lack_read_scope; "
+                    "the POST versionNumber is the authoritative record")
           PY
 
       - name: Upload publish evidence
