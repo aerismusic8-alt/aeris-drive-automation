@@ -32,6 +32,31 @@ job, and you drive it from the phone.
 
 6. Note the two numbers.
 
+Done once, on 2026-10-19: universeId `10771844216`, placeId `79945905295644`.
+Both are stored in `roblox/publish-config.json`, so later runs need no input.
+
+You can also read the place id without opening the dashboard:
+
+```bash
+# dispatch .github/workflows/ax-pc1-roblox-list-places.yml with universe_id
+```
+
+The public games API returns nothing for a private universe, and the dashboard
+hides the place id behind a click, so the Cloud v2 places endpoint is the way.
+
+## Going public
+
+A new experience is private, and the dashboard is the only place to change
+that. The Open Cloud API keeps `visibility` read-only, and the experimental
+`POST /legacy-develop/v1/universes/{id}/activate` answers 403 with an API key.
+Both were tried on 2026-10-19.
+
+1. Creator Dashboard -> your experience -> **Configure -> Settings**.
+2. Under **Audience**, pick **Public**.
+3. If it says not eligible, follow **Manage** and complete the maturity
+   questionnaire, then come back and pick Public.
+
+
 ## Step 2: keep those numbers
 
 Keep the two numbers. You type them into the run form in step 4, so you do not
