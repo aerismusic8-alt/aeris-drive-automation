@@ -31,20 +31,15 @@ on:
         description: 'Git ref to build (branch, tag or SHA)'
         required: false
         default: 'ax-arena-roblox-game'
-  # Committing game code used to leave the live place untouched, because this
-  # workflow only ran by hand or when the publish script itself changed. The
-  # code was on the branch, the tests were green, and players still saw the old
-  # game. The test workflow now dispatches this one after a green run, so a
-  # merged change reaches Roblox on its own.
+  # Publishing has exactly two entry points: a green test run, which dispatches
+  # this workflow, and a human running it by hand. There is no push trigger on
+  # purpose. Editing this script used to publish immediately with no test run in
+  # front of it, and it also raced the dispatch: one commit, two publishes.
   #
-  # A `workflow_run` trigger would be the obvious way to do that, but GitHub
-  # only honours it when the workflow carrying it is on the default branch, and
-  # this file is not. That failure is silent, which is how the stale publish
-  # went unnoticed, so the trigger lives in the test workflow instead.
-  push:
-    paths:
-      - 'AX_PC_CONTROL/pc1-roblox-publish.ps1'
-      - '.github/workflows/ax-pc1-roblox-publish.yml'
+  # A `workflow_run` trigger would be the obvious way to follow the tests, but
+  # GitHub only honours it when the workflow carrying it is on the default
+  # branch, and this file is not. That failure is silent, which is how a stale
+  # publish went unnoticed, so the trigger lives in the test workflow instead.
 
 jobs:
   publish:
