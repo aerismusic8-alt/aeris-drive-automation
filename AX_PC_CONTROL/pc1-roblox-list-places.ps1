@@ -87,4 +87,34 @@ if ($statusCode -eq 200) {
 
 Write-Host "PLACES_EVIDENCE=$evidencePath"
 
+# Roblox keeps universe visibility read-only in the Open Cloud API, so the
+# dashboard is the normal way to go public. This experimental endpoint is the
+# one API-key path that can activate a universe; it is off unless asked for.
+if ($env:UNIVERSE_ACTIVATE -eq '1') {
+  $actUri = "https://apis.roblox.com/legacy-develop/v1/universes/$universeId/activate"
+  Write-Host "ACTIVATE_URL=$actUri"
+  try {
+    $act = Invoke-RestMethod -Uri $actUri -Method Post -Headers $headers -TimeoutSec 60
+    Write-Host "ACTIVATE=OK"
+    Write-Host "ACTIVATE_BODY=$(($act | ConvertTo-Json -Depth 6 -Compress))"
+  } catch {
+    $code = 0
+    $text = $_.Exception.Message
+    if ($_.Exception.Response) {
+      $code = [int]$_.Exception.Response.StatusCode
+      try {
+        $reader = New-Object System.IO.StreamReader($_.Exception.Response.GetResponseStream())
+        $text = $reader.ReadToEnd()
+      } catch { }
+    }
+    Write-Host "ACTIVATE=FAILED"
+    Write-Host "ACTIVATE_HTTP_STATUS=$code"
+    Write-Host "ACTIVATE_ERROR=$text"
+  }
+
+  Start-Sleep -Seconds 5
+  $after = Get-Json $uniUri
+  if ($after.code -eq 200) { Write-Host "UNIVERSE_VISIBILITY_AFTER=$($after.body.visibility)" }
+}
+
 if ($statusCode -ne 200) { exit 1 }

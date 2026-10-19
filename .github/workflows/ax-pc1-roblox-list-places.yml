@@ -13,6 +13,10 @@ on:
         description: 'Roblox universeId'
         required: true
         default: ''
+      activate:
+        description: 'Try to activate the universe (go public) through the experimental endpoint'
+        required: false
+        default: '0'
       ref:
         description: 'Git ref holding the script'
         required: false
@@ -33,6 +37,7 @@ jobs:
         env:
           ROBLOX_API_KEY: ${{ secrets.ROBLOX_API_KEY }}
           UNIVERSE_ID: ${{ inputs.universe_id }}
+          UNIVERSE_ACTIVATE: ${{ inputs.activate }}
         run: |
           $ref = '${{ inputs.ref }}'
           $url = "https://raw.githubusercontent.com/aerismusic8-alt/aeris-drive-automation/$ref/AX_PC_CONTROL/pc1-roblox-list-places.ps1"
