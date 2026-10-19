@@ -361,3 +361,35 @@ experience then goes live on its own.
 
 So when a publish "succeeds" but the game is unreachable, check playability
 status before debugging the build. The upload was never the problem.
+
+### Seeing the game without publishing it
+
+An unrated universe cannot be joined, so the live place is not a way to look at
+the code. Run the built place file on PC1 instead:
+
+- `AX_PC_CONTROL/pc1-roblox-open.ps1` does it in two phases. `--task RunScript`
+  runs `pc1-roblox-open-smoke.luau` in Edit mode, which requires every shared
+  module, checks both entry points exist, and calls `World.buildWorld()` and
+  asserts one town, five fields, real geometry, and a floor in each. Then
+  `--task EditFile` opens the place and F5 starts Play mode, running the real
+  server and client, and screenshots are captured across the run.
+- `.github/workflows/ax-pc1-roblox-open.yml` drives it. The client opens a
+  window, so the script runs from a scheduled task in the interactive user's
+  session, the same way the foreground capture does.
+- Edit mode does not execute `Script` or `LocalScript` instances, so the smoke
+  test cannot prove the server loop or the HUD run. Play mode and the
+  screenshots cover that.
+
+Use only documented Studio flags. The undocumented `StartServer` and
+`StartClient` tasks have changed behaviour between Studio versions, so a failure
+there is indistinguishable from a failure in the game.
+
+### The PC1 runner goes offline quietly
+
+Work queued for the self-hosted runner sits in `queued` with no runner assigned
+when PC1 is off or its runner service is stopped. There is no API to read runner
+status with the integration token (`/actions/runners` returns 403), so the
+signal is the queue itself: a job that has not been picked up in minutes, while
+an earlier job on the same runner finished in seconds, means the runner is down
+and someone has to start it on PC1. Nothing on the control host can restart it;
+there is no MeshCentral or PC1 remote environment configured here.
