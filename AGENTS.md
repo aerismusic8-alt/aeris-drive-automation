@@ -309,3 +309,21 @@ The set and the recipes must agree in both directions, so the "hovering set and
 the recipes agree" test fails if a recipe is drawn in the air but unlisted, or
 listed but drawn on the ground. When a recipe legitimately changes height,
 update the set in the same commit or the gate stops meaning anything.
+
+### A green publish does not mean the game is playable
+
+The publish pipeline can report `status: PUBLISHED` with a real version number
+and the place is still unplayable. A brand new experience has no content
+maturity label, and Roblox hides unrated experiences entirely: the game page
+reads "This experience is not accessible because it is unrated" and
+`games.roblox.com/v1/games/multiget-playability-status` returns
+`playabilityStatus: ContextualPlayabilityUnrated, isPlayable: false`.
+
+There is no Open Cloud endpoint for this. The Universes API can update name,
+description and social links, but the maturity and compliance questionnaire is
+Creator Dashboard only. A human has to answer it once at
+`create.roblox.com/dashboard/creations/experiences/<universeId>/audience`; the
+experience then goes live on its own.
+
+So when a publish "succeeds" but the game is unreachable, check playability
+status before debugging the build. The upload was never the problem.
