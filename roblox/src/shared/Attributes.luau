@@ -169,8 +169,16 @@ function Attributes.derive(stats: Stats, level: number): Derived
         local strBonus = math.floor(str / 10) ^ 2
         local intBonus = math.floor(int / 10) ^ 2
 
-        local attack = cfg.BaseAttack + str * cfg.AttackPerStr + strBonus + math.floor(dex * cfg.AttackPerDex)
-        local magicAttack = cfg.BaseMagicAttack + int * cfg.MagicAttackPerInt + intBonus
+        -- Level scales attack, health and evasion directly. Without a per-level
+        -- term the only source of damage is the STR stat, and STR costs 60 of the
+        -- 99 points to max, so a level 50 character hits barely harder than a
+        -- level 1 one (110 -> 146) while monster health grows 1.18^wave without
+        -- limit. That is why bosses could not be killed: it was not difficulty,
+        -- it was arithmetic. Every derived stat that fights now grows with level.
+        local attack = cfg.BaseAttack + (l - 1) * cfg.AttackPerLevel
+                + str * cfg.AttackPerStr + strBonus + math.floor(dex * cfg.AttackPerDex)
+        local magicAttack = cfg.BaseMagicAttack + (l - 1) * cfg.MagicAttackPerLevel
+                + int * cfg.MagicAttackPerInt + intBonus
 
         -- Health and SP scale with level as well as the stat, so a level-up is
         -- felt even when the player banks their points.

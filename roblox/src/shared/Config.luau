@@ -22,8 +22,11 @@ Config.Wave = {
 	BaseEnemyCount = 3,
 	EnemiesPerWave = 2,
 	MaxEnemiesPerWave = 40,
-	BaseEnemyHealth = 70,
-	HealthGrowth = 1.18,
+	BaseEnemyHealth = 60,
+	-- 1.18^wave grew faster than any attack a player could reach, so a wave 25
+	-- boss needed 400+ hits while killing the player in three seconds. 1.12
+	-- still ramps every wave but stays inside what levelling can answer.
+	HealthGrowth = 1.12,
 	BaseEnemyDamage = 5,
 	DamageGrowth = 1.09,
 	BaseReward = 25,
@@ -138,8 +141,14 @@ Config.Attributes = {
 	BaseAttack = 8,
 	AttackPerStr = 2,
 	AttackPerDex = 0.5,
+	-- Attack gained per character level. This is the term that keeps a player
+	-- able to hurt what their level unlocks: monster health grows 1.12^wave,
+	-- so an attack that only comes from the STR stat falls behind by the
+	-- fifth wave of every field.
+	AttackPerLevel = 3,
 	BaseMagicAttack = 6,
 	MagicAttackPerInt = 2.2,
+	MagicAttackPerLevel = 2.5,
 
 	-- Health and SP.
 	BaseHealth = 60,
@@ -322,8 +331,10 @@ Config.Fields = {
 Config.Enemies = {
 	-- Archetypes multiply the wave base. A boss is one big spawn that closes
 	-- the field out with a reward spike worth staying for.
-	BossHealthMul = 12,
-	BossDamageMul = 1.6,
+	-- A boss is a wall you can break with preparation, not a wall. At 12x health
+	-- a wave 5 boss took 15 hits and killed a level 1 player in 12 seconds.
+	BossHealthMul = 8,
+	BossDamageMul = 1.35,
 	BossRewardMul = 20,
 	BossSizeMul = 2.6,
 	BossXpMul = 8,

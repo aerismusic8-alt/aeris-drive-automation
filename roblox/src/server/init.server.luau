@@ -892,8 +892,12 @@ UseAxe.OnServerInvoke = function(player: Player): (boolean, any, string?)
 		return false, nil, "NO_CHARACTER"
 	end
 	
-	local baseDamage = Stats.derive(record.upgrades).damage
-	local charges, damage = Axe.swing(record.axe, baseDamage)
+	-- The swing scales off the player's real attack, the same sheet the
+	-- auto-attack uses. It used to read Stats.derive(upgrades).damage, which
+	-- ignores attributes, equipment, pets and rebirth, so a full five-charge
+	-- swing was weaker than one ordinary hit: charging crops cost you damage.
+	local sheet = combatSheet(record, os.clock())
+	local charges, damage = Axe.swing(record.axe, sheet.attack)
 	
 	-- Hit every enemy inside the axe radius, not just the nearest one. Only
 	-- the player's own field is searched, so a swing in town can never reach a

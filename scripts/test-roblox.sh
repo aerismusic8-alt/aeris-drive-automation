@@ -24,6 +24,11 @@ fi
 # here even when every unit test passes.
 "$LUAU" "$ROOT/roblox/tests/integration.luau" || exit 1
 
+# Balance tests compare the player's power curve against the monster curve. The
+# whole suite passed while bosses were mathematically unkillable, because no test
+# asked whether the two curves met. This one does.
+"$LUAU" "$ROOT/roblox/tests/balance.luau" || exit 1
+
 # Wiring checks read the source, because the HUD cannot be executed outside
 # Roblox. This is what catches a renamed label or an unbound button.
 exec python3 "$ROOT/scripts/check-hud-wiring.py"
