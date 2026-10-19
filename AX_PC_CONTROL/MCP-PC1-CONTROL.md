@@ -63,23 +63,104 @@ powershell -ExecutionPolicy Bypass -File AX_PC_CONTROL\install-pc1-winremote-mcp
 5. เรียก `GetSystemInfo` จริง เพื่อพิสูจน์ว่าไม่ใช่แค่เซิร์ฟเวอร์ขึ้นแต่ใช้งานไม่ได้
 6. เขียนหลักฐานที่ `C:\AX-Runtime\evidence\pc1-winremote-mcp-install.json`
 
-## ต่อจากเครื่องอื่น
+## ต่อจากเครื่องอื่น — ใช้ Tailscale (แนะนำ)
 
 ค่าเริ่มต้นผูกกับ `127.0.0.1` เท่านั้น และตั้งใจให้เป็นแบบนั้น
 เพราะ **auth key ส่งผ่าน HTTP ธรรมดาบนเน็ตเวิร์กไม่ถือว่าปลอดภัย**
 
-ถ้าจะให้เครื่องอื่นเรียก ต้องมี tunnel ที่มี TLS หน้าเซิร์ฟเวอร์:
+**Tailscale แก้ปัญหานี้ตรงจุด** เพราะมันทำ 3 อย่างพร้อมกัน:
+
+1. **TLS ให้ฟรี** — ผ่าน `tailscale serve` ได้ใบรับรองจริง ไม่ต้องตั้งเอง
+2. **ไม่ต้องเปิดพอร์ตที่ router** — เป็น outbound connection ทั้งสองฝั่ง
+3. **auth ระดับเครื่อง** — เฉพาะเครื่องใน tailnet เดียวกันเท่านั้นที่เข้าได้
+
+### ติดตั้งบน PC1
 
 ```powershell
-# ตัวอย่าง: SSH remote forward (ต้องมีเครื่องปลายทางที่มี SSH)
+# ติดตั้ง Tailscale (หรือโหลดจาก tailscale.com/download/windows)
+winget install --id Tailscale.Tailscale -e
+
+# ล็อกอิน (เปิดเบราว์เซอร์ให้กดยืนยันครั้งเดียว)
+tailscale up
+
+# ดู IP ของ PC1 (จะเป็น 100.x.y.z)
+tailscale ip -4
+
+# เปิด HTTPS ให้ MCP server ที่พอร์ต 8090
+# คำสั่งนี้จะขอเปิด HTTPS ใน tailnet ให้เองถ้ายังไม่เปิด
+tailscale serve --bg 8090
+
+# ดู URL ที่ได้
+tailscale serve status
+```
+
+จะได้ URL หน้าตาแบบนี้:
+```
+https://desktop-rgk6jkb.<ชื่อ-tailnet>.ts.net/
+```
+
+### เรียกจากฝั่ง client
+
+```bash
+python3 AX_PC_CONTROL/ax-winremote-mcp.py \
+  --url https://desktop-rgk6jkb.<ชื่อ-tailnet>.ts.net/mcp \
+  --auth-key "$WINREMOTE_AUTH_KEY" \
+  --list-tools
+```
+
+ถ้าเครื่องที่รัน client อยู่ใน tailnet อยู่แล้ว **ไม่ต้องใช้ `--tailnet-proxy`**
+เพราะต่อ 100.x ได้ตรง ๆ
+
+### ถ้า client ไม่ได้อยู่ใน tailnet (เช่นกล่อง sandbox)
+
+ใช้ `tailscaled` โหมด userspace ซึ่งไม่ต้องมี root และไม่ต้องมี `/dev/net/tun`:
+
+```bash
+tailscaled --tun=userspace-networking \
+  --state=/var/lib/tailscale/tailscaled.state \
+  --socks5-server=localhost:1055 \
+  --outbound-http-proxy-listen=localhost:1055 &
+tailscale up --auth-key=<auth-key ของ tailnet>
+```
+
+แล้วส่ง proxy ให้ client:
+
+```bash
+python3 AX_PC_CONTROL/ax-winremote-mcp.py \
+  --url https://desktop-rgk6jkb.<ชื่อ-tailnet>.ts.net/mcp \
+  --auth-key "$WINREMOTE_AUTH_KEY" \
+  --tailnet-proxy socks5://127.0.0.1:1055 \
+  --list-tools
+```
+
+**ทำไมต้องส่ง proxy ไม่ใช่ตั้ง `ALL_PROXY`:** proxy ของ Tailscale โหมด userspace
+**ส่งได้เฉพาะทราฟฟิกใน tailnet** ถ้าตั้ง `ALL_PROXY` ทั้ง process
+ทุกคำขออื่น (เช่นต่อ PyPI, GitHub) จะถูกส่งเข้า proxy ที่ไปไม่ถึง แล้วพังทั้งหมด
+
+client จึงผูก proxy แบบ **เจาะจงปลายทาง** แทน:
+
+| URL ที่เรียก | ผ่าน proxy? |
+| --- | --- |
+| `127.0.0.1:8090` | ไม่ผ่าน (local ยังใช้ได้เสมอ) |
+| `100.101.102.103:8090` | ผ่าน (ช่วง `100.64.0.0/10`) |
+| `pc1.tailnet.ts.net` | ผ่าน (ตามชื่อ origin ของ URL) |
+
+### ถ้าไม่อยากใช้ Tailscale
+
+```powershell
+# SSH remote forward
 ssh -N -R 8090:127.0.0.1:8090 user@your-server
 
-# ตัวอย่าง: Cloudflare Tunnel (ไม่ต้องเปิดพอร์ตที่ router)
+# Cloudflare Tunnel
 cloudflared tunnel --url http://127.0.0.1:8090
 ```
 
-จากนั้นชี้ client ไปที่ URL ของ tunnel พร้อม key จากไฟล์
+ทั้งสองแบบต้องมีเซิร์ฟเวอร์ปลายทางหรือบัญชี Cloudflare
+Tailscale ตั้งง่ายกว่าเพราะไม่ต้องมีทั้งคู่
+
 ห้ามใช้ `--allow-insecure-remote` บนเครือข่ายที่คนอื่นเข้าถึงได้
+และ **ห้ามใช้ Tailscale Funnel** กับ MCP เพราะ Funnel เปิดให้ทั้งอินเทอร์เน็ตเข้าได้
+`serve` เท่านั้นที่จำกัดอยู่ใน tailnet
 
 ## เรียกใช้จากฝั่ง client
 
