@@ -85,7 +85,7 @@ $xml = Get-Content $outFile -Raw
 
 $sourceBlocks = ([regex]::Matches($xml, '<string\s+name="Source">')).Count
 Write-Host "SOURCE_BLOCKS=$sourceBlocks"
-if ($sourceBlocks -lt 32) { throw "SOURCE_BLOCKS_TOO_FEW:$sourceBlocks (expected >=32)" }
+if ($sourceBlocks -lt 35) { throw "SOURCE_BLOCKS_TOO_FEW:$sourceBlocks (expected >=35)" }
 
 # Markers prove the *code* made it in, not just the instance names.
 $markers = [ordered]@{
@@ -115,6 +115,8 @@ $markers = [ordered]@{
   itemIcons     = 'ItemIcons'
   attackAnim    = 'AttackAnim'
   itemView      = 'ItemView'
+  scenery       = 'Scenery'
+  atmosphere    = 'Atmosphere'
 }
 $checks = [ordered]@{ sourceBlocks = $sourceBlocks }
 foreach ($k in $markers.Keys) {

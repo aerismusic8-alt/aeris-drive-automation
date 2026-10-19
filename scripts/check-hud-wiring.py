@@ -186,7 +186,7 @@ check("the spawn path revives the combatant", "combatant.alive = true" in server
 print("\nWIRING 9: the build verifier covers every module")
 
 build_script = read(ROOT / "AX_PC_CONTROL/pc1-roblox-build.ps1")
-for marker in ("world", "hud", "dailyRewards", "codes"):
+for marker in ("world", "hud", "dailyRewards", "codes", "scenery", "atmosphere"):
     check(f"the build verifier checks {marker}", f"{marker}" in build_script, "marker missing")
 
 print("\nWIRING 10: the death scene stays intact and death is not instant")
@@ -280,6 +280,54 @@ check("the rewards overlay can close", '"CloseRewards"' in hud, "no way out of t
 check("the rewards overlay starts hidden", "rewards.Visible = false" in hud, "overlay covers the game")
 check("the client toggles the overlay", "state.rewardsOpen" in client, "overlay never opens")
 check("opening the character sheet closes it", "state.rewardsOpen = false" in client, "two overlays stack")
+
+print("\nWIRING 14: the maps are built with scenery and air, not a bare disc")
+
+scenery = read(ROOT / "roblox/src/shared/Scenery.luau")
+atmosphere = read(ROOT / "roblox/src/shared/Atmosphere.luau")
+
+check("the world requires the scenery module", "require(Shared:WaitForChild(\"Scenery\"))" in world, "Scenery not required")
+check("the world requires the atmosphere module", "require(Shared:WaitForChild(\"Atmosphere\"))" in world, "Atmosphere not required")
+check("the world builds scenery", "buildScenery(" in world, "buildScenery is never called")
+check("the town is furnished", 'buildScenery(town, "Town"' in world, "the town has no scenery")
+check("a field is furnished", "buildScenery(model, field.id" in world, "fields have no scenery")
+check("scenery is scattered deterministically", "Scenery.seedFor(" in world, "no per-place seed")
+check("the spawn pad is protected", "keepOut" in world, "scenery can grow on the spawn pad")
+check("solid props collide", "piece.CanCollide = spot.solid" in world, "props are all intangible")
+check("props do not block the axe", "piece.CanQuery = false" in world, "props block interaction")
+check("props use real materials", "Scenery.materialFor(" in world, "props are untextured plastic")
+check("the atmosphere is applied", "applyAtmosphere(" in world, "atmosphere is never applied")
+check("the atmosphere follows the look", "applyAtmosphere(placeId)" in world, "re-lighting a place skips its air")
+check("the air includes haze", "Instance.new(\"Atmosphere\")" in world, "no atmosphere instance")
+check("the air includes clouds", "Instance.new(\"Clouds\")" in world, "no cloud layer")
+check("the air includes bloom", "Instance.new(\"BloomEffect\")" in world, "no glow")
+check("the air includes a colour grade", "Instance.new(\"ColorCorrectionEffect\")" in world, "no grading")
+
+check("every field has a scenery plan", all(
+    f'    {place} = {{' in scenery for place in ("Town", "Meadow", "Cavern", "Volcano", "Void", "Heaven")
+), "a place has no plan")
+check("every field has an atmosphere", all(
+    f'    {place} = {{' in atmosphere for place in ("Town", "Meadow", "Cavern", "Volcano", "Void", "Heaven")
+), "a place has no atmosphere")
+check("scenery avoids cone shapes that do not render", "Instance.new(\"SpecialMesh\")" not in scenery
+      and "SpecialMesh" not in re.sub(r"^\s*--.*$", "", scenery, flags=re.M), "a deprecated mesh is in use")
+check("scenery is built from primitives", "CornerWedge" in scenery, "no non-axis primitive in use")
+
+print("\nWIRING 15: a monster field keeps its spawn ring and its creatures readable")
+
+check("the spawn ring is protected", "Config.Fields.SpawnRadius" in world and "ringRadius" in world,
+      "a prop can grow where monsters spawn")
+check("the farm plots are protected", "Config.Farm.PlotRingRadius" in world, "a prop can grow on a farm plot")
+check("the portals are protected", "radius = 20" in world, "a tree can block a portal")
+check("the world floats a hovering monster", "MonsterShapes.hovers" in world and "HOVER_LIFT" in world,
+      "a hovering monster is placed on the ground")
+check("the enemy model keeps its own material", "Enum.Material.SmoothPlastic" in world, "no material on monsters")
+
+monster_shapes = read(ROOT / "roblox/src/shared/MonsterShapes.luau")
+check("the hovering set is declared", "HOVERING" in monster_shapes, "no hovering set")
+check("the hovering set is queryable", "MonsterShapes.hovers" in monster_shapes, "no hovers()")
+check("a cone is drawn as stacked discs", "local function taper" in scenery, "no taper helper")
+check("a leaning shard is drawn as stacked discs", "local function lean" in scenery, "no lean helper")
 
 print(f"\nWIRING: {passed} passed, {len(failures)} failed")
 for failure in failures:

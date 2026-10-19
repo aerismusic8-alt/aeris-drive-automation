@@ -20,12 +20,17 @@ local Enemies = require(Shared:WaitForChild("Enemies"))
 local Items = require(Shared:WaitForChild("Items"))
 local MonsterShapes = require(Shared:WaitForChild("MonsterShapes"))
 local ClassLook = require(Shared:WaitForChild("ClassLook"))
+local Scenery = require(Shared:WaitForChild("Scenery"))
+local Atmosphere = require(Shared:WaitForChild("Atmosphere"))
 local Text = require(Shared:WaitForChild("Text"))
 
 local World = {}
 
 local SPAWN_HEIGHT = 4
 local ENEMY_HEIGHT_OFFSET = 3
+-- How far above a grounded monster a flying one drifts, in studs. Enough to
+-- clear a hedge, not so much that a melee swing cannot reach it.
+local HOVER_LIFT = 4
 local PLATFORM_HEIGHT = 4
 
 local enemies: { [number]: any } = {}
@@ -171,6 +176,8 @@ end
 -- Apply a place's look to the world. Roblox has one global Lighting service,
 -- so the look follows the player: entering a field re-lights the world for
 -- that field. This is what makes the maps feel like different places.
+local applyAtmosphere: (string) -> ()
+
 local function applyLook(placeId: string)
         local look = Fields.look(placeId)
         local Lighting = game:GetService("Lighting")
@@ -183,9 +190,167 @@ local function applyLook(placeId: string)
         Lighting.FogStart = look.fogEnd * 0.25
         Lighting.ClockTime = placeId == "Void" and 0 or (placeId == "Heaven" and 12 or 14)
         Lighting.GlobalShadows = true
+
+        -- The air is part of the look, so it is applied in the same call: a
+        -- caller that re-lights a place can never forget to re-grade it.
+        applyAtmosphere(placeId)
 end
 
 World.applyLook = applyLook
+
+-- The colour a scenery role is drawn in for this place.
+local function sceneryColor(role: string, palette: { [string]: { number } }): Color3
+        return rgb(palette[role] or { 200, 200, 200 })
+end
+
+-- A Roblox material from its name, so a bad name degrades to plastic instead
+-- of erroring inside the world build.
+local function material(name: string): Enum.Material
+        local ok, value = pcall(function()
+                return Enum.Material[name]
+        end)
+        if ok and value then
+                return value
+        end
+        return Enum.Material.SmoothPlastic
+end
+
+-- A part from a scenery recipe. Scenery describes a prop in prop space, the
+-- same convention as a monster, so the transform here is the same one.
+local function sceneryPart(spec: any, palette: { [string]: { number } }): BasePart
+        local instance: BasePart
+        if spec.shape == "Ball" then
+                instance = Instance.new("Part")
+                instance.Shape = Enum.PartType.Ball
+        elseif spec.shape == "Cylinder" then
+                instance = Instance.new("Part")
+                instance.Shape = Enum.PartType.Cylinder
+        elseif spec.shape == "Wedge" then
+                instance = Instance.new("WedgePart")
+        elseif spec.shape == "CornerWedge" then
+                instance = Instance.new("CornerWedgePart")
+        else
+                instance = Instance.new("Part")
+        end
+
+        instance.Name = spec.name
+        local size = spec.size
+        instance.Size = Vector3.new(size[1], size[2], size[3])
+        instance.Anchored = true
+        instance.Material = material(Scenery.materialFor(spec.color))
+        instance.Color = sceneryColor(spec.color, palette)
+        instance.TopSurface = Enum.SurfaceType.Smooth
+        instance.BottomSurface = Enum.SurfaceType.Smooth
+
+        local at = spec.at
+        local rotation = CFrame.new()
+        if spec.rot then
+                rotation = CFrame.Angles(math.rad(spec.rot[1]), math.rad(spec.rot[2]), math.rad(spec.rot[3]))
+        end
+        instance.CFrame = rotation * CFrame.new(Vector3.new(at[1], at[2], at[3]))
+        return instance
+end
+
+-- Scatter one place's scenery into the world.
+--
+-- keepOut is what stops a tree growing through the spawn pad, a portal or a
+-- farm plot: the caller names the circles to protect and the scatter respects
+-- them. Solid props collide so a forest is something you walk around, but the
+-- model's parts are CanQuery off so they never block the axe or a tap.
+local function buildScenery(parent: Model, placeId: string, centre: Vector3, radius: number, keepOut: { any })
+        local palette = Scenery.palette(placeId)
+        local placements = Scenery.scatter(placeId, { x = centre.X, y = centre.Y, z = centre.Z }, radius,
+                Scenery.seedFor(placeId), keepOut)
+
+        local group = Instance.new("Model")
+        group.Name = "Scenery"
+
+        for index, spot in ipairs(placements) do
+                local prop = Scenery.build(spot.kind, spot.size)
+                if prop then
+                        local model = Instance.new("Model")
+                        model.Name = string.format("%s_%d", spot.kind, index)
+                        for _, spec in ipairs(prop.parts) do
+                                local piece = sceneryPart(spec, palette)
+                                piece.CanCollide = spot.solid
+                                piece.CanQuery = false
+                                piece.CanTouch = false
+                                piece.Parent = model
+                        end
+                        model:PivotTo(CFrame.new(spot.x, spot.y, spot.z) * CFrame.Angles(0, math.rad(spot.yaw), 0))
+                        model.Parent = group
+                end
+        end
+
+        group.Parent = parent
+        return group
+end
+
+-- The atmosphere effects. Roblox keeps one Lighting, so these are rebuilt per
+-- place rather than per map, exactly like applyLook.
+function applyAtmosphere(placeId: string)
+        local profile = Atmosphere.profileFor(placeId)
+        local Lighting = game:GetService("Lighting")
+
+        local atmosphere = Lighting:FindFirstChild("AXAtmosphere")
+        if not atmosphere then
+                atmosphere = Instance.new("Atmosphere")
+                atmosphere.Name = "AXAtmosphere"
+                atmosphere.Parent = Lighting
+        end
+        atmosphere.Density = profile.density
+        atmosphere.Offset = profile.offset
+        atmosphere.Color = rgb(profile.color)
+        atmosphere.Decay = rgb(profile.decay)
+        atmosphere.Glare = profile.glare
+        atmosphere.Haze = profile.haze
+
+        local clouds = Lighting:FindFirstChild("AXClouds")
+        if not clouds then
+                clouds = Instance.new("Clouds")
+                clouds.Name = "AXClouds"
+                clouds.Parent = Lighting
+        end
+        clouds.Cover = profile.cloudCover
+        clouds.Density = profile.cloudDensity
+        clouds.Color = rgb(profile.cloudColor)
+
+        local bloom = Lighting:FindFirstChild("AXBloom")
+        if not bloom then
+                bloom = Instance.new("BloomEffect")
+                bloom.Name = "AXBloom"
+                bloom.Parent = Lighting
+        end
+        bloom.Intensity = profile.bloomIntensity
+        bloom.Size = profile.bloomSize
+        bloom.Threshold = profile.bloomThreshold
+
+        local grade = Lighting:FindFirstChild("AXGrade")
+        if not grade then
+                grade = Instance.new("ColorCorrectionEffect")
+                grade.Name = "AXGrade"
+                grade.Parent = Lighting
+        end
+        grade.Brightness = profile.brightness - 1
+        grade.Contrast = profile.contrast
+        grade.Saturation = profile.saturation
+        grade.TintColor = rgb(profile.tint)
+
+        local rays = Lighting:FindFirstChild("AXSunRays")
+        if profile.sunRays > 0 then
+                if not rays then
+                        rays = Instance.new("SunRaysEffect")
+                        rays.Name = "AXSunRays"
+                        rays.Parent = Lighting
+                end
+                rays.Intensity = profile.sunRays
+                rays.Spread = 0.9
+        elseif rays then
+                rays:Destroy()
+        end
+end
+
+World.applyAtmosphere = applyAtmosphere
 
 -- A ring of floating light motes around a place. Purely visual, but it is what
 -- makes a map read as "somewhere" instead of a lit disc.
@@ -305,6 +470,11 @@ local function buildTown(parent: Model): Model
 
         -- One portal per field, on the ring edge facing that field. Walking into
         -- it is the whole interaction; no menu is needed to travel.
+        local keepOut: { any } = {
+                -- The spawn pad and the obelisk, so nothing grows on the arrival.
+                { x = centre.X, z = centre.Z, radius = 16 },
+                { x = arrival.X, z = arrival.Z, radius = 22 },
+        }
         for _, field in ipairs(Fields.list()) do
                 local dx = field.position.x
                 local dz = field.position.z
@@ -313,7 +483,22 @@ local function buildTown(parent: Model): Model
                 local label = string.format("%s (%s %d)", Text.placeName(field.id), Text.get("level"),
                         field.levelRequirement)
                 makePortal(town, field.id, label, edge, rgb(Fields.look(field.id).accent))
+                -- Every portal keeps a clear approach, so a tree never stands
+                -- between the player and the map they are trying to enter.
+                table.insert(keepOut, { x = edge.X, z = edge.Z, radius = 20 })
         end
+
+        -- The farm plots are gameplay, so nothing may stand on one.
+        for i = 1, Config.Farm.PlotCount do
+                local angle = ((i - 1) / Config.Farm.PlotCount) * math.pi * 2
+                table.insert(keepOut, {
+                        x = centre.X + math.cos(angle) * Config.Farm.PlotRingRadius,
+                        z = centre.Z + math.sin(angle) * Config.Farm.PlotRingRadius,
+                        radius = 12,
+                })
+        end
+
+        buildScenery(town, "Town", centre, def.radius, keepOut)
 
         town.Parent = parent
         return town
@@ -350,8 +535,34 @@ local function buildField(parent: Model, field): Model
         makeSign(pad, sign, 10, 16, Color3.fromRGB(255, 255, 255))
 
         -- A portal home, so leaving a field never needs a menu either.
-        makePortal(model, "Town", Text.get("returnToTown"), arrival + Vector3.new(14, 0, 0),
-                Color3.fromRGB(255, 214, 92))
+        local home = arrival + Vector3.new(14, 0, 0)
+        makePortal(model, "Town", Text.get("returnToTown"), home, Color3.fromRGB(255, 214, 92))
+
+        -- The arrival pad and the portal home stay clear, so a monster field
+        -- never drops a tree on the spot the player lands on.
+        local keepOut: { any } = {
+                { x = arrival.X, z = arrival.Z, radius = 18 },
+                { x = home.X, z = home.Z, radius = 16 },
+        }
+
+        -- Monsters spawn on a ring, so the ring itself is protected. They are
+        -- anchored and moved by CFrame, which means a prop cannot trap one, but
+        -- a monster standing inside a tree still looks broken. Sixteen points
+        -- per ring covers any wave size without carving the map hollow.
+        local ringRadius = Config.Fields.SpawnRadius
+        for _, factor in ipairs({ 0.7, 1.0 }) do
+                local radius = ringRadius * factor
+                for step = 1, 16 do
+                        local angle = (step - 1) / 16 * math.pi * 2
+                        table.insert(keepOut, {
+                                x = centre.X + math.cos(angle) * radius,
+                                z = centre.Z + math.sin(angle) * radius,
+                                radius = 8,
+                        })
+                end
+        end
+
+        buildScenery(model, field.id, centre, Config.Fields.ArenaRadius, keepOut)
 
         model.Parent = parent
         return model
@@ -516,7 +727,11 @@ local function buildEnemyModel(enemy: any, position: Vector3): Model
         -- feet on the spawn point.
         local root = parts[recipe.primary] or parts.Body or model:FindFirstChildWhichIsA("BasePart")
         model.PrimaryPart = root
-        model:PivotTo(CFrame.new(position))
+        -- A hovering monster's recipe already sits off the ground, so it is
+        -- lifted further to clear the props it flies over. A grounded one is
+        -- placed at the spawn point as drawn.
+        local lift = MonsterShapes.hovers(enemy.archetype or enemy.name) and HOVER_LIFT or 0
+        model:PivotTo(CFrame.new(position + Vector3.new(0, lift, 0)))
 
         -- The chase code and the kill burst both look up a part called "Body",
         -- and the health bar hangs off it. Rename the pivot so neither has to

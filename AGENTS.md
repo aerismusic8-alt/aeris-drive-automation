@@ -268,3 +268,44 @@ the `ORDER` id list but read definition fields (`def.id`, `def.kind`) off the
 strings, so it always returned an empty hotbar. Resolve an id to its definition
 before reading any field. When a lookup can silently return "nothing", assert
 the result is non-empty in a test, not just that it is well-formed.
+
+### Map dressing has to keep the play space clear
+
+`Scenery.luau` scatters props with a seeded RNG so every map looks the same on
+every server. The seed comes from `Scenery.seedFor(placeId)`, and the scatter
+takes a `keepOut` list of circles that must stay empty. The keep-outs are not
+decoration: without them a tree lands on the arrival pad, or on the ring where
+monsters spawn, and the map looks broken.
+
+- `World.buildField` protects the arrival pad, the portal home, and sixteen
+  points around the monster spawn ring (two radii, because `Fields.spawnPoint`
+  alternates two radii). `buildTown` protects the spawn, the portals and the
+  farm plot ring.
+- Enemies are anchored and moved by `CFrame`, so a prop cannot trap one; the
+  keep-outs exist so a monster never *looks* like it is standing inside a tree.
+- The ring clearance is 8 studs, not 11. A wider ring carved the smaller maps
+  hollow (Volcano fell from 43 props to 28). Check prop counts after any change
+  to a keep-out radius.
+
+### A Cone is not a shape you can build, and a Cylinder lies about its height
+
+Roblox `Enum.PartType` has no `Cone`, and `SpecialMesh` is the deprecated way to
+fake one, so `Scenery.taper()` stacks shrinking discs instead. WIRING 14 fails
+the build if either reappears.
+
+`Enum.PartType.Cylinder` runs along its **X** axis, so a cylinder rotated 90
+degrees about Z stands upright and its height is `size[1]`, not `size[2]`. Any
+code that reads `size[2]` as "height" reports a hem disc as a tall column sunk
+into the ground. `roblox/tests/run.luau` has a `halfHeight` helper that accounts
+for the rotation, and the ground test uses it. Do not inline the maths again.
+
+### Flying monsters are data, not a special case
+
+`MonsterShapes.hovers(id)` reads the hand-kept `HOVERING` set (bat, hornet,
+elemental, wraith, wisp, sovereign). `World.buildEnemyModel` lifts those by
+`HOVER_LIFT` studs on top of the lift already drawn into the recipe.
+
+The set and the recipes must agree in both directions, so the "hovering set and
+the recipes agree" test fails if a recipe is drawn in the air but unlisted, or
+listed but drawn on the ground. When a recipe legitimately changes height,
+update the set in the same commit or the gate stops meaning anything.
