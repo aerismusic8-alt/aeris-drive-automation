@@ -7,11 +7,15 @@
 # https://www.roblox.com/games/<placeId> redirected to /Title-Unavailable and
 # there was no way to reach the game from a phone.
 #
-# The name was the first half of that. The second half is `visibility`. The
-# Universe resource carries `visibility: PUBLIC | PRIVATE`, and a private
-# universe is not reachable from its game page whatever it is called. The page
-# kept reading Title-Unavailable after the name was set, which is what pointed
-# at visibility.
+# The name was the first half of that. The second half is visibility. A private
+# universe is not reachable from its game page whatever it is called, and this
+# one reported `visibility: PRIVATE`. The page kept reading Title-Unavailable
+# after the name was set, which is what pointed here.
+#
+# `visibility` cannot be written through the universe PATCH. Sending it returns
+# 200 and changes nothing, which is the worst kind of response: it looks like it
+# worked. The legacy activate and deactivate endpoints are what actually flip it,
+# and they take `legacy-universe:manage` rather than `universe:write`.
 #
 # Set EXPERIENCE_VISIBILITY=PRIVATE to take the game down again. Making the game
 # public is a launch, and it is reversible.
@@ -45,6 +49,7 @@ ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 CFG="$ROOT/roblox/src/shared/Config.luau"
 UNIVERSE_ID="${UNIVERSE_ID:-10771844216}"
 ENDPOINT="https://apis.roblox.com/cloud/v2/universes/$UNIVERSE_ID"
+LEGACY_BASE="https://apis.roblox.com/legacy-develop/v1/universes/$UNIVERSE_ID"
 VISIBILITY="${EXPERIENCE_VISIBILITY:-PUBLIC}"
 TAGLINE="A Ragnarok-style legendary MMORPG. Central town Prontera, five monster fields, classes, skills, pets and rebirth."
 
@@ -100,15 +105,15 @@ BEFORE_VIS=$(field_of "$READ_FILE" visibility)
 echo "NAME_BEFORE=${BEFORE_NAME:-<empty>}"
 echo "VISIBILITY_BEFORE=${BEFORE_VIS:-<empty>}"
 
-BODY=$(python3 -c 'import json,sys;print(json.dumps({"displayName":sys.argv[1],"description":sys.argv[2],"visibility":sys.argv[3]}))' "$NAME" "$TAGLINE" "$VISIBILITY")
+BODY=$(python3 -c 'import json,sys;print(json.dumps({"displayName":sys.argv[1],"description":sys.argv[2]}))' "$NAME" "$TAGLINE")
 
-# updateMask keeps the write to the three fields named, so nothing else on the
+# updateMask keeps the write to the two fields named, so nothing else on the
 # universe is touched by accident.
 HTTP_CODE=$(curl -sS -o "$RESP_FILE" -w '%{http_code}' -X PATCH \
   -H "x-api-key: $ROBLOX_API_KEY" \
   -H "Content-Type: application/json" \
   --data "$BODY" \
-  "$ENDPOINT?updateMask=displayName,description,visibility" 2>/dev/null || echo 000)
+  "$ENDPOINT?updateMask=displayName,description" 2>/dev/null || echo 000)
 
 echo "NAME_HTTP=$HTTP_CODE"
 head -c 400 "$RESP_FILE" 2>/dev/null || true
@@ -129,12 +134,52 @@ case "$HTTP_CODE" in
       echo "NAME=UNCONFIRMED expected=$NAME got=${AFTER_NAME:-<empty>}"
       exit 2
     fi
-    if [ "$AFTER_VIS" != "$VISIBILITY" ]; then
-      echo "VISIBILITY=UNCONFIRMED expected=$VISIBILITY got=${AFTER_VIS:-<empty>}"
-      exit 2
-    fi
     echo "NAME=SET"
-    echo "VISIBILITY=SET"
+
+    if [ "$AFTER_VIS" = "$VISIBILITY" ]; then
+      echo "VISIBILITY=SET"
+      exit 0
+    fi
+
+    # visibility is read-only on this resource, so it is flipped through the
+    # legacy activate/deactivate pair. Nothing else does it.
+    if [ "$VISIBILITY" = "PUBLIC" ]; then
+      ACTION=activate
+    else
+      ACTION=deactivate
+    fi
+    echo "VISIBILITY_ACTION=$ACTION"
+    echo "VISIBILITY_ACTION_URL=$LEGACY_BASE/$ACTION"
+
+    ACT_HTTP=$(curl -sS -o "$RESP_FILE" -w '%{http_code}' -X POST \
+      -H "x-api-key: $ROBLOX_API_KEY" \
+      "$LEGACY_BASE/$ACTION" 2>/dev/null || echo 000)
+    echo "VISIBILITY_ACTION_HTTP=$ACT_HTTP"
+    head -c 400 "$RESP_FILE" 2>/dev/null || true
+    echo
+
+    case "$ACT_HTTP" in
+      200)
+        READ3=$(curl -sS -o "$READ_FILE" -w '%{http_code}' -m 20 \
+          -H "x-api-key: $ROBLOX_API_KEY" "$ENDPOINT" 2>/dev/null || echo 000)
+        echo "VISIBILITY_READBACK_HTTP=$READ3"
+        AFTER_VIS=$(field_of "$READ_FILE" visibility)
+        echo "VISIBILITY_AFTER_ACTION=${AFTER_VIS:-<empty>}"
+        if [ "$AFTER_VIS" = "$VISIBILITY" ]; then
+          echo "VISIBILITY=SET"
+        else
+          echo "VISIBILITY=UNCONFIRMED expected=$VISIBILITY got=${AFTER_VIS:-<empty>}"
+          exit 2
+        fi
+        ;;
+      401|403)
+        echo "VISIBILITY=SKIPPED reason=key_lacks_legacy-universe:manage_scope"
+        echo "VISIBILITY_FIX=Creator Dashboard > Open Cloud > API Keys > this key"
+        echo "VISIBILITY_FIX_ADD_API_SYSTEM=universes (add the manage operation)"
+        ;;
+      000) echo "VISIBILITY=SKIPPED reason=network_error" ;;
+      *) echo "VISIBILITY=SKIPPED reason=http_$ACT_HTTP" ;;
+    esac
     ;;
   401|403) echo "NAME=SKIPPED reason=key_lacks_universe:write_scope" ;;
   404) echo "NAME=SKIPPED reason=endpoint_or_key_not_accepted" ;;
