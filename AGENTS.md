@@ -500,3 +500,41 @@ There is a second bootstrap problem here too: the MCP server needs Python and a
 hand install on PC1, and it cannot be driven until it is running. Installing it
 through the Actions runner is possible once the runner is up, which is why the
 keepalive comes first.
+
+## Publishing the place needs no PC1, and the version number is the proof
+
+The place is built and published entirely from a GitHub-hosted runner. Rojo
+7.7.1 ships a Linux binary, so `scripts/build-place-linux.sh` produces the place
+without Studio, and `scripts/publish-place-linux.sh` sends it to the Open Cloud
+place-publishing endpoint as one HTTPS POST. Neither step needs PC1, the
+Tailnet, or any self-hosted runner.
+
+`versionNumber` in the POST response is the only reliable confirmation that a
+publish landed, and it has a trap. Roblox deduplicates identical bytes: publish
+the same binary twice and the second call returns the *previous* version number
+with HTTP 200. That is documented behaviour, not an error (see the devforum bug
+report `/t/open-cloud-publishing-api-no-longer-seems-to-increment-version-number-on-place/3820071`).
+Watching for the number to increment therefore only proves anything when the
+bytes changed. Verified in this repo:
+
+- 514,656 bytes (no HUD change) -> versionNumber 10 on two consecutive runs
+- 515,314 bytes (HUD build stamp added) -> versionNumber 11
+
+The read-back endpoint `GET /universes/v1/{u}/places/{p}/versions` returns 404
+for this key. Listing versions needs a read scope and the key carries only
+write, so an empty or 404 response from that endpoint says nothing about whether
+a publish happened. Do not treat it as a failure.
+
+The HUD shows `Config.Version`, so which build is live can be read off a phone
+without any API call. Bump `Config.Version` in `roblox/src/shared/Config.luau`
+whenever a publish must produce a new version.
+
+### The test gate has to live inside the pipeline on a feature branch
+
+Dispatching a workflow that is not present on the default branch returns 404,
+and `workflow_run` has the same restriction. Both are why a "tests pass, then
+dispatch the publish" gate cannot work from `ax-arena-roblox-game`. The gate
+therefore runs as the first job of `ax-arena-build-publish.yml`, with build and
+publish depending on it. The dispatch left in `ax-arena-tests.yml` still points
+at the PC1-bound workflow on purpose: repointing it would 404 here and turn the
+tests workflow red for reasons unrelated to the tests.
