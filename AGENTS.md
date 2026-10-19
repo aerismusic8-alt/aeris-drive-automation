@@ -2,6 +2,42 @@
 
 Repository-specific notes for agents working in this repo.
 
+## How to work on this repository
+
+Five rules, each one paid for by a mistake made here. They are not style
+preferences; each has a failure behind it.
+
+**1. Measure, do not assume.** Before reporting what a credential, an endpoint or
+a permission can do, ask the live system and report what came back. A key was
+assumed to have `universe:write` for several sessions; the probe showed it never
+had it, and the assumption had been shaping decisions the whole time.
+
+**2. Never report success from a status code alone.** On this API a 200 means the
+request was accepted, not that anything changed. Sending `visibility` on the
+universe PATCH returned 200 and changed nothing, and the pipeline went green
+while the game was unreachable. Read the field back and compare it, or the
+failure hides inside a success.
+
+**3. A wrong path and a missing permission look identical.** Both answer 404 on
+this API. To tell them apart, send a throwaway credential: a wrong path still
+answers 404, a real path answers 401. A 404 that survives a bogus key is a path
+problem. This cost an hour and sent someone to add a scope they may already have
+had.
+
+**4. Prove a check can fail before trusting it.** A check that has only ever
+passed carries no information. Every failure path in `check-live-state-linux.sh`
+was exercised on purpose, and doing that found a real hole: a redirect to
+`/request-error?code=404` was reading as a pass.
+
+**5. Check the thing the player sees.** A green pipeline is not a playable game.
+Publishing a place, naming an experience and making a universe public are three
+separate facts. `scripts/check-live-state-linux.sh` runs last on every publish and
+asks the player's questions from outside, with no credential for the public ones.
+
+The order matters: measure first, then change, then verify from outside, then
+write down what was learned. Everything below is the accumulated result of
+working that way.
+
 ## Layout
 
 | Path | Purpose |

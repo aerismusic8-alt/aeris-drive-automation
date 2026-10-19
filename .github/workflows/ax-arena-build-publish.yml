@@ -33,6 +33,7 @@ on:
       - 'scripts/publish-place-linux.sh'
       - 'scripts/name-experience-linux.sh'
       - 'scripts/probe-scopes-linux.sh'
+      - 'scripts/check-live-state-linux.sh'
       - '.github/workflows/ax-arena-build-publish.yml'
 
 permissions:
@@ -208,3 +209,24 @@ jobs:
           name: pc1-independent-publish-evidence
           path: ${{ runner.temp }}/publish.log
           if-no-files-found: warn
+
+  # A green pipeline proved the wrong thing twice: a place published with no
+  # name, and a private universe. Every job passed while the game page said
+  # Title-Unavailable. Publishing a place and having a game a player can open are
+  # two different facts, and only the second one matters to a player.
+  #
+  # So this runs last and asks the questions a player asks, from outside, using
+  # no credential for the parts that are public. It is the step that would have
+  # caught both of those, and it is here so the next one cannot hide.
+  live-state:
+    needs: [publish, name]
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Check the game the way a player sees it
+        env:
+          ROBLOX_API_KEY: ${{ secrets.ROBLOX_API_KEY }}
+        run: bash scripts/check-live-state-linux.sh
