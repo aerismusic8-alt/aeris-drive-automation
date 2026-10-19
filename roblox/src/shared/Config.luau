@@ -10,6 +10,10 @@ Config.GameName = "AX Arena"
 Config.Tick = {
 	Rate = 30,
 	MaxDeltaTime = 0.25,
+	-- HUD snapshots ride a slower clock than the simulation. A phone cannot
+	-- absorb sixty events a second, and nothing on the screen changes that fast.
+	BroadcastInterval = 1 / 10,
+	FarmBroadcastInterval = 1,
 }
 
 Config.Wave = {
@@ -159,6 +163,58 @@ Config.Rebirth = {
 	ResetCoins = true,
 	ResetUpgrades = false,
 	StartingCoinsAfterRebirth = 250,
+}
+
+--------------------------------------------------------------------------
+-- The world: a safe town hub and five monster fields, the shape a classic
+-- Korean MMO is built on. The town is where you shop, hatch and respawn;
+-- each field is its own map with its own monsters, boss and reward tier.
+--------------------------------------------------------------------------
+
+Config.Town = {
+	-- The town is safe. No enemy spawns there and no field monster reaches it.
+	Safe = true,
+	Radius = 70,
+	-- Where a player lands when they return from a field.
+	ArrivalOffsetZ = 40,
+	GroundColor = { 168, 148, 116 },
+}
+
+Config.Fields = {
+	-- Fields sit on a ring around the town, so the world reads as a place you
+	-- travel across rather than a list you click. Distance is in studs.
+	RingRadius = 520,
+	ArenaRadius = 110,
+	-- Monsters spawn inside this radius of the field centre and never on the
+	-- arrival point, so walking in is not immediately a fight.
+	SpawnRadius = 85,
+	PortalRadius = 12,
+	-- Protection after entering a field. Without it, arriving at a high level
+	-- field is a death sentence before the map has finished drawing.
+	ArrivalGraceSeconds = 4,
+}
+
+Config.Enemies = {
+	-- Archetypes multiply the wave base. A boss is one big spawn that closes
+	-- the field out with a reward spike worth staying for.
+	BossHealthMul = 12,
+	BossDamageMul = 1.6,
+	BossRewardMul = 20,
+	BossSizeMul = 2.6,
+	BossXpMul = 8,
+	-- A wave mixes at most this many monster types, so it still reads as a
+	-- wave rather than noise.
+	MaxTypesPerWave = 2,
+	-- Every fifth wave in a field is a boss wave.
+	BossEveryWaves = 5,
+}
+
+-- Kill streak: rewards not stopping. A player who keeps killing in
+-- quick succession earns a rising coin bonus that resets when they pause.
+Config.Streak = {
+	WindowSeconds = 8,
+	BonusPerKill = 0.02,
+	MaxBonus = 1.0,
 }
 
 Config.Zones = {

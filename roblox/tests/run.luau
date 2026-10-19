@@ -20,6 +20,8 @@ local Monetization = require("../src/shared/Monetization")
 local DailyRewards = require("../src/shared/DailyRewards")
 local Codes = require("../src/shared/Codes")
 local Farm = require("../src/shared/Farm")
+local Enemies = require("../src/shared/Enemies")
+local Fields = require("../src/shared/Fields")
 local Axe = require("../src/shared/Axe")
 
 --------------------------------------------------------------------------
@@ -1815,6 +1817,276 @@ t.test("swing damage grows with charges", function()
 	local five = Axe.swingDamage(5, 10)
 	t.assertGreater(five, one)
 	t.assertEqual(Axe.swingDamage(0, 10), 0)
+end)
+
+--------------------------------------------------------------------------
+t.suite("Broadcast cadence")
+
+-- The HUD snapshots used to be sent from the top level of the Heartbeat
+-- connection, which meant once per frame. On a phone that is a flood of events
+-- for a bar that moves a few times a second. The source-level guard lives in
+-- scripts/check-hud-wiring.py; the cadence itself belongs here.
+
+t.test("the HUD cadence is slower than the frame rate", function()
+        t.assertTrue(Config.Tick.BroadcastInterval > 0)
+        t.assertTrue(Config.Tick.BroadcastInterval >= 1 / 30)
+        t.assertTrue(Config.Tick.BroadcastInterval <= 1 / 4)
+        t.assertTrue(Config.Tick.BroadcastInterval > 1 / Config.Tick.Rate)
+end)
+
+t.test("the farm broadcast is no faster than the HUD", function()
+        t.assertTrue(Config.Tick.FarmBroadcastInterval >= Config.Tick.BroadcastInterval)
+end)
+
+t.suite("Fields")
+--------------------------------------------------------------------------
+
+t.test("there are five fields, matching the five zones", function()
+	t.assertEqual(#Fields.list(), 5)
+	t.assertEqual(#Fields.list(), #Zones.list())
+end)
+
+t.test("every field lines up with a zone of the same id", function()
+	for _, field in ipairs(Fields.list()) do
+		local zone = Zones.getDef(field.id)
+		t.assertNotNil(zone, field.id)
+		t.assertEqual(field.name, zone.name)
+		t.assertEqual(field.levelRequirement, zone.levelRequirement)
+		t.assertEqual(field.coinMultiplier, zone.coinMultiplier)
+	end
+end)
+
+t.test("fields are ordered by requirement and pay more as they go", function()
+	local previousRequirement = 0
+	local previousCoins = 0
+	for _, field in ipairs(Fields.list()) do
+		t.assertGreater(field.levelRequirement, previousRequirement - 1, field.id)
+		t.assertGreater(field.coinMultiplier, previousCoins - 1, field.id)
+		previousRequirement = field.levelRequirement
+		previousCoins = field.coinMultiplier
+	end
+end)
+
+t.test("the town is safe and sits at the origin", function()
+	local town = Fields.town()
+	t.assertTrue(town.safe)
+	t.assertEqual(town.position.x, 0)
+	t.assertEqual(town.position.z, 0)
+	t.assertTrue(Fields.isTown("Town"))
+	t.assertNil(Fields.getDef("Town"))
+end)
+
+t.test("no field sits on top of the town or another field", function()
+	local seen = {}
+	for _, field in ipairs(Fields.list()) do
+		local key = string.format("%d:%d", field.position.x, field.position.z)
+		t.assertNil(seen[key], "two fields share a position: " .. field.id)
+		seen[key] = field.id
+		-- The ring radius must clear the town radius plus the field arena.
+		local distance = math.sqrt(field.position.x ^ 2 + field.position.z ^ 2)
+		t.assertGreater(distance, Config.Town.Radius + Config.Fields.ArenaRadius)
+	end
+end)
+
+t.test("entering the town is always allowed", function()
+	local ok = Fields.canEnter("Town", 1)
+	t.assertTrue(ok)
+end)
+
+t.test("a locked field is refused and names the reason", function()
+	local ok, reason = Fields.canEnter("Void", 1)
+	t.assertFalse(ok)
+	t.assertEqual(reason, "FIELD_LOCKED")
+end)
+
+t.test("an unknown field is refused", function()
+	local ok, reason = Fields.canEnter("Atlantis", 99)
+	t.assertFalse(ok)
+	t.assertEqual(reason, "UNKNOWN_FIELD")
+end)
+
+t.test("a zone pass opens every field", function()
+	for _, field in ipairs(Fields.list()) do
+		local ok = Fields.canEnter(field.id, 1, true)
+		t.assertTrue(ok, field.id)
+	end
+end)
+
+t.test("the next locked field is the first one out of reach", function()
+	local next = Fields.nextLocked(1)
+	t.assertNotNil(next)
+	t.assertEqual(next.id, "Cavern")
+	t.assertNil(Fields.nextLocked(999, true))
+end)
+
+t.test("monsters spawn inside the field and never on the arrival point", function()
+	local arrival = Fields.arrivalOf("Meadow")
+	for index = 1, 10 do
+		local point = Fields.spawnPoint("Meadow", index, 10)
+		local centre = Fields.positionOf("Meadow")
+		local dx = point.x - centre.x
+		local dz = point.z - centre.z
+		local radius = math.sqrt(dx * dx + dz * dz)
+		t.assertLess(radius, Config.Fields.SpawnRadius + 1, "spawn outside the field")
+		local ax = point.x - arrival.x
+		local az = point.z - arrival.z
+		t.assertGreater(math.sqrt(ax * ax + az * az), 10, "spawn on the arrival point")
+	end
+end)
+
+t.test("the field snapshot reports locks against the level", function()
+	local snap = Fields.snapshot(1)
+	t.assertEqual(#snap, 5)
+	t.assertTrue(snap[1].unlocked)
+	t.assertFalse(snap[5].unlocked)
+end)
+
+--------------------------------------------------------------------------
+t.suite("Enemies")
+--------------------------------------------------------------------------
+
+t.test("every field has a roster and a boss", function()
+	for _, field in ipairs(Fields.list()) do
+		t.assertGreater(#Enemies.roster(field.id), 0, field.id)
+		t.assertTrue(Enemies.boss(field.id).boss, field.id)
+	end
+end)
+
+t.test("rosters are distinct between fields", function()
+	local meadow = Enemies.roster("Meadow")
+	local cavern = Enemies.roster("Cavern")
+	t.assertNotEqual(meadow[1].id, cavern[1].id)
+end)
+
+t.test("a boss wave is every fifth wave", function()
+	t.assertFalse(Enemies.isBossWave(1))
+	t.assertFalse(Enemies.isBossWave(4))
+	t.assertTrue(Enemies.isBossWave(5))
+	t.assertTrue(Enemies.isBossWave(10))
+end)
+
+t.test("a boss wave opens with the field boss", function()
+	local rng = Random.new(11)
+	local picked = Enemies.pick("Cavern", 5, rng, true)
+	t.assertTrue(picked.boss)
+	t.assertEqual(picked.id, Enemies.boss("Cavern").id)
+end)
+
+t.test("a normal wave never opens with a boss", function()
+	local rng = Random.new(3)
+	for _ = 1, 20 do
+		local picked = Enemies.pick("Meadow", 3, rng, true)
+		t.assertFalse(picked.boss)
+	end
+end)
+
+t.test("picked monsters always come from the field roster", function()
+	local rng = Random.new(5)
+	local ids = {}
+	for _, archetype in ipairs(Enemies.roster("Volcano")) do
+		ids[archetype.id] = true
+	end
+	for _ = 1, 30 do
+		local picked = Enemies.pick("Volcano", 2, rng, false)
+		t.assertTrue(ids[picked.id], picked.id)
+	end
+end)
+
+t.test("scaling applies the archetype and the field difficulty", function()
+	local plan = { enemyHealth = 100, enemyDamage = 10, rewardPerKill = 20 }
+	local slime = Enemies.getDef("Slime")
+	local scaled = Enemies.scale(slime, plan, 2)
+	t.assertEqual(scaled.health, math.floor(100 * slime.healthMul * 2 + 0.5))
+	t.assertEqual(scaled.damage, math.floor(10 * slime.damageMul * 2 + 0.5))
+	t.assertEqual(scaled.name, "Slime")
+	t.assertFalse(scaled.boss)
+end)
+
+t.test("a boss is worth far more than a normal monster", function()
+	local plan = { enemyHealth = 100, enemyDamage = 10, rewardPerKill = 20 }
+	local normal = Enemies.scale(Enemies.getDef("Slime"), plan, 1)
+	local boss = Enemies.scale(Enemies.boss("Meadow"), plan, 1)
+	t.assertGreater(boss.health, normal.health)
+	t.assertGreater(boss.reward, normal.reward)
+	t.assertGreater(boss.sizeMul, normal.sizeMul)
+	t.assertTrue(boss.boss)
+end)
+
+t.test("scaled stats never round down to zero", function()
+	local plan = { enemyHealth = 1, enemyDamage = 1, rewardPerKill = 1 }
+	local scaled = Enemies.scale(Enemies.getDef("Hornet"), plan, 1)
+	t.assertGreater(scaled.health, 0)
+	t.assertGreater(scaled.damage, 0)
+	t.assertGreater(scaled.reward, 0)
+end)
+
+--------------------------------------------------------------------------
+t.suite("Streak")
+--------------------------------------------------------------------------
+
+t.test("the streak bonus is capped", function()
+	t.assertGreater(Config.Streak.MaxBonus, 0)
+	local capped = math.min(Config.Streak.MaxBonus, 1000 * Config.Streak.BonusPerKill)
+	t.assertEqual(capped, Config.Streak.MaxBonus)
+end)
+
+t.test("a kill inside the window extends the streak", function()
+	-- Mirrors the server rule in rewardKill: a kill inside the window extends
+	-- the streak, a kill after a pause restarts it at one.
+	local function nextStreak(current, secondsSinceLast)
+		if secondsSinceLast <= Config.Streak.WindowSeconds then
+			return current + 1
+		end
+		return 1
+	end
+	t.assertEqual(nextStreak(7, 1), 8)
+	t.assertEqual(nextStreak(7, Config.Streak.WindowSeconds + 1), 1)
+end)
+
+--------------------------------------------------------------------------
+t.suite("WaveDirector travel")
+--------------------------------------------------------------------------
+
+t.test("skipIntermission starts the wave immediately", function()
+	local director = WaveDirector.new(Random.new(11))
+	t.assertEqual(director:snapshot().phase, "INTERMISSION")
+	local plan = director:skipIntermission()
+	t.assertNotNil(plan)
+	t.assertEqual(director:snapshot().wave, 1)
+	t.assertEqual(director:snapshot().phase, "ACTIVE")
+end)
+
+t.test("skipIntermission does nothing during a fight", function()
+	local director = WaveDirector.new(Random.new(12))
+	director:skipIntermission()
+	t.assertNil(director:skipIntermission())
+	t.assertEqual(director:snapshot().wave, 1)
+end)
+
+t.test("two directors keep independent waves", function()
+	-- One director per field is the whole point: the Volcano must not be
+	-- dragged to the Meadow wave just because both are running.
+	local meadow = WaveDirector.new(Random.new(21))
+	local volcano = WaveDirector.new(Random.new(22))
+	meadow:skipIntermission()
+	volcano:skipIntermission()
+	t.assertEqual(meadow:snapshot().wave, 1)
+	t.assertEqual(volcano:snapshot().wave, 1)
+end)
+
+t.test("ticking one field never advances another", function()
+	-- This is what a single shared director could never do. Ticking the
+	-- Meadow hard must leave the Volcano exactly where it was.
+	local meadow = WaveDirector.new(Random.new(31))
+	local volcano = WaveDirector.new(Random.new(32))
+	meadow:skipIntermission()
+	for _ = 1, 20 do
+		meadow:update(0.1)
+	end
+	t.assertEqual(meadow:snapshot().wave, 1)
+	t.assertEqual(volcano:snapshot().wave, 0)
+	t.assertEqual(volcano:snapshot().phase, "INTERMISSION")
+	t.assertEqual(volcano:snapshot().elapsed, 0)
 end)
 
 return t.finish()

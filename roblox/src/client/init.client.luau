@@ -29,6 +29,7 @@ local FarmState = Remotes:WaitForChild("FarmState") :: RemoteEvent
 local WaveState = Remotes:WaitForChild("WaveState") :: RemoteEvent
 local PlayerState = Remotes:WaitForChild("PlayerState") :: RemoteEvent
 local Notify = Remotes:WaitForChild("Notify") :: RemoteEvent
+local CombatFx = Remotes:WaitForChild("CombatFx") :: RemoteEvent
 
 local Hud = require(script.Hud)
 
@@ -47,6 +48,9 @@ local state = {
 	rebirths = 0,
 	rebirthRequirement = 0,
 	zone = Config.Zones.Default,
+	field = nil,
+	fields = {},
+	killStreak = 0,
 	pets = { pets = {}, equipped = {} },
 	maxEquipped = Config.Pets.MaxEquipped,
 	coinMultiplier = 1,
@@ -57,7 +61,11 @@ local state = {
 	axe = { charges = 0, maxCharges = 5 },
 	crops = {},
 	cropIndex = 1,
-	wave = { phase = "INTERMISSION", wave = 0, timeRemaining = 0, aliveEnemies = 0 },
+	wave = { phase = "TOWN", wave = 0, timeRemaining = 0, aliveEnemies = 0 },
+	-- The most recent kill, shown for a moment so a boss kill reads as a
+	-- moment rather than a number change.
+	lastKill = nil,
+	lastKillAt = 0,
 }
 
 local function formatCoins(value: number): string
@@ -90,8 +98,9 @@ local function render()
 	setLabel(gui, "Level", string.format("Lv %d  (%d/%s XP)", state.level, math.floor(state.xp),
 		state.xpForNext == math.huge and "MAX" or tostring(math.floor(state.xpForNext))))
 	setLabel(gui, "Health", string.format("HP %d/%d", math.floor(state.health), math.floor(state.maxHealth)))
-	setLabel(gui, "Zone", "Zone: " .. state.zone)
-	setLabel(gui, "Rebirth", string.format("Rebirth %d (x%.2f)", state.rebirths, state.coinMultiplier))
+	setLabel(gui, "Field", "Field: " .. (state.field or "Town"))
+	setLabel(gui, "Zone", string.format("Zone: %s  (x%.1f)", state.zone, state.coinMultiplier))
+	setLabel(gui, "Rebirth", string.format("Rebirth %d  Combo x%d", state.rebirths, state.killStreak))
 
 	-- The daily button says what will happen before the tap, so a tap is
 	-- never a surprise and a disabled button is obviously disabled.
@@ -144,10 +153,47 @@ local function render()
 	end
 
 	local w = state.wave
-	if w.phase == "INTERMISSION" then
-		setLabel(gui, "Wave", string.format("Wave %d starts in %ds", w.wave + 1, math.ceil(w.timeRemaining)))
+	if w.phase == "TOWN" then
+		setLabel(gui, "Wave", "Town - pick a field with MAP")
+	elseif w.phase == "INTERMISSION" then
+		setLabel(gui, "Wave", string.format("%s: wave %d in %ds", w.field or "Field", w.wave + 1, math.ceil(w.timeRemaining)))
 	else
-		setLabel(gui, "Wave", string.format("Wave %d - %d enemies", w.wave, w.aliveEnemies))
+		setLabel(gui, "Wave", string.format("%s: wave %d - %d enemies", w.field or "Field", w.wave, w.aliveEnemies))
+	end
+
+	-- The boss bar is the only element that appears and disappears on its own.
+	local bossPanel = gui:FindFirstChild("BossPanel")
+	if bossPanel and bossPanel:IsA("Frame") then
+		local boss = w.boss
+		if boss then
+			bossPanel.Visible = true
+			setLabel(gui, "BossName", string.format("%s  %d/%d", boss.name, math.floor(boss.health), boss.maxHealth))
+			local track = bossPanel:FindFirstChild("BossTrack")
+			local fill = track and track:FindFirstChild("BossFill")
+			if fill and fill:IsA("Frame") then
+				fill.Size = UDim2.new(math.clamp(boss.fraction, 0, 1), 0, 1, 0)
+			end
+		else
+			bossPanel.Visible = false
+		end
+	end
+
+	-- Kill flash: brief, centred under the boss bar, gone on its own.
+	local killLabel = gui:FindFirstChild("KillFlash")
+	if killLabel and killLabel:IsA("TextLabel") then
+		if state.lastKill and os.clock() - state.lastKillAt < 1.2 then
+			killLabel.Visible = true
+			local text = string.format("+%d  %s", state.lastKill.coins, state.lastKill.name)
+			if state.lastKill.boss then
+				text = "BOSS DOWN  " .. text
+			end
+			if state.killStreak > 1 then
+				text = text .. string.format("   combo x%d", state.killStreak)
+			end
+			killLabel.Text = text
+		else
+			killLabel.Visible = false
+		end
 	end
 end
 
@@ -164,6 +210,9 @@ PlayerState.OnClientEvent:Connect(function(payload)
 	state.rebirths = payload.rebirths
 	state.rebirthRequirement = payload.rebirthRequirement
 	state.zone = payload.zone
+	state.field = payload.field
+	state.fields = payload.fields or {}
+	state.killStreak = payload.killStreak or 0
 	state.pets = payload.pets
 	state.maxEquipped = payload.maxEquipped
 	state.coinMultiplier = payload.coinMultiplier
@@ -189,6 +238,17 @@ end)
 
 Notify.OnClientEvent:Connect(function(message)
 	print("[AX Arena] " .. tostring(message))
+end)
+
+-- Kills arrive on their own channel: they are per-player and far too
+-- frequent to ride along with the whole player state.
+CombatFx.OnClientEvent:Connect(function(payload)
+	if type(payload) ~= "table" then
+		return
+	end
+	state.lastKill = payload
+	state.lastKillAt = os.clock()
+	render()
 end)
 
 -- Every call is wrapped so a server-side rejection surfaces as a reason
@@ -231,8 +291,14 @@ function Intent.rebirth(): (boolean, string?)
 	return invoke(DoRebirth)
 end
 
-function Intent.travelZone(zoneId: string): (boolean, string?)
-	return invoke(TravelZone, zoneId)
+function Intent.travelZone(placeId: string): (boolean, string?)
+	return invoke(TravelZone, placeId)
+end
+
+-- Travel to town or a field. The server validates the level lock and moves
+-- the character; the client only asks.
+function Intent.travelTo(placeId: string): (boolean, string?)
+	return invoke(TravelZone, placeId)
 end
 
 function Intent.claimDaily(): (boolean, any, string?)
@@ -390,6 +456,49 @@ local function onFarmTap()
 	end
 end
 
+-- One button per place: town plus every field the player can see. The lock
+-- state comes from the server snapshot, so the button never promises a trip
+-- the server will refuse.
+local function buildTravelList(travel: Frame)
+	local list = travel:FindFirstChild("FieldList")
+	if not list then
+		return
+	end
+	list:ClearAllChildren()
+
+	local places = { { id = "Town", name = "Town", unlocked = true, levelRequirement = 0 } }
+	for _, field in ipairs(state.fields) do
+		table.insert(places, field)
+	end
+
+	for index, place in ipairs(places) do
+		local current = (state.field == place.id) or (not state.field and place.id == "Town")
+		local label = place.name
+		if not place.unlocked then
+			label = string.format("%s (Lv %d)", place.name, place.levelRequirement or 1)
+		end
+		if current then
+			label = label .. "  <- here"
+		end
+		local color = place.unlocked and (current and Hud.COLORS.disabled or Hud.COLORS.blue) or Hud.COLORS.disabled
+		local row = Hud.button(list, "Place_" .. place.id, label, UDim2.new(1, 0, 0, 46), UDim2.new(0, 0, 0, (index - 1) * 52), color)
+		row.ZIndex = 12
+		row.TextSize = 18
+		row.Active = place.unlocked and not current
+		if row.Active then
+			row.Activated:Connect(function()
+				local ok, reason = Intent.travelTo(place.id)
+				if ok then
+					travel.Visible = false
+				elseif reason then
+					warn("[AX Arena] travel rejected: " .. tostring(reason))
+				end
+			end)
+		end
+	end
+	list.CanvasSize = UDim2.new(0, 0, 0, #places * 52)
+end
+
 local function wireButtons()
 	local gui = Hud.build()
 
@@ -401,6 +510,19 @@ local function wireButtons()
 	local axeButton = actions:WaitForChild("Axe") :: TextButton
 	local farmButton = actions:WaitForChild("Farm") :: TextButton
 	local cropButton = actions:WaitForChild("Crop") :: TextButton
+	local mapButton = actions:WaitForChild("Map") :: TextButton
+
+	local travel = gui:WaitForChild("TravelPanel") :: Frame
+	local closeTravel = travel:WaitForChild("CloseTravel") :: TextButton
+
+	mapButton.Activated:Connect(function()
+		buildTravelList(travel)
+		travel.Visible = not travel.Visible
+	end)
+
+	closeTravel.Activated:Connect(function()
+		travel.Visible = false
+	end)
 
 	axeButton.Activated:Connect(function()
 		Intent.useAxe()

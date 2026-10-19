@@ -29,6 +29,8 @@ local World = require(script.World)
 local Codes = require(Shared.Codes)
 local Farm = require(Shared.Farm)
 local Axe = require(Shared.Axe)
+local Fields = require(Shared.Fields)
+local Enemies = require(Shared.Enemies)
 
 -- Remotes are created here so the client can rely on WaitForChild alone.
 local function ensureRemote(container: Instance, className: "RemoteEvent" | "RemoteFunction", name: string): Instance
@@ -65,6 +67,7 @@ local FarmState = ensureRemote(Remotes, "RemoteEvent", "FarmState") :: RemoteEve
 local WaveState = ensureRemote(Remotes, "RemoteEvent", "WaveState") :: RemoteEvent
 local PlayerState = ensureRemote(Remotes, "RemoteEvent", "PlayerState") :: RemoteEvent
 local Notify = ensureRemote(Remotes, "RemoteEvent", "Notify") :: RemoteEvent
+local CombatFx = ensureRemote(Remotes, "RemoteEvent", "CombatFx") :: RemoteEvent
 
 local store = DataStoreService:GetDataStore("AXArena_v3")
 local rateLimiter = RateLimiter.new()
@@ -85,15 +88,39 @@ type PlayerRecord = {
 	redeemed: any,
 	combatant: any,
 	lastAttackAt: number,
-	waveAtKill: number,
 	lastZoneChange: number,
+	-- The field the player is standing in, or nil in town. Monsters belong to a
+	-- field, so this is what decides who can hit whom.
+	field: string?,
+	killStreak: number,
+	lastKillAt: number,
 	farm: any,
 	axe: any,
 	dirty: boolean,
 }
 
 local records: { [number]: PlayerRecord } = {}
-local director = WaveDirector.new(rng)
+
+-- One wave director per field. A single shared director would put the
+-- Volcano and the Meadow on the same wave forever, which is the sameness
+-- this world was rebuilt to remove. A field nobody is standing in is never
+-- ticked, so five maps cost almost nothing while empty.
+local directors: { [string]: any } = {}
+
+local function directorFor(fieldId: string)
+	local existing = directors[fieldId]
+	if existing then
+		return existing
+	end
+	local created = WaveDirector.new(rng)
+	directors[fieldId] = created
+	return created
+end
+
+local function fieldOfPlayer(player: Player): string?
+	local record = records[player.UserId]
+	return record and record.field or nil
+end
 
 local function notify(player: Player, message: string)
 	Notify:FireClient(player, message)
@@ -130,6 +157,9 @@ local function pushPlayerState(player: Player, record: PlayerRecord)
 		rebirths = record.rebirth.count,
 		rebirthRequirement = Rebirth.levelRequirement(record.rebirth.count),
 		zone = record.zone,
+		field = record.field,
+		fields = Fields.snapshot(record.level, Monetization.hasZonePass(record.entitlements)),
+		killStreak = record.killStreak,
 
 		pets = Pets.snapshot(record.pets),
 		petCoin = petCoin,
@@ -145,7 +175,7 @@ local function pushPlayerState(player: Player, record: PlayerRecord)
 		coinMultiplier = coinMultiplier(record, now),
 		rebirthCoin = rebirthCoin,
 		rebirthDamage = rebirthDamage,
-		farm = Farm.snapshot(record.farm, now),
+		farm = Farm.snapshot(record.farm, broadcastNow),
 		axe = Axe.snapshot(record.axe),
 		crops = Farm.list(),
 	})
@@ -178,7 +208,9 @@ local function buildRecord(userId: number, saved: any): PlayerRecord
 		axe = Axe.new(),
 		lastZoneChange = 0,
 		lastAttackAt = 0,
-		waveAtKill = 1,
+		field = nil,
+		killStreak = 0,
+		lastKillAt = 0,
 		dirty = false,
 	}
 	return record
@@ -223,19 +255,9 @@ local function saveRecord(record: PlayerRecord): boolean
 	return true
 end
 
--- One place for "an enemy died": the kill credit goes to the player who
--- landed the last hit, and every reward scales with their multipliers.
-local function rewardKill(record: PlayerRecord, wave: number, reward: number)
-	local now = os.time()
-	local scaled = math.floor(reward * coinMultiplier(record, now) + 0.5)
-	record.coins = math.min(Config.Economy.MaxCoins, record.coins + scaled)
-	record.stats.kills += 1
-	local xp = math.floor(Leveling.xpFromKill(wave) * Monetization.xpMultiplier(record.entitlements) + 0.5)
-	awardXp(record, xp)
-	record.dirty = true
-end
-
 -- Award XP and, on level up, tell the player. Returns the levels gained.
+-- Defined before rewardKill: a local function is only visible below its own
+-- line, so calling it from above silently resolved to a nil global.
 local function awardXp(record: PlayerRecord, amount: number): number
 	local progress, gained = Leveling.addXp({ level = record.level, xp = record.xp }, amount)
 	record.level = progress.level
@@ -244,6 +266,39 @@ local function awardXp(record: PlayerRecord, amount: number): number
 		record.dirty = true
 	end
 	return gained
+end
+
+-- One place for "an enemy died": the kill credit goes to the player who
+-- landed the last hit, and every reward scales with their multipliers.
+-- Returns the coin and XP the kill actually paid, so the client can show it.
+local function rewardKill(record: PlayerRecord, wave: number, reward: number, boss: boolean?): (number, number)
+	local now = os.time()
+
+	-- A kill streak pays a rising bonus and resets when the player pauses. This
+	-- is what turns "clear a wave" into "do not break the run".
+	if now - record.lastKillAt <= Config.Streak.WindowSeconds then
+		record.killStreak += 1
+	else
+		record.killStreak = 1
+	end
+	record.lastKillAt = now
+	local streakBonus = 1 + math.min(Config.Streak.MaxBonus, record.killStreak * Config.Streak.BonusPerKill)
+
+	local scaled = math.floor(reward * coinMultiplier(record, now) * streakBonus + 0.5)
+	record.coins = math.min(Config.Economy.MaxCoins, record.coins + scaled)
+	record.stats.kills += 1
+	if boss then
+		record.stats.bossKills = (record.stats.bossKills or 0) + 1
+	end
+
+	local xp = Leveling.xpFromKill(wave) * Monetization.xpMultiplier(record.entitlements)
+	if boss then
+		xp *= Config.Enemies.BossXpMul
+	end
+	local granted = math.floor(xp + 0.5)
+	awardXp(record, granted)
+	record.dirty = true
+	return scaled, granted
 end
 
 local function applySpawnStats(record: PlayerRecord)
@@ -258,6 +313,15 @@ local function applySpawnStats(record: PlayerRecord)
 	return derived, rebirthDamage * petDamage
 end
 
+-- Spawn one monster for a field. The archetype and the field difficulty both
+-- come from pure modules; this only wires them into the world layer.
+local function spawnForField(fieldId: string, plan: any, spawnIndex: number, now: number)
+	local archetype = Enemies.pick(fieldId, plan.wave, rng, spawnIndex == 1)
+	local scaled = Enemies.scale(archetype, plan, Zones.difficultyMultiplier(fieldId))
+	World.spawnEnemy(fieldId, scaled, plan.wave, spawnIndex, plan.enemyCount, now)
+	return scaled
+end
+
 local function onPlayerAdded(player: Player)
 	local record = loadRecord(player.UserId)
 	records[player.UserId] = record
@@ -265,7 +329,9 @@ local function onPlayerAdded(player: Player)
 	player.CharacterAdded:Connect(function(character)
 		-- Place the character on the arena spawn. The part in Workspace is only a
 		-- marker; this call is what actually decides where they stand.
-		World.attachPlayer(player, character)
+		-- A respawn lands where the player belongs: their field if they are
+		-- still in one, otherwise town.
+		World.attachPlayer(player, character, record.field or "Town")
 		local humanoid = character:WaitForChild("Humanoid") :: Humanoid
 		-- Recompute per spawn so purchases and rebirths apply on the next life.
 		local derived = applySpawnStats(record)
@@ -279,6 +345,10 @@ local function onPlayerAdded(player: Player)
 		humanoid.BreakJointsOnDeath = false
 		humanoid.Died:Connect(function()
 			record.stats.deaths += 1
+			-- Dying sends the player home, the way a town-based game should. The
+			-- streak breaks too, so the bonus is genuinely at risk.
+			record.field = nil
+			record.killStreak = 0
 			record.dirty = true
 			-- Death clears the combatant flag and only the spawn path sets it back, so
 			-- revive before respawning or the player can never fight again.
@@ -454,12 +524,14 @@ DoRebirth.OnServerInvoke = function(player: Player): (boolean, string?)
 	return true, nil
 end
 
-TravelZone.OnServerInvoke = function(player: Player, zoneId: any): (boolean, string?)
+-- Travel between town and the five fields. The client asks to go somewhere;
+-- the server decides whether that is allowed and moves the character itself.
+TravelZone.OnServerInvoke = function(player: Player, placeId: any): (boolean, string?)
 	local record, err = guard(player)
 	if not record then
 		return false, err
 	end
-	if type(zoneId) ~= "string" then
+	if type(placeId) ~= "string" then
 		return false, "BAD_REQUEST"
 	end
 
@@ -468,19 +540,29 @@ TravelZone.OnServerInvoke = function(player: Player, zoneId: any): (boolean, str
 		return false, "COOLDOWN"
 	end
 
-	local resolved, reason = Zones.resolveTravel(
-		zoneId,
-		record.level,
-		Monetization.hasZonePass(record.entitlements)
-	)
-	if not resolved then
+	local allowed, reason = Fields.canEnter(placeId, record.level, Monetization.hasZonePass(record.entitlements))
+	if not allowed then
 		return false, reason
 	end
 
-	record.zone = resolved
+	local destination = Fields.isTown(placeId) and "Town" or placeId
+	if Fields.isTown(destination) then
+		record.field = nil
+	else
+		record.field = destination
+		-- Coin rewards follow the field, so a richer map pays better without any
+		-- change to the reward code.
+		record.zone = destination
+		-- A field is a place you fight in, so start the first wave on arrival
+		-- instead of leaving the player standing alone for the intermission.
+		directorFor(destination):skipIntermission()
+	end
 	record.lastZoneChange = now
 	record.dirty = true
+
+	World.placePlayer(player, destination)
 	pushPlayerState(player, record)
+	notify(player, Fields.isTown(destination) and "Returned to town" or ("Entered " .. destination))
 	return true, nil
 end
 
@@ -599,9 +681,11 @@ UseAxe.OnServerInvoke = function(player: Player): (boolean, any, string?)
 	local baseDamage = Stats.derive(record.upgrades).damage
 	local charges, damage = Axe.swing(record.axe, baseDamage)
 	
-	-- Hit every enemy inside the axe radius, not just the nearest one.
+	-- Hit every enemy inside the axe radius, not just the nearest one. Only
+	-- the player's own field is searched, so a swing in town can never reach a
+	-- monster standing in the Volcano.
 	local hits, kills = 0, 0
-	for _, enemy in ipairs(World.snapshot()) do
+	for _, enemy in ipairs(World.snapshot(record.field)) do
 		local model = World.getEnemyModel(enemy.id)
 		local body = model and model:FindFirstChild("Body")
 		if body and body:IsA("BasePart") then
@@ -610,8 +694,15 @@ UseAxe.OnServerInvoke = function(player: Player): (boolean, any, string?)
 				local killed, reward = World.damageEnemy(enemy.id, damage)
 				if killed then
 					kills += 1
-					director:notifyEnemyRemoved()
-					rewardKill(record, record.waveAtKill, reward)
+					directorFor(enemy.fieldId):notifyEnemyRemoved()
+					local coins = rewardKill(record, enemy.wave, reward, enemy.boss)
+					CombatFx:FireClient(player, {
+						kind = "kill",
+						name = enemy.name,
+						boss = enemy.boss,
+						coins = coins,
+						streak = record.killStreak,
+					})
 				end
 			end
 		end
@@ -666,25 +757,48 @@ end
 
 -- Authoritative tick.
 local accumulator = 0
+local lastBroadcastAt = 0
+local lastFarmBroadcastAt = 0
 local TICK_STEP = 1 / Config.Tick.Rate
 
 RunService.Heartbeat:Connect(function(dt)
 	accumulator += dt
 	while accumulator >= TICK_STEP do
 		accumulator -= TICK_STEP
-		local events, completed = director:update(TICK_STEP)
 
-		for _, plan in ipairs(events) do
-			-- Spawn a real, visible enemy. It is damaged by players, not by
-			-- this loop, so a kill always means somebody actually fought.
-			World.spawnEnemy(plan, World.aliveCount() + 1, plan.enemyCount, os.clock())
-			director:notifyEnemySpawned()
+		-- Only fields with somebody standing in them are advanced. An empty map
+		-- therefore costs nothing, which is what makes five maps affordable.
+		local occupied: { [string]: boolean } = {}
+		for _, player in ipairs(Players:GetPlayers()) do
+			local record = records[player.UserId]
+			if record and record.field then
+				occupied[record.field] = true
+			end
 		end
 
-		if completed then
-			for _, record in pairs(records) do
-				record.stats.wavesCleared += 1
-				record.dirty = true
+		for fieldId in pairs(occupied) do
+			local fieldDirector = directorFor(fieldId)
+			local events, completed = fieldDirector:update(TICK_STEP)
+
+			-- The first spawn of a boss wave is the field boss; the rest of the
+			-- wave is drawn from that field's roster.
+			local spawnIndex = 0
+			for _, plan in ipairs(events) do
+				-- Spawn a real, visible enemy. It is damaged by players, not by
+				-- this loop, so a kill always means somebody actually fought.
+				spawnIndex += 1
+				spawnForField(fieldId, plan, spawnIndex, os.clock())
+				fieldDirector:notifyEnemySpawned()
+			end
+
+			if completed then
+				for _, player in ipairs(Players:GetPlayers()) do
+					local record = records[player.UserId]
+					if record and record.field == fieldId then
+						record.stats.wavesCleared += 1
+						record.dirty = true
+					end
+				end
 			end
 		end
 	end
@@ -695,27 +809,36 @@ RunService.Heartbeat:Connect(function(dt)
 		local record = records[player.UserId]
 		local character = player.Character
 		local root = character and character:FindFirstChild("HumanoidRootPart")
-		if record and root and root:IsA("BasePart") and record.combatant.alive then
+		-- Auto attack only works inside a field. In town there is nothing to
+		-- fight, and that safety is the point of a town.
+		if record and root and root:IsA("BasePart") and record.combatant.alive and record.field then
 			local now = os.clock()
 			if now - record.lastAttackAt >= Config.Combat.AttackInterval then
-				local targetId, targetDistance = nil, math.huge
-				for _, enemy in ipairs(World.snapshot()) do
+				local target, targetDistance = nil, math.huge
+				for _, enemy in ipairs(World.snapshot(record.field)) do
 					local model = World.getEnemyModel(enemy.id)
 					local body = model and model:FindFirstChild("Body")
 					if body and body:IsA("BasePart") then
 						local distance = (body.Position - root.Position).Magnitude
 						if distance <= Config.Combat.AttackRange and distance < targetDistance then
-							targetId, targetDistance = enemy.id, distance
+							target, targetDistance = enemy, distance
 						end
 					end
 				end
-				if targetId then
+				if target then
 					record.lastAttackAt = now
 					local damage = Stats.rollDamage(Stats.derive(record.upgrades), rng)
-					local killed, reward = World.damageEnemy(targetId, damage)
+					local killed, reward = World.damageEnemy(target.id, damage)
 					if killed then
-						director:notifyEnemyRemoved()
-						rewardKill(record, record.waveAtKill, reward)
+						directorFor(target.fieldId):notifyEnemyRemoved()
+						local coins = rewardKill(record, target.wave, reward, target.boss)
+						CombatFx:FireClient(player, {
+							kind = "kill",
+							name = target.name,
+							boss = target.boss,
+							coins = coins,
+							streak = record.killStreak,
+						})
 					end
 				end
 			end
@@ -724,7 +847,7 @@ RunService.Heartbeat:Connect(function(dt)
 
 	-- Enemies chase and hit players. Keeping the damage and reward rules
 	-- here keeps all combat maths in one place.
-	World.updateEnemies(TICK_STEP, os.clock(), function(target, damage)
+	World.updateEnemies(TICK_STEP, os.clock(), fieldOfPlayer, function(target, damage)
 		local record = records[target.UserId]
 		if not record then
 			return
@@ -741,39 +864,66 @@ RunService.Heartbeat:Connect(function(dt)
 		end
 	end)
 
-	local snapshot = director:snapshot()
-	snapshot.aliveEnemies = World.aliveCount()
-	for _, record in pairs(records) do
-		record.waveAtKill = math.max(1, snapshot.wave)
-	end
-	for _, player in ipairs(Players:GetPlayers()) do
-		WaveState:FireClient(player, snapshot)
-	end
+	-- These snapshots feed the HUD, not the simulation. They used to be sent
+	-- once per frame, which is a flood of events for a phone and for bars that
+	-- only move a few times a second. Both now ride a slower clock.
+	local broadcastNow = os.clock()
+	if broadcastNow - lastBroadcastAt >= Config.Tick.BroadcastInterval then
+		lastBroadcastAt = broadcastNow
 
-	-- Draw the plots each tick. The beds are shared world parts, so they are
-	-- drawn once from the first player's farm rather than once per player.
-	local farmNow = os.clock()
-	for _, player in ipairs(Players:GetPlayers()) do
-		local record = records[player.UserId]
-		if record then
-			for _, plot in ipairs(Farm.snapshot(record.farm, farmNow)) do
-				World.updatePlot(plot.index, plot.cropId, plot.ready, plot.secondsLeft)
+		-- Each player sees the wave of the field they are standing in. In town
+		-- there is no wave at all, so the banner reads as a rest rather than a
+		-- blank or, worse, somebody else's fight.
+		local waveSnapshots: { [string]: any } = {}
+		for _, player in ipairs(Players:GetPlayers()) do
+			local record = records[player.UserId]
+			if record then
+				local fieldId = record.field
+				local snapshot
+				if fieldId then
+					snapshot = waveSnapshots[fieldId]
+					if not snapshot then
+						snapshot = directorFor(fieldId):snapshot()
+						snapshot.aliveEnemies = World.aliveCount(fieldId)
+						snapshot.field = fieldId
+						snapshot.boss = World.bossInfo(fieldId)
+						waveSnapshots[fieldId] = snapshot
+					end
+				else
+					snapshot = { phase = "TOWN", wave = 0, timeRemaining = 0, aliveEnemies = 0, field = nil }
+				end
+				WaveState:FireClient(player, snapshot)
 			end
 		end
-		break
 	end
 
-	for _, player in ipairs(Players:GetPlayers()) do
-		local record = records[player.UserId]
-		if record then
-			local plots = Farm.snapshot(record.farm, farmNow)
-			FarmState:FireClient(player, { plots = plots, axe = Axe.snapshot(record.axe) })
+	-- Crops ripen over minutes, so the farm rows do not need the HUD cadence.
+	if broadcastNow - lastFarmBroadcastAt >= Config.Tick.FarmBroadcastInterval then
+		lastFarmBroadcastAt = broadcastNow
+
+		-- Draw the plots from the first player's farm: the beds are shared world
+		-- parts, so drawing them once per tick is enough for everybody.
+		for _, player in ipairs(Players:GetPlayers()) do
+			local record = records[player.UserId]
+			if record then
+				for _, plot in ipairs(Farm.snapshot(record.farm, broadcastNow)) do
+					World.updatePlot(plot.index, plot.cropId, plot.ready, plot.secondsLeft)
+				end
+			end
+			break
+		end
+
+		for _, player in ipairs(Players:GetPlayers()) do
+			local record = records[player.UserId]
+			if record then
+				FarmState:FireClient(player, { plots = Farm.snapshot(record.farm, broadcastNow), axe = Axe.snapshot(record.axe) })
+			end
 		end
 	end
 end)
 
 -- Build the playable world before anyone can join.
-World.buildArena()
+World.buildWorld()
 
 -- Periodic persistence.
 task.spawn(function()

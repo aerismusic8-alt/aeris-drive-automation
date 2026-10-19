@@ -109,13 +109,70 @@ for field in ("dailyReady", "dailyStreak", "dailySecondsLeft"):
 
 print("\nWIRING 7: the world is placed and the player spawns on it")
 
-check("the server builds the arena", "World.buildArena()" in server, "never built")
+check("the server builds the world", "World.buildWorld()" in server, "never built")
 check("the server spawns enemies", "World.spawnEnemy" in server, "never spawns")
 check("the server ticks enemies", "World.updateEnemies" in server, "never ticks")
-check("the character is moved onto the arena spawn", "World.attachPlayer" in server, "never called")
-check("the arena creates a baseplate", '"Baseplate"' in world, "no Baseplate part")
-check("the arena creates a spawn", '"ArenaSpawn"' in world or 'Instance.new("SpawnLocation")' in world, "no spawn")
+check("the character is moved onto the spawn", "World.attachPlayer" in server, "never called")
+check("the world creates the town", '"Town"' in world, "no town")
+check("the world creates a ground slab", '"WorldGround"' in world, "no ground")
+check("the world creates a spawn", '"TownSpawn"' in world or 'Instance.new("SpawnLocation")' in world, "no spawn")
+check("the world creates one model per field", '"Field_" .. field.id' in world, "no field models")
+check("the world creates a portal back to town", "Return to Town" in world, "no portal home")
 check("the server owns enemy damage", "World.damageEnemy" in server, "no server-side damage")
+
+print("\nWIRING 7b: one director per field, and travel between them")
+
+check("the server keeps a director per field", "directorFor" in server, "no directorFor")
+check("a director starts the wave on arrival", "skipIntermission" in server, "no skipIntermission")
+check("the travel remote exists", "TravelZone.OnServerInvoke" in server, "no TravelZone handler")
+check("travel checks the field lock", "Fields.canEnter" in server, "no lock check")
+check("travel moves the player", "World.placePlayer" in server, "player never moved")
+check("the client can ask to travel", "Intent.travelTo" in client, "no travelTo intent")
+check("the client shows a MAP button", "mapButton.Activated" in client, "MAP not wired")
+check("the client builds the travel rows", "buildTravelList" in client, "no travel list")
+check("the HUD has a MAP button", re.search(r'button\([\w]+, "Map"', hud) is not None, "missing")
+check("the HUD has a travel panel", '"TravelPanel"' in hud, "missing")
+check("the HUD has a close button for travel", '"CloseTravel"' in hud, "missing")
+check("the server sends the field list", "Fields.snapshot" in server, "no field snapshot")
+check("the client keeps the field list", "state.fields" in client, "client ignores fields")
+check("the client shows the current field", 'setLabel(gui, "Field"' in client, "no field label")
+check("the HUD declares the Field label", re.search(r'label\([\w]+, "Field"', hud) is not None, "missing")
+
+print("\nWIRING 7c: a boss is visible and a kill is celebrated")
+
+check("the world can describe the boss", "World.bossInfo" in server, "no bossInfo")
+check("the server sends the boss with the wave", "snapshot.boss" in server, "no boss in wave state")
+check("the client reads the boss", "w.boss" in client, "client ignores the boss")
+check("the HUD has a boss bar", '"BossPanel"' in hud and '"BossFill"' in hud, "missing")
+check("the HUD has a boss name label", re.search(r'label\([\w]+, "BossName"', hud) is not None, "missing")
+check("the server reports every kill", "CombatFx:FireClient" in server, "no kill event")
+check("the client listens for kills", "CombatFx.OnClientEvent" in client, "no kill listener")
+check("the HUD has a kill flash", re.search(r'label\([\w]+, "KillFlash"', hud) is not None, "missing")
+check("the server tracks the kill streak", "killStreak" in server, "no streak")
+check("the client shows the combo", "Combat x" in client or "combo x" in client, "no combo display")
+
+print("\nWIRING 7d: the HUD does not flood a phone")
+
+# The snapshots used to be sent from the top level of the Heartbeat connection,
+# which is once per frame. On a phone that is a flood of events for a bar that
+# moves a few times a second, so the gates are part of the contract.
+heartbeat_at = server.find("RunService.Heartbeat:Connect")
+check("the HUD broadcast is gated by a clock", "Config.Tick.BroadcastInterval" in server, "sent every frame")
+check("the farm broadcast has its own clock", "Config.Tick.FarmBroadcastInterval" in server, "sent every frame")
+check(
+    "the gates are inside the Heartbeat loop",
+    heartbeat_at != -1 and server.find("Config.Tick.BroadcastInterval") > heartbeat_at,
+    "gate sits outside the loop",
+)
+check("the wave gate remembers when it last ran", "lastBroadcastAt" in server, "no clock")
+check("the farm gate remembers when it last ran", "lastFarmBroadcastAt" in server, "no clock")
+check("the client does not re-render on every wave event", "WaveState.OnClientEvent" in client, "not wired")
+config = read(ROOT / "roblox/src/shared/Config.luau")
+m = re.search(r"BroadcastInterval\s*=\s*([0-9.]+)\s*/\s*([0-9.]+)", config)
+tick = re.search(r"Rate\s*=\s*([0-9.]+)", config)
+interval = (float(m.group(1)) / float(m.group(2))) if m else 0.0
+rate = float(tick.group(1)) if tick else 0.0
+check("the HUD cadence is slower than the tick rate", interval > (1 / rate if rate else 0), "same as tick")
 
 print("\nWIRING 8: a respawn revives the combatant")
 

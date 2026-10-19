@@ -144,3 +144,49 @@ Two bugs came from a real play session and are now guarded by source checks in
 Adding a module under `roblox/src/` means bumping the `SOURCE_BLOCKS` floor in
 `AX_PC_CONTROL/pc1-roblox-build.ps1` and adding a marker, or the build
 verifier will not prove the new code is inside the published place.
+
+## Fields, travel and the HUD cadence
+
+The game is now a town plus five monster fields, so the rules that used to be
+implicit in "one arena" are written down here.
+
+### Fields
+
+- `Fields.luau` is the single source of truth for place ids, unlock levels,
+  positions and arrival points. `Fields.list()` is the five fields;
+  `Fields.getDef("Town")` is nil on purpose, because town is not a field.
+- `Fields.spawnPoint(fieldId, index, count)` places monsters and never lands
+  them on the arrival platform. Spawning on the platform dropped a wave on the
+  player the moment they travelled in.
+- `Fields.canEnter(id, level, ownedPass)` is the only gate. The server calls it
+  in the `TravelZone` handler, and the client shows the same lock state from
+  `Fields.snapshot`, so a button never promises a trip the server will refuse.
+
+### Waves are per field
+
+- `WaveDirector` keeps its own wave state, and the server keeps one director
+  per field (`directorFor`). Two players farming two different maps do not
+  share a wave.
+- Only fields with somebody standing in them are advanced, so an empty map
+  costs nothing. That is what makes five maps affordable.
+- Travelling into a field calls `skipIntermission`, so the first wave starts on
+  arrival instead of leaving the player alone for twelve seconds.
+- A player in town sees `phase = "TOWN"` rather than another player's wave.
+
+### Broadcast cadence (mobile)
+
+The HUD snapshots used to be sent from the top level of the `Heartbeat`
+connection, which is once per frame. On a phone that is a flood of events for a
+bar that moves a few times a second, and it was the single biggest source of
+client work. Now:
+
+- `WaveState` snapshots go out at `Config.Tick.BroadcastInterval` (10 Hz), not
+  the 30 Hz simulation rate.
+- `FarmState` goes out at `Config.Tick.FarmBroadcastInterval` (1 Hz), because
+  crops ripen over minutes.
+- Both gates live *inside* the Heartbeat connection and remember when they last
+  ran. Moving a gate outside the loop silently restores the flood, so WIRING 7d
+  in `scripts/check-hud-wiring.py` checks the gate's position in the source and
+  the cadence values in `Config.luau`.
+- `roblox/tests/run.luau` asserts the cadence is slower than the tick rate.
+  A frame-rate snapshot is the bug, so the two clocks must differ.
