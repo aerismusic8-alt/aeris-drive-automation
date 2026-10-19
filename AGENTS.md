@@ -136,6 +136,17 @@ The shape that matters:
 - The HUD is built in code and read by `scripts/check-hud-wiring.py`. That
   script cannot run the HUD, so it reads the source: rename a node and it fails
   CI. Any new panel, button or label the client touches must appear there.
+- Every monster needs a drop table of its own. A table-less monster still rolls
+  the two generic potions, so it passes every check that only asks whether the
+  drops are real items while identifying nothing. `Items.dropsFor` is keyed by
+  archetype id, never by display name. Two tests in `tests/run.luau` guard this.
+- The story spine is driven by events the server already produces, not by
+  polling. A new objective kind is dead until some server path calls
+  `questEvent(record, KIND, ...)`, so `check-hud-wiring.py` asserts each kind
+  the spine uses has a call site. Adding a quest step means adding that event.
+- `SaveSchema.serialize` is a second save path alongside the DataStore table.
+  A new field must be added to both `serialize` and `migrate`, or it survives
+  one path and not the other.
 
 Run the tests before every push:
 
