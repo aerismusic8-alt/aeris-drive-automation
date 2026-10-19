@@ -1710,6 +1710,23 @@ t.test("serialization carries the daily streak and redeemed codes", function()
 	t.assertNotNil(string.find(text, '"RELEASE":555', 1, true))
 end)
 
+t.test("serialize carries the story spine", function()
+        -- Quests are part of SaveData, so a serialize that drops them would lose a
+        -- player's story on any JSON path while the table path kept it. The two
+        -- paths disagreeing is exactly the kind of bug that ships.
+        local save = SaveSchema.new()
+        save.quests = { index = 4, progress = 2, done = { talkToElder = true, firstBlood = true } }
+        local json = SaveSchema.serialize(save, 1234)
+        t.assertContains(json, '"quests":')
+        t.assertContains(json, '"index":4')
+        t.assertContains(json, '"progress":2')
+        t.assertContains(json, '"talkToElder":true')
+
+        -- A fresh save must still emit a usable object rather than "nil".
+        local fresh = SaveSchema.serialize(SaveSchema.new(), 1)
+        t.assertContains(fresh, '"quests":{"index":1,"progress":0,"done":{}}')
+end)
+
 t.test("the migrated save is a valid v4 save", function()
 	local v2 = {
 		version = 2,

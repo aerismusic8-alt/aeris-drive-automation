@@ -400,7 +400,7 @@ end
 -- Emit deterministic JSON. Fixed key ordering keeps stored blobs diff-friendly.
 function SaveSchema.serialize(data: SaveData, now: number): string
 	return string.format(
-		'{"version":%d,"coins":%d,"upgrades":%s,"inventory":%s,"attributes":%s,"attributePoints":%d,"class":"%s","jobLevel":%d,"jobXp":%d,"skills":%s,"equipment":%s,"stats":%s,"level":%d,"xp":%d,"rebirths":%d,"zone":"%s","daily":%s,"redeemed":%s,"updatedAt":%d}',
+		'{"version":%d,"coins":%d,"upgrades":%s,"inventory":%s,"attributes":%s,"attributePoints":%d,"class":"%s","jobLevel":%d,"jobXp":%d,"skills":%s,"equipment":%s,"stats":%s,"level":%d,"xp":%d,"rebirths":%d,"zone":"%s","daily":%s,"redeemed":%s,"quests":%s,"updatedAt":%d}',
 		CURRENT,
 		math.floor(data.coins),
 		SaveSchema.encodeUpgrades(data.upgrades),
@@ -419,6 +419,7 @@ function SaveSchema.serialize(data: SaveData, now: number): string
 		data.zone or Zones.defaultZone(),
 		SaveSchema.encodeDaily(data.daily),
 		SaveSchema.encodeRedeemed(data.redeemed),
+		SaveSchema.encodeQuests(data.quests),
 		math.floor(now)
 	)
 end
@@ -481,6 +482,22 @@ function SaveSchema.encodeDaily(daily: any): string
 		'{"streak":%d,"lastClaimAt":%d,"totalClaims":%d}',
 		d.streak, d.lastClaimAt, d.totalClaims
 	)
+end
+
+-- The story spine as JSON. Only three fields exist, and a missing one means
+-- the quest layer starts the story over, so they are written explicitly.
+function SaveSchema.encodeQuests(quests: any): string
+	local q = type(quests) == "table" and quests or {}
+	local index = math.max(1, math.floor(tonumber(q.index) or 1))
+	local progress = math.max(0, math.floor(tonumber(q.progress) or 0))
+	local done = {}
+	if type(q.done) == "table" then
+		for id, _ in pairs(q.done) do
+			table.insert(done, string.format('"%s":true', id))
+		end
+	end
+	table.sort(done)
+	return string.format('{"index":%d,"progress":%d,"done":{%s}}', index, progress, table.concat(done, ","))
 end
 
 function SaveSchema.encodeRedeemed(redeemed: any): string
