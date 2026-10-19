@@ -109,4 +109,16 @@ covers what can and cannot be done from a phone.
 `shell: powershell` is the correct default there. `ubuntu-latest` also works
 for pure Linux jobs — the Luau test workflow uses it.
 
+**Do not fire several PC1 GUI jobs in a row.** The Studio capture workflows
+launch a real Studio window and screenshot it. Repeated runs stack windows and
+throttle the machine until it stops accepting work (a run then sits `queued`
+for minutes). Check the outcome of one run before starting the next, and prefer
+paths that need no GUI at all:
+
+- `ax-pc1-roblox-publish.yml` — Rojo build plus an Open Cloud upload. No window.
+- `ax-pc1-studio-login-*.yml` — opens Studio. Use sparingly, never in a loop.
+
+The sign-in code from a capture lives about two minutes, so a code fetched
+ahead of time is usually dead before it is typed.
+
 Do not commit binaries; `tools/` is gitignored on purpose.
