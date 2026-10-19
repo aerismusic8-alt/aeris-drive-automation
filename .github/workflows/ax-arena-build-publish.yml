@@ -37,7 +37,25 @@ permissions:
   contents: read
 
 jobs:
+  test:
+    # The gate lives here rather than in a dispatch from the tests workflow.
+    # Dispatching needs the target workflow to exist on the default branch, and
+    # `workflow_run` needs the same, so neither can gate a publish from a
+    # feature branch. Running the suite in the same workflow works on any
+    # branch, which is where this one actually runs.
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install Luau
+        run: bash scripts/install-luau.sh
+
+      - name: Run the test suite
+        run: bash scripts/test-roblox.sh
+
   build:
+    needs: test
     runs-on: ubuntu-latest
     outputs:
       place_path: ${{ steps.build.outputs.place_path }}
@@ -60,7 +78,7 @@ jobs:
           if-no-files-found: error
 
   publish:
-    needs: build
+    needs: [test, build]
     if: ${{ inputs.publish != 'no' }}
     runs-on: ubuntu-latest
     steps:
