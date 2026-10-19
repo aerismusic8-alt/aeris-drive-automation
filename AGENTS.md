@@ -630,6 +630,32 @@ Access Permissions and tick **Write** for the selected experience.
 After a key edit, re-run the pipeline before believing anything else about it.
 The measured table above is a snapshot, and a key edit invalidates it.
 
+### A name is not enough; the universe must be public
+
+Setting `displayName` succeeded and was confirmed by read-back, and the public
+page still redirected to `/Title-Unavailable`. The name was never the whole
+story.
+
+The `Universe` resource carries `visibility: PUBLIC | PRIVATE`, and a private
+universe is not reachable from its game page whatever it is called. This one was
+private. `scripts/name-experience-linux.sh` now writes `displayName`,
+`description` and `visibility` together and reads all three back, because
+writing the name alone could never have fixed the page.
+
+`EXPERIENCE_VISIBILITY=PRIVATE` reverses it. Making the game public is a launch,
+and it is reversible from the same place it was made.
+
+One more trap worth writing down, because it cost time here. The naming script
+first patched `/universes/v1/universes/{id}`. The documented endpoint is
+`PATCH /cloud/v2/universes/{universe_id}`, scope `universe:write`. The wrong
+path returns 404, and 404 from this API reads exactly like a missing scope, so
+the failure looked like a permission problem and sent someone to add a scope
+they may already have had.
+
+The way to tell a wrong path from a missing scope is to send a throwaway key:
+the wrong path answers 404, the right path answers 401 Invalid API Key. A 404
+that survives a bogus credential is a path problem, not a permission problem.
+
 ### Some things cannot be done by API at all
 
 Roblox lists these as not exposed through any REST API, so no scope unlocks
