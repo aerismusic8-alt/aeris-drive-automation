@@ -1,0 +1,50 @@
+name: AX PC1 Roblox List Places
+
+# Reads the place id of a universe through the Open Cloud API, because the
+# dashboard hides it behind a click. No window is opened, so this is safe to
+# run on PC1 at any time.
+#
+# Needs repo secret ROBLOX_API_KEY with universe-places read scope.
+
+on:
+  workflow_dispatch:
+    inputs:
+      universe_id:
+        description: 'Roblox universeId'
+        required: true
+        default: ''
+      ref:
+        description: 'Git ref holding the script'
+        required: false
+        default: 'ax-pc1-studio-probe'
+
+jobs:
+  list-places:
+    runs-on: self-hosted
+    steps:
+      - name: Verify PC1
+        shell: powershell
+        run: |
+          if ($env:COMPUTERNAME -ne 'DESKTOP-RGK6JKB') { throw "EXPECTED_PC1:$env:COMPUTERNAME" }
+          Write-Host "PC1=VERIFIED"
+
+      - name: List places
+        shell: powershell
+        env:
+          ROBLOX_API_KEY: ${{ secrets.ROBLOX_API_KEY }}
+          UNIVERSE_ID: ${{ inputs.universe_id }}
+        run: |
+          $ref = '${{ inputs.ref }}'
+          $url = "https://raw.githubusercontent.com/aerismusic8-alt/aeris-drive-automation/$ref/AX_PC_CONTROL/pc1-roblox-list-places.ps1"
+          $p = Join-Path $env:TEMP "pc1-roblox-list-places.ps1"
+          Invoke-WebRequest -Uri $url -OutFile $p -UseBasicParsing
+          & powershell.exe -NoProfile -ExecutionPolicy Bypass -File $p
+          if ($LASTEXITCODE -ne 0) { throw "LIST_PLACES_EXIT:$LASTEXITCODE" }
+
+      - name: Upload evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: pc1-roblox-list-places
+          path: C:\AX-Runtime\evidence\pc1-roblox-list-places.json
+          if-no-files-found: warn
