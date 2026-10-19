@@ -2786,6 +2786,56 @@ t.test("equipment raises the sheet it feeds", function()
 	t.assertGreater(total, 0, "PlateArmor gives no attribute bonus")
 end)
 
+t.test("every monster has a drop table of its own", function()
+        -- A monster with no table still rolls the two generic potions, so it looks
+        -- fine in every other check while dropping nothing that identifies it. Ten
+        -- of sixteen monsters were in that state: you could farm the whole game and
+        -- never see Chitin, Stone or a Celestial Feather come off the monster that
+        -- is supposed to carry it. This guards the gap rather than the loot.
+        local generic = 0
+        for _, entry in ipairs(Items.dropsFor("NoSuchMonster")) do
+                generic += 1
+        end
+        t.assertGreater(generic, 0, "the generic table is empty, so this test proves nothing")
+
+        local bare: { string } = {}
+        for _, field in ipairs(Fields.list()) do
+                for _, archetype in ipairs(Enemies.roster(field.id)) do
+                        if #Items.dropsFor(archetype.id) <= generic then
+                                table.insert(bare, field.id .. ":" .. archetype.id)
+                        end
+                end
+                local boss = Enemies.boss(field.id)
+                if #Items.dropsFor(boss.id) <= generic then
+                        table.insert(bare, field.id .. ":BOSS:" .. boss.id)
+                end
+        end
+        t.assertEqual(#bare, 0, "monsters with only the generic drops: " .. table.concat(bare, ", "))
+end)
+
+t.test("a field's monsters drop that field's material", function()
+        -- The material names the field: Chitin is what Volcano and Meadow beasts
+        -- carry, Rift Shard is what the Void drops. If a monster in a field cannot
+        -- produce the field's material, that material is unobtainable in practice.
+        local materialFor: { [string]: string } = {
+                Cavern = "Stone",
+                Volcano = "Ember",
+                Void = "RiftShard",
+                Heaven = "CelestialFeather",
+        }
+        for field, material in pairs(materialFor) do
+                local found = false
+                for _, archetype in ipairs(Enemies.roster(field)) do
+                        for _, entry in ipairs(Items.dropsFor(archetype.id)) do
+                                if entry.itemId == material then
+                                        found = true
+                                end
+                        end
+                end
+                t.assertTrue(found, field .. " monsters never drop " .. material)
+        end
+end)
+
 t.test("every monster's drop table names real items", function()
 	for _, field in ipairs(Fields.list()) do
 		for _, archetype in ipairs(Enemies.roster(field.id)) do
