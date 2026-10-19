@@ -645,6 +645,27 @@ writing the name alone could never have fixed the page.
 `EXPERIENCE_VISIBILITY=PRIVATE` reverses it. Making the game public is a launch,
 and it is reversible from the same place it was made.
 
+`visibility` is not writable through the universe PATCH either. Sending it
+returns 200 and changes nothing, which is the worst kind of response because it
+looks like it worked: the run reported `VISIBILITY=UNCONFIRMED expected=PUBLIC
+got=PRIVATE` next to `NAME_HTTP=200`. The legacy activate and deactivate pair
+flips it, and they take `legacy-universe:manage` rather than `universe:write`:
+
+    POST /legacy-develop/v1/universes/{universeId}/activate
+    POST /legacy-develop/v1/universes/{universeId}/deactivate
+
+Confirmed end to end afterwards:
+
+- `VISIBILITY_AFTER_ACTION=PUBLIC`, read back from the API.
+- The game page stopped redirecting to `/Title-Unavailable` and now resolves to
+  `/games/79945905295644/AX-Arena-Farm-and-Fight`.
+- `games.roblox.com/v1/games?universeIds=10771844216` reports
+  `name: "AX Arena: Farm and Fight"`, `maxPlayers: 50`.
+
+The lesson generalises: on this API a 200 means the request was accepted, not
+that the field changed. Read the field back and compare, or the failure hides
+inside a success.
+
 One more trap worth writing down, because it cost time here. The naming script
 first patched `/universes/v1/universes/{id}`. The documented endpoint is
 `PATCH /cloud/v2/universes/{universe_id}`, scope `universe:write`. The wrong
