@@ -391,5 +391,39 @@ when PC1 is off or its runner service is stopped. There is no API to read runner
 status with the integration token (`/actions/runners` returns 403), so the
 signal is the queue itself: a job that has not been picked up in minutes, while
 an earlier job on the same runner finished in seconds, means the runner is down
-and someone has to start it on PC1. Nothing on the control host can restart it;
-there is no MeshCentral or PC1 remote environment configured here.
+and someone has to start it on PC1.
+
+## Reaching PC1 from a phone
+
+There are two independent paths to PC1 and they do different jobs:
+
+- The **GitHub Actions runner** carries queued jobs. Good for running scripts,
+  useless for looking at the screen.
+- The **MeshCentral agent** dials out to a MeshCentral server, which gives
+  browser remote desktop, terminal and file transfer. This is the path that
+  works from a phone, and it needs no inbound port because the agent connects
+  out. That is why MeshCentral is the answer rather than RDP or a tunnel.
+
+The repository already knows PC1's MeshCentral mesh: the adapter
+`AX_PC_CONTROL/pc1-meshcentral-ax-dispatch.ps1` pins the mesh id and host. What
+is missing on the control host is the `AKATH_MESHCTRL_*` environment, so
+dispatch through MeshCentral is not configured here. Those values are per-host
+environment, never committed.
+
+When both paths are down the machine is unreachable by every path and needs a
+person at the desk. `AX_PC_CONTROL/pc1-keepalive.ps1` exists to stop that: it
+starts the runner service and the MeshCentral agent service when either has
+stopped, and writes
+`C:\AX-Runtime\evidence\pc1-keepalive-heartbeat.json`.
+`install-pc1-keepalive.ps1` registers it as a scheduled task running as SYSTEM,
+so it survives a reboot and needs no logged-on user. `-Once` does a single
+repair pass by hand.
+
+`AX_PC_CONTROL/pc1-remote-access-status.ps1` reports which paths are up, which
+agent is installed, and what has to happen next. It reports only whether the
+`AKATH_MESHCTRL_*` credentials are present, never their values.
+
+There is a bootstrap problem worth knowing: the keepalive workflow needs the
+runner, so it cannot recover a dead runner. The first install has to be done by
+hand on PC1. After that the scheduled task keeps the machine reachable.
+`AX_PC_CONTROL/REMOTE-FROM-PHONE.md` is the phone-facing guide.
