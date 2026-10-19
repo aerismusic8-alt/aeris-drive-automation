@@ -17,6 +17,9 @@ on:
 
 permissions:
   contents: read
+  # Needed to dispatch the publish workflow once the tests pass. A push alone
+  # never reached Roblox, which is why the live place lagged the branch.
+  actions: write
 
 jobs:
   test:
@@ -43,3 +46,18 @@ jobs:
 
       - name: Check client, HUD and server agree on names
         run: python3 scripts/check-hud-wiring.py
+
+      # Green tests are the gate for the live place. The publish workflow used
+      # to run only by hand, so a merge could sit on the branch while players
+      # saw the old game. Dispatching it here keeps that from happening again.
+      - name: Publish the place when the tests pass
+        if: github.event_name == 'push' && github.ref == 'refs/heads/ax-arena-roblox-game'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          gh workflow run ax-pc1-roblox-publish.yml \
+            --ref "${{ github.ref_name }}" \
+            -f version_type=Published \
+            -f ref="${{ github.sha }}"
+          echo "DISPATCHED=ax-pc1-roblox-publish.yml ref=${{ github.sha }}"
