@@ -156,7 +156,7 @@ function Hud.build(): ScreenGui
 	-- Action panel, bottom right: the two taps the game is built around.
 	-- It sits under the thumb rather than in the middle of the screen, and the
 	-- axe button carries the charge count so the player knows when to swing.
-	local actions = panel(gui, "Actions", UDim2.new(0, 200, 0, 252), UDim2.new(1, -16, 1, -24), Vector2.new(1, 1))
+	local actions = panel(gui, "Actions", UDim2.new(0, 200, 0, 318), UDim2.new(1, -16, 1, -24), Vector2.new(1, 1))
 	local axeLabel = label(actions, "AxeCharges", Text.get("axe") .. ": 0/5", UDim2.new(1, -20, 0, 26), UDim2.new(0, 12, 0, 6), 16)
 	axeLabel.TextColor3 = COLORS.muted
 	local axe = button(actions, "Axe", Text.get("axe"), UDim2.new(1, -24, 0, 56), UDim2.new(0, 12, 0, 34), COLORS.blue)
@@ -165,6 +165,8 @@ function Hud.build(): ScreenGui
 	-- would eat the middle of a phone screen, which is where the player looks.
 	local map = button(actions, "Map", Text.get("map"), UDim2.new(1, -24, 0, 56), UDim2.new(0, 12, 0, 158), COLORS.gold)
 	local crop = button(actions, "Crop", Text.cropName("Wheat"), UDim2.new(1, -24, 0, 24), UDim2.new(0, 12, 0, 220), COLORS.disabled)
+	-- The character sheet lives behind this button: stats, skills, job and bag.
+	local character = button(actions, "Character", Text.get("character"), UDim2.new(1, -24, 0, 56), UDim2.new(0, 12, 0, 252), COLORS.blue)
 
 	-- Travel overlay: town plus every field. Built here, filled and wired by
 	-- the client, which owns the intent calls.
@@ -183,6 +185,63 @@ function Hud.build(): ScreenGui
 	killFlash.TextXAlignment = Enum.TextXAlignment.Center
 	killFlash.TextColor3 = COLORS.gold
 	killFlash.Visible = false
+	-- Combat panel, bottom centre: the button the game is actually played
+	-- with. Attack is the largest target on screen, because on a phone the
+	-- thumb has to find it without looking.
+	local combat = panel(gui, "Combat", UDim2.new(0, 190, 0, 244), UDim2.new(0.5, 0, 1, -24), Vector2.new(0.5, 1))
+	local combatTitle = label(combat, "CombatTitle", Text.get("attackButton"), UDim2.new(1, -20, 0, 24), UDim2.new(0, 12, 0, 4), 16)
+	combatTitle.TextColor3 = COLORS.muted
+	local attack = button(combat, "Attack", Text.get("attackButton"), UDim2.new(1, -24, 0, 68), UDim2.new(0, 12, 0, 30), COLORS.gold)
+	attack.TextSize = 26
+	local autoAttack = button(combat, "AutoAttack", Text.get("auto"), UDim2.new(1, -24, 0, 44), UDim2.new(0, 12, 0, 104), COLORS.disabled)
+	local autoPickup = button(combat, "AutoPickup", Text.get("pickup"), UDim2.new(1, -24, 0, 44), UDim2.new(0, 12, 0, 152), COLORS.disabled)
+	local pickup = button(combat, "Pickup", Text.get("pickup"), UDim2.new(1, -24, 0, 40), UDim2.new(0, 12, 0, 200), COLORS.green)
+
+	-- Character panel: one overlay, four tabs. Attributes, skills, job and the
+	-- bag all live here rather than on the main screen, because a phone screen
+	-- has room for one panel at a time and the game needs the rest.
+	local charPanel = panel(gui, "CharPanel", UDim2.new(0, 340, 0, 430), UDim2.new(0.5, 0, 0.5, 0), Vector2.new(0.5, 0.5))
+	charPanel.Visible = false
+	charPanel.ZIndex = 20
+	local charTitle = label(charPanel, "CharTitle", Text.get("character"), UDim2.new(1, -80, 0, 30), UDim2.new(0, 12, 0, 8), 18)
+	charTitle.ZIndex = 21
+	local charClose = button(charPanel, "CloseChar", "X", UDim2.new(0, 38, 0, 30), UDim2.new(1, -46, 0, 8), COLORS.disabled)
+	charClose.ZIndex = 21
+
+	local tabs = Instance.new("Frame")
+	tabs.Name = "Tabs"
+	tabs.Size = UDim2.new(1, -24, 0, 44)
+	tabs.Position = UDim2.new(0, 12, 0, 44)
+	tabs.BackgroundTransparency = 1
+	tabs.ZIndex = 21
+	tabs.Parent = charPanel
+
+	local tabDefs = {
+		{ id = "Stats", text = Text.get("stats") },
+		{ id = "Skills", text = Text.get("skills") },
+		{ id = "Job", text = Text.get("job") },
+		{ id = "Bag", text = Text.get("inventory") },
+	}
+	for index, def in ipairs(tabDefs) do
+		local width = 1 / #tabDefs
+		local tab = button(tabs, "Tab_" .. def.id, def.text, UDim2.new(width, -6, 1, 0),
+			UDim2.new((index - 1) * width, 3, 0, 0), COLORS.disabled)
+		tab.TextSize = 16
+		tab.ZIndex = 22
+	end
+
+	local charList = Instance.new("ScrollingFrame")
+	charList.Name = "CharList"
+	charList.Size = UDim2.new(1, -24, 1, -104)
+	charList.Position = UDim2.new(0, 12, 0, 94)
+	charList.BackgroundTransparency = 1
+	charList.BorderSizePixel = 0
+	charList.ScrollBarThickness = 6
+	charList.ScrollingDirection = Enum.ScrollingDirection.Y
+	charList.CanvasSize = UDim2.new(0, 0, 0, 0)
+	charList.ZIndex = 21
+	charList.Parent = charPanel
+
 	local list = Instance.new("ScrollingFrame")
 	list.Name = "FieldList"
 	list.Size = UDim2.new(1, -24, 1, -54)

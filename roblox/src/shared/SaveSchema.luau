@@ -5,6 +5,10 @@
 local Config = require("./Config")
 local Stats = require("./Stats")
 local Inventory = require("./Inventory")
+local Attributes = require("./Attributes")
+local Classes = require("./Classes")
+local Skills = require("./Skills")
+local Items = require("./Items")
 local Pets = require("./Pets")
 local Rebirth = require("./Rebirth")
 local Zones = require("./Zones")
@@ -19,6 +23,16 @@ export type SaveData = {
 	coins: number,
 	upgrades: { [string]: number },
 	inventory: { { itemId: string, count: number } },
+	-- Character build (schema v5): the stat sheet, the class, the skills
+	-- learned and what is being worn.
+	attributes: { [string]: number },
+	attributePoints: number,
+	class: string,
+	jobLevel: number,
+	jobXp: number,
+	skillPoints: number,
+	skills: { [string]: number },
+	equipment: { [string]: string? },
 	stats: { kills: number, wavesCleared: number, deaths: number },
 	level: number,
 	xp: number,
@@ -40,6 +54,14 @@ function SaveSchema.new(): SaveData
 		coins = Config.Economy.StartingCoins,
 		upgrades = Stats.newUpgrades(),
 		inventory = {},
+		attributes = Attributes.new(),
+		attributePoints = 0,
+		class = Config.Classes.StartingClass,
+		jobLevel = 1,
+		jobXp = 0,
+		skillPoints = 0,
+		skills = { BasicAttack = 1 },
+		equipment = {},
 		stats = { kills = 0, wavesCleared = 0, deaths = 0 },
 		level = 1,
 		xp = 0,
@@ -151,6 +173,79 @@ function SaveSchema.validate(data: any): (boolean, { string })
 		table.insert(problems, "INVALID_ENTITLEMENTS")
 	end
 
+	-- Character build (schema v5). Absent on older saves, which migrate.
+	if data.attributes ~= nil then
+		if type(data.attributes) ~= "table" then
+			table.insert(problems, "INVALID_ATTRIBUTES")
+		else
+			for _, name in ipairs(Attributes.NAMES) do
+				local value = data.attributes[name]
+				if value == nil then
+					table.insert(problems, "MISSING_ATTRIBUTE:" .. name)
+				elseif not isFiniteNumber(value) or value < Config.Attributes.BaseValue
+					or value > Config.Attributes.MaxValue then
+					table.insert(problems, "INVALID_ATTRIBUTE:" .. name)
+				end
+			end
+		end
+	end
+	if data.attributePoints ~= nil then
+		if not isFiniteNumber(data.attributePoints) or data.attributePoints < 0 then
+			table.insert(problems, "INVALID_ATTRIBUTE_POINTS")
+		end
+	end
+	if data.class ~= nil then
+		if type(data.class) ~= "string" or Classes.getDef(data.class) == nil then
+			table.insert(problems, "INVALID_CLASS")
+		end
+	end
+	if data.jobLevel ~= nil then
+		if not isFiniteNumber(data.jobLevel) or data.jobLevel < 1
+			or data.jobLevel > Config.Classes.MaxJobLevel then
+			table.insert(problems, "INVALID_JOB_LEVEL")
+		end
+	end
+	if data.jobXp ~= nil then
+		if not isFiniteNumber(data.jobXp) or data.jobXp < 0 then
+			table.insert(problems, "INVALID_JOB_XP")
+		end
+	end
+	if data.skillPoints ~= nil then
+		if not isFiniteNumber(data.skillPoints) or data.skillPoints < 0 then
+			table.insert(problems, "INVALID_SKILL_POINTS")
+		end
+	end
+	if data.skills ~= nil then
+		if type(data.skills) ~= "table" then
+			table.insert(problems, "INVALID_SKILLS")
+		else
+			for skillId, level in pairs(data.skills) do
+				local def = Skills.getDef(skillId)
+				if def == nil then
+					table.insert(problems, "UNKNOWN_SKILL:" .. tostring(skillId))
+				elseif not isFiniteNumber(level) or level < 0 or level > def.maxLevel then
+					table.insert(problems, "INVALID_SKILL_LEVEL:" .. tostring(skillId))
+				end
+			end
+		end
+	end
+	if data.equipment ~= nil then
+		if type(data.equipment) ~= "table" then
+			table.insert(problems, "INVALID_EQUIPMENT")
+		else
+			for slot, itemId in pairs(data.equipment) do
+				if itemId ~= nil then
+					local def = Items.getDef(itemId)
+					if def == nil or def.kind ~= "equipment" then
+						table.insert(problems, "UNKNOWN_EQUIPMENT:" .. tostring(itemId))
+					elseif def.slot ~= slot and not (def.twoHanded and slot == "Shield") then
+						table.insert(problems, "EQUIPMENT_WRONG_SLOT:" .. tostring(itemId))
+					end
+				end
+			end
+		end
+	end
+
 	-- Daily streak and redeemed codes (schema v4).
 	if data.daily ~= nil then
 		if type(data.daily) ~= "table" then
@@ -201,11 +296,74 @@ function SaveSchema.migrate(data: any): SaveData?
 	local level = math.clamp(math.floor(tonumber(data.level) or 1), 1, Config.Leveling.MaxLevel)
 	local rebirths = math.clamp(math.floor(tonumber(data.rebirths) or 0), 0, Config.Rebirth.MaxRebirths)
 
+	-- Character build. An older save has no stat sheet, so it gets the fresh
+	-- one; its banked points are the points it earned by its current level, so a
+	-- returning player is not punished for having played before this existed.
+	local attributes = Attributes.new()
+	if type(data.attributes) == "table" then
+		for _, name in ipairs(Attributes.NAMES) do
+			local value = data.attributes[name]
+			if isFiniteNumber(value) then
+				attributes[name] = math.clamp(math.floor(value),
+					Config.Attributes.BaseValue, Config.Attributes.MaxValue)
+			end
+		end
+	end
+	local attributePoints = isFiniteNumber(data.attributePoints)
+		and math.max(0, math.floor(data.attributePoints))
+		or Attributes.available(attributes, level)
+
+	local class = (type(data.class) == "string" and Classes.getDef(data.class)) and data.class
+		or Config.Classes.StartingClass
+	local jobLevel = math.clamp(math.floor(tonumber(data.jobLevel) or 1), 1, Config.Classes.MaxJobLevel)
+	local jobXp = isFiniteNumber(data.jobXp) and math.max(0, data.jobXp) or 0
+
+	-- Skills: drop anything the catalogue no longer knows, clamp the rest.
+	local skills: { [string]: number } = {}
+	if type(data.skills) == "table" then
+		for skillId, level in pairs(data.skills) do
+			local def = Skills.getDef(skillId)
+			if def and isFiniteNumber(level) and level > 0 then
+				skills[skillId] = math.min(math.floor(level), def.maxLevel)
+			end
+		end
+	end
+	if not skills.BasicAttack then
+		skills.BasicAttack = 1
+	end
+	-- A point is spent per skill level, so the unspent count is derived rather
+	-- than stored, which keeps a hand-edited save from minting free points.
+	local spentPoints = 0
+	for _, level in pairs(skills) do
+		spentPoints += level
+	end
+	local earnedPoints = Classes.skillPointsForJobLevel(jobLevel)
+	local skillPoints = math.max(0, earnedPoints - spentPoints)
+
+	-- Equipment: keep only what still exists and still fits its slot.
+	local equipment: { [string]: string? } = {}
+	if type(data.equipment) == "table" then
+		for slot, itemId in pairs(data.equipment) do
+			local def = type(itemId) == "string" and Items.getDef(itemId) or nil
+			if def and def.kind == "equipment" and (def.slot == slot or (def.twoHanded and slot == "Shield")) then
+				equipment[slot] = itemId
+			end
+		end
+	end
+
 	local migrated: SaveData = {
 		version = CURRENT,
 		coins = isFiniteNumber(data.coins) and math.max(0, data.coins) or fresh.coins,
 		upgrades = upgrades,
 		inventory = data.inventory or {},
+		attributes = attributes,
+		attributePoints = attributePoints,
+		class = class,
+		jobLevel = jobLevel,
+		jobXp = jobXp,
+		skillPoints = skillPoints,
+		skills = skills,
+		equipment = equipment,
 		stats = data.stats or fresh.stats,
 		level = level,
 		xp = isFiniteNumber(data.xp) and math.max(0, data.xp) or 0,
@@ -237,11 +395,18 @@ end
 -- Emit deterministic JSON. Fixed key ordering keeps stored blobs diff-friendly.
 function SaveSchema.serialize(data: SaveData, now: number): string
 	return string.format(
-		'{"version":%d,"coins":%d,"upgrades":%s,"inventory":%s,"stats":%s,"level":%d,"xp":%d,"rebirths":%d,"zone":"%s","daily":%s,"redeemed":%s,"updatedAt":%d}',
+		'{"version":%d,"coins":%d,"upgrades":%s,"inventory":%s,"attributes":%s,"attributePoints":%d,"class":"%s","jobLevel":%d,"jobXp":%d,"skills":%s,"equipment":%s,"stats":%s,"level":%d,"xp":%d,"rebirths":%d,"zone":"%s","daily":%s,"redeemed":%s,"updatedAt":%d}',
 		CURRENT,
 		math.floor(data.coins),
 		SaveSchema.encodeUpgrades(data.upgrades),
 		SaveSchema.encodeInventory(data.inventory),
+		SaveSchema.encodeAttributes(data.attributes),
+		math.floor(data.attributePoints or 0),
+		data.class or Config.Classes.StartingClass,
+		math.floor(data.jobLevel or 1),
+		math.floor(data.jobXp or 0),
+		SaveSchema.encodeSkills(data.skills),
+		SaveSchema.encodeEquipment(data.equipment),
 		SaveSchema.encodeStats(data.stats),
 		math.floor(data.level or 1),
 		math.floor(data.xp or 0),
@@ -257,6 +422,42 @@ function SaveSchema.encodeUpgrades(upgrades: { [string]: number }): string
 	local parts = {}
 	for _, id in ipairs(Config.UpgradeOrder) do
 		table.insert(parts, string.format('"%s":%d', id, upgrades[id] or 0))
+	end
+	return "{" .. table.concat(parts, ",") .. "}"
+end
+
+function SaveSchema.encodeAttributes(attributes: { [string]: number }?): string
+	local parts = {}
+	for _, name in ipairs(Attributes.NAMES) do
+		table.insert(parts, string.format('"%s":%d', name,
+			math.floor((attributes or {})[name] or Config.Attributes.BaseValue)))
+	end
+	return "{" .. table.concat(parts, ",") .. "}"
+end
+
+function SaveSchema.encodeSkills(skills: { [string]: number }?): string
+	-- Sorted so the blob is stable between saves, which keeps a diff readable.
+	local ids = {}
+	for skillId, level in pairs(skills or {}) do
+		if level and level > 0 then
+			table.insert(ids, skillId)
+		end
+	end
+	table.sort(ids)
+	local parts = {}
+	for _, skillId in ipairs(ids) do
+		table.insert(parts, string.format('"%s":%d', skillId, math.floor(skills[skillId])))
+	end
+	return "{" .. table.concat(parts, ",") .. "}"
+end
+
+function SaveSchema.encodeEquipment(equipment: { [string]: string? }?): string
+	local parts = {}
+	for _, slot in ipairs(Config.Equipment.Slots) do
+		local itemId = (equipment or {})[slot]
+		if itemId then
+			table.insert(parts, string.format('"%s":"%s"', slot, itemId))
+		end
 	end
 	return "{" .. table.concat(parts, ",") .. "}"
 end

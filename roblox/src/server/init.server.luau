@@ -31,6 +31,11 @@ local Farm = require(Shared.Farm)
 local Axe = require(Shared.Axe)
 local Fields = require(Shared.Fields)
 local Enemies = require(Shared.Enemies)
+local Attributes = require(Shared.Attributes)
+local Classes = require(Shared.Classes)
+local Skills = require(Shared.Skills)
+local Items = require(Shared.Items)
+local Inventory = require(Shared.Inventory)
 local Text = require(Shared.Text)
 
 -- Remotes are created here so the client can rely on WaitForChild alone.
@@ -64,6 +69,17 @@ local RedeemCode = ensureRemote(Remotes, "RemoteFunction", "RedeemCode") :: Remo
 local PlantCrop = ensureRemote(Remotes, "RemoteFunction", "PlantCrop") :: RemoteFunction
 local HarvestCrop = ensureRemote(Remotes, "RemoteFunction", "HarvestCrop") :: RemoteFunction
 local UseAxe = ensureRemote(Remotes, "RemoteFunction", "UseAxe") :: RemoteFunction
+local RaiseAttribute = ensureRemote(Remotes, "RemoteFunction", "RaiseAttribute") :: RemoteFunction
+local LearnSkill = ensureRemote(Remotes, "RemoteFunction", "LearnSkill") :: RemoteFunction
+local AdvanceJob = ensureRemote(Remotes, "RemoteFunction", "AdvanceJob") :: RemoteFunction
+local CastSkill = ensureRemote(Remotes, "RemoteFunction", "CastSkill") :: RemoteFunction
+local EquipItem = ensureRemote(Remotes, "RemoteFunction", "EquipItem") :: RemoteFunction
+local UnequipItem = ensureRemote(Remotes, "RemoteFunction", "UnequipItem") :: RemoteFunction
+local UseItem = ensureRemote(Remotes, "RemoteFunction", "UseItem") :: RemoteFunction
+local PickUpDrop = ensureRemote(Remotes, "RemoteFunction", "PickUpDrop") :: RemoteFunction
+local ManualAttack = ensureRemote(Remotes, "RemoteFunction", "ManualAttack") :: RemoteFunction
+local SetAuto = ensureRemote(Remotes, "RemoteFunction", "SetAuto") :: RemoteFunction
+local DropState = ensureRemote(Remotes, "RemoteEvent", "DropState") :: RemoteEvent
 local FarmState = ensureRemote(Remotes, "RemoteEvent", "FarmState") :: RemoteEvent
 local WaveState = ensureRemote(Remotes, "RemoteEvent", "WaveState") :: RemoteEvent
 local PlayerState = ensureRemote(Remotes, "RemoteEvent", "PlayerState") :: RemoteEvent
@@ -75,6 +91,9 @@ local rateLimiter = RateLimiter.new()
 local rng = Random.new(os.time())
 
 type PlayerRecord = {
+	-- The record is the one place that knows both the saved data and the live
+	-- player, so reward paths can notify without extra plumbing.
+	player: Player,
 	userId: number,
 	coins: number,
 	upgrades: { [string]: number },
@@ -97,6 +116,25 @@ type PlayerRecord = {
 	lastKillAt: number,
 	farm: any,
 	axe: any,
+	-- Character build: the stat sheet, the class, the skills learned, what is
+	-- worn, and the bag. All authoritative here.
+	attributes: { [string]: number },
+	attributePoints: number,
+	class: string,
+	jobLevel: number,
+	jobXp: number,
+	skills: { [string]: number },
+	equipment: { [string]: string? },
+	inventory: any,
+	-- Current SP, so a skill can be paid for.
+	sp: number,
+	maxSp: number,
+	-- Seconds remaining per skill id, and the buffs currently running.
+	cooldowns: { [string]: number },
+	buffs: { [string]: any },
+	-- Auto modes. The player can switch either off and play by hand.
+	autoAttack: boolean,
+	autoPickup: boolean,
 	dirty: boolean,
 }
 
@@ -136,6 +174,37 @@ local function coinMultiplier(record: PlayerRecord, now: number): number
 		* Leveling.coinMultiplier(record.level)
 		* rebirthCoin
 		* Monetization.coinMultiplier(record.entitlements, now)
+end
+
+-- Skill points are derived, never stored: the player earns one per job level
+-- and spends one per skill level, so the balance cannot drift.
+local function spentSkillPoints(record: PlayerRecord): number
+	local total = 0
+	for _, level in pairs(record.skills) do
+		total += math.max(0, math.floor(level))
+	end
+	return total
+end
+
+local function skillPointsLeft(record: PlayerRecord): number
+	return math.max(0, Classes.skillPointsForJobLevel(record.jobLevel) - spentSkillPoints(record))
+end
+
+-- Buffs still running, with the seconds left rather than an absolute time.
+local function activeBuffs(record: PlayerRecord, now: number): { any }
+	local out: { any } = {}
+	for id, buff in pairs(record.buffs) do
+		if now < buff.until_ then
+			table.insert(out, {
+				id = id,
+				name = Text.skillName(id),
+				secondsLeft = buff.until_ - now,
+			})
+		else
+			record.buffs[id] = nil
+		end
+	end
+	return out
 end
 
 local function pushPlayerState(player: Player, record: PlayerRecord)
@@ -182,7 +251,7 @@ local function pushPlayerState(player: Player, record: PlayerRecord)
 	})
 end
 
-local function buildRecord(userId: number, saved: any): PlayerRecord
+local function buildRecord(player: Player, saved: any): PlayerRecord
 	local data = SaveSchema.new()
 	if saved then
 		local loaded = SaveSchema.load(saved)
@@ -191,8 +260,16 @@ local function buildRecord(userId: number, saved: any): PlayerRecord
 		end
 	end
 
+	-- The attribute sheet decides the health bar, so the combatant is built
+	-- after the build fields are known rather than from the old upgrade maths.
+	local attributes = Attributes.copy(data.attributes)
+	local startingHealth = Attributes.derive(
+		Attributes.effective(attributes, Classes.bonus(data.class)),
+		data.level
+	).maxHealth
+
 	local record: PlayerRecord = {
-		userId = userId,
+		player = player,
 		coins = data.coins,
 		upgrades = data.upgrades,
 		stats = data.stats,
@@ -204,9 +281,23 @@ local function buildRecord(userId: number, saved: any): PlayerRecord
 		entitlements = Monetization.fromSnapshot(data.entitlements),
 		daily = DailyRewards.fromSnapshot(data.daily),
 		redeemed = Codes.fromSnapshot(data.redeemed),
-		combatant = Combat.createCombatant(Stats.derive(data.upgrades).maxHealth),
+		combatant = Combat.createCombatant(math.max(1, startingHealth)),
 		farm = Farm.new(),
 		axe = Axe.new(),
+		attributes = attributes,
+		attributePoints = data.attributePoints,
+		class = data.class,
+		jobLevel = data.jobLevel,
+		jobXp = data.jobXp,
+		skills = data.skills,
+		equipment = data.equipment,
+		inventory = Inventory.fromSnapshot(data.inventory, Config.Items.DefaultCapacity),
+		sp = 0,
+		maxSp = 0,
+		cooldowns = {},
+		buffs = {},
+		autoAttack = Config.Combat.AutoAttack,
+		autoPickup = true,
 		lastZoneChange = 0,
 		lastAttackAt = 0,
 		field = nil,
@@ -217,7 +308,8 @@ local function buildRecord(userId: number, saved: any): PlayerRecord
 	return record
 end
 
-local function loadRecord(userId: number): PlayerRecord
+local function loadRecord(player: Player): PlayerRecord
+	local userId = player.UserId
 	local ok, saved = pcall(function()
 		return store:GetAsync("player_" .. userId)
 	end)
@@ -225,7 +317,7 @@ local function loadRecord(userId: number): PlayerRecord
 		warn("[AX Arena] load failed for " .. userId .. ": " .. tostring(saved))
 		saved = nil
 	end
-	return buildRecord(userId, saved)
+	return buildRecord(player, saved)
 end
 
 local function saveRecord(record: PlayerRecord): boolean
@@ -233,7 +325,14 @@ local function saveRecord(record: PlayerRecord): boolean
 		version = Config.Persistence.SchemaVersion,
 		coins = record.coins,
 		upgrades = record.upgrades,
-		inventory = {},
+		inventory = record.inventory:snapshot(),
+		attributes = record.attributes,
+		attributePoints = record.attributePoints,
+		class = record.class,
+		jobLevel = record.jobLevel,
+		jobXp = record.jobXp,
+		skills = record.skills,
+		equipment = record.equipment,
 		stats = record.stats,
 		level = record.level,
 		xp = record.xp,
@@ -298,20 +397,118 @@ local function rewardKill(record: PlayerRecord, wave: number, reward: number, bo
 	end
 	local granted = math.floor(xp + 0.5)
 	awardXp(record, granted)
+
+	-- Job XP runs on its own track, so a class levels from playing that class.
+	local jobXpGain = math.max(1, math.floor(granted * Config.Classes.JobXpPerBaseXp + 0.5))
+	local newJobLevel, newJobXp, jobLevels = Classes.addJobXp(record.jobLevel, record.jobXp, jobXpGain)
+	record.jobLevel = newJobLevel
+	record.jobXp = newJobXp
+	if jobLevels > 0 then
+		notify(record.player, Text.get("jobLevelUp", newJobLevel))
+	end
+
 	record.dirty = true
 	return scaled, granted
 end
 
-local function applySpawnStats(record: PlayerRecord)
-	local derived = Stats.derive(record.upgrades)
+-- The character sheet, in one place.
+--
+-- Three layers stack here: the attributes the player assigned, the class
+-- bonus, and the equipment bonus. The upgrade levels from the original game
+-- still apply on top, so an old save keeps every coin it ever spent.
+local function deriveCombat(record: PlayerRecord)
+	local base = Attributes.effective(record.attributes, Classes.bonus(record.class))
+	base = Attributes.effective(base, Items.equipmentBonus(record.equipment))
+
+	local sheet = Attributes.derive(base, record.level)
+	local upgrades = Stats.derive(record.upgrades)
+	local equipment = Items.equipmentCombat(record.equipment)
+	local passive = Skills.passiveBonus(record.skills)
+
 	local _, rebirthDamage = Rebirth.multipliers(record.rebirth.count)
 	local _, petDamage = Pets.equippedMultipliers(record.pets)
-	record.combatant.maxHealth = math.floor(derived.maxHealth * rebirthDamage)
-	record.combatant.health = record.combatant.maxHealth
+
+	local damageMul = rebirthDamage * petDamage * passive.damageMul
+	local critMul = rebirthDamage * petDamage
+
+	local attack = math.floor((sheet.attack + equipment.attack + upgrades.damage) * damageMul + 0.5)
+
+	return {
+		attributes = base,
+		maxHealth = math.floor(sheet.maxHealth * rebirthDamage + 0.5),
+		maxSp = sheet.maxSp,
+		attack = math.max(1, attack),
+		magicAttack = math.max(1, math.floor(sheet.magicAttack * damageMul + 0.5)),
+		defense = sheet.defense + equipment.defense,
+		magicDefense = sheet.magicDefense,
+		hit = sheet.hit + passive.hitBonus,
+		flee = sheet.flee,
+		critChance = math.min(1, sheet.critChance + upgrades.critChance),
+		critMultiplier = Config.Attributes.CritMultiplier,
+		attackInterval = sheet.attackInterval,
+		walkSpeed = upgrades.walkSpeed,
+		damageMul = damageMul,
+		critMul = critMul,
+	}
+end
+
+-- The player's own sheet, with any running buffs folded in. Combat reads this
+-- rather than deriveCombat directly, so a Blessing actually changes the numbers.
+local function combatSheet(record: PlayerRecord, now: number)
+	local sheet = deriveCombat(record)
+	for id, buff in pairs(record.buffs) do
+		if now >= buff.until_ then
+			record.buffs[id] = nil
+		else
+			sheet.attack = math.floor(sheet.attack * buff.attackMul + 0.5)
+			sheet.magicAttack = math.floor(sheet.magicAttack * buff.attackMul + 0.5)
+			sheet.defense = math.floor(sheet.defense * buff.defenseMul + 0.5)
+			sheet.hit += buff.hitBonus
+		end
+	end
+	return sheet
+end
+
+-- One place for "this player killed that monster". Both the axe and the
+-- auto-attack path call it, so a kill pays the same and drops the same loot
+-- whichever way it died.
+local function onEnemyKilled(player: Player, record: PlayerRecord, enemy: any, reward: number)
+	directorFor(enemy.fieldId):notifyEnemyRemoved()
+	local coins, xp = rewardKill(record, enemy.wave, reward, enemy.boss)
+
+	-- Loot on the ground. The monster's own table decides what, so a rare
+	-- monster is worth hunting rather than being a recoloured common one.
+	local model = World.getEnemyModel(enemy.id)
+	local body = model and model.PrimaryPart
+	local position = body and body.Position
+	if position then
+		local luck = coinMultiplier(record, os.time())
+		for _, drop in ipairs(Items.rollDrops(enemy.archetype or enemy.name, rng, luck)) do
+			World.spawnDrop(drop.itemId, drop.count, position, enemy.fieldId, os.clock())
+		end
+	end
+
+	CombatFx:FireClient(player, {
+		kind = "kill",
+		name = enemy.name,
+		boss = enemy.boss,
+		coins = coins,
+		xp = xp,
+		streak = record.killStreak,
+	})
+	return coins, xp
+end
+
+local function applySpawnStats(record: PlayerRecord)
+	local sheet = deriveCombat(record)
+	record.combatant.maxHealth = sheet.maxHealth
+	record.combatant.health = sheet.maxHealth
+	record.maxSp = sheet.maxSp
+	record.sp = sheet.maxSp
 	-- Death clears this flag and nothing else sets it, so without this line a
 	-- player could never attack again after their first death.
 	record.combatant.alive = true
-	return derived, rebirthDamage * petDamage
+	return { walkSpeed = sheet.walkSpeed, maxHealth = sheet.maxHealth }
 end
 
 -- Spawn one monster for a field. The archetype and the field difficulty both
@@ -324,7 +521,7 @@ local function spawnForField(fieldId: string, plan: any, spawnIndex: number, now
 end
 
 local function onPlayerAdded(player: Player)
-	local record = loadRecord(player.UserId)
+	local record = loadRecord(player)
 	records[player.UserId] = record
 
 	player.CharacterAdded:Connect(function(character)
@@ -333,6 +530,7 @@ local function onPlayerAdded(player: Player)
 		-- A respawn lands where the player belongs: their field if they are
 		-- still in one, otherwise town.
 		World.attachPlayer(player, character, record.field or "Town")
+		World.applyLook(record.field or "Town")
 		local humanoid = character:WaitForChild("Humanoid") :: Humanoid
 		-- Recompute per spawn so purchases and rebirths apply on the next life.
 		local derived = applySpawnStats(record)
@@ -562,6 +760,7 @@ TravelZone.OnServerInvoke = function(player: Player, placeId: any): (boolean, st
 	record.dirty = true
 
 	World.placePlayer(player, destination)
+	World.applyLook(destination)
 	pushPlayerState(player, record)
 	notify(player, Fields.isTown(destination) and Text.get("returnedToTown")
             or Text.get("entered", Text.placeName(destination)))
@@ -696,15 +895,7 @@ UseAxe.OnServerInvoke = function(player: Player): (boolean, any, string?)
 				local killed, reward = World.damageEnemy(enemy.id, damage)
 				if killed then
 					kills += 1
-					directorFor(enemy.fieldId):notifyEnemyRemoved()
-					local coins = rewardKill(record, enemy.wave, reward, enemy.boss)
-					CombatFx:FireClient(player, {
-						kind = "kill",
-						name = enemy.name,
-						boss = enemy.boss,
-						coins = coins,
-						streak = record.killStreak,
-					})
+					onEnemyKilled(player, record, enemy, reward)
 				end
 			end
 		end
@@ -734,6 +925,517 @@ local function grantPurchase(player: Player, productId: string): boolean
 	pushPlayerState(player, record)
 	notify(player, Text.get("purchaseApplied", productId))
 	return true
+end
+
+--------------------------------------------------------------------------
+-- The character build: attributes, job, skills, equipment, bag.
+-- Every one of these validates on the server and pushes fresh state back, so
+-- the client can never grant itself a point, a skill or an item.
+--------------------------------------------------------------------------
+
+-- Find the nearest living enemy to a player, within `range`. Returns the enemy
+-- and its distance, or nil. Used by both attack paths and by skills.
+local function nearestEnemy(record: PlayerRecord, root: BasePart, range: number)
+	local best, bestDistance = nil, math.huge
+	for _, enemy in ipairs(World.snapshot(record.field)) do
+		local model = World.getEnemyModel(enemy.id)
+		local body = model and model:FindFirstChild("Body")
+		if body and body:IsA("BasePart") then
+			local distance = (body.Position - root.Position).Magnitude
+			if distance <= range and distance < bestDistance then
+				best, bestDistance = enemy, distance
+			end
+		end
+	end
+	return best, bestDistance
+end
+
+-- Resolve one attack: hit chance, then crit, then damage. Returns the amount
+-- dealt (0 on a miss) and whether it was a crit.
+local function resolveHit(record: PlayerRecord, sheet: any, enemy: any, power: number): (number, boolean)
+	local chance = Attributes.hitChance(sheet.hit, 10 + enemy.wave * 2)
+	if rng:nextNumber() >= chance then
+		return 0, false
+	end
+
+	local base = sheet.attack * power
+	local isCrit = rng:nextNumber() < sheet.critChance
+	if isCrit then
+		base *= sheet.critMultiplier
+	end
+
+	-- The monster's defense softens the blow the same way the player's does.
+	local dealt = Attributes.mitigate(base, 2 + enemy.wave * 1.5)
+	return dealt, isCrit
+end
+
+-- Damage one enemy and, on a kill, run the shared reward path. Returns
+-- (killed, coins, xp).
+local function strike(player: Player, record: PlayerRecord, enemy: any, amount: number, isCrit: boolean)
+	local model = World.getEnemyModel(enemy.id)
+	local body = model and model:FindFirstChild("Body")
+	if body and body:IsA("BasePart") then
+		World.showDamage(body.Position, amount, isCrit and "crit" or nil)
+	end
+
+	local killed, reward = World.damageEnemy(enemy.id, amount)
+	if not killed then
+		return false, 0, 0
+	end
+
+	local coins, xp = onEnemyKilled(player, record, enemy, reward)
+	return true, coins, xp
+end
+
+-- One swing, used by both the tap and the auto loop, so they cannot disagree
+-- about range, damage or rewards.
+local function performAttack(player: Player, record: PlayerRecord): (boolean, string?)
+	if not record.combatant.alive then
+		return false, "DEAD"
+	end
+	if not record.field then
+		return false, "NOT_IN_FIELD"
+	end
+
+	local character = player.Character
+	local root = character and character:FindFirstChild("HumanoidRootPart")
+	if not root or not root:IsA("BasePart") then
+		return false, "NO_CHARACTER"
+	end
+
+	local target = nearestEnemy(record, root, Config.Combat.AttackRange)
+	if not target then
+		return false, "NO_TARGET"
+	end
+
+	local now = os.clock()
+	local sheet = combatSheet(record, now)
+	if now - record.lastAttackAt < sheet.attackInterval then
+		return false, "COOLDOWN"
+	end
+	record.lastAttackAt = now
+
+	local amount, isCrit = resolveHit(record, sheet, target, 1)
+	if amount <= 0 then
+		local model = World.getEnemyModel(target.id)
+		local body = model and model:FindFirstChild("Body")
+		if body and body:IsA("BasePart") then
+			World.showDamage(body.Position, 0, "miss")
+		end
+		return true, nil
+	end
+
+	strike(player, record, target, amount, isCrit)
+	record.dirty = true
+	return true, nil
+end
+
+-- Manual attack. The button calls this; the auto loop calls performAttack too.
+ManualAttack.OnServerInvoke = function(player: Player): (boolean, string?)
+	local record, err = guard(player)
+	if not record then
+		return false, err
+	end
+	local ok, reason = performAttack(player, record)
+	if ok then
+		pushPlayerState(player, record)
+	end
+	return ok, reason
+end
+
+-- Auto mode is a server-side flag, so switching it off genuinely stops the
+-- swings rather than only hiding them from the client.
+SetAuto.OnServerInvoke = function(player: Player, mode: any, value: any): (boolean, string?)
+	local record, err = guard(player)
+	if not record then
+		return false, err
+	end
+	if mode == "attack" then
+		record.autoAttack = value == true
+	elseif mode == "pickup" then
+		record.autoPickup = value == true
+	else
+		return false, "BAD_REQUEST"
+	end
+	record.dirty = true
+	pushPlayerState(player, record)
+	return true, nil
+end
+
+-- Spend a stat point. The client sends only which stat and how many.
+RaiseAttribute.OnServerInvoke = function(player: Player, stat: any, times: any): (boolean, any, string?)
+	local record, err = guard(player)
+	if not record then
+		return false, nil, err
+	end
+	if type(stat) ~= "string" then
+		return false, nil, "BAD_REQUEST"
+	end
+	local count = math.clamp(math.floor(tonumber(times) or 1), 1, 10)
+
+	-- Recompute the bank rather than trusting a stored count, so a stale client
+	-- cannot spend points it does not have.
+	record.attributePoints = Attributes.available(record.attributes, record.level)
+	local ok, next, left, reason = Attributes.raise(record.attributes, record.attributePoints, stat, count)
+	if not ok then
+		return false, nil, reason
+	end
+
+	record.attributes = next
+	record.attributePoints = left
+	record.dirty = true
+	applySpawnStats(record)
+	local character = player.Character
+	local humanoid = character and character:FindFirstChildOfClass("Humanoid")
+	if humanoid then
+		humanoid.MaxHealth = record.combatant.maxHealth
+		humanoid.Health = math.min(humanoid.Health, humanoid.MaxHealth)
+	end
+	pushPlayerState(player, record)
+	notify(player, Text.get("attributeUp", Text.statName(stat), left))
+	return true, { stat = stat, value = next[stat], pointsLeft = left }, nil
+end
+
+-- Learn a skill. One point, one level.
+LearnSkill.OnServerInvoke = function(player: Player, skillId: any): (boolean, any, string?)
+	local record, err = guard(player)
+	if not record then
+		return false, nil, err
+	end
+	if type(skillId) ~= "string" then
+		return false, nil, "BAD_REQUEST"
+	end
+
+	local ok, next, left, reason = Skills.learn(record.skills, record.class, skillId, skillPointsLeft(record))
+	if not ok then
+		return false, nil, reason
+	end
+
+	record.skills = next
+	record.dirty = true
+	pushPlayerState(player, record)
+	notify(player, Text.get("skillLearned", Text.skillName(skillId), next[skillId]))
+	return true, { skillId = skillId, level = next[skillId], pointsLeft = left }, nil
+end
+
+-- Advance a job. Both the base level and the job level gates are checked here,
+-- not on the client.
+AdvanceJob.OnServerInvoke = function(player: Player, target: any): (boolean, string?)
+	local record, err = guard(player)
+	if not record then
+		return false, err
+	end
+	if type(target) ~= "string" then
+		return false, "BAD_REQUEST"
+	end
+
+	local ok, reason = Classes.canAdvance(record.class, target, record.level, record.jobLevel)
+	if not ok then
+		return false, reason
+	end
+
+	local advanced = Classes.advance(target)
+	record.class = advanced.class
+	record.jobLevel = advanced.jobLevel
+	record.jobXp = advanced.jobXp
+	-- Skills are kept: a Novice's First Aid is still useful as a Knight, and the
+	-- class bonus changes what the same skill scales off.
+	record.dirty = true
+	applySpawnStats(record)
+	pushPlayerState(player, record)
+	notify(player, Text.get("jobAdvanceOk", Text.className(target)))
+	return true, nil
+end
+
+-- Cast a skill. The server owns SP, cooldowns and the buff list.
+CastSkill.OnServerInvoke = function(player: Player, skillId: any): (boolean, any, string?)
+	local record, err = guard(player)
+	if not record then
+		return false, nil, err
+	end
+	if type(skillId) ~= "string" then
+		return false, nil, "BAD_REQUEST"
+	end
+
+	local def = Skills.getDef(skillId)
+	local level = def and math.floor(record.skills[skillId] or 0) or 0
+	if not def or level <= 0 or def.kind == "passive" then
+		return false, nil, "NOT_LEARNED"
+	end
+	if def.class ~= record.class and not Skills.isUniversal(skillId) then
+		return false, nil, "WRONG_CLASS"
+	end
+	if not record.combatant.alive then
+		return false, nil, "DEAD"
+	end
+
+	local now = os.clock()
+	if (record.cooldowns[skillId] or 0) > now then
+		return false, nil, "COOLDOWN"
+	end
+
+	local sheet = combatSheet(record, now)
+	local cast = Skills.resolve(def, level, sheet)
+	if record.sp < cast.spCost then
+		return false, nil, "NO_SP"
+	end
+	record.sp -= cast.spCost
+	record.cooldowns[skillId] = now + Skills.cooldown(def, level)
+
+	if def.kind == "heal" then
+		local before = record.combatant.health
+		Combat.healCombatant(record.combatant, cast.heal)
+		local gained = record.combatant.health - before
+		local character = player.Character
+		local root = character and character:FindFirstChild("HumanoidRootPart")
+		if root and root:IsA("BasePart") then
+			World.showDamage(root.Position, gained, "heal")
+		end
+		local humanoid = character and character:FindFirstChildOfClass("Humanoid")
+		if humanoid then
+			humanoid.Health = record.combatant.health
+		end
+		record.dirty = true
+		pushPlayerState(player, record)
+		return true, { kind = "heal", healed = gained }, nil
+	end
+
+	if def.kind == "buff" then
+		record.buffs[skillId] = {
+			until_ = now + cast.duration,
+			attackMul = cast.buff.attackMul,
+			defenseMul = cast.buff.defenseMul,
+			hitBonus = cast.buff.hitBonus,
+		}
+		record.dirty = true
+		pushPlayerState(player, record)
+		return true, { kind = "buff", duration = cast.duration }, nil
+	end
+
+	-- Attack skills hit the nearest few enemies, up to the skill's target cap.
+	local character = player.Character
+	local root = character and character:FindFirstChild("HumanoidRootPart")
+	if not root or not root:IsA("BasePart") then
+		return false, nil, "NO_CHARACTER"
+	end
+
+	local candidates = {}
+	for _, enemy in ipairs(World.snapshot(record.field)) do
+		local model = World.getEnemyModel(enemy.id)
+		local body = model and model:FindFirstChild("Body")
+		if body and body:IsA("BasePart") then
+			local distance = (body.Position - root.Position).Magnitude
+			if distance <= Config.Combat.AttackRange + 14 then
+				table.insert(candidates, { enemy = enemy, distance = distance })
+			end
+		end
+	end
+	table.sort(candidates, function(a, b)
+		return a.distance < b.distance
+	end)
+
+	local hitCount, killCount = 0, 0
+	for index, entry in ipairs(candidates) do
+		if index > cast.targets then
+			break
+		end
+		-- The skill's damage is already absolute, so the power factor is the
+		-- ratio of skill damage to a plain swing.
+		local power = cast.damage / math.max(1, sheet.attack)
+		local amount, isCrit = resolveHit(record, sheet, entry.enemy, power)
+		if amount > 0 then
+			hitCount += 1
+			local killed = strike(player, record, entry.enemy, amount, isCrit)
+			if killed then
+				killCount += 1
+			end
+		end
+	end
+
+	record.dirty = true
+	pushPlayerState(player, record)
+	return true, { kind = "attack", hits = hitCount, kills = killCount, damage = cast.damage }, nil
+end
+
+-- Wear an item from the bag.
+EquipItem.OnServerInvoke = function(player: Player, itemId: any): (boolean, string?)
+	local record, err = guard(player)
+	if not record then
+		return false, err
+	end
+	if type(itemId) ~= "string" then
+		return false, "BAD_REQUEST"
+	end
+
+	local ok, reason = Items.canEquip(itemId, record.level, record.equipment)
+	if not ok then
+		return false, reason
+	end
+	if record.inventory:count(itemId) <= 0 then
+		return false, "NOT_IN_BAG"
+	end
+
+	local next = Items.equipTo(record.equipment, itemId)
+	-- Anything displaced goes back to the bag. If the bag is full the swap is
+	-- refused rather than silently destroying the old item.
+	local displaced = {}
+	for slot, id in pairs(record.equipment) do
+		if id and next[slot] ~= id then
+			table.insert(displaced, id)
+		end
+	end
+
+	record.inventory:remove(itemId, 1)
+	for _, id in ipairs(displaced) do
+		if record.inventory:add(id, 1) > 0 then
+			record.inventory:add(itemId, 1)
+			return false, "BAG_FULL"
+		end
+	end
+
+	record.equipment = next
+	record.dirty = true
+	applySpawnStats(record)
+	local character = player.Character
+	local humanoid = character and character:FindFirstChildOfClass("Humanoid")
+	if humanoid then
+		humanoid.MaxHealth = record.combatant.maxHealth
+		humanoid.Health = math.min(humanoid.Health, humanoid.MaxHealth)
+	end
+	pushPlayerState(player, record)
+	notify(player, Text.get("equipped", Text.itemName(itemId)))
+	return true, nil
+end
+
+-- Take an item off.
+UnequipItem.OnServerInvoke = function(player: Player, slot: any): (boolean, string?)
+	local record, err = guard(player)
+	if not record then
+		return false, err
+	end
+	if type(slot) ~= "string" then
+		return false, "BAD_REQUEST"
+	end
+	local itemId = record.equipment[slot]
+	if not itemId then
+		return false, "SLOT_EMPTY"
+	end
+	if record.inventory:add(itemId, 1) > 0 then
+		return false, "BAG_FULL"
+	end
+
+	record.equipment = Items.unequipFrom(record.equipment, slot)
+	record.dirty = true
+	applySpawnStats(record)
+	local character = player.Character
+	local humanoid = character and character:FindFirstChildOfClass("Humanoid")
+	if humanoid then
+		humanoid.MaxHealth = record.combatant.maxHealth
+		humanoid.Health = math.min(humanoid.Health, humanoid.MaxHealth)
+	end
+	pushPlayerState(player, record)
+	return true, nil
+end
+
+-- Use a consumable. Health and SP potions are the two that matter; the rest
+-- are small timed boosts.
+UseItem.OnServerInvoke = function(player: Player, itemId: any): (boolean, any, string?)
+	local record, err = guard(player)
+	if not record then
+		return false, nil, err
+	end
+	if type(itemId) ~= "string" then
+		return false, nil, "BAD_REQUEST"
+	end
+
+	local def = Items.getDef(itemId)
+	if not def or def.kind ~= "consumable" then
+		return false, nil, "NOT_CONSUMABLE"
+	end
+	if record.inventory:count(itemId) <= 0 then
+		return false, nil, "NOT_IN_BAG"
+	end
+	if not record.combatant.alive then
+		return false, nil, "DEAD"
+	end
+
+	local now = os.clock()
+	local sheet = combatSheet(record, now)
+	local result = ""
+
+	if def.effect == "heal" then
+		local before = record.combatant.health
+		Combat.healCombatant(record.combatant, math.floor(sheet.maxHealth * def.amount + 0.5))
+		result = tostring(record.combatant.health - before)
+		local character = player.Character
+		local humanoid = character and character:FindFirstChildOfClass("Humanoid")
+		if humanoid then
+			humanoid.Health = record.combatant.health
+		end
+	elseif def.effect == "sp" then
+		local before = record.sp
+		record.sp = math.min(record.maxSp, record.sp + math.floor(record.maxSp * def.amount + 0.5))
+		result = tostring(record.sp - before)
+	elseif def.effect == "speed" then
+		record.buffs[itemId] = {
+			until_ = now + 30,
+			attackMul = 1,
+			defenseMul = 1,
+			hitBonus = 0,
+		}
+		result = "30"
+	elseif def.effect == "luck" then
+		record.buffs[itemId] = {
+			until_ = now + 60,
+			attackMul = 1,
+			defenseMul = 1,
+			hitBonus = 10,
+		}
+		result = "60"
+	else
+		return false, nil, "UNKNOWN_EFFECT"
+	end
+
+	record.inventory:remove(itemId, 1)
+	record.dirty = true
+	pushPlayerState(player, record)
+	notify(player, Text.get("usedItem", Text.itemName(itemId)))
+	return true, { itemId = itemId, effect = def.effect, result = result }, nil
+end
+
+-- Pick up one drop, or every drop in range when `all` is true.
+PickUpDrop.OnServerInvoke = function(player: Player, dropId: any, all: any): (boolean, any, string?)
+	local record, err = guard(player)
+	if not record then
+		return false, nil, err
+	end
+
+	local character = player.Character
+	local root = character and character:FindFirstChild("HumanoidRootPart")
+	if not root or not root:IsA("BasePart") then
+		return false, nil, "NO_CHARACTER"
+	end
+
+	local range = all == true and Config.Items.AutoPickupRange or Config.Items.PickupRange
+	local taken = {}
+	for _, drop in ipairs(World.dropSnapshot(record.field)) do
+		local wanted = all == true or (type(dropId) == "number" and drop.id == dropId)
+		if wanted and (drop.position - root.Position).Magnitude <= range then
+			local def = Items.getDef(drop.itemId)
+			if def and record.inventory:add(drop.itemId, drop.count) == 0 then
+				World.removeDrop(drop.id)
+				table.insert(taken, { itemId = drop.itemId, count = drop.count })
+			end
+		end
+	end
+
+	if #taken == 0 then
+		return false, nil, "NOTHING_IN_RANGE"
+	end
+
+	record.dirty = true
+	pushPlayerState(player, record)
+	return true, taken, nil
 end
 
 MarketplaceService.ProcessReceipt = function(receiptInfo)
@@ -805,47 +1507,54 @@ RunService.Heartbeat:Connect(function(dt)
 		end
 	end
 
-	-- Mobile-first auto attack: the nearest enemy in range takes a hit on a
-	-- fixed cadence. The server picks the target and rolls the damage.
+	-- Per-player upkeep: SP regeneration, cooldowns, auto attack and auto
+	-- pickup. Auto attack only runs while the player has it switched on, so
+	-- playing by hand is a real choice rather than a slower version of the same
+	-- thing.
 	for _, player in ipairs(Players:GetPlayers()) do
 		local record = records[player.UserId]
+		if not record then
+			continue
+		end
+
 		local character = player.Character
 		local root = character and character:FindFirstChild("HumanoidRootPart")
-		-- Auto attack only works inside a field. In town there is nothing to
-		-- fight, and that safety is the point of a town.
-		if record and root and root:IsA("BasePart") and record.combatant.alive and record.field then
-			local now = os.clock()
-			if now - record.lastAttackAt >= Config.Combat.AttackInterval then
-				local target, targetDistance = nil, math.huge
-				for _, enemy in ipairs(World.snapshot(record.field)) do
-					local model = World.getEnemyModel(enemy.id)
-					local body = model and model:FindFirstChild("Body")
-					if body and body:IsA("BasePart") then
-						local distance = (body.Position - root.Position).Magnitude
-						if distance <= Config.Combat.AttackRange and distance < targetDistance then
-							target, targetDistance = enemy, distance
+		local inField = root and root:IsA("BasePart") and record.field ~= nil
+
+		-- SP comes back on its own, faster with more INT, so a caster is never
+		-- permanently out of mana.
+		local sheet = deriveCombat(record)
+		local regen = Config.Skills.SpRegenPerSecond + sheet.maxSp * Config.Skills.SpRegenPercent
+		record.sp = math.min(sheet.maxSp, record.sp + regen * TICK_STEP)
+		record.maxSp = sheet.maxSp
+
+		-- A dead player stops attacking, and the buff list is left to expire.
+		if record.combatant.alive and inField then
+			if record.autoAttack then
+				performAttack(player, record)
+			end
+
+			-- Auto pickup: anything close enough is collected without a tap.
+			if record.autoPickup then
+				local taken = false
+				for _, drop in ipairs(World.dropSnapshot(record.field)) do
+					if (drop.position - root.Position).Magnitude <= Config.Items.AutoPickupRange then
+						if record.inventory:add(drop.itemId, drop.count) == 0 then
+							World.removeDrop(drop.id)
+							taken = true
+							notify(player, Text.get("looted", Text.itemName(drop.itemId), drop.count))
 						end
 					end
 				end
-				if target then
-					record.lastAttackAt = now
-					local damage = Stats.rollDamage(Stats.derive(record.upgrades), rng)
-					local killed, reward = World.damageEnemy(target.id, damage)
-					if killed then
-						directorFor(target.fieldId):notifyEnemyRemoved()
-						local coins = rewardKill(record, target.wave, reward, target.boss)
-						CombatFx:FireClient(player, {
-							kind = "kill",
-							name = target.name,
-							boss = target.boss,
-							coins = coins,
-							streak = record.killStreak,
-						})
-					end
+				if taken then
+					record.dirty = true
 				end
 			end
 		end
 	end
+
+	-- Old drops expire, so a long session does not fill the world with parts.
+	World.pruneDrops(os.clock())
 
 	-- Enemies chase and hit players. Keeping the damage and reward rules
 	-- here keeps all combat maths in one place.
@@ -926,6 +1635,20 @@ end)
 
 -- Build the playable world before anyone can join.
 World.buildWorld()
+
+-- A portal touch goes through the same travel path as the map button, so the
+-- level lock and the cooldown are enforced in one place.
+World.setPortalHandler(function(player: Player, placeId: string)
+	local record = records[player.UserId]
+	if not record then
+		return
+	end
+	-- Reuse the remote's own rules by calling the same handler, so a walk-in and
+	-- a button press cannot diverge.
+	if TravelZone.OnServerInvoke then
+		TravelZone.OnServerInvoke(player, placeId)
+	end
+end)
 
 -- Periodic persistence.
 task.spawn(function()

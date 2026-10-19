@@ -45,6 +45,98 @@ local GROUND: { [string]: { number } } = {
         Heaven = { 214, 214, 236 },
 }
 
+-- How each place looks: ambient light, fog, and the accent colour used for
+-- its glow, particles and sign. This is what makes the five maps read as five
+-- places rather than the same disc with a different floor tint.
+export type Look = {
+        ambient: { number },
+        outdoorAmbient: { number },
+        fog: { number },
+        fogEnd: number,
+        brightness: number,
+        -- Colour of the glowing rim and floating motes.
+        accent: { number },
+        -- Sky tint the client lerps toward on arrival.
+        sky: { number },
+        -- Whether this place has floating light motes.
+        motes: boolean,
+}
+
+local LOOKS: { [string]: Look } = {
+        Town = {
+                ambient = { 140, 136, 128 },
+                outdoorAmbient = { 150, 144, 132 },
+                fog = { 196, 206, 226 },
+                fogEnd = 900,
+                brightness = 2.2,
+                accent = { 255, 214, 92 },
+                sky = { 120, 170, 255 },
+                motes = false,
+        },
+        Meadow = {
+                ambient = { 130, 150, 120 },
+                outdoorAmbient = { 140, 160, 125 },
+                fog = { 168, 206, 168 },
+                fogEnd = 620,
+                brightness = 2.6,
+                accent = { 140, 255, 170 },
+                sky = { 130, 190, 255 },
+                motes = true,
+        },
+        Cavern = {
+                ambient = { 70, 78, 110 },
+                outdoorAmbient = { 62, 70, 104 },
+                fog = { 60, 70, 104 },
+                fogEnd = 320,
+                brightness = 1.1,
+                accent = { 150, 200, 255 },
+                sky = { 60, 70, 120 },
+                motes = true,
+        },
+        Volcano = {
+                ambient = { 150, 90, 70 },
+                outdoorAmbient = { 140, 84, 66 },
+                fog = { 120, 58, 44 },
+                fogEnd = 300,
+                brightness = 1.5,
+                accent = { 255, 120, 60 },
+                sky = { 150, 70, 50 },
+                motes = true,
+        },
+        Void = {
+                ambient = { 80, 66, 120 },
+                outdoorAmbient = { 74, 60, 116 },
+                fog = { 52, 42, 88 },
+                fogEnd = 260,
+                brightness = 0.9,
+                accent = { 180, 130, 255 },
+                sky = { 50, 40, 90 },
+                motes = true,
+        },
+        Heaven = {
+                ambient = { 200, 202, 230 },
+                outdoorAmbient = { 210, 212, 240 },
+                fog = { 226, 232, 255 },
+                fogEnd = 520,
+                brightness = 2.8,
+                accent = { 255, 246, 200 },
+                sky = { 200, 220, 255 },
+                motes = true,
+        },
+}
+
+-- The look for a place. Falls back to the town's, so an unknown id is still
+-- lit rather than black.
+function Fields.look(id: string?): Look
+        if id == nil then
+                return LOOKS.Town
+        end
+        if id == "Town" then
+                return LOOKS.Town
+        end
+        return LOOKS[id] or LOOKS.Town
+end
+
 local POSITIONS: { [string]: { x: number, y: number, z: number } } = {}
 
 -- Place the fields evenly on a ring around the town, starting north.

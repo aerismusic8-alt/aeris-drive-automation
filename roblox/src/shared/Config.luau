@@ -17,12 +17,14 @@ Config.Tick = {
 }
 
 Config.Wave = {
-	BaseEnemyCount = 4,
+	-- Wave 1 is three monsters, not four: the first fight is where a new
+	-- player learns the buttons, so it has to be survivable.
+	BaseEnemyCount = 3,
 	EnemiesPerWave = 2,
 	MaxEnemiesPerWave = 40,
-	BaseEnemyHealth = 100,
+	BaseEnemyHealth = 70,
 	HealthGrowth = 1.18,
-	BaseEnemyDamage = 8,
+	BaseEnemyDamage = 5,
 	DamageGrowth = 1.09,
 	BaseReward = 25,
 	RewardGrowth = 1.08,
@@ -52,9 +54,9 @@ Config.Player = {
 -- Mobile-first combat: the player never has to tap to fight, so a session
 -- works with one hand. Range is generous because the arena is small.
 Config.Combat = {
-        AttackRange = 30,
-        AttackInterval = 0.8,
-        AutoAttack = true,
+	AttackRange = 30,
+	AttackInterval = 0.8,
+	AutoAttack = true,
 }
 
 Config.Economy = {
@@ -83,7 +85,9 @@ Config.Network = {
 }
 
 Config.Persistence = {
-	SchemaVersion = 4,
+	-- v5 adds the character build: attributes, class, job level, skills,
+	-- equipment. v4 and older migrate forward with defaults.
+	SchemaVersion = 5,
 	MinSupportedVersion = 1,
 	SaveIntervalSeconds = 90,
 }
@@ -114,6 +118,127 @@ Config.Codes = {
 
 -- Ordered list keeps iteration deterministic across server restarts.
 Config.UpgradeOrder = { "Damage", "Health", "Speed", "CritChance" }
+
+--------------------------------------------------------------------------
+-- The Ragnarok layer: attributes, classes, skills, items and equipment.
+-- This is what turns "walk up and auto-attack" into a character you build.
+--------------------------------------------------------------------------
+
+Config.Attributes = {
+	-- Every stat starts here and can be raised to MaxValue. A point costs
+	-- more every ten levels of that stat, so specialising is a trade-off.
+	BaseValue = 1,
+	MaxValue = 99,
+	-- Stat points granted per level, plus one more every PointsPerLevelStep
+	-- levels. Level 99 therefore banks far more than level 10 did.
+	PointsPerLevelBase = 3,
+	PointsPerLevelStep = 5,
+
+	-- Attack: STR is the melee stat, DEX adds a little to everything.
+	BaseAttack = 8,
+	AttackPerStr = 2,
+	AttackPerDex = 0.5,
+	BaseMagicAttack = 6,
+	MagicAttackPerInt = 2.2,
+
+	-- Health and SP.
+	BaseHealth = 60,
+	HealthPerVit = 6,
+	HealthPerLevel = 8,
+	BaseSp = 20,
+	SpPerInt = 4,
+	SpPerLevel = 2,
+
+	-- Defense and evasion.
+	BaseDefense = 2,
+	DefensePerVit = 0.8,
+	BaseMagicDefense = 1,
+	MagicDefensePerInt = 0.7,
+	-- Defense reduces damage as defense/(defense+cap): never immunity.
+	DefenseSoftCap = 60,
+
+	-- Accuracy and dodging. Both grow with level, so level matters even
+	-- with the points banked.
+	BaseHit = 10,
+	HitPerDex = 1.2,
+	BaseFlee = 5,
+	FleePerAgi = 1.4,
+	-- Chance to hit = base + (hit - flee) * perPoint, clamped.
+	HitBaseChance = 0.75,
+	HitChancePerPoint = 0.01,
+	MinHitChance = 0.35,
+	MaxHitChance = 0.98,
+
+	-- Crits come from LUK.
+	BaseCrit = 0.02,
+	CritPerLuk = 0.003,
+	MaxCrit = 0.5,
+	CritMultiplier = 1.8,
+
+	-- Attack speed. AGI shortens the interval; DEX helps a little.
+	BaseAttackInterval = 1.1,
+	AgilityPerAgi = 0.006,
+	AgilityPerDex = 0.002,
+	MinAttackInterval = 0.35,
+
+	-- Stats the player may assign points to. Everything else is derived.
+	Raisable = { STR = true, AGI = true, VIT = true, INT = true, DEX = true, LUK = true },
+}
+
+Config.Classes = {
+	-- Novice is the starting class and cannot be chosen; the five first
+	-- jobs are the branches, and each has one second job.
+	StartingClass = "Novice",
+	-- Job level is earned alongside base level and is what buys skills.
+	MaxJobLevel = 50,
+	-- A first job needs this base level; the second job needs more.
+	FirstJobLevel = 10,
+	SecondJobLevel = 30,
+	-- Job level needed to advance, so a player cannot rush the branch.
+	FirstJobJobLevel = 10,
+	SecondJobJobLevel = 30,
+	-- Job levels needed per job level gained, at base level 1.
+	JobXpBase = 30,
+	JobXpGrowth = 1.12,
+	-- Job XP granted per point of base XP from a kill. Below 1 so the job
+	-- track is slower than the base track, which is what makes a second job
+	-- feel earned rather than automatic.
+	JobXpPerBaseXp = 0.6,
+	-- One skill point per job level.
+	SkillPointsPerJobLevel = 1,
+	-- Class bonuses are flat attribute additions, applied on top of the
+	-- points the player assigned.
+	RespecCostCoins = 5000,
+}
+
+Config.Skills = {
+	-- SP regeneration: this much per second, plus a slice of max SP.
+	SpRegenPerSecond = 2,
+	SpRegenPercent = 0.02,
+	-- A skill cannot be cast more often than this, whatever the skill says.
+	MinGlobalCooldown = 0.3,
+}
+
+Config.Items = {
+	-- Backpack slots. Equipment does not consume a slot.
+	DefaultCapacity = 30,
+	MaxCapacity = 200,
+	-- How close a player must stand to pick a dropped item up.
+	PickupRange = 14,
+	-- A drop that nobody collects disappears, so a long session does not
+	-- fill the world with parts.
+	DropLifetimeSeconds = 90,
+	-- Auto-pickup collects anything this close, which is what makes the
+	-- auto mode feel automatic rather than approximate.
+	AutoPickupRange = 18,
+}
+
+Config.Equipment = {
+	-- One item per slot. Order is the order the panel shows them in.
+	Slots = { "Weapon", "Shield", "Head", "Body", "Garment", "Shoes", "Accessory1", "Accessory2" },
+	-- A two-handed weapon occupies both the weapon and the shield slot.
+	TwoHandedSlots = { "Weapon", "Shield" },
+}
 
 --------------------------------------------------------------------------
 -- Progression: levels, pets, rebirths, zones.

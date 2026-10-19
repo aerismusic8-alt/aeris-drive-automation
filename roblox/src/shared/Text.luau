@@ -87,11 +87,226 @@ local STRINGS: { [string]: string } = {
         Wheat = "ข้าวสาลี",
         Carrot = "แครอท",
         Star = "ดาว",
+
+        -- Character sheet
+        character = "ตัวละคร",
+        stats = "ค่าพลัง",
+        attributes = "ค่าสถานะ",
+        pointsLeft = "แต้มเหลือ %d",
+        attack = "โจมตี",
+        magicAttack = "โจมตีเวท",
+        defense = "ป้องกัน",
+        magicDefense = "ต้านเวท",
+        hit = "แม่นยำ",
+        flee = "หลบหลีก",
+        critChance = "คริติคอล",
+        attackSpeed = "ความเร็วโจมตี",
+        maxHealth = "เลือดสูงสุด",
+        maxSp = "มานาสูงสุด",
+        addPoint = "+1",
+        addTen = "+10",
+        noPoints = "ไม่มีแต้ม",
+        STR = "STR พลัง",
+        AGI = "AGI ความไว",
+        VIT = "VIT อึด",
+        INT = "INT ปัญญา",
+        DEX = "DEX แม่น",
+        LUK = "LUK โชค",
+
+        -- Job and skills
+        job = "อาชีพ",
+        jobLevel = "เลเวลอาชีพ",
+        jobXp = "ค่าอาชีพ",
+        skillPoints = "แต้มสกิล %d",
+        skills = "สกิล",
+        learn = "เรียน",
+        learned = "เรียนแล้ว",
+        changeJob = "เปลี่ยนอาชีพ",
+        jobAdvance = "เลื่อนอาชีพ",
+        jobRequirements = "ต้องเลเวล %d และเลเวลอาชีพ %d",
+        jobLevelUp = "เลเวลอาชีพขึ้นเป็น %d",
+        jobAdvanceOk = "เปลี่ยนอาชีพเป็น %s แล้ว",
+        attributeUp = "%s +1 (เหลือ %d แต้ม)",
+        skillLearned = "เรียน %s เลเวล %d",
+        noAttributePoints = "แต้มไม่พอ",
+        branchOf = "สายอาชีพ",
+        notEnoughSkillPoints = "แต้มสกิลไม่พอ",
+        needPrerequisite = "ต้องเรียน %s ก่อน",
+        maxSkill = "เต็มแล้ว",
+        passiveSkill = "ติดตัว",
+        spCostLabel = "ใช้ %d มานา",
+        cooldownLabel = "คูลดาวน์ %.1f วิ",
+        cast = "ใช้สกิล",
+        noSp = "มานาไม่พอ",
+        skillOnCooldown = "รอคูลดาวน์",
+        buffActive = "บัฟทำงาน",
+
+        -- Inventory and equipment
+        inventory = "กระเป๋า",
+        equipment = "อุปกรณ์",
+        bag = "ของ",
+        equip = "สวมใส่",
+        unequip = "ถอด",
+        use = "ใช้",
+        drop = "ทิ้ง",
+        empty = "ว่าง",
+        full = "กระเป๋าเต็ม",
+        levelTooLow = "เลเวลไม่พอ",
+        notEquipment = "ใส่อย่างอื่น",
+        twoHandedBlocks = "สองมือ ต้องถอดโล่",
+        slotEmpty = "ไม่มี",
+        pickup = "เก็บของ",
+        autoPickupOn = "เก็บของอัตโนมัติ: เปิด",
+        autoPickupOff = "เก็บของอัตโนมัติ: ปิด",
+        looted = "เก็บได้ %s x%d",
+        equipped = "สวม %s แล้ว",
+        usedItem = "ใช้ %s",
+        itemLevelReq = "ต้องเลเวล %d",
+
+        -- Attack modes
+        attackButton = "โจมตี",
+        autoAttackOn = "โจมตีอัตโนมัติ: เปิด",
+        autoAttackOff = "โจมตีอัตโนมัติ: ปิด",
+        auto = "ออโต้",
+        manual = "กดเอง",
+        skillReady = "พร้อม",
+        killGain = "สังหาร %s: +%d",
+
+        -- Equipment slots
+        Weapon = "อาวุธ",
+        Shield = "โล่",
+        Head = "หมวก",
+        Body = "เสื้อเกราะ",
+        Garment = "ผ้าคลุม",
+        Shoes = "รองเท้า",
+        Accessory1 = "แหวน",
+        Accessory2 = "เครื่องราง",
+
+        -- Classes
+        Novice = "โนวิซ",
+        Swordsman = "นักดาบ",
+        Archer = "นักธนู",
+        Mage = "จอมเวท",
+        Thief = "โจร",
+        Acolyte = "นักบวชฝึกหัด",
+        Knight = "อัศวิน",
+        Hunter = "นายพราน",
+        Wizard = "พ่อมด",
+        Assassin = "นักฆ่า",
+        Priest = "บาทหลวง",
+
+        -- Class taglines
+        NoviceTagline = "ทุกคนเริ่มต้นที่นี่",
+        SwordsmanTagline = "เกราะหนัก ฟันหนัก",
+        ArcherTagline = "ฆ่าก่อนที่มันจะถึงตัว",
+        MageTagline = "ให้ธาตุเป็นคนเดิน",
+        ThiefTagline = "เร็ว เงียบ และอยู่ข้างหลังเจ้าแล้ว",
+        AcolyteTagline = "ทำให้ปาร์ตี้ไม่ล้ม",
+        KnightTagline = "แนวรบยังอยู่ เพราะเจ้ายังยืน",
+        HunterTagline = "ไม่มีอะไรวิ่งหนีลูกธนูได้",
+        WizardTagline = "ความจริงเป็นแค่ข้อเสนอ",
+        AssassinTagline = "สองดาบ คำตอบเดียว",
+        PriestTagline = "แสงมาถึงก่อนตัวเจ้า",
+
+        -- Skill names
+        BasicAttack = "โจมตีปกติ",
+        FirstAid = "ปฐมพยาบาล",
+        Bash = "ทุบ",
+        MagnumBreak = "ฟันหมุน",
+        Endure = "ทนทาน",
+        BowlingBash = "พุ่งชน",
+        TwoHandQuicken = "เร่งสองมือ",
+        DoubleStrafe = "ยิงคู่",
+        OwlEyes = "ตาเหยี่ยว",
+        ArrowShower = "ห่าธนู",
+        BeastFang = "เขี้ยวสัตว์",
+        FireBolt = "ลูกไฟ",
+        ColdBolt = "ลูกน้ำแข็ง",
+        IncreaseSpRecovery = "ฟื้นมานาเร็ว",
+        StormGust = "พายุหิมะ",
+        MagicCrasher = "ทุบด้วยเวท",
+        DoubleAttack = "ตีคู่",
+        ImproveDodge = "หลบเก่งขึ้น",
+        SonicBlow = "หมัดเสียง",
+        Cloaking = "ล่องหน",
+        Heal = "รักษา",
+        Blessing = "พร",
+        MagnusExorcismus = "แสงศักดิ์สิทธิ์",
+        Sanctuary = "เขตศักดิ์สิทธิ์",
+
+        -- Item names
+        NoviceKnife = "มีดโนวิซ",
+        ShortSword = "ดาบสั้น",
+        LongSword = "ดาบยาว",
+        BroadSword = "ดาบกว้าง",
+        Claymore = "ดาบใหญ่",
+        DragonSlayer = "ดาบสังหารมังกร",
+        ShortBow = "ธนูสั้น",
+        HunterBow = "ธนูพราน",
+        GreatBow = "ธนูใหญ่",
+        ArtemisBow = "ธนูอาร์เทมิส",
+        NoviceRod = "คทาโนวิซ",
+        BoneWand = "คทากระดูก",
+        StaffOfFire = "คทาไฟ",
+        ArcWand = "คทาสายฟ้า",
+        Dagger = "กริช",
+        MainGauche = "กริชซ้าย",
+        Katar = "กาตาร์",
+        Jur = "Jur",
+        NoviceMace = "ค้อนโนวิซ",
+        Mace = "ค้อน",
+        WarMace = "ค้อนสงคราม",
+        DivineMace = "ค้อนศักดิ์สิทธิ์",
+        CottonShirt = "เสื้อผ้าฝ้าย",
+        LeatherArmor = "เกราะหนัง",
+        ChainMail = "เกราะโซ่",
+        PlateArmor = "เกราะเหล็ก",
+        LeatherCap = "หมวกหนัง",
+        IronHelm = "หมวกเหล็ก",
+        Crown = "มงกุฎ",
+        Hood = "ฮู้ด",
+        Muffler = "ผ้าพันคอ",
+        WindCloak = "ผ้าคลุมลม",
+        Sandals = "รองเท้าแตะ",
+        Boots = "บูท",
+        Greaves = "สนับแข้ง",
+        WoodenShield = "โล่ไม้",
+        Buckler = "โล่กลม",
+        GuardianShield = "โล่ผู้พิทักษ์",
+        RingOfStrength = "แหวนพลัง",
+        RingOfWisdom = "แหวนปัญญา",
+        RingOfSpeed = "แหวนความเร็ว",
+        AmuletOfLuck = "เครื่องรางโชค",
+        VoidPendant = "จี้แห่งความว่างเปล่า",
+        RedPotion = "ยาน้ำแดง",
+        RedPotionBig = "ยาแดงใหญ่",
+        BluePotion = "ยาน้ำเงิน",
+        BluePotionBig = "ยาเงินใหญ่",
+        SpeedPotion = "ยาเพิ่มความเร็ว",
+        LuckPotion = "ยาเพิ่มโชค",
+        Jellopy = "เจลลอปปี้",
+        Fluff = "ขนปุย",
+        Chitin = "เปลือกแข็ง",
+        Stone = "เศษหิน",
+        IronOre = "แร่เหล็ก",
+        Crystal = "เศษคริสตัล",
+        Ember = "แกนไฟ",
+        RiftShard = "เศษรอยแยก",
+        CelestialFeather = "ขนสวรรค์",
+        BossToken = "ตราบอส",
+
+        -- Item rarity
+        common = "ธรรมดา",
+        uncommon = "ไม่ธรรมดา",
+        rare = "หายาก",
+        epic = "มหากาพย์",
+        legendary = "ตำนาน",
 }
 
 -- Monsters reach the client as a display name rather than an id, so they get
 -- their own table keyed by the English name Enemies.luau ships.
 local ENEMIES: { [string]: string } = {
+        Poring = "โพริ่ง",
         Slime = "สไลม์",
         Hornet = "ตัวต่อ",
         ["Slime King"] = "ราชาสไลม์",
@@ -107,6 +322,19 @@ local ENEMIES: { [string]: string } = {
         ["Void Wisp"] = "แสงเวทว่างเปล่า",
         ["Rift Stalker"] = "นักล่าแห่งรอยแยก",
         ["Void Sovereign"] = "ราชันความว่างเปล่า",
+        ["Baby Boar"] = "หมูป่าน้อย",
+        Lunatic = "กระต่ายคลั่ง",
+        Skeleton = "โครงกระดูก",
+        Familiar = "ภูตน้อย",
+        Anubis = "อานูบิส",
+        ["Fire Elemental"] = "ภูตไฟ",
+        ["Lava Toad"] = "คางคกลาวา",
+        ["Abyss Hound"] = "หมาขุมนรก",
+        ["Void Priest"] = "นักบวชว่างเปล่า",
+        ["Celestial Guard"] = "ทหารสวรรค์",
+        Seraph = "เซราฟิม",
+        ["Divine Knight"] = "อัศวินสวรรค์",
+        ["Heaven's Gate"] = "ประตูสวรรค์",
 }
 
 local TAGLINES: { [string]: string } = {
@@ -149,6 +377,49 @@ end
 -- Display name for a crop, by id. Unknown ids pass through, which keeps a new
 -- crop visible before its translation is added.
 function Text.cropName(id: string): string
+        return STRINGS[id] or id
+end
+
+-- Display name for an item, by id. Unknown ids pass through, so a new item is
+-- readable before its translation lands.
+function Text.itemName(id: string?): string
+        if id == nil then
+                return ""
+        end
+        return STRINGS[id] or id
+end
+
+-- Display name for a class, by id.
+function Text.className(id: string?): string
+        if id == nil then
+                return ""
+        end
+        return STRINGS[id] or id
+end
+
+-- The flavour line under a class name.
+function Text.classTagline(id: string): string
+        return STRINGS[id .. "Tagline"] or ""
+end
+
+-- Display name for a skill, by id.
+function Text.skillName(id: string?): string
+        if id == nil then
+                return ""
+        end
+        return STRINGS[id] or id
+end
+
+-- Display name for an equipment slot.
+function Text.slotName(slot: string?): string
+        if slot == nil then
+                return ""
+        end
+        return STRINGS[slot] or slot
+end
+
+-- Display name for a stat, by id.
+function Text.statName(id: string): string
         return STRINGS[id] or id
 end
 

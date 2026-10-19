@@ -12,6 +12,9 @@ local MarketplaceService = game:GetService("MarketplaceService")
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local Config = require(Shared.Config)
 local Text = require(Shared.Text)
+local Classes = require(Shared.Classes)
+local Skills = require(Shared.Skills)
+local Items = require(Shared.Items)
 
 local Remotes = ReplicatedStorage:WaitForChild("Remotes")
 local RequestUpgrade = Remotes:WaitForChild("RequestUpgrade") :: RemoteFunction
@@ -31,6 +34,16 @@ local WaveState = Remotes:WaitForChild("WaveState") :: RemoteEvent
 local PlayerState = Remotes:WaitForChild("PlayerState") :: RemoteEvent
 local Notify = Remotes:WaitForChild("Notify") :: RemoteEvent
 local CombatFx = Remotes:WaitForChild("CombatFx") :: RemoteEvent
+local RaiseAttribute = Remotes:WaitForChild("RaiseAttribute") :: RemoteFunction
+local LearnSkill = Remotes:WaitForChild("LearnSkill") :: RemoteFunction
+local AdvanceJob = Remotes:WaitForChild("AdvanceJob") :: RemoteFunction
+local CastSkill = Remotes:WaitForChild("CastSkill") :: RemoteFunction
+local EquipItem = Remotes:WaitForChild("EquipItem") :: RemoteFunction
+local UnequipItem = Remotes:WaitForChild("UnequipItem") :: RemoteFunction
+local UseItem = Remotes:WaitForChild("UseItem") :: RemoteFunction
+local PickUpDrop = Remotes:WaitForChild("PickUpDrop") :: RemoteFunction
+local ManualAttack = Remotes:WaitForChild("ManualAttack") :: RemoteFunction
+local SetAuto = Remotes:WaitForChild("SetAuto") :: RemoteFunction
 
 local Hud = require(script.Hud)
 
@@ -67,6 +80,34 @@ local state = {
 	-- moment rather than a number change.
 	lastKill = nil,
 	lastKillAt = 0,
+
+	-- Character build, mirrored from the server. The client only displays
+	-- these; it never derives them.
+	attributes = {},
+	attributeSheet = nil,
+	attributePoints = 0,
+	attributeNames = { "STR", "AGI", "VIT", "INT", "DEX", "LUK" },
+	class = Config.Classes.StartingClass,
+	className = "",
+	classTagline = "",
+	classDef = nil,
+	jobLevel = 1,
+	jobXp = 0,
+	jobXpForNext = 1,
+	skillPoints = 0,
+	skills = {},
+	hotbar = {},
+	sp = 0,
+	maxSp = 0,
+	equipment = {},
+	bag = {},
+	bagCapacity = Config.Items.DefaultCapacity,
+	autoAttack = Config.Combat.AutoAttack,
+	autoPickup = true,
+	buffs = {},
+	-- Which character tab is open, and whether the panel is up at all.
+	charTab = "Stats",
+	charOpen = false,
 }
 
 local function formatCoins(value: number): string
@@ -84,6 +125,10 @@ local function setLabel(gui: Instance, name: string, text: string)
 		label.Text = text
 	end
 end
+
+-- Declared ahead of render so render can call them; both are defined further
+-- down, next to the panels they draw.
+local renderCombat, renderCharacter
 
 local function render()
 	local hud = player:FindFirstChild("PlayerGui")
@@ -206,6 +251,330 @@ local function render()
 			killLabel.Visible = false
 		end
 	end
+
+	renderCombat(gui)
+	renderCharacter(gui)
+end
+
+-- The combat panel: attack button, the two auto toggles, and the manual pickup.
+-- Auto state is shown by colour and by the word, so it reads at a glance.
+function renderCombat(gui: Instance)
+	local combat = gui:FindFirstChild("Combat")
+	if not combat then
+		return
+	end
+
+	local attack = combat:FindFirstChild("Attack")
+	if attack and attack:IsA("TextButton") then
+		attack.Text = Text.get("attackButton")
+		-- In town there is nothing to hit, so the button reads as unusable
+		-- rather than silently doing nothing.
+		attack.Active = state.field ~= nil
+		attack.BackgroundColor3 = state.field and Hud.COLORS.gold or Hud.COLORS.disabled
+	end
+
+	local autoAttack = combat:FindFirstChild("AutoAttack")
+	if autoAttack and autoAttack:IsA("TextButton") then
+		autoAttack.Text = state.autoAttack and Text.get("autoAttackOn") or Text.get("autoAttackOff")
+		autoAttack.BackgroundColor3 = state.autoAttack and Hud.COLORS.green or Hud.COLORS.disabled
+	end
+
+	local autoPickup = combat:FindFirstChild("AutoPickup")
+	if autoPickup and autoPickup:IsA("TextButton") then
+		autoPickup.Text = state.autoPickup and Text.get("autoPickupOn") or Text.get("autoPickupOff")
+		autoPickup.BackgroundColor3 = state.autoPickup and Hud.COLORS.green or Hud.COLORS.disabled
+	end
+end
+
+-- One row of the character list. Rows are rebuilt per tab, because each tab
+-- shows a different kind of thing and a shared row factory would be a bigger
+-- abstraction than the screen needs.
+local function charRow(list: Instance, name: string, index: number, height: number)
+	local row = Hud.button(list, name, "", UDim2.new(1, -8, 0, height), UDim2.new(0, 4, 0, (index - 1) * (height + 6)), Hud.COLORS.disabled)
+	row.ZIndex = 22
+	row.TextSize = 15
+	row.TextXAlignment = Enum.TextXAlignment.Left
+	row.AutoButtonColor = false
+	return row
+end
+
+-- Stats tab: the six attributes, with a +1 and a +10 button when points remain,
+-- then the derived numbers so the effect of a point is visible immediately.
+local function renderStatsTab(list: Instance)
+	list:ClearAllChildren()
+	local row = 0
+	local sheet = state.attributeSheet or {}
+
+	local header = charRow(list, "Header", row + 1, 30)
+	header.Text = Text.get("pointsLeft", state.attributePoints)
+	header.TextColor3 = state.attributePoints > 0 and Hud.COLORS.gold or Hud.COLORS.muted
+	row += 1
+
+	for _, stat in ipairs(state.attributeNames) do
+		local value = state.attributes[stat] or 1
+		local line = charRow(list, "Attr_" .. stat, row + 1, 34)
+		line.Text = string.format("%s   %d", Text.statName(stat), value)
+		line.TextColor3 = Hud.COLORS.text
+		row += 1
+
+		if state.attributePoints > 0 then
+			local plusOne = Hud.button(list, "Plus1_" .. stat, Text.get("addPoint"), UDim2.new(0, 46, 0, 30),
+				UDim2.new(1, -108, 0, row * 40 + 2), Hud.COLORS.green)
+			plusOne.ZIndex = 23
+			plusOne.Activated:Connect(function()
+				Intent.raiseAttribute(stat, 1)
+			end)
+
+			local plusTen = Hud.button(list, "Plus10_" .. stat, Text.get("addTen"), UDim2.new(0, 46, 0, 30),
+				UDim2.new(1, -56, 0, row * 40 + 2), Hud.COLORS.blue)
+			plusTen.ZIndex = 23
+			plusTen.Activated:Connect(function()
+				Intent.raiseAttribute(stat, 10)
+			end)
+		end
+	end
+
+	local derived = {
+		{ Text.get("attack"), sheet.attack },
+		{ Text.get("magicAttack"), sheet.magicAttack },
+		{ Text.get("defense"), sheet.defense },
+		{ Text.get("magicDefense"), sheet.magicDefense },
+		{ Text.get("hit"), sheet.hit },
+		{ Text.get("flee"), sheet.flee },
+		{ Text.get("maxHealth"), sheet.maxHealth },
+		{ Text.get("maxSp"), sheet.maxSp },
+	}
+	for _, entry in ipairs(derived) do
+		local line = charRow(list, "Derived_" .. tostring(entry[1]), row + 1, 28)
+		line.Text = string.format("%s: %d", entry[1], math.floor(entry[2] or 0))
+		line.TextColor3 = Hud.COLORS.muted
+		row += 1
+	end
+
+	list.CanvasSize = UDim2.new(0, 0, 0, row * 40 + 20)
+end
+
+-- Skills tab: everything the class can learn, with a LEARN button, then cast
+-- buttons for what is already learned.
+local function renderSkillsTab(list: Instance)
+	list:ClearAllChildren()
+	local row = 0
+	local header = charRow(list, "Header", row + 1, 30)
+	header.Text = Text.get("skillPoints", state.skillPoints)
+	header.TextColor3 = state.skillPoints > 0 and Hud.COLORS.gold or Hud.COLORS.muted
+	row += 1
+
+	for _, def in ipairs(Skills.forClass(state.class)) do
+		local level = math.floor(state.skills[def.id] or 0)
+		local line = charRow(list, "Skill_" .. def.id, row + 1, 44)
+		line.Text = string.format("%s  %d/%d", Text.skillName(def.id), level, def.maxLevel)
+		line.TextColor3 = level > 0 and Hud.COLORS.green or Hud.COLORS.muted
+		row += 1
+
+		if level < def.maxLevel and state.skillPoints > 0 then
+			local learn = Hud.button(list, "Learn_" .. def.id, Text.get("learn"), UDim2.new(0, 74, 0, 34),
+				UDim2.new(1, -86, 0, row * 50 - 42), Hud.COLORS.blue)
+			learn.ZIndex = 23
+			learn.Activated:Connect(function()
+				Intent.learnSkill(def.id)
+			end)
+		end
+	end
+
+	local hotbar = state.hotbar
+	if #hotbar > 0 then
+		local castHeader = charRow(list, "CastHeader", row + 1, 30)
+		castHeader.Text = Text.get("cast")
+		castHeader.TextColor3 = Hud.COLORS.muted
+		row += 1
+
+		for _, skill in ipairs(hotbar) do
+			local cast = Hud.button(list, "Cast_" .. skill.id,
+				string.format("%s  (%d)", Text.skillName(skill.id), skill.spCost),
+				UDim2.new(1, -8, 0, 40), UDim2.new(0, 4, 0, row * 50), Hud.COLORS.gold)
+			cast.ZIndex = 23
+			cast.TextSize = 15
+			cast.Activated:Connect(function()
+				Intent.castSkill(skill.id)
+			end)
+			row += 1
+		end
+	end
+
+	list.CanvasSize = UDim2.new(0, 0, 0, row * 50 + 20)
+end
+
+-- Job tab: the current class, its job level and XP, then every class it can
+-- advance into with the requirement spelled out.
+local function renderJobTab(list: Instance)
+	list:ClearAllChildren()
+	local row = 0
+
+	local current = charRow(list, "Current", row + 1, 34)
+	current.Text = string.format("%s  (%s %d)", state.className, Text.get("jobLevel"), state.jobLevel)
+	current.TextColor3 = Hud.COLORS.gold
+	row += 1
+
+	local xpLine = charRow(list, "JobXp", row + 1, 30)
+	local xpNext = state.jobXpForNext == math.huge and Text.get("max") or tostring(math.floor(state.jobXpForNext))
+	xpLine.Text = string.format("%s: %d/%s", Text.get("jobXp"), math.floor(state.jobXp), xpNext)
+	xpLine.TextColor3 = Hud.COLORS.muted
+	row += 1
+
+	if state.classTagline and #state.classTagline > 0 then
+		local tagline = charRow(list, "Tagline", row + 1, 28)
+		tagline.Text = state.classTagline
+		tagline.TextColor3 = Hud.COLORS.muted
+		row += 1
+	end
+
+	-- The class tree comes from the shared module, so the panel can never offer
+	-- an advancement the server would refuse.
+	local header = charRow(list, "Branches", row + 1, 30)
+	header.Text = Text.get("branchOf")
+	header.TextColor3 = Hud.COLORS.muted
+	row += 1
+
+	for _, def in ipairs(Classes.list()) do
+		if def.id ~= state.class then
+			local line = charRow(list, "Class_" .. def.id, row + 1, 48)
+			line.Text = string.format("%s  -  %s", Text.className(def.id), Text.classTagline(def.id))
+			line.TextColor3 = Hud.COLORS.text
+			row += 1
+
+			local ok, reason = Classes.canAdvance(state.class, def.id, state.level, state.jobLevel)
+			local advance = Hud.button(list, "Advance_" .. def.id, Text.get("jobAdvance"), UDim2.new(0, 84, 0, 34),
+				UDim2.new(1, -96, 0, row * 54 - 44), ok and Hud.COLORS.green or Hud.COLORS.disabled)
+			advance.ZIndex = 23
+			advance.TextSize = 15
+			advance.Active = ok
+			if not ok then
+				advance.Text = reason == "LEVEL_TOO_LOW"
+					and string.format(Text.get("jobRequirements"), def.levelRequirement or 1, def.jobLevelRequirement or 1)
+					or Text.get("maxSkill")
+			else
+				advance.Activated:Connect(function()
+					Intent.advanceJob(def.id)
+				end)
+			end
+		end
+	end
+
+	list.CanvasSize = UDim2.new(0, 0, 0, row * 54 + 20)
+end
+
+-- Bag tab: worn gear at the top with an UNEQUIP per slot, then the bag with
+-- EQUIP for equipment and USE for consumables.
+local function renderBagTab(list: Instance)
+	list:ClearAllChildren()
+	local row = 0
+
+	local equipHeader = charRow(list, "EquipHeader", row + 1, 30)
+	equipHeader.Text = Text.get("equipment")
+	equipHeader.TextColor3 = Hud.COLORS.muted
+	row += 1
+
+	for _, slot in ipairs(Items.slots()) do
+		local itemId = state.equipment[slot]
+		local line = charRow(list, "Slot_" .. slot, row + 1, 36)
+		line.Text = string.format("%s: %s", Text.slotName(slot), itemId and Text.itemName(itemId) or Text.get("slotEmpty"))
+		line.TextColor3 = itemId and Hud.COLORS.text or Hud.COLORS.muted
+		row += 1
+
+		if itemId then
+			local off = Hud.button(list, "Unequip_" .. slot, Text.get("unequip"), UDim2.new(0, 74, 0, 30),
+				UDim2.new(1, -86, 0, row * 42 - 36), Hud.COLORS.disabled)
+			off.ZIndex = 23
+			off.TextSize = 15
+			off.Activated:Connect(function()
+				Intent.unequipItem(slot)
+			end)
+		end
+	end
+
+	local bagHeader = charRow(list, "BagHeader", row + 1, 30)
+	bagHeader.Text = string.format("%s  %d/%d", Text.get("inventory"), #state.bag, state.bagCapacity)
+	bagHeader.TextColor3 = Hud.COLORS.muted
+	row += 1
+
+	if #state.bag == 0 then
+		local empty = charRow(list, "EmptyBag", row + 1, 30)
+		empty.Text = Text.get("empty")
+		empty.TextColor3 = Hud.COLORS.muted
+		row += 1
+	end
+
+	for index, slot in ipairs(state.bag) do
+		local def = Items.getDef(slot.itemId)
+		local line = charRow(list, "Bag_" .. tostring(index), row + 1, 36)
+		line.Text = string.format("%s x%d", Text.itemName(slot.itemId), slot.count)
+		line.TextColor3 = Hud.COLORS.text
+		row += 1
+
+		if def and def.kind == "equipment" then
+			local equip = Hud.button(list, "Equip_" .. tostring(index), Text.get("equip"), UDim2.new(0, 74, 0, 30),
+				UDim2.new(1, -86, 0, row * 42 - 36), Hud.COLORS.blue)
+			equip.ZIndex = 23
+			equip.TextSize = 15
+			equip.Activated:Connect(function()
+				Intent.equipItem(slot.itemId)
+			end)
+		elseif def and def.kind == "consumable" then
+			local use = Hud.button(list, "Use_" .. tostring(index), Text.get("use"), UDim2.new(0, 74, 0, 30),
+				UDim2.new(1, -86, 0, row * 42 - 36), Hud.COLORS.green)
+			use.ZIndex = 23
+			use.TextSize = 15
+			use.Activated:Connect(function()
+				Intent.useItem(slot.itemId)
+			end)
+		end
+	end
+
+	list.CanvasSize = UDim2.new(0, 0, 0, row * 42 + 20)
+end
+
+-- The character panel. Tabs are rebuilt on open and after every state change,
+-- so a row's buttons always match the state they were built from.
+function renderCharacter(gui: Instance)
+	local panel = gui:FindFirstChild("CharPanel")
+	if not panel or not panel:IsA("Frame") then
+		return
+	end
+	panel.Visible = state.charOpen
+	if not state.charOpen then
+		return
+	end
+
+	local list = panel:FindFirstChild("CharList")
+	if not list or not list:IsA("ScrollingFrame") then
+		return
+	end
+
+	local tabs = panel:FindFirstChild("Tabs")
+	if tabs then
+		for _, id in ipairs({ "Stats", "Skills", "Job", "Bag" }) do
+			local tab = tabs:FindFirstChild("Tab_" .. id)
+			if tab and tab:IsA("TextButton") then
+				tab.BackgroundColor3 = (state.charTab == id) and Hud.COLORS.gold or Hud.COLORS.disabled
+			end
+		end
+	end
+
+	local title = panel:FindFirstChild("CharTitle")
+	if title and title:IsA("TextLabel") then
+		title.Text = string.format("%s  -  %s  (%s %d)", Text.get("character"), state.className,
+			Text.get("jobLevel"), state.jobLevel)
+	end
+
+	if state.charTab == "Stats" then
+		renderStatsTab(list)
+	elseif state.charTab == "Skills" then
+		renderSkillsTab(list)
+	elseif state.charTab == "Job" then
+		renderJobTab(list)
+	else
+		renderBagTab(list)
+	end
 end
 
 PlayerState.OnClientEvent:Connect(function(payload)
@@ -231,6 +600,31 @@ PlayerState.OnClientEvent:Connect(function(payload)
 	state.dailyStreak = payload.dailyStreak or 0
 	state.dailySecondsLeft = payload.dailySecondsLeft or 0
 	state.crops = payload.crops or state.crops
+
+	-- Character sheet.
+	state.attributes = payload.attributes or state.attributes
+	state.attributeSheet = payload.attributeSheet or state.attributeSheet
+	state.attributePoints = payload.attributePoints or 0
+	state.attributeNames = payload.attributeNames or state.attributeNames
+	state.class = payload.class or state.class
+	state.className = payload.className or Text.className(state.class)
+	state.classTagline = payload.classTagline or ""
+	state.classDef = payload.classDef or Classes.getDef(state.class)
+	state.jobLevel = payload.jobLevel or 1
+	state.jobXp = payload.jobXp or 0
+	state.jobXpForNext = payload.jobXpForNext or 1
+	state.skillPoints = payload.skillPoints or 0
+	state.skills = payload.skills or {}
+	state.hotbar = payload.hotbar or {}
+	state.sp = payload.sp or 0
+	state.maxSp = payload.maxSp or 0
+	state.equipment = payload.equipment or {}
+	state.bag = payload.bag or {}
+	state.bagCapacity = payload.bagCapacity or state.bagCapacity
+	state.autoAttack = payload.autoAttack == true
+	state.autoPickup = payload.autoPickup ~= false
+	state.buffs = payload.buffs or {}
+
 	render()
 end)
 
@@ -333,6 +727,47 @@ end
 
 function Intent.useAxe(): (boolean, any, string?)
 	return invoke(UseAxe)
+end
+
+-- The attack button. One tap, one swing; the server decides whether it lands.
+function Intent.attack(): (boolean, string?)
+	return invoke(ManualAttack)
+end
+
+function Intent.setAuto(mode: string, value: boolean): (boolean, string?)
+	return invoke(SetAuto, mode, value)
+end
+
+function Intent.raiseAttribute(stat: string, times: number): (boolean, any, string?)
+	return invoke(RaiseAttribute, stat, times)
+end
+
+function Intent.learnSkill(skillId: string): (boolean, any, string?)
+	return invoke(LearnSkill, skillId)
+end
+
+function Intent.advanceJob(target: string): (boolean, string?)
+	return invoke(AdvanceJob, target)
+end
+
+function Intent.castSkill(skillId: string): (boolean, any, string?)
+	return invoke(CastSkill, skillId)
+end
+
+function Intent.equipItem(itemId: string): (boolean, string?)
+	return invoke(EquipItem, itemId)
+end
+
+function Intent.unequipItem(slot: string): (boolean, string?)
+	return invoke(UnequipItem, slot)
+end
+
+function Intent.useItem(itemId: string): (boolean, any, string?)
+	return invoke(UseItem, itemId)
+end
+
+function Intent.pickUp(dropId: number?): (boolean, any, string?)
+	return invoke(PickUpDrop, dropId, false)
 end
 
 -- Roblox has no native text prompt, so this is the smallest screen that can
@@ -526,6 +961,18 @@ local function wireButtons()
 	local travel = gui:WaitForChild("TravelPanel") :: Frame
 	local closeTravel = travel:WaitForChild("CloseTravel") :: TextButton
 
+	-- The combat panel and the character sheet.
+	local combatPanel = gui:WaitForChild("Combat")
+	local attackButton = combatPanel:WaitForChild("Attack") :: TextButton
+	local autoAttackButton = combatPanel:WaitForChild("AutoAttack") :: TextButton
+	local autoPickupButton = combatPanel:WaitForChild("AutoPickup") :: TextButton
+	local pickupButton = combatPanel:WaitForChild("Pickup") :: TextButton
+
+	local charPanel = gui:WaitForChild("CharPanel") :: Frame
+	local charClose = charPanel:WaitForChild("CloseChar") :: TextButton
+	local charButton = actions:WaitForChild("Character") :: TextButton
+	local tabs = charPanel:WaitForChild("Tabs")
+
 	mapButton.Activated:Connect(function()
 		buildTravelList(travel)
 		travel.Visible = not travel.Visible
@@ -538,6 +985,58 @@ local function wireButtons()
 	axeButton.Activated:Connect(function()
 		Intent.useAxe()
 	end)
+
+	-- Attack: one tap, one swing. The server decides if it lands.
+	attackButton.Activated:Connect(function()
+		local ok, reason = Intent.attack()
+		if not ok and reason and reason ~= "COOLDOWN" and reason ~= "NO_TARGET" then
+			warn("[AX Arena] attack rejected: " .. tostring(reason))
+		end
+	end)
+
+	-- The auto toggles flip a server flag, so the button reflects real state.
+	autoAttackButton.Activated:Connect(function()
+		Intent.setAuto("attack", not state.autoAttack)
+	end)
+
+	autoPickupButton.Activated:Connect(function()
+		Intent.setAuto("pickup", not state.autoPickup)
+	end)
+
+	-- Manual pickup: collects everything in range right now, whatever the auto
+	-- setting says.
+	pickupButton.Activated:Connect(function()
+		local ok, taken, reason = invoke(PickUpDrop, nil, true)
+		if not ok and reason and reason ~= "NOTHING_IN_RANGE" then
+			warn("[AX Arena] pickup rejected: " .. tostring(reason))
+		end
+		if ok and type(taken) == "table" then
+			for _, entry in ipairs(taken) do
+				print(string.format("[AX Arena] %s x%d", Text.itemName(entry.itemId), entry.count))
+			end
+		end
+	end)
+
+	-- The character sheet: open, close, and switch tabs.
+	charButton.Activated:Connect(function()
+		state.charOpen = not state.charOpen
+		render()
+	end)
+
+	charClose.Activated:Connect(function()
+		state.charOpen = false
+		render()
+	end)
+
+	for _, id in ipairs({ "Stats", "Skills", "Job", "Bag" }) do
+		local tab = tabs:FindFirstChild("Tab_" .. id)
+		if tab and tab:IsA("TextButton") then
+			tab.Activated:Connect(function()
+				state.charTab = id
+				render()
+			end)
+		end
+	end
 
 	farmButton.Activated:Connect(onFarmTap)
 

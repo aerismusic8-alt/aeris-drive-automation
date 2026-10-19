@@ -17,6 +17,7 @@ local Shared = ReplicatedStorage:WaitForChild("Shared")
 local Config = require(Shared:WaitForChild("Config"))
 local Fields = require(Shared:WaitForChild("Fields"))
 local Enemies = require(Shared:WaitForChild("Enemies"))
+local Items = require(Shared:WaitForChild("Items"))
 local Text = require(Shared:WaitForChild("Text"))
 
 local World = {}
@@ -36,6 +37,32 @@ local worldRoot: Model? = nil
 -- holds the parts used to draw it, keyed by plot index.
 local plotCrops: { [number]: BasePart } = {}
 local plotLabels: { [number]: TextLabel } = {}
+
+-- Dropped items on the ground, keyed by drop id. Each is a small glowing part
+-- with a billboard, so loot is visible without opening the bag.
+type Drop = {
+        id: number,
+        itemId: string,
+        count: number,
+        fieldId: string?,
+        position: Vector3,
+        expiresAt: number,
+        model: Model,
+}
+local drops: { [number]: Drop } = {}
+local nextDropId = 0
+
+-- Set by the server: the function a portal touch calls to move a player. Kept
+-- as a callback so World never has to know how travel is validated.
+local portalTravel: ((Player, string) -> ())? = nil
+
+function World.setPortalHandler(handler: (Player, string) -> ())
+        portalTravel = handler
+end
+
+-- Floating damage numbers, keyed by player. Each player only sees their own,
+-- which keeps the screen readable in a crowded field.
+local damageGuis: { [number]: BillboardGui } = {}
 
 local CROP_COLOR: { [string]: Color3 } = {}
 for _, crop in ipairs(Config.Farm.Crops) do
@@ -123,7 +150,79 @@ local function makePortal(parent: Model, fieldId: string, label: string, positio
         portal.Transparency = 0.25
         portal.Parent = parent
         makeSign(portal, label, 5, 8, Color3.fromRGB(255, 255, 255))
+
+        -- Walking into a portal is the travel interaction. The touch only *asks*;
+        -- the server still validates the level lock and applies the cooldown.
+        portal.Touched:Connect(function(other)
+                if not portalTravel then
+                        return
+                end
+                local character = other and other.Parent
+                local player = character and Players:GetPlayerFromCharacter(character)
+                if player then
+                        portalTravel(player, fieldId)
+                end
+        end)
+
         return portal
+end
+
+-- Apply a place's look to the world. Roblox has one global Lighting service,
+-- so the look follows the player: entering a field re-lights the world for
+-- that field. This is what makes the maps feel like different places.
+local function applyLook(placeId: string)
+        local look = Fields.look(placeId)
+        local Lighting = game:GetService("Lighting")
+
+        Lighting.Ambient = rgb(look.ambient)
+        Lighting.OutdoorAmbient = rgb(look.outdoorAmbient)
+        Lighting.Brightness = look.brightness
+        Lighting.FogColor = rgb(look.fog)
+        Lighting.FogEnd = look.fogEnd
+        Lighting.FogStart = look.fogEnd * 0.25
+        Lighting.ClockTime = placeId == "Void" and 0 or (placeId == "Heaven" and 12 or 14)
+        Lighting.GlobalShadows = true
+end
+
+World.applyLook = applyLook
+
+-- A ring of floating light motes around a place. Purely visual, but it is what
+-- makes a map read as "somewhere" instead of a lit disc.
+local function makeMotes(parent: Instance, centre: Vector3, radius: number, accent: Color3, count: number)
+        -- The emitter lives on an invisible box covering the place, so the
+        -- motes stay inside it instead of drifting across the whole world.
+        local volume = Instance.new("Part")
+        volume.Name = "MoteVolume"
+        volume.Size = Vector3.new(radius * 1.6, 40, radius * 1.6)
+        volume.Position = centre + Vector3.new(0, 18, 0)
+        volume.Anchored = true
+        volume.CanCollide = false
+        volume.Transparency = 1
+        volume.Parent = parent
+
+        local emitter = Instance.new("ParticleEmitter")
+        emitter.Name = "Motes"
+        emitter.Texture = "rbxasset://textures/particles/sparkles_main.dds"
+        emitter.Rate = count
+        emitter.Lifetime = NumberRange.new(4, 7)
+        emitter.Speed = NumberRange.new(1, 3)
+        emitter.SpreadAngle = Vector2.new(180, 180)
+        emitter.Color = ColorSequence.new(accent)
+        emitter.LightEmission = 1
+        emitter.LightInfluence = 0
+        emitter.Size = NumberSequence.new({
+                NumberSequenceKeypoint.new(0, 0),
+                NumberSequenceKeypoint.new(0.5, 1.1),
+                NumberSequenceKeypoint.new(1, 0),
+        })
+        emitter.Transparency = NumberSequence.new({
+                NumberSequenceKeypoint.new(0, 1),
+                NumberSequenceKeypoint.new(0.5, 0.35),
+                NumberSequenceKeypoint.new(1, 1),
+        })
+        -- Motes drift upward and fade, which reads as magic rather than debris.
+        emitter.Acceleration = Vector3.new(0, 1.2, 0)
+        emitter.Parent = volume
 end
 
 -- Build the town: a safe hub with the farm plots, a spawn pad and the portals
@@ -161,6 +260,11 @@ local function buildTown(parent: Model): Model
         obelisk.Material = Enum.Material.Neon
         obelisk.Color = Color3.fromRGB(150, 210, 255)
         obelisk.Parent = town
+
+        local townLook = Fields.look("Town")
+        if townLook.motes then
+                makeMotes(town, centre, def.radius, rgb(townLook.accent), 30)
+        end
 
         -- Farm plots ring the town centre. Farming happens in town because town
         -- is the one place nothing is trying to kill you.
@@ -207,7 +311,7 @@ local function buildTown(parent: Model): Model
                 local edge = centre + Vector3.new(dx / length, 0, dz / length) * (def.radius - 8)
                 local label = string.format("%s (%s %d)", Text.placeName(field.id), Text.get("level"),
                         field.levelRequirement)
-                makePortal(town, field.id, label, edge, rgb(field.groundColor))
+                makePortal(town, field.id, label, edge, rgb(Fields.look(field.id).accent))
         end
 
         town.Parent = parent
@@ -221,8 +325,14 @@ local function buildField(parent: Model, field): Model
         model.Name = "Field_" .. field.id
 
         local centre = vec(field.position, 0)
+        local look = Fields.look(field.id)
         makeFloor(model, "FieldFloor", centre, Config.Fields.ArenaRadius, rgb(field.groundColor))
-        makeRim(model, "FieldRim", centre, Config.Fields.ArenaRadius, Color3.fromRGB(58, 64, 84))
+        -- The rim glows in the field's accent colour, so each map has its own
+        -- signature light even from a distance.
+        makeRim(model, "FieldRim", centre, Config.Fields.ArenaRadius, rgb(look.accent))
+        if look.motes then
+                makeMotes(model, centre, Config.Fields.ArenaRadius, rgb(look.accent), 40)
+        end
 
         local arrival = vec(Fields.arrivalOf(field.id), SPAWN_HEIGHT)
         local pad = Instance.new("Part")
@@ -273,6 +383,8 @@ function World.buildWorld(): Model
 
         root.Parent = Workspace
         worldRoot = root
+        -- The world starts lit as the town. Entering a field re-lights it.
+        applyLook("Town")
         return root
 end
 
@@ -421,6 +533,7 @@ function World.spawnEnemy(fieldId: string, scaled: any, wave: number, index: num
                 fieldId = fieldId,
                 wave = wave,
                 name = scaled.name,
+                archetype = scaled.id,
                 boss = scaled.boss,
                 health = scaled.health,
                 maxHealth = scaled.health,
@@ -660,6 +773,186 @@ function World.snapshot(fieldId: string?)
                 return a.id < b.id
         end)
         return out
+end
+
+--------------------------------------------------------------------------
+-- Dropped items. A kill leaves loot on the ground; the player walks over it or
+-- taps PICKUP. The server owns the drop list, so the client cannot invent one.
+--------------------------------------------------------------------------
+
+local RARITY_COLOR: { [string]: Color3 } = {
+        common = Color3.fromRGB(200, 205, 215),
+        uncommon = Color3.fromRGB(120, 220, 140),
+        rare = Color3.fromRGB(110, 180, 255),
+        epic = Color3.fromRGB(200, 130, 255),
+        legendary = Color3.fromRGB(255, 200, 90),
+}
+
+-- Leave an item on the ground at a position. Returns the drop id.
+function World.spawnDrop(itemId: string, count: number, position: Vector3, fieldId: string?, now: number): number
+        nextDropId += 1
+        local id = nextDropId
+
+        local model = Instance.new("Model")
+        model.Name = "Drop_" .. id
+
+        local def = Items.getDef(itemId)
+        local color = RARITY_COLOR[def and def.rarity or "common"] or Color3.fromRGB(220, 220, 220)
+
+        local part = Instance.new("Part")
+        part.Name = "Item"
+        part.Shape = Enum.PartType.Ball
+        part.Size = Vector3.new(1.6, 1.6, 1.6)
+        part.Position = position + Vector3.new(0, 2.4, 0)
+        part.Anchored = true
+        part.CanCollide = false
+        part.Material = Enum.Material.Neon
+        part.Color = color
+        part.Parent = model
+
+        -- A light so a rare drop is visible across the field.
+        local light = Instance.new("PointLight")
+        light.Brightness = 1.6
+        light.Range = 14
+        light.Color = color
+        light.Parent = part
+
+        local billboard = Instance.new("BillboardGui")
+        billboard.Name = "Tag"
+        billboard.Size = UDim2.new(6, 0, 1.4, 0)
+        billboard.StudsOffsetWorldSpace = Vector3.new(0, 2.6, 0)
+        billboard.AlwaysOnTop = true
+        billboard.Parent = part
+
+        local label = Instance.new("TextLabel")
+        label.Size = UDim2.new(1, 0, 1, 0)
+        label.BackgroundTransparency = 1
+        label.Font = Enum.Font.GothamBold
+        label.TextScaled = true
+        label.TextColor3 = color
+        label.TextStrokeTransparency = 0.4
+        label.Text = Text.itemName(itemId) .. (count > 1 and (" x" .. count) or "")
+        label.Parent = billboard
+
+        model.PrimaryPart = part
+        model.Parent = Workspace
+
+        drops[id] = {
+                id = id,
+                itemId = itemId,
+                count = count,
+                fieldId = fieldId,
+                position = part.Position,
+                expiresAt = now + Config.Items.DropLifetimeSeconds,
+                model = model,
+        }
+        return id
+end
+
+function World.getDrop(id: number)
+        return drops[id]
+end
+
+-- Every drop still on the ground, so the client can show or auto-collect them.
+function World.dropSnapshot(fieldId: string?): { any }
+        local out = {}
+        for _, drop in pairs(drops) do
+                if fieldId == nil or drop.fieldId == fieldId then
+                        table.insert(out, {
+                                id = drop.id,
+                                itemId = drop.itemId,
+                                count = drop.count,
+                                position = drop.position,
+                        })
+                end
+        end
+        table.sort(out, function(a, b)
+                return a.id < b.id
+        end)
+        return out
+end
+
+function World.removeDrop(id: number)
+        local drop = drops[id]
+        if not drop then
+                return nil
+        end
+        if drop.model and drop.model.Parent then
+                drop.model:Destroy()
+        end
+        drops[id] = nil
+        return drop
+end
+
+-- Expire old drops. Called from the server tick.
+function World.pruneDrops(now: number)
+        for id, drop in pairs(drops) do
+                if now >= drop.expiresAt then
+                        World.removeDrop(id)
+                end
+        end
+end
+
+--------------------------------------------------------------------------
+-- Floating damage numbers. A hit that does not move a bar on screen is easy to
+-- miss on a phone, so every hit spawns a short-lived number above the target.
+--------------------------------------------------------------------------
+
+function World.showDamage(position: Vector3, amount: number, kind: string?, color: Color3?)
+        local anchor = Instance.new("Part")
+        anchor.Name = "DamageAnchor"
+        anchor.Size = Vector3.new(0.2, 0.2, 0.2)
+        anchor.Position = position + Vector3.new(0, 3.4, 0)
+        anchor.Anchored = true
+        anchor.CanCollide = false
+        anchor.Transparency = 1
+        anchor.Parent = Workspace
+
+        local billboard = Instance.new("BillboardGui")
+        billboard.Size = UDim2.new(5, 0, 1.6, 0)
+        billboard.AlwaysOnTop = true
+        billboard.Parent = anchor
+
+        local label = Instance.new("TextLabel")
+        label.Size = UDim2.new(1, 0, 1, 0)
+        label.BackgroundTransparency = 1
+        label.Font = Enum.Font.GothamBlack
+        label.TextScaled = true
+        label.TextStrokeTransparency = 0.2
+        label.TextColor3 = color or Color3.fromRGB(255, 255, 255)
+
+        if kind == "crit" then
+                label.Text = tostring(amount) .. "!"
+                label.TextColor3 = Color3.fromRGB(255, 210, 90)
+        elseif kind == "heal" then
+                label.Text = "+" .. tostring(amount)
+                label.TextColor3 = Color3.fromRGB(120, 255, 150)
+        elseif kind == "miss" then
+                label.Text = "MISS"
+                label.TextColor3 = Color3.fromRGB(190, 190, 200)
+        else
+                label.Text = tostring(amount)
+        end
+        label.Parent = billboard
+
+        -- Rise and fade, then clean up. Short, because several hits land at once.
+        local startY = anchor.Position.Y
+        task.spawn(function()
+                local elapsed = 0
+                while elapsed < 0.7 do
+                        local dt = task.wait(0.03)
+                        elapsed += dt
+                        if not anchor.Parent then
+                                return
+                        end
+                        anchor.Position = Vector3.new(anchor.Position.X, startY + elapsed * 6, anchor.Position.Z)
+                        label.TextTransparency = math.clamp(elapsed / 0.7, 0, 1)
+                        label.TextStrokeTransparency = 0.2 + math.clamp(elapsed / 0.7, 0, 0.8)
+                end
+                if anchor.Parent then
+                        anchor:Destroy()
+                end
+        end)
 end
 
 -- Field id a world position is standing in, or nil for town. Used to work out
