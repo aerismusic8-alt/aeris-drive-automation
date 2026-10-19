@@ -409,6 +409,13 @@ experience then goes live on its own.
 So when a publish "succeeds" but the game is unreachable, check playability
 status before debugging the build. The upload was never the problem.
 
+Status as of the last check: `GuestProhibited`, not `ContextualPlayabilityUnrated`.
+The questionnaire has been answered, so the game is reachable by logged-in
+players and only guests are turned away. `isPlayable` still reads `false` for an
+unauthenticated request, because that request is itself a guest; do not read it
+as "the game is down". Check the page slug and the games API name alongside it,
+which is what `scripts/check-live-state-linux.sh` does.
+
 ### The tests never ran the game, so the game shipped broken
 
 Every test in this repo loaded only the pure modules in `src/shared` through the
