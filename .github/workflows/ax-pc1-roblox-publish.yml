@@ -31,13 +31,20 @@ on:
         description: 'Git ref to build (branch, tag or SHA)'
         required: false
         default: 'ax-arena-roblox-game'
-  push:
-    paths:
-      - 'AX_PC_CONTROL/pc1-roblox-publish.ps1'
-      - '.github/workflows/ax-pc1-roblox-publish.yml'
+  # Committing game code used to leave the live place untouched, because this
+  # workflow only ran by hand or when the publish script itself changed. The
+  # code was on the branch, the tests were green, and players still saw the old
+  # game. Publishing now follows a green test run, so a merged change reaches
+  # Roblox on its own.
+  workflow_run:
+    workflows: ["AX Arena Luau Tests"]
+    types: [completed]
+    branches: [ax-arena-roblox-game]
 
 jobs:
   publish:
+    # A red test run must never reach players.
+    if: github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success'
     runs-on: self-hosted
     steps:
       - name: Verify PC1
@@ -50,6 +57,7 @@ jobs:
         shell: powershell
         run: |
           $ref = '${{ inputs.ref }}'
+          if (!$ref) { $ref = '${{ github.event.workflow_run.head_sha }}' }
           if (!$ref) { $ref = $env:GITHUB_SHA }
           Write-Host "BUILD_REF=$ref"
           $url = "https://raw.githubusercontent.com/aerismusic8-alt/aeris-drive-automation/$ref/AX_PC_CONTROL/pc1-roblox-build.ps1"
@@ -66,6 +74,7 @@ jobs:
           PLACE_ID: ${{ inputs.place_id }}
         run: |
           $ref = '${{ inputs.ref }}'
+          if (!$ref) { $ref = '${{ github.event.workflow_run.head_sha }}' }
           if (!$ref) { $ref = $env:GITHUB_SHA }
           $url = "https://raw.githubusercontent.com/aerismusic8-alt/aeris-drive-automation/$ref/AX_PC_CONTROL/pc1-roblox-publish.ps1"
           $p = Join-Path $env:TEMP "pc1-roblox-publish.ps1"

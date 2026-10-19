@@ -55,7 +55,13 @@ Then add it to the repository:
 1. Open https://github.com/aerismusic8-alt/aeris-drive-automation/settings/secrets/actions
 2. **New repository secret**, name it exactly `ROBLOX_API_KEY`, paste the key.
 
-## Step 4: run it
+## Step 4: publish
+
+**Normally you do nothing.** Pushing game code to `ax-arena-roblox-game` runs
+the tests, and a green test run publishes the place by itself. That closes the
+gap where the code was on the branch but players still saw the old game.
+
+To publish by hand, for example after changing the API key:
 
 1. Open https://github.com/aerismusic8-alt/aeris-drive-automation/actions/workflows/ax-pc1-roblox-publish.yml
 2. **Run workflow** and fill the form:
@@ -73,12 +79,30 @@ Roblox Studio is not part of this path at all. PC1 builds the place, uploads
 it through the Open Cloud API, and Roblox publishes it. A phone browser is
 enough for every step.
 
-## Step 5: check it
+## Step 5: make it playable (this one is required)
 
-Open the experience page on your phone and press play. You should see coins
-ticking up, a level bar and a zone name.
+Publishing a version is not enough to let anyone play. Roblox keeps a new
+experience private until you fill in the **Maturity & Compliance
+questionnaire**, and only the account holder can do that. Until it is done the
+play page says the experience is not playable, which looks exactly like "my
+change did nothing".
 
-## Step 6: turn on the money
+1. Open https://create.roblox.com and sign in.
+2. Open the experience, then **Audience -> Maturity & Compliance**.
+3. Answer the questionnaire. AX Arena has cartoon fighting, so expect **Mild
+   violence**; answer honestly, because a wrong answer can be moderated.
+4. Submit. The experience gets a maturity label and becomes playable.
+5. Still on **Audience**, set **Access Settings** to **Public** and save.
+
+If the dashboard asks you to verify your age first, do that step; it is a
+Roblox requirement for publishing public experiences.
+
+## Step 6: check it
+
+Open the experience page on your phone and press play. You should now see the
+town, a **MAP** button, five monster fields in a ring, and coins ticking up.
+
+## Step 7: turn on the money
 
 Prices already exist in the code. Roblox still needs the items created before
 they can be sold. At https://create.roblox.com, open the experience, then
@@ -100,11 +124,14 @@ product, so a half-filled list is safe.
 
 ## What is already done
 
-- PC1 builds the place with Rojo: 19 scripts, all verified to carry real code
+- PC1 builds the place with Rojo: 23 scripts, all verified to carry real code
 - the Open Cloud publish path is wired and tested end to end
-- 263 automated tests pass (177 unit, 47 integration, 39 wiring)
-- the farm loop, pets, rebirth, zones, daily rewards and promo codes are all
-  implemented, plus six monetization products
+- 359 automated tests pass (220 unit, 47 integration, 92 wiring)
+- a town plus five monster fields, per-field waves, travel, bosses, the farm
+  loop, pets, rebirth, zones, daily rewards and promo codes are implemented,
+  plus six monetization products
+- a green test run publishes automatically, so the live place cannot lag behind
+  the branch
 - the publish run reports `BLOCKED` and names exactly what is missing, so a
   missing key can never look like a successful publish
 
@@ -112,7 +139,9 @@ product, so a half-filled list is safe.
 
 - create the experience (step 1)
 - create the API key and store it as a secret (step 3)
-- create the six monetization items (step 6)
+- complete the maturity questionnaire and set the experience public (step 5) -
+  without this the game stays unplayable no matter how often we publish
+- create the six monetization items (step 7)
 
 Everything else runs without you.
 
