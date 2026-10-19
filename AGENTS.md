@@ -427,3 +427,34 @@ There is a bootstrap problem worth knowing: the keepalive workflow needs the
 runner, so it cannot recover a dead runner. The first install has to be done by
 hand on PC1. After that the scheduled task keeps the machine reachable.
 `AX_PC_CONTROL/REMOTE-FROM-PHONE.md` is the phone-facing guide.
+
+### Driving PC1 through MCP
+
+MeshCentral gives a *person* the screen. `winremote-mcp` gives an *agent* the
+screen: it is a standard MCP server that runs on the Windows machine and exposes
+screenshots, PowerShell, file transfer, GUI clicks, services and scheduled
+tasks. Both are useful and neither replaces the other.
+
+`AX_PC_CONTROL/install-pc1-winremote-mcp.ps1` installs it on PC1, stores the
+auth key in `C:\AX-Runtime\winremote\` readable only by SYSTEM, and registers an
+auto-start task. `AX_PC_CONTROL/ax-winremote-mcp.py` is the client; it was
+tested against a live server (30 tools, `GetSystemInfo` returning real data).
+`AX_PC_CONTROL/MCP-PC1-CONTROL.md` is the Thai guide.
+
+Two things the client has to do carefully, both learned the hard way against the
+real server:
+
+- An unknown tool name comes back as `isError: false` with a plain
+  "Unknown tool" string, so a typo looks like success. The client checks the
+  advertised tool list first and exits non-zero instead.
+- `Shell` and `FileWrite` are tier 3 and disabled by default. The default
+  install therefore cannot run PowerShell; that needs `--enable-tier3`.
+
+The server binds loopback only by design. A bearer token over plain HTTP on a
+network is not protection, so reaching it from another machine needs a tunnel
+with TLS. Do not bind `0.0.0.0` on a routed network.
+
+There is a second bootstrap problem here too: the MCP server needs Python and a
+hand install on PC1, and it cannot be driven until it is running. Installing it
+through the Actions runner is possible once the runner is up, which is why the
+keepalive comes first.
