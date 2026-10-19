@@ -110,3 +110,37 @@ covers what can and cannot be done from a phone.
 for pure Linux jobs — the Luau test workflow uses it.
 
 Do not commit binaries; `tools/` is gitignored on purpose.
+
+### The farm loop
+
+`Farm.luau` and `Axe.luau` are the "farm" half of the game. Farming is not a
+side activity: harvesting charges the axe, and the axe is what clears a wave.
+Keep that link intact when adding content.
+
+- The server owns every crop timer. `Farm.plant` and `Farm.harvest` take `now`
+  as an argument, so the loop is testable without a clock and a client cannot
+  speed growth up.
+- Harvesting early returns `NOT_READY` and leaves the crop planted. A mistap
+  must never destroy progress.
+- The FARM button is a single tap on purpose. It harvests a ripe plot if one
+  exists, otherwise plants in the first free plot. Mobile players should not
+  have to aim at a plot.
+
+### Enemy damage and death
+
+Two bugs came from a real play session and are now guarded by source checks in
+`scripts/check-hud-wiring.py` (WIRING 10):
+
+- An enemy attacks only inside `Config.Wave.EnemyMeleeRange` and only after
+  `Config.Wave.SpawnGraceSeconds`. Without both gates every enemy on the map
+  damaged the player from any distance and a new player died in seconds.
+- `humanoid.BreakJointsOnDeath = false` must be set before the `Died`
+  connection. Roblox breaks the joints by default, which sends the head
+  rolling; that reads as far more violent than this game wants.
+- The `Died` handler calls `applySpawnStats` before `LoadCharacter`, because
+  `Combat.damageCombatant` clears `combatant.alive` and only the spawn path
+  sets it back. Without it a player can never fight again after dying.
+
+Adding a module under `roblox/src/` means bumping the `SOURCE_BLOCKS` floor in
+`AX_PC_CONTROL/pc1-roblox-build.ps1` and adding a marker, or the build
+verifier will not prove the new code is inside the published place.
