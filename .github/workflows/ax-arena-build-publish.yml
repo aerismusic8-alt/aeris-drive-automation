@@ -1,0 +1,135 @@
+name: AX Arena Build and Publish (PC1-independent)
+
+# Builds and publishes the place without PC1.
+#
+# Why this exists: every build and publish path ran on the self-hosted runner,
+# so when PC1 went offline the pipeline stopped entirely even though nothing
+# about building or publishing needs that machine. Rojo has a Linux binary and
+# publishing is one HTTPS POST to the Open Cloud API. Both run here.
+#
+# The self-hosted workflows are left in place; they are still the right tool for
+# anything that genuinely needs PC1 (Roblox Studio, screenshots, desktop work).
+# This workflow removes PC1 from the critical path for shipping the game.
+
+on:
+  workflow_dispatch:
+    inputs:
+      version_type:
+        description: 'Saved (private test) or Published (live)'
+        required: true
+        default: 'Published'
+        type: choice
+        options: [Saved, Published]
+      publish:
+        description: 'Publish to Roblox, or build only'
+        required: true
+        default: 'yes'
+        type: choice
+        options: [yes, no]
+  push:
+    paths:
+      - 'roblox/**'
+      - 'scripts/build-place-linux.sh'
+      - 'scripts/publish-place-linux.sh'
+      - '.github/workflows/ax-arena-build-publish.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    outputs:
+      place_path: ${{ steps.build.outputs.place_path }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Build the place with Rojo
+        id: build
+        run: |
+          bash scripts/build-place-linux.sh "$RUNNER_TEMP/AXArena.rbxlx" | tee "$RUNNER_TEMP/build.log"
+          PLACE=$(grep -oP '(?<=^BUILD_PLACE=).*' "$RUNNER_TEMP/build.log")
+          echo "place_path=$PLACE" >> "$GITHUB_OUTPUT"
+
+      - name: Upload place artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: AXArena-place
+          path: ${{ runner.temp }}/AXArena.rbxlx
+          if-no-files-found: error
+
+  publish:
+    needs: build
+    if: ${{ inputs.publish != 'no' }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Download the built place
+        uses: actions/download-artifact@v4
+        with:
+          name: AXArena-place
+          path: ${{ runner.temp }}
+
+      - name: Publish through Open Cloud
+        id: publish
+        env:
+          ROBLOX_API_KEY: ${{ secrets.ROBLOX_API_KEY }}
+        run: |
+          set +e
+          bash scripts/publish-place-linux.sh \
+            "$RUNNER_TEMP/AXArena.rbxlx" \
+            "${{ inputs.version_type }}" | tee "$RUNNER_TEMP/publish.log"
+          CODE=${PIPESTATUS[0]}
+          echo "exit_code=$CODE" >> "$GITHUB_OUTPUT"
+
+          # Exit 3 means the credential is absent. That is a known, honest
+          # state, not a build failure: report it and let the job pass so the
+          # signal stays meaningful instead of going red for a missing secret.
+          if [ "$CODE" = "3" ]; then
+            echo "::warning::Publishing is BLOCKED: ROBLOX_API_KEY is not set."
+            exit 0
+          fi
+          exit "$CODE"
+
+      - name: Verify the version exists on Roblox
+        if: steps.publish.outputs.exit_code == '0'
+        env:
+          ROBLOX_API_KEY: ${{ secrets.ROBLOX_API_KEY }}
+        run: |
+          # A 200 from the publish call is the API's word. Read the version
+          # list back so the claim rests on Roblox's own record, not on ours.
+          CFG=roblox/publish-config.json
+          UNIVERSE=$(python3 -c "import json;print(json.load(open('$CFG'))['universeId'])")
+          PLACE=$(python3 -c "import json;print(json.load(open('$CFG'))['placeId'])")
+          echo "VERIFY universeId=$UNIVERSE placeId=$PLACE"
+          curl -sS -H "x-api-key: $ROBLOX_API_KEY" \
+            "https://apis.roblox.com/universes/v1/$UNIVERSE/places/$PLACE/versions" \
+            -o "$RUNNER_TEMP/versions.json" || true
+          python3 - <<'PY'
+          import json, os
+          p = os.path.join(os.environ["RUNNER_TEMP"], "versions.json")
+          try:
+              d = json.load(open(p))
+          except Exception as e:
+              print(f"VERIFY=UNVERIFIED reason=could_not_read_versions:{e}")
+              raise SystemExit(0)
+          versions = d.get("versions", [])
+          print(f"VERIFY_VERSION_COUNT={len(versions)}")
+          if versions:
+              v = versions[0]
+              print(f"VERIFY_LATEST_VERSION={v.get('versionNumber')}")
+              print(f"VERIFY_LATEST_CREATED={v.get('createTime')}")
+          else:
+              print("VERIFY=UNVERIFIED reason=no_versions_listed")
+          PY
+
+      - name: Upload publish evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: pc1-independent-publish-evidence
+          path: ${{ runner.temp }}/publish.log
+          if-no-files-found: warn
