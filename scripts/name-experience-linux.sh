@@ -1,11 +1,20 @@
 #!/usr/bin/env bash
-# Give the experience its name, so its page stops reading "Title-Unavailable"
-# and the game can be opened from a phone.
+# Give the experience its name and make it public, so it can be opened from a
+# phone.
 #
-# Publishing a place does not set the experience name. The place the first
-# publish created had none, so https://www.roblox.com/games/<placeId> redirected
-# to /Title-Unavailable and there was no way to reach the game from a phone.
-# The Universes API sets it, and this script calls that endpoint.
+# Publishing a place does not set either of these. The place the first publish
+# created had no name and was private, so
+# https://www.roblox.com/games/<placeId> redirected to /Title-Unavailable and
+# there was no way to reach the game from a phone.
+#
+# The name was the first half of that. The second half is `visibility`. The
+# Universe resource carries `visibility: PUBLIC | PRIVATE`, and a private
+# universe is not reachable from its game page whatever it is called. The page
+# kept reading Title-Unavailable after the name was set, which is what pointed
+# at visibility.
+#
+# Set EXPERIENCE_VISIBILITY=PRIVATE to take the game down again. Making the game
+# public is a launch, and it is reversible.
 #
 # The name is read from Config.luau so it lives in one place with the rest of
 # the game's identity.
@@ -21,13 +30,14 @@
 # The name is read from Config.luau so it lives in one place with the rest of
 # the game's identity.
 #
-# The script reads the name back after writing it. A 200 is the API's word; the
-# read-back is the evidence, and it also shows what the name was before.
+# Both fields are read back after writing. A 200 is the API's word; the
+# read-back is the evidence, and it reports the values that were there before,
+# which is what shows the write landed.
 #
 # Exit codes:
-#   0  name set and confirmed, or deliberately skipped (no scope, no name)
+#   0  fields set and confirmed, or deliberately skipped (no scope, no name)
 #   1  a required local tool is missing
-#   2  the write was accepted but the name did not change
+#   2  a write was accepted but a field did not change
 
 set -u
 
@@ -35,6 +45,7 @@ ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 CFG="$ROOT/roblox/src/shared/Config.luau"
 UNIVERSE_ID="${UNIVERSE_ID:-10771844216}"
 ENDPOINT="https://apis.roblox.com/cloud/v2/universes/$UNIVERSE_ID"
+VISIBILITY="${EXPERIENCE_VISIBILITY:-PUBLIC}"
 TAGLINE="A Ragnarok-style legendary MMORPG. Central town Prontera, five monster fields, classes, skills, pets and rebirth."
 
 command -v curl >/dev/null 2>&1 || { echo "curl not found" >&2; exit 1; }
@@ -57,16 +68,17 @@ if [ -z "$NAME" ]; then
   echo "NAME=SKIPPED reason=no_GameName_in_Config"
   exit 0
 fi
-echo "NAME_ENDPOINT=$ENDPOINT"
 echo "NAME_TARGET=$NAME"
+echo "NAME_VISIBILITY_TARGET=$VISIBILITY"
+echo "NAME_ENDPOINT=$ENDPOINT"
 
 RESP_FILE="$(mktemp)"
 READ_FILE="$(mktemp)"
 trap 'rm -f "$RESP_FILE" "$READ_FILE"' EXIT
 
-# read_display_name prints the current displayName, or an empty string.
-read_display_name() {
-  python3 - "$1" <<'PY'
+# field_of FILE KEY prints one field from a universe payload, or empty.
+field_of() {
+  python3 - "$1" "$2" <<'PY'
 import json, sys
 try:
     d = json.load(open(sys.argv[1]))
@@ -74,7 +86,7 @@ except Exception:
     print("")
     raise SystemExit(0)
 if isinstance(d, dict):
-    print(d.get("displayName") or "")
+    print(d.get(sys.argv[2]) or "")
 PY
 }
 
@@ -83,20 +95,20 @@ PY
 READ_CODE=$(curl -sS -o "$READ_FILE" -w '%{http_code}' -m 20 \
   -H "x-api-key: $ROBLOX_API_KEY" "$ENDPOINT" 2>/dev/null || echo 000)
 echo "NAME_READ_HTTP=$READ_CODE"
-BEFORE=$(read_display_name "$READ_FILE")
-if [ -n "$BEFORE" ]; then
-  echo "NAME_BEFORE=$BEFORE"
-fi
+BEFORE_NAME=$(field_of "$READ_FILE" displayName)
+BEFORE_VIS=$(field_of "$READ_FILE" visibility)
+echo "NAME_BEFORE=${BEFORE_NAME:-<empty>}"
+echo "VISIBILITY_BEFORE=${BEFORE_VIS:-<empty>}"
 
-BODY=$(python3 -c 'import json,sys;print(json.dumps({"displayName":sys.argv[1],"description":sys.argv[2]}))' "$NAME" "$TAGLINE")
+BODY=$(python3 -c 'import json,sys;print(json.dumps({"displayName":sys.argv[1],"description":sys.argv[2],"visibility":sys.argv[3]}))' "$NAME" "$TAGLINE" "$VISIBILITY")
 
-# updateMask keeps the write to the two fields named, so nothing else on the
+# updateMask keeps the write to the three fields named, so nothing else on the
 # universe is touched by accident.
 HTTP_CODE=$(curl -sS -o "$RESP_FILE" -w '%{http_code}' -X PATCH \
   -H "x-api-key: $ROBLOX_API_KEY" \
   -H "Content-Type: application/json" \
   --data "$BODY" \
-  "$ENDPOINT?updateMask=displayName,description" 2>/dev/null || echo 000)
+  "$ENDPOINT?updateMask=displayName,description,visibility" 2>/dev/null || echo 000)
 
 echo "NAME_HTTP=$HTTP_CODE"
 head -c 400 "$RESP_FILE" 2>/dev/null || true
@@ -104,19 +116,25 @@ echo
 
 case "$HTTP_CODE" in
   200)
-    # Read it back rather than trusting the write. This is what makes the
-    # difference between "the call succeeded" and "the name is now correct".
+    # Read back rather than trusting the write. This is the difference between
+    # "the call succeeded" and "the game is named and reachable".
     READ2=$(curl -sS -o "$READ_FILE" -w '%{http_code}' -m 20 \
       -H "x-api-key: $ROBLOX_API_KEY" "$ENDPOINT" 2>/dev/null || echo 000)
     echo "NAME_READBACK_HTTP=$READ2"
-    AFTER=$(read_display_name "$READ_FILE")
-    echo "NAME_AFTER=$AFTER"
-    if [ "$AFTER" = "$NAME" ]; then
-      echo "NAME=SET"
-    else
-      echo "NAME=UNCONFIRMED expected=$NAME got=${AFTER:-<empty>}"
+    AFTER_NAME=$(field_of "$READ_FILE" displayName)
+    AFTER_VIS=$(field_of "$READ_FILE" visibility)
+    echo "NAME_AFTER=${AFTER_NAME:-<empty>}"
+    echo "VISIBILITY_AFTER=${AFTER_VIS:-<empty>}"
+    if [ "$AFTER_NAME" != "$NAME" ]; then
+      echo "NAME=UNCONFIRMED expected=$NAME got=${AFTER_NAME:-<empty>}"
       exit 2
     fi
+    if [ "$AFTER_VIS" != "$VISIBILITY" ]; then
+      echo "VISIBILITY=UNCONFIRMED expected=$VISIBILITY got=${AFTER_VIS:-<empty>}"
+      exit 2
+    fi
+    echo "NAME=SET"
+    echo "VISIBILITY=SET"
     ;;
   401|403) echo "NAME=SKIPPED reason=key_lacks_universe:write_scope" ;;
   404) echo "NAME=SKIPPED reason=endpoint_or_key_not_accepted" ;;
