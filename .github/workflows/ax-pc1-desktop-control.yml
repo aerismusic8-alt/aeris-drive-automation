@@ -54,18 +54,44 @@ permissions:
 jobs:
   control:
     runs-on: self-hosted
+    env:
+      # On a push trigger the dispatch inputs are empty, so fall back to the
+      # read-only default rather than calling a tool with an empty name.
+      MCP_TOOL: ${{ inputs.tool || 'GetSystemInfo' }}
+      MCP_ARGS: ${{ inputs.args || '{}' }}
+      MCP_PORT: ${{ inputs.port || '8090' }}
     steps:
+      # Self-hosted runners reuse their workspace between jobs, so without an
+      # explicit checkout the client script below can be missing or stale.
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.ref_name }}
+
       - name: Verify PC1
         shell: powershell
         run: |
           if ($env:COMPUTERNAME -ne 'DESKTOP-RGK6JKB') { throw "EXPECTED_PC1:$env:COMPUTERNAME" }
           Write-Host "PC1=VERIFIED"
 
-      - name: Make sure the MCP server is up
-        if: ${{ inputs.start_server }}
+      - name: Make sure the MCP client's dependencies are present
         shell: powershell
         run: |
-          $port = '${{ inputs.port }}'
+          $python = (Get-Command python -ErrorAction SilentlyContinue).Source
+          if (-not $python) { throw 'PYTHON_NOT_FOUND' }
+          & $python -m pip install --quiet --upgrade mcp httpx2 2>&1 | Out-String | Write-Host
+          & $python -c "import mcp, httpx2" 2>&1 | Out-String | Write-Host
+          if ($LASTEXITCODE -ne 0) { throw 'MCP_CLIENT_DEPS_FAILED' }
+          Write-Host 'MCP_CLIENT_DEPS=ok'
+
+      - name: Make sure the MCP server is up
+        shell: powershell
+        run: |
+          # Empty (a push run) is treated as "yes"; only an explicit false skips.
+          if ('${{ inputs.start_server }}' -eq 'false') {
+            Write-Host 'MCP_START_SKIPPED_BY_INPUT'
+            exit 0
+          }
+          $port = $env:MCP_PORT
           $url = "http://127.0.0.1:$port/health"
           $ok = $false
           try {
@@ -91,7 +117,7 @@ jobs:
       - name: Call the tool
         shell: powershell
         run: |
-          $port = '${{ inputs.port }}'
+          $port = $env:MCP_PORT
           $shotDir = 'C:\AX-Runtime\evidence\desktop-control'
           New-Item -ItemType Directory -Path $shotDir -Force | Out-Null
 
@@ -107,14 +133,18 @@ jobs:
           if (-not $python) { throw 'PYTHON_NOT_FOUND' }
 
           Write-Host "CLIENT=$client"
-          Write-Host "TOOL=${{ inputs.tool }}"
+          Write-Host "TOOL=$env:MCP_TOOL"
 
+          # The tool name and its JSON arguments come from environment variables
+          # rather than being interpolated into this script, so a JSON argument
+          # containing quotes cannot break out into PowerShell.
+          #
           # --save-images is what makes a screenshot usable: it writes the PNG
           # and reports the path, instead of reporting only its size.
           $out = & $python $client `
             --url "http://127.0.0.1:$port/mcp" `
-            --call '${{ inputs.tool }}' `
-            --args '${{ inputs.args }}' `
+            --call $env:MCP_TOOL `
+            --args $env:MCP_ARGS `
             --save-images $shotDir 2>&1 | Out-String
           $code = $LASTEXITCODE
           Write-Host $out
@@ -125,7 +155,7 @@ jobs:
           New-Item -ItemType Directory -Path $evidence -Force | Out-Null
           Set-Content -LiteralPath (Join-Path $evidence 'pc1-desktop-control.json') -Value $out -Encoding UTF8
 
-          if ($code -ne 0) { Write-Host "MCP_CALL_EXIT=$code" }
+          if ($code -ne 0) { throw "MCP_CALL_EXIT:$code" }
 
       - name: Upload the result
         if: always()
