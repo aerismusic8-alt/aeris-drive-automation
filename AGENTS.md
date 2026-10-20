@@ -724,6 +724,51 @@ hand install on PC1, and it cannot be driven until it is running. Installing it
 through the Actions runner is possible once the runner is up, which is why the
 keepalive comes first.
 
+### The channel that runs the other way, and why it is the one that works
+
+Every path above needs something to already be working on PC1: a runner that is
+alive, a MeshCentral agent that is registered, a tailnet that both ends have
+joined. Each one ends the same way when it is missing, with K at the desk
+running a command and pasting the output back, which is the thing to avoid.
+
+So invert it. PC1 polls an endpoint this side hosts, runs whatever MCP tool call
+it finds, and posts the result back. All traffic is outbound, so there is no port
+forward, no tunnel, no tailnet and no inbound firewall rule, and nothing new to
+arrange on the Windows side. The agent gets screen capture, PowerShell and file
+transfer without anyone at the keyboard.
+
+- `ax-rendezvous.py` holds the job queue and the results, token guarded, and
+  writes every result to disk as it arrives so a restart does not lose them.
+- `ax-pc1-worker.py` is the PC1 side. It polls, calls the local MCP server, and
+  posts the result. It reports a failing job as a failure and keeps running.
+- `pc1-install-reverse-channel.ps1` installs the worker as an auto-restarting
+  task and turns on tier3.
+- `test-reverse-channel.py` runs the real rendezvous, a real MCP server and the
+  real worker and checks the whole path.
+
+Four things this cost, worth not repeating:
+
+- **The default tier set has no `Shell`.** Tiers 1+2 are screen viewing only, so
+  an agent on the far end could watch but not act. Anything that means to control
+  the machine needs `--enable-tier3`, and the test asserts `Shell` is present.
+- **A task command line is public.** Any process on the machine can read it, so
+  the channel token goes in a config file, not in the task's arguments.
+- **A native command that writes to stderr kills the script.** With
+  `$ErrorActionPreference = 'Stop'`, `& $exe` raises a terminating error on any
+  stderr output even when the exit code is 0, and pip does that on an ordinary
+  dependency warning. Route native calls through a helper that sets a local
+  `Continue` and returns the exit code.
+- **`raw.githubusercontent.com` caches for 300 seconds and ignores a
+  cache-busting query.** A branch URL can silently serve the previous revision,
+  which is exactly what happened: 494 lines served where the branch had 500.
+  Pin the fetch to a commit SHA.
+
+PowerShell is installable on the Linux sandbox (`DOTNET_SYSTEM_GLOBALIZATION_INVARIANT=1`,
+or `pwsh` exits on a missing ICU), which makes syntax checks and fake-cmdlet
+tests possible before anything reaches K. `test-installer.ps1` fakes the
+scheduled-task cmdlets and asserts the `LogonType` value Windows accepts is the
+one used; a wrong value there ended a run before.
+
 ## Publishing the place needs no PC1, and the version number is the proof
 
 The place is built and published entirely from a GitHub-hosted runner. Rojo
