@@ -12,6 +12,7 @@ discovering it does not work on the machine we cannot see.
 import base64
 import json
 import os
+import socket
 import subprocess
 import sys
 import time
@@ -108,21 +109,34 @@ def main():
     # 4. worker
     # Use a config file, which is how the installer registers it: the token must
     # not sit on a command line where any process on the machine can read it.
+    #
+    # Written with a UTF-8 BOM on purpose, because that is what Windows
+    # PowerShell 5.1's Set-Content -Encoding UTF8 produces, and it is what killed
+    # the worker on the first real run. A plain utf-8 read raises on the BOM.
     cfg_path = os.path.join(RESULTS, "worker-config.json")
-    with open(cfg_path, "w", encoding="utf-8") as fh:
-        json.dump({
-            "rendezvous": BASE,
-            "token": TOKEN,
-            "mcpUrl": f"http://127.0.0.1:{PORT_MCP}/mcp",
-            "poll": 1,
-        }, fh)
+    cfg_json = json.dumps({
+        "rendezvous": BASE,
+        "token": TOKEN,
+        "mcpUrl": f"http://127.0.0.1:{PORT_MCP}/mcp",
+        "poll": 1,
+    })
+    with open(cfg_path, "wb") as fh:
+        fh.write(b"\xef\xbb\xbf" + cfg_json.encode("utf-8"))
+    if open(cfg_path, "rb").read(3) != b"\xef\xbb\xbf":
+        failures.append("test config is missing its BOM")
     start([sys.executable, "-u", WORKER, "--config", cfg_path], "worker")
 
     if not wait_for(lambda: req("GET", "ax/state").get("hello", {}).get("hostname"), 25, "worker hello"):
         print("FAIL: worker never said hello")
         cleanup()
         return 1
-    print(f"PASS worker hello: {req('GET','ax/state')['hello']['hostname']}")
+    hello = req("GET", "ax/state")["hello"]
+    print(f"PASS worker hello: {hello['hostname']}")
+    # The installer got a false success here by reading a leftover hello from
+    # another host, so assert the hello is this machine's.
+    if hello["hostname"] != socket.gethostname():
+        failures.append(f"hello is from {hello['hostname']}, not {socket.gethostname()}")
+        print("FAIL hello is from the wrong host")
 
     # 5. a real job through the whole path
     queued = req("POST", "ax/enqueue", {"tool": "GetSystemInfo", "args": {}})

@@ -101,6 +101,46 @@ if ($src -match 'New-ScheduledTaskPrincipal -UserId \$sid -LogonType Interactive
   Write-Host 'FAIL worker principal wrong'
 }
 
+# 9. The config must be written without a BOM. Set-Content -Encoding UTF8 on
+#    PowerShell 5.1 emits one and json.load rejects it, which killed the worker
+#    on the first real run before it ever polled.
+if ($src -match 'Set-Content[^\r\n]*worker-config') {
+  $fail += 'config written with Set-Content (adds a BOM on 5.1)'
+  Write-Host 'FAIL config written with Set-Content'
+} else {
+  Write-Host 'PASS config not written with Set-Content'
+}
+if ($src -match 'WriteAllText') {
+  Write-Host 'PASS config written BOM-free with WriteAllText'
+} else {
+  $fail += 'config not written with WriteAllText'
+  Write-Host 'FAIL config not written BOM-free'
+}
+
+# 10. Verify must compare the hostname and the age. A rendezvous keeps state, so
+#     a leftover hello reads as success while nothing here is connected, which is
+#     what the first real run reported.
+if ($src -match 'hello\.hostname\s*-ne\s*\$env:COMPUTERNAME') {
+  Write-Host 'PASS verify compares the hostname'
+} else {
+  $fail += 'verify does not compare the hostname'
+  Write-Host 'FAIL verify does not compare the hostname'
+}
+if ($src -match 'HELLO_AGE_SECONDS') {
+  Write-Host 'PASS verify checks hello freshness'
+} else {
+  $fail += 'verify does not check freshness'
+  Write-Host 'FAIL verify does not check freshness'
+}
+
+# 11. A failed step must not print a bare SUCCESS.
+if ($src -match 'FAILED_STEPS') {
+  Write-Host 'PASS result reports failed step count'
+} else {
+  $fail += 'result hides failed steps'
+  Write-Host 'FAIL result hides failed steps'
+}
+
 Write-Host ''
 if ($fail.Count -gt 0) {
   Write-Host "FAILURES: $($fail -join ' | ')"

@@ -154,7 +154,10 @@ def load_config(path: str | None) -> dict:
     """
     if not path:
         return {}
-    with open(path, encoding="utf-8") as fh:
+    # utf-8-sig, not utf-8: Windows PowerShell 5.1 writes UTF8 with a byte order
+    # mark, and json.load rejects a leading BOM outright. Reading it here means
+    # the file can be written by either PowerShell version.
+    with open(path, encoding="utf-8-sig") as fh:
         data = json.load(fh)
     return data if isinstance(data, dict) else {}
 

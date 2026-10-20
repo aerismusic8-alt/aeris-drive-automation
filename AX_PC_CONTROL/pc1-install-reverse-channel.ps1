@@ -169,10 +169,19 @@ Step 'WORKER_INSTALL' {
 
   # The token and URL live in a file rather than on the task's command line,
   # which is readable by any process on the machine.
+  # Written with [IO.File]::WriteAllText so there is no BOM. Set-Content
+  # -Encoding UTF8 on PowerShell 5.1 emits one, and json.load rejects it, which
+  # broke the worker on the first real run.
   $cfg = Join-Path $dir 'worker-config.json'
-  @{ rendezvous = $Rendezvous; token = $Token; mcpUrl = $McpUrl; poll = $Poll } |
-    ConvertTo-Json | Set-Content -LiteralPath $cfg -Encoding UTF8
+  $cfgJson = @{ rendezvous = $Rendezvous; token = $Token; mcpUrl = $McpUrl; poll = $Poll } |
+    ConvertTo-Json
+  [System.IO.File]::WriteAllText($cfg, $cfgJson, (New-Object System.Text.UTF8Encoding($false)))
   Write-Host "WORKER_CONFIG=$cfg"
+
+  # Prove the file is readable before registering a task that reads it.
+  $readback = Invoke-Native $script:PythonExe @('-c', "import json,sys; d=json.load(open(r'$cfg', encoding='utf-8-sig')); print('CONFIG_OK', bool(d.get('token')), bool(d.get('rendezvous')))")
+  Write-Host $readback.Output
+  if ($readback.ExitCode -ne 0) { throw 'CONFIG_UNREADABLE' }
 
   $script:WorkerPath = $workerPath
   $script:WorkerDir = $dir
@@ -226,8 +235,11 @@ Step 'SCHEDULED_TASK' {
 }
 
 # --- 7. Verify the agent can see this machine ---------------------------
-# Ask the rendezvous what it has heard. A hello from this host means the agent
-# now has a live path in, which is the whole objective.
+# Ask the rendezvous what it has heard. The check is that the hello is from
+# *this* machine and recent: the rendezvous keeps state, so a hello left over
+# from an earlier session would otherwise read as success while nothing here is
+# actually connected. That false positive is exactly what happened on the first
+# real run, where the hostname reported was the agent's own test host.
 Step 'VERIFY' {
   $stateUrl = ($Rendezvous.TrimEnd('/')) + '/ax/state'
   try {
@@ -237,15 +249,32 @@ Step 'VERIFY' {
     $actions.Add('VERIFY_UNREACHABLE')
     return
   }
+
   $hello = $r.hello
-  if ($hello -and $hello.hostname) {
-    Write-Host "AGENT_SEES_HOST=$($hello.hostname)"
-    Write-Host "AGENT_SEES_USER=$($hello.user)"
-    $actions.Add('CHANNEL_LIVE')
-  } else {
+  if (-not $hello -or -not $hello.hostname) {
     Write-Host 'CHANNEL_NO_HELLO_YET - the worker has not checked in yet'
     $actions.Add('CHANNEL_NO_HELLO')
+    return
   }
+
+  Write-Host "RENDEZVOUS_SAW_HOST=$($hello.hostname)"
+  Write-Host "RENDEZVOUS_SAW_USER=$($hello.user)"
+
+  if ($hello.hostname -ne $env:COMPUTERNAME) {
+    Write-Host "HELLO_NOT_FROM_THIS_MACHINE - expected $env:COMPUTERNAME"
+    $actions.Add('CHANNEL_HELLO_OTHER_HOST')
+    return
+  }
+
+  $age = [int]((Get-Date -UFormat %s) - [double]$hello.at)
+  Write-Host "HELLO_AGE_SECONDS=$age"
+  if ($age -gt 60) {
+    Write-Host 'HELLO_TOO_OLD - the worker is not polling right now'
+    $actions.Add('CHANNEL_HELLO_STALE')
+    return
+  }
+
+  $actions.Add('CHANNEL_LIVE')
 }
 
 # --- Result ---------------------------------------------------------------
@@ -256,11 +285,18 @@ Write-Host '=========================================='
 Write-Host "ACTIONS=$($actions -join ',')"
 $workerTask = Get-ScheduledTask -TaskName 'AERIS-PC1-REVERSE-CONTROL' -ErrorAction SilentlyContinue
 if ($workerTask) { Write-Host "WORKER_TASK_STATE=$($workerTask.State)" }
+$failed = @($actions | Where-Object { $_ -like 'FAILED:*' })
+Write-Host "FAILED_STEPS=$($failed.Count)"
 Write-Host ''
-if ($actions -contains 'CHANNEL_LIVE') {
+if ($actions -contains 'CHANNEL_LIVE' -and $failed.Count -eq 0) {
   Write-Host 'SUCCESS - the agent can now control this machine without anyone at the keyboard.'
+} elseif ($actions -contains 'CHANNEL_LIVE') {
+  # A step failed but the channel answered. Say both, because the earlier version
+  # printed only SUCCESS here and hid a worker that had never started.
+  Write-Host "PARTIAL - the channel answered but these steps failed: $($failed -join ',')"
+  Write-Host 'Send the lines above back.'
 } else {
   Write-Host 'NOT_LIVE_YET - send the lines above back.'
 }
 Write-Host ''
-Write-Host 'Log: $env:TEMP\ax-pc1-worker.log'
+Write-Host "Log: $env:TEMP\ax-pc1-worker.log"
