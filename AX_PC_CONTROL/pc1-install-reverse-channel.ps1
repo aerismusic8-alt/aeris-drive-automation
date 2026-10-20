@@ -52,6 +52,27 @@ function Step([string]$name, [scriptblock]$body) {
   }
 }
 
+function Invoke-Native {
+  # Run an external program and return its output and exit code instead of
+  # letting it terminate the script.
+  #
+  # With $ErrorActionPreference = 'Stop', a native command that writes anything
+  # to stderr raises a terminating NativeCommandError even when it exits 0. pip
+  # does this on every dependency-conflict warning, and Python does it for any
+  # traceback, so a check that is merely reporting "not installed yet" would end
+  # the whole run. Local 'Continue' plus an explicit exit-code check keeps the
+  # failure visible without killing the install.
+  param([string]$Exe, [string[]]$Arguments)
+  $previous = $ErrorActionPreference
+  $ErrorActionPreference = 'Continue'
+  try {
+    $output = & $Exe @Arguments 2>&1 | Out-String
+    return [pscustomobject]@{ Output = $output.Trim(); ExitCode = $LASTEXITCODE }
+  } finally {
+    $ErrorActionPreference = $previous
+  }
+}
+
 # --- 1. Identity ----------------------------------------------------------
 Step 'IDENTITY' {
   if ($env:COMPUTERNAME -ne 'DESKTOP-RGK6JKB') { throw "PC1_IDENTITY_MISMATCH:$env:COMPUTERNAME" }
@@ -76,12 +97,15 @@ Step 'PYTHON' {
   if (-not $python) { throw 'PYTHON_NOT_FOUND' }
   Write-Host "PYTHON=$python"
 
-  & $python -c "import fastmcp, sys; print('FASTMCP_OK', fastmcp.__version__, sys.version.split()[0])"
-  if ($LASTEXITCODE -ne 0) {
+  $check = Invoke-Native $python @('-c', "import fastmcp, sys; print('FASTMCP_OK', fastmcp.__version__, sys.version.split()[0])")
+  Write-Host $check.Output
+  if ($check.ExitCode -ne 0) {
     Write-Host 'fastmcp missing - installing winremote-mcp to bring it in'
-    & $python -m pip install --quiet --disable-pip-version-check winremote-mcp 2>&1 | Out-String | Write-Host
-    & $python -c "import fastmcp; print('FASTMCP_OK', fastmcp.__version__)"
-    if ($LASTEXITCODE -ne 0) { throw 'FASTMCP_INSTALL_FAILED' }
+    $install = Invoke-Native $python @('-m', 'pip', 'install', '--quiet', '--disable-pip-version-check', 'winremote-mcp')
+    Write-Host $install.Output
+    $recheck = Invoke-Native $python @('-c', "import fastmcp; print('FASTMCP_OK', fastmcp.__version__)")
+    Write-Host $recheck.Output
+    if ($recheck.ExitCode -ne 0) { throw 'FASTMCP_INSTALL_FAILED' }
   }
   $script:PythonExe = $python
   $actions.Add('PYTHON_OK')
@@ -161,9 +185,10 @@ Step 'WORKER_INSTALL' {
 # shows up here with the reason, instead of as a task that runs and does nothing.
 Step 'SMOKE_TEST' {
   if (-not $script:WorkerPath) { throw 'WORKER_NOT_INSTALLED' }
-  & $script:PythonExe -u $script:WorkerPath --config $script:WorkerConfig --once
-  Write-Host "SMOKE_EXIT=$LASTEXITCODE"
-  if ($LASTEXITCODE -ne 0) { throw "SMOKE_TEST_EXIT_$LASTEXITCODE" }
+  $smoke = Invoke-Native $script:PythonExe @('-u', $script:WorkerPath, '--config', $script:WorkerConfig, '--once')
+  Write-Host $smoke.Output
+  Write-Host "SMOKE_EXIT=$($smoke.ExitCode)"
+  if ($smoke.ExitCode -ne 0) { throw "SMOKE_TEST_EXIT_$($smoke.ExitCode)" }
   $actions.Add('SMOKE_TEST_OK')
 }
 
