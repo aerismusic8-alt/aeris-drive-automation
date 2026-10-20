@@ -769,6 +769,15 @@ tests possible before anything reaches K. `test-installer.ps1` fakes the
 scheduled-task cmdlets and asserts the `LogonType` value Windows accepts is the
 one used; a wrong value there ended a run before.
 
+**The channel token is a secret and never goes in this repository.** This repo is
+public, so a token committed here is a token the whole internet can use to run
+PowerShell on K's machine. It is handed to K in chat and stored only in
+`AX_PC_CONTROL/ax-results/.ax-token` and on PC1 in
+`C:\AX-Runtime\reverse\worker-config.json`. A token was briefly committed in the
+guide during development; the rendezvous was stopped and the token discarded
+immediately, which is the response if it ever happens again. Rotate by deleting
+`ax-results/.ax-token` and restarting the rendezvous.
+
 ## Publishing the place needs no PC1, and the version number is the proof
 
 The place is built and published entirely from a GitHub-hosted runner. Rojo

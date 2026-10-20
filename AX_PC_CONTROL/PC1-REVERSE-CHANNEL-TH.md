@@ -40,11 +40,20 @@ PC1  ──(ส่งผลกลับ)───────────▶  re
 
 ### ขั้นที่ 2 — วางคำสั่งนี้ทั้งบรรทัด แล้วกด Enter
 
+คำสั่งจริง (มี token) ผมส่งให้ในแชทแยกต่างหาก **ห้ามคัดลอก token ลงที่สาธารณะ**
+เพราะ token คือด่านเดียวที่กันไม่ให้ใครก็ได้สั่งงานบนเครื่อง
+
 ```powershell
-$s='5ebcee301c95ec2aa7239e1dea9ca64d95279357'; iwr "https://raw.githubusercontent.com/aerismusic8-alt/aeris-drive-automation/$s/AX_PC_CONTROL/pc1-install-reverse-channel.ps1" -OutFile "$env:TEMP\ax-install.ps1" -UseBasicParsing; powershell -ExecutionPolicy Bypass -File "$env:TEMP\ax-install.ps1" -Sha $s -Rendezvous 'https://work-1-zeelxxplzfjgleky.prod-runtime.all-hands.dev/' -Token 'Vv2_ncQI5sBOHaOTZGBLxaW_HErczFWyblxtpsN6PKU'
+$s='5ebcee301c95ec2aa7239e1dea9ca64d95279357'; iwr "https://raw.githubusercontent.com/aerismusic8-alt/aeris-drive-automation/$s/AX_PC_CONTROL/pc1-install-reverse-channel.ps1" -OutFile "$env:TEMP\ax-install.ps1" -UseBasicParsing; powershell -ExecutionPolicy Bypass -File "$env:TEMP\ax-install.ps1" -Sha $s -Rendezvous 'https://work-1-zeelxxplzfjgleky.prod-runtime.all-hands.dev/' -Token '<TOKEN_FROM_CHAT>'
 ```
 
+แทน `<TOKEN_FROM_CHAT>` ด้วย token ที่ผมส่งในแชท
+
 **เท่านั้น** — คำสั่งเดียว ไม่ต้องทำอะไรต่อ
+
+> **ทำไมไม่มี token ในไฟล์นี้:** repo นี้เป็น public การใส่ token ลงไฟล์เท่ากับให้คนทั้งโลก
+> สั่งงานบนเครื่องได้ (เคยเกิดขึ้นจริงระหว่างพัฒนา แล้วผมปิด rendezvous ตัวนั้นทิ้งทันที
+> token จึงต้องส่งผ่านช่องทางส่วนตัวเท่านั้น)
 
 ### ขั้นที่ 3 — ส่งผลลัพธ์กลับมา
 
