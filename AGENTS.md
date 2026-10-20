@@ -504,6 +504,51 @@ signal is the queue itself: a job that has not been picked up in minutes, while
 an earlier job on the same runner finished in seconds, means the runner is down
 and someone has to start it on PC1.
 
+### A running runner can still be pointed at the wrong repository
+
+`STATE=Running` plus a live `Runner.Listener` process is not proof that jobs
+will run. A runner is registered for exactly one repository, and its service
+name encodes which one:
+
+```
+actions.runner.<owner>-<repo>.<runner-name>
+```
+
+On PC1 the service was `actions.runner.farmmer938-lgtm-ax-ai-benchmark.PC1-MAIN`
+while this repository is `aerismusic8-alt/aeris-drive-automation`, so the
+service was healthy, the listener was alive, and every job for this repository
+queued forever. The two owners are different accounts with different ids, and
+the target repository no longer exists, so the runner has nowhere to connect.
+`.runner` inside the runner folder holds the same `gitHubUrl`, and the folder
+name is not predictable, so search for `.runner` rather than guessing paths.
+
+A machine can hold several configured runners. When the service points at the
+wrong one, the right one is often still on disk and can be started with its
+`run.cmd`, which needs no token and no re-registration.
+
+### A desktop-control server must run in the user's session
+
+The winremote MCP server has to run as the logged-on user, not as SYSTEM. A
+SYSTEM process lives in session 0, which has no desktop, so a screenshot returns
+a black frame and the input tools act on nothing. This is worse than a crash:
+the health endpoint answers and the server looks fine while being useless for
+the one job it was installed for. Register the task with `-LogonType
+InteractiveToken`, which needs no stored password and runs exactly when a
+desktop exists.
+
+Related: when a background task starts a server, redirect its output to a file.
+Without that, a start-up failure leaves nothing to read and the only symptom is
+a health check that never answers.
+
+### PowerShell turns native stderr into a terminating error
+
+With `$ErrorActionPreference = 'Stop'`, a native command that writes to stderr
+raises a terminating `NativeCommandError` **even when it exits 0**. `pip` does
+exactly this whenever it prints a dependency-conflict warning, which killed the
+PC1 bootstrap mid-run and silently skipped every step after it. Check
+`$LASTEXITCODE` instead, and wrap the call with a temporarily relaxed
+`$ErrorActionPreference` when the output is only advisory.
+
 ### A dispatch-only workflow on a non-default branch never registers
 
 This cost real time twice, so it is written down. GitHub registers a workflow
