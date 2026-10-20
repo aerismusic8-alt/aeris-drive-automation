@@ -47,9 +47,15 @@ param(
 
 $ErrorActionPreference = 'Stop'
 
+# Bump this whenever the script changes. It is printed first so the run itself
+# says which build it is: a stale copy served from a cache is otherwise
+# indistinguishable from a fresh one, which cost several rounds of confusion.
+$BootstrapVersion = '2026-10-20.4'
+
 Write-Host '=========================================='
 Write-Host ' AX PC1 BOOTSTRAP'
 Write-Host '=========================================='
+Write-Host "SCRIPT_VERSION=$BootstrapVersion"
 
 # --- 0. Identity and elevation -------------------------------------------
 Write-Host ''
