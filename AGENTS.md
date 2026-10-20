@@ -504,6 +504,34 @@ signal is the queue itself: a job that has not been picked up in minutes, while
 an earlier job on the same runner finished in seconds, means the runner is down
 and someone has to start it on PC1.
 
+### A dispatch-only workflow on a non-default branch never registers
+
+This cost real time twice, so it is written down. GitHub registers a workflow
+that lives on a non-default branch only when one of its triggers fires on that
+branch. A file whose only trigger is `workflow_dispatch` is therefore never
+registered, and `POST .../actions/workflows/<file>/dispatches` answers **404**
+forever. It looks exactly like a missing file or a permissions problem, and it
+is neither: `ax-pc1-tailnet-reach.yml` sat on a branch, pushed and present, and
+returned 404 on every dispatch.
+
+The fix is a `push:` trigger scoped to the workflow file itself:
+
+```yaml
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - '.github/workflows/this-file.yml'
+```
+
+The presence of any branch-firing trigger is what makes the file register; after
+that `workflow_dispatch` works normally. Keep the push trigger narrow and make
+the no-input default path read-only, so a push cannot start a write operation.
+
+A second signal helps distinguish the two cases: compare a workflow that
+dispatches (204) with one that does not (404) and check their triggers. The one
+with `push` works.
+
 ## Reaching PC1 from a phone
 
 There are two independent paths to PC1 and they do different jobs:
@@ -520,6 +548,25 @@ The repository already knows PC1's MeshCentral mesh: the adapter
 is missing on the control host is the `AKATH_MESHCTRL_*` environment, so
 dispatch through MeshCentral is not configured here. Those values are per-host
 environment, never committed.
+
+### The shortest path is loopback, and it needs no tailnet
+
+The winremote MCP server binds `127.0.0.1`, so only something already on PC1 can
+call it. The self-hosted runner is on PC1, which makes it the shortest possible
+route and removes every other dependency at once: no tailnet, no MeshCentral
+server, no port forward, and no credential handed to anyone. This is the path
+`AX_PC1_DESKTOP_CONTROL` uses.
+
+It has one precondition, and it is the same one that breaks everything else: the
+runner has to be alive. When the runner is down this path queues like the rest,
+so it cannot be the recovery route. It is the normal route once the machine is up.
+
+A remote-control client that reports screenshots as a byte count is useless, so
+`ax-winremote-mcp.py` takes `--save-images DIR` and writes the PNG, reporting its
+path. Note that servers vary in how they send image content: some emit an `image`
+item, others serialise the same thing to JSON and send it as a **text** item. A
+client that only handles the first case silently drops the screenshot, which was
+observed against a real MCP server. Handle both.
 
 When both paths are down the machine is unreachable by every path and needs a
 person at the desk. `AX_PC_CONTROL/pc1-keepalive.ps1` exists to stop that: it
