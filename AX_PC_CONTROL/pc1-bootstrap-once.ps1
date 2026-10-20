@@ -175,10 +175,14 @@ if (-not $python) {
     $configDir = Join-Path $RuntimeRoot 'winremote'
     New-Item -ItemType Directory -Path $configDir -Force | Out-Null
     $batPath = Join-Path $configDir 'start-winremote-mcp.cmd'
+    $logPath = Join-Path $configDir 'winremote-mcp.log'
 
     # Loopback bind, no auth: the Tailscale layer is the boundary. A token here
     # would be defence in depth against another process on this same machine,
     # which already implies the machine is compromised.
+    # Redirect stdout/stderr to a log file. Without it a start-up failure leaves
+    # nothing behind to explain why, which is exactly what happened: the task
+    # registered, ran, and the health check simply never answered.
     if ($WithAuthKey) {
       $bytes = New-Object byte[] 32
       [System.Security.Cryptography.RandomNumberGenerator]::Create().GetBytes($bytes)
@@ -186,21 +190,44 @@ if (-not $python) {
       $keyFile = Join-Path $configDir 'winremote-auth.key'
       Set-Content -LiteralPath $keyFile -Value $key -Encoding ASCII -NoNewline
       Write-Host "AUTH_KEY_FILE=$keyFile (contents not shown)"
-      $bat = "@echo off`r`nset PYTHONIOENCODING=utf-8`r`nset /p WINREMOTE_AUTH_KEY=<$keyFile`r`n`"$python`" -m winremote --transport streamable-http --host 127.0.0.1 --port $Port --auth-key `"%WINREMOTE_AUTH_KEY%`"`r`n"
+      $bat = "@echo off`r`nset PYTHONIOENCODING=utf-8`r`nset /p WINREMOTE_AUTH_KEY=<$keyFile`r`n`"$python`" -m winremote --transport streamable-http --host 127.0.0.1 --port $Port --auth-key `"%WINREMOTE_AUTH_KEY%`" >> `"$logPath`" 2>&1`r`n"
     } else {
-      $bat = "@echo off`r`nset PYTHONIOENCODING=utf-8`r`n`"$python`" -m winremote --transport streamable-http --host 127.0.0.1 --port $Port`r`n"
+      $bat = "@echo off`r`nset PYTHONIOENCODING=utf-8`r`n`"$python`" -m winremote --transport streamable-http --host 127.0.0.1 --port $Port >> `"$logPath`" 2>&1`r`n"
     }
     Set-Content -LiteralPath $batPath -Value $bat -Encoding ASCII
     Write-Host "MCP_START_SCRIPT=$batPath"
 
+    # The MCP server must run as the interactive user, not as SYSTEM. A SYSTEM
+    # process lives in session 0, which has no desktop, so Snapshot would return
+    # a black frame and the input tools would have nothing to act on: the server
+    # would look healthy while being useless for remote control. Bind it to the
+    # logged-on user instead, which is what the Roblox capture tasks already do.
+    $taskUser = (Get-CimInstance Win32_ComputerSystem).UserName
     $taskName = 'AERIS-PC1-WINREMOTE-MCP'
     $action = New-ScheduledTaskAction -Execute 'cmd.exe' -Argument "/c `"$batPath`""
-    $trigger = New-ScheduledTaskTrigger -AtStartup
-    $trigger.Delay = 'PT30S'
+
+    if ($taskUser) {
+      $sid = ([System.Security.Principal.NTAccount]$taskUser).Translate(
+        [System.Security.Principal.SecurityIdentifier]).Value
+      # InteractiveToken needs no stored password: the task runs only while that
+      # user is logged on, which is precisely when a desktop exists to control.
+      $trigger = New-ScheduledTaskTrigger -AtLogOn -User $taskUser
+      $taskPrincipal = New-ScheduledTaskPrincipal -UserId $sid -LogonType InteractiveToken -RunLevel Highest
+      Write-Host "MCP_TASK_USER=$taskUser"
+    } else {
+      # No interactive user: a headless machine. The server still answers, so an
+      # agent can run shell and file tools, but screen tools will not be useful.
+      Write-Host 'MCP_TASK_USER=none - no interactive user logged on'
+      Write-Host 'MCP_NOTE=screen capture needs a logged-on desktop session'
+      $trigger = New-ScheduledTaskTrigger -AtStartup
+      $trigger.Delay = 'PT30S'
+      $taskPrincipal = New-ScheduledTaskPrincipal -UserId 'SYSTEM' -LogonType ServiceAccount -RunLevel Highest
+      $actions.Add('MCP_TASK_HEADLESS')
+    }
+
     $settings = New-ScheduledTaskSettingsSet -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries `
       -StartWhenAvailable -RestartCount 999 -RestartInterval (New-TimeSpan -Minutes 1) `
       -ExecutionTimeLimit ([TimeSpan]::Zero)
-    $taskPrincipal = New-ScheduledTaskPrincipal -UserId 'SYSTEM' -LogonType ServiceAccount -RunLevel Highest
     Register-ScheduledTask -TaskName $taskName -Action $action -Trigger $trigger -Settings $settings `
       -Principal $taskPrincipal -Force | Out-Null
     Start-ScheduledTask -TaskName $taskName
@@ -215,7 +242,42 @@ if (-not $python) {
         if ($r.status -eq 'ok') { $mcpHealthy = $true; Write-Host "MCP_HEALTH=ok VERSION=$($r.version)"; break }
       } catch { }
     }
-    if (-not $mcpHealthy) { Write-Host 'MCP_HEALTH=unverified'; $actions.Add('MCP_NOT_HEALTHY') }
+    if (-not $mcpHealthy) {
+      Write-Host 'MCP_HEALTH=unverified'
+      $actions.Add('MCP_NOT_HEALTHY')
+      # Show why it failed rather than leaving a bare "unverified".
+      $ti = Get-ScheduledTaskInfo -TaskName $taskName -ErrorAction SilentlyContinue
+      if ($ti) {
+        Write-Host "MCP_TASK_LAST_RESULT=$($ti.LastTaskResult) LAST_RUN=$($ti.LastRunTime)"
+      }
+      if (Test-Path -LiteralPath $logPath) {
+        Write-Host '--- last 25 lines of the MCP log ---'
+        Get-Content -LiteralPath $logPath -Tail 25 | ForEach-Object { Write-Host "  $_" }
+        Write-Host '--- end of log ---'
+      } else {
+        Write-Host "MCP_LOG_MISSING=$logPath"
+      }
+      # A stale process from an earlier attempt holds the port, so the new one
+      # cannot bind. Clear it before giving up.
+      $holder = Get-NetTCPConnection -LocalPort $Port -State Listen -ErrorAction SilentlyContinue
+      if ($holder) {
+        Write-Host "MCP_PORT_HELD_BY_PID=$($holder.OwningProcess)"
+        try {
+          Stop-Process -Id $holder.OwningProcess -Force -ErrorAction Stop
+          Write-Host 'MCP_PORT_CLEARED - retrying once'
+          Start-ScheduledTask -TaskName $taskName
+          foreach ($attempt in 1..10) {
+            Start-Sleep -Seconds 3
+            try {
+              $r = Invoke-RestMethod -Uri "http://127.0.0.1:$Port/health" -TimeoutSec 5
+              if ($r.status -eq 'ok') { $mcpHealthy = $true; Write-Host "MCP_HEALTH=ok VERSION=$($r.version)"; break }
+            } catch { }
+          }
+        } catch {
+          Write-Host "MCP_PORT_CLEAR_FAILED=$($_.Exception.Message)"
+        }
+      }
+    }
   }
 }
 
