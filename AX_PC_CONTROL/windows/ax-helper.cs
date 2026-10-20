@@ -127,6 +127,12 @@ namespace AxHelper
 
         public static void MoveTo(int x, int y) { SetCursorPos(x, y); }
 
+        /// <summary>Move the pointer relative to where it is. Used to turn the camera.</summary>
+        public static void MouseMoveRel(int dx, int dy)
+        {
+            mouse_event(0x0001, (uint)dx, (uint)dy, 0, IntPtr.Zero);   // MOUSEEVENTF_MOVE
+        }
+
         /// <summary>Press and release one key.</summary>
         public static uint KeyDown(int vk, int scan)
         {

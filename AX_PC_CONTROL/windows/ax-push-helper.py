@@ -18,6 +18,7 @@ import time
 import urllib.request
 
 HERE = os.path.dirname(os.path.abspath(__file__))
+ROOT = os.path.dirname(HERE)
 CHUNK = 3000
 
 
@@ -60,14 +61,14 @@ def main() -> int:
     parser = argparse.ArgumentParser(description="Upload and build ax-helper.dll on PC1")
     parser.add_argument("--rendezvous", required=True)
     parser.add_argument("--token", default=None)
-    parser.add_argument("--source", default=os.path.join(HERE, "windows", "ax-helper.cs"))
-    parser.add_argument("--build-script", default=os.path.join(HERE, "windows", "ax-build-helper.ps1"))
+    parser.add_argument("--source", default=os.path.join(HERE, "ax-helper.cs"))
+    parser.add_argument("--build-script", default=os.path.join(HERE, "ax-build-helper.ps1"))
     parser.add_argument("--timeout", type=float, default=180.0)
     args = parser.parse_args()
 
     token = args.token or os.environ.get("AX_TOKEN")
     if not token:
-        token_file = os.path.join(HERE, "ax-results", ".ax-token")
+        token_file = os.path.join(ROOT, "ax-results", ".ax-token")
         with open(token_file, encoding="utf-8") as fh:
             token = fh.read().strip()
 
@@ -91,7 +92,7 @@ def main() -> int:
     import subprocess
 
     proc = subprocess.run(
-        [sys.executable, os.path.join(HERE, "ax-push-script.py"),
+        [sys.executable, os.path.join(ROOT, "ax-push-script.py"),
          args.build_script, "--rendezvous", args.rendezvous,
          "--timeout", str(args.timeout)],
         capture_output=True, text=True,

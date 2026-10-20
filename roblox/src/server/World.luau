@@ -189,7 +189,15 @@ local function applyLook(placeId: string)
         Lighting.FogEnd = look.fogEnd
         Lighting.FogStart = look.fogEnd * 0.25
         Lighting.ClockTime = placeId == "Void" and 0 or (placeId == "Heaven" and 12 or 14)
-        Lighting.GlobalShadows = true
+        -- Low-end hardware is the target, not a fallback. This project ships
+        -- Voxel lighting with GlobalShadows off (default.project.json), because
+        -- the machines that cannot run it are the ones most players own: on an
+        -- Intel HD Graphics adapter the client's own shaders fail to load
+        -- ("shader ... is not available" in the client log) and the world draws
+        -- black, leaving only the HUD. Voxel does its shadow work on the CPU and
+        -- needs the least from the GPU. Re-asserted here because this call runs
+        -- on every field entry and Lighting is a single global service.
+        Lighting.GlobalShadows = false
 
         -- The air is part of the look, so it is applied in the same call: a
         -- caller that re-lights a place can never forget to re-grade it.
