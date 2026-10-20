@@ -75,9 +75,26 @@ comes out as mojibake, so do not plan actions from it. What works instead:
 - OCR for coordinates only when the text is Latin (`ax-see.ps1` returns a
   bounding box and centre point per line, in screen coordinates).
 
-Installing the Thai OCR language pack would fix the text, but `Add-WindowsCapability`
-is slow and needs the full language pack; treat it as an improvement, not a
-dependency.
+Thai OCR is **not installable on this machine**, and that is measured, not
+assumed (`windows/ax-ocr-langs.ps1`). The image has `Language.Basic~~~th-TH`
+installed but `Language.OCR` for Thai is `NotPresent`, adding it returns
+`NotPresent`, and the recogniser answers `AvailableRecognizerLanguages = en-US`
+with `IsLanguageSupported('th-TH') = False`. Do not spend another session on
+`Add-WindowsCapability` for Thai; read the game from pixels instead.
+
+## The rendering ceiling on PC1
+
+PC1 is an Intel HD Graphics adapter (driver 9.17.10.4459). It cannot supply
+several of Roblox's shaders, and the client log repeats `shader
+DefaultUnifiedFlatTransparentVS... is not available`; the world then draws almost
+black with only the HUD visible. This is why a moved character cannot be seen
+moving here.
+
+It is also the useful finding: the machines that cannot run the game are the ones
+most players own, so the fix belongs in the game, not only on this box. The place
+now ships Voxel lighting with `GlobalShadows` off (see `roblox/default.project.json`
+and `World.applyLook`). Anything added to the lighting should be checked against
+the same question first: does it need a shader the low end does not have?
 
 ## Conventions
 
