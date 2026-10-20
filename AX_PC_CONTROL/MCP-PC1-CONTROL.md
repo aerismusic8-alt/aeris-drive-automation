@@ -184,6 +184,57 @@ python3 AX_PC_CONTROL/ax-winremote-mcp.py --url http://127.0.0.1:8090/mcp \
 
 - `WINREMOTE_MCP_URL` — URL ของเซิร์ฟเวอร์
 - `WINREMOTE_AUTH_KEY` — key (หรือใช้ `--auth-key`)
+- `WINREMOTE_SAVE_IMAGES` — โฟลเดอร์สำหรับเซฟรูป (หรือใช้ `--save-images`)
+
+## เซฟรูปได้จริง — ไม่งั้นเอเจนต์ตาบอด
+
+เดิม client รายงานรูปเป็น "ขนาด" เท่านั้น (`base64Length`) ซึ่งดูไม่ได้
+ตอนนี้เพิ่ม `--save-images DIR` แล้ว เขียน PNG ลงดิสก์และบอก path กลับมา:
+
+```bash
+python3 AX_PC_CONTROL/ax-winremote-mcp.py --url http://127.0.0.1:8090/mcp \
+  --call Snapshot --args '{"max_width": 1280}' --save-images /tmp/shots
+```
+
+ได้ผลลัพธ์แบบนี้ แล้วเปิดไฟล์ดูได้เลย:
+
+```json
+{ "type": "image", "mimeType": "image/png",
+  "base64Length": 100, "savedTo": "/tmp/shots/Snapshot-1.png", "savedBytes": 73 }
+```
+
+client ยังรองรับเซิร์ฟเวอร์ที่ส่งรูปมาเป็น **ข้อความ JSON** แทน `image` item
+(เจอจริงตอนทดสอบ) โดยแกะ base64 ออกมาเซฟให้ด้วย ไม่งั้นรูปจะกลายเป็นข้อความเฉย ๆ
+
+## ทางที่สั้นที่สุด: ผ่าน runner บน PC1 เอง (ไม่ต้องมี tailnet)
+
+ถ้า runner บน PC1 กลับมาแล้ว **นี่คือทางที่ต้องใช้น้อยที่สุด** เพราะ MCP server
+ผูกกับ `127.0.0.1` อยู่แล้ว และ runner ก็รันอยู่บน PC1 เดียวกัน
+จึงเรียก loopback ได้ตรง ๆ ไม่ต้องมี tailnet, ไม่ต้องมี MeshCentral,
+ไม่ต้อง forward port และ **ไม่ต้องส่ง credential ให้ใคร**
+
+`.github/workflows/ax-pc1-desktop-control.yml` ทำหน้าที่นี้:
+
+```bash
+# เปิด server ถ้ายังไม่ขึ้น แล้วแคปจอ
+gh workflow run ax-pc1-desktop-control.yml -f tool=Snapshot -f 'args={"max_width":1600}'
+```
+
+workflow จะ:
+
+1. ตรวจว่าเป็น PC1 จริง (`COMPUTERNAME`)
+2. ถ้า `/health` ไม่ตอบ → สตาร์ท scheduled task `AERIS-PC1-WINREMOTE-MCP`
+3. เรียก tool ที่สั่ง พร้อม `--save-images` ให้เขียน PNG
+4. อัปโหลด artifact ชื่อ `pc1-desktop-control` (มีทั้ง PNG และ JSON)
+
+แล้วเอเจนต์ดึง artifact กลับมาดูได้ด้วย token ของ GitHub App
+
+| ทาง | ต้องมีอะไร | เอเจนต์ดูจอได้ | เหมาะกับ |
+| --- | --- | --- | --- |
+| runner bridge (workflow นี้) | runner บน PC1 ทำงาน | ได้ (ผ่าน artifact) | เอเจนต์สั่งงาน |
+| Tailscale + MCP | tailnet + serve | ได้ | เอเจนต์/คน นอกบ้าน |
+| MeshCentral | MeshCentral server | ได้ | คนดูจากมือถือ |
+| RDP | public IP/VPN | ได้ | คนนั่งดูเต็มจอ |
 
 ## Tier และความปลอดภัย
 

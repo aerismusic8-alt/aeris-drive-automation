@@ -1,0 +1,129 @@
+name: AX PC1 Desktop Control
+
+# Let an agent drive the PC1 desktop through the winremote-mcp server that runs
+# on PC1 itself.
+#
+# Why this shape: the MCP server binds 127.0.0.1, so only something already on
+# PC1 can call it. The self-hosted runner is on PC1, which makes it the shortest
+# possible path and removes every other dependency at once. No tailnet, no
+# MeshCentral server, no port forward, and no credential has to be handed over:
+# the runner talks to loopback and this workflow uploads what it finds as an
+# artifact the caller can read.
+#
+# The screenshot is the point. An agent that can only read logs is guessing
+# about anything visual, so Snapshot is saved as a PNG and uploaded, not
+# summarised into a byte count.
+#
+# This is dispatch-only. It runs whatever tool it is told to run, so it should
+# not fire on push.
+
+on:
+  workflow_dispatch:
+    inputs:
+      tool:
+        description: 'MCP tool to call (Snapshot, Shell, FileList, GetSystemInfo, ...)'
+        required: true
+        default: 'GetSystemInfo'
+      args:
+        description: 'JSON arguments for the tool'
+        required: false
+        default: '{}'
+      port:
+        description: 'winremote-mcp port on PC1'
+        required: false
+        default: '8090'
+      start_server:
+        description: 'Start the MCP server task if it is not already answering'
+        required: false
+        type: boolean
+        default: true
+
+permissions:
+  contents: read
+
+jobs:
+  control:
+    runs-on: self-hosted
+    steps:
+      - name: Verify PC1
+        shell: powershell
+        run: |
+          if ($env:COMPUTERNAME -ne 'DESKTOP-RGK6JKB') { throw "EXPECTED_PC1:$env:COMPUTERNAME" }
+          Write-Host "PC1=VERIFIED"
+
+      - name: Make sure the MCP server is up
+        if: ${{ inputs.start_server }}
+        shell: powershell
+        run: |
+          $port = '${{ inputs.port }}'
+          $url = "http://127.0.0.1:$port/health"
+          $ok = $false
+          try {
+            $r = Invoke-RestMethod -Uri $url -TimeoutSec 5
+            if ($r.status -eq 'ok') { $ok = $true; Write-Host "MCP_ALREADY_UP=$($r.version)" }
+          } catch { }
+
+          if (-not $ok) {
+            Write-Host 'MCP_NOT_ANSWERING - starting the scheduled task'
+            $task = Get-ScheduledTask -TaskName 'AERIS-PC1-WINREMOTE-MCP' -ErrorAction SilentlyContinue
+            if (-not $task) { throw 'MCP_TASK_MISSING: run pc1-bootstrap-once.ps1 on PC1 first' }
+            Start-ScheduledTask -TaskName 'AERIS-PC1-WINREMOTE-MCP'
+            foreach ($attempt in 1..20) {
+              Start-Sleep -Seconds 3
+              try {
+                $r = Invoke-RestMethod -Uri $url -TimeoutSec 5
+                if ($r.status -eq 'ok') { $ok = $true; Write-Host "MCP_STARTED=$($r.version)"; break }
+              } catch { }
+            }
+          }
+          if (-not $ok) { throw 'MCP_SERVER_NOT_HEALTHY' }
+
+      - name: Call the tool
+        shell: powershell
+        run: |
+          $port = '${{ inputs.port }}'
+          $shotDir = 'C:\AX-Runtime\evidence\desktop-control'
+          New-Item -ItemType Directory -Path $shotDir -Force | Out-Null
+
+          # Find the client script. The repository is checked out in the runner
+          # workspace, so prefer that over a copy in the runtime folder.
+          $client = Join-Path $env:GITHUB_WORKSPACE 'AX_PC_CONTROL\ax-winremote-mcp.py'
+          if (-not (Test-Path -LiteralPath $client)) {
+            $client = 'C:\AX-Runtime\AX_PC_CONTROL\ax-winremote-mcp.py'
+          }
+          if (-not (Test-Path -LiteralPath $client)) { throw "MCP_CLIENT_MISSING:$client" }
+
+          $python = (Get-Command python -ErrorAction SilentlyContinue).Source
+          if (-not $python) { throw 'PYTHON_NOT_FOUND' }
+
+          Write-Host "CLIENT=$client"
+          Write-Host "TOOL=${{ inputs.tool }}"
+
+          # --save-images is what makes a screenshot usable: it writes the PNG
+          # and reports the path, instead of reporting only its size.
+          $out = & $python $client `
+            --url "http://127.0.0.1:$port/mcp" `
+            --call '${{ inputs.tool }}' `
+            --args '${{ inputs.args }}' `
+            --save-images $shotDir 2>&1 | Out-String
+          $code = $LASTEXITCODE
+          Write-Host $out
+          Set-Content -LiteralPath (Join-Path $shotDir 'mcp-call.json') -Value $out -Encoding UTF8
+
+          # Also leave a copy where the evidence upload expects it.
+          $evidence = 'C:\AX-Runtime\evidence'
+          New-Item -ItemType Directory -Path $evidence -Force | Out-Null
+          Set-Content -LiteralPath (Join-Path $evidence 'pc1-desktop-control.json') -Value $out -Encoding UTF8
+
+          if ($code -ne 0) { Write-Host "MCP_CALL_EXIT=$code" }
+
+      - name: Upload the result
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: pc1-desktop-control
+          path: |
+            C:\AX-Runtime\evidence\desktop-control\*
+            C:\AX-Runtime\evidence\pc1-desktop-control.json
+          if-no-files-found: warn
+          retention-days: 14

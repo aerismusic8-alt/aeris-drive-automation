@@ -32,6 +32,7 @@ from __future__ import annotations
 
 import argparse
 import asyncio
+import base64
 import json
 import os
 import sys
@@ -130,28 +131,73 @@ def _summarize_tool(tool) -> dict:
     }
 
 
-def _render_result(result) -> dict:
+def _image_from_text(text: str) -> dict | None:
+    """Recover an image that arrived encoded inside a text item.
+
+    Servers differ in how they send image content. Some emit a real `image`
+    content item; others serialise the same thing to JSON and send it as text,
+    which is what a list-returning tool does when the transport stringifies it.
+    Both are a screenshot, and treating the second as plain text is how an agent
+    ends up with a base64 blob it cannot look at.
+    """
+    stripped = text.strip()
+    if not stripped.startswith("{"):
+        return None
+    try:
+        parsed = json.loads(stripped)
+    except (ValueError, TypeError):
+        return None
+    if not isinstance(parsed, dict) or parsed.get("type") != "image":
+        return None
+    data = parsed.get("data")
+    if not isinstance(data, str) or not data:
+        return None
+    return {"data": data, "mimeType": parsed.get("mimeType")}
+
+
+def _render_result(result, save_dir: str | None = None, stem: str = "image") -> dict:
     """Flatten an MCP tool result into JSON-serialisable pieces.
 
     Image content is reported by size rather than inlined, so a screenshot does
-    not blow up a terminal or a log.
+    not blow up a terminal or a log. When `save_dir` is given the bytes are also
+    written there, because a size is not something anyone can look at: without
+    this an agent driving the desktop is blind, holding a number where the
+    screen should be.
     """
     out: dict = {"isError": bool(getattr(result, "isError", False)), "content": []}
+    image_index = 0
     for item in getattr(result, "content", []) or []:
         item_type = getattr(item, "type", None)
         if item_type == "text":
-            out["content"].append({"type": "text", "text": getattr(item, "text", "")})
+            text = getattr(item, "text", "") or ""
+            embedded = _image_from_text(text)
+            if embedded:
+                item_type = "image"
+                data = embedded["data"]
+                mime = embedded["mimeType"]
+            else:
+                out["content"].append({"type": "text", "text": text})
+                continue
         elif item_type == "image":
             data = getattr(item, "data", "") or ""
-            out["content"].append(
-                {
-                    "type": "image",
-                    "mimeType": getattr(item, "mimeType", None),
-                    "base64Length": len(data),
-                }
-            )
+            mime = getattr(item, "mimeType", None)
         else:
             out["content"].append({"type": str(item_type), "raw": str(item)[:400]})
+            continue
+
+        entry: dict = {"type": "image", "mimeType": mime, "base64Length": len(data)}
+        if save_dir and data:
+            image_index += 1
+            ext = "png" if (mime or "").endswith("png") else "bin"
+            path = os.path.join(save_dir, f"{stem}-{image_index}.{ext}")
+            try:
+                with open(path, "wb") as fh:
+                    fh.write(base64.b64decode(data))
+                entry["savedTo"] = path
+                entry["savedBytes"] = os.path.getsize(path)
+            except Exception as exc:  # noqa: BLE001 - report, never fail the call
+                entry["saveError"] = f"{type(exc).__name__}: {exc}"
+        out["content"].append(entry)
     structured = getattr(result, "structuredContent", None)
     if structured is not None:
         out["structuredContent"] = structured
@@ -206,7 +252,11 @@ async def run(args: argparse.Namespace) -> int:
 
                 result = await session.call_tool(args.call, _parse_args(args.args))
                 report["tool"] = args.call
-                report["result"] = _render_result(result)
+                report["result"] = _render_result(
+                    result,
+                    save_dir=args.save_images,
+                    stem=args.call.replace("/", "_"),
+                )
                 print(json.dumps(report, indent=2, ensure_ascii=False))
                 return 1 if report["result"]["isError"] else 0
 
@@ -274,7 +324,18 @@ def main() -> int:
     parser.add_argument("--list-tools", action="store_true", help="List the tools the server exposes")
     parser.add_argument("--call", help="Tool name to call")
     parser.add_argument("--args", help="JSON object of tool arguments")
+    parser.add_argument(
+        "--save-images",
+        default=os.environ.get("WINREMOTE_SAVE_IMAGES"),
+        metavar="DIR",
+        help="Write image content (e.g. a Snapshot screenshot) into DIR as PNG "
+        "files and report the path of each. Without this a screenshot is "
+        "reported as a byte count only, which cannot be looked at.",
+    )
     args = parser.parse_args()
+
+    if args.save_images:
+        os.makedirs(args.save_images, exist_ok=True)
 
     try:
         return asyncio.run(run(args))

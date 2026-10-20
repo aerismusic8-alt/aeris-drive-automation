@@ -176,6 +176,11 @@ if (-not $python) {
 # --- 3. Tailscale ---------------------------------------------------------
 Write-Host ''
 Write-Host 'STEP=TAILSCALE'
+# Initialised here so the evidence block can always report them, even when the
+# Tailscale step is skipped or fails before reaching them.
+$rdpOn = $null
+$dnsName = $null
+$tailnetIp = $null
 $ts = (Get-Command tailscale -ErrorAction SilentlyContinue).Source
 if (-not $ts) {
   foreach ($c in @("$env:ProgramFiles\Tailscale\tailscale.exe",
@@ -184,14 +189,54 @@ if (-not $ts) {
   }
 }
 
-if ($SkipTailscale -or -not $ts) {
-  Write-Host "TAILSCALE_SKIPPED (exe found: $([bool]$ts))"
-} else {
+if ($SkipTailscale) {
+  Write-Host 'TAILSCALE_SKIPPED_BY_FLAG'
+} elseif (-not $ts) {
+  # A missing binary used to end the step silently, which left the machine with
+  # no path that survives the runner dying again. Install it instead.
+  Write-Host 'TAILSCALE_NOT_FOUND - installing'
+  $winget = (Get-Command winget -ErrorAction SilentlyContinue).Source
+  if (-not $winget) {
+    Write-Host 'WINGET_NOT_FOUND'
+    Write-Host 'Install Tailscale from https://tailscale.com/download/windows and re-run.'
+    $actions.Add('TAILSCALE_MISSING_NO_WINGET')
+  } else {
+    & $winget install --id Tailscale.Tailscale -e --accept-source-agreements --accept-package-agreements
+    foreach ($c in @("$env:ProgramFiles\Tailscale\tailscale.exe",
+                     "${env:ProgramFiles(x86)}\Tailscale\tailscale.exe")) {
+      if (Test-Path -LiteralPath $c) { $ts = $c; break }
+    }
+    if ($ts) { $actions.Add('TAILSCALE_INSTALLED'); Write-Host "TAILSCALE_INSTALLED=$ts" }
+    else { Write-Host 'TAILSCALE_INSTALL_FAILED'; $actions.Add('TAILSCALE_INSTALL_FAILED') }
+  }
+}
+
+if ($ts -and -not $SkipTailscale) {
   Write-Host "TAILSCALE=$ts"
-  $status = (& $ts status --json 2>$null | Out-String | ConvertFrom-Json)
-  $dnsName = $status.Self.DNSName
-  $tailnetIp = ($status.Self.TailscaleIPs | Select-Object -First 1)
-  Write-Host "TAILNET_IP=$tailnetIp DNS_NAME=$dnsName"
+  # A fresh install is not logged in yet, so `status --json` has no Self. Treat
+  # that as "needs a human", not as a crash.
+  $statusRaw = (& $ts status --json 2>$null | Out-String)
+  $status = $null
+  try { $status = $statusRaw | ConvertFrom-Json } catch { }
+
+  if (-not $status -or $status.BackendState -ne 'Running') {
+    Write-Host 'TAILSCALE_NOT_LOGGED_IN'
+    Write-Host 'ACTION_REQUIRED: `tailscale up` prints a URL. Open it on any device'
+    Write-Host 'signed in to the same tailnet account and approve this machine.'
+    & $ts up
+    Start-Sleep -Seconds 5
+    $statusRaw = (& $ts status --json 2>$null | Out-String)
+    try { $status = $statusRaw | ConvertFrom-Json } catch { }
+  }
+
+  if (-not $status -or $status.BackendState -ne 'Running') {
+    Write-Host 'TAILSCALE_LOGIN_INCOMPLETE'
+    $actions.Add('TAILSCALE_LOGIN_INCOMPLETE')
+  } else {
+    $dnsName = $status.Self.DNSName
+    $tailnetIp = ($status.Self.TailscaleIPs | Select-Object -First 1)
+    Write-Host "TAILNET_IP=$tailnetIp DNS_NAME=$dnsName"
+    $actions.Add('TAILSCALE_UP')
 
   # Tailscale SSH is NOT usable here. Its server component only runs on Linux
   # and macOS (Tailscale docs, "Limitations / Devices"), so `tailscale set --ssh`
@@ -264,6 +309,7 @@ if ($SkipTailscale -or -not $ts) {
       if (-not $reachable) { Write-Host 'MCP_OVER_TAILNET=unverified' }
     }
   }
+  }
 }
 
 # --- 4. Evidence ----------------------------------------------------------
@@ -272,7 +318,6 @@ Write-Host 'STEP=EVIDENCE'
 $runnerAfter = @(Get-CimInstance Win32_Service -ErrorAction SilentlyContinue |
   Where-Object { $_.Name -like 'actions.runner.*' -or $_.DisplayName -like '*GitHub Actions*' })
 $runnerProcs = @(Get-Process -Name 'Runner.Listener','Runner.Worker' -ErrorAction SilentlyContinue)
-$tsFinal = if ($ts -and -not $SkipTailscale) { (& $ts status --json 2>$null | Out-String | ConvertFrom-Json) } else { $null }
 
 $report = [ordered]@{
   schemaVersion  = 1
@@ -285,9 +330,9 @@ $report = [ordered]@{
   mcpLocalUrl    = "http://127.0.0.1:$Port/mcp"
   openSshRunning = $null -ne (Get-Service -Name sshd -ErrorAction SilentlyContinue | Where-Object { $_.Status -eq 'Running' })
   rdpEnabled     = $rdpOn
-  tailnetIp      = if ($tsFinal) { ($tsFinal.Self.TailscaleIPs | Select-Object -First 1) } else { $null }
-  dnsName        = if ($tsFinal) { $tsFinal.Self.DNSName } else { $null }
-  mcpUrlOverTailnet = if ($tsFinal -and $tsFinal.Self.DNSName) { "https://$($tsFinal.Self.DNSName)/mcp" } else { $null }
+  tailnetIp      = $tailnetIp
+  dnsName        = $dnsName
+  mcpUrlOverTailnet = if ($dnsName) { "https://$dnsName/mcp" } else { $null }
   actions        = @($actions)
 }
 $reportPath = Join-Path $evidenceDir 'pc1-bootstrap.json'
