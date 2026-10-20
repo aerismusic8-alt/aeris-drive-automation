@@ -746,13 +746,23 @@ transfer without anyone at the keyboard.
 - `test-reverse-channel.py` runs the real rendezvous, a real MCP server and the
   real worker and checks the whole path.
 
-Four things this cost, worth not repeating:
+Six things this cost, worth not repeating:
 
 - **The default tier set has no `Shell`.** Tiers 1+2 are screen viewing only, so
   an agent on the far end could watch but not act. Anything that means to control
   the machine needs `--enable-tier3`, and the test asserts `Shell` is present.
 - **A task command line is public.** Any process on the machine can read it, so
   the channel token goes in a config file, not in the task's arguments.
+- **PowerShell 5.1's `Set-Content -Encoding UTF8` writes a byte order mark**, and
+  `json.load` rejects a leading BOM outright. This killed the worker on the first
+  real run, before it ever polled, while the installer still printed SUCCESS. Write
+  with `[IO.File]::WriteAllText` and a `UTF8Encoding($false)`, read with
+  `utf-8-sig` so either writer works, and read the file back before registering a
+  task that depends on it.
+- **Do not treat any hello as proof of a live channel.** The rendezvous keeps
+  state, so a hello left by an earlier session reads as success for a machine that
+  is not connected. The first real run reported SUCCESS with the agent's own test
+  host as the "connected" machine. Compare the hostname and check the age.
 - **A native command that writes to stderr kills the script.** With
   `$ErrorActionPreference = 'Stop'`, `& $exe` raises a terminating error on any
   stderr output even when the exit code is 0, and pip does that on an ordinary

@@ -44,7 +44,7 @@ PC1  ──(ส่งผลกลับ)───────────▶  re
 เพราะ token คือด่านเดียวที่กันไม่ให้ใครก็ได้สั่งงานบนเครื่อง
 
 ```powershell
-$s='5ebcee301c95ec2aa7239e1dea9ca64d95279357'; iwr "https://raw.githubusercontent.com/aerismusic8-alt/aeris-drive-automation/$s/AX_PC_CONTROL/pc1-install-reverse-channel.ps1" -OutFile "$env:TEMP\ax-install.ps1" -UseBasicParsing; powershell -ExecutionPolicy Bypass -File "$env:TEMP\ax-install.ps1" -Sha $s -Rendezvous 'https://work-1-zeelxxplzfjgleky.prod-runtime.all-hands.dev/' -Token '<TOKEN_FROM_CHAT>'
+$s='47bca2453fe8903dbc75d0c8a0a6c140787eb61d'; iwr "https://raw.githubusercontent.com/aerismusic8-alt/aeris-drive-automation/$s/AX_PC_CONTROL/pc1-install-reverse-channel.ps1" -OutFile "$env:TEMP\ax-install.ps1" -UseBasicParsing; powershell -ExecutionPolicy Bypass -File "$env:TEMP\ax-install.ps1" -Sha $s -Rendezvous 'https://work-1-zeelxxplzfjgleky.prod-runtime.all-hands.dev/' -Token '<TOKEN_FROM_CHAT>'
 ```
 
 แทน `<TOKEN_FROM_CHAT>` ด้วย token ที่ผมส่งในแชท
@@ -97,7 +97,7 @@ worker จับ error ทุกรูปแบบ ส่งกลับเป�
 
 `raw.githubusercontent.com` cache 300 วินาที และ **ไม่สนใจ query กัน cache**
 URL แบบ branch จึงอาจส่งไฟล์เก่ากลับมาเงียบ ๆ (เคยเจอจริง: ได้ 494 บรรทัด ทั้งที่ branch มี 500)
-ทุกอย่างในคำสั่งนี้จึง pin กับ SHA `5ebcee30...`
+ทุกอย่างในคำสั่งนี้จึง pin กับ SHA `47bca245...`
 
 ---
 
