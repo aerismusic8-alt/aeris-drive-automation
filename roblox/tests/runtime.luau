@@ -284,4 +284,64 @@ t.test("a real state payload renders into the HUD without error", function()
         end
 end)
 
+t.test("the HUD is built to fit the phone screen it is on", function()
+	local env = boot()
+
+	-- A phone screen, set before the client loads, because the client builds the
+	-- HUD once and sizes its panels from the screen it finds at that moment.
+	local camera = env.__workspace.CurrentCamera
+	t.assertTrue(camera ~= nil, "the harness has no camera")
+	if not camera then
+		return
+	end
+	camera.ViewportSize = Shim.Vector2.new(640, 360)
+
+	local ok, err = pcall(function()
+		env.__load("client/init.client")
+	end)
+	t.assertTrue(ok, "the client failed to build a HUD on a phone viewport: " .. tostring(err))
+	if not ok then
+		return
+	end
+
+	local gui = env.__player.PlayerGui:FindFirstChild("AXArenaHUD")
+	t.assertTrue(gui ~= nil, "the client built no HUD on the phone viewport")
+	if not gui then
+		return
+	end
+
+	local viewportHeight = 360
+	local safeBottom = 96
+	local panels = { "Stats", "QuestPanel", "WavePanel", "BossPanel", "Rewards",
+		"TravelPanel", "Combat", "Actions", "CharPanel" }
+	for _, name in ipairs(panels) do
+		local node = gui:FindFirstChild(name)
+		if node then
+			local sizeY = node.Size.Y.Offset
+			local posY = node.Position.Y.Offset
+			t.assertTrue(sizeY <= viewportHeight - safeBottom,
+				name .. " is " .. sizeY .. "px tall on a 360px screen")
+			-- A panel anchored at the top has its top at posY; one anchored at the
+			-- bottom has its bottom at posY. Both must be inside the screen.
+			if node.AnchorPoint.Y == 0 then
+				t.assertTrue(posY >= 0 and posY + sizeY <= viewportHeight,
+					name .. " runs off the phone screen (top " .. posY .. ", height " .. sizeY .. ")")
+			end
+		end
+	end
+
+	-- The character sheet is the one that could be opened and not closed. Its
+	-- close button must be inside the screen.
+	local charPanel = gui:FindFirstChild("CharPanel")
+	if charPanel then
+		local close = charPanel:FindFirstChild("CloseChar")
+		t.assertTrue(close ~= nil, "the character sheet has no close button")
+		if close then
+			local closeBottom = charPanel.Position.Y.Offset + close.Position.Y.Offset + close.Size.Y.Offset
+			t.assertTrue(closeBottom <= viewportHeight,
+				"the character sheet's close button is below the phone screen at " .. closeBottom .. "px")
+		end
+	end
+end)
+
 t.finish()

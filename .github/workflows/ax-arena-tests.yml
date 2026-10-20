@@ -47,6 +47,7 @@ jobs:
       - name: Run quest and balance tests
         run: |
           ./tools/luau/luau roblox/tests/quests.luau
+          ./tools/luau/luau roblox/tests/layout.luau
           ./tools/luau/luau roblox/tests/balance.luau
 
       # Boots the real server, builds the real world and loads the real client

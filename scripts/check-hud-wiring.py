@@ -133,7 +133,7 @@ check("travel moves the player", "World.placePlayer" in server, "player never mo
 check("the client can ask to travel", "Intent.travelTo" in client, "no travelTo intent")
 check("the client shows a MAP button", "mapButton.Activated" in client, "MAP not wired")
 check("the client builds the travel rows", "buildTravelList" in client, "no travel list")
-check("the HUD has a MAP button", re.search(r'button\([\w]+, "Map"', hud) is not None, "missing")
+check("the HUD has a MAP button", re.search(r'id = "Map"', hud) is not None, "missing")
 check("the HUD has a travel panel", '"TravelPanel"' in hud, "missing")
 check("the HUD has a close button for travel", '"CloseTravel"' in hud, "missing")
 check("the server sends the field list", "Fields.snapshot" in server, "no field snapshot")
@@ -224,8 +224,8 @@ check("the server exposes UseAxe", "UseAxe.OnServerInvoke" in server, "no handle
 check("the server sends farm state", "FarmState:FireClient" in server, "no farm state")
 check("the server builds the plots", "Plot_" in world, "no plot parts")
 check("the server draws the plots", "World.updatePlot" in server, "plots never drawn")
-check("the HUD has a FARM button", re.search(r'button\([\w]+,\s*"Farm"', hud) is not None, "missing")
-check("the HUD has an AXE button", re.search(r'button\([\w]+,\s*"Axe"', hud) is not None, "missing")
+check("the HUD has a FARM button", re.search(r'id = "Farm"', hud) is not None, "missing")
+check("the HUD has an AXE button", re.search(r'id = "Axe"', hud) is not None, "missing")
 check("the FARM button is wired", "farmButton.Activated" in client, "not wired")
 check("the AXE button is wired", "axeButton.Activated" in client, "not wired")
 
@@ -468,18 +468,37 @@ check("only the actions menu is folded by default",
       client.count("folded = { Actions = true }") == 1,
       "the default fold state is not the single actions menu")
 
-# Measure the real widths from the source rather than a copy, so a widened panel
-# is caught here instead of on a phone.
+# The panel geometry now lives in HudLayout, which the layout suite executes and
+# the HUD reads, so these checks read the same numbers the game builds from.
+layout = read(ROOT / "roblox/src/client/HudLayout.luau")
+check("the panel sizes live in one module", "HudLayout.PANEL_WIDTH" in layout and "HudLayout.PANEL_HEIGHT" in layout,
+      "the sizes are not centralised")
+check("the HUD reads the panel sizes from the module", "HudLayout.PANEL_WIDTH" in hud,
+      "the HUD keeps its own copy of the sizes")
+check("the HUD reads the panel heights from the module", "HudLayout.clampHeight" in hud,
+      "a panel is not capped to the screen")
+
+# This is the bug the layout suite found: a panel taller than the viewport is
+# centred off the screen, which puts its close button out of reach.
+check("a panel taller than the screen is capped", "HudLayout.clampHeight" in hud,
+      "the character sheet is not capped")
+check("a centred panel is pinned inside the safe area", "HudLayout.centredTop" in hud,
+      "an overlay is centred on the screen and hangs off it")
+check("the action menu reflows on a short screen", "HudLayout.menuColumns" in hud,
+      "the menu cannot reflow")
+check("the combat panel has a compact form", "COMBAT_COMPACT" in hud,
+      "the combat panel does not fit a phone")
+
+# The top-left quest panel and the top-right stats panel must not meet in the
+# middle, or the quest text runs under the stat readout. Measured on the
+# reference screen, because that is what the sizes are written against.
 widths = {}
-for match in re.finditer(r'panel\(gui, "([A-Za-z]+)", UDim2\.new\(0, (\d+),', hud):
-    widths[match.group(1)] = int(match.group(2))
+for match in re.finditer(r'(\w+)\s*=\s*(\d+),', layout):
+    widths.setdefault(match.group(1), int(match.group(2)))
 
 check("the quest panel was measured", "QuestPanel" in widths, "QuestPanel width not found")
 check("the stats panel was measured", "Stats" in widths, "Stats width not found")
 
-# Layout is built against a 1280x720 reference. The stats panel is anchored top
-# right and the quest tracker top left, so their edges must not meet in the
-# middle, or the quest text runs under the stat readout.
 if "QuestPanel" in widths and "Stats" in widths:
     quest_edge = 12 + widths["QuestPanel"]
     stats_edge = 1280 - 12 - widths["Stats"]
@@ -489,9 +508,10 @@ if "QuestPanel" in widths and "Stats" in widths:
 
 # The attack button is bottom centre and the actions menu is bottom right, so an
 # open menu must not cover the button the game is played with.
-if "Actions" in widths and "Combat" in widths:
+if "Combat" in widths and "Actions" in layout:
+    action_width = 200
     combat_right = 640 + widths["Combat"] / 2
-    actions_left = 1280 - 16 - widths["Actions"]
+    actions_left = 1280 - 16 - action_width
     check("the actions menu does not cover the attack button",
           combat_right < actions_left,
           f"attack button ends at {combat_right}px, menu begins at {actions_left}px")

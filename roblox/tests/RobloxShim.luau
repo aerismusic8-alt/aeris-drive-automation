@@ -685,6 +685,20 @@ RemotesFolder.Parent = ReplicatedStorage
 local Workspace = makeService("Workspace")
 local Lighting = makeService("Lighting")
 
+-- Workspace.CurrentCamera always exists in a running game, and the HUD reads its
+-- ViewportSize to decide how large a panel may be on the screen it is on. The
+-- shim models a reference desktop screen; a test that wants to exercise the
+-- phone layout passes the size into HudLayout directly, which is why that module
+-- takes the viewport as an argument rather than reading this.
+local Camera = newInstance("Camera")
+Camera.Name = "Camera"
+Camera.ViewportSize = Vector2.new(1280, 720)
+Camera.Parent = Workspace
+-- Set explicitly: Workspace is a signal host that lazy-creates a Signal for any
+-- unknown key, so leaving CurrentCamera unset would hand the HUD a Signal
+-- instead of a camera.
+Workspace.CurrentCamera = Camera
+
 -- A player as the glue sees one: an instance with a UserId, a PlayerGui to hang
 -- the HUD on, and the events a join and a respawn fire. Made here rather than in
 -- the harness so the server's own Players.PlayerAdded can hand it out.
@@ -980,6 +994,20 @@ local function makeRequire(sources: { [string]: string }, env: { [string]: any }
                 return { __path = path, Name = path:match("([^/]+)$") }
         end
 
+        -- A folder handle, for script.Parent. A folder is not a module -- there
+        -- is no source at its path -- so it cannot be required, but its children
+        -- resolve exactly as they do through script.Child. Without this,
+        -- require(script.Parent.X) fails under the harness while working in
+        -- Roblox, which is the class of shim/game mismatch this file exists to
+        -- avoid.
+        local function folderHandle(dir: string)
+                return setmetatable({ __path = dir, Name = dir:match("([^/]+)$") or dir }, {
+                        __index = function(_, childName)
+                                return handle(dir .. "/" .. childName)
+                        end,
+                })
+        end
+
         local load
 
         local function run(path: string)
@@ -1021,6 +1049,9 @@ local function makeRequire(sources: { [string]: string }, env: { [string]: any }
                         Name = path:match("([^/]+)$"),
                 }, {
                         __index = function(_, childName)
+                                if childName == "Parent" then
+                                        return folderHandle(dir)
+                                end
                                 return handle(childDir .. "/" .. childName)
                         end,
                 })
@@ -1120,6 +1151,13 @@ end
 function Shim.harness(sources: { [string]: string })
         resetEngine()
 
+        -- Every harness starts on the reference screen. A test that wants the
+        -- phone layout sets a smaller ViewportSize before loading the client,
+        -- which is the same thing the engine does when the screen changes.
+        Camera.ViewportSize = Vector2.new(1280, 720)
+        rawset(Workspace, "children", { Camera })
+        rawset(Workspace, "CurrentCamera", Camera)
+
         local env = install({})
         local load = makeRequire(sources, env)
 
@@ -1175,6 +1213,7 @@ function Shim.install(env)
 end
 
 Shim.Vector3 = Vector3
+Shim.Vector2 = Vector2
 Shim.CFrame = CFrame
 Shim.Color3 = Color3
 Shim.UDim2 = UDim2

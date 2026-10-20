@@ -28,6 +28,11 @@ fi
 # objective translated, and a corrupt save cannot lock a player out.
 "$LUAU" "$ROOT/roblox/tests/quests.luau" || exit 1
 
+# The HUD is written in fixed pixels against a 1280x720 reference and most of
+# this game's players are on phones. This suite does the arithmetic a phone
+# screen would do and fails when a panel no longer fits one.
+"$LUAU" "$ROOT/roblox/tests/layout.luau" || exit 1
+
 # Balance tests compare the player's power curve against the monster curve. The
 # whole suite passed while bosses were mathematically unkillable, because no test
 # asked whether the two curves met. This one does.

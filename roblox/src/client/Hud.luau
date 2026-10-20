@@ -25,8 +25,20 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 -- Every visible word comes from here, so the language lives in one file.
 local Text = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("Text"))
 local Config = require(ReplicatedStorage:WaitForChild("Shared"):WaitForChild("Config"))
+local HudLayout = require(script.Parent.HudLayout)
 
 local Hud = {}
+
+-- The screen the HUD is being built for. Panels are written in offset pixels
+-- against a 1280x720 reference, and a phone is shorter than that, so the build
+-- has to know which screen it is on before it can fit anything to it.
+local function viewportSize(): (number, number)
+	local camera = workspace.CurrentCamera
+	if camera and camera.ViewportSize.X > 0 and camera.ViewportSize.Y > 0 then
+		return camera.ViewportSize.X, camera.ViewportSize.Y
+	end
+	return HudLayout.DESIGN_WIDTH, HudLayout.DESIGN_HEIGHT
+end
 
 local player = Players.LocalPlayer
 
@@ -39,6 +51,45 @@ local COLORS = {
 	green = Color3.fromRGB(86, 210, 130),
 	blue = Color3.fromRGB(96, 170, 255),
 	disabled = Color3.fromRGB(70, 74, 88),
+}
+
+-- The action menu, as written for a wide screen: one column, stacked, with the
+-- heights and gaps it was designed with. On a phone this column is taller than
+-- the screen, so the build reflows it to a grid instead; this table is what the
+-- grid replaces, and keeping it explicit is what keeps the desktop layout
+-- exactly as it was. `key` is the Text lookup, because the button names and the
+-- translation keys do not match for Rewards and Character.
+local ACTION_COLUMN = {
+	{ id = "Axe", key = "axe", height = 56, color = COLORS.blue },
+	{ id = "Farm", key = "farm", height = 56, color = COLORS.green },
+	{ id = "Map", key = "map", height = 56, color = COLORS.gold },
+	{ id = "Crop", key = "crop", height = 56, color = COLORS.disabled },
+	{ id = "RewardsButton", key = "rewards", height = 56, color = COLORS.gold },
+	{ id = "Character", key = "character", height = 56, color = COLORS.blue },
+}
+
+-- The combat panel. `panelHeight` is part of the form because the panel is a
+-- fixed box the buttons sit in; writing the height next to the buttons keeps
+-- the two from drifting apart. The wide form is exactly what shipped before,
+-- and the compact form is what a phone can hold: the title goes, because it
+-- only repeats the word already on the attack button, and the gaps tighten.
+local COMBAT_COLUMN = {
+	panelHeight = 286,
+	rows = {
+		{ id = "Attack", key = "attackButton", y = 72, height = 68, size = 26, color = COLORS.gold },
+		{ id = "AutoAttack", key = "auto", y = 146, height = 44, size = 20, color = COLORS.disabled },
+		{ id = "AutoPickup", key = "pickup", y = 194, height = 44, size = 20, color = COLORS.disabled },
+		{ id = "Pickup", key = "pickup", y = 242, height = 40, size = 20, color = COLORS.green },
+	},
+}
+local COMBAT_COMPACT = {
+	panelHeight = 232,
+	rows = {
+		{ id = "Attack", key = "attackButton", y = 8, height = 68, size = 26, color = COLORS.gold },
+		{ id = "AutoAttack", key = "auto", y = 84, height = 44, size = 20, color = COLORS.disabled },
+		{ id = "AutoPickup", key = "pickup", y = 132, height = 44, size = 20, color = COLORS.disabled },
+		{ id = "Pickup", key = "pickup", y = 180, height = 44, size = 20, color = COLORS.green },
+	},
 }
 
 local function corner(parent: Instance, radius: number)
@@ -209,12 +260,20 @@ function Hud.build(): ScreenGui
 	gui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
 	gui.Parent = player:WaitForChild("PlayerGui")
 
+	-- How much screen there is, and therefore how much panel will fit on it.
+	local _, viewportH = viewportSize()
+	local compact = HudLayout.isShort(viewportH)
+	local menuColumns = HudLayout.menuColumns(viewportH)
+	local actionCellW = HudLayout.menuCellWidth(HudLayout.ACTION_MENU.panelWidth, menuColumns)
+	local actionCellH = HudLayout.ACTION_MENU.cellHeight
+
 	-- Stats, top right. The safe area already excludes the topbar, so the panel
 	-- only needs a small margin. The old 58px offset existed to clear the topbar
 	-- by hand, and on a phone with a taller topbar it was not enough: the panel
 	-- slid back under the buttons. It used to sit top left, which is where the
 	-- chat window is, and covered the chat's drag handle.
-	local stats = panel(gui, "Stats", UDim2.new(0, 216, 0, 244), UDim2.new(1, -12, 0, 8), Vector2.new(1, 0))
+	local statsHeight = HudLayout.clampHeight("Stats", viewportH)
+	local stats = panel(gui, "Stats", UDim2.new(0, HudLayout.PANEL_WIDTH.Stats, 0, statsHeight), UDim2.new(1, -12, 0, 8), Vector2.new(1, 0))
 	-- The stats panel is the one panel worth keeping open while playing, so its
 	-- fold button is a small caret in the corner rather than a title bar.
 	fold(stats, Text.get("stats"))
@@ -249,7 +308,7 @@ function Hud.build(): ScreenGui
 	-- Quest tracker, top left. This is the answer to "I do not know what to do":
 	-- one objective, always on screen, in Thai. Top left because the stats live
 	-- top right and the travel list is centred, so it covers no control.
-	local quest = panel(gui, "QuestPanel", UDim2.new(0, 300, 0, 100), UDim2.new(0, 12, 0, 96), Vector2.new(0, 0))
+	local quest = panel(gui, "QuestPanel", UDim2.new(0, HudLayout.PANEL_WIDTH.QuestPanel, 0, HudLayout.PANEL_HEIGHT.QuestPanel), UDim2.new(0, 12, 0, 96), Vector2.new(0, 0))
 	fold(quest, Text.get("quest"))
 	local questTitle = label(quest, "QuestTitle", Text.get("quest"), UDim2.new(1, -56, 0, 26),
 		UDim2.new(0, 8, 0, 6), 17)
@@ -259,14 +318,14 @@ function Hud.build(): ScreenGui
 	questBody.TextYAlignment = Enum.TextYAlignment.Top
 
 	-- Wave banner, top centre.
-	local wave = panel(gui, "WavePanel", UDim2.new(0, 320, 0, 48), UDim2.new(0.5, 0, 0, 16), Vector2.new(0.5, 0))
+	local wave = panel(gui, "WavePanel", UDim2.new(0, HudLayout.PANEL_WIDTH.WavePanel, 0, HudLayout.PANEL_HEIGHT.WavePanel), UDim2.new(0.5, 0, 0, 16), Vector2.new(0.5, 0))
 	fold(wave, Text.get("wave"))
 	local waveLabel = label(wave, "Wave", Text.get("wave") .. " 1", UDim2.new(1, -56, 1, 0), UDim2.new(0, 8, 0, 0), 20)
 	waveLabel.TextXAlignment = Enum.TextXAlignment.Center
 
 	-- Boss bar, just under the wave banner. Hidden unless a boss is alive, so
 	-- it never steals attention from a normal wave.
-	local boss = panel(gui, "BossPanel", UDim2.new(0, 320, 0, 54), UDim2.new(0.5, 0, 0, 190), Vector2.new(0.5, 0))
+	local boss = panel(gui, "BossPanel", UDim2.new(0, HudLayout.PANEL_WIDTH.BossPanel, 0, HudLayout.PANEL_HEIGHT.BossPanel), UDim2.new(0.5, 0, 0, 190), Vector2.new(0.5, 0))
 	boss.Visible = false
 	local bossLabel = label(boss, "BossName", Text.get("boss"), UDim2.new(1, -16, 0, 28), UDim2.new(0, 8, 0, 4), 18)
 	bossLabel.TextXAlignment = Enum.TextXAlignment.Center
@@ -290,7 +349,10 @@ function Hud.build(): ScreenGui
 	-- which is exactly where the phone's movement stick appears, so they
 	-- covered it and stole the drag. They now live behind a button in the
 	-- action panel and open in the middle of the screen.
-	local rewards = panel(gui, "Rewards", UDim2.new(0, 300, 0, 206), UDim2.new(0.5, 0, 0.5, 0), Vector2.new(0.5, 0.5))
+	local rewardsHeight = HudLayout.clampHeight("Rewards", viewportH)
+	local rewardsTop = HudLayout.centredTop(rewardsHeight, viewportH)
+	local rewards = panel(gui, "Rewards", UDim2.new(0, HudLayout.PANEL_WIDTH.Rewards, 0, rewardsHeight),
+		UDim2.new(0.5, 0, 0, rewardsTop), Vector2.new(0.5, 0))
 	rewards.Visible = false
 	rewards.ZIndex = 20
 	local title = label(rewards, "RewardsTitle", Text.get("rewards"), UDim2.new(1, -80, 0, 30), UDim2.new(0, 12, 0, 8), 18)
@@ -307,25 +369,41 @@ function Hud.build(): ScreenGui
 	-- Action panel, bottom right: the two taps the game is built around.
 	-- It sits under the thumb rather than in the middle of the screen, and the
 	-- axe button carries the charge count so the player knows when to swing.
-	local actions = panel(gui, "Actions", UDim2.new(0, 200, 0, 412), UDim2.new(1, -16, 1, -24), Vector2.new(1, 1))
+	--
+	-- Six stacked buttons is 412 pixels, which is taller than a phone. Rather
+	-- than let the bottom of the menu run off the screen -- which is what put the
+	-- character button out of reach -- the menu reflows to a grid when the screen
+	-- is short, and keeps its single column when it is not.
+	local actionsWidth = HudLayout.ACTION_MENU.panelWidth
+	local actionsTop = HudLayout.ACTION_MENU.top
+	local actionHeight = HudLayout.actionMenuHeight(viewportH)
+	local actionsBottomOffset = compact and -HudLayout.SAFE_BOTTOM or -24
+	local actions = panel(gui, "Actions", UDim2.new(0, actionsWidth, 0, actionHeight),
+		UDim2.new(1, -16, 1, actionsBottomOffset), Vector2.new(1, 1))
 	fold(actions, Text.get("menu"))
-	local axeLabel = label(actions, "AxeCharges", Text.get("axe") .. ": 0/5", UDim2.new(1, -20, 0, 26), UDim2.new(0, 12, 0, 42), 16)
+	local axeLabel = label(actions, "AxeCharges", Text.get("axe") .. ": 0/5", UDim2.new(1, -20, 0, 26),
+		UDim2.new(0, 12, 0, 8), 16)
 	axeLabel.TextColor3 = COLORS.muted
-	local axe = button(actions, "Axe", Text.get("axe"), UDim2.new(1, -24, 0, 56), UDim2.new(0, 12, 0, 70), COLORS.blue)
-	local farm = button(actions, "Farm", Text.get("farm"), UDim2.new(1, -24, 0, 56), UDim2.new(0, 12, 0, 132), COLORS.green)
-	-- Travel sits behind a button rather than on screen: a permanent map list
-	-- would eat the middle of a phone screen, which is where the player looks.
-	local map = button(actions, "Map", Text.get("map"), UDim2.new(1, -24, 0, 56), UDim2.new(0, 12, 0, 194), COLORS.gold)
-	local crop = button(actions, "Crop", Text.cropName("Wheat"), UDim2.new(1, -24, 0, 24), UDim2.new(0, 12, 0, 256), COLORS.disabled)
-	-- Rewards sits behind a button too, so the bottom-left thumb zone stays
-	-- clear for the movement stick.
-	local rewardsButton = button(actions, "RewardsButton", Text.get("rewards"), UDim2.new(1, -24, 0, 46), UDim2.new(0, 12, 0, 288), COLORS.gold)
-	-- The character sheet lives behind this button: stats, skills, job and bag.
-	local character = button(actions, "Character", Text.get("character"), UDim2.new(1, -24, 0, 56), UDim2.new(0, 12, 0, 342), COLORS.blue)
+
+	for index, def in ipairs(ACTION_COLUMN) do
+		local column = (index - 1) % menuColumns
+		local row = math.floor((index - 1) / menuColumns)
+		local x = 12 + column * (actionCellW + 8)
+		local y = actionsTop + row * (actionCellH + 8)
+		local text = def.id == "Crop" and Text.cropName("Wheat") or Text.get(def.key)
+		local b = button(actions, def.id, text, UDim2.new(0, actionCellW, 0, actionCellH),
+			UDim2.new(0, x, 0, y), def.color)
+		if compact then
+			b.TextSize = 17
+		end
+	end
 
 	-- Travel overlay: town plus every field. Built here, filled and wired by
 	-- the client, which owns the intent calls.
-	local travel = panel(gui, "TravelPanel", UDim2.new(0, 320, 0, 320), UDim2.new(0.5, 0, 0.5, 0), Vector2.new(0.5, 0.5))
+	local travelHeight = HudLayout.clampHeight("TravelPanel", viewportH)
+	local travelTop = HudLayout.centredTop(travelHeight, viewportH)
+	local travel = panel(gui, "TravelPanel", UDim2.new(0, HudLayout.PANEL_WIDTH.TravelPanel, 0, travelHeight),
+		UDim2.new(0.5, 0, 0, travelTop), Vector2.new(0.5, 0))
 	travel.Visible = false
 	travel.ZIndex = 10
 	local travelTitle = label(travel, "TravelTitle", Text.get("chooseField"), UDim2.new(1, -80, 0, 30), UDim2.new(0, 12, 0, 8), 18)
@@ -343,20 +421,34 @@ function Hud.build(): ScreenGui
 	-- Combat panel, bottom centre: the button the game is actually played
 	-- with. Attack is the largest target on screen, because on a phone the
 	-- thumb has to find it without looking.
-	local combat = panel(gui, "Combat", UDim2.new(0, 190, 0, 286), UDim2.new(0.5, 0, 1, -24), Vector2.new(0.5, 1))
+	local combatForm = compact and COMBAT_COMPACT or COMBAT_COLUMN
+	local combatBottomOffset = compact and -HudLayout.SAFE_BOTTOM or -24
+	local combat = panel(gui, "Combat", UDim2.new(0, HudLayout.PANEL_WIDTH.Combat, 0, combatForm.panelHeight),
+		UDim2.new(0.5, 0, 1, combatBottomOffset), Vector2.new(0.5, 1))
 	fold(combat, Text.get("attackButton"))
-	local combatTitle = label(combat, "CombatTitle", Text.get("attackButton"), UDim2.new(1, -56, 0, 24), UDim2.new(0, 12, 0, 42), 16)
-	combatTitle.TextColor3 = COLORS.muted
-	local attack = button(combat, "Attack", Text.get("attackButton"), UDim2.new(1, -24, 0, 68), UDim2.new(0, 12, 0, 72), COLORS.gold)
-	attack.TextSize = 26
-	local autoAttack = button(combat, "AutoAttack", Text.get("auto"), UDim2.new(1, -24, 0, 44), UDim2.new(0, 12, 0, 146), COLORS.disabled)
-	local autoPickup = button(combat, "AutoPickup", Text.get("pickup"), UDim2.new(1, -24, 0, 44), UDim2.new(0, 12, 0, 194), COLORS.disabled)
-	local pickup = button(combat, "Pickup", Text.get("pickup"), UDim2.new(1, -24, 0, 40), UDim2.new(0, 12, 0, 242), COLORS.green)
+	if not compact then
+		local combatTitle = label(combat, "CombatTitle", Text.get("attackButton"), UDim2.new(1, -56, 0, 24),
+			UDim2.new(0, 12, 0, 42), 16)
+		combatTitle.TextColor3 = COLORS.muted
+	end
+	for _, row in ipairs(combatForm.rows) do
+		local b = button(combat, row.id, Text.get(row.key), UDim2.new(1, -24, 0, row.height),
+			UDim2.new(0, 12, 0, row.y), row.color)
+		b.TextSize = row.size
+	end
 
 	-- Character panel: one overlay, four tabs. Attributes, skills, job and the
 	-- bag all live here rather than on the main screen, because a phone screen
 	-- has room for one panel at a time and the game needs the rest.
-	local charPanel = panel(gui, "CharPanel", UDim2.new(0, 340, 0, 430), UDim2.new(0.5, 0, 0.5, 0), Vector2.new(0.5, 0.5))
+	--
+	-- This is the panel that made the safe-area arithmetic matter: at 430px it is
+	-- taller than a phone viewport, and centring it put its close button above the
+	-- top of the screen. It is capped to the room the screen has, and pinned to the
+	-- safe area rather than the middle.
+	local charHeight = HudLayout.clampHeight("CharPanel", viewportH)
+	local charTop = HudLayout.centredTop(charHeight, viewportH)
+	local charPanel = panel(gui, "CharPanel", UDim2.new(0, HudLayout.PANEL_WIDTH.CharPanel, 0, charHeight),
+		UDim2.new(0.5, 0, 0, charTop), Vector2.new(0.5, 0))
 	charPanel.Visible = false
 	charPanel.ZIndex = 20
 	local charTitle = label(charPanel, "CharTitle", Text.get("character"), UDim2.new(1, -80, 0, 30), UDim2.new(0, 12, 0, 8), 18)

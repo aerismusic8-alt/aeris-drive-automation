@@ -136,6 +136,13 @@ function TestRunner.finish(): number
 		for _, message in ipairs(failures) do
 			print("  - " .. message)
 		end
+		-- The standalone Luau CLI exits 0 whether or not the script returns a
+		-- non-zero number, so `luau test.luau || exit 1` never fired and a suite
+		-- could report 20 failures and still leave CI green. Raising is what
+		-- actually fails the run; the message above is still printed first so the
+		-- failure list is readable. Level 0 keeps the raise from prefixing this
+		-- file's own line number to the summary.
+		error(string.format("%d test(s) failed", failed), 0)
 	end
 	return failed
 end
