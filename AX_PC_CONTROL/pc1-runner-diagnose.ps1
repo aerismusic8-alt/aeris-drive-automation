@@ -113,12 +113,22 @@ foreach ($r in $roots) {
   }
 }
 
-# Then a bounded sweep, because the folder name is not predictable. Depth is
-# capped so this stays fast on a machine with a lot of files.
-try {
-  $deep = @(Get-ChildItem -LiteralPath 'C:\' -Filter '.runner' -Recurse -Depth 3 -Force -ErrorAction SilentlyContinue)
-  foreach ($f in $deep) { $found += $f.FullName }
-} catch { }
+# Then a bounded sweep, because the folder name is not predictable. The search
+# is capped by depth and by a deadline: an unbounded walk of C:\ prints nothing
+# while it runs, which is indistinguishable from a hung script.
+Write-Host 'SWEEP_STARTED - searching for .runner files (max 60s)'
+$sweep = Start-Job -ScriptBlock {
+  Get-ChildItem -LiteralPath 'C:\' -Filter '.runner' -Recurse -Depth 3 -Force -ErrorAction SilentlyContinue |
+    Select-Object -ExpandProperty FullName
+}
+$sweepDone = Wait-Job -Job $sweep -Timeout 60
+if ($sweepDone) {
+  $found += @(Receive-Job -Job $sweep)
+  Write-Host 'SWEEP_COMPLETE'
+} else {
+  Write-Host 'SWEEP_TIMEOUT - continuing with what was found so far'
+}
+Remove-Job -Job $sweep -Force -ErrorAction SilentlyContinue
 
 $found = @($found | Select-Object -Unique)
 if ($found.Count -eq 0) {

@@ -39,7 +39,10 @@ param(
   # tailnet, and the MCP server binds loopback, so a bearer token adds little
   # for a single-person tailnet while making the setup need a secret exchange.
   [switch]$WithAuthKey,
-  [switch]$SkipTailscale
+  [switch]$SkipTailscale,
+  # The OpenSSH install is a fallback path and it can stall on Windows Update,
+  # so it is skippable and bounded.
+  [switch]$SkipOpenSSH
 )
 
 $ErrorActionPreference = 'Stop'
@@ -346,42 +349,6 @@ if ($ts -and -not $SkipTailscale) {
     Write-Host "TAILNET_IP=$tailnetIp DNS_NAME=$dnsName"
     $actions.Add('TAILSCALE_UP')
 
-  # Tailscale SSH is NOT usable here. Its server component only runs on Linux
-  # and macOS (Tailscale docs, "Limitations / Devices"), so `tailscale set --ssh`
-  # does nothing on Windows. Windows OpenSSH Server is the equivalent: Tailscale
-  # supplies the network path and OpenSSH supplies the shell. This is what makes
-  # the machine reachable later without the runner and without a screen.
-  Write-Host 'STEP=WINDOWS_OPENSSH'
-  try {
-    $sshd = Get-Service -Name sshd -ErrorAction SilentlyContinue
-    if (-not $sshd) {
-      Write-Host 'OPENSSH_SERVER_ABSENT - adding the optional Windows capability'
-      $cap = Add-WindowsCapability -Online -Name 'OpenSSH.Server~~~~0.0.1.0' -ErrorAction Stop
-      Write-Host "OPENSSH_CAPABILITY_STATE=$($cap.RestartNeeded)"
-      $sshd = Get-Service -Name sshd -ErrorAction SilentlyContinue
-    }
-    if ($sshd) {
-      Set-Service -Name sshd -StartupType Automatic -ErrorAction SilentlyContinue
-      if ($sshd.Status -ne 'Running') { Start-Service -Name sshd -ErrorAction Stop }
-      $actions.Add('OPENSSH_SERVER_RUNNING')
-      Write-Host 'OPENSSH_SERVER=running'
-      # Scope the firewall rule to the tailnet range so the port is not open to
-      # the local LAN or anything else. Tailscale traffic arrives on the same
-      # interface, so an unscoped rule would be wider than needed.
-      $fw = Get-NetFirewallRule -Name 'AX-PC1-OpenSSH-Tailnet' -ErrorAction SilentlyContinue
-      if (-not $fw) {
-        New-NetFirewallRule -Name 'AX-PC1-OpenSSH-Tailnet' -DisplayName 'AX PC1 OpenSSH (tailnet only)' `
-          -Direction Inbound -Protocol TCP -LocalPort 22 -Action Allow `
-          -RemoteAddress 100.64.0.0/10 -ErrorAction Stop | Out-Null
-        $actions.Add('OPENSSH_FIREWALL_SCOPED_TO_TAILNET')
-        Write-Host 'OPENSSH_FIREWALL=tailnet-only'
-      }
-    }
-  } catch {
-    $actions.Add("OPENSSH_SETUP_FAILED:$($_.Exception.Message)")
-    Write-Host "OPENSSH_SETUP_FAILED=$($_.Exception.Message)"
-  }
-
   # Report whether the built-in remote desktop is reachable, because that is the
   # only way onto this machine from a phone before any of the above exists.
   Write-Host 'STEP=RDP_STATE'
@@ -417,6 +384,63 @@ if ($ts -and -not $SkipTailscale) {
       if (-not $reachable) { Write-Host 'MCP_OVER_TAILNET=unverified' }
     }
   }
+  }
+
+  # Tailscale SSH is NOT usable here. Its server component only runs on Linux
+  # and macOS (Tailscale docs, "Limitations / Devices"), so `tailscale set --ssh`
+  # does nothing on Windows. Windows OpenSSH Server is the equivalent: Tailscale
+  # supplies the network path and OpenSSH supplies the shell. This is what makes
+  # the machine reachable later without the runner and without a screen.
+  Write-Host 'STEP=WINDOWS_OPENSSH'
+  try {
+    $sshd = Get-Service -Name sshd -ErrorAction SilentlyContinue
+    if ($SkipOpenSSH) {
+      Write-Host 'OPENSSH_SKIPPED_BY_FLAG'
+    } elseif (-not $sshd) {
+      # Add-WindowsCapability fetches from Windows Update and can stall for a
+      # very long time with no output, which makes the whole script look hung.
+      # A job with a deadline keeps that from blocking everything after it,
+      # including the MCP serve step that actually matters.
+      Write-Host 'OPENSSH_SERVER_ABSENT - adding the optional Windows capability'
+      Write-Host 'OPENSSH_INSTALL_DEADLINE=180s'
+      $job = Start-Job -ScriptBlock {
+        try {
+          $c = Add-WindowsCapability -Online -Name 'OpenSSH.Server~~~~0.0.1.0' -ErrorAction Stop
+          "ADDED:$($c.RestartNeeded)"
+        } catch { "FAILED:$($_.Exception.Message)" }
+      }
+      $done = Wait-Job -Job $job -Timeout 180
+      if ($done) {
+        $res = Receive-Job -Job $job
+        Write-Host "OPENSSH_CAPABILITY=$res"
+      } else {
+        Write-Host 'OPENSSH_INSTALL_TIMEOUT - continuing without it'
+        Write-Host 'It may still finish in the background; re-run this script later.'
+        $actions.Add('OPENSSH_INSTALL_TIMEOUT')
+      }
+      Remove-Job -Job $job -Force -ErrorAction SilentlyContinue
+      $sshd = Get-Service -Name sshd -ErrorAction SilentlyContinue
+    }
+    if ($sshd) {
+      Set-Service -Name sshd -StartupType Automatic -ErrorAction SilentlyContinue
+      if ($sshd.Status -ne 'Running') { Start-Service -Name sshd -ErrorAction Stop }
+      $actions.Add('OPENSSH_SERVER_RUNNING')
+      Write-Host 'OPENSSH_SERVER=running'
+      # Scope the firewall rule to the tailnet range so the port is not open to
+      # the local LAN or anything else. Tailscale traffic arrives on the same
+      # interface, so an unscoped rule would be wider than needed.
+      $fw = Get-NetFirewallRule -Name 'AX-PC1-OpenSSH-Tailnet' -ErrorAction SilentlyContinue
+      if (-not $fw) {
+        New-NetFirewallRule -Name 'AX-PC1-OpenSSH-Tailnet' -DisplayName 'AX PC1 OpenSSH (tailnet only)' `
+          -Direction Inbound -Protocol TCP -LocalPort 22 -Action Allow `
+          -RemoteAddress 100.64.0.0/10 -ErrorAction Stop | Out-Null
+        $actions.Add('OPENSSH_FIREWALL_SCOPED_TO_TAILNET')
+        Write-Host 'OPENSSH_FIREWALL=tailnet-only'
+      }
+    }
+  } catch {
+    $actions.Add("OPENSSH_SETUP_FAILED:$($_.Exception.Message)")
+    Write-Host "OPENSSH_SETUP_FAILED=$($_.Exception.Message)"
   }
 }
 
