@@ -28,11 +28,17 @@
 
 ### ขั้นที่ 2 — รันคำสั่งเดียวนี้
 
-คัดลอกทั้งบรรทัดนี้ไปวาง (วางแล้วกด Enter):
+คัดลอกทั้งบรรทัดนี้ไปวาง (วางแล้วกด Enter) — **เป็นบรรทัดเดียว ห้ามตัดขึ้นบรรทัดใหม่**:
 
 ```powershell
-powershell -ExecutionPolicy Bypass -Command "$u='https://raw.githubusercontent.com/aerismusic8-alt/aeris-drive-automation/ax-arena-roblox-game/AX_PC_CONTROL/pc1-bootstrap-once.ps1'; $p="$env:TEMP\pc1-bootstrap-once.ps1"; Invoke-WebRequest -Uri $u -OutFile $p -UseBasicParsing; & powershell.exe -NoProfile -ExecutionPolicy Bypass -File $p"
+Invoke-WebRequest -Uri 'https://raw.githubusercontent.com/aerismusic8-alt/aeris-drive-automation/ax-arena-roblox-game/AX_PC_CONTROL/pc1-bootstrap-once.ps1' -OutFile "$env:TEMP\pc1-bootstrap-once.ps1" -UseBasicParsing; powershell.exe -NoProfile -ExecutionPolicy Bypass -File "$env:TEMP\pc1-bootstrap-once.ps1"
 ```
+
+> **บทเรียนจากรอบแรก (อย่าใช้แบบเดิม):** คำสั่งเดิมที่ห่อด้วย
+> `powershell -Command "..."` แล้วมี `$u=...` อยู่ข้างใน **ใช้ไม่ได้**
+> เพราะ PowerShell จะขยาย `$u` ทิ้งไปก่อน (เหลือ `='https://...'`)
+> ทำให้ขึ้น `The term '=https://...' is not recognized`
+> คำสั่งใหม่ไม่มีตัวแปรที่ต้องขยายแบบนั้น จึงไม่พัง และไม่ต้องมี `-Command` ห่อเลย
 
 คำสั่งนี้ทำ 4 อย่าง เรียงตามนี้ (แต่ละอย่างมีประโยชน์ในตัวเอง):
 
