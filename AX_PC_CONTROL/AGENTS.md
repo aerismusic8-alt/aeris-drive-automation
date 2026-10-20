@@ -96,6 +96,23 @@ now ships Voxel lighting with `GlobalShadows` off (see `roblox/default.project.j
 and `World.applyLook`). Anything added to the lighting should be checked against
 the same question first: does it need a shader the low end does not have?
 
+Measured before and after, with `windows/ax-darkness.ps1`:
+
+| | dark pixels | distinct colours |
+| --- | --- | --- |
+| before (lit as the client default) | ~83-97% | 16,308 |
+| after (Voxel, no global shadows) | 3.6% | 45,782 |
+
+**The "character falls into darkness" report was this bug, not a spawn bug.**
+Eight steps of walking now hold the dark-pixel share between 15.3% and 16.1%,
+with no spike, so the platform is not losing the player. Do not go looking in
+`World.luau` for a fall when a screenshot goes black: check the lighting first.
+
+Movement is proved with a pixelwise difference, not a coarse grid signature.
+`ax-burst.ps1`'s own `sig` number barely moves when the character walks, because
+averaging a whole frame hides a small avatar; diffing frame 00 against frame 05
+shows 18% of pixels changed. Compare the images themselves.
+
 ## Conventions
 
 - Keep tooling in the repo, not in `/tmp`. The sandbox `/tmp` is volatile and a
