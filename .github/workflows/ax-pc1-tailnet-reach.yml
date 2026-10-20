@@ -29,6 +29,14 @@ on:
         description: 'Comma-separated ports to test'
         required: false
         default: '3389,22,8090,80,443'
+  # GitHub only registers a workflow on a non-default branch when one of its
+  # triggers fires there, so a workflow_dispatch-only file on this branch is
+  # never registered and always returns 404 on dispatch. This narrow push
+  # trigger is what makes the file dispatchable. It only re-runs the same
+  # read-only probe.
+  push:
+    paths:
+      - '.github/workflows/ax-pc1-tailnet-reach.yml'
 
 permissions:
   contents: read

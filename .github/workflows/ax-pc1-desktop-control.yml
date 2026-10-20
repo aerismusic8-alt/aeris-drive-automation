@@ -14,8 +14,15 @@ name: AX PC1 Desktop Control
 # about anything visual, so Snapshot is saved as a PNG and uploaded, not
 # summarised into a byte count.
 #
-# This is dispatch-only. It runs whatever tool it is told to run, so it should
-# not fire on push.
+# This is dispatch-only in intent. It runs whatever tool it is told to run, so
+# a push must not be able to fire an arbitrary tool call. The push trigger below
+# is deliberately narrow, and it exists for a mechanical reason: GitHub only
+# registers a workflow on a non-default branch when one of its triggers fires
+# there. A workflow_dispatch-only file on a feature branch is never registered,
+# so it can never be dispatched, which is why an earlier dispatch-only workflow
+# in this repository returned 404 forever. The narrow push trigger is what makes
+# this file dispatchable at all; on push the inputs are empty, so it runs the
+# read-only default (GetSystemInfo) and nothing else.
 
 on:
   workflow_dispatch:
@@ -37,6 +44,9 @@ on:
         required: false
         type: boolean
         default: true
+  push:
+    paths:
+      - '.github/workflows/ax-pc1-desktop-control.yml'
 
 permissions:
   contents: read
