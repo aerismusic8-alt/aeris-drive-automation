@@ -15,3 +15,5 @@ AX_PC_CONTROL/ax-results-test/
 AX_PC_CONTROL/test-*.log
 AX_PC_CONTROL/ax-pc1-worker.log
 AX_PC_CONTROL/__pycache__/
+__pycache__/
+*.pyc

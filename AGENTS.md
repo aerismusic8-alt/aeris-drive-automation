@@ -499,7 +499,6 @@ deliberately not a Roblox emulator: it is the smallest thing that lets the real
 code run, and it fails loudly on anything it does not know.
 
 ### Seeing the game without publishing it
-
 An unrated universe cannot be joined, so the live place is not a way to look at
 the code. Run the built place file on PC1 instead:
 
@@ -1033,3 +1032,51 @@ below are taken from those pages, not guessed.
 A key is capped by its target restrictions as well as its scopes: the selected
 resources limit what the scopes can act on, so the experience has to stay
 selected for any of the above to apply.
+
+## axvision, the always-on eye on PC1
+
+`AX_PC_CONTROL/axvision` is a resident screen reader for the live game. It
+captures PC1's screen through GDI, keeps the last few seconds of frames, and
+answers one short question per call over the reverse channel:
+
+    python -m axvision start          # begin watching, detached
+    python -m axvision state          # one word: world, menu, black, unknown
+    python -m axvision changed --seconds 1
+    python -m axvision motion --seconds 4
+    python -m axvision colour --rgb 255,206,84
+    python -m axvision snapshot --out shot.png
+    python -m axvision health
+    python -m axvision stop
+
+Every command prints one JSON object. The runtime directory is
+`C:\AX-Runtime\vision` on Windows and a temp directory anywhere else;
+override it with `AX_VISION_DIR`.
+
+### A frozen picture is not a quiet game
+
+The client on PC1 had been up four hours and its surface had stopped updating.
+Two captures forty seconds apart were byte-identical, and so were two
+independent screenshots taken with the older `ax-see` path, which ruled out a
+fault in the capture code. The desktop itself was alive: moving the mouse cursor
+changed the pixels under the cursor, and the cursor is composited, so the
+surface was not locked either.
+
+`state` was still answering `world`, which is the dangerous part. An agent
+that trusts that sends input into a dead surface and then concludes the game
+ignored it. `state` and `changed` now also report `frozen` and
+`still_ms`, and a frozen screen is reported as frozen even when it still
+classifies as the world. The flag clears itself when the picture moves again,
+because a client that hangs and recovers is the common case.
+
+The fix for a frozen client is to relaunch it, not to press the key again:
+`AX_PC_CONTROL/windows/ax-relaunch.ps1` closes `RobloxPlayerBeta`, reopens
+through the `roblox://` protocol, and reports the darkness reading as evidence
+the world rendered.
+
+### Do not point the runtime default at a Windows path
+
+`cli.RUNTIME` used to default to the literal string `C:\AX-Runtime\vision`.
+On Linux that is a valid relative path, so importing the CLI created a real
+directory named `C:\AX-Runtime\vision` in the working tree. The default is
+now chosen by `os.name`, with the environment override kept, and a test
+asserts the Linux default contains no backslash.
