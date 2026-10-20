@@ -192,6 +192,10 @@ if (-not $python) {
     # Redirect stdout/stderr to a log file. Without it a start-up failure leaves
     # nothing behind to explain why, which is exactly what happened: the task
     # registered, ran, and the health check simply never answered.
+    # -u forces unbuffered output. Without it Python block-buffers stdout and
+    # stderr when they are redirected to a file, so a server that is starting
+    # (or failing) writes nothing for a long time and the log looks empty. That
+    # empty log was the only evidence available last run.
     if ($WithAuthKey) {
       $bytes = New-Object byte[] 32
       [System.Security.Cryptography.RandomNumberGenerator]::Create().GetBytes($bytes)
@@ -199,9 +203,9 @@ if (-not $python) {
       $keyFile = Join-Path $configDir 'winremote-auth.key'
       Set-Content -LiteralPath $keyFile -Value $key -Encoding ASCII -NoNewline
       Write-Host "AUTH_KEY_FILE=$keyFile (contents not shown)"
-      $bat = "@echo off`r`nset PYTHONIOENCODING=utf-8`r`nset /p WINREMOTE_AUTH_KEY=<$keyFile`r`n`"$python`" -m winremote --transport streamable-http --host 127.0.0.1 --port $Port --auth-key `"%WINREMOTE_AUTH_KEY%`" >> `"$logPath`" 2>&1`r`n"
+      $bat = "@echo off`r`nset PYTHONIOENCODING=utf-8`r`nset /p WINREMOTE_AUTH_KEY=<$keyFile`r`n`"$python`" -u -m winremote --transport streamable-http --host 127.0.0.1 --port $Port --auth-key `"%WINREMOTE_AUTH_KEY%`" >> `"$logPath`" 2>&1`r`n"
     } else {
-      $bat = "@echo off`r`nset PYTHONIOENCODING=utf-8`r`n`"$python`" -m winremote --transport streamable-http --host 127.0.0.1 --port $Port >> `"$logPath`" 2>&1`r`n"
+      $bat = "@echo off`r`nset PYTHONIOENCODING=utf-8`r`n`"$python`" -u -m winremote --transport streamable-http --host 127.0.0.1 --port $Port >> `"$logPath`" 2>&1`r`n"
     }
     Set-Content -LiteralPath $batPath -Value $bat -Encoding ASCII
     Write-Host "MCP_START_SCRIPT=$batPath"
