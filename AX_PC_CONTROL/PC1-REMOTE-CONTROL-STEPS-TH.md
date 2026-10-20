@@ -31,22 +31,29 @@
 คัดลอกทั้งบรรทัดนี้ไปวาง (วางแล้วกด Enter) — **เป็นบรรทัดเดียว ห้ามตัดขึ้นบรรทัดใหม่**:
 
 ```powershell
-Invoke-WebRequest -Uri 'https://raw.githubusercontent.com/aerismusic8-alt/aeris-drive-automation/ax-arena-roblox-game/AX_PC_CONTROL/pc1-bootstrap-once.ps1' -OutFile "$env:TEMP\pc1-bootstrap-once.ps1" -UseBasicParsing; powershell.exe -NoProfile -ExecutionPolicy Bypass -File "$env:TEMP\pc1-bootstrap-once.ps1"
+Invoke-WebRequest -Uri 'https://raw.githubusercontent.com/aerismusic8-alt/aeris-drive-automation/27c9d967b1a8301a03ef8906b4138a2047f828ef/AX_PC_CONTROL/pc1-bootstrap-once.ps1' -OutFile "$env:TEMP\pc1-bootstrap-once.ps1" -UseBasicParsing; powershell.exe -NoProfile -ExecutionPolicy Bypass -File "$env:TEMP\pc1-bootstrap-once.ps1" -SkipOpenSSH
 ```
 
-> **บทเรียนจากรอบแรก (อย่าใช้แบบเดิม):** คำสั่งเดิมที่ห่อด้วย
-> `powershell -Command "..."` แล้วมี `$u=...` อยู่ข้างใน **ใช้ไม่ได้**
-> เพราะ PowerShell จะขยาย `$u` ทิ้งไปก่อน (เหลือ `='https://...'`)
-> ทำให้ขึ้น `The term '=https://...' is not recognized`
-> คำสั่งใหม่ไม่มีตัวแปรที่ต้องขยายแบบนั้น จึงไม่พัง และไม่ต้องมี `-Command` ห่อเลย
+> **ทำไม URL นี้ยาวแปลก ๆ (มีตัวอักษร/ตัวเลข 40 ตัว):** นั่นคือ **commit SHA** ซึ่ง
+> **ระบุไฟล์เวอร์ชันที่แน่นอน** ไม่ใช่ชื่อ branch
+>
+> **บทเรียนสำคัญ:** `raw.githubusercontent.com` **แคชไฟล์ไว้ 300 วินาที**
+> (`cache-control: max-age=300`) ทำให้ดึงไฟล์ *เก่า* กลับมาได้แม้เพิ่ง push ไฟล์ใหม่
+> — เกิดจริงกับงานนี้: GitHub API ให้ไฟล์ 500 บรรทัด (ใหม่) แต่ raw URL ให้ 494 บรรทัด (เก่า)
+> ต่อให้ใส่ `?cb=<ตัวเลข>` ก็ยังโดนแคช
+> การ pin ด้วย SHA จึงเป็นวิธีเดียวที่การันตีว่าได้ไฟล์ที่ถูกต้อง
+>
+> **ตรวจว่าได้ไฟล์ใหม่จริง:** บรรทัดแรก ๆ ต้องมี `SCRIPT_VERSION=2026-10-20.4`
 
 คำสั่งนี้ทำ 4 อย่าง เรียงตามนี้ (แต่ละอย่างมีประโยชน์ในตัวเอง):
 
 1. **ปลุก runner** → ปลดล็อกงานที่ค้างคิวทั้งหมดทันที
 2. **ติดตั้ง/เปิด winremote MCP** → ให้เอเจนต์คุมเดสก์ท็อปได้ ไม่ต้องมีคนนั่งกด
-3. **เปิดทางเข้าสำรอง 2 ทาง** → Windows OpenSSH (จำกัดเฉพาะ tailnet) และ MCP ผ่าน tailnet
-   สองทางนี้ **ไม่ต้องพึ่ง runner** ซึ่งสำคัญ เพราะ runner คือสิ่งที่พังไปแล้ว
+3. **serve MCP ผ่าน tailnet** → ทางเข้าที่ **ไม่ต้องพึ่ง runner** (สำคัญ เพราะ runner คือสิ่งที่พัง)
 4. **เขียนหลักฐาน** ว่าพบอะไรและแก้อะไร ลง `C:\AX-Runtime\evidence\pc1-bootstrap.json`
+
+> `-SkipOpenSSH` ตัดขั้นติดตั้ง OpenSSH ออก เพราะมันดาวน์โหลดจาก Windows Update
+> แล้วค้างได้นานมาก ถ้าต้องการ OpenSSH จริง ๆ ให้เปิดหน้าต่างที่ 2 แล้วรันโดยไม่ใส่ flag นี้
 
 ### ขั้นที่ 3 — ตอบคำถามที่จะขึ้น (อาจมี 1-2 ครั้ง)
 

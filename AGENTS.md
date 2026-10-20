@@ -540,6 +540,26 @@ Related: when a background task starts a server, redirect its output to a file.
 Without that, a start-up failure leaves nothing to read and the only symptom is
 a health check that never answers.
 
+### GitHub's raw endpoint serves a cached copy for 5 minutes
+
+`raw.githubusercontent.com` sends `cache-control: max-age=300`. A file fetched
+within that window can be the previous revision, and a cache-busting query
+string does not defeat it. This was observed directly: the GitHub contents API
+returned the new 500-line script while the raw URL returned the old 494-line
+one for the same branch and path. The symptom is a fix that is demonstrably
+pushed and still not in effect, which reads as a code bug and wastes a round
+trip to the person running it.
+
+Pin the fetch to a commit SHA instead of a branch name:
+
+```
+https://raw.githubusercontent.com/<owner>/<repo>/<full-commit-sha>/<path>
+```
+
+A SHA cannot be stale. When handing a one-line fetch command to someone else,
+always use the SHA and have the script print a version marker as its first
+output, so the run itself says which build it is.
+
 ### PowerShell turns native stderr into a terminating error
 
 With `$ErrorActionPreference = 'Stop'`, a native command that writes to stderr
