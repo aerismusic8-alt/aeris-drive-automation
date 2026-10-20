@@ -212,10 +212,16 @@ if (-not $python) {
     if ($taskUser) {
       $sid = ([System.Security.Principal.NTAccount]$taskUser).Translate(
         [System.Security.Principal.SecurityIdentifier]).Value
-      # InteractiveToken needs no stored password: the task runs only while that
-      # user is logged on, which is precisely when a desktop exists to control.
+      # The enum value is 'Interactive', not 'InteractiveToken': the cmdlet's
+      # LogonTypeEnum only accepts None, Password, S4U, Interactive, Group,
+      # ServiceAccount, InteractiveOrPassword. The wrong name throws before the
+      # task is registered, and with $ErrorActionPreference='Stop' it ended the
+      # whole script.
+      #
+      # Interactive needs no stored password and runs only while that user is
+      # logged on, which is exactly when a desktop exists to control.
       $trigger = New-ScheduledTaskTrigger -AtLogOn -User $taskUser
-      $taskPrincipal = New-ScheduledTaskPrincipal -UserId $sid -LogonType InteractiveToken -RunLevel Highest
+      $taskPrincipal = New-ScheduledTaskPrincipal -UserId $sid -LogonType Interactive -RunLevel Highest
       Write-Host "MCP_TASK_USER=$taskUser"
     } else {
       # No interactive user: a headless machine. The server still answers, so an
