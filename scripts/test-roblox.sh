@@ -41,4 +41,8 @@ python3 "$ROOT/scripts/gen-roblox-sources.py" || exit 1
 
 # Wiring checks read the source, because the HUD cannot be executed outside
 # Roblox. This is what catches a renamed label or an unbound button.
-exec python3 "$ROOT/scripts/check-hud-wiring.py"
+python3 "$ROOT/scripts/check-hud-wiring.py" || exit 1
+
+# The lighting settings decide whether the game renders at all on a weak GPU,
+# which is the hardware the target mobile players are closest to.
+exec python3 "$ROOT/scripts/check-low-end-lighting.py"

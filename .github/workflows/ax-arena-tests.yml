@@ -62,6 +62,13 @@ jobs:
       - name: Check client, HUD and server agree on names
         run: python3 scripts/check-hud-wiring.py
 
+      # The lighting fix is one line in the project file and one in World.luau,
+      # so it can be undone while tuning the look on a fast machine. That is the
+      # bug that made the world render black on an Intel HD adapter, which is
+      # the hardware the mobile players this game targets are closest to.
+      - name: Keep the game renderable on low-end hardware
+        run: python3 scripts/check-low-end-lighting.py
+
       # Publishing is deliberately not dispatched from here.
       #
       # This workflow answers "is the code good" and runs on every push, as does
