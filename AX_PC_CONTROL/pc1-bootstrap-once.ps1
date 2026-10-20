@@ -82,7 +82,27 @@ if ($runnerServices.Count -eq 0) {
 } else {
   foreach ($svc in $runnerServices) {
     Write-Host "RUNNER_SERVICE=$($svc.Name) STATE=$($svc.State) STARTMODE=$($svc.StartMode)"
-    if ($svc.State -eq 'Running') { continue }
+    if ($svc.State -eq 'Running') {
+      # A runner service can be Running while its listener is gone: the service
+      # stays up but nothing talks to GitHub, so jobs queue forever and the
+      # state still looks healthy. The listener process is the signal that
+      # matters, so check it rather than trusting "Running".
+      $listener = @(Get-Process -Name 'Runner.Listener' -ErrorAction SilentlyContinue)
+      if ($listener.Count -gt 0) {
+        Write-Host "RUNNER_LISTENER=present PID=$($listener[0].Id)"
+      } else {
+        Write-Host 'RUNNER_LISTENER=absent - restarting the service to reconnect'
+        try {
+          Restart-Service -Name $svc.Name -ErrorAction Stop
+          $actions.Add("RUNNER_RESTARTED:$($svc.Name)")
+          Write-Host "RUNNER_RESTARTED=$($svc.Name)"
+        } catch {
+          $actions.Add("RUNNER_RESTART_FAILED:$($svc.Name):$($_.Exception.Message)")
+          Write-Host "RUNNER_RESTART_FAILED=$($svc.Name) ERROR=$($_.Exception.Message)"
+        }
+      }
+      continue
+    }
     try {
       # A disabled service cannot be started at all; make it manual first.
       if ($svc.StartMode -eq 'Disabled') {
@@ -118,11 +138,37 @@ if (-not $python) {
   $actions.Add('PYTHON_NOT_FOUND')
 } else {
   Write-Host "PYTHON=$python"
-  & $python -m pip install --quiet --upgrade winremote-mcp 2>&1 | Out-Null
-  if ($LASTEXITCODE -ne 0) {
-    $actions.Add("PIP_INSTALL_FAILED:$LASTEXITCODE")
-    Write-Host "PIP_INSTALL_FAILED=$LASTEXITCODE"
+  # pip writes dependency-conflict warnings to stderr and still exits 0. Under
+  # $ErrorActionPreference='Stop' PowerShell turns that stderr into a
+  # terminating NativeCommandError, which killed this script mid-run and left
+  # everything after it undone. Only a non-zero exit code is a real failure.
+  $prevEap = $ErrorActionPreference
+  $ErrorActionPreference = 'Continue'
+  $pipOut = & $python -m pip install --quiet --upgrade winremote-mcp 2>&1 | Out-String
+  $pipCode = $LASTEXITCODE
+  $ErrorActionPreference = $prevEap
+  Write-Host "PIP_EXIT=$pipCode"
+  if ($pipCode -ne 0) {
+    Write-Host $pipOut
+    $actions.Add("PIP_INSTALL_FAILED:$pipCode")
+    Write-Host "PIP_INSTALL_FAILED=$pipCode"
   } else {
+    # The package needs Python 3.10+. Say so plainly instead of failing later
+    # with an import error that looks like a broken install.
+    $pyOk = $false
+    $pyVer = ''
+    try {
+      $pyVer = (& $python -c "import sys;print('%d.%d'%sys.version_info[:2])").Trim()
+      $parts = $pyVer.Split('.')
+      $pyOk = ([int]$parts[0] -gt 3) -or ([int]$parts[0] -eq 3 -and [int]$parts[1] -ge 10)
+    } catch { }
+    Write-Host "PYTHON_VERSION=$pyVer SUPPORTED=$pyOk"
+    if (-not $pyOk) {
+      $actions.Add("PYTHON_TOO_OLD:$pyVer")
+      Write-Host 'PYTHON_TOO_OLD - winremote-mcp needs Python 3.10 or newer.'
+      Write-Host 'Install a newer Python (winget install Python.Python.3.12) and re-run.'
+    }
+
     $pkgVersion = (& $python -c "import winremote;print(getattr(winremote,'__version__','unknown'))").Trim()
     Write-Host "MCP_PACKAGE_VERSION=$pkgVersion"
 
