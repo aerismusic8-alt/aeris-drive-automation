@@ -136,6 +136,15 @@ The shape that matters:
 - The HUD is built in code and read by `scripts/check-hud-wiring.py`. That
   script cannot run the HUD, so it reads the source: rename a node and it fails
   CI. Any new panel, button or label the client touches must appear there.
+- **Panel geometry lives in `src/client/HudLayout.luau`, never in `Hud.luau`.**
+  Most players are on a phone, and a panel measured against the 1280x720
+  reference does not fit a 640x360 one. The module takes the viewport as an
+  argument, so `tests/layout.luau` drives every device size without an engine.
+  A new panel adds its width and height to the tables there, and the HUD asks
+  `HudLayout.builtHeight` rather than hard-coding pixels. Do not centre a panel
+  with a bare `(viewport - height) / 2`: that is what put the character sheet's
+  close button off the top of the screen. Use `HudLayout.centredTop`, which
+  pins a too-tall panel inside the safe area.
 - Every monster needs a drop table of its own. A table-less monster still rolls
   the two generic potions, so it passes every check that only asks whether the
   drops are real items while identifying nothing. `Items.dropsFor` is keyed by
@@ -153,6 +162,22 @@ Run the tests before every push:
 ```bash
 cd roblox && ../tools/luau/luau tests/run.luau
 ```
+
+- **A Luau test file must fail loudly.** The standalone `luau` CLI exits 0 even
+  when a script returns a non-zero number, so `luau test.luau || exit 1` never
+  fires. A suite printed 20 failures and CI stayed green for weeks because of
+  this. `TestRunner.finish()` raises when anything failed, which is what
+  actually sets the exit code. A new suite must call `t.finish()` for the same
+  reason; a suite that only prints a tally is not wired to CI at all.
+- **A regression test must fail on the old code.** Before trusting a new test,
+  put the bug back and watch the suite exit 1. Two tests written for the phone
+  HUD passed against the broken layout until the naive centring was
+  reintroduced and the -35 measurement showed up. A test that passes both
+  before and after proves nothing.
+- **The headless shim is the engine contract, not a stub.** When game code
+  needs something the shim lacks, model the real behaviour (`script.Parent`
+  resolves, `Workspace.CurrentCamera` exists) rather than editing the game to
+  dodge the shim. The other direction hides a bug that only appears in Roblox.
 
 Publishing needs Roblox Studio, which is desktop-only. `roblox/PUBLISH-FROM-PHONE.md`
 covers what can and cannot be done from a phone.
