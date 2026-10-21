@@ -67,7 +67,13 @@ $studioVersion = $studioExes[0].VersionInfo.ProductVersion
 Write-Host "STUDIO_EXE=$studioExe"
 Write-Host "STUDIO_VERSION=$studioVersion"
 
-$placeFile = Join-Path $BuildRoot 'AXArena.rbxlx'
+$placeFile = Join-Path $BuildRoot 'AXGarden.rbxlx'
+# The arena build is legacy but still present on some machines; preferring the
+# garden keeps this script pointed at the game that ships.
+if (!(Test-Path -LiteralPath $placeFile)) {
+  $legacy = Join-Path $BuildRoot 'AXArena.rbxlx'
+  if (Test-Path -LiteralPath $legacy) { $placeFile = $legacy }
+}
 if (!(Test-Path -LiteralPath $placeFile)) { throw "PLACE_FILE_MISSING:$placeFile (run the build first)" }
 Write-Host "PLACE_FILE=$placeFile"
 
@@ -110,7 +116,7 @@ $smokeLog = Join-Path $evidenceDir 'studio-smoke.log'
 if ($SmokeScript -and (Test-Path -LiteralPath $SmokeScript)) {
   $smoke = $SmokeScript
 } else {
-  $guess = Join-Path $BuildRoot 'repo\AX_PC_CONTROL\pc1-roblox-open-smoke.luau'
+  $guess = Join-Path $BuildRoot 'repo\AX_PC_CONTROL\pc1-garden-smoke.luau'
   if (Test-Path -LiteralPath $guess) { $smoke = $guess }
 }
 
