@@ -5,7 +5,7 @@
 #
 # Requires, once, on PC1 or as a GitHub secret:
 #   ROBLOX_API_KEY  - an Open Cloud key with universe-places:write
-# and roblox/publish-config.json filled in with universeId and placeId.
+# and roblox-garden/publish-config.json filled in with universeId and placeId.
 #
 # Without the key this script reports BLOCKED and exits 0, so the workflow
 # stays green while the credential is still missing. It never fakes a publish.
@@ -27,8 +27,8 @@ function Write-Evidence($obj) {
   Set-Content -LiteralPath $evidencePath -Value ($obj | ConvertTo-Json -Depth 6) -Encoding UTF8
 }
 
-$placeFile = 'C:\AX-Build\AXArena.rbxlx'
-$configFile = 'C:\AX-Build\repo\roblox\publish-config.json'
+$placeFile = 'C:\AX-Build\AXGarden.rbxlx'
+$configFile = 'C:\AX-Build\repo\roblox-garden\publish-config.json'
 
 # --- Preconditions --------------------------------------------------------
 if (!(Test-Path $placeFile)) { throw "PLACE_MISSING:$placeFile (run the build workflow first)" }

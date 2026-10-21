@@ -246,8 +246,13 @@ check(
 
 print("\nWIRING 9: the build verifier covers every module")
 
+# The verifier used to check the arena's modules. The garden is the game now, so
+# it checks the garden's. The list is the marker keys in the script, and each one
+# must be a real identifier in the garden sources -- a marker that matches
+# nothing would let an empty place pass the check.
 build_script = read(ROOT / "AX_PC_CONTROL/pc1-roblox-build.ps1")
-for marker in ("world", "hud", "dailyRewards", "codes", "scenery", "atmosphere"):
+for marker in ("world", "hud", "config", "seeds", "mutations", "pets", "garden",
+               "sell", "collection", "saveSchema", "offlineGrowth", "remotes"):
     check(f"the build verifier checks {marker}", f"{marker}" in build_script, "marker missing")
 
 print("\nWIRING 10: the death scene stays intact and death is not instant")

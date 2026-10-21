@@ -13,10 +13,10 @@
 
 set -euo pipefail
 
-OUT="${1:-AXArena.rbxlx}"
+OUT="${1:-AXGarden.rbxlx}"
 ROJO_VERSION="${ROJO_VERSION:-7.7.1}"
 TOOLS_DIR="${TOOLS_DIR:-.rojo-tools}"
-PROJECT="${PROJECT:-roblox/default.project.json}"
+PROJECT="${PROJECT:-roblox-garden/default.project.json}"
 
 if [ ! -f "$PROJECT" ]; then
   echo "PROJECT_MISSING=$PROJECT" >&2

@@ -16,9 +16,9 @@
 
 set -uo pipefail
 
-PLACE="${1:-AXArena.rbxlx}"
+PLACE="${1:-AXGarden.rbxlx}"
 VERSION_TYPE="${2:-Published}"
-CONFIG="${CONFIG:-roblox/publish-config.json}"
+CONFIG="${CONFIG:-roblox-garden/publish-config.json}"
 
 if [ ! -s "$PLACE" ]; then
   echo "PLACE_FILE_MISSING=$PLACE" >&2

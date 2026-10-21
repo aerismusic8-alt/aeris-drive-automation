@@ -46,12 +46,11 @@
 set -u
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-CFG="$ROOT/roblox/src/shared/Config.luau"
+CFG="${CFG:-$ROOT/roblox-garden/src/shared/Config.luau}"
 UNIVERSE_ID="${UNIVERSE_ID:-10771844216}"
 ENDPOINT="https://apis.roblox.com/cloud/v2/universes/$UNIVERSE_ID"
 LEGACY_BASE="https://apis.roblox.com/legacy-develop/v1/universes/$UNIVERSE_ID"
 VISIBILITY="${EXPERIENCE_VISIBILITY:-PUBLIC}"
-TAGLINE="A Ragnarok-style legendary MMORPG. Central town Prontera, five monster fields, classes, skills, pets and rebirth."
 
 command -v curl >/dev/null 2>&1 || { echo "curl not found" >&2; exit 1; }
 command -v python3 >/dev/null 2>&1 || { echo "python3 not found" >&2; exit 1; }
@@ -68,6 +67,18 @@ m = re.search(r'Config\.GameName\s*=\s*"([^"]+)"', src)
 print(m.group(1) if m else "")
 PY
 )
+
+# The description comes from Config too, so the game's identity lives in one
+# place. A missing Tagline falls back to the name rather than to a stale string
+# from the previous game.
+TAGLINE=$(python3 - "$CFG" <<'PY'
+import re, sys
+src = open(sys.argv[1], encoding="utf-8").read()
+m = re.search(r'Config\.Tagline\s*=\s*"([^"]+)"', src)
+print(m.group(1) if m else "")
+PY
+)
+[ -n "$TAGLINE" ] || TAGLINE="$NAME"
 
 if [ -z "$NAME" ]; then
   echo "NAME=SKIPPED reason=no_GameName_in_Config"

@@ -17,6 +17,12 @@ local Config = {}
 
 Config.Version = "1.0.0"
 
+-- The experience identity. The publish pipeline reads these: GameName becomes the
+-- universe displayName, so the game page reads properly from a phone, and the
+-- live-state check compares the public API's name against GameName.
+Config.GameName = "AX Garden Legends"
+Config.Tagline = "สวนสะสม: ซื้อเมล็ด ปลูก รอเก็บเกี่ยว ขาย แล้วอัปเกรด"
+
 -- The seven collection tiers. A tier carries the odds of drawing it and how
 -- much its crops are worth, so rarity is one number in one place rather than a
 -- colour repeated in the shop, the save file and the HUD.

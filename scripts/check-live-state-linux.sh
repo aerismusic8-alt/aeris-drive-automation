@@ -30,8 +30,8 @@
 set -u
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-CFG_JSON="$ROOT/roblox/publish-config.json"
-CFG_LUAU="${CFG_LUAU:-$ROOT/roblox/src/shared/Config.luau}"
+CFG_JSON="${CFG_JSON:-$ROOT/roblox-garden/publish-config.json}"
+CFG_LUAU="${CFG_LUAU:-$ROOT/roblox-garden/src/shared/Config.luau}"
 CONTROL_PLACE="${CONTROL_PLACE:-920587237}"
 
 command -v curl >/dev/null 2>&1 || { echo "curl not found" >&2; exit 3; }

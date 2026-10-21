@@ -1,7 +1,7 @@
-# PC1: install Rojo and build the AX Arena place file
+# PC1: install Rojo and build the AX Garden Legends place file
 #
 # Rojo turns this repo into a Roblox place without needing Roblox Studio.
-# The output is AXArena.rbxlx, which a human opens once in Studio to publish.
+# The output is AXGarden.rbxlx, which a human opens once in Studio to publish.
 #
 # Writes to C:\AX-Build\ and reports JSON evidence.
 
@@ -55,14 +55,14 @@ if (Test-Path (Join-Path $repoDir '.git')) {
 }
 if ($LASTEXITCODE -ne 0) { throw "GIT_FAILED:$LASTEXITCODE" }
 
-$robloxDir = Join-Path $repoDir 'roblox'
+$robloxDir = Join-Path $repoDir 'roblox-garden'
 if (!(Test-Path (Join-Path $robloxDir 'default.project.json'))) {
   throw "PROJECT_FILE_MISSING"
 }
 Write-Host "REPO_READY=$robloxDir"
 
 # --- 3. Build the place ---------------------------------------------------
-$outFile = Join-Path $buildRoot 'AXArena.rbxlx'
+$outFile = Join-Path $buildRoot 'AXGarden.rbxlx'
 Push-Location $robloxDir
 try {
   & $rojoExe build default.project.json --output $outFile
@@ -85,42 +85,28 @@ $xml = Get-Content $outFile -Raw
 
 $sourceBlocks = ([regex]::Matches($xml, '<string\s+name="Source">')).Count
 Write-Host "SOURCE_BLOCKS=$sourceBlocks"
-if ($sourceBlocks -lt 35) { throw "SOURCE_BLOCKS_TOO_FEW:$sourceBlocks (expected >=35)" }
+if ($sourceBlocks -lt 18) { throw "SOURCE_BLOCKS_TOO_FEW:$sourceBlocks (expected >=18)" }
 
 # Markers prove the *code* made it in, not just the instance names.
 $markers = [ordered]@{
-  config        = 'BaseXp'
-  leveling      = 'xpFromKill'
-  pets          = 'rarity'
-  rebirth       = 'MaxRebirths'
-  zones         = 'coinMultiplier'
-  monetization  = 'ProcessReceipt'
+  config        = 'valueMultiplier'
+  seeds         = 'growSeconds'
+  mutations     = 'multiplier'
+  pets          = 'growthMultiplier'
+  garden        = 'isUnlocked'
+  basket        = 'Basket'
+  sell          = 'newUpgrades'
+  collection    = 'discoverMutation'
   saveSchema    = 'SchemaVersion'
+  offlineGrowth = 'applyOffline'
   serverLoop    = 'Heartbeat'
   clientIntent  = 'InvokeServer'
-  rateLimiter   = 'RateLimiter'
-  world         = 'buildWorld'
-  fields        = 'spawnPoint'
-  travel        = 'TravelZone'
-  boss          = 'bossInfo'
-  hud           = 'AXArenaHUD'
-  travelPanel   = 'TravelPanel'
-  dailyRewards  = 'canClaim'
-  codes         = 'hasRedeemed'
-  farm          = 'plantedCount'
-  axe           = 'swingDamage'
-  text          = 'placeName'
-  monsterShapes = 'MonsterShapes'
-  classLook     = 'ClassLook'
-  itemIcons     = 'ItemIcons'
-  attackAnim    = 'AttackAnim'
-  itemView      = 'ItemView'
-  scenery       = 'Scenery'
-  atmosphere    = 'Atmosphere'
-  villagers     = 'Villagers'
-  death         = 'CoinLossPercent'
-  landmarks     = 'buildLandmarks'
-  skillBar      = 'SKILL_SLOTS'
+  world         = 'World.build'
+  hud           = 'AXGardenHud'
+  hudLayout     = 'panelRect'
+  text          = 'secondsLeft'
+  rarity        = 'Rarity.get'
+  remotes       = 'GardenPlant'
 }
 $checks = [ordered]@{ sourceBlocks = $sourceBlocks }
 foreach ($k in $markers.Keys) {
