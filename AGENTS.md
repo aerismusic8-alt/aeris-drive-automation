@@ -1219,3 +1219,30 @@ On Linux that is a valid relative path, so importing the CLI created a real
 directory named `C:\AX-Runtime\vision` in the working tree. The default is
 now chosen by `os.name`, with the environment override kept, and a test
 asserts the Linux default contains no backslash.
+
+### Renaming an experience needs the desktop, not the Open Cloud key
+
+The Open Cloud `PATCH /cloud/v2/universes/{id}` accepted `displayName` and
+returned `200`, then changed nothing. `universe:write` was granted on the key
+and the response still echoed the old name, so this is not a scope problem: the
+dashboard is the only path that actually persists a rename.
+
+The dashboard path works, but only if the whole interaction is one process.
+Each remote tool call is its own process and the browser drops the caret in
+between, so `FocusWindow` -> `Click` -> `Type` as three calls types into
+nothing. `AX_PC_CONTROL/windows/ax-rename-experience.ps1` does focus,
+double-click, Ctrl+A, Delete, type, and a confirming OCR read in a single
+process. The field reports as `FIELD|...|AX Garden Legends`, and the name is
+saved by clicking the button labelled with the Thai word for Save (left button
+of the pair; the right one is Cancel).
+
+Reading those Thai labels needed a zoomed OCR pass. `ax-see.ps1` reads the whole
+window at 2x and the labels are a few pixels tall, so
+`AX_PC_CONTROL/windows/ax-readcrop.ps1` crops a region and scales it 4-6x
+before recognising. Clicking the wrong one of the two buttons is otherwise a
+coin flip.
+
+After the dashboard save, `games.roblox.com/v1/games` reported
+`AX Garden Legends` and the pipeline's `name` job logged `NAME=SET` and its
+`live-state` job logged `LIVE_STATE=PASS`. The API-only attempt had left
+`NAME=UNCONFIRMED` on every run before this.

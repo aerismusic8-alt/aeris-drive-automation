@@ -18,3 +18,6 @@ AX_PC_CONTROL/ax-pc1-worker.log
 AX_PC_CONTROL/__pycache__/
 __pycache__/
 *.pyc
+
+# Full-desktop screenshots captured during remote-control sessions.
+AX_PC_CONTROL/shots/
