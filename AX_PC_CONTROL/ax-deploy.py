@@ -84,13 +84,51 @@ class Channel:
 
 
 def resolve_commit() -> str:
-    """The commit to fetch from: HEAD, once it is known to be on the remote."""
+    """The commit to fetch from, proven to be on the remote branch.
+
+    A local check is not enough here. This clone is shallow and its
+    remote-tracking refs go stale the moment a push lands, so `branch -r
+    --contains` reported a commit as unpushed seconds after it was pushed. The
+    branch tip is read from the remote, and when it is not HEAD the API is asked
+    whether HEAD is ahead of it. Both answers come from GitHub, which is the only
+    thing that can say what raw.githubusercontent.com will serve.
+    """
     head = run_git("rev-parse", "HEAD")
-    branches = run_git("branch", "-r", "--contains", head)
-    if not branches.strip():
+    branch = run_git("rev-parse", "--abbrev-ref", "HEAD")
+
+    tip = run_git("ls-remote", "origin", f"refs/heads/{branch}").split()
+    if not tip:
+        raise SystemExit(f"branch {branch} does not exist on origin")
+    tip = tip[0]
+
+    if head == tip:
+        return head
+
+    token = os.environ.get("GITHUB_TOKEN")
+    if not token:
         raise SystemExit(
-            f"HEAD {head[:7]} is not on any remote branch, so raw.githubusercontent.com "
-            "cannot serve it. Push first (scripts/use-app-token.sh push)."
+            f"HEAD {head[:7]} is not the tip of origin/{branch} ({tip[:7]}), and no "
+            "GITHUB_TOKEN is set to confirm it was pushed. Push, or send the working "
+            "copy with ax-push-script.py."
+        )
+    url = f"https://api.github.com/repos/{REPO_SLUG}/compare/{tip}...{head}"
+    req = urllib.request.Request(url)
+    req.add_header("Authorization", f"Bearer {token}")
+    req.add_header("Accept", "application/vnd.github+json")
+    try:
+        with urllib.request.urlopen(req, timeout=30) as resp:
+            status = json.loads(resp.read().decode("utf-8")).get("status")
+    except Exception as exc:  # noqa: BLE001
+        raise SystemExit(f"could not ask GitHub about {head[:7]}: {exc}")
+
+    # "ahead" means HEAD is on top of the remote tip. "identical" cannot happen
+    # here because the two SHAs differ. Anything else, including "behind" and
+    # "diverged", means the commit is not reachable from the branch.
+    if status != "ahead":
+        raise SystemExit(
+            f"HEAD {head[:7]} is {status} relative to origin/{branch} ({tip[:7]}), so "
+            "raw.githubusercontent.com cannot serve it. Push first "
+            "(scripts/use-app-token.sh push)."
         )
     return head
 
