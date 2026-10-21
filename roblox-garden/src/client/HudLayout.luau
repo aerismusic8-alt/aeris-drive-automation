@@ -24,13 +24,32 @@ HudLayout.MIN_TOUCH = 44
 HudLayout.GAP = 8
 HudLayout.PAD = 12
 
+-- Roblox's own topbar. With ScreenGui.IgnoreGuiInset = false the HUD's coordinate
+-- space is shorter than Camera.ViewportSize by this much, and the client passes
+-- the reduced number in as the usable height. The value is only a fallback for
+-- a plain Luau test; the client reads the real inset from GuiService.
+HudLayout.TOP_INSET = 36
+
+-- Below this usable height the chrome shrinks so the middle keeps its room.
+-- A landscape phone is the case: 360px tall minus a 36px topbar leaves 324px,
+-- and full-height bars would leave the panel 156px, which is not a garden.
+HudLayout.SHORT_HEIGHT = 420
+
 -- The top bar: coins, level, and the collection progress.
-HudLayout.TOP_BAR = { height = 56 }
+HudLayout.TOP_BAR = { height = 56, shortHeight = 44 }
 
 -- The bottom bar: the screens plus sell. Six buttons across the bottom is the
 -- whole navigation, because a phone has a thumb and not a mouse. At 360px that
 -- is 49px per button, still above the 44px minimum.
-HudLayout.BOTTOM_BAR = { height = 72, buttons = 6 }
+HudLayout.BOTTOM_BAR = { height = 72, shortHeight = 60, buttons = 6 }
+
+-- A panel is a floating card, not a full-screen sheet. The old sheet filled
+-- every pixel between the bars, so opening the shop hid the garden completely
+-- and there was no way to tell the game was still running behind it. The margins
+-- leave the world visible around the card on every screen, and the cap keeps a
+-- fraction of the world on screen even on a short landscape phone.
+HudLayout.PANEL_MARGIN_X = 16
+HudLayout.PANEL_MAX_FRACTION = 0.82
 
 -- The plot grid: tapping a plot is the primary interaction in the game, so the
 -- cells are large. The grid lives inside the garden panel, not on the world
@@ -52,10 +71,26 @@ HudLayout.PLOT_COUNT = 12
 -- The grid is laid out in here, so it can never reach a screen edge.
 HudLayout.PANEL_LIST = { inset = 8, top = 52, bottom = 8 }
 
--- A panel is a full-width sheet that slides over the garden. It never covers the
--- top or bottom bar, so the player can always read their coins and always leave.
--- The offsets include PAD because the bars are themselves inset by PAD; leaving
--- it out put the panel four pixels under the top bar on a 360x640 phone.
+-- The bars' heights on this screen. A short screen shrinks them, so the middle
+-- keeps enough room for the world and the garden grid. The width of a bottom
+-- button is unaffected, so the shrunk bar still clears the touch minimum.
+function HudLayout.barHeights(viewportHeight: number): (number, number)
+        local short = math.max(0, viewportHeight) < HudLayout.SHORT_HEIGHT
+        local top = short and HudLayout.TOP_BAR.shortHeight or HudLayout.TOP_BAR.height
+        local bottom = short and HudLayout.BOTTOM_BAR.shortHeight or HudLayout.BOTTOM_BAR.height
+        return top, bottom
+end
+
+-- A panel is a floating card, inset from both bars and from the sides. The
+-- offsets include PAD because the bars are themselves inset by PAD; leaving it
+-- out put the panel four pixels under the top bar on a 360x640 phone.
+function HudLayout.panelOffsets(viewportHeight: number): (number, number)
+        local topBar, bottomBar = HudLayout.barHeights(viewportHeight)
+        local top = HudLayout.PAD + topBar + HudLayout.GAP
+        local bottom = bottomBar + HudLayout.GAP + HudLayout.PAD
+        return top, bottom
+end
+
 HudLayout.PANEL = {
         topOffset = HudLayout.PAD + HudLayout.TOP_BAR.height + HudLayout.GAP,
         bottomOffset = HudLayout.BOTTOM_BAR.height + HudLayout.GAP + HudLayout.PAD,
@@ -69,12 +104,15 @@ function HudLayout.scale(viewportWidth: number, viewportHeight: number): number
         return math.min(1, math.min(w, h))
 end
 
--- The usable height of a panel on this screen. This is the number the previous
--- game got wrong: it laid the skill bar out at a fixed offset and the bar left
--- the top of the screen.
+-- The usable height of a panel on this screen: everything between the bars, then
+-- capped so the card cannot swallow the whole view. The cap is what keeps some
+-- world on screen when a panel is open, which is what makes the game read as a
+-- place with a menu over it rather than as a spreadsheet.
 function HudLayout.panelHeight(viewportWidth: number, viewportHeight: number): number
-        local usable = viewportHeight - HudLayout.PANEL.topOffset - HudLayout.PANEL.bottomOffset
-        return math.max(0, usable)
+        local top, bottom = HudLayout.panelOffsets(viewportHeight)
+        local usable = viewportHeight - top - bottom
+        local cap = math.floor(viewportHeight * HudLayout.PANEL_MAX_FRACTION)
+        return math.max(0, math.min(usable, cap))
 end
 
 -- Whether a panel fits without scrolling. A panel that does not fit must scroll,
@@ -143,29 +181,33 @@ function HudLayout.plotRects(viewportWidth: number, viewportHeight: number, plot
 end
 
 -- The bottom bar's buttons: equal width, with a gap, filling the screen.
-function HudLayout.bottomButtonSize(viewportWidth: number, count: number): (number, number)
+function HudLayout.bottomButtonSize(viewportWidth: number, count: number, viewportHeight: number?): (number, number)
         local n = math.max(1, math.floor(count))
         local usable = viewportWidth - HudLayout.PAD * 2 - HudLayout.GAP * (n - 1)
         local width = math.max(HudLayout.MIN_TOUCH, math.floor(usable / n))
-        return width, HudLayout.BOTTOM_BAR.height - HudLayout.GAP
+        local _, bottomBar = HudLayout.barHeights(viewportHeight or HudLayout.DESIGN_HEIGHT)
+        return width, bottomBar - HudLayout.GAP
 end
 
 -- A rect in offset pixels: {x, y, width, height}. The HUD turns these into
 -- UDim2.fromOffset, so there is one place that decides where anything is.
-function HudLayout.topBarRect(viewportWidth: number): { number }
-        return { HudLayout.PAD, HudLayout.PAD, viewportWidth - HudLayout.PAD * 2, HudLayout.TOP_BAR.height }
+function HudLayout.topBarRect(viewportWidth: number, viewportHeight: number?): { number }
+        local topBar = HudLayout.barHeights(viewportHeight or HudLayout.DESIGN_HEIGHT)
+        return { HudLayout.PAD, HudLayout.PAD, viewportWidth - HudLayout.PAD * 2, topBar }
 end
 
 function HudLayout.bottomBarRect(viewportWidth: number, viewportHeight: number): { number }
-        local height = HudLayout.BOTTOM_BAR.height
+        local _, height = HudLayout.barHeights(viewportHeight)
         return { HudLayout.PAD, viewportHeight - height - HudLayout.PAD, viewportWidth - HudLayout.PAD * 2, height }
 end
 
 function HudLayout.panelRect(viewportWidth: number, viewportHeight: number): { number }
+        local top = HudLayout.panelOffsets(viewportHeight)
+        local marginX = math.min(HudLayout.PANEL_MARGIN_X, math.floor(viewportWidth / 4))
         return {
-                HudLayout.PAD,
-                HudLayout.PANEL.topOffset,
-                viewportWidth - HudLayout.PAD * 2,
+                marginX,
+                top,
+                viewportWidth - marginX * 2,
                 HudLayout.panelHeight(viewportWidth, viewportHeight),
         }
 end
@@ -173,7 +215,7 @@ end
 -- Every rect the HUD needs, so a test can check the whole screen at once for
 -- overlaps and off-screen edges rather than checking one panel in isolation.
 function HudLayout.rects(viewportWidth: number, viewportHeight: number): { any }
-        local top = HudLayout.topBarRect(viewportWidth)
+        local top = HudLayout.topBarRect(viewportWidth, viewportHeight)
         local bottom = HudLayout.bottomBarRect(viewportWidth, viewportHeight)
         local panel = HudLayout.panelRect(viewportWidth, viewportHeight)
         local all = {

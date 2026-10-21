@@ -229,10 +229,29 @@ Hud.Intent = Intent
 --------------------------------------------------------------------------
 
 local camera = workspace.CurrentCamera
-local viewport = camera.ViewportSize
+
+-- The HUD keeps ScreenGui.IgnoreGuiInset = false, so its coordinate space starts
+-- below Roblox's own topbar and is shorter than the viewport by that inset.
+-- Every rect has to be computed in the space the HUD actually draws in, or the
+-- bottom bar is placed past the real bottom edge on a phone and the top bar sits
+-- under Roblox's buttons. GuiService reports the inset; it is read once here and
+-- the client is rebuilt when it changes.
+local GuiService = game:GetService("GuiService")
+
+local function usableHeight(): number
+        local ok, inset = pcall(function()
+                return GuiService:GetGuiInset()
+        end)
+        local topInset = 0
+        if ok and typeof(inset) == "Vector2" then
+                topInset = inset.Y
+        end
+        local height = camera.ViewportSize.Y - topInset
+        return math.max(1, height)
+end
 
 local function buildScreen()
-        local size = camera.ViewportSize
+        local width = camera.ViewportSize.X
         if Hud.refs and Hud.refs().plots then
                 -- A resize rebuilds the whole screen, because every rect is a
                 -- function of the viewport. Repainting positions in place would
@@ -242,7 +261,7 @@ local function buildScreen()
                         old.Parent:Destroy()
                 end
         end
-        Hud.build(size.X, size.Y)
+        Hud.build(width, usableHeight())
 end
 
 buildScreen()

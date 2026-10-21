@@ -1244,6 +1244,61 @@ t.test("a panel reports when its content does not fit", function()
                 "a panel taller than the screen reported that it fits")
 end)
 
+-- A panel is a card over the world, not a sheet that replaces it. K's report was
+-- that the menu covered everything; the old sheet filled every pixel between the
+-- bars. This checks that some world is always visible around an open panel, on
+-- every screen, so the game never reads as a full-screen menu.
+t.test("an open panel always leaves world visible around it", function()
+        for _, phone in ipairs(PHONES) do
+                local panel = HudLayout.panelRect(phone.w, phone.h)
+                local top = HudLayout.topBarRect(phone.w, phone.h)
+                local bottom = HudLayout.bottomBarRect(phone.w, phone.h)
+                -- Room below the top bar and above the bottom bar.
+                t.assertTrue(panel[2] >= top[2] + top[4],
+                        "the panel starts inside the top bar on a " .. phone.name)
+                t.assertTrue(panel[2] + panel[4] <= bottom[2],
+                        "the panel reaches the bottom bar on a " .. phone.name)
+                -- Room at the sides, so the world shows to the left and right.
+                t.assertTrue(panel[1] > 0 and panel[1] + panel[3] < phone.w,
+                        "the panel touches both side edges on a " .. phone.name)
+                -- And the panel is a fraction of the screen, not all of it.
+                local fraction = panel[4] / phone.h
+                t.assertTrue(fraction <= HudLayout.PANEL_MAX_FRACTION + 0.001,
+                        "the panel is " .. math.floor(fraction * 100) .. "% of a " .. phone.name
+                                .. ", so no world is left to see")
+        end
+end)
+
+-- The bars shrink on a short screen so the middle keeps its room. The buttons
+-- must not shrink with them below a finger, which is the failure the shrink could
+-- introduce: a landscape phone with a 60px bar still has to offer 44px taps.
+t.test("a short screen shrinks the chrome but not the taps", function()
+        for _, phone in ipairs(PHONES) do
+                local topBar, bottomBar = HudLayout.barHeights(phone.h)
+                t.assertTrue(topBar > 0 and bottomBar > 0,
+                        "a bar collapsed to nothing on a " .. phone.name)
+                local width, height = HudLayout.bottomButtonSize(phone.w, HudLayout.BOTTOM_BAR.buttons, phone.h)
+                t.assertTrue(width >= HudLayout.MIN_TOUCH,
+                        "a bottom button is " .. width .. "px wide on a " .. phone.name)
+                t.assertTrue(height >= HudLayout.MIN_TOUCH,
+                        "a bottom button is " .. height .. "px tall on a " .. phone.name)
+        end
+end)
+
+-- The usable height the client passes in is the viewport minus Roblox's topbar.
+-- A landscape phone is the tight case: 360 tall less a 36px inset is 324, and the
+-- panel and grid still have to fit inside that.
+t.test("the whole HUD fits inside the space under the topbar", function()
+        for _, phone in ipairs(PHONES) do
+                local usable = phone.h - HudLayout.TOP_INSET
+                for _, entry in ipairs(HudLayout.rects(phone.w, usable)) do
+                        t.assertTrue(HudLayout.onScreen(entry.rect, phone.w, usable),
+                                entry.name .. " is off screen on a " .. phone.name
+                                        .. " once the Roblox topbar is subtracted")
+                end
+        end
+end)
+
 --------------------------------------------------------------------------
 t.suite("SaveSchema: the basket and owned seeds survive a round trip")
 --------------------------------------------------------------------------

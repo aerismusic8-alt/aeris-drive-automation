@@ -223,4 +223,90 @@ Config.Save = {
         AutosaveSeconds = 60,
 }
 
+-- The look of the world. K's report was that the garden "is only square blocks,
+-- not pretty or smooth", so the shapes and the light are data too, not literals
+-- buried in World.luau. Every number here is safe on the Intel HD and mobile
+-- targets: Voxel lighting, no global shadows, no Future technology. The
+-- low-end gate in scripts/check-low-end-lighting.py enforces that.
+Config.Visuals = {
+        Lighting = {
+                ClockTime = 14.5,
+                GeographicLatitude = 12,
+                Brightness = 2.8,
+                Ambient = { 0.26, 0.28, 0.24 },
+                OutdoorAmbient = { 0.56, 0.58, 0.54 },
+                ShadowSoftness = 0.4,
+                EnvironmentDiffuseScale = 0.55,
+                EnvironmentSpecularScale = 0.35,
+                GlobalShadows = false,
+        },
+        Atmosphere = {
+                Color = { 0.78, 0.85, 0.95 },
+                Decay = { 0.35, 0.5, 0.7 },
+                Density = 0.3,
+                Glare = 0.15,
+                Haze = 1.35,
+                Offset = 0.1,
+        },
+        -- A Sky is what the horizon and the clouds are drawn from. Without one the
+        -- engine draws a flat gradient, which is most of why the first build read
+        -- as a plain green room rather than as outdoors.
+        Sky = {
+                SkyboxBk = "rbxasset://textures/sky/sky512_bk.tex",
+                SkyboxDn = "rbxasset://textures/sky/sky512_dn.tex",
+                SkyboxFt = "rbxasset://textures/sky/sky512_ft.tex",
+                SkyboxLf = "rbxasset://textures/sky/sky512_lf.tex",
+                SkyboxRt = "rbxasset://textures/sky/sky512_rt.tex",
+                SkyboxUp = "rbxasset://textures/sky/sky512_up.tex",
+                SunAngularSize = 22,
+                MoonAngularSize = 12,
+                StarCount = 2500,
+                CelestialBodiesShown = true,
+        },
+        Clouds = { Cover = 0.45, Density = 0.5, Color = { 1, 1, 1 } },
+        Bloom = { Enabled = true, Intensity = 0.5, Size = 22, Threshold = 1.1 },
+        Colour = { Enabled = true, Brightness = 0.02, Contrast = 0.12, Saturation = 0.18, TintColor = { 1, 0.99, 0.95 } },
+        SunRays = { Enabled = true, Intensity = 0.05, Spread = 0.6 },
+}
+
+-- The scenery. Counts, sizes and colours live here so the garden can be
+-- re-dressed without touching code, which is the whole point of the data-only
+-- rule: the look is a table, not a rewrite.
+Config.Scenery = {
+        -- Fixed, so the same tree is at the same coordinate on every boot and a
+        -- screenshot can be compared to the last one.
+        Seed = 20261018,
+        Palette = {
+                Trunk = { 108, 74, 46 },
+                CanopyDark = { 52, 112, 48 },
+                CanopyMid = { 66, 132, 54 },
+                CanopyLight = { 92, 168, 72 },
+                Bush = { 70, 132, 58 },
+                Flower = { 240, 120, 170 },
+                FlowerAlt = { 255, 214, 120 },
+                Grass = { 96, 132, 72 },
+                GrassTuft = { 122, 168, 84 },
+                Rock = { 138, 138, 144 },
+                Path = { 178, 172, 160 },
+                Fence = { 196, 168, 130 },
+                FenceRail = { 206, 180, 142 },
+                Water = { 68, 132, 186 },
+                ShopWall = { 150, 110, 70 },
+                ShopRoof = { 172, 74, 62 },
+                ShopSign = { 250, 230, 180 },
+                Lantern = { 255, 216, 142 },
+        },
+        Trees = { Count = 26, MinScale = 0.8, MaxScale = 1.5, MinRadius = 12, MaxRadius = 72 },
+        Bushes = { Count = 24, MinScale = 0.7, MaxScale = 1.2, MinRadius = 4, MaxRadius = 24 },
+        Flowers = { Count = 44, MinScale = 0.9, MaxScale = 1.4 },
+        Rocks = { Count = 18, MinScale = 0.6, MaxScale = 1.6, MinRadius = 8, MaxRadius = 60 },
+        GrassTufts = { Count = 70, MinScale = 0.8, MaxScale = 1.6 },
+        Lanterns = { Count = 4, Height = 7 },
+        Path = { Steps = 9, Width = 7, Depth = 4 },
+        Fence = { PostEvery = 8, Height = 5 },
+        -- A small pond outside the fence, so the horizon has more than one colour
+        -- in it and the light has something to reflect.
+        Pond = { Radius = 18, Depth = 1.2, Distance = 46 },
+}
+
 return Config

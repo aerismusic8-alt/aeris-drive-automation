@@ -33,22 +33,22 @@
       "$className": "Lighting",
       "$properties": {
         "Ambient": [
-          0.24,
           0.26,
-          0.22
+          0.28,
+          0.24
         ],
-        "Brightness": 2.6,
+        "Brightness": 2.8,
         "ClockTime": 14.5,
         "GeographicLatitude": 12,
         "GlobalShadows": false,
         "OutdoorAmbient": [
-          0.52,
-          0.54,
-          0.5
+          0.56,
+          0.58,
+          0.54
         ],
-        "ShadowSoftness": 0.35,
+        "ShadowSoftness": 0.4,
         "Technology": "Voxel",
-        "EnvironmentDiffuseScale": 0.5,
+        "EnvironmentDiffuseScale": 0.55,
         "EnvironmentSpecularScale": 0.35
       },
       "Atmosphere": {
@@ -64,10 +64,37 @@
             0.5,
             0.7
           ],
-          "Density": 0.32,
+          "Density": 0.3,
           "Glare": 0.15,
-          "Haze": 1.4,
+          "Haze": 1.35,
           "Offset": 0.1
+        }
+      },
+      "Sky": {
+        "$className": "Sky",
+        "$properties": {
+          "SkyboxBk": "rbxasset://textures/sky/sky512_bk.tex",
+          "SkyboxDn": "rbxasset://textures/sky/sky512_dn.tex",
+          "SkyboxFt": "rbxasset://textures/sky/sky512_ft.tex",
+          "SkyboxLf": "rbxasset://textures/sky/sky512_lf.tex",
+          "SkyboxRt": "rbxasset://textures/sky/sky512_rt.tex",
+          "SkyboxUp": "rbxasset://textures/sky/sky512_up.tex",
+          "SunAngularSize": 22,
+          "MoonAngularSize": 12,
+          "StarCount": 2500,
+          "CelestialBodiesShown": true
+        }
+      },
+      "Clouds": {
+        "$className": "Clouds",
+        "$properties": {
+          "Cover": 0.45,
+          "Density": 0.5,
+          "Color": [
+            1,
+            1,
+            1
+          ]
         }
       },
       "Bloom": {
@@ -75,7 +102,7 @@
         "$properties": {
           "Enabled": true,
           "Intensity": 0.5,
-          "Size": 20,
+          "Size": 22,
           "Threshold": 1.1
         }
       },
@@ -91,6 +118,14 @@
             0.99,
             0.95
           ]
+        }
+      },
+      "SunRays": {
+        "$className": "SunRaysEffect",
+        "$properties": {
+          "Enabled": true,
+          "Intensity": 0.05,
+          "Spread": 0.6
         }
       }
     }

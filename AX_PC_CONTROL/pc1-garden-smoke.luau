@@ -91,19 +91,49 @@ end
 
 local kinds = {}
 local parts = 0
+local balls, cylinders = 0, 0
+local materials = {}
 for _, node in ipairs(world:GetDescendants()) do
         if node:IsA("BasePart") then
                 parts += 1
                 kinds[node.Name] = (kinds[node.Name] or 0) + 1
+                if node:IsA("Part") then
+                        if node.Shape == Enum.PartType.Ball then
+                                balls += 1
+                        elseif node.Shape == Enum.PartType.Cylinder then
+                                cylinders += 1
+                        end
+                end
+                if node.Material then
+                        materials[node.Material.Name] = true
+                end
         end
 end
 report(parts > 200, "world-parts", tostring(parts))
 
+-- K's report was that the garden is "only square blocks". These count the shape
+-- work, so a run that ships boxes again is caught here rather than by K.
+report(balls > 40, "world-balls", tostring(balls))
+report(cylinders > 10, "world-cylinders", tostring(cylinders))
+local materialCount = 0
+for _ in pairs(materials) do
+        materialCount += 1
+end
+report(materialCount > 5, "world-materials", tostring(materialCount))
+
 -- The scenery check. A bare slab has ground and plots and nothing else; this
 -- fails if the trees, the bushes or the fence are gone.
-for _, kind in ipairs({ "Trunk", "Leaves", "Bush", "FencePost", "PathSlab", "Soil" }) do
+for _, kind in ipairs({ "Trunk", "Leaves", "Bush", "FencePost", "PathSlab", "Soil", "Pond", "Lantern" }) do
         report((kinds[kind] or 0) > 0, "scenery-" .. kind, tostring(kinds[kind] or 0))
 end
+
+-- The sky and the atmosphere are what the first build had none of, and the
+-- low-end settings are what keep it visible on this machine's Intel HD adapter.
+local Lighting = game:GetService("Lighting")
+report(Lighting:FindFirstChild("GardenSky") ~= nil, "lighting-sky", "GardenSky")
+report(Lighting:FindFirstChild("GardenAtmosphere") ~= nil, "lighting-atmosphere", "GardenAtmosphere")
+report(Lighting.GlobalShadows == false, "lighting-shadows-off", tostring(Lighting.GlobalShadows))
+report(Lighting.Technology == Enum.Technology.Voxel, "lighting-voxel", tostring(Lighting.Technology))
 
 -- The ground has to collide, or the player spawns and falls out of the world.
 local ground = world:FindFirstChild("Ground")

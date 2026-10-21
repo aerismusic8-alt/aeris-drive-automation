@@ -916,4 +916,109 @@ t.test("the world is dressed, not a bare slab", function()
         t.assertEqual(ground.CanCollide, true, "the ground does not collide")
 end)
 
+-- The bug K reported, at the level the phone actually sees it. The HUD keeps
+-- IgnoreGuiInset off, so its coordinate space is the viewport minus Roblox's
+-- topbar. The shim used to report the full viewport as the ScreenGui size, so
+-- every on-screen assertion passed while the bottom bar was placed past the real
+-- bottom edge on a device -- the bars overflowed and the menu covered everything.
+-- This sets the inset the way a phone reports it and asserts nothing leaves the
+-- space that is actually drawn in.
+t.test("nothing overflows the space under the Roblox topbar", function()
+        local env = Shim.harness(Sources)
+        Shim.setViewport(env, 390, 844)
+        Shim.setGuiInset(env, 58)
+        env.__load("server/init.server")
+        env.__drain()
+        env.__load("client/init.client")
+        local clientPlayer = env.__player
+        local payload = joinAndCapture(env, 330, "Inset")
+        local State = env.__replicatedRemotes:FindFirstChild("GardenState")
+        State:FireClient(clientPlayer, payload)
+
+        local gui = clientPlayer.PlayerGui:FindFirstChild("AXGardenHud")
+        -- The space the HUD draws in: the viewport less the topbar.
+        local drawHeight = 844 - 58
+        for _, name in ipairs({ "TopBar", "BottomBar" }) do
+                local node = gui:FindFirstChild(name)
+                t.assertTrue(node ~= nil, name .. " is missing")
+                if node then
+                        local bottom = node.Position.Y.Offset + node.AbsoluteSize.Y
+                        t.assertTrue(bottom <= drawHeight,
+                                name .. " reaches " .. bottom .. "px but the drawn area ends at " .. drawHeight)
+                        t.assertTrue(node.Position.X.Offset + node.AbsoluteSize.X <= 390,
+                                name .. " runs off the right edge")
+                end
+        end
+        -- And the bottom bar is actually at the bottom of the drawn area, not
+        -- floating in the middle: the top of the bar is within a bar-height of
+        -- the bottom edge.
+        local bottomBar = gui:FindFirstChild("BottomBar")
+        local barTop = bottomBar.Position.Y.Offset
+        t.assertTrue(drawHeight - (barTop + bottomBar.AbsoluteSize.Y) <= 24,
+                "the bottom bar is not anchored to the bottom of the drawn area")
+end)
+
+-- K's second report was that the garden is "only square blocks, not pretty or
+-- smooth". Geometry alone is not the fix; the shapes, the materials and the sky
+-- are. This checks the things that were actually missing, so a refactor cannot
+-- quietly flatten the place back into boxes.
+t.test("the garden is built from rounded shapes, not only boxes", function()
+        local env = boot()
+        local world = env.__game:GetService("Workspace"):FindFirstChild("GardenWorld")
+        t.assertTrue(world ~= nil, "the server built no world")
+
+        local balls, cylinders, boxes = 0, 0, 0
+        for _, node in ipairs(world:GetDescendants()) do
+                if node.ClassName == "Part" then
+                        if node.Shape == env.Enum.PartType.Ball then
+                                balls += 1
+                        elseif node.Shape == env.Enum.PartType.Cylinder then
+                                cylinders += 1
+                        else
+                                boxes += 1
+                        end
+                end
+        end
+        t.assertGreater(balls, 40,
+                "only " .. balls .. " rounded parts, so the world is still mostly boxes")
+        t.assertGreater(cylinders, 10,
+                "only " .. cylinders .. " cylinders, so no trunks or pond")
+        -- The rounded parts are a real share of the world, not a token few.
+        t.assertTrue(balls + cylinders > boxes / 2,
+                "boxes still outnumber rounded shapes " .. boxes .. " to " .. (balls + cylinders))
+
+        -- Varied materials, so the lawn is not one plastic sheet.
+        local materials: { [string]: boolean } = {}
+        for _, node in ipairs(world:GetDescendants()) do
+                if node.ClassName == "Part" and node.Material then
+                        materials[tostring(node.Material)] = true
+                end
+        end
+        local distinct = 0
+        for _ in pairs(materials) do
+                distinct += 1
+        end
+        t.assertGreater(distinct, 5, "only " .. distinct .. " materials in the whole world")
+end)
+
+-- The sky and the light are what the first build had none of. The HUD covers the
+-- top of the screen, so a missing sky is most of why the game read as a green
+-- room. This checks the atmosphere, the sky and the effects were applied, and
+-- that the low-end settings survived the change.
+t.test("the place has a sky, an atmosphere and the low-end light settings", function()
+        local env = boot()
+        local lighting = env.__game:GetService("Lighting")
+
+        t.assertTrue(lighting:FindFirstChild("GardenSky") ~= nil, "no sky")
+        t.assertTrue(lighting:FindFirstChild("GardenAtmosphere") ~= nil, "no atmosphere")
+        t.assertTrue(lighting:FindFirstChild("GardenBloom") ~= nil, "no bloom")
+        t.assertTrue(lighting:FindFirstChild("GardenClouds") ~= nil, "no clouds")
+
+        -- The two settings that make this render on an Intel HD adapter and on a
+        -- phone. The lighting gate checks the project file and roblox/; this is
+        -- the garden's own guard, because the garden is a separate place.
+        t.assertEqual(lighting.GlobalShadows, false, "global shadows were turned on")
+        t.assertTrue(lighting.Brightness > 0, "the place is unlit")
+end)
+
 t.finish()

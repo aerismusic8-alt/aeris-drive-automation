@@ -103,7 +103,7 @@ function Hud.build(viewportWidth: number, viewportHeight: number): any
         gui.IgnoreGuiInset = false
         gui.Parent = playerGui
 
-        local top = HudLayout.topBarRect(viewportWidth)
+        local top = HudLayout.topBarRect(viewportWidth, viewportHeight)
         refs.topBar = newFrame("TopBar", gui, top, COLORS.bar, 10)
         -- The bars are decoration, not controls. A Frame with Active left true
         -- still swallows a tap, so on a phone a press on the bar never reaches
@@ -145,7 +145,7 @@ function Hud.build(viewportWidth: number, viewportHeight: number): any
         local bottom = HudLayout.bottomBarRect(viewportWidth, viewportHeight)
         refs.bottomBar = newFrame("BottomBar", gui, bottom, COLORS.bar, 10)
         refs.bottomBar.Active = false
-        local buttonWidth, buttonHeight = HudLayout.bottomButtonSize(viewportWidth, HudLayout.BOTTOM_BAR.buttons)
+        local buttonWidth, buttonHeight = HudLayout.bottomButtonSize(viewportWidth, HudLayout.BOTTOM_BAR.buttons, viewportHeight)
         local labels = {
                 { name = "Garden", text = Text.get("garden"), intent = "openGarden" },
                 { name = "Shop", text = Text.get("shop"), intent = "openShop" },

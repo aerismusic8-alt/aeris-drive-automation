@@ -27,6 +27,7 @@ local Shim = {}
 
 local Vector3 = {}
 Vector3.__index = Vector3
+Vector3.__type = "Vector3"
 
 function Vector3.new(x: number?, y: number?, z: number?)
         return setmetatable({ X = x or 0, Y = y or 0, Z = z or 0 }, Vector3)
@@ -130,6 +131,7 @@ end
 
 local Color3 = {}
 Color3.__index = Color3
+Color3.__type = "Color3"
 
 function Color3.new(r: number?, g: number?, b: number?)
         return setmetatable({ R = r or 0, G = g or 0, B = b or 0 }, Color3)
@@ -166,6 +168,7 @@ end
 
 local UDim2 = {}
 UDim2.__index = UDim2
+UDim2.__type = "UDim2"
 
 function UDim2.new(xs: number?, xo: number?, ys: number?, yo: number?)
         return setmetatable({
@@ -203,6 +206,7 @@ end
 
 local Vector2 = {}
 Vector2.__index = Vector2
+Vector2.__type = "Vector2"
 
 function Vector2.new(x: number?, y: number?)
         return setmetatable({ X = x or 0, Y = y or 0 }, Vector2)
@@ -318,25 +322,42 @@ local ENUM_MEMBERS = {
 }
 
 local Enum = {}
+local enumGroups = {}
 setmetatable(Enum, {
         __index = function(_, group)
+                local cached = enumGroups[group]
+                if cached then
+                        return cached
+                end
                 local members = ENUM_MEMBERS[group]
                 if not members then
                         error("RobloxShim: unknown Enum." .. tostring(group), 2)
                 end
                 local out = {}
+                -- Enum items are singletons in the engine, so `a.Shape ==
+                -- Enum.PartType.Ball` is an identity test. Handing out a fresh
+                -- table per access made every such comparison false, which hid
+                -- whether the world was built from balls or boxes. Both the group
+                -- and its items are therefore created once and reused.
+                local items = {}
                 setmetatable(out, {
                         __index = function(_, member)
                                 if members[member] == nil then
                                         error("RobloxShim: unknown Enum." .. group .. "." .. tostring(member), 2)
                                 end
-                                return {
-                                        EnumType = group,
-                                        Name = member,
-                                        Value = members[member],
-                                }
+                                local item = items[member]
+                                if not item then
+                                        item = {
+                                                EnumType = group,
+                                                Name = member,
+                                                Value = members[member],
+                                        }
+                                        items[member] = item
+                                end
+                                return item
                         end,
                 })
+                enumGroups[group] = out
                 return out
         end,
 })
@@ -392,7 +413,7 @@ for _, name in ipairs({
         "Part", "WedgePart", "CornerWedgePart", "Model", "Folder", "SpawnLocation",
         "TextLabel", "TextButton", "TextBox", "Frame", "ScrollingFrame", "ScreenGui",
         "UICorner", "UIStroke", "UIPadding", "ViewportFrame", "Camera", "BillboardGui",
-        "ParticleEmitter", "PointLight", "WeldConstraint", "Atmosphere", "Clouds",
+        "ParticleEmitter", "PointLight", "WeldConstraint", "Atmosphere", "Clouds", "Sky",
         "BloomEffect", "ColorCorrectionEffect", "SunRaysEffect",
         "Humanoid", "HumanoidRootPart", "MeshPart", "RemoteEvent", "RemoteFunction",
         "ServerScriptService", "ReplicatedStorage", "Workspace", "Lighting",
@@ -416,6 +437,12 @@ Instance.__index = Instance
 -- has real numbers to work with rather than zeros. Kept in step with
 -- Camera.ViewportSize wherever that is set.
 local screenSize = Vector2.new(1280, 720)
+
+-- Roblox's own topbar height. Declared here, next to the screen size, because the
+-- Instance __index below derives a ScreenGui's AbsoluteSize from it; a local
+-- declared further down would be a different upvalue and the derivation would
+-- read a nil global instead.
+local guiInset = Vector2.new(0, 36)
 
 local function isA(self, className)
         if self.ClassName == className then
@@ -453,6 +480,13 @@ local function newInstance(className: string)
                 self.Size = Vector3.new(1, 1, 1)
                 self.CFrame = CFrame.new(0, 0, 0)
                 self.Position = Vector3.new(0, 0, 0)
+                -- A Part defaults to a Block in the engine, and the garden sets
+                -- Shape to Ball or Cylinder on most of its scenery. Without the
+                -- default every part read back as nil and a shape test could not
+                -- tell a rounded garden from a boxy one.
+                if className == "Part" then
+                        self.Shape = Enum.PartType.Block
+                end
         end
 
         -- A prompt is usable only if the game says so, and the interaction text
@@ -558,7 +592,15 @@ function Instance:__index(key)
                 local parent = rawget(self, "Parent")
                 local parentSize
                 if rawget(self, "ClassName") == "ScreenGui" or parent == nil then
+                        -- A ScreenGui with IgnoreGuiInset off draws in the space
+                        -- below Roblox's topbar, so its absolute size is the
+                        -- viewport less the inset. Reporting the raw viewport here
+                        -- was the blind spot that let the bottom bar be placed off
+                        -- the real bottom edge of a phone.
                         parentSize = screenSize
+                        if rawget(self, "ClassName") == "ScreenGui" and rawget(self, "IgnoreGuiInset") ~= true then
+                                parentSize = Vector2.new(screenSize.X, math.max(1, screenSize.Y - guiInset.Y))
+                        end
                 else
                         parentSize = parent.AbsoluteSize
                 end
@@ -895,6 +937,24 @@ RemotesFolder.Parent = ReplicatedStorage
 local Workspace = makeService("Workspace")
 local Lighting = makeService("Lighting")
 
+-- Roblox draws its own topbar over the top of the screen. A ScreenGui with
+-- IgnoreGuiInset off -- which the garden HUD sets on purpose, so its buttons do
+-- not sit under Roblox's -- has its coordinate space pushed down by that inset
+-- and shortened by it. GetGuiInset is the only way for the client to learn the
+-- real number, so the shim models it here. The value itself lives next to
+-- screenSize, because the AbsoluteSize derivation above reads it too.
+--
+-- Without this the shim reported a screen taller than the one a phone really
+-- draws in, every "is this on screen" assertion passed, and the bottom bar
+-- landed past the real bottom edge on a device. The gap was the bug.
+local GuiService = makeService("GuiService")
+function GuiService:GetGuiInset()
+        return guiInset
+end
+function GuiService:GetTopbarInset()
+        return guiInset
+end
+
 -- Workspace.CurrentCamera always exists in a running game, and the HUD reads its
 -- ViewportSize to decide how large a panel may be on the screen it is on. The
 -- shim models a reference desktop screen; a test that wants to exercise the
@@ -1041,6 +1101,7 @@ local SERVICE_MAP = {
         ReplicatedStorage = ReplicatedStorage,
         Workspace = Workspace,
         Lighting = Lighting,
+        GuiService = GuiService,
         Players = PlayersService,
         RunService = RunService,
         DataStoreService = DataStoreService,
@@ -1166,6 +1227,21 @@ local function install(env: { [string]: any })
         env.Enum = Enum
         env.Instance = { new = newInstance }
         env.game = game
+        -- typeof is an engine global, so a module that reads GuiService:GetGuiInset
+        -- and checks it is a Vector2 needs it. The shim tags the vector types with
+        -- __type and falls back to the plain Lua type for everything else.
+        env.typeof = function(value: any): string
+                if type(value) == "table" then
+                        -- The tag lives on the class table, which is the metatable
+                        -- of an instance, not on the instance itself.
+                        local mt = getmetatable(value)
+                        local tag = mt and rawget(mt, "__type")
+                        if tag then
+                                return tag
+                        end
+                end
+                return type(value)
+        end
         env.task = task
         env.wait = task.wait
         env.spawn = task.spawn
@@ -1451,6 +1527,13 @@ end
 function Shim.setViewport(env, width: number, height: number)
         Camera.ViewportSize = Vector2.new(width, height)
         screenSize = Camera.ViewportSize
+end
+
+-- Move the Roblox topbar inset. A test that wants the phone case sets the
+-- viewport and the inset together, because the HUD lays itself out in the space
+-- that is left after the inset, not in the raw viewport.
+function Shim.setGuiInset(env, topPixels: number)
+        guiInset = Vector2.new(0, topPixels)
 end
 
 -- Write a save into the DataStore before a player joins. A save is stored as
