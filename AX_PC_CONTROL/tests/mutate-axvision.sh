@@ -64,10 +64,30 @@ PY
 echo "failures: $(count)"
 cp /tmp/engine.bak axvision/engine.py
 
-echo "=== MUTATION 7: game window matched by title again, so a browser wins ==="
+echo "=== MUTATION 7: window filtered by title again, so a browser wins ==="
 python3 - <<'PY'
 p='axvision/capture.py'; s=open(p).read()
-s=s.replace("        if image.lower() == GAME_PROCESS.lower():","        if 'roblox' in _title.lower():")
+s=s.replace("        if name not in (GAME_PROCESS.lower(), STUDIO_PROCESS.lower()):\n            continue",
+            "        if 'roblox' not in _title.lower():\n            continue")
+open(p,'w').write(s)
+PY
+echo "failures: $(count)"
+cp /tmp/capture.bak axvision/capture.py
+
+echo "=== MUTATION 8: largest-window tiebreak removed, so a 1px strip wins ==="
+python3 - <<'PY'
+p='axvision/capture.py'; s=open(p).read()
+s=s.replace("        key = (rank, area)","        key = (rank, 0)")
+open(p,'w').write(s)
+PY
+echo "failures: $(count)"
+cp /tmp/capture.bak axvision/capture.py
+
+echo "=== MUTATION 9: Studio fallback removed, so Play mode reads nothing ==="
+python3 - <<'PY'
+p='axvision/capture.py'; s=open(p).read()
+s=s.replace("        if name not in (GAME_PROCESS.lower(), STUDIO_PROCESS.lower()):",
+            "        if name != GAME_PROCESS.lower():")
 open(p,'w').write(s)
 PY
 echo "failures: $(count)"

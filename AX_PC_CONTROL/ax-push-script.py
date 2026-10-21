@@ -73,7 +73,14 @@ class Channel:
         return "\n".join(parts)
 
 
-def upload(ch: Channel, local_text: str, remote_name: str) -> str:
+def upload(ch: Channel, local_text: str, remote_name: str, _attempt: int = 0) -> str:
+    """Upload base64 text in chunks, restarting the whole file on a stall.
+
+    A chunk occasionally returns no result: the channel stalls a job for tens of
+    seconds under load and the wait expires. A failed chunk may or may not have
+    landed, so appending a retry would corrupt the file. The whole upload is
+    redone from offset zero instead, which overwrites rather than appends.
+    """
     b64 = base64.b64encode(local_text.encode("utf-8")).decode("ascii")
     staged = f"{REMOTE_DIR}\\{remote_name}.b64"
     for i in range(0, len(b64), CHUNK):
@@ -81,9 +88,12 @@ def upload(ch: Channel, local_text: str, remote_name: str) -> str:
         args = {"path": staged, "content": piece}
         if i:
             args["append"] = True
-        res = ch.call("FileWrite", args, wait=60)
+        res = ch.call("FileWrite", args, wait=90)
         if not res.get("ok"):
-            raise SystemExit(f"upload failed at offset {i}: {ch.text_of(res)}")
+            if _attempt >= 4:
+                raise SystemExit(f"upload failed at offset {i}: {ch.text_of(res)}")
+            print(f"chunk at {i} stalled, restarting upload (attempt {_attempt + 1})", flush=True)
+            return upload(ch, local_text, remote_name, _attempt + 1)
     return staged
 
 

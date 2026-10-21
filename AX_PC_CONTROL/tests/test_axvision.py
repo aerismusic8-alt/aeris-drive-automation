@@ -218,29 +218,57 @@ class GameWindowTests(unittest.TestCase):
     """
 
     def test_picks_the_player_over_a_browser_with_roblox_in_its_title(self):
+        # The browser was maximized and the player window was not, so area
+        # alone would pick the browser: the process has to decide.
         windows = [
-            (101, "RobloxPlayerBeta.exe", "Roblox"),
-            (102, "msedge.exe", "Roblox | OpenHands - Personal - Microsoft Edge"),
-            (103, "explorer.exe", "Program Manager"),
+            (101, "RobloxPlayerBeta.exe", "Roblox", 1600 * 829),
+            (102, "msedge.exe", "Roblox | OpenHands - Personal - Microsoft Edge", 1920 * 1080),
+            (103, "explorer.exe", "Program Manager", 1920 * 1080),
         ]
         self.assertEqual(capture.pick_game_window(windows), 101)
 
     def test_ignores_studio_without_needing_a_title_guess(self):
         windows = [
-            (201, "RobloxStudioBeta.exe", "Roblox Studio - My Place"),
-            (202, "RobloxPlayerBeta.exe", "AX Arena: Farm and Fight"),
+            (201, "RobloxStudioBeta.exe", "Roblox Studio - My Place", 1600 * 829),
+            (202, "RobloxPlayerBeta.exe", "AX Arena: Farm and Fight", 1600 * 829),
         ]
         self.assertEqual(capture.pick_game_window(windows), 202)
 
+    def test_falls_back_to_studio_when_the_player_is_not_running(self):
+        # The published place is unrated, and Roblox hides unrated experiences
+        # from the client, so Play mode in Studio is the only way to render it.
+        windows = [
+            (203, "RobloxStudioBeta.exe", "Roblox Studio - AXArena", 1600 * 829),
+            (204, "msedge.exe", "Roblox | OpenHands - Personal - Microsoft Edge", 1600 * 829),
+        ]
+        self.assertEqual(capture.pick_game_window(windows), 203)
+
+    def test_picks_the_largest_window_of_a_process(self):
+        # Studio owns several visible top-level windows; the first one
+        # enumerated on PC1 was a 350x1 strip, which captures nothing.
+        windows = [
+            (205, "RobloxStudioBeta.exe", "RobloxStudio", 350 * 1),
+            (206, "RobloxStudioBeta.exe", "AXArena.rbxlx - Roblox Studio", 1600 * 829),
+            (207, "RobloxStudioBeta.exe", "Tooltip", 200 * 20),
+        ]
+        self.assertEqual(capture.pick_game_window(windows), 206)
+
+    def test_the_player_still_wins_over_a_larger_studio_window(self):
+        windows = [
+            (208, "RobloxStudioBeta.exe", "Roblox Studio", 1920 * 1080),
+            (209, "RobloxPlayerBeta.exe", "Roblox", 800 * 600),
+        ]
+        self.assertEqual(capture.pick_game_window(windows), 209)
+
     def test_returns_zero_when_only_other_windows_mention_roblox(self):
         windows = [
-            (301, "chrome.exe", "Roblox - Google Chrome"),
-            (302, "notepad.exe", "notes about Roblox"),
+            (301, "chrome.exe", "Roblox - Google Chrome", 1600 * 829),
+            (302, "notepad.exe", "notes about Roblox", 1600 * 829),
         ]
         self.assertEqual(capture.pick_game_window(windows), 0)
 
     def test_the_process_name_match_is_case_insensitive(self):
-        windows = [(401, "ROBLOXPLAYERBETA.EXE", "Roblox")]
+        windows = [(401, "ROBLOXPLAYERBETA.EXE", "Roblox", 1600 * 829)]
         self.assertEqual(capture.pick_game_window(windows), 401)
 
 

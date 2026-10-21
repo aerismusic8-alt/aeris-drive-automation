@@ -39,6 +39,48 @@ import urllib.error
 import urllib.request
 
 LOG_PATH = os.path.join(os.environ.get("TEMP", "."), "ax-pc1-worker.log")
+# Where the watchdog reads "is the poll loop still turning?". The heartbeat is a
+# timestamp rewritten every cycle, so its age is the whole signal: a worker that
+# is wedged inside a tool call stops touching it, and a watchdog can tell that
+# from a worker that is simply idle.
+HEARTBEAT_PATH = os.path.join(
+    os.environ.get("AX_RUNTIME", r"C:\AX-Runtime"), "evidence", "reverse-control-heartbeat.json"
+)
+# A tool call that outlives this is abandoned. The winremote Shell tool kills a
+# command at 30s, so anything near this is already broken; without a cap one hung
+# call stops the poll loop forever and every later job is dequeued and dropped,
+# which is exactly how jobs 67 and 68 went missing on 2026-10-21.
+DEFAULT_JOB_TIMEOUT = float(os.environ.get("AX_JOB_TIMEOUT", "120"))
+# The effective cap, set by main() once the config is read. Module level so
+# write_heartbeat can publish it without threading it through every call.
+job_timeout_seconds = DEFAULT_JOB_TIMEOUT
+
+
+def write_heartbeat(state: str, job_id: str | None = None) -> None:
+    """Record that the loop is alive, and what it is doing right now.
+
+    jobTimeout is published so the watchdog can tell a long job from a wedged
+    loop. The heartbeat is only rewritten between jobs, so a healthy worker
+    inside a slow tool call looks silent for as long as that call runs. The
+    watchdog needs the cap to know how long silence is still legitimate, and
+    reading it from here keeps the two numbers from drifting apart.
+    """
+    payload = {
+        "protocol": "AX PC1 REVERSE CONTROL v1",
+        "nodeId": "PC1",
+        "computerName": socket.gethostname(),
+        "state": state,
+        "jobId": job_id,
+        "jobTimeout": job_timeout_seconds,
+        "heartbeatAt": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
+        "pid": os.getpid(),
+    }
+    try:
+        os.makedirs(os.path.dirname(HEARTBEAT_PATH), exist_ok=True)
+        with open(HEARTBEAT_PATH, "w", encoding="utf-8") as fh:
+            json.dump(payload, fh)
+    except OSError as exc:
+        log(f"heartbeat write failed: {type(exc).__name__}: {exc}")
 
 
 def log(message: str) -> None:
@@ -169,6 +211,12 @@ def main() -> int:
     parser.add_argument("--token", default=os.environ.get("AX_TOKEN"))
     parser.add_argument("--mcp-url", default=os.environ.get("WINREMOTE_MCP_URL"))
     parser.add_argument("--poll", type=float, default=None, help="Seconds between polls")
+    parser.add_argument(
+        "--job-timeout",
+        type=float,
+        default=None,
+        help="Seconds a single tool call may run before it is abandoned",
+    )
     parser.add_argument("--once", action="store_true", help="One poll cycle then exit")
     args = parser.parse_args()
 
@@ -177,6 +225,13 @@ def main() -> int:
     token = args.token or cfg.get("token")
     mcp_url = args.mcp_url or cfg.get("mcpUrl") or "http://127.0.0.1:8090/mcp"
     poll = args.poll if args.poll is not None else float(cfg.get("poll") or 3.0)
+    job_timeout = (
+        args.job_timeout
+        if args.job_timeout is not None
+        else float(cfg.get("jobTimeout") or DEFAULT_JOB_TIMEOUT)
+    )
+    global job_timeout_seconds
+    job_timeout_seconds = job_timeout
 
     if not rendezvous:
         log("FATAL no --rendezvous and none in config")
@@ -198,6 +253,7 @@ def main() -> int:
             return 1
 
     while True:
+        write_heartbeat("polling")
         try:
             job = channel.next_job()
         except Exception as exc:  # noqa: BLE001
@@ -207,8 +263,16 @@ def main() -> int:
         if job:
             job_id = job.get("id", "unknown")
             log(f"job {job_id} tool={job.get('tool')}")
+            write_heartbeat("running", job_id)
             try:
-                outcome = asyncio.run(run_job(mcp_url, job))
+                outcome = asyncio.run(asyncio.wait_for(run_job(mcp_url, job), job_timeout))
+            except asyncio.TimeoutError:
+                outcome = {
+                    "ok": False,
+                    "tool": job.get("tool"),
+                    "error": f"JobTimeout: tool did not return within {job_timeout:.0f}s",
+                }
+                log(f"job {job_id} TIMEOUT after {job_timeout:.0f}s")
             except Exception as exc:  # noqa: BLE001 - report, never die
                 outcome = {
                     "ok": False,
@@ -222,6 +286,7 @@ def main() -> int:
                 log(f"result {job_id} ok={payload.get('ok')}")
             except Exception as exc:  # noqa: BLE001
                 log(f"post failed for {job_id}: {type(exc).__name__}: {exc}")
+            write_heartbeat("polling")
 
         if args.once:
             return 0

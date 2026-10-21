@@ -206,6 +206,18 @@ Step 'SCHEDULED_TASK' {
   if (-not $script:WorkerPath) { throw 'WORKER_NOT_INSTALLED' }
   $taskName = 'AERIS-PC1-REVERSE-CONTROL'
 
+  # pythonw.exe, not python.exe: the worker runs for the life of the machine, and
+  # python.exe gives it a console window on the desktop that never goes away.
+  # pythonw is the same interpreter with no console, so there is nothing to show.
+  $taskExe = $script:PythonExe
+  $pythonw = Join-Path (Split-Path -Parent $script:PythonExe) 'pythonw.exe'
+  if (Test-Path -LiteralPath $pythonw) {
+    $taskExe = $pythonw
+    Write-Host "TASK_EXE=$taskExe (windowless)"
+  } else {
+    Write-Host "TASK_EXE=$taskExe (pythonw not found, console window will be hidden by task settings)"
+  }
+
   $taskUser = $env:USERNAME
   $sid = ([System.Security.Principal.NTAccount]$taskUser).Translate(
     [System.Security.Principal.SecurityIdentifier]).Value
@@ -214,14 +226,16 @@ Step 'SCHEDULED_TASK' {
   # expose it to every process on the machine, and it is the only thing guarding
   # remote command execution here.
   $argLine = "-u `"$($script:WorkerPath)`" --config `"$($script:WorkerConfig)`""
-  $action = New-ScheduledTaskAction -Execute $script:PythonExe -Argument $argLine -WorkingDirectory $script:WorkerDir
+  $action = New-ScheduledTaskAction -Execute $taskExe -Argument $argLine -WorkingDirectory $script:WorkerDir
   $trigger = New-ScheduledTaskTrigger -AtLogOn -User $taskUser
   # Interactive (not InteractiveToken) is the name this cmdlet accepts, and it
   # runs in the user's session so screen capture works.
   $principal = New-ScheduledTaskPrincipal -UserId $sid -LogonType Interactive -RunLevel Highest
+  # Hidden is set as well as using pythonw: the flag costs nothing and it is the
+  # only lever if pythonw is ever missing.
   $settings = New-ScheduledTaskSettingsSet -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries `
     -StartWhenAvailable -RestartCount 999 -RestartInterval (New-TimeSpan -Minutes 1) `
-    -ExecutionTimeLimit ([TimeSpan]::Zero)
+    -ExecutionTimeLimit ([TimeSpan]::Zero) -Hidden
 
   Unregister-ScheduledTask -TaskName $taskName -Confirm:$false -ErrorAction SilentlyContinue
   Register-ScheduledTask -TaskName $taskName -Action $action -Trigger $trigger `

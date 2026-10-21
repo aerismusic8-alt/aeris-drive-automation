@@ -68,7 +68,7 @@ class Client:
             hit = self.state().get("results", {}).get(job_id)
             if hit:
                 return hit
-            time.sleep(1.5)
+            time.sleep(0.25)
         return None
 
 

@@ -169,6 +169,7 @@ def window_title(hwnd: int) -> str:
 
 
 GAME_PROCESS = "RobloxPlayerBeta.exe"
+STUDIO_PROCESS = "RobloxStudioBeta.exe"
 
 
 def _window_pid(hwnd: int) -> int:
@@ -234,41 +235,59 @@ def find_window(title_part: str, exclude: str = "") -> int:
     return int(found[0]) if found else 0
 
 
-def pick_game_window(windows: list[tuple[int, str, str]]) -> int:
-    """Choose the game window from ``(handle, image_name, title)`` triples.
+def pick_game_window(windows: list[tuple[int, str, str, int]]) -> int:
+    """Choose the game window from ``(handle, image_name, title, area)`` tuples.
 
     Split out from the Windows enumeration so the choice itself is testable off
     Windows: the bug was in the choice, not in the enumeration.
+
+    The player wins over Studio. Both run the game, but the player is the real
+    deployment and a session with both open is usually a person testing; picking
+    the player keeps the answer about what a player would see. Studio is the
+    fallback because a brand-new universe is unrated, and Roblox hides unrated
+    experiences from the client until the owner answers the maturity
+    questionnaire, so Play mode is the only way to render the real place.
+
+    Area breaks ties. A Roblox process owns several visible top-level windows --
+    Studio especially, which has dock panes and tooltips -- and the first one
+    enumerated is often a 1-pixel strip. Choosing by area picks the frame that
+    actually holds the game.
     """
-    for handle, image, _title in windows:
-        if image.lower() == GAME_PROCESS.lower():
-            return handle
-    return 0
+    best = 0
+    best_key = None
+    for handle, image, _title, area in windows:
+        name = image.lower()
+        rank = 2 if name == GAME_PROCESS.lower() else 1
+        if name not in (GAME_PROCESS.lower(), STUDIO_PROCESS.lower()):
+            continue
+        key = (rank, area)
+        if best_key is None or key > best_key:
+            best, best_key = handle, key
+    return best
 
 
 def find_game_window() -> int:
-    """The live Roblox *player* window, or 0.
+    """The live Roblox window, or 0.
 
     Matching the title alone is not enough. On PC1 a browser tab was open on a
     Roblox page, and its title contains "Roblox" and not "Studio", so a title
     match returned the browser: the engine was reading a web page and calling it
-    the game. The window has to belong to the player process itself, so the
-    match is made on the executable name that owns the window.
-
-    Studio's window belongs to ``RobloxStudioBeta.exe``, so this also picks the
-    client over the editor without a title guess.
+    the game. The window has to belong to a Roblox process, so the match is made
+    on the executable name that owns the window.
     """
     user32, _ = _libs()
     windows = []
+    wanted = {GAME_PROCESS.lower(), STUDIO_PROCESS.lower()}
 
     @ctypes.WINFUNCTYPE(ctypes.c_bool, wintypes.HWND, wintypes.LPARAM)
     def cb(hwnd, _lparam):
         if not user32.IsWindowVisible(hwnd):
             return True
         image = _process_image_name(_window_pid(hwnd))
-        if image.lower() != GAME_PROCESS.lower():
+        if image.lower() not in wanted:
             return True
-        windows.append((int(hwnd), image, window_title(hwnd)))
+        _x, _y, w, h = client_rect(int(hwnd))
+        windows.append((int(hwnd), image, window_title(hwnd), w * h))
         return True
 
     user32.EnumWindows(cb, 0)
