@@ -1,0 +1,111 @@
+name: Breachline Build and Publish
+
+# Builds the Breachline place from the recovered base plus the source overlay,
+# verifies the result, and publishes it through the Open Cloud API.
+#
+# Why a separate workflow from the garden: the two games share nothing but the
+# repository. The garden builds from `roblox-garden/` with Rojo; Breachline
+# builds from `breachline/` with rbxmk, because its place is a binary file that
+# was published already and Rojo has no base to merge onto. Giving Breachline
+# its own workflow keeps a change to one game from rebuilding and republishing
+# the other.
+#
+# The self-hosted PC1 workflows are untouched. Publishing does not need PC1 --
+# it is one HTTPS POST -- so this runs on a hosted runner and stays available
+# when PC1 is not.
+
+on:
+  workflow_dispatch:
+    inputs:
+      version_type:
+        description: 'Saved (private test) or Published (live)'
+        required: true
+        default: 'Published'
+        type: choice
+        options: [Saved, Published]
+      publish:
+        description: 'Publish to Roblox, or build and verify only'
+        required: true
+        default: 'yes'
+        type: choice
+        options: [yes, no]
+  push:
+    paths:
+      - 'breachline/**'
+      - 'scripts/build-breachline.sh'
+      - 'scripts/unpack-breachline.sh'
+      - 'scripts/fetch-rbxmk.sh'
+      - 'scripts/publish-place-linux.sh'
+      - 'scripts/check-breachline-build.py'
+      - '.github/workflows/ax-breachline-build-publish.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    outputs:
+      place_path: ${{ steps.build.outputs.place_path }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Fetch rbxmk
+        run: bash scripts/fetch-rbxmk.sh
+
+      - name: Build the place
+        id: build
+        run: |
+          bash scripts/build-breachline.sh "$RUNNER_TEMP/breachline.rbxl" | tee "$RUNNER_TEMP/build.log"
+          PLACE=$(grep -oP '(?<=^BUILD_PLACE=).*' "$RUNNER_TEMP/build.log")
+          echo "place_path=$PLACE" >> "$GITHUB_OUTPUT"
+
+      # The build reporting success is not the same as the build being right.
+      # This replays the overlay and asserts what the result must contain, so a
+      # module that was added to the overlay but never parented fails here.
+      - name: Verify the built place
+        run: python3 scripts/check-breachline-build.py
+
+      - name: Upload place artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: breachline-place
+          path: ${{ runner.temp }}/breachline.rbxl
+          if-no-files-found: error
+
+  publish:
+    needs: build
+    if: ${{ inputs.publish != 'no' }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Download the built place
+        uses: actions/download-artifact@v4
+        with:
+          name: breachline-place
+          path: ${{ runner.temp }}
+
+      - name: Publish to Roblox
+        id: publish
+        env:
+          ROBLOX_API_KEY: ${{ secrets.ROBLOX_API_KEY }}
+          CONFIG: breachline/publish-config.json
+        run: |
+          set +e
+          bash scripts/publish-place-linux.sh \
+            "$RUNNER_TEMP/breachline.rbxl" \
+            "${{ inputs.version_type || 'Published' }}" | tee "$RUNNER_TEMP/publish.log"
+          CODE=${PIPESTATUS[0]}
+          echo "exit_code=$CODE" >> "$GITHUB_OUTPUT"
+
+          # Exit 3 means the credential is absent. That is a known state, not a
+          # build failure: warn and pass, so a red run always means something
+          # actually broke.
+          if [ "$CODE" = "3" ]; then
+            echo "::warning::Publishing is BLOCKED: ROBLOX_API_KEY is not set."
+            exit 0
+          fi
+          exit "$CODE"
