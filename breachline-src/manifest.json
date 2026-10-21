@@ -1,0 +1,2192 @@
+[
+ {
+  "idx": 0,
+  "name": "script_000.luau",
+  "bytes": 5806
+ },
+ {
+  "idx": 1,
+  "name": "StarterPlayerScripts__Client__HingeableClient.client.luau",
+  "bytes": 7768
+ },
+ {
+  "idx": 2,
+  "name": "StarterPlayerScripts__Client__LightableClient.client.luau",
+  "bytes": 9218
+ },
+ {
+  "idx": 3,
+  "name": "script_003.luau",
+  "bytes": 3981
+ },
+ {
+  "idx": 4,
+  "name": "script_004.luau",
+  "bytes": 5357
+ },
+ {
+  "idx": 5,
+  "name": "script_005.luau",
+  "bytes": 3925
+ },
+ {
+  "idx": 6,
+  "name": "script_006.luau",
+  "bytes": 4280
+ },
+ {
+  "idx": 7,
+  "name": "script_007.luau",
+  "bytes": 681
+ },
+ {
+  "idx": 8,
+  "name": "script_008.luau",
+  "bytes": 1488
+ },
+ {
+  "idx": 9,
+  "name": "script_009.luau",
+  "bytes": 681
+ },
+ {
+  "idx": 10,
+  "name": "script_010.luau",
+  "bytes": 1488
+ },
+ {
+  "idx": 11,
+  "name": "script_011.luau",
+  "bytes": 3514
+ },
+ {
+  "idx": 12,
+  "name": "script_012.luau",
+  "bytes": 2899
+ },
+ {
+  "idx": 13,
+  "name": "Firearm2Controller.server.luau",
+  "bytes": 17322
+ },
+ {
+  "idx": 14,
+  "name": "Firearm2IKHand.server.luau",
+  "bytes": 5164
+ },
+ {
+  "idx": 15,
+  "name": "ClientAmmoHud.luau",
+  "bytes": 3084
+ },
+ {
+  "idx": 16,
+  "name": "ClientCamera.luau",
+  "bytes": 8760
+ },
+ {
+  "idx": 17,
+  "name": "ClientCrosshair.luau",
+  "bytes": 2246
+ },
+ {
+  "idx": 18,
+  "name": "ClientInput.luau",
+  "bytes": 4216
+ },
+ {
+  "idx": 19,
+  "name": "ClientRecoilModel.luau",
+  "bytes": 1399
+ },
+ {
+  "idx": 20,
+  "name": "ClientSpreadModel.luau",
+  "bytes": 1769
+ },
+ {
+  "idx": 21,
+  "name": "script_021.luau",
+  "bytes": 2852
+ },
+ {
+  "idx": 22,
+  "name": "script_022.luau",
+  "bytes": 2432
+ },
+ {
+  "idx": 23,
+  "name": "script_023.luau",
+  "bytes": 5282
+ },
+ {
+  "idx": 24,
+  "name": "script_024.luau",
+  "bytes": 17934
+ },
+ {
+  "idx": 25,
+  "name": "HelpUI__init.luau",
+  "bytes": 1940
+ },
+ {
+  "idx": 26,
+  "name": "HelpUI__Client.luau",
+  "bytes": 5872
+ },
+ {
+  "idx": 27,
+  "name": "HelpUI__Render.luau",
+  "bytes": 6391
+ },
+ {
+  "idx": 28,
+  "name": "script_028.luau",
+  "bytes": 3592
+ },
+ {
+  "idx": 29,
+  "name": "script_029.luau",
+  "bytes": 4346
+ },
+ {
+  "idx": 30,
+  "name": "script_030.luau",
+  "bytes": 11478
+ },
+ {
+  "idx": 31,
+  "name": "Common__MuzzleFlashFx.luau",
+  "bytes": 4850
+ },
+ {
+  "idx": 32,
+  "name": "script_032.luau",
+  "bytes": 2161
+ },
+ {
+  "idx": 33,
+  "name": "script_033.luau",
+  "bytes": 1581
+ },
+ {
+  "idx": 34,
+  "name": "script_034.luau",
+  "bytes": 16302
+ },
+ {
+  "idx": 35,
+  "name": "script_035.luau",
+  "bytes": 3388
+ },
+ {
+  "idx": 36,
+  "name": "script_036.luau",
+  "bytes": 1937
+ },
+ {
+  "idx": 37,
+  "name": "script_037.luau",
+  "bytes": 1263
+ },
+ {
+  "idx": 38,
+  "name": "script_038.luau",
+  "bytes": 314
+ },
+ {
+  "idx": 39,
+  "name": "script_039.luau",
+  "bytes": 1998
+ },
+ {
+  "idx": 40,
+  "name": "script_040.luau",
+  "bytes": 1228
+ },
+ {
+  "idx": 41,
+  "name": "script_041.luau",
+  "bytes": 883
+ },
+ {
+  "idx": 42,
+  "name": "script_042.luau",
+  "bytes": 504
+ },
+ {
+  "idx": 43,
+  "name": "ReplicatedStorage__FourD__Common__PromptSuppression.luau",
+  "bytes": 1521
+ },
+ {
+  "idx": 44,
+  "name": "ReplicatedStorage__FourD__Common__TouchButtons.luau",
+  "bytes": 2991
+ },
+ {
+  "idx": 45,
+  "name": "ReplicatedStorage__FourD__Common__TouchFire.luau",
+  "bytes": 6257
+ },
+ {
+  "idx": 46,
+  "name": "script_046.luau",
+  "bytes": 17119
+ },
+ {
+  "idx": 47,
+  "name": "Spinnable__init.luau",
+  "bytes": 7854
+ },
+ {
+  "idx": 48,
+  "name": "Common__Constants.luau",
+  "bytes": 334
+ },
+ {
+  "idx": 49,
+  "name": "Common__Types.luau",
+  "bytes": 766
+ },
+ {
+  "idx": 50,
+  "name": "script_050.luau",
+  "bytes": 7517
+ },
+ {
+  "idx": 51,
+  "name": "script_051.luau",
+  "bytes": 311
+ },
+ {
+  "idx": 52,
+  "name": "Common__Constants.luau",
+  "bytes": 371
+ },
+ {
+  "idx": 53,
+  "name": "Common__Types.luau",
+  "bytes": 1200
+ },
+ {
+  "idx": 54,
+  "name": "script_054.luau",
+  "bytes": 7122
+ },
+ {
+  "idx": 55,
+  "name": "script_055.luau",
+  "bytes": 14569
+ },
+ {
+  "idx": 56,
+  "name": "Common__Constants.luau",
+  "bytes": 1155
+ },
+ {
+  "idx": 57,
+  "name": "Common__JointBuilder.luau",
+  "bytes": 5654
+ },
+ {
+  "idx": 58,
+  "name": "Common__ResolveAssembly.luau",
+  "bytes": 6339
+ },
+ {
+  "idx": 59,
+  "name": "Common__Types.luau",
+  "bytes": 2271
+ },
+ {
+  "idx": 60,
+  "name": "Sittable__init.luau",
+  "bytes": 3705
+ },
+ {
+  "idx": 61,
+  "name": "script_061.luau",
+  "bytes": 7602
+ },
+ {
+  "idx": 62,
+  "name": "Common__Constants.luau",
+  "bytes": 221
+ },
+ {
+  "idx": 63,
+  "name": "Common__Types.luau",
+  "bytes": 422
+ },
+ {
+  "idx": 64,
+  "name": "Lightable__init.luau",
+  "bytes": 2639
+ },
+ {
+  "idx": 65,
+  "name": "script_065.luau",
+  "bytes": 1324
+ },
+ {
+  "idx": 66,
+  "name": "Common__Constants.luau",
+  "bytes": 851
+ },
+ {
+  "idx": 67,
+  "name": "Common__CreateLight.luau",
+  "bytes": 2071
+ },
+ {
+  "idx": 68,
+  "name": "Common__LightBase.luau",
+  "bytes": 5702
+ },
+ {
+  "idx": 69,
+  "name": "Common__ResolveOrigin.luau",
+  "bytes": 2016
+ },
+ {
+  "idx": 70,
+  "name": "Common__Types.luau",
+  "bytes": 2438
+ },
+ {
+  "idx": 71,
+  "name": "SubTypes__Flash.luau",
+  "bytes": 3947
+ },
+ {
+  "idx": 72,
+  "name": "SubTypes__Static.luau",
+  "bytes": 2723
+ },
+ {
+  "idx": 73,
+  "name": "SubTypes__Strobe.luau",
+  "bytes": 5910
+ },
+ {
+  "idx": 74,
+  "name": "script_074.luau",
+  "bytes": 1267
+ },
+ {
+  "idx": 75,
+  "name": "script_075.luau",
+  "bytes": 5040
+ },
+ {
+  "idx": 76,
+  "name": "script_076.luau",
+  "bytes": 16308
+ },
+ {
+  "idx": 77,
+  "name": "PushRegistry.luau",
+  "bytes": 2504
+ },
+ {
+  "idx": 78,
+  "name": "PushableInput.server.luau",
+  "bytes": 21743
+ },
+ {
+  "idx": 79,
+  "name": "script_079.luau",
+  "bytes": 4037
+ },
+ {
+  "idx": 80,
+  "name": "script_080.luau",
+  "bytes": 6198
+ },
+ {
+  "idx": 81,
+  "name": "script_081.luau",
+  "bytes": 7108
+ },
+ {
+  "idx": 82,
+  "name": "script_082.luau",
+  "bytes": 6124
+ },
+ {
+  "idx": 83,
+  "name": "Trackable__makeFunctional.luau",
+  "bytes": 21189
+ },
+ {
+  "idx": 84,
+  "name": "script_084.luau",
+  "bytes": 5298
+ },
+ {
+  "idx": 85,
+  "name": "script_085.luau",
+  "bytes": 3024
+ },
+ {
+  "idx": 86,
+  "name": "script_086.luau",
+  "bytes": 3441
+ },
+ {
+  "idx": 87,
+  "name": "AimArc.luau",
+  "bytes": 7391
+ },
+ {
+  "idx": 88,
+  "name": "AimReticle.luau",
+  "bytes": 4644
+ },
+ {
+  "idx": 89,
+  "name": "Common__BuildBulletTemplate.luau",
+  "bytes": 7297
+ },
+ {
+  "idx": 90,
+  "name": "Common__Configure.luau",
+  "bytes": 1197
+ },
+ {
+  "idx": 91,
+  "name": "Common__Controller.luau",
+  "bytes": 2875
+ },
+ {
+  "idx": 92,
+  "name": "script_092.luau",
+  "bytes": 4744
+ },
+ {
+  "idx": 93,
+  "name": "Common__DiscoverMounts.luau",
+  "bytes": 1374
+ },
+ {
+  "idx": 94,
+  "name": "Common__FireClient.luau",
+  "bytes": 3711
+ },
+ {
+  "idx": 95,
+  "name": "Common__FireServer.luau",
+  "bytes": 9201
+ },
+ {
+  "idx": 96,
+  "name": "Common__MuzzleAttachment.luau",
+  "bytes": 777
+ },
+ {
+  "idx": 97,
+  "name": "PruneFiltered.luau",
+  "bytes": 763
+ },
+ {
+  "idx": 98,
+  "name": "Common__Reload.luau",
+  "bytes": 2442
+ },
+ {
+  "idx": 99,
+  "name": "Common__TracerRender.luau",
+  "bytes": 3382
+ },
+ {
+  "idx": 100,
+  "name": "Common__Trajectory.luau",
+  "bytes": 3528
+ },
+ {
+  "idx": 101,
+  "name": "Common__Types.luau",
+  "bytes": 2173
+ },
+ {
+  "idx": 102,
+  "name": "script_102.luau",
+  "bytes": 2925
+ },
+ {
+  "idx": 103,
+  "name": "script_103.luau",
+  "bytes": 4207
+ },
+ {
+  "idx": 104,
+  "name": "script_104.luau",
+  "bytes": 2709
+ },
+ {
+  "idx": 105,
+  "name": "SubTypes__Hardpoint__HardpointHud.server.luau",
+  "bytes": 5949
+ },
+ {
+  "idx": 106,
+  "name": "script_106.luau",
+  "bytes": 18470
+ },
+ {
+  "idx": 107,
+  "name": "SubTypes__Launcher__LauncherClient.server.luau",
+  "bytes": 9335
+ },
+ {
+  "idx": 108,
+  "name": "script_108.luau",
+  "bytes": 6577
+ },
+ {
+  "idx": 109,
+  "name": "script_109.luau",
+  "bytes": 26972
+ },
+ {
+  "idx": 110,
+  "name": "script_110.luau",
+  "bytes": 3124
+ },
+ {
+  "idx": 111,
+  "name": "MeleeTool.luau",
+  "bytes": 11625
+ },
+ {
+  "idx": 112,
+  "name": "script_112.luau",
+  "bytes": 7394
+ },
+ {
+  "idx": 113,
+  "name": "SimpleTool.luau",
+  "bytes": 12093
+ },
+ {
+  "idx": 114,
+  "name": "SimpleToolClient.server.luau",
+  "bytes": 9443
+ },
+ {
+  "idx": 115,
+  "name": "Firearm2.luau",
+  "bytes": 2272
+ },
+ {
+  "idx": 116,
+  "name": "BuildHandle.luau",
+  "bytes": 1652
+ },
+ {
+  "idx": 117,
+  "name": "ConeMath.luau",
+  "bytes": 1290
+ },
+ {
+  "idx": 118,
+  "name": "Constants.luau",
+  "bytes": 6368
+ },
+ {
+  "idx": 119,
+  "name": "Replication.luau",
+  "bytes": 602
+ },
+ {
+  "idx": 120,
+  "name": "Types.luau",
+  "bytes": 3246
+ },
+ {
+  "idx": 121,
+  "name": "ClientAmmoHud.luau",
+  "bytes": 3082
+ },
+ {
+  "idx": 122,
+  "name": "ClientCamera.luau",
+  "bytes": 6661
+ },
+ {
+  "idx": 123,
+  "name": "ClientCrosshair.luau",
+  "bytes": 2245
+ },
+ {
+  "idx": 124,
+  "name": "ClientInput.luau",
+  "bytes": 3275
+ },
+ {
+  "idx": 125,
+  "name": "ClientRecoilModel.luau",
+  "bytes": 1399
+ },
+ {
+  "idx": 126,
+  "name": "ClientSpreadModel.luau",
+  "bytes": 1768
+ },
+ {
+  "idx": 127,
+  "name": "Firearm2Controller.server.luau",
+  "bytes": 17322
+ },
+ {
+  "idx": 128,
+  "name": "Firearm2IKHand.server.luau",
+  "bytes": 5164
+ },
+ {
+  "idx": 129,
+  "name": "Pistol.luau",
+  "bytes": 3086
+ },
+ {
+  "idx": 130,
+  "name": "Heuristics.luau",
+  "bytes": 5709
+ },
+ {
+  "idx": 131,
+  "name": "Sniper.luau",
+  "bytes": 3258
+ },
+ {
+  "idx": 132,
+  "name": "Heuristics.luau",
+  "bytes": 6858
+ },
+ {
+  "idx": 133,
+  "name": "WaterVehicle2.luau",
+  "bytes": 25708
+ },
+ {
+  "idx": 134,
+  "name": "script_134.luau",
+  "bytes": 7934
+ },
+ {
+  "idx": 135,
+  "name": "init.luau",
+  "bytes": 4054
+ },
+ {
+  "idx": 136,
+  "name": "Gamepad.luau",
+  "bytes": 1024
+ },
+ {
+  "idx": 137,
+  "name": "KeyboardAndMouse.luau",
+  "bytes": 1062
+ },
+ {
+  "idx": 138,
+  "name": "Touch.luau",
+  "bytes": 1056
+ },
+ {
+  "idx": 139,
+  "name": "WaterSubmersible.luau",
+  "bytes": 15176
+ },
+ {
+  "idx": 140,
+  "name": "script_140.luau",
+  "bytes": 6621
+ },
+ {
+  "idx": 141,
+  "name": "init.luau",
+  "bytes": 4704
+ },
+ {
+  "idx": 142,
+  "name": "Gamepad.luau",
+  "bytes": 1027
+ },
+ {
+  "idx": 143,
+  "name": "KeyboardAndMouse.luau",
+  "bytes": 1066
+ },
+ {
+  "idx": 144,
+  "name": "Touch.luau",
+  "bytes": 1058
+ },
+ {
+  "idx": 145,
+  "name": "AirVehicle.luau",
+  "bytes": 860
+ },
+ {
+  "idx": 146,
+  "name": "BuildController.luau",
+  "bytes": 1906
+ },
+ {
+  "idx": 147,
+  "name": "BuildHull.luau",
+  "bytes": 1601
+ },
+ {
+  "idx": 148,
+  "name": "BuildPrompt.luau",
+  "bytes": 1600
+ },
+ {
+  "idx": 149,
+  "name": "BuildPropellers.luau",
+  "bytes": 5888
+ },
+ {
+  "idx": 150,
+  "name": "CharacterUtils.luau",
+  "bytes": 1249
+ },
+ {
+  "idx": 151,
+  "name": "Heuristics.luau",
+  "bytes": 11054
+ },
+ {
+  "idx": 152,
+  "name": "Mounting.luau",
+  "bytes": 7465
+ },
+ {
+  "idx": 153,
+  "name": "NetworkOwnership.luau",
+  "bytes": 905
+ },
+ {
+  "idx": 154,
+  "name": "PruneFiltered.luau",
+  "bytes": 908
+ },
+ {
+  "idx": 155,
+  "name": "Camera.luau",
+  "bytes": 6631
+ },
+ {
+  "idx": 156,
+  "name": "InputCommon.luau",
+  "bytes": 7346
+ },
+ {
+  "idx": 157,
+  "name": "InputConstants.luau",
+  "bytes": 1194
+ },
+ {
+  "idx": 158,
+  "name": "SeatSwapInput.luau",
+  "bytes": 3955
+ },
+ {
+  "idx": 159,
+  "name": "SeatSwap.luau",
+  "bytes": 898
+ },
+ {
+  "idx": 160,
+  "name": "Jetpack.luau",
+  "bytes": 5635
+ },
+ {
+  "idx": 161,
+  "name": "BuildPhysics.luau",
+  "bytes": 1701
+ },
+ {
+  "idx": 162,
+  "name": "BuildThrusters.luau",
+  "bytes": 7314
+ },
+ {
+  "idx": 163,
+  "name": "Camera.luau",
+  "bytes": 5673
+ },
+ {
+  "idx": 164,
+  "name": "Constants.luau",
+  "bytes": 1242
+ },
+ {
+  "idx": 165,
+  "name": "Controller.server.luau",
+  "bytes": 3823
+ },
+ {
+  "idx": 166,
+  "name": "FX.luau",
+  "bytes": 1895
+ },
+ {
+  "idx": 167,
+  "name": "Hud.luau",
+  "bytes": 5742
+ },
+ {
+  "idx": 168,
+  "name": "init.luau",
+  "bytes": 2960
+ },
+ {
+  "idx": 169,
+  "name": "Gamepad.luau",
+  "bytes": 2954
+ },
+ {
+  "idx": 170,
+  "name": "KeyboardAndMouse.luau",
+  "bytes": 3354
+ },
+ {
+  "idx": 171,
+  "name": "Touch.luau",
+  "bytes": 3451
+ },
+ {
+  "idx": 172,
+  "name": "Performance.luau",
+  "bytes": 924
+ },
+ {
+  "idx": 173,
+  "name": "Physics.luau",
+  "bytes": 5958
+ },
+ {
+  "idx": 174,
+  "name": "Plane.luau",
+  "bytes": 6929
+ },
+ {
+  "idx": 175,
+  "name": "BuildPhysics.luau",
+  "bytes": 2066
+ },
+ {
+  "idx": 176,
+  "name": "BuildPropellers.luau",
+  "bytes": 1636
+ },
+ {
+  "idx": 177,
+  "name": "BuildThrusters.luau",
+  "bytes": 8445
+ },
+ {
+  "idx": 178,
+  "name": "Camera.luau",
+  "bytes": 342
+ },
+ {
+  "idx": 179,
+  "name": "Constants.luau",
+  "bytes": 1442
+ },
+ {
+  "idx": 180,
+  "name": "Controller.server.luau",
+  "bytes": 5585
+ },
+ {
+  "idx": 181,
+  "name": "FX.luau",
+  "bytes": 4211
+ },
+ {
+  "idx": 182,
+  "name": "Hud.luau",
+  "bytes": 6201
+ },
+ {
+  "idx": 183,
+  "name": "init.luau",
+  "bytes": 3318
+ },
+ {
+  "idx": 184,
+  "name": "Gamepad.luau",
+  "bytes": 1341
+ },
+ {
+  "idx": 185,
+  "name": "KeyboardAndMouse.luau",
+  "bytes": 1448
+ },
+ {
+  "idx": 186,
+  "name": "Touch.luau",
+  "bytes": 3006
+ },
+ {
+  "idx": 187,
+  "name": "Performance.luau",
+  "bytes": 1438
+ },
+ {
+  "idx": 188,
+  "name": "Physics.luau",
+  "bytes": 6728
+ },
+ {
+  "idx": 189,
+  "name": "Rotor.luau",
+  "bytes": 7616
+ },
+ {
+  "idx": 190,
+  "name": "BuildPhysics.luau",
+  "bytes": 2215
+ },
+ {
+  "idx": 191,
+  "name": "BuildPropellers.luau",
+  "bytes": 1924
+ },
+ {
+  "idx": 192,
+  "name": "Camera.luau",
+  "bytes": 343
+ },
+ {
+  "idx": 193,
+  "name": "Constants.luau",
+  "bytes": 1655
+ },
+ {
+  "idx": 194,
+  "name": "Controller.server.luau",
+  "bytes": 5203
+ },
+ {
+  "idx": 195,
+  "name": "FX.luau",
+  "bytes": 2665
+ },
+ {
+  "idx": 196,
+  "name": "Hud.luau",
+  "bytes": 5039
+ },
+ {
+  "idx": 197,
+  "name": "init.luau",
+  "bytes": 3315
+ },
+ {
+  "idx": 198,
+  "name": "Gamepad.luau",
+  "bytes": 2097
+ },
+ {
+  "idx": 199,
+  "name": "KeyboardAndMouse.luau",
+  "bytes": 2131
+ },
+ {
+  "idx": 200,
+  "name": "Touch.luau",
+  "bytes": 4563
+ },
+ {
+  "idx": 201,
+  "name": "Performance.luau",
+  "bytes": 2183
+ },
+ {
+  "idx": 202,
+  "name": "Physics.luau",
+  "bytes": 6187
+ },
+ {
+  "idx": 203,
+  "name": "WheeledVehicle.luau",
+  "bytes": 923
+ },
+ {
+  "idx": 204,
+  "name": "Board.luau",
+  "bytes": 13553
+ },
+ {
+  "idx": 205,
+  "name": "Heuristics.luau",
+  "bytes": 11909
+ },
+ {
+  "idx": 206,
+  "name": "Animator.luau",
+  "bytes": 3942
+ },
+ {
+  "idx": 207,
+  "name": "ClientController__init.server.luau",
+  "bytes": 2817
+ },
+ {
+  "idx": 208,
+  "name": "FX__init.server.luau",
+  "bytes": 1109
+ },
+ {
+  "idx": 209,
+  "name": "Input__init.luau",
+  "bytes": 5702
+ },
+ {
+  "idx": 210,
+  "name": "Constants.luau",
+  "bytes": 473
+ },
+ {
+  "idx": 211,
+  "name": "Controller.luau",
+  "bytes": 7421
+ },
+ {
+  "idx": 212,
+  "name": "FourWheel.luau",
+  "bytes": 16977
+ },
+ {
+  "idx": 213,
+  "name": "Heuristics.luau",
+  "bytes": 17747
+ },
+ {
+  "idx": 214,
+  "name": "script_214.luau",
+  "bytes": 2179
+ },
+ {
+  "idx": 215,
+  "name": "script_215.luau",
+  "bytes": 1152
+ },
+ {
+  "idx": 216,
+  "name": "script_216.luau",
+  "bytes": 7060
+ },
+ {
+  "idx": 217,
+  "name": "script_217.luau",
+  "bytes": 2130
+ },
+ {
+  "idx": 218,
+  "name": "script_218.luau",
+  "bytes": 3021
+ },
+ {
+  "idx": 219,
+  "name": "script_219.luau",
+  "bytes": 400
+ },
+ {
+  "idx": 220,
+  "name": "script_220.luau",
+  "bytes": 874
+ },
+ {
+  "idx": 221,
+  "name": "script_221.luau",
+  "bytes": 1856
+ },
+ {
+  "idx": 222,
+  "name": "script_222.luau",
+  "bytes": 265
+ },
+ {
+  "idx": 223,
+  "name": "script_223.luau",
+  "bytes": 1049
+ },
+ {
+  "idx": 224,
+  "name": "script_224.luau",
+  "bytes": 3707
+ },
+ {
+  "idx": 225,
+  "name": "script_225.luau",
+  "bytes": 250
+ },
+ {
+  "idx": 226,
+  "name": "script_226.luau",
+  "bytes": 6977
+ },
+ {
+  "idx": 227,
+  "name": "script_227.luau",
+  "bytes": 268
+ },
+ {
+  "idx": 228,
+  "name": "script_228.luau",
+  "bytes": 1717
+ },
+ {
+  "idx": 229,
+  "name": "script_229.luau",
+  "bytes": 5887
+ },
+ {
+  "idx": 230,
+  "name": "script_230.luau",
+  "bytes": 1020
+ },
+ {
+  "idx": 231,
+  "name": "script_231.luau",
+  "bytes": 1304
+ },
+ {
+  "idx": 232,
+  "name": "script_232.luau",
+  "bytes": 477
+ },
+ {
+  "idx": 233,
+  "name": "script_233.luau",
+  "bytes": 441
+ },
+ {
+  "idx": 234,
+  "name": "script_234.luau",
+  "bytes": 2022
+ },
+ {
+  "idx": 235,
+  "name": "script_235.luau",
+  "bytes": 4532
+ },
+ {
+  "idx": 236,
+  "name": "script_236.luau",
+  "bytes": 3806
+ },
+ {
+  "idx": 237,
+  "name": "script_237.luau",
+  "bytes": 7882
+ },
+ {
+  "idx": 238,
+  "name": "script_238.luau",
+  "bytes": 267
+ },
+ {
+  "idx": 239,
+  "name": "script_239.luau",
+  "bytes": 1532
+ },
+ {
+  "idx": 240,
+  "name": "script_240.luau",
+  "bytes": 979
+ },
+ {
+  "idx": 241,
+  "name": "script_241.luau",
+  "bytes": 430
+ },
+ {
+  "idx": 242,
+  "name": "script_242.luau",
+  "bytes": 413
+ },
+ {
+  "idx": 243,
+  "name": "script_243.luau",
+  "bytes": 3166
+ },
+ {
+  "idx": 244,
+  "name": "script_244.luau",
+  "bytes": 2418
+ },
+ {
+  "idx": 245,
+  "name": "script_245.luau",
+  "bytes": 201
+ },
+ {
+  "idx": 246,
+  "name": "script_246.luau",
+  "bytes": 2399
+ },
+ {
+  "idx": 247,
+  "name": "script_247.luau",
+  "bytes": 10969
+ },
+ {
+  "idx": 248,
+  "name": "script_248.luau",
+  "bytes": 774
+ },
+ {
+  "idx": 249,
+  "name": "TwoWheel.luau",
+  "bytes": 11773
+ },
+ {
+  "idx": 250,
+  "name": "Heuristics.luau",
+  "bytes": 23803
+ },
+ {
+  "idx": 251,
+  "name": "script_251.luau",
+  "bytes": 2180
+ },
+ {
+  "idx": 252,
+  "name": "script_252.luau",
+  "bytes": 588
+ },
+ {
+  "idx": 253,
+  "name": "script_253.luau",
+  "bytes": 6709
+ },
+ {
+  "idx": 254,
+  "name": "script_254.luau",
+  "bytes": 2130
+ },
+ {
+  "idx": 255,
+  "name": "script_255.luau",
+  "bytes": 3021
+ },
+ {
+  "idx": 256,
+  "name": "script_256.luau",
+  "bytes": 400
+ },
+ {
+  "idx": 257,
+  "name": "script_257.luau",
+  "bytes": 874
+ },
+ {
+  "idx": 258,
+  "name": "script_258.luau",
+  "bytes": 1856
+ },
+ {
+  "idx": 259,
+  "name": "script_259.luau",
+  "bytes": 265
+ },
+ {
+  "idx": 260,
+  "name": "script_260.luau",
+  "bytes": 1049
+ },
+ {
+  "idx": 261,
+  "name": "script_261.luau",
+  "bytes": 3707
+ },
+ {
+  "idx": 262,
+  "name": "script_262.luau",
+  "bytes": 249
+ },
+ {
+  "idx": 263,
+  "name": "script_263.luau",
+  "bytes": 6158
+ },
+ {
+  "idx": 264,
+  "name": "script_264.luau",
+  "bytes": 268
+ },
+ {
+  "idx": 265,
+  "name": "script_265.luau",
+  "bytes": 1748
+ },
+ {
+  "idx": 266,
+  "name": "script_266.luau",
+  "bytes": 4752
+ },
+ {
+  "idx": 267,
+  "name": "script_267.luau",
+  "bytes": 1020
+ },
+ {
+  "idx": 268,
+  "name": "script_268.luau",
+  "bytes": 916
+ },
+ {
+  "idx": 269,
+  "name": "script_269.luau",
+  "bytes": 340
+ },
+ {
+  "idx": 270,
+  "name": "script_270.luau",
+  "bytes": 441
+ },
+ {
+  "idx": 271,
+  "name": "script_271.luau",
+  "bytes": 2031
+ },
+ {
+  "idx": 272,
+  "name": "script_272.luau",
+  "bytes": 3953
+ },
+ {
+  "idx": 273,
+  "name": "script_273.luau",
+  "bytes": 3464
+ },
+ {
+  "idx": 274,
+  "name": "script_274.luau",
+  "bytes": 5935
+ },
+ {
+  "idx": 275,
+  "name": "script_275.luau",
+  "bytes": 267
+ },
+ {
+  "idx": 276,
+  "name": "script_276.luau",
+  "bytes": 1532
+ },
+ {
+  "idx": 277,
+  "name": "script_277.luau",
+  "bytes": 979
+ },
+ {
+  "idx": 278,
+  "name": "script_278.luau",
+  "bytes": 413
+ },
+ {
+  "idx": 279,
+  "name": "script_279.luau",
+  "bytes": 3190
+ },
+ {
+  "idx": 280,
+  "name": "script_280.luau",
+  "bytes": 2418
+ },
+ {
+  "idx": 281,
+  "name": "script_281.luau",
+  "bytes": 200
+ },
+ {
+  "idx": 282,
+  "name": "script_282.luau",
+  "bytes": 1621
+ },
+ {
+  "idx": 283,
+  "name": "script_283.luau",
+  "bytes": 12921
+ },
+ {
+  "idx": 284,
+  "name": "script_284.luau",
+  "bytes": 775
+ },
+ {
+  "idx": 285,
+  "name": "script_285.luau",
+  "bytes": 6707
+ },
+ {
+  "idx": 286,
+  "name": "script_286.luau",
+  "bytes": 1783
+ },
+ {
+  "idx": 287,
+  "name": "script_287.luau",
+  "bytes": 11862
+ },
+ {
+  "idx": 288,
+  "name": "script_288.luau",
+  "bytes": 862
+ },
+ {
+  "idx": 289,
+  "name": "script_289.luau",
+  "bytes": 4740
+ },
+ {
+  "idx": 290,
+  "name": "script_290.luau",
+  "bytes": 1471
+ },
+ {
+  "idx": 291,
+  "name": "script_291.luau",
+  "bytes": 7391
+ },
+ {
+  "idx": 292,
+  "name": "script_292.luau",
+  "bytes": 12136
+ },
+ {
+  "idx": 293,
+  "name": "script_293.luau",
+  "bytes": 6481
+ },
+ {
+  "idx": 294,
+  "name": "script_294.luau",
+  "bytes": 1699
+ },
+ {
+  "idx": 295,
+  "name": "script_295.luau",
+  "bytes": 3888
+ },
+ {
+  "idx": 296,
+  "name": "script_296.luau",
+  "bytes": 940
+ },
+ {
+  "idx": 297,
+  "name": "script_297.luau",
+  "bytes": 2801
+ },
+ {
+  "idx": 298,
+  "name": "script_298.luau",
+  "bytes": 15311
+ },
+ {
+  "idx": 299,
+  "name": "script_299.luau",
+  "bytes": 1919
+ },
+ {
+  "idx": 300,
+  "name": "script_300.luau",
+  "bytes": 5714
+ },
+ {
+  "idx": 301,
+  "name": "script_301.luau",
+  "bytes": 5023
+ },
+ {
+  "idx": 302,
+  "name": "script_302.luau",
+  "bytes": 4220
+ },
+ {
+  "idx": 303,
+  "name": "script_303.luau",
+  "bytes": 7210
+ },
+ {
+  "idx": 304,
+  "name": "script_304.luau",
+  "bytes": 3684
+ },
+ {
+  "idx": 305,
+  "name": "script_305.luau",
+  "bytes": 2090
+ },
+ {
+  "idx": 306,
+  "name": "script_306.luau",
+  "bytes": 877
+ },
+ {
+  "idx": 307,
+  "name": "script_307.luau",
+  "bytes": 2341
+ },
+ {
+  "idx": 308,
+  "name": "script_308.luau",
+  "bytes": 929
+ },
+ {
+  "idx": 309,
+  "name": "script_309.luau",
+  "bytes": 5830
+ },
+ {
+  "idx": 310,
+  "name": "script_310.luau",
+  "bytes": 2484
+ },
+ {
+  "idx": 311,
+  "name": "script_311.luau",
+  "bytes": 930
+ },
+ {
+  "idx": 312,
+  "name": "script_312.luau",
+  "bytes": 2521
+ },
+ {
+  "idx": 313,
+  "name": "script_313.luau",
+  "bytes": 909
+ },
+ {
+  "idx": 314,
+  "name": "script_314.luau",
+  "bytes": 2093
+ },
+ {
+  "idx": 315,
+  "name": "script_315.luau",
+  "bytes": 921
+ },
+ {
+  "idx": 316,
+  "name": "script_316.luau",
+  "bytes": 2363
+ },
+ {
+  "idx": 317,
+  "name": "script_317.luau",
+  "bytes": 912
+ },
+ {
+  "idx": 318,
+  "name": "script_318.luau",
+  "bytes": 12445
+ },
+ {
+  "idx": 319,
+  "name": "script_319.luau",
+  "bytes": 1719
+ },
+ {
+  "idx": 320,
+  "name": "script_320.luau",
+  "bytes": 2243
+ },
+ {
+  "idx": 321,
+  "name": "script_321.luau",
+  "bytes": 9949
+ },
+ {
+  "idx": 322,
+  "name": "script_322.luau",
+  "bytes": 8642
+ },
+ {
+  "idx": 323,
+  "name": "script_323.luau",
+  "bytes": 9309
+ },
+ {
+  "idx": 324,
+  "name": "script_324.luau",
+  "bytes": 9379
+ },
+ {
+  "idx": 325,
+  "name": "script_325.luau",
+  "bytes": 7389
+ },
+ {
+  "idx": 326,
+  "name": "script_326.luau",
+  "bytes": 2237
+ },
+ {
+  "idx": 327,
+  "name": "script_327.luau",
+  "bytes": 7868
+ },
+ {
+  "idx": 328,
+  "name": "script_328.luau",
+  "bytes": 7148
+ },
+ {
+  "idx": 329,
+  "name": "script_329.luau",
+  "bytes": 6974
+ },
+ {
+  "idx": 330,
+  "name": "script_330.luau",
+  "bytes": 7164
+ },
+ {
+  "idx": 331,
+  "name": "script_331.luau",
+  "bytes": 9967
+ },
+ {
+  "idx": 332,
+  "name": "script_332.luau",
+  "bytes": 11909
+ },
+ {
+  "idx": 333,
+  "name": "script_333.luau",
+  "bytes": 7266
+ },
+ {
+  "idx": 334,
+  "name": "script_334.luau",
+  "bytes": 6257
+ },
+ {
+  "idx": 335,
+  "name": "script_335.luau",
+  "bytes": 6385
+ },
+ {
+  "idx": 336,
+  "name": "script_336.luau",
+  "bytes": 6042
+ },
+ {
+  "idx": 337,
+  "name": "script_337.luau",
+  "bytes": 3313
+ },
+ {
+  "idx": 338,
+  "name": "script_338.luau",
+  "bytes": 1343
+ },
+ {
+  "idx": 339,
+  "name": "script_339.luau",
+  "bytes": 3670
+ },
+ {
+  "idx": 340,
+  "name": "script_340.luau",
+  "bytes": 1381
+ },
+ {
+  "idx": 341,
+  "name": "script_341.luau",
+  "bytes": 3797
+ },
+ {
+  "idx": 342,
+  "name": "script_342.luau",
+  "bytes": 1413
+ },
+ {
+  "idx": 343,
+  "name": "script_343.luau",
+  "bytes": 7234
+ },
+ {
+  "idx": 344,
+  "name": "script_344.luau",
+  "bytes": 3058
+ },
+ {
+  "idx": 345,
+  "name": "script_345.luau",
+  "bytes": 2794
+ },
+ {
+  "idx": 346,
+  "name": "script_346.luau",
+  "bytes": 4108
+ },
+ {
+  "idx": 347,
+  "name": "script_347.luau",
+  "bytes": 9373
+ },
+ {
+  "idx": 348,
+  "name": "script_348.luau",
+  "bytes": 7548
+ },
+ {
+  "idx": 349,
+  "name": "script_349.luau",
+  "bytes": 11632
+ },
+ {
+  "idx": 350,
+  "name": "script_350.luau",
+  "bytes": 1884
+ },
+ {
+  "idx": 351,
+  "name": "script_351.luau",
+  "bytes": 3110
+ },
+ {
+  "idx": 352,
+  "name": "script_352.luau",
+  "bytes": 4837
+ },
+ {
+  "idx": 353,
+  "name": "script_353.luau",
+  "bytes": 3057
+ },
+ {
+  "idx": 354,
+  "name": "script_354.luau",
+  "bytes": 3134
+ },
+ {
+  "idx": 355,
+  "name": "script_355.luau",
+  "bytes": 9214
+ },
+ {
+  "idx": 356,
+  "name": "script_356.luau",
+  "bytes": 5936
+ },
+ {
+  "idx": 357,
+  "name": "script_357.luau",
+  "bytes": 1264
+ },
+ {
+  "idx": 358,
+  "name": "script_358.luau",
+  "bytes": 2492
+ },
+ {
+  "idx": 359,
+  "name": "script_359.luau",
+  "bytes": 4583
+ },
+ {
+  "idx": 360,
+  "name": "script_360.luau",
+  "bytes": 4676
+ },
+ {
+  "idx": 361,
+  "name": "script_361.luau",
+  "bytes": 3270
+ },
+ {
+  "idx": 362,
+  "name": "script_362.luau",
+  "bytes": 15273
+ },
+ {
+  "idx": 363,
+  "name": "script_363.luau",
+  "bytes": 1899
+ },
+ {
+  "idx": 364,
+  "name": "script_364.luau",
+  "bytes": 4064
+ },
+ {
+  "idx": 365,
+  "name": "script_365.luau",
+  "bytes": 3133
+ },
+ {
+  "idx": 366,
+  "name": "script_366.luau",
+  "bytes": 2043
+ },
+ {
+  "idx": 367,
+  "name": "script_367.luau",
+  "bytes": 1277
+ },
+ {
+  "idx": 368,
+  "name": "script_368.luau",
+  "bytes": 726
+ },
+ {
+  "idx": 369,
+  "name": "script_369.luau",
+  "bytes": 721
+ },
+ {
+  "idx": 370,
+  "name": "script_370.luau",
+  "bytes": 353
+ },
+ {
+  "idx": 371,
+  "name": "script_371.luau",
+  "bytes": 814
+ },
+ {
+  "idx": 372,
+  "name": "Firearm2Controller.server.luau",
+  "bytes": 17322
+ },
+ {
+  "idx": 373,
+  "name": "Firearm2IKHand.server.luau",
+  "bytes": 5164
+ },
+ {
+  "idx": 374,
+  "name": "ClientAmmoHud.luau",
+  "bytes": 3084
+ },
+ {
+  "idx": 375,
+  "name": "ClientCamera.luau",
+  "bytes": 8760
+ },
+ {
+  "idx": 376,
+  "name": "ClientCrosshair.luau",
+  "bytes": 2246
+ },
+ {
+  "idx": 377,
+  "name": "ClientInput.luau",
+  "bytes": 4216
+ },
+ {
+  "idx": 378,
+  "name": "ClientRecoilModel.luau",
+  "bytes": 1399
+ },
+ {
+  "idx": 379,
+  "name": "ClientSpreadModel.luau",
+  "bytes": 1770
+ },
+ {
+  "idx": 380,
+  "name": "Firearm2Server.server.luau",
+  "bytes": 13761
+ },
+ {
+  "idx": 381,
+  "name": "script_381.luau",
+  "bytes": 1441
+ },
+ {
+  "idx": 382,
+  "name": "script_382.luau",
+  "bytes": 1655
+ },
+ {
+  "idx": 383,
+  "name": "script_383.luau",
+  "bytes": 1440
+ },
+ {
+  "idx": 384,
+  "name": "script_384.luau",
+  "bytes": 1478
+ },
+ {
+  "idx": 385,
+  "name": "script_385.luau",
+  "bytes": 1907
+ },
+ {
+  "idx": 386,
+  "name": "script_386.luau",
+  "bytes": 1731
+ },
+ {
+  "idx": 387,
+  "name": "script_387.luau",
+  "bytes": 1541
+ },
+ {
+  "idx": 388,
+  "name": "script_388.luau",
+  "bytes": 1705
+ },
+ {
+  "idx": 389,
+  "name": "script_389.luau",
+  "bytes": 1943
+ },
+ {
+  "idx": 390,
+  "name": "script_390.luau",
+  "bytes": 2333
+ },
+ {
+  "idx": 391,
+  "name": "script_391.luau",
+  "bytes": 1832
+ },
+ {
+  "idx": 392,
+  "name": "script_392.luau",
+  "bytes": 1253
+ },
+ {
+  "idx": 393,
+  "name": "PushableServer.server.luau",
+  "bytes": 13156
+ },
+ {
+  "idx": 394,
+  "name": "script_394.luau",
+  "bytes": 6591
+ },
+ {
+  "idx": 395,
+  "name": "script_395.luau",
+  "bytes": 6364
+ },
+ {
+  "idx": 396,
+  "name": "script_396.luau",
+  "bytes": 10100
+ },
+ {
+  "idx": 397,
+  "name": "script_397.luau",
+  "bytes": 3134
+ },
+ {
+  "idx": 398,
+  "name": "script_398.luau",
+  "bytes": 7149
+ },
+ {
+  "idx": 399,
+  "name": "script_399.luau",
+  "bytes": 3846
+ },
+ {
+  "idx": 400,
+  "name": "Firearm2Server.server.luau",
+  "bytes": 12446
+ },
+ {
+  "idx": 401,
+  "name": "script_401.luau",
+  "bytes": 3936
+ },
+ {
+  "idx": 402,
+  "name": "script_402.luau",
+  "bytes": 2856
+ },
+ {
+  "idx": 403,
+  "name": "MountAuthority.server.luau",
+  "bytes": 3832
+ },
+ {
+  "idx": 404,
+  "name": "MountAuthority.server.luau",
+  "bytes": 4940
+ },
+ {
+  "idx": 405,
+  "name": "MountAuthority.server.luau",
+  "bytes": 5120
+ },
+ {
+  "idx": 406,
+  "name": "Occupant.server.luau",
+  "bytes": 7764
+ },
+ {
+  "idx": 407,
+  "name": "Redresser.server.luau",
+  "bytes": 2001
+ },
+ {
+  "idx": 408,
+  "name": "Replication.server.luau",
+  "bytes": 1046
+ },
+ {
+  "idx": 409,
+  "name": "script_409.luau",
+  "bytes": 3634
+ },
+ {
+  "idx": 410,
+  "name": "script_410.luau",
+  "bytes": 3092
+ },
+ {
+  "idx": 411,
+  "name": "script_411.luau",
+  "bytes": 2607
+ },
+ {
+  "idx": 412,
+  "name": "script_412.luau",
+  "bytes": 1293
+ },
+ {
+  "idx": 413,
+  "name": "script_413.luau",
+  "bytes": 3858
+ },
+ {
+  "idx": 414,
+  "name": "script_414.luau",
+  "bytes": 461
+ },
+ {
+  "idx": 415,
+  "name": "script_415.luau",
+  "bytes": 4450
+ },
+ {
+  "idx": 416,
+  "name": "script_416.luau",
+  "bytes": 1881
+ },
+ {
+  "idx": 417,
+  "name": "script_417.luau",
+  "bytes": 1293
+ },
+ {
+  "idx": 418,
+  "name": "script_418.luau",
+  "bytes": 3826
+ },
+ {
+  "idx": 419,
+  "name": "script_419.luau",
+  "bytes": 1863
+ },
+ {
+  "idx": 420,
+  "name": "script_420.luau",
+  "bytes": 910
+ },
+ {
+  "idx": 421,
+  "name": "script_421.luau",
+  "bytes": 533
+ },
+ {
+  "idx": 422,
+  "name": "script_422.luau",
+  "bytes": 1522
+ },
+ {
+  "idx": 423,
+  "name": "script_423.luau",
+  "bytes": 5871
+ },
+ {
+  "idx": 424,
+  "name": "script_424.luau",
+  "bytes": 901
+ },
+ {
+  "idx": 425,
+  "name": "script_425.luau",
+  "bytes": 881
+ },
+ {
+  "idx": 426,
+  "name": "script_426.luau",
+  "bytes": 3616
+ },
+ {
+  "idx": 427,
+  "name": "script_427.luau",
+  "bytes": 4704
+ },
+ {
+  "idx": 428,
+  "name": "script_428.luau",
+  "bytes": 1299
+ },
+ {
+  "idx": 429,
+  "name": "script_429.luau",
+  "bytes": 881
+ },
+ {
+  "idx": 430,
+  "name": "script_430.luau",
+  "bytes": 1774
+ },
+ {
+  "idx": 431,
+  "name": "script_431.luau",
+  "bytes": 5695
+ },
+ {
+  "idx": 432,
+  "name": "script_432.luau",
+  "bytes": 11623
+ },
+ {
+  "idx": 433,
+  "name": "script_433.luau",
+  "bytes": 1883
+ },
+ {
+  "idx": 434,
+  "name": "script_434.luau",
+  "bytes": 8829
+ },
+ {
+  "idx": 435,
+  "name": "script_435.luau",
+  "bytes": 2223
+ },
+ {
+  "idx": 436,
+  "name": "Firearm2Server.server.luau",
+  "bytes": 13761
+ },
+ {
+  "idx": 437,
+  "name": "script_437.luau",
+  "bytes": 1442
+ }
+]
