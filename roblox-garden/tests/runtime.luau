@@ -106,6 +106,26 @@ t.test("the world has ground to stand on", function()
         t.assertTrue(root:FindFirstChild("Ground") ~= nil, "no ground")
 end)
 
+-- The first playable build had a ground part that was CanCollide = false, so the
+-- character fell straight through it and died. "The part exists" is not the
+-- property that matters; "the part stops you" is.
+t.test("the ground actually stops a falling character", function()
+        local env = boot()
+        local root = env.__workspace:FindFirstChild("GardenWorld")
+        local ground = root:FindFirstChild("Ground")
+        t.assertTrue(ground ~= nil, "no ground")
+        t.assertTrue(ground.CanCollide, "the ground exists but nothing collides with it")
+end)
+
+t.test("the world has a spawn point above the ground", function()
+        local env = boot()
+        local root = env.__workspace:FindFirstChild("GardenWorld")
+        local spawn = root:FindFirstChild("GardenSpawn")
+        t.assertTrue(spawn ~= nil, "no SpawnLocation, so the engine has nowhere to place a joining player")
+        t.assertTrue(spawn:IsA("SpawnLocation"), "the spawn point is not a SpawnLocation")
+        t.assertTrue(spawn.Position.Y > 0, "the spawn point is not above the ground")
+end)
+
 t.test("every plot is in the world at a distinct position", function()
         local env = boot()
         local root = env.__workspace:FindFirstChild("GardenWorld")
@@ -699,6 +719,69 @@ t.test("the plot grid fits a phone above the bottom bar", function()
                                 "plot " .. index .. " overlaps the bottom bar")
                         t.assertTrue(plot.Position.X.Offset + plot.AbsoluteSize.X <= 360,
                                 "plot " .. index .. " runs off the right edge")
+                end
+        end
+end)
+
+-- A phone held sideways is the case the width-only grid maths got wrong: four
+-- columns sized from a 640px width gave 148px cells, and three rows of those is
+-- 460px on a 360px-tall screen. The grid covered everything. The portrait test
+-- above could never catch it, because in portrait the width is the binding
+-- constraint and the height has room to spare.
+t.test("the plot grid fits a landscape phone too", function()
+        local env = Shim.harness(Sources)
+        Shim.setViewport(env, 640, 360)
+        env.__load("server/init.server")
+        env.__drain()
+        env.__load("client/init.client")
+        local clientPlayer = env.__player
+        local payload = joinAndCapture(env, 313, "Landscape")
+        local State = env.__replicatedRemotes:FindFirstChild("GardenState")
+        State:FireClient(clientPlayer, payload)
+
+        local gui = clientPlayer.PlayerGui:FindFirstChild("AXGardenHud")
+        local bar = gui:FindFirstChild("BottomBar")
+        local barTop = bar.Position.Y.Offset
+        for index = 1, 12 do
+                local plot = gui:FindFirstChild("Plot" .. tostring(index))
+                t.assertTrue(plot ~= nil, "plot " .. index .. " is missing on a landscape phone")
+                if plot then
+                        local bottom = plot.Position.Y.Offset + plot.AbsoluteSize.Y
+                        t.assertTrue(bottom <= barTop,
+                                "plot " .. index .. " runs under the bottom bar on a landscape phone: "
+                                        .. bottom .. " > " .. barTop)
+                        t.assertTrue(plot.Position.X.Offset + plot.AbsoluteSize.X <= 640,
+                                "plot " .. index .. " runs off the right edge on a landscape phone")
+                end
+        end
+end)
+
+-- The toast is drawn as a bare label with no background, so an overlap with a
+-- plot is invisible in a screenshot and only shows up as a plot that will not
+-- respond to a tap. It sat on the first row of the grid for exactly that reason.
+t.test("the toast never covers a plot", function()
+        local env = Shim.harness(Sources)
+        Shim.setViewport(env, 360, 640)
+        env.__load("server/init.server")
+        env.__drain()
+        env.__load("client/init.client")
+        local clientPlayer = env.__player
+        local payload = joinAndCapture(env, 314, "Toasty")
+        local State = env.__replicatedRemotes:FindFirstChild("GardenState")
+        State:FireClient(clientPlayer, payload)
+
+        local gui = clientPlayer.PlayerGui:FindFirstChild("AXGardenHud")
+        local toast = gui:FindFirstChild("Toast")
+        t.assertTrue(toast ~= nil, "no toast label")
+        local toastTop = toast.Position.Y.Offset
+        local toastBottom = toastTop + toast.AbsoluteSize.Y
+        for index = 1, 12 do
+                local plot = gui:FindFirstChild("Plot" .. tostring(index))
+                if plot then
+                        local plotTop = plot.Position.Y.Offset
+                        local plotBottom = plotTop + plot.AbsoluteSize.Y
+                        t.assertTrue(toastBottom <= plotTop or toastTop >= plotBottom,
+                                "the toast covers plot " .. index)
                 end
         end
 end)

@@ -1246,3 +1246,36 @@ After the dashboard save, `games.roblox.com/v1/games` reported
 `AX Garden Legends` and the pipeline's `name` job logged `NAME=SET` and its
 `live-state` job logged `LIVE_STATE=PASS`. The API-only attempt had left
 `NAME=UNCONFIRMED` on every run before this.
+
+### A world you cannot stand in, and a HUD that covers the phone
+
+Two defects shipped in the same build, both of them invisible to the suite that
+existed at the time, and both reported by K within a minute of playing.
+
+The character died on join. `World.luau` built every part through one helper
+that hard-coded `CanCollide = false`, ground included, and the world had no
+`SpawnLocation` at all. So there was nothing to land on and nowhere defined to
+land. The fix is a `collide` parameter on that helper, `true` for the ground,
+and a `SpawnLocation` above it. The lesson is that the old test asserted
+`FindFirstChild("Ground") ~= nil`, which is true of a ground you fall through.
+A test for a floor has to assert `CanCollide`.
+
+The HUD covered a phone. `plotCellSize` sized a plot cell from the viewport
+width alone, so on a landscape phone (640x360) four columns gave 148px cells and
+three rows came to 460px on a 360px screen: the grid was larger than the display.
+The old test checked the grid did not pass the right edge, which is silent about
+the bottom. There are now phone sizes for both orientations and the grid is
+bounded by the height as well.
+
+Two smaller versions of the same mistake were in the same file. The toast was
+positioned just under the top bar, which is exactly the first row of plots, so
+every message covered a plot; it is now drawn just above the bottom bar. And the
+ScreenGui had `IgnoreGuiInset = true`, which put the coins label at screen y=0
+underneath Roblox's own menu and chat buttons on a phone. Leaving the inset on
+moves the HUD below them.
+
+The layout module is pure arithmetic, so the fix and its tests live there, but
+the bug that mattered was at the call site: `Hud.luau` passed only the width.
+A test of the pure function alone would have passed on the broken build, which
+is why the reintroduction check now covers the landscape case against the real
+client rather than the arithmetic.

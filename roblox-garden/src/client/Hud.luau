@@ -95,7 +95,12 @@ function Hud.build(viewportWidth: number, viewportHeight: number): any
         gui = Instance.new("ScreenGui")
         gui.Name = "AXGardenHud"
         gui.ResetOnSpawn = false
-        gui.IgnoreGuiInset = true
+        -- Insets, not ignores. With IgnoreGuiInset = true the HUD started at
+        -- screen y=0, which on a phone is where Roblox draws its own menu, chat
+        -- and player-list buttons. The coins label sat underneath them, so the
+        -- Roblox controls read as the game covering the screen. Leaving the
+        -- inset on shifts the whole HUD below that bar.
+        gui.IgnoreGuiInset = false
         gui.Parent = playerGui
 
         local top = HudLayout.topBarRect(viewportWidth)
@@ -127,9 +132,12 @@ function Hud.build(viewportWidth: number, viewportHeight: number): any
         -- The plot grid, drawn as buttons because a plot is a tap target.
         refs.plots = {}
         local columns = HudLayout.PLOT_GRID.columns
-        local cell = HudLayout.plotCellSize(viewportWidth, columns)
+        -- The height is passed in so the cell is bounded vertically as well as
+        -- horizontally. Sized from the width alone, the grid was 460px tall on a
+        -- 360px landscape phone and covered the entire screen.
+        local cell = HudLayout.plotCellSize(viewportWidth, columns, viewportHeight)
         local gridTop = top[2] + top[4] + HudLayout.GAP
-        for index = 1, 12 do
+        for index = 1, HudLayout.PLOT_COUNT do
                 local column = (index - 1) % columns
                 local row = math.floor((index - 1) / columns)
                 local x = HudLayout.PAD + column * (cell + HudLayout.PLOT_GRID.gap)
@@ -241,7 +249,9 @@ function Hud.build(viewportWidth: number, viewportHeight: number): any
         refs.toast = Instance.new("TextLabel")
         refs.toast.Name = "Toast"
         refs.toast.BackgroundTransparency = 1
-        refs.toast.Position = UDim2.fromOffset(HudLayout.PAD, top[2] + top[4] + HudLayout.GAP)
+        -- Above the bottom bar, not below the top bar: the old position was the
+        -- first row of the plot grid, so every message covered a plot.
+        refs.toast.Position = UDim2.fromOffset(HudLayout.PAD, bottom[2] - 30)
         refs.toast.Size = UDim2.fromOffset(viewportWidth - HudLayout.PAD * 2, 28)
         refs.toast.TextColor3 = COLORS.ready
         refs.toast.TextScaled = true

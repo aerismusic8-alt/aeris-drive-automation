@@ -27,14 +27,21 @@ export type PlotHandle = {
         label: any,
 }
 
-local function part(name: string, size: any, position: any, color: any): any
+-- A part. `collide` defaults to false because most of this world is scenery the
+-- player should be able to walk through: a crop, a sign, a label post.
+--
+-- The floor is the exception and it has to be solid. In the first playable build
+-- every part was non-collidable, including the ground, so the character spawned
+-- with nothing under it, fell out of the world and died within seconds. That is
+-- the "join and die" K hit on the first try.
+local function part(name: string, size: any, position: any, color: any, collide: boolean?): any
         local p = Instance.new("Part")
         p.Name = name
         p.Size = size
         p.Position = position
         p.Color = color
         p.Anchored = true
-        p.CanCollide = false
+        p.CanCollide = collide == true
         p.Material = Enum.Material.SmoothPlastic
         p.TopSurface = Enum.SurfaceType.Smooth
         p.BottomSurface = Enum.SurfaceType.Smooth
@@ -102,8 +109,25 @@ function World.build(unlocked: number): (any, { PlotHandle })
         local root = Instance.new("Model")
         root.Name = "GardenWorld"
 
-        local ground = part("Ground", Vector3.new(400, 4, 400), Vector3.new(0, -2, 0), Color3.fromRGB(96, 132, 72))
+        local ground = part("Ground", Vector3.new(400, 4, 400), Vector3.new(0, -2, 0), Color3.fromRGB(96, 132, 72), true)
         ground.Parent = root
+
+        -- The spawn point. Without one the engine has nowhere defined to place a
+        -- joining character and drops it at the origin, which on this map is
+        -- inside the shop stand. A SpawnLocation also makes the respawn after a
+        -- death land on the lawn rather than wherever the last one ended.
+        local spawn = Instance.new("SpawnLocation")
+        spawn.Name = "GardenSpawn"
+        spawn.Size = Vector3.new(12, 1, 12)
+        spawn.Position = Vector3.new(0, 0.5, Config.Garden.Spacing)
+        spawn.Anchored = true
+        spawn.CanCollide = true
+        spawn.Neutral = true
+        spawn.Duration = 0
+        spawn.Transparency = 0.4
+        spawn.Color = Color3.fromRGB(150, 200, 120)
+        spawn.Material = Enum.Material.SmoothPlastic
+        spawn.Parent = root
 
         -- A shop stand, so the shop is a place rather than only a menu button.
         local shop = part("ShopStand", Vector3.new(14, 10, 8), Vector3.new(0, 5, -Config.Garden.Spacing), Color3.fromRGB(150, 110, 70))

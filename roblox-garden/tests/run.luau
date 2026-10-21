@@ -1148,6 +1148,55 @@ t.test("the plot grid never runs off the right edge", function()
         end
 end)
 
+-- The width-only test above passed while the grid covered a landscape phone
+-- completely, because "not off the right edge" says nothing about the bottom.
+-- These are the screens a real phone reports, both orientations.
+local PHONES = {
+        { name = "small portrait", w = 360, h = 640 },
+        { name = "typical portrait", w = 390, h = 844 },
+        { name = "large portrait", w = 414, h = 896 },
+        { name = "small landscape", w = 640, h = 360 },
+        { name = "typical landscape", w = 844, h = 390 },
+        { name = "tablet", w = 768, h = 1024 },
+        { name = "desktop", w = 1280, h = 720 },
+}
+
+t.test("every plot cell is on screen in both orientations", function()
+        for _, phone in ipairs(PHONES) do
+                for _, entry in ipairs(HudLayout.plotRects(phone.w, phone.h, HudLayout.PLOT_COUNT)) do
+                        t.assertTrue(HudLayout.onScreen(entry.rect, phone.w, phone.h),
+                                entry.name .. " is off screen on a " .. phone.name
+                                        .. " (" .. phone.w .. "x" .. phone.h .. ")")
+                end
+        end
+end)
+
+t.test("the plot grid never runs under the bottom bar", function()
+        for _, phone in ipairs(PHONES) do
+                local bottom = HudLayout.bottomBarRect(phone.w, phone.h)
+                for _, entry in ipairs(HudLayout.plotRects(phone.w, phone.h, HudLayout.PLOT_COUNT)) do
+                        t.assertFalse(HudLayout.overlaps(entry.rect, bottom),
+                                entry.name .. " is under the bottom bar on a " .. phone.name)
+                end
+        end
+end)
+
+t.test("the whole screen is on screen, grid included", function()
+        for _, phone in ipairs(PHONES) do
+                for _, entry in ipairs(HudLayout.rects(phone.w, phone.h)) do
+                        t.assertTrue(HudLayout.onScreen(entry.rect, phone.w, phone.h),
+                                entry.name .. " is off screen on a " .. phone.name
+                                        .. " (" .. phone.w .. "x" .. phone.h .. ")")
+                end
+        end
+end)
+
+t.test("the grid draws exactly the plots the game has", function()
+        t.assertEqual(HudLayout.PLOT_COUNT, Config.Garden.TotalPlots,
+                "the HUD grid count and the garden plot count have drifted apart")
+        t.assertEqual(HudLayout.plotRows(HudLayout.PLOT_COUNT), 3, "rows for 12 plots in 4 columns")
+end)
+
 t.test("the scale never magnifies past the design size", function()
         t.assertEqual(HudLayout.scale(HudLayout.DESIGN_WIDTH, HudLayout.DESIGN_HEIGHT), 1, "design scale")
         t.assertEqual(HudLayout.scale(4000, 4000), 1, "a large screen is not stretched")
