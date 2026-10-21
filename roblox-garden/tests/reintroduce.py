@@ -100,8 +100,8 @@ end""",
     (
         "the ground does not collide",
         f"{ROOT}/roblox-garden/src/server/World.luau",
-        '''        local ground = part("Ground", Vector3.new(400, 4, 400), Vector3.new(0, -2, 0), Color3.fromRGB(96, 132, 72), true)''',
-        '''        local ground = part("Ground", Vector3.new(400, 4, 400), Vector3.new(0, -2, 0), Color3.fromRGB(96, 132, 72))''',
+        '''        local ground = part("Ground", Vector3.new(400, 4, 400), Vector3.new(0, -2, 0), Color3.fromRGB(96, 132, 72), true, Enum.Material.Grass)''',
+        '''        local ground = part("Ground", Vector3.new(400, 4, 400), Vector3.new(0, -2, 0), Color3.fromRGB(96, 132, 72), false, Enum.Material.Grass)''',
         "the ground actually stops a falling character",
     ),
     (
@@ -112,11 +112,13 @@ end""",
         "the world has a spawn point above the ground",
     ),
     (
-        "the plot grid is sized from the width only",
+        "the plot grid is laid out on the world screen instead of the panel",
         f"{ROOT}/roblox-garden/src/client/Hud.luau",
-        '''        local cell = HudLayout.plotCellSize(viewportWidth, columns, viewportHeight)''',
-        '''        local cell = HudLayout.plotCellSize(viewportWidth, columns)''',
-        "the plot grid fits a landscape phone too",
+        '''        grid.Visible = false
+        grid.Parent = refs.panel''',
+        '''        grid.Visible = false
+        grid.Parent = gui''',
+        "no plot button is drawn on the world screen",
     ),
     (
         "the toast is drawn over the first row of plots",

@@ -525,9 +525,14 @@ t.test("every plot on the client is a tap target of a usable size", function()
         State:FireClient(clientPlayer, payload)
 
         local gui = clientPlayer.PlayerGui:FindFirstChild("AXGardenHud")
+        -- The grid is inside the garden panel, so the panel is opened first.
+        gui:FindFirstChild("BottomBar"):FindFirstChild("Garden").Activated:Fire()
+        local grid = gui:FindFirstChild("Panel"):FindFirstChild("Grid")
+        t.assertTrue(grid ~= nil, "the panel has no grid")
+        t.assertTrue(grid.Visible, "opening the garden did not show the grid")
         for index = 1, Config.Garden.TotalPlots do
-                local plot = gui:FindFirstChild("Plot" .. tostring(index))
-                t.assertTrue(plot ~= nil, "plot " .. index .. " is not on screen")
+                local plot = grid:FindFirstChild("Plot" .. tostring(index))
+                t.assertTrue(plot ~= nil, "plot " .. index .. " is not in the grid")
                 if plot then
                         local size = plot.AbsoluteSize
                         t.assertTrue(size.X >= HudLayout.MIN_TOUCH and size.Y >= HudLayout.MIN_TOUCH,
@@ -545,8 +550,9 @@ t.test("tapping an empty plot asks the server to plant", function()
         State:FireClient(clientPlayer, payload)
 
         local gui = clientPlayer.PlayerGui:FindFirstChild("AXGardenHud")
-        local plot = gui:FindFirstChild("Plot1")
-        t.assertTrue(plot ~= nil, "no plot button on screen")
+        gui:FindFirstChild("BottomBar"):FindFirstChild("Garden").Activated:Fire()
+        local plot = gui:FindFirstChild("Panel"):FindFirstChild("Grid"):FindFirstChild("Plot1")
+        t.assertTrue(plot ~= nil, "no plot button in the grid")
         if not plot then
                 return
         end
@@ -570,12 +576,36 @@ t.test("tapping a ripe plot asks the server to harvest", function()
         State:FireClient(clientPlayer, captured)
 
         local gui = clientPlayer.PlayerGui:FindFirstChild("AXGardenHud")
+        gui:FindFirstChild("BottomBar"):FindFirstChild("Garden").Activated:Fire()
         local Harvest = env.__replicatedRemotes:FindFirstChild("GardenHarvest")
-        gui:FindFirstChild("Plot1").Activated:Fire()
+        gui:FindFirstChild("Panel"):FindFirstChild("Grid"):FindFirstChild("Plot1").Activated:Fire()
         t.assertTrue(Harvest.invokedWith ~= nil, "tapping a ripe plot did not ask to harvest")
 end)
 
-t.test("the bottom bar has all five buttons at a usable size", function()
+-- The plot grid lives on the world screen no more: twelve opaque buttons there
+-- covered the screen and, on a phone, sat under the movement thumbstick so the
+-- player could not walk. The bars are the only world-screen HUD now, and this
+-- test proves the grid is a child of the panel rather than of the screen.
+t.test("no plot button is drawn on the world screen", function()
+        local env = boot()
+        env.__load("client/init.client")
+        local clientPlayer = env.__player
+        local payload = joinAndCapture(env, 320, "WorldClear")
+        local State = env.__replicatedRemotes:FindFirstChild("GardenState")
+        State:FireClient(clientPlayer, payload)
+
+        local gui = clientPlayer.PlayerGui:FindFirstChild("AXGardenHud")
+        for index = 1, 12 do
+                local plot = gui:FindFirstChild("Plot" .. tostring(index))
+                t.assertTrue(plot == nil,
+                        "plot " .. index .. " is still a child of the screen, covering the world")
+        end
+        -- The panel is the only thing between the bars, and it is closed.
+        local panel = gui:FindFirstChild("Panel")
+        t.assertFalse(panel.Visible, "the panel is open on boot")
+end)
+
+t.test("the bottom bar has all six buttons at a usable size", function()
         local env = boot()
         env.__load("client/init.client")
         local clientPlayer = env.__player
@@ -586,7 +616,7 @@ t.test("the bottom bar has all five buttons at a usable size", function()
         local gui = clientPlayer.PlayerGui:FindFirstChild("AXGardenHud")
         local bar = gui:FindFirstChild("BottomBar")
         t.assertTrue(bar ~= nil, "no bottom bar")
-        for _, name in ipairs({ "Shop", "Pets", "Collection", "Upgrades", "Sell" }) do
+        for _, name in ipairs({ "Garden", "Shop", "Pets", "Collection", "Upgrades", "Sell" }) do
                 local button = bar:FindFirstChild(name)
                 t.assertTrue(button ~= nil, "bottom bar is missing " .. name)
                 if button then
@@ -654,6 +684,11 @@ t.test("every screen in the bottom bar opens a panel that is not empty", functio
 
         local gui = clientPlayer.PlayerGui:FindFirstChild("AXGardenHud")
         local panel = gui:FindFirstChild("Panel")
+        -- Garden fills the panel with the plot grid, not with rows, so it is
+        -- checked by the grid being visible rather than by a non-empty list.
+        gui:FindFirstChild("BottomBar"):FindFirstChild("Garden").Activated:Fire()
+        t.assertTrue(panel.Visible, "Garden opened nothing")
+        t.assertTrue(panel:FindFirstChild("Grid").Visible, "Garden did not show the grid")
         for _, name in ipairs({ "Shop", "Pets", "Collection", "Upgrades" }) do
                 gui:FindFirstChild("BottomBar"):FindFirstChild(name).Activated:Fire()
                 t.assertTrue(panel.Visible, name .. " opened nothing")
@@ -695,7 +730,9 @@ t.test("the HUD fits the smallest phone without leaving the screen", function()
 end)
 
 -- The plot grid must also fit. Twelve plots in four columns is three rows, and
--- on a 360px screen the third row must not collide with the bottom bar.
+-- the grid is now inside the panel, so the guarantee is that it stays inside the
+-- panel and above the bottom bar. Drawn on the world screen it covered the
+-- whole of a landscape phone.
 t.test("the plot grid fits a phone above the bottom bar", function()
         local env = Shim.harness(Sources)
         Shim.setViewport(env, 360, 640)
@@ -708,17 +745,21 @@ t.test("the plot grid fits a phone above the bottom bar", function()
         State:FireClient(clientPlayer, payload)
 
         local gui = clientPlayer.PlayerGui:FindFirstChild("AXGardenHud")
+        gui:FindFirstChild("BottomBar"):FindFirstChild("Garden").Activated:Fire()
         local bar = gui:FindFirstChild("BottomBar")
         local barTop = bar.Position.Y.Offset
+        local panel = gui:FindFirstChild("Panel")
+        local grid = panel:FindFirstChild("Grid")
+        t.assertTrue(grid ~= nil, "the panel has no grid on a phone")
         for index = 1, 12 do
-                local plot = gui:FindFirstChild("Plot" .. tostring(index))
+                local plot = grid:FindFirstChild("Plot" .. tostring(index))
                 t.assertTrue(plot ~= nil, "plot " .. index .. " is missing on a phone")
                 if plot then
-                        local bottom = plot.Position.Y.Offset + plot.AbsoluteSize.Y
+                        local bottom = grid.Position.Y.Offset + plot.Position.Y.Offset + plot.AbsoluteSize.Y
                         t.assertTrue(bottom <= barTop,
                                 "plot " .. index .. " overlaps the bottom bar")
-                        t.assertTrue(plot.Position.X.Offset + plot.AbsoluteSize.X <= 360,
-                                "plot " .. index .. " runs off the right edge")
+                        t.assertTrue(plot.Position.X.Offset + plot.AbsoluteSize.X <= grid.AbsoluteSize.X,
+                                "plot " .. index .. " runs off the right edge of the grid")
                 end
         end
 end)
@@ -740,18 +781,22 @@ t.test("the plot grid fits a landscape phone too", function()
         State:FireClient(clientPlayer, payload)
 
         local gui = clientPlayer.PlayerGui:FindFirstChild("AXGardenHud")
+        gui:FindFirstChild("BottomBar"):FindFirstChild("Garden").Activated:Fire()
         local bar = gui:FindFirstChild("BottomBar")
         local barTop = bar.Position.Y.Offset
+        local panel = gui:FindFirstChild("Panel")
+        local grid = panel:FindFirstChild("Grid")
+        t.assertTrue(grid ~= nil, "the panel has no grid on a landscape phone")
         for index = 1, 12 do
-                local plot = gui:FindFirstChild("Plot" .. tostring(index))
+                local plot = grid:FindFirstChild("Plot" .. tostring(index))
                 t.assertTrue(plot ~= nil, "plot " .. index .. " is missing on a landscape phone")
                 if plot then
-                        local bottom = plot.Position.Y.Offset + plot.AbsoluteSize.Y
+                        local bottom = grid.Position.Y.Offset + plot.Position.Y.Offset + plot.AbsoluteSize.Y
                         t.assertTrue(bottom <= barTop,
                                 "plot " .. index .. " runs under the bottom bar on a landscape phone: "
                                         .. bottom .. " > " .. barTop)
-                        t.assertTrue(plot.Position.X.Offset + plot.AbsoluteSize.X <= 640,
-                                "plot " .. index .. " runs off the right edge on a landscape phone")
+                        t.assertTrue(plot.Position.X.Offset + plot.AbsoluteSize.X <= grid.AbsoluteSize.X,
+                                "plot " .. index .. " runs off the right edge of the grid")
                 end
         end
 end)
@@ -771,14 +816,16 @@ t.test("the toast never covers a plot", function()
         State:FireClient(clientPlayer, payload)
 
         local gui = clientPlayer.PlayerGui:FindFirstChild("AXGardenHud")
+        gui:FindFirstChild("BottomBar"):FindFirstChild("Garden").Activated:Fire()
         local toast = gui:FindFirstChild("Toast")
         t.assertTrue(toast ~= nil, "no toast label")
         local toastTop = toast.Position.Y.Offset
         local toastBottom = toastTop + toast.AbsoluteSize.Y
+        local grid = gui:FindFirstChild("Panel"):FindFirstChild("Grid")
         for index = 1, 12 do
-                local plot = gui:FindFirstChild("Plot" .. tostring(index))
+                local plot = grid:FindFirstChild("Plot" .. tostring(index))
                 if plot then
-                        local plotTop = plot.Position.Y.Offset
+                        local plotTop = grid.Position.Y.Offset + plot.Position.Y.Offset
                         local plotBottom = plotTop + plot.AbsoluteSize.Y
                         t.assertTrue(toastBottom <= plotTop or toastTop >= plotBottom,
                                 "the toast covers plot " .. index)
@@ -817,6 +864,41 @@ t.test("an open panel clears both bars on a phone", function()
                 "the panel overlaps the top bar: panel starts at " .. panelTop .. ", bar ends at " .. topBottom)
         t.assertTrue(panelBottom <= bottom.Position.Y.Offset,
                 "the panel overlaps the bottom bar: panel ends at " .. panelBottom .. ", bar starts at " .. bottom.Position.Y.Offset)
+end)
+
+-- The world has to read as a place, not as a green slab with boxes on it. K's
+-- report was that the game "has no graphics at all": it had geometry, but
+-- nothing that looked like a garden. This counts what the server actually built
+-- so a future refactor cannot quietly drop the scenery.
+t.test("the world is dressed, not a bare slab", function()
+        local env = boot()
+        local world = env.__game:GetService("Workspace"):FindFirstChild("GardenWorld")
+        t.assertTrue(world ~= nil, "the server built no world")
+
+        local kinds: { [string]: number } = {}
+        for _, node in ipairs(world:GetDescendants()) do
+                if node.ClassName == "Part" or node.ClassName == "WedgePart" then
+                        local name = node.Name
+                        kinds[name] = (kinds[name] or 0) + 1
+                end
+        end
+
+        local total = 0
+        for _, n in pairs(kinds) do
+                total += n
+        end
+        t.assertGreater(total, 60,
+                "the world is only " .. total .. " parts, which is the bare slab again")
+
+        for _, name in ipairs({ "Trunk", "Leaves", "Bush", "Petal", "FencePost", "PathSlab", "Ground" }) do
+                t.assertTrue((kinds[name] or 0) > 0, "the world has no " .. name)
+        end
+
+        -- The ground collides, which is the thing the first build got wrong: the
+        -- character spawned with nothing under it and died within seconds.
+        local ground = world:FindFirstChild("Ground")
+        t.assertTrue(ground ~= nil, "no ground")
+        t.assertEqual(ground.CanCollide, true, "the ground does not collide")
 end)
 
 t.finish()

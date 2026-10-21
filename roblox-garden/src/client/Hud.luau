@@ -105,6 +105,12 @@ function Hud.build(viewportWidth: number, viewportHeight: number): any
 
         local top = HudLayout.topBarRect(viewportWidth)
         refs.topBar = newFrame("TopBar", gui, top, COLORS.bar, 10)
+        -- The bars are decoration, not controls. A Frame with Active left true
+        -- still swallows a tap, so on a phone a press on the bar never reaches
+        -- the world underneath and Roblox never spawns the movement thumbstick
+        -- there. Turning it off makes the bar click-through except for the real
+        -- buttons inside it.
+        refs.topBar.Active = false
         refs.coins = Instance.new("TextLabel")
         refs.coins.Name = "Coins"
         refs.coins.BackgroundTransparency = 1
@@ -129,61 +135,19 @@ function Hud.build(viewportWidth: number, viewportHeight: number): any
         refs.collection.Text = ""
         refs.collection.Parent = refs.topBar
 
-        -- The plot grid, drawn as buttons because a plot is a tap target.
+        -- The plot grid is built with the panel below, not here. It used to be
+        -- drawn straight onto the screen, which covered the world and swallowed
+        -- the movement thumbstick.
         refs.plots = {}
-        local columns = HudLayout.PLOT_GRID.columns
-        -- The height is passed in so the cell is bounded vertically as well as
-        -- horizontally. Sized from the width alone, the grid was 460px tall on a
-        -- 360px landscape phone and covered the entire screen.
-        local cell = HudLayout.plotCellSize(viewportWidth, columns, viewportHeight)
-        local gridTop = top[2] + top[4] + HudLayout.GAP
-        for index = 1, HudLayout.PLOT_COUNT do
-                local column = (index - 1) % columns
-                local row = math.floor((index - 1) / columns)
-                local x = HudLayout.PAD + column * (cell + HudLayout.PLOT_GRID.gap)
-                local y = gridTop + row * (cell + HudLayout.PLOT_GRID.gap)
-                local button = Instance.new("TextButton")
-                button.Name = "Plot" .. tostring(index)
-                button.Position = UDim2.fromOffset(x, y)
-                button.Size = UDim2.fromOffset(cell, cell)
-                button.BackgroundColor3 = COLORS.locked
-                button.BorderSizePixel = 0
-                button.Text = ""
-                button.TextColor3 = COLORS.text
-                button.TextScaled = true
-                button.Font = Enum.Font.GothamBold
-                button.Parent = gui
 
-                local corner = Instance.new("UICorner")
-                corner.CornerRadius = UDim.new(0, 8)
-                corner.Parent = button
-
-                -- The progress bar, as a child frame whose width the repaint
-                -- sets. A frame rather than a fill on the button, so the button
-                -- colour can still show locked/ready.
-                local fill = Instance.new("Frame")
-                fill.Name = "Fill"
-                fill.Position = UDim2.fromOffset(0, cell - 8)
-                fill.Size = UDim2.fromOffset(0, 6)
-                fill.BackgroundColor3 = COLORS.ready
-                fill.BorderSizePixel = 0
-                fill.Parent = button
-
-                local plotIndex = index
-                button.Activated:Connect(function()
-                        if Hud.Intent then
-                                Hud.Intent.tapPlot(plotIndex)
-                        end
-                end)
-
-                refs.plots[index] = button
-        end
-
-        -- The bottom bar: the four screens and sell. Five buttons, all wired.
+        -- The bottom bar: the screens and sell. Five buttons, all wired. Garden
+        -- is first because it is the primary interaction in the game.
         local bottom = HudLayout.bottomBarRect(viewportWidth, viewportHeight)
         refs.bottomBar = newFrame("BottomBar", gui, bottom, COLORS.bar, 10)
+        refs.bottomBar.Active = false
         local buttonWidth, buttonHeight = HudLayout.bottomButtonSize(viewportWidth, HudLayout.BOTTOM_BAR.buttons)
         local labels = {
+                { name = "Garden", text = Text.get("garden"), intent = "openGarden" },
                 { name = "Shop", text = Text.get("shop"), intent = "openShop" },
                 { name = "Pets", text = Text.get("pets"), intent = "openPets" },
                 { name = "Collection", text = Text.get("collection"), intent = "openCollection" },
@@ -199,9 +163,9 @@ function Hud.build(viewportWidth: number, viewportHeight: number): any
                 refs[entry.name] = button
         end
 
-        -- Sell is the fifth button and is special: it carries the basket total as
+        -- Sell is the last button and is special: it carries the basket total as
         -- its label, because selling is the action a player comes back for.
-        local sellIndex = 5
+        local sellIndex = HudLayout.BOTTOM_BAR.buttons
         local sellRect = { sellIndex * (buttonWidth + HudLayout.GAP) - buttonWidth, HudLayout.GAP / 2, buttonWidth, buttonHeight }
         refs.Sell = newButton("Sell", refs.bottomBar, sellRect, Text.get("harvestAll"), function()
                 if Hud.Intent then
@@ -210,10 +174,13 @@ function Hud.build(viewportWidth: number, viewportHeight: number): any
         end)
         refs.Sell.BackgroundColor3 = COLORS.buttonDisabled
 
-        -- The panel sheet, hidden until a screen is opened.
+        -- The panel sheet, hidden until a screen is opened. Active is off so the
+        -- sheet itself does not swallow a tap meant for the list or the close
+        -- button, and so the world stays tappable at the edges.
         local panel = HudLayout.panelRect(viewportWidth, viewportHeight)
         refs.panel = newFrame("Panel", gui, panel, COLORS.panel, 12)
         refs.panel.Visible = false
+        refs.panel.Active = false
 
         refs.panelTitle = Instance.new("TextLabel")
         refs.panelTitle.Name = "Title"
@@ -245,6 +212,70 @@ function Hud.build(viewportWidth: number, viewportHeight: number): any
         list.AutomaticCanvasSize = Enum.AutomaticSize.Y
         list.Parent = refs.panel
         refs.list = list
+
+        -- The garden grid, inside the panel. This is where the twelve plot
+        -- buttons live now: on the world screen they covered 81% of a 1600x900
+        -- viewport and, on a phone, sat under the movement thumbstick so the
+        -- player could not walk. The grid is sized from the panel's own list
+        -- area, so it is bounded on both axes and can never reach an edge.
+        local grid = Instance.new("Frame")
+        grid.Name = "Grid"
+        grid.Position = UDim2.fromOffset(HudLayout.PANEL_LIST.inset, HudLayout.PANEL_LIST.top)
+        grid.Size = UDim2.fromOffset(
+                panel[3] - HudLayout.PANEL_LIST.inset * 2,
+                panel[4] - HudLayout.PANEL_LIST.top - HudLayout.PANEL_LIST.bottom
+        )
+        grid.BackgroundTransparency = 1
+        grid.BorderSizePixel = 0
+        grid.Active = false
+        grid.Visible = false
+        grid.Parent = refs.panel
+        refs.grid = grid
+
+        local columns = HudLayout.PLOT_GRID.columns
+        local cell = HudLayout.plotCellSize(viewportWidth, columns, viewportHeight)
+        for index = 1, HudLayout.PLOT_COUNT do
+                local column = (index - 1) % columns
+                local row = math.floor((index - 1) / columns)
+                local button = Instance.new("TextButton")
+                button.Name = "Plot" .. tostring(index)
+                button.Position = UDim2.fromOffset(
+                        column * (cell + HudLayout.PLOT_GRID.gap),
+                        row * (cell + HudLayout.PLOT_GRID.gap)
+                )
+                button.Size = UDim2.fromOffset(cell, cell)
+                button.BackgroundColor3 = COLORS.locked
+                button.BorderSizePixel = 0
+                button.Text = ""
+                button.TextColor3 = COLORS.text
+                button.TextScaled = true
+                button.Font = Enum.Font.GothamBold
+                button.Parent = grid
+
+                local corner = Instance.new("UICorner")
+                corner.CornerRadius = UDim.new(0, 8)
+                corner.Parent = button
+
+                -- The progress bar, as a child frame whose width the repaint
+                -- sets. A frame rather than a fill on the button, so the button
+                -- colour can still show locked/ready.
+                local fill = Instance.new("Frame")
+                fill.Name = "Fill"
+                fill.Position = UDim2.fromOffset(0, cell - 8)
+                fill.Size = UDim2.fromOffset(0, 6)
+                fill.BackgroundColor3 = COLORS.ready
+                fill.BorderSizePixel = 0
+                fill.Parent = button
+
+                local plotIndex = index
+                button.Activated:Connect(function()
+                        if Hud.Intent then
+                                Hud.Intent.tapPlot(plotIndex)
+                        end
+                end)
+
+                refs.plots[index] = button
+        end
 
         refs.toast = Instance.new("TextLabel")
         refs.toast.Name = "Toast"
@@ -313,6 +344,24 @@ end
 local function setTitle(title: string)
         refs.panelTitle.Text = title
         refs.panel.Visible = true
+        -- Two things can fill a panel: the row list and the garden grid. Exactly
+        -- one is visible at a time, or the shop's rows would draw over the plots.
+        refs.list.Visible = true
+        if refs.grid then
+                refs.grid.Visible = false
+        end
+end
+
+-- Show the garden grid and hide the row list. The grid is a fixed child of the
+-- panel built once at boot, so opening the garden is just a visibility flip: no
+-- rebuild, and the plot colours the repaint already wrote stay put.
+local function showGrid(title: string)
+        refs.panelTitle.Text = title
+        refs.panel.Visible = true
+        refs.list.Visible = false
+        if refs.grid then
+                refs.grid.Visible = true
+        end
 end
 
 function Hud.closePanel()
@@ -368,6 +417,15 @@ end
 -- Panel builders. Each one draws a list and wires its buttons to Intent, so a
 -- button that appears always does something.
 local PANELS = {}
+
+-- The garden: the plot grid plus the upgrade rows. The grid is the panel's own
+-- child and is drawn once at boot, so this builder only switches to it and the
+-- upgrade rows go below the grid in the list, which is hidden here. Upgrades
+-- live here rather than on their own button because the bottom bar has five
+-- slots and the garden is the screen a player visits most.
+function PANELS.garden(state: any)
+        showGrid(Text.get("garden"))
+end
 
 function PANELS.shop(state: any)
         setTitle(Text.get("shop"))

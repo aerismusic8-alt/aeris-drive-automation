@@ -266,7 +266,37 @@ end
 -- than returning nil, so a typo in an enum name fails the harness instead of
 -- silently assigning nil to a property.
 local ENUM_MEMBERS = {
-        Material = { Grass = 1, Ground = 2, Neon = 3, Slate = 4, SmoothPlastic = 5, Wood = 6 },
+        Material = {
+                Grass = 1,
+                Ground = 2,
+                Neon = 3,
+                Slate = 4,
+                SmoothPlastic = 5,
+                Wood = 6,
+                -- The garden's scenery uses these. Adding a material to the shim
+                -- is cheaper than flattening the world to the four the old game
+                -- happened to use, and the shim's job is to model what the
+                -- engine accepts.
+                LeafyGrass = 7,
+                Pebble = 8,
+                Cobblestone = 9,
+                Concrete = 10,
+                Sand = 11,
+                Rock = 12,
+                Limestone = 13,
+                Fabric = 14,
+                Marble = 15,
+                Metal = 16,
+                WoodPlanks = 17,
+                Brick = 18,
+                Granite = 19,
+                Glass = 20,
+                Plastic = 21,
+                CorrodedMetal = 22,
+                Ice = 23,
+                Foil = 24,
+                DiamondPlate = 25,
+        },
         SurfaceType = { Smooth = 1, Studs = 2, Inlet = 3 },
         PartType = { Ball = 1, Cylinder = 2, Block = 3, Wedge = 4 },
         Font = { GothamBlack = 1, GothamBold = 2, Gotham = 3 },

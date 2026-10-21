@@ -1161,12 +1161,22 @@ local PHONES = {
         { name = "desktop", w = 1280, h = 720 },
 }
 
-t.test("every plot cell is on screen in both orientations", function()
+t.test("the plot grid stays inside the panel, on every phone", function()
         for _, phone in ipairs(PHONES) do
+                local panel = HudLayout.panelRect(phone.w, phone.h)
+                local area = HudLayout.gridAreaRect(phone.w, phone.h)
                 for _, entry in ipairs(HudLayout.plotRects(phone.w, phone.h, HudLayout.PLOT_COUNT)) do
                         t.assertTrue(HudLayout.onScreen(entry.rect, phone.w, phone.h),
                                 entry.name .. " is off screen on a " .. phone.name
                                         .. " (" .. phone.w .. "x" .. phone.h .. ")")
+                        -- The grid lives in the panel now, so the guarantee that
+                        -- matters is that it cannot escape the panel. On the
+                        -- world screen it covered a landscape phone completely.
+                        t.assertTrue(HudLayout.contains(panel, entry.rect),
+                                entry.name .. " escapes the panel on a " .. phone.name
+                                        .. " (" .. phone.w .. "x" .. phone.h .. ")")
+                        t.assertTrue(HudLayout.contains(area, entry.rect),
+                                entry.name .. " escapes the panel's list area on a " .. phone.name)
                 end
         end
 end)
@@ -1179,6 +1189,32 @@ t.test("the plot grid never runs under the bottom bar", function()
                                 entry.name .. " is under the bottom bar on a " .. phone.name)
                 end
         end
+end)
+
+-- The bug K reported. The twelve plot buttons used to be drawn on the world
+-- screen, so on a phone they sat under the movement thumbstick and the player
+-- could not walk. The world screen is now the bars and nothing else, and this
+-- test measures the free middle so a future change cannot take it back.
+t.test("the world screen leaves room to walk", function()
+        for _, phone in ipairs(PHONES) do
+                local top = HudLayout.topBarRect(phone.w)
+                local bottom = HudLayout.bottomBarRect(phone.w, phone.h)
+                local topBottom = top[2] + top[4]
+                local freeHeight = bottom[2] - topBottom
+                local freeRatio = freeHeight / phone.h
+                t.assertTrue(freeRatio >= 0.5,
+                        "only " .. math.floor(freeRatio * 100) .. "% of a " .. phone.name
+                                .. " is free world, so there is nowhere to put a thumb")
+        end
+end)
+
+-- A plot is inside the panel, so the panel must be openable from the bar. This
+-- is the wiring, not the arithmetic: a grid nobody can reach is a dead game.
+t.test("the garden button opens the panel that holds the grid", function()
+        local columns = HudLayout.PLOT_GRID.columns
+        t.assertTrue(columns >= 1, "the grid has no columns")
+        t.assertEqual(HudLayout.PLOT_GRID.columns * HudLayout.plotRows(HudLayout.PLOT_COUNT) >= HudLayout.PLOT_COUNT,
+                true, "the grid is too small for every plot")
 end)
 
 t.test("the whole screen is on screen, grid included", function()

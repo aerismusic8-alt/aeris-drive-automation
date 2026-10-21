@@ -27,18 +27,30 @@ HudLayout.PAD = 12
 -- The top bar: coins, level, and the collection progress.
 HudLayout.TOP_BAR = { height = 56 }
 
--- The bottom bar: the four main screens, plus sell. Five buttons across the
--- bottom is the whole navigation, because a phone has a thumb and not a mouse.
-HudLayout.BOTTOM_BAR = { height = 72, buttons = 5 }
+-- The bottom bar: the screens plus sell. Six buttons across the bottom is the
+-- whole navigation, because a phone has a thumb and not a mouse. At 360px that
+-- is 49px per button, still above the 44px minimum.
+HudLayout.BOTTOM_BAR = { height = 72, buttons = 6 }
 
 -- The plot grid: tapping a plot is the primary interaction in the game, so the
--- cells are large.
+-- cells are large. The grid lives inside the garden panel, not on the world
+-- screen. Drawn on the world screen it was twelve opaque buttons three rows
+-- deep, which on a 1600x900 viewport covered 81% of the height and left 8px of
+-- world showing. On a phone that is worse than ugly: Roblox spawns its movement
+-- thumbstick where the player first touches, so a button under the thumb means
+-- the player taps a plot instead of walking. That is why K could not move. A
+-- panel can be closed; a world screen cannot.
 HudLayout.PLOT_GRID = { columns = 4, gap = 6 }
 
 -- How many plots the grid draws. Config.Garden.TotalPlots is the same number,
 -- but this module is pure arithmetic with no dependency on Config, so the count
 -- is repeated here and a test asserts the two agree.
 HudLayout.PLOT_COUNT = 12
+
+-- The list area inside a panel, mirroring the scrolling frame the HUD draws:
+-- 8px inset on each side, 52px down for the title row, 8px up from the bottom.
+-- The grid is laid out in here, so it can never reach a screen edge.
+HudLayout.PANEL_LIST = { inset = 8, top = 52, bottom = 8 }
 
 -- A panel is a full-width sheet that slides over the garden. It never covers the
 -- top or bottom bar, so the player can always read their coins and always leave.
@@ -77,52 +89,54 @@ function HudLayout.plotRows(plotCount: number): number
         return math.ceil(math.max(1, plotCount) / cols)
 end
 
--- The height the plot grid may use before it would run under the bottom bar.
--- This is the half of the problem the width-only version missed: on a landscape
--- phone (640x360) four columns sized from the width gave 148px cells, three rows
--- of which is 460px on a 360px-tall screen. The grid covered the whole screen,
--- which is what K saw as "the menu covers everything" on a phone.
-function HudLayout.gridHeight(viewportWidth: number, viewportHeight: number): number
-        local top = HudLayout.topBarRect(viewportWidth)
-        local gridTop = top[2] + top[4] + HudLayout.GAP
-        local bottom = HudLayout.bottomBarRect(viewportWidth, viewportHeight)
-        return math.max(0, bottom[2] - HudLayout.GAP - gridTop)
+-- The area inside an open panel where the plot grid may draw, in screen
+-- coordinates. Every cell is placed inside this rect, so the grid can never
+-- touch a screen edge or a bar no matter how short the screen is.
+function HudLayout.gridAreaRect(viewportWidth: number, viewportHeight: number): { number }
+        local panel = HudLayout.panelRect(viewportWidth, viewportHeight)
+        local inset = HudLayout.PANEL_LIST.inset
+        local x = panel[1] + inset
+        local y = panel[2] + HudLayout.PANEL_LIST.top
+        local width = math.max(0, panel[3] - inset * 2)
+        local height = math.max(0, panel[4] - HudLayout.PANEL_LIST.top - HudLayout.PANEL_LIST.bottom)
+        return { x, y, width, height }
 end
 
--- One cell of the plot grid. Bounded by the width *and* by the height the grid
--- is allowed to occupy, so it can never be larger than the screen it sits on.
--- The minimum touch target is a floor, not a licence to overflow: when the two
--- disagree on a very short screen, staying on screen wins, because a cell that
--- is off screen cannot be tapped at all.
+-- One cell of the plot grid, bounded by the panel area on both axes.
+--
+-- Called without a height it is the old width-only answer, which the finger-size
+-- test uses. Called with a height it is bounded vertically too, and the minimum
+-- touch target is NOT enforced: on a short screen a 44px floor would push the
+-- last row out of the panel, and the panel scrolls, so staying inside the panel
+-- wins. A cell that is off screen cannot be tapped at all.
 function HudLayout.plotCellSize(viewportWidth: number, columns: number, viewportHeight: number?): number
         local cols = math.max(1, math.floor(columns))
         local usable = viewportWidth - HudLayout.PAD * 2 - HudLayout.PLOT_GRID.gap * (cols - 1)
         local cell = math.floor(usable / cols)
 
-        if viewportHeight then
-                local rows = HudLayout.plotRows(HudLayout.PLOT_COUNT)
-                local byHeight = math.floor(
-                        (HudLayout.gridHeight(viewportWidth, viewportHeight) - HudLayout.PLOT_GRID.gap * (rows - 1)) / rows
-                )
-                cell = math.min(cell, byHeight)
+        if not viewportHeight then
+                return math.max(HudLayout.MIN_TOUCH, cell)
         end
 
-        return math.max(HudLayout.MIN_TOUCH, cell)
+        local area = HudLayout.gridAreaRect(viewportWidth, viewportHeight)
+        local rows = HudLayout.plotRows(HudLayout.PLOT_COUNT)
+        local byWidth = math.floor((area[3] - HudLayout.PLOT_GRID.gap * (cols - 1)) / cols)
+        local byHeight = math.floor((area[4] - HudLayout.PLOT_GRID.gap * (rows - 1)) / rows)
+        return math.max(1, math.min(cell, byWidth, byHeight))
 end
 
--- Every plot cell as a rect, so a test can check the whole grid fits rather than
--- trusting one number.
+-- Every plot cell as a rect, laid out inside the panel's list area so a test can
+-- check the whole grid stays inside the panel rather than trusting one number.
 function HudLayout.plotRects(viewportWidth: number, viewportHeight: number, plotCount: number): { any }
         local columns = HudLayout.PLOT_GRID.columns
         local cell = HudLayout.plotCellSize(viewportWidth, columns, viewportHeight)
-        local top = HudLayout.topBarRect(viewportWidth)
-        local gridTop = top[2] + top[4] + HudLayout.GAP
+        local area = HudLayout.gridAreaRect(viewportWidth, viewportHeight)
         local rects = {}
         for index = 1, plotCount do
                 local column = (index - 1) % columns
                 local row = math.floor((index - 1) / columns)
-                local x = HudLayout.PAD + column * (cell + HudLayout.PLOT_GRID.gap)
-                local y = gridTop + row * (cell + HudLayout.PLOT_GRID.gap)
+                local x = area[1] + column * (cell + HudLayout.PLOT_GRID.gap)
+                local y = area[2] + row * (cell + HudLayout.PLOT_GRID.gap)
                 table.insert(rects, { name = "Plot" .. tostring(index), rect = { x, y, cell, cell } })
         end
         return rects
@@ -167,9 +181,9 @@ function HudLayout.rects(viewportWidth: number, viewportHeight: number): { any }
                 { name = "bottomBar", rect = bottom },
                 { name = "panel", rect = panel },
         }
-        -- The plot grid is part of the screen, so the whole-screen check has to
-        -- see it. It was left out of this list, and that is why the grid that
-        -- covered a landscape phone passed every layout test.
+        -- The plot grid is part of the panel, so the whole-screen check has to
+        -- see it. It is listed here so a test proves the grid stays inside the
+        -- panel and therefore on screen.
         for _, entry in ipairs(HudLayout.plotRects(viewportWidth, viewportHeight, HudLayout.PLOT_COUNT)) do
                 table.insert(all, entry)
         end
@@ -205,6 +219,14 @@ function HudLayout.overlaps(a: { number }, b: { number }): boolean
                 return false
         end
         return true
+end
+
+-- True when rect b is entirely inside rect a. The plot grid lives inside the
+-- panel, so "inside the panel" is the property a test needs to check.
+function HudLayout.contains(a: { number }, b: { number }): boolean
+        local ax, ay, aw, ah = a[1], a[2], a[3], a[4]
+        local bx, by, bw, bh = b[1], b[2], b[3], b[4]
+        return bx >= ax and by >= ay and bx + bw <= ax + aw and by + bh <= ay + ah
 end
 
 return HudLayout

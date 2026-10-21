@@ -201,6 +201,10 @@ Intent = {
                 Requests.unequipPet(uid)
         end,
 
+        openGarden = function()
+                Hud.openPanel("garden", latest)
+        end,
+
         openShop = function()
                 Hud.openPanel("shop", latest)
         end,

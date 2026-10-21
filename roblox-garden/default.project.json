@@ -33,19 +33,65 @@
       "$className": "Lighting",
       "$properties": {
         "Ambient": [
-          0.16,
-          0.16,
-          0.14
+          0.24,
+          0.26,
+          0.22
         ],
-        "Brightness": 2.2,
-        "ClockTime": 14,
+        "Brightness": 2.6,
+        "ClockTime": 14.5,
+        "GeographicLatitude": 12,
         "GlobalShadows": false,
         "OutdoorAmbient": [
-          0.45,
-          0.45,
-          0.42
+          0.52,
+          0.54,
+          0.5
         ],
-        "Technology": "Voxel"
+        "ShadowSoftness": 0.35,
+        "Technology": "Voxel",
+        "EnvironmentDiffuseScale": 0.5,
+        "EnvironmentSpecularScale": 0.35
+      },
+      "Atmosphere": {
+        "$className": "Atmosphere",
+        "$properties": {
+          "Color": [
+            0.78,
+            0.85,
+            0.95
+          ],
+          "Decay": [
+            0.35,
+            0.5,
+            0.7
+          ],
+          "Density": 0.32,
+          "Glare": 0.15,
+          "Haze": 1.4,
+          "Offset": 0.1
+        }
+      },
+      "Bloom": {
+        "$className": "BloomEffect",
+        "$properties": {
+          "Enabled": true,
+          "Intensity": 0.5,
+          "Size": 20,
+          "Threshold": 1.1
+        }
+      },
+      "Colour": {
+        "$className": "ColorCorrectionEffect",
+        "$properties": {
+          "Brightness": 0.02,
+          "Contrast": 0.12,
+          "Enabled": true,
+          "Saturation": 0.18,
+          "TintColor": [
+            1,
+            0.99,
+            0.95
+          ]
+        }
       }
     }
   }

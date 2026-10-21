@@ -34,7 +34,7 @@ export type PlotHandle = {
 -- every part was non-collidable, including the ground, so the character spawned
 -- with nothing under it, fell out of the world and died within seconds. That is
 -- the "join and die" K hit on the first try.
-local function part(name: string, size: any, position: any, color: any, collide: boolean?): any
+local function part(name: string, size: any, position: any, color: any, collide: boolean?, material: any?): any
         local p = Instance.new("Part")
         p.Name = name
         p.Size = size
@@ -42,10 +42,23 @@ local function part(name: string, size: any, position: any, color: any, collide:
         p.Color = color
         p.Anchored = true
         p.CanCollide = collide == true
-        p.Material = Enum.Material.SmoothPlastic
+        p.Material = material or Enum.Material.SmoothPlastic
         p.TopSurface = Enum.SurfaceType.Smooth
         p.BottomSurface = Enum.SurfaceType.Smooth
         return p
+end
+
+-- A deterministic pseudo-random stream for scenery. Scenery must be in the same
+-- place every server boot, or a player's garden looks different each visit and a
+-- screenshot cannot be compared to the last one. Seed is fixed for that reason;
+-- `math.randomseed` is deliberately not used because it would make the world
+-- depend on boot order.
+local function sceneryRandom(seed: number): () -> number
+        local state = seed
+        return function(): number
+                state = (state * 1103515245 + 12345) % 2147483648
+                return state / 2147483648
+        end
 end
 
 -- The plot grid: `Columns` across, then wrapping. Row and column are derived
@@ -103,14 +116,122 @@ local function buildPlot(index: number, unlocked: boolean): PlotHandle
         return { index = index, model = model, soil = soil, crop = crop, label = label }
 end
 
+-- Trees, bushes, flowers, a fence and a path. All of it is scenery the player
+-- walks through, so nothing here collides except the fence posts, and none of it
+-- is load-bearing: delete the whole function and the game still plays.
+--
+-- Why it exists. The first build was a green slab with grey boxes on it, and K's
+-- report was that the game "has no graphics at all". It had geometry, but
+-- nothing that reads as a place. This is primitives only, deliberately: every
+-- part of it is generated from numbers in Config, so it ships without an asset
+-- upload and looks the same on every server.
+local function buildScenery(root: any): number
+        local rand = sceneryRandom(20261018)
+        local count = 0
+
+        local function add(name: string, size: any, position: any, color: any, collide: boolean?, material: any?)
+                local p = part(name, size, position, color, collide, material)
+                p.Parent = root
+                count += 1
+                return p
+        end
+
+        -- A tree: a trunk and two leaf balls. Balls rather than a block so the
+        -- silhouette reads as a tree from across the garden.
+        local function tree(x: number, z: number, scale: number)
+                local trunk = add("Trunk", Vector3.new(2 * scale, 10 * scale, 2 * scale),
+                        Vector3.new(x, 5 * scale, z), Color3.fromRGB(104, 71, 45), false, Enum.Material.Wood)
+                local lower = add("Leaves", Vector3.new(9 * scale, 9 * scale, 9 * scale),
+                        Vector3.new(x, 12 * scale, z), Color3.fromRGB(58, 122, 52), false, Enum.Material.LeafyGrass)
+                lower.Shape = Enum.PartType.Ball
+                local upper = add("Leaves", Vector3.new(6 * scale, 6 * scale, 6 * scale),
+                        Vector3.new(x, 17 * scale, z), Color3.fromRGB(74, 148, 62), false, Enum.Material.LeafyGrass)
+                upper.Shape = Enum.PartType.Ball
+        end
+
+        local function bush(x: number, z: number, scale: number)
+                local b = add("Bush", Vector3.new(6 * scale, 5 * scale, 6 * scale),
+                        Vector3.new(x, 2.5 * scale, z), Color3.fromRGB(70, 132, 58), false, Enum.Material.LeafyGrass)
+                b.Shape = Enum.PartType.Ball
+        end
+
+        local function flower(x: number, z: number)
+                local stem = add("Stem", Vector3.new(0.4, 2, 0.4),
+                        Vector3.new(x, 1, z), Color3.fromRGB(86, 146, 66), false, Enum.Material.Grass)
+                local petal = add("Petal", Vector3.new(1.6, 1.6, 1.6),
+                        Vector3.new(x, 2.2, z), Color3.fromRGB(240, 120, 170), false, Enum.Material.SmoothPlastic)
+                petal.Shape = Enum.PartType.Ball
+        end
+
+        -- A stone path from the spawn to the shop, so the two places a player
+        -- moves between are connected by something rather than by nothing.
+        local spacing = Config.Garden.Spacing
+        local steps = 8
+        for step = 1, steps do
+                local t = step / steps
+                local z = spacing - (spacing * 2) * t
+                local slab = add("PathSlab", Vector3.new(7, 0.4, 4),
+                        Vector3.new(0, 0.2, z), Color3.fromRGB(178, 172, 160), false, Enum.Material.Cobblestone)
+                slab.Transparency = 0.05
+        end
+
+        -- A fence around the whole garden. Posts collide, the rails do not: a
+        -- solid rail would let a player walk along it, which looks like floating.
+        local halfWidth = (Config.Garden.Columns * spacing) / 2 + spacing
+        local halfDepth = (Config.Garden.TotalPlots / Config.Garden.Columns) * spacing / 2 + spacing
+        local postEvery = 8
+        for x = -halfWidth, halfWidth, postEvery do
+                add("FencePost", Vector3.new(0.8, 5, 0.8), Vector3.new(x, 2.5, -halfDepth), Color3.fromRGB(196, 168, 130), true, Enum.Material.WoodPlanks)
+                add("FencePost", Vector3.new(0.8, 5, 0.8), Vector3.new(x, 2.5, halfDepth), Color3.fromRGB(196, 168, 130), true, Enum.Material.WoodPlanks)
+        end
+        for z = -halfDepth, halfDepth, postEvery do
+                add("FencePost", Vector3.new(0.8, 5, 0.8), Vector3.new(-halfWidth, 2.5, z), Color3.fromRGB(196, 168, 130), true, Enum.Material.WoodPlanks)
+                add("FencePost", Vector3.new(0.8, 5, 0.8), Vector3.new(halfWidth, 2.5, z), Color3.fromRGB(196, 168, 130), true, Enum.Material.WoodPlanks)
+        end
+        add("FenceRail", Vector3.new(halfWidth * 2, 0.6, 0.6), Vector3.new(0, 3.6, -halfDepth), Color3.fromRGB(206, 180, 142), false, Enum.Material.WoodPlanks)
+        add("FenceRail", Vector3.new(halfWidth * 2, 0.6, 0.6), Vector3.new(0, 3.6, halfDepth), Color3.fromRGB(206, 180, 142), false, Enum.Material.WoodPlanks)
+        add("FenceRail", Vector3.new(0.6, 0.6, halfDepth * 2), Vector3.new(-halfWidth, 3.6, 0), Color3.fromRGB(206, 180, 142), false, Enum.Material.WoodPlanks)
+        add("FenceRail", Vector3.new(0.6, 0.6, halfDepth * 2), Vector3.new(halfWidth, 3.6, 0), Color3.fromRGB(206, 180, 142), false, Enum.Material.WoodPlanks)
+
+        -- Scattered greenery outside the fence. Placed from the fixed stream, so
+        -- the same tree is at the same coordinate on every boot.
+        for _ = 1, 22 do
+                local angle = rand() * math.pi * 2
+                local radius = halfWidth + 12 + rand() * 60
+                local x = math.cos(angle) * radius
+                local z = math.sin(angle) * radius
+                tree(x, z, 0.8 + rand() * 0.6)
+        end
+        for _ = 1, 18 do
+                local angle = rand() * math.pi * 2
+                local radius = halfWidth + 4 + rand() * 20
+                bush(math.cos(angle) * radius, math.sin(angle) * radius, 0.7 + rand() * 0.5)
+        end
+        -- Flowers inside the fence, kept clear of the plot cells so they never
+        -- hide a crop.
+        for _ = 1, 40 do
+                local x = (rand() - 0.5) * halfWidth * 1.8
+                local z = (rand() - 0.5) * halfDepth * 1.8
+                local onPlot = math.abs(x) < (Config.Garden.Columns * spacing) / 2 + 6
+                        and math.abs(z) < halfDepth - spacing
+                if not onPlot then
+                        flower(x, z)
+                end
+        end
+
+        return count
+end
+
 -- Build the whole world and return the root plus the plot handles, in index
 -- order, so the caller can address plot N without searching.
 function World.build(unlocked: number): (any, { PlotHandle })
         local root = Instance.new("Model")
         root.Name = "GardenWorld"
 
-        local ground = part("Ground", Vector3.new(400, 4, 400), Vector3.new(0, -2, 0), Color3.fromRGB(96, 132, 72), true)
+        local ground = part("Ground", Vector3.new(400, 4, 400), Vector3.new(0, -2, 0), Color3.fromRGB(96, 132, 72), true, Enum.Material.Grass)
         ground.Parent = root
+
+        buildScenery(root)
 
         -- The spawn point. Without one the engine has nowhere defined to place a
         -- joining character and drops it at the origin, which on this map is
