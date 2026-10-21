@@ -34,19 +34,136 @@
     "material_contradiction_or_uncertainty": true
   },
   "current_reflection": {
+    "reflection_id": "REFLECTION_2026-10-21_PC1_OPEN_EVIDENCE_AND_MISSING_TARGET",
+    "timestamp_utc": "2026-10-21T17:49:58Z",
+    "timestamp_local": "NOT RECORDED — ห้ามเดาเวลา",
+    "trigger": "TASK_FAILURE_AND_TARGET_NOT_FOUND",
+    "observed_state": "The 'AX PC1 Roblox Open' workflow failed its interactive open/visual-capture phase on every run with OPEN_EVIDENCE_MISSING and PNG_COUNT=0, which had been read as a Studio or environment fault. Reading the run's own log showed the opposite: the script ran the smoke test, entered Play mode and captured 9 PNGs, then threw while serialising its result. Separately, a request to upgrade an existing Counter-Strike style Roblox FPS named 'beachline' was found to have no target: it exists in no branch, no workspace path, no registry, no org repository and no published Roblox experience.",
+    "claims_reviewed": [
+      {
+        "claim": "PC1 open phase fails because Studio or the environment is at fault",
+        "classification": "INFERENCE",
+        "verification": "REJECTED"
+      },
+      {
+        "claim": "The open script throws while building its evidence object",
+        "classification": "EXECUTED_RESULT",
+        "verification": "PASS"
+      },
+      {
+        "claim": "The smoke test aborted at Lighting.Technology and skipped 4 checks",
+        "classification": "EXECUTED_RESULT",
+        "verification": "PASS"
+      },
+      {
+        "claim": "The garden build is green across all suites",
+        "classification": "EXECUTED_RESULT",
+        "verification": "PASS"
+      },
+      {
+        "claim": "A Roblox FPS project named beachline exists",
+        "classification": "FACT",
+        "verification": "NOT FOUND"
+      }
+    ],
+    "evidence_checked": [
+      {
+        "source": "C:\\AX-Build\\open-run.log",
+        "detail": "FOCUS_TITLE set, SEND_F5, CAPTURE 1-5, STUDIO_ALIVE=True, CAPTURE_COUNT=5, then WRAPPER_CAUGHT: Argument types do not match at pc1-roblox-open.ps1:237"
+      },
+      {
+        "source": "PowerShell 5.1 reproduction on PC1",
+        "detail": "@() on List[object] and List[string] throws 'Argument types do not match'; .ToArray() and ForEach-Object both succeed"
+      },
+      {
+        "source": "pc1-garden-smoke.luau log",
+        "detail": "22 markers printed, then 'The current thread cannot read Technology (lacking capability RobloxScript)'; ground, collision and spawn checks absent"
+      },
+      {
+        "source": "scripts/test-roblox.sh",
+        "detail": "666 checks passed, 0 failed across unit, runtime, integration, wiring, lighting and garden suites"
+      },
+      {
+        "source": "GitHub Actions run 39639685554",
+        "detail": "failure at step 'Wait for the open to finish' with NO_SMOKE_LOG, a different and later failure than before the fix"
+      },
+      {
+        "source": "games.roblox.com/v2/users/11825689233/games",
+        "detail": "only 'AX Garden Legends' published; Roblox-wide search for 'beachline' returns no results"
+      }
+    ],
+    "conflicts_found": [
+      "The failure name OPEN_EVIDENCE_MISSING pointed at Studio, while the log showed the capture step had already succeeded.",
+      "SMOKE_DETAIL=22 checks passed conflicted with the 4 checks that never ran."
+    ],
+    "corrections_made": [
+      "Replaced the false environment diagnosis with the actual serialisation throw.",
+      "Converted the capture and notes lists with .ToArray() in pc1-roblox-open.ps1.",
+      "Wrapped the Lighting.Technology read in pcall so the smoke test cannot abort partway and cannot report a short green list as a pass.",
+      "Restored the intended commit message after a stale /tmp message file amended onto correct content, and verified it with git log -1 --format=%B.",
+      "Reported that beachline could not be found instead of inventing a substitute project."
+    ],
+    "lessons": [
+      "A check that reports a count must also know how many it meant to run; a short list of green checks is the failure mode, not a red one.",
+      "A script that finishes its work and dies serialising the result looks identical from outside to one that did no work; read the run log before blaming the subject of the evidence.",
+      "PowerShell 5.1 @() throws on a generic List; use .ToArray().",
+      "A commit message file is not durable state; verify the committed message, not the file you intended to use.",
+      "Confirm a named target exists before undertaking to modify it."
+    ],
+    "state_changes": [
+      "pc1-roblox-open.ps1 and pc1-garden-smoke.luau fixed and pushed as aadbca7.",
+      "AGENTS.md gained a 'Reviewing your own work' section carrying these lessons (74026f2).",
+      "Garden upgrade work paused on K's instruction.",
+      "Beachline FPS upgrade BLOCKED pending the project location."
+    ],
+    "save_point_id": "74026f2c3c2f2b410f9b3f72bf686c69c34dd799",
+    "verification_status": "PARTIAL — fixes verified locally and on PC1; the CI open phase still fails later at NO_SMOKE_LOG and is unresolved",
+    "provenance": [
+      "C:\\AX-Build\\open-run.log",
+      "AX_PC_CONTROL/pc1-roblox-open.ps1",
+      "AX_PC_CONTROL/pc1-garden-smoke.luau",
+      "scripts/test-roblox.sh",
+      "GitHub Actions run 39639685554",
+      "games.roblox.com/v2/users/11825689233/games",
+      "git commit 74026f2"
+    ]
+  },
+  "acceptance_gate": "CONTINUOUS_REFLECTION_VERIFIED; MASTER_COMPANY_STORAGE_VERIFIED",
+  "previous_reflection": {
     "reflection_id": "REFLECTION_2026-09-03_CANONICAL_FILE_ID_VERIFICATION",
     "timestamp_utc": "NOT RECORDED — ห้ามเดาเวลา",
     "timestamp_local": "NOT RECORDED — ห้ามเดาเวลา",
     "trigger": "CANONICAL_FILE_ID_MANIFEST_ACCEPTANCE",
     "observed_state": "Canonical A Master Brain File ID manifest was populated with five durable logical IDs and exact content hashes. GitHub Actions run 33707158558 passed runtime unit, runtime integration, fresh-process rehydration, two-runtime portability, source-of-truth conflict, File ID Persistence, File ID Manifest Builder, Continuous Reflection, evidence write-back, restart recovery, authoritative state write-back, interruption/resume, and Windows prerequisite checks.",
     "claims_reviewed": [
-      {"claim":"Canonical File ID manifest contains five durable logical IDs","classification":"EXECUTED_RESULT","verification":"PASS"},
-      {"claim":"Canonical file content hashes satisfy File ID verification","classification":"EXECUTED_RESULT","verification":"PASS"},
-      {"claim":"A Master Brain storage continuity gate can move to VERIFIED","classification":"EXECUTED_RESULT","verification":"PASS"}
+      {
+        "claim": "Canonical File ID manifest contains five durable logical IDs",
+        "classification": "EXECUTED_RESULT",
+        "verification": "PASS"
+      },
+      {
+        "claim": "Canonical file content hashes satisfy File ID verification",
+        "classification": "EXECUTED_RESULT",
+        "verification": "PASS"
+      },
+      {
+        "claim": "A Master Brain storage continuity gate can move to VERIFIED",
+        "classification": "EXECUTED_RESULT",
+        "verification": "PASS"
+      }
     ],
     "evidence_checked": [
-      {"source":"GitHub Actions","run_id":33707158558,"workflow":"AX Control Hub Tests","status":"SUCCESS"},
-      {"source":"AX_MASTER_BRAIN/FILE_ID_MANIFEST.json","entries":5,"status":"PERSISTED"}
+      {
+        "source": "GitHub Actions",
+        "run_id": 33707158558,
+        "workflow": "AX Control Hub Tests",
+        "status": "SUCCESS"
+      },
+      {
+        "source": "AX_MASTER_BRAIN/FILE_ID_MANIFEST.json",
+        "entries": 5,
+        "status": "PERSISTED"
+      }
     ],
     "conflicts_found": [],
     "corrections_made": [
@@ -72,5 +189,8 @@
       "AX_MASTER_BRAIN/FILE_ID_MANIFEST.json"
     ]
   },
-  "acceptance_gate": "CONTINUOUS_REFLECTION_VERIFIED; MASTER_COMPANY_STORAGE_VERIFIED"
+  "reflection_history": [
+    "REFLECTION_2026-09-03_CANONICAL_FILE_ID_VERIFICATION",
+    "REFLECTION_2026-10-21_PC1_OPEN_EVIDENCE_AND_MISSING_TARGET"
+  ]
 }
