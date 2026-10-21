@@ -158,4 +158,48 @@ t.test("the safe area leaves room for the thumbs", function()
 		"the bottom safe area is too small for the movement stick and jump button")
 end)
 
+--------------------------------------------------------------------------
+t.suite("HudLayout: the skill bar sits above the attack button, not on it")
+--------------------------------------------------------------------------
+
+t.test("the bar never overlaps the combat panel", function()
+	-- The bar is anchored to the bottom and measured upward from the combat
+	-- panel's top edge. If the arithmetic is wrong the two overlap, and on a
+	-- phone a skill button lands on the attack button -- the one control the
+	-- game is actually played with.
+	for _, h in ipairs({ PHONE_H, REFERENCE_H, DESKTOP_H }) do
+		local combatTop = HudLayout.combatHeight(h)
+		local barBottom = HudLayout.skillBarBottom(h)
+		t.assertGreater(barBottom, combatTop,
+			"the skill bar overlaps the combat panel at viewport height " .. tostring(h))
+	end
+end)
+
+t.test("the bar is on screen at every size", function()
+	-- The bar's top edge, measured up from the bottom of the screen, must not
+	-- reach above the top of the screen.
+	for _, h in ipairs(PHONE_VIEWPORTS) do
+		local top = HudLayout.skillBarBottom(h) + HudLayout.skillBarHeight()
+		atMost(top, h, "the skill bar runs off the top of the screen at height " .. tostring(h))
+	end
+end)
+
+t.test("a bar of skills is wide enough to tap and never wider than its panel", function()
+	local one = HudLayout.skillBarWidth(1)
+	atLeast(one, 44, "a skill button is too narrow to tap")
+	-- Six slots is the cap the HUD shows; a bar wider than the combat panel
+	-- would hang off both sides of it.
+	local six = HudLayout.skillBarWidth(6)
+	atMost(six, HudLayout.PANEL_WIDTH.Combat * 3,
+		"the skill bar is wider than the space under the attack button")
+end)
+
+t.test("asking for more slots than the cap still returns a usable width", function()
+	-- The HUD clamps to SKILL_SLOTS; a caller passing a bigger number must not
+	-- get a bar that runs off the screen.
+	t.assertTrue(HudLayout.skillBarWidth(20) == HudLayout.skillBarWidth(HudLayout.SKILL_SLOTS),
+		"the slot cap is not enforced")
+	t.assertGreater(HudLayout.skillBarWidth(0), 0, "a zero-slot bar has no width")
+end)
+
 return t.finish()

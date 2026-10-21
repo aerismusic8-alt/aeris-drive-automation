@@ -160,7 +160,7 @@ end
 -- module existed; the compact form drops the title and tightens the gaps so the
 -- four buttons fit above a phone's bottom edge.
 HudLayout.COMBAT_WIDE_HEIGHT = 286
-HudLayout.COMBAT_COMPACT_HEIGHT = 232
+HudLayout.COMBAT_COMPACT_HEIGHT = 176
 
 function HudLayout.combatHeight(viewportHeight: number): number
 	if HudLayout.isShort(viewportHeight) then
@@ -190,6 +190,39 @@ function HudLayout.centredTop(panelHeight: number, viewportHeight: number): numb
 	local lowest = math.max(highest, viewportHeight - HudLayout.SAFE_BOTTOM - panelHeight)
 	local centred = (viewportHeight - panelHeight) / 2
 	return math.max(highest, math.min(centred, lowest))
+end
+
+-- The skill bar: the row of learned skills a player can tap mid-fight.
+--
+-- Skills existed but could only be cast from the character sheet, which means
+-- opening a menu while something is hitting you. On a phone that is not a
+-- rotation, it is a reason to only ever press Attack. The bar puts the skills
+-- the player actually owns one tap away, above the combat panel, and it is
+-- measured here because it is a row of buttons on a screen that may be short.
+HudLayout.SKILL_BUTTON = 56
+HudLayout.SKILL_GAP = 6
+-- Most skills a player can show at once. More than six is a wall of buttons on a
+-- phone; the character sheet still lists every learned skill.
+HudLayout.SKILL_SLOTS = 6
+
+-- How wide the bar is for a given number of slots, clamped to the slot cap so it
+-- can never grow past what the combat panel can sit under.
+function HudLayout.skillBarWidth(slots: number): number
+	local n = math.max(1, math.min(slots, HudLayout.SKILL_SLOTS))
+	return n * HudLayout.SKILL_BUTTON + (n - 1) * HudLayout.SKILL_GAP
+end
+
+function HudLayout.skillBarHeight(): number
+	return HudLayout.SKILL_BUTTON
+end
+
+-- How far the bar's bottom edge sits above the bottom of the screen. It clears
+-- the combat panel by one gap, which is what stops a skill button from landing
+-- on top of the attack button on a small screen.
+function HudLayout.skillBarBottom(viewportHeight: number): number
+	local combatHeight = HudLayout.combatHeight(viewportHeight)
+	local base = viewportHeight < HudLayout.DESIGN_HEIGHT and HudLayout.SAFE_BOTTOM or 24
+	return base + combatHeight + HudLayout.SKILL_GAP
 end
 
 return HudLayout

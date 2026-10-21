@@ -341,6 +341,97 @@ t.test("the HUD is built to fit the phone screen it is on", function()
 			t.assertTrue(closeBottom <= viewportHeight,
 				"the character sheet's close button is below the phone screen at " .. closeBottom .. "px")
 		end
+		end
+end)
+
+--------------------------------------------------------------------------
+t.suite("Runtime: the skill bar puts a learned skill one tap away")
+--------------------------------------------------------------------------
+
+t.test("a skill on the bar casts on tap, without opening a menu", function()
+	local env = boot()
+	env.__load("client/init.client")
+	local clientPlayer = env.__player
+
+	-- Learn a skill on the server side, then push the state the way the server
+	-- does. The hotbar is server-built, so this is the real path: the client
+	-- draws whatever the server says the player may cast.
+	local payload = joinAndCapture(env, 12, "Caster")
+	t.assertTrue(payload ~= nil, "no payload to render")
+	if not payload then
+		return
+	end
+
+	-- Give the player a hotbar with one castable skill, which is what a
+	-- level-up produces. Without it the bar is empty and this test would pass
+	-- on a bar that never fills.
+	local skillId = (payload.hotbar and payload.hotbar[1] and payload.hotbar[1].id) or "BasicAttack"
+	payload.hotbar = { { id = skillId, spCost = 10 } }
+
+	local PlayerState = env.__replicatedRemotes:FindFirstChild("PlayerState")
+	PlayerState:FireClient(clientPlayer, payload)
+
+	local gui = clientPlayer.PlayerGui:FindFirstChild("AXArenaHUD")
+	t.assertTrue(gui ~= nil, "no HUD")
+	if not gui then
+		return
+	end
+
+	local bar = gui:FindFirstChild("SkillBar")
+	t.assertTrue(bar ~= nil, "the HUD has no skill bar")
+	if not bar then
+		return
+	end
+
+	t.assertTrue(bar.Visible, "the skill bar is hidden even though the player has a skill")
+
+	local row = bar:FindFirstChild("SkillRow")
+	t.assertTrue(row ~= nil, "the skill bar has no row")
+	if not row then
+		return
+	end
+
+	local cell = row:FindFirstChild("Skill_" .. skillId)
+	t.assertTrue(cell ~= nil, "the bar did not draw the skill the server sent")
+	if not cell then
+		return
+	end
+
+	-- Tapping the cell must reach the server's CastSkill remote. A button that
+	-- draws but does nothing is the dead menu this bar exists to replace. The
+	-- shim records what a remote was invoked with, so this reads the call the
+	-- tap actually made rather than trusting that it made one.
+	local CastSkill = env.__replicatedRemotes:FindFirstChild("CastSkill")
+	t.assertTrue(CastSkill ~= nil, "the client has no CastSkill remote")
+	if not CastSkill then
+		return
+	end
+
+	cell.Activated:Fire()
+
+	local askedFor = CastSkill.invokedWith and CastSkill.invokedWith[1]
+	t.assertTrue(askedFor ~= nil, "tapping a skill on the bar asked the server for nothing")
+	t.assertTrue(askedFor == skillId,
+		"the bar cast the wrong skill: " .. tostring(askedFor))
+end)
+
+t.test("an empty hotbar leaves no dead buttons on screen", function()
+	local env = boot()
+	env.__load("client/init.client")
+	local clientPlayer = env.__player
+	local payload = joinAndCapture(env, 13, "Newbie")
+	t.assertTrue(payload ~= nil, "no payload")
+	if not payload then
+		return
+	end
+	payload.hotbar = {}
+	local PlayerState = env.__replicatedRemotes:FindFirstChild("PlayerState")
+	PlayerState:FireClient(clientPlayer, payload)
+	local gui = clientPlayer.PlayerGui:FindFirstChild("AXArenaHUD")
+	local bar = gui and gui:FindFirstChild("SkillBar")
+	t.assertTrue(bar ~= nil, "no skill bar node")
+	if bar then
+		t.assertFalse(bar.Visible, "a new player with no skills still sees a skill bar")
 	end
 end)
 

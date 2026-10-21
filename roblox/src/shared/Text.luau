@@ -53,6 +53,28 @@ local STRINGS: { [string]: string } = {
         -- Shown while standing in the first field, which cannot kill the player.
         safeField = "สนามฝึก: ศัตรูฆ่าเราไม่ได้ เก็บเวลได้เรื่อยๆ",
 
+        -- The people in Prontera Town. Each one opens the panel named by its
+        -- `opens` field, so the label under a villager always says what tapping
+        -- them will do.
+        npcElder = "ผู้เฒ่า",
+        npcElderTitle = "ภารกิจ",
+        npcMerchant = "พ่อค้า",
+        npcMerchantTitle = "ร้านค้า",
+        npcTrainer = "ครูฝึก",
+        npcTrainerTitle = "ตัวละคร",
+        npcCaptain = "กัปตัน",
+        npcCaptainTitle = "แผนที่",
+        npcKeeper = "ผู้ดูแล",
+        npcKeeperTitle = "รางวัล",
+        npcTapToOpen = "แตะเพื่อเปิด %s",
+        npcAway = "เดินเข้าไปใกล้ๆ แล้วแตะอีกครั้ง",
+
+        -- Death has to cost something outside the training field, or the only
+        -- way to lose is to stop playing.
+        diedInField = "คุณล้มใน %s — กลับไปที่เมือง",
+        deathPenalty = "เสีย %d เหรียญจากค่าฟื้น",
+        townAfterDeath = "พักที่เมืองก่อน แล้วค่อยออกไปใหม่",
+
         -- Quest spine. One line at a time, so a new player always has a named
         -- next action instead of a field full of monsters and no instructions.
         quest = "ภารกิจ",

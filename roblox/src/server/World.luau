@@ -23,6 +23,7 @@ local ClassLook = require(Shared:WaitForChild("ClassLook"))
 local Scenery = require(Shared:WaitForChild("Scenery"))
 local Atmosphere = require(Shared:WaitForChild("Atmosphere"))
 local Text = require(Shared:WaitForChild("Text"))
+local Villagers = require(Shared:WaitForChild("Villagers"))
 
 local World = {}
 
@@ -64,6 +65,15 @@ local portalTravel: ((Player, string) -> ())? = nil
 
 function World.setPortalHandler(handler: (Player, string) -> ())
         portalTravel = handler
+end
+
+-- Set by the server: the function a villager prompt calls when a player uses it.
+-- Kept as a callback for the same reason as portalTravel, so World never has to
+-- know which panel a villager opens or how that panel is validated.
+local villagerTalk: ((Player, string) -> ())? = nil
+
+function World.setVillagerHandler(handler: (Player, string) -> ())
+        villagerTalk = handler
 end
 
 -- Floating damage numbers, keyed by player. Each player only sees their own,
@@ -479,6 +489,84 @@ local function makeMotes(parent: Instance, centre: Vector3, radius: number, acce
         emitter.Parent = volume
 end
 
+-- Build one villager: a body, a name plate, and the prompt that opens their
+-- panel. The body is deliberately simple (a torso, a head, a held marker)
+-- because it is read at a distance on a phone, and it is built from the data in
+-- `Villagers` so a new villager is a table entry, not new builder code.
+local function buildVillager(parent: Instance, centre: Vector3, def: Villagers.VillagerDef): Model
+        local model = Instance.new("Model")
+        model.Name = "Villager_" .. def.id
+
+        local offset = Villagers.positionOf(def)
+        local base = centre + Vector3.new(offset.x, 0, offset.z)
+
+        local torso = Instance.new("Part")
+        torso.Name = "Torso"
+        torso.Size = Vector3.new(3, 4.5, 2)
+        torso.Position = base + Vector3.new(0, 2.25, 0)
+        torso.Anchored = true
+        torso.Material = Enum.Material.SmoothPlastic
+        torso.Color = rgb(def.body)
+        torso.Parent = model
+
+        local head = Instance.new("Part")
+        head.Name = "Head"
+        head.Shape = Enum.PartType.Ball
+        head.Size = Vector3.new(2, 2, 2)
+        head.Position = base + Vector3.new(0, 5.6, 0)
+        head.Anchored = true
+        head.Material = Enum.Material.SmoothPlastic
+        head.Color = rgb(def.body)
+        head.Parent = model
+
+        -- A tall, thin beam in the accent colour. On a small screen the crowd of
+        -- farm beds and portals hides a plain body, and the player needs to be
+        -- able to find the quest giver without walking the whole square.
+        if def.beacon then
+                local beam = Instance.new("Part")
+                beam.Name = "Beacon"
+                beam.Size = Vector3.new(1, 26, 1)
+                beam.Position = base + Vector3.new(0, 13, 0)
+                beam.Anchored = true
+                beam.CanCollide = false
+                beam.Material = Enum.Material.Neon
+                beam.Color = rgb(def.accent)
+                beam.Transparency = 0.35
+                beam.Parent = model
+        end
+
+        -- The name plate carries both who they are and what they do, so the
+        -- player never has to guess which one opens the shop. `makeSign` returns
+        -- the label and already sets the billboard's world offset, so the two
+        -- plates are stacked by their `height` argument.
+        local plate = makeSign(torso, Text.get(def.nameKey), 6, 12, rgb(def.accent))
+        plate.TextScaled = false
+        plate.TextSize = 15
+        makeSign(torso, Text.get(def.titleKey), 4.2, 12, Color3.fromRGB(255, 255, 255))
+
+        -- The prompt is the interaction. It is attached to the torso so its
+        -- distance is measured from the villager, and it calls the same server
+        -- path a HUD button would, so a tap and a button cannot disagree.
+        local prompt = Instance.new("ProximityPrompt")
+        prompt.Name = "Talk"
+        prompt.ActionText = Text.get(def.titleKey)
+        prompt.ObjectText = Text.get(def.nameKey)
+        prompt.HoldDuration = 0
+        prompt.MaxActivationDistance = Villagers.Reach
+        prompt.RequiresLineOfSight = false
+        prompt.Parent = torso
+
+        prompt.Triggered:Connect(function(player)
+                if villagerTalk then
+                        villagerTalk(player, def.id)
+                end
+        end)
+
+        model.PrimaryPart = torso
+        model.Parent = parent
+        return model
+end
+
 -- Build the town: a safe hub with the farm plots, a spawn pad and the portals
 -- out to every field. This is where a player lands and where they respawn.
 local function buildTown(parent: Model): Model
@@ -569,6 +657,19 @@ local function buildTown(parent: Model): Model
                 table.insert(keepOut, { x = edge.X, z = edge.Z, radius = 20 })
         end
 
+        -- The villagers stand in a ring around the fountain. They are gameplay,
+        -- so their ground is reserved before the scatter runs and they are built
+        -- after the scenery, so a tree can never grow where the quest giver stands
+        -- and hide them.
+        for _, def in ipairs(Villagers.List) do
+                local offset = Villagers.positionOf(def)
+                table.insert(keepOut, {
+                        x = centre.X + offset.x,
+                        z = centre.Z + offset.z,
+                        radius = 14,
+                })
+        end
+
         -- The farm plots are gameplay, so nothing may stand on one.
         for i = 1, Config.Farm.PlotCount do
                 local angle = ((i - 1) / Config.Farm.PlotCount) * math.pi * 2
@@ -590,6 +691,15 @@ local function buildTown(parent: Model): Model
 
         buildScenery(town, "Town", centre, def.radius, keepOut)
         buildLandmarks(town, "Town", centre, def.radius, { gates = gateAngles })
+
+        -- Built last so they stand in clear ground, and counted so a test can
+        -- assert the town has people in it rather than only props.
+        local villagerRoot = Instance.new("Folder")
+        villagerRoot.Name = "Villagers"
+        villagerRoot.Parent = town
+        for _, def in ipairs(Villagers.List) do
+                buildVillager(villagerRoot, centre, def)
+        end
 
         town.Parent = parent
         return town

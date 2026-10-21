@@ -28,6 +28,8 @@ local Attributes = require("../src/shared/Attributes")
 local Classes = require("../src/shared/Classes")
 local Skills = require("../src/shared/Skills")
 local Items = require("../src/shared/Items")
+local Villagers = require("../src/shared/Villagers")
+local Death = require("../src/shared/Death")
 
 --------------------------------------------------------------------------
 t.suite("Random")
@@ -3807,5 +3809,107 @@ t.test("an unknown place falls back instead of failing", function()
         t.assertNear(fallback.density, Atmosphere.profileFor("Town").density, 0.0001, "the fallback is not the town's")
 end)
 
+t.suite("Villagers")
+
+t.test("the town has people to talk to, not only props", function()
+        t.assertGreater(Villagers.Count, 0, "the town has no villagers at all")
+end)
+
+t.test("every villager names a panel the client can actually open", function()
+        -- A villager whose `opens` is not in the known set is a body that does
+        -- nothing when a player walks up and taps it, which is the exact bug the
+        -- town started with.
+        for _, def in ipairs(Villagers.List) do
+                t.assertTrue(Villagers.opensKnown(def.opens),
+                        def.id .. " opens an unknown panel: " .. tostring(def.opens))
+        end
+end)
+
+t.test("every villager has its own name and title text", function()
+        local seenName: { [string]: boolean } = {}
+        for _, def in ipairs(Villagers.List) do
+                t.assertNotEqual(Text.get(def.nameKey), def.nameKey, def.id .. " has no name text")
+                t.assertNotEqual(Text.get(def.titleKey), def.titleKey, def.id .. " has no title text")
+                t.assertNil(seenName[def.nameKey], def.id .. " shares a name with another villager")
+                seenName[def.nameKey] = true
+        end
+end)
+
+t.test("every villager stands inside the town and clear of the others", function()
+        -- The town radius is the floor a villager stands on; outside it they would
+        -- float over the world slab, and overlapping they would read as one body.
+        local town = Config.Town
+        local placed: { { x: number, z: number } } = {}
+        for _, def in ipairs(Villagers.List) do
+                local p = Villagers.positionOf(def)
+                local dist = math.sqrt(p.x * p.x + p.z * p.z)
+                t.assertLess(dist, town.Radius, def.id .. " stands outside the town floor")
+                for _, other in ipairs(placed) do
+                        local dx = p.x - other.x
+                        local dz = p.z - other.z
+                        t.assertGreater(math.sqrt(dx * dx + dz * dz), 6,
+                                def.id .. " stands on top of another villager")
+                end
+                table.insert(placed, { x = p.x, z = p.z })
+        end
+end)
+
+t.test("a villager is reachable by walking, not only by tapping a button", function()
+        -- The prompt's reach is what makes the town walkable. If it were zero the
+        -- villager would be decoration again.
+        t.assertGreater(Villagers.Reach, 4, "villagers cannot be reached by walking up")
+end)
+
+t.suite("Death penalty")
+
+t.test("the training field never charges for a death", function()
+        -- The first field cannot kill, and if it could not charge either then the
+        -- whole risk side of the game would be imaginary.
+        local penalty = Death.penalty(10000, false)
+        t.assertFalse(penalty.charged, "the safe field charged for a death")
+        t.assertEqual(penalty.remaining, 10000, "the safe field took coins")
+end)
+
+t.test("a lethal field charges a fraction of the balance", function()
+        local penalty = Death.penalty(1000, true)
+        t.assertTrue(penalty.charged, "a lethal death cost nothing")
+        t.assertEqual(penalty.coins, 100, "the charge is not the configured percent")
+        t.assertEqual(penalty.remaining, 900, "the balance after the charge is wrong")
+end)
+
+t.test("one death can never wipe a session's savings", function()
+        -- The cap is the whole point: without it a player carrying millions loses
+        -- millions in one bad wave and has no reason to come back.
+        local penalty = Death.penalty(1e9, true)
+        t.assertEqual(penalty.coins, Config.Death.MaxCoinLoss, "the cap was not applied")
+        t.assertEqual(penalty.remaining, 1e9 - Config.Death.MaxCoinLoss, "the capped balance is wrong")
+end)
+
+t.test("a player with almost nothing keeps what they have", function()
+        -- Taking the last coins off somebody who just died is how a bad session
+        -- becomes a reason to leave.
+        local penalty = Death.penalty(Config.Death.MinCoinsToCharge - 1, true)
+        t.assertFalse(penalty.charged, "a broke player was charged")
+        t.assertEqual(penalty.remaining, Config.Death.MinCoinsToCharge - 1, "a broke player lost coins")
+end)
+
+t.test("the charge never exceeds the balance", function()
+        -- The percent floor and the cap can both misbehave on a small balance; the
+        -- balance must never go negative whatever the config says.
+        for _, coins in ipairs({ 200, 201, 499, 1000, 999999 }) do
+                local penalty = Death.penalty(coins, true)
+                t.assertLess(penalty.remaining, coins + 1, "the balance grew after a death")
+                t.assertTrue(penalty.remaining >= 0, "the balance went negative at " .. tostring(coins))
+                t.assertTrue(penalty.coins <= coins, "the charge exceeded the balance at " .. tostring(coins))
+        end
+end)
+
+t.suite("Combat defaults")
+
+t.test("the player fights, the game does not fight for them", function()
+        -- Auto-attack defaulting on is what made the game a screensaver. This test
+        -- is the one that has to fail if somebody flips it back.
+        t.assertFalse(Config.Combat.AutoAttack, "auto-attack is on by default again")
+end)
 
 return t.finish()

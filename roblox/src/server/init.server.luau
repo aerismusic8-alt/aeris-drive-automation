@@ -39,6 +39,8 @@ local Skills = require(Shared.Skills)
 local Items = require(Shared.Items)
 local Inventory = require(Shared.Inventory)
 local Text = require(Shared.Text)
+local Villagers = require(Shared.Villagers)
+local Death = require(Shared.Death)
 
 -- Remotes are created here so the client can rely on WaitForChild alone.
 local function ensureRemote(container: Instance, className: "RemoteEvent" | "RemoteFunction", name: string): Instance
@@ -86,6 +88,8 @@ local FarmState = ensureRemote(Remotes, "RemoteEvent", "FarmState") :: RemoteEve
 local WaveState = ensureRemote(Remotes, "RemoteEvent", "WaveState") :: RemoteEvent
 local PlayerState = ensureRemote(Remotes, "RemoteEvent", "PlayerState") :: RemoteEvent
 local Notify = ensureRemote(Remotes, "RemoteEvent", "Notify") :: RemoteEvent
+-- A villager was used. Carries which panel to open, for that client only.
+local OpenPanel = ensureRemote(Remotes, "RemoteEvent", "OpenPanel") :: RemoteEvent
 local CombatFx = ensureRemote(Remotes, "RemoteEvent", "CombatFx") :: RemoteEvent
 local AttackFx = ensureRemote(Remotes, "RemoteEvent", "AttackFx") :: RemoteEvent
 
@@ -1702,6 +1706,16 @@ RunService.Heartbeat:Connect(function(dt)
 			if humanoid then
 				humanoid.Health = 0
 			end
+			-- Losing in a lethal field costs coins. The training field cannot
+			-- kill, so it never reaches here with a charge to apply.
+			local penalty = Death.penalty(record.coins, not safeField)
+			if penalty.charged then
+				record.coins = penalty.remaining
+				notify(target, Text.get("deathPenalty", penalty.coins))
+			end
+			if record.field then
+				notify(target, Text.get("diedInField", Text.placeName(record.field)))
+			end
 			record.stats.deaths += 1
 			record.dirty = true
 		end
@@ -1780,6 +1794,31 @@ World.setPortalHandler(function(player: Player, placeId: string)
 	if TravelZone.OnServerInvoke then
 		TravelZone.OnServerInvoke(player, placeId)
 	end
+end)
+
+-- A villager was used. The server decides whether the player may talk to them
+-- (you have to be in town, and the villager has to exist), then tells that one
+-- client which panel to open. The panel itself is the client's business; this
+-- path only validates and routes, the same way a portal only asks for travel.
+World.setVillagerHandler(function(player: Player, villagerId: string)
+	local record = records[player.UserId]
+	if not record then
+		return
+	end
+	local def = Villagers.byId(villagerId)
+	if not def then
+		return
+	end
+	if not Villagers.opensKnown(def.opens) then
+		return
+	end
+	-- Villagers only talk in town. Standing in a field and opening the shop would
+	-- make the town pointless and let a player shop mid-fight.
+	if record.field ~= nil then
+		notify(player, Text.get("npcAway"))
+		return
+	end
+	OpenPanel:FireClient(player, { panel = def.opens, villager = def.id })
 end)
 
 -- Periodic persistence.

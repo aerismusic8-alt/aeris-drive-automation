@@ -45,8 +45,10 @@ local UseItem = Remotes:WaitForChild("UseItem") :: RemoteFunction
 local PickUpDrop = Remotes:WaitForChild("PickUpDrop") :: RemoteFunction
 local ManualAttack = Remotes:WaitForChild("ManualAttack") :: RemoteFunction
 local SetAuto = Remotes:WaitForChild("SetAuto") :: RemoteFunction
+local OpenPanel = Remotes:WaitForChild("OpenPanel") :: RemoteEvent
 
 local Hud = require(script.Hud)
+local HudLayout = Hud.Layout
 local AttackAnim = require(script.AttackAnim)
 local ItemView = require(script.ItemView)
 
@@ -127,6 +129,13 @@ local state = {
 	fieldLethal = true,
 }
 
+-- Declared here, filled in below. render() and the tab builders connect button
+-- handlers that call Intent.castSkill; those closures run on tap, but they are
+-- compiled before the table exists, so without this forward declaration they
+-- would capture the global Intent -- nil -- and every skill button would
+-- throw "attempt to index nil with 'castSkill'" when pressed.
+local Intent
+
 local function formatCoins(value: number): string
 	local text = tostring(math.floor(value))
 	local out = text:reverse():gsub("(%d%d%d)", "%1,")
@@ -198,6 +207,48 @@ local function render()
 		-- check the badge would reappear on the collapsed stats bar.
 		safeBadge.Visible = state.field ~= nil and not state.fieldLethal
 			and not Hud.isFolded(state.folded, "Stats")
+	end
+
+	-- The skill bar. It is rebuilt from the server's hotbar every render, so
+	-- what is on the bar is exactly what the server will let the player cast:
+	-- the same list the character sheet shows, moved to where a thumb can
+	-- reach it mid-fight. Rebuilding rather than diffing keeps it honest; the
+	-- bar only changes when the hotbar does, which is a level-up, not a tick.
+	local skillBar = gui:FindFirstChild("SkillBar")
+	if skillBar and skillBar:IsA("Frame") then
+		local row = skillBar:FindFirstChild("SkillRow")
+		local hotbar = state.hotbar
+		local signature = #hotbar
+		for _, skill in ipairs(hotbar) do
+			signature = signature .. ":" .. skill.id
+		end
+		if skillBar:GetAttribute("Signature") ~= signature then
+			skillBar:SetAttribute("Signature", signature)
+			if row then
+				row:ClearAllChildren()
+				local shown = math.min(#hotbar, HudLayout.SKILL_SLOTS)
+				for i = 1, shown do
+					local skill = hotbar[i]
+					local cell = Hud.button(row, "Skill_" .. skill.id, Text.skillName(skill.id),
+						UDim2.new(0, HudLayout.SKILL_BUTTON, 0, HudLayout.SKILL_BUTTON),
+						UDim2.new(0, (i - 1) * (HudLayout.SKILL_BUTTON + HudLayout.SKILL_GAP), 0, 0),
+						Hud.COLORS.gold)
+					cell.TextSize = 12
+					cell.Activated:Connect(function()
+						local ok, reason = Intent.castSkill(skill.id)
+						if not ok and reason and reason ~= "COOLDOWN" and reason ~= "NO_SP" then
+							warn("[AX Arena] cast rejected: " .. tostring(reason))
+						end
+					end)
+				end
+			end
+		end
+		-- The bar is only as wide as the skills it holds, and it only exists when
+		-- there is something to cast. An empty bar is a row of nothing over the
+		-- attack button.
+		local slots = math.max(1, math.min(#hotbar, HudLayout.SKILL_SLOTS))
+		skillBar.Size = UDim2.new(0, HudLayout.skillBarWidth(slots), 0, HudLayout.skillBarHeight())
+		skillBar.Visible = #hotbar > 0 and not state.charOpen
 	end
 
 	-- Folding is applied last, because it walks each panel's children and hides
@@ -785,7 +836,7 @@ local function invoke(remote: RemoteFunction, ...): (boolean, any, any)
 	return allowed, extra, nil
 end
 
-local Intent = {}
+Intent = {}
 
 function Intent.requestUpgrade(upgradeId: string): (boolean, string?)
 	return invoke(RequestUpgrade, upgradeId)
@@ -1106,11 +1157,31 @@ local function wireButtons()
 	local charButton = actions:WaitForChild("Character") :: TextButton
 	local tabs = charPanel:WaitForChild("Tabs")
 
-	mapButton.Activated:Connect(function()
+	-- Every panel opens through one named function, so a villager prompt and
+	-- a HUD button cannot end up showing different things.
+	local function openTravel()
 		buildTravelList(travel)
 		state.rewardsOpen = false
-		travel.Visible = not travel.Visible
-	end)
+		state.charOpen = false
+		travel.Visible = true
+		render()
+	end
+
+	local function openRewards()
+		travel.Visible = false
+		state.charOpen = false
+		state.rewardsOpen = true
+		render()
+	end
+
+	local function openCharacter()
+		travel.Visible = false
+		state.rewardsOpen = false
+		state.charOpen = true
+		render()
+	end
+
+	mapButton.Activated:Connect(openTravel)
 
 	closeTravel.Activated:Connect(function()
 		travel.Visible = false
@@ -1121,8 +1192,12 @@ local function wireButtons()
 	local rewardsPanel = gui:WaitForChild("Rewards") :: Frame
 	local closeRewards = rewardsPanel:WaitForChild("CloseRewards") :: TextButton
 	rewardsButton.Activated:Connect(function()
-		state.rewardsOpen = not state.rewardsOpen
-		render()
+		if state.rewardsOpen then
+			state.rewardsOpen = false
+			render()
+		else
+			openRewards()
+		end
 	end)
 	closeRewards.Activated:Connect(function()
 		state.rewardsOpen = false
@@ -1166,9 +1241,12 @@ local function wireButtons()
 
 	-- The character sheet: open, close, and switch tabs.
 	charButton.Activated:Connect(function()
-		state.charOpen = not state.charOpen
-		state.rewardsOpen = false
-		render()
+		if state.charOpen then
+			state.charOpen = false
+			render()
+		else
+			openCharacter()
+		end
 	end)
 
 	charClose.Activated:Connect(function()
@@ -1185,6 +1263,33 @@ local function wireButtons()
 			end)
 		end
 	end
+
+	-- A villager in town was used. The server already checked that the player
+	-- is in town and that the villager exists; this only opens the panel the
+	-- server named, through the same opener the matching button uses.
+	OpenPanel.OnClientEvent:Connect(function(payload)
+		if type(payload) ~= "table" then
+			return
+		end
+		local panel = payload.panel
+		if panel == "travel" then
+			openTravel()
+		elseif panel == "rewards" then
+			openRewards()
+		elseif panel == "character" then
+			openCharacter()
+		elseif panel == "shop" then
+			-- The shop lives in the character sheet's bag tab today; open
+			-- there rather than inventing a second shop surface.
+			state.charTab = "Bag"
+			openCharacter()
+		elseif panel == "quests" then
+			-- Quests are the tracker in the corner; a tap brings it back if
+			-- the player folded it away.
+			state.folded.QuestPanel = false
+			render()
+		end
+	end)
 
 	farmButton.Activated:Connect(onFarmTap)
 

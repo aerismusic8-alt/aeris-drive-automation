@@ -498,6 +498,38 @@ When adding a new engine API to the glue, add it to the shim too. The shim is
 deliberately not a Roblox emulator: it is the smallest thing that lets the real
 code run, and it fails loudly on anything it does not know.
 
+### A local declared below a closure is a nil global inside it
+
+The skill bar was built to put a learned skill one tap away, because casting one
+used to mean opening the character sheet mid-fight. Every button drew, the layout
+test passed, and every tap threw `attempt to index nil with 'castSkill'`.
+
+`Intent` is a local declared at the bottom of `init.client.luau`, after `render`
+and the tab builders. The closures those functions connect run on tap, but they
+are compiled where they sit, so `Intent` inside them is not the later local -- it
+is the global, which is nil. A button that draws is not a button that works, and
+nothing in a static read of the file shows the difference.
+
+`Intent` is now forward-declared at the top of the file and assigned later, which
+is the only shape that makes a closure see a table defined below it. When a
+handler in this file calls something declared further down, forward-declare it
+and check with a runtime test that actually fires the button, not just that it
+exists.
+
+### The screen can be too full for a feature that fits the design
+
+The compact combat panel was 232px of a 360px phone screen, stacked. That was
+fine until the skill bar needed the space above the attack button, and then the
+bar measured off the top of the screen at `390 > 360`. The layout suite caught
+it before a phone did.
+
+The fix was not to shrink the bar. It was to reflow the three utility toggles
+into one row, which frees 56px and still clears the 44px touch minimum. When a
+new control does not fit, look at what is already on the screen before making the
+new thing smaller. `COMBAT_COMPACT_HEIGHT` in `HudLayout.luau` is the number the
+bar's room is measured against, so it and `COMBAT_COMPACT.panelHeight` in
+`Hud.luau` must be changed together.
+
 ### Seeing the game without publishing it
 An unrated universe cannot be joined, so the live place is not a way to look at
 the code. Run the built place file on PC1 instead:

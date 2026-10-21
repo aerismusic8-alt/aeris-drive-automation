@@ -27,6 +27,7 @@ HUD = ROOT / "roblox/src/client/Hud.luau"
 CLIENT = ROOT / "roblox/src/client/init.client.luau"
 SERVER = ROOT / "roblox/src/server/init.server.luau"
 WORLD = ROOT / "roblox/src/server/World.luau"
+SHARED = ROOT / "roblox/src/shared"
 TEXT = ROOT / "roblox/src/shared/Text.luau"
 
 passed = 0
@@ -182,6 +183,66 @@ print("\nWIRING 8: a respawn revives the combatant")
 # Death clears this flag and only the spawn path sets it back. Without it a
 # player attacks until their first death and then never again.
 check("the spawn path revives the combatant", "combatant.alive = true" in server, "never reset")
+
+print("\nWIRING 8b: the town has people in it and they open real panels")
+
+# The town was a floor, a spawn pad and a ring of farm beds: nothing in the
+# world could be interacted with, so every decision was a tap in an overlay.
+# A villager that is built but never wired, or wired to a panel the client does
+# not know, is the same dead town with extra geometry.
+check(
+    "the town builds villagers",
+    "buildVillager" in world,
+    "no villager is ever built",
+)
+check(
+    "a villager prompt routes to the server",
+    "setVillagerHandler" in world and "villagerTalk" in world,
+    "the prompt does nothing",
+)
+check(
+    "the server answers a villager with a panel",
+    "setVillagerHandler" in server and "OpenPanel" in server,
+    "the server never opens a panel",
+)
+check(
+    "the client opens the panel the server named",
+    "OpenPanel.OnClientEvent" in client,
+    "the client ignores the villager",
+)
+check(
+    "villagers only talk in town",
+    "record.field ~= nil" in server,
+    "a player can shop mid-fight",
+)
+
+print("\nWIRING 8c: a death in a lethal field costs coins")
+
+# Free death made the risk side of the game imaginary. The charge has to be
+# wired into the death path, and the safe field has to stay free.
+check(
+    "death charges through the shared rule",
+    "Death.penalty(" in server,
+    "the death penalty is never applied",
+)
+check(
+    "the training field is never charged",
+    "not safeField" in server,
+    "the safe field can take coins",
+)
+check(
+    "the player is told what a death cost",
+    "deathPenalty" in server,
+    "a charge happens silently",
+)
+
+print("\nWIRING 8d: the game does not play itself")
+
+check(
+    "auto-attack is off by default",
+    "AutoAttack = false" in read(SHARED / "Config.luau"),
+    "the character fights without the player",
+)
 
 print("\nWIRING 9: the build verifier covers every module")
 
@@ -515,6 +576,59 @@ if "Combat" in widths and "Actions" in layout:
     check("the actions menu does not cover the attack button",
           combat_right < actions_left,
           f"attack button ends at {combat_right}px, menu begins at {actions_left}px")
+
+print("\nWIRING Q: a learned skill is one tap away, not behind a menu")
+
+# The character sheet had every skill behind two taps and a tab, which is where a
+# fight is lost. The bar puts the same server-built hotbar on screen. These
+# checks read both sides, because a bar drawn from a list the server never sends
+# is a row of dead buttons.
+
+check("the HUD builds a skill bar", '"SkillBar"' in hud, "no skill bar was built")
+check("the bar sits above the combat panel", "SkillBar" in hud and "Combat" in hud,
+      "the skill bar and the combat panel are not both present")
+
+check("the client fills the bar from the server hotbar",
+      "state.hotbar" in client and "SKILL_SLOTS" in client,
+      "the bar is not built from the server's hotbar")
+check("the client only draws as many skills as the bar holds",
+      "math.min(#hotbar, HudLayout.SKILL_SLOTS)" in client,
+      "the bar can overflow with more skills than it has slots")
+check("a tap on the bar casts the skill",
+      "Intent.castSkill(skill.id)" in client,
+      "a skill button on the bar does not cast")
+
+# An empty bar is a row of nothing sitting over the attack button.
+check("the bar hides when the player has no skills",
+      "skillBar.Visible = #hotbar > 0" in client,
+      "an empty skill bar is still on screen")
+
+# Intent is filled in far below render(), so the closures that cast from the bar
+# must see the forward declaration or they capture a nil global.
+check("Intent is declared before the buttons that use it",
+      re.search(r"^local Intent\s*$", client, re.MULTILINE) is not None,
+      "Intent is not forward-declared; skill buttons will index a nil global")
+check("Intent is assigned, not re-declared, later",
+      "local Intent = {}" not in client and "Intent = {}" in client,
+      "Intent is still a second local, so the closures capture the global")
+
+# The bar's room comes from the compact combat panel. If the panel grows back to
+# its stacked form the bar measures off the top of a phone screen -- which is the
+# failure the layout suite already caught once.
+check("the compact combat panel leaves room for the bar",
+      "COMBAT_COMPACT_HEIGHT = 176" in layout,
+      "the compact combat panel is tall enough to push the skill bar off a phone screen")
+
+# The bar's room is measured from COMBAT_COMPACT_HEIGHT, but the panel is built
+# to COMBAT_COMPACT.panelHeight. Two copies of one number, so they must agree or
+# the bar is placed against a panel that is not the one on screen.
+heights = [int(m) for m in re.findall(r"COMBAT_COMPACT_HEIGHT\s*=\s*(\d+)", layout)]
+built = re.search(r"local COMBAT_COMPACT = \{.*?panelHeight = (\d+),", hud, re.DOTALL)
+check("the compact panel height is written once in the layout module",
+      len(heights) == 1, f"COMBAT_COMPACT_HEIGHT is defined {len(heights)} times")
+check("the compact panel is built to the height the bar measures against",
+      built is not None and heights and int(built.group(1)) == heights[0],
+      "COMBAT_COMPACT.panelHeight and COMBAT_COMPACT_HEIGHT disagree, so the bar is placed against the wrong panel")
 
 print(f"\nWIRING: {passed} passed, {len(failures)} failed")
 for failure in failures:

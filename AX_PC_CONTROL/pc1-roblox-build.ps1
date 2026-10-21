@@ -117,7 +117,10 @@ $markers = [ordered]@{
   itemView      = 'ItemView'
   scenery       = 'Scenery'
   atmosphere    = 'Atmosphere'
+  villagers     = 'Villagers'
+  death         = 'CoinLossPercent'
   landmarks     = 'buildLandmarks'
+  skillBar      = 'SKILL_SLOTS'
 }
 $checks = [ordered]@{ sourceBlocks = $sourceBlocks }
 foreach ($k in $markers.Keys) {

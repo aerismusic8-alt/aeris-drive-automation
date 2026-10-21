@@ -82,13 +82,17 @@ local COMBAT_COLUMN = {
 		{ id = "Pickup", key = "pickup", y = 242, height = 40, size = 20, color = COLORS.green },
 	},
 }
+-- On a phone the three utility toggles share a single row. Stacked they were
+-- 232px of a 360px screen, which left no room above the attack button for
+-- the skill bar -- the bar measured off the top of the screen. One row of
+-- three still clears the 44px touch minimum and buys the bar its place.
 local COMBAT_COMPACT = {
-	panelHeight = 232,
+	panelHeight = 176,
 	rows = {
 		{ id = "Attack", key = "attackButton", y = 8, height = 68, size = 26, color = COLORS.gold },
-		{ id = "AutoAttack", key = "auto", y = 84, height = 44, size = 20, color = COLORS.disabled },
-		{ id = "AutoPickup", key = "pickup", y = 132, height = 44, size = 20, color = COLORS.disabled },
-		{ id = "Pickup", key = "pickup", y = 180, height = 44, size = 20, color = COLORS.green },
+		{ id = "AutoAttack", key = "auto", y = 84, height = 44, size = 20, color = COLORS.disabled, third = 1 },
+		{ id = "AutoPickup", key = "pickup", y = 84, height = 44, size = 20, color = COLORS.disabled, third = 2 },
+		{ id = "Pickup", key = "pickup", y = 84, height = 44, size = 20, color = COLORS.green, third = 3 },
 	},
 }
 
@@ -432,10 +436,33 @@ function Hud.build(): ScreenGui
 		combatTitle.TextColor3 = COLORS.muted
 	end
 	for _, row in ipairs(combatForm.rows) do
-		local b = button(combat, row.id, Text.get(row.key), UDim2.new(1, -24, 0, row.height),
-			UDim2.new(0, 12, 0, row.y), row.color)
+		local size = UDim2.new(1, -24, 0, row.height)
+		local position = UDim2.new(0, 12, 0, row.y)
+		if row.third then
+			-- A third of the panel, so the three toggles fit one row.
+			size = UDim2.new(1 / 3, -12, 0, row.height)
+			position = UDim2.new((row.third - 1) / 3, 8, 0, row.y)
+		end
+		local b = button(combat, row.id, Text.get(row.key), size, position, row.color)
 		b.TextSize = row.size
 	end
+
+	-- The skill bar. Skills could only be cast from the character sheet, so
+	-- using one mid-fight meant opening a menu while something was hitting
+	-- you -- which on a phone means never using one at all. The bar sits
+	-- directly above the combat panel, built empty, and the client fills it
+	-- with the skills the player has actually learned. It stays hidden until
+	-- there is at least one, so a new player sees only the attack button.
+	local skillBar = panel(gui, "SkillBar",
+		UDim2.new(0, HudLayout.skillBarWidth(1), 0, HudLayout.skillBarHeight()),
+		UDim2.new(0.5, 0, 1, -HudLayout.skillBarBottom(viewportH)), Vector2.new(0.5, 1))
+	skillBar.BackgroundTransparency = 1
+	skillBar.Visible = false
+	local skillRow = Instance.new("Frame")
+	skillRow.Name = "SkillRow"
+	skillRow.Size = UDim2.new(1, 0, 1, 0)
+	skillRow.BackgroundTransparency = 1
+	skillRow.Parent = skillBar
 
 	-- Character panel: one overlay, four tabs. Attributes, skills, job and the
 	-- bag all live here rather than on the main screen, because a phone screen
@@ -509,5 +536,8 @@ end
 -- factory are exported rather than duplicated.
 Hud.COLORS = COLORS
 Hud.button = button
+-- The client sizes the skill bar as the hotbar changes, so it needs the same
+-- arithmetic the HUD built the panel with.
+Hud.Layout = HudLayout
 
 return Hud

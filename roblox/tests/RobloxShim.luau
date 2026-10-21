@@ -349,6 +349,11 @@ for _, name in ipairs({
         "StarterPlayer", "StarterPlayerScripts", "Players", "DataStoreService",
         "RunService", "TweenService", "MarketplaceService", "Terrain",
         "Configuration", "Attachment", "Highlight", "SurfaceGui",
+        -- A villager is interacted with through a ProximityPrompt, and a hit has
+        -- a Sound. Both are modelled rather than stubbed: a prompt fires
+        -- Triggered with the player who triggered it, and a Sound remembers the
+        -- id it was given and plays it, because that is what the game reads back.
+        "ProximityPrompt", "ClickDetector", "Sound",
 }) do
         VALID_CLASSES[name] = true
 end
@@ -392,6 +397,32 @@ local function newInstance(className: string)
                 self.Size = Vector3.new(1, 1, 1)
                 self.CFrame = CFrame.new(0, 0, 0)
                 self.Position = Vector3.new(0, 0, 0)
+        end
+
+        -- A prompt is usable only if the game says so, and the interaction text
+        -- is read back by tests. Defaults match the engine's.
+        if className == "ProximityPrompt" then
+                self.Enabled = true
+                self.ActionText = ""
+                self.ObjectText = ""
+                self.HoldDuration = 0
+                self.MaxActivationDistance = 10
+                self.RequiresLineOfSight = true
+                self.KeyboardKeyCode = nil
+                self.Style = nil
+                -- Flipped by :InputHoldBegin/:InputHoldEnd in the engine. Kept
+                -- here so a test can assert a prompt was armed before it fired.
+                self.triggeredCount = 0
+        end
+
+        -- A Sound carries the id it was told to play and whether it is playing,
+        -- because the game only ever reads those two back.
+        if className == "Sound" then
+                self.SoundId = ""
+                self.Volume = 0.5
+                self.Playing = false
+                self.Looped = false
+                self.playCount = 0
         end
         return self
 end
@@ -439,6 +470,12 @@ local INSTANCE_EVENTS = {
         AncestryChanged = true,
         Destroying = true,
         AttributeChanged = true,
+        -- A ProximityPrompt fires Triggered with the player who used it; a Sound
+        -- fires Played when it starts. The game connects both, so the shim has to
+        -- hand back a Signal rather than nil.
+        Triggered = true,
+        Played = true,
+        Ended = true,
 }
 
 -- Remotes carry their own events. The client connects OnClientEvent and the
@@ -620,6 +657,49 @@ function Instance:Destroy()
         rawset(self, "children", {})
 end
 
+-- Sound:Play() in the engine starts playback and fires Played. The shim keeps
+-- the state a game reads back, and fires the signal so a listener that reacts to
+-- audio actually runs in a test.
+function Instance:Play()
+        if rawget(self, "ClassName") ~= "Sound" then
+                return
+        end
+        rawset(self, "Playing", true)
+        rawset(self, "playCount", (rawget(self, "playCount") or 0) + 1)
+        local signals = rawget(self, "signals")
+        if signals and signals.Played then
+                signals.Played:Fire()
+        end
+end
+
+function Instance:Stop()
+        if rawget(self, "ClassName") ~= "Sound" then
+                return
+        end
+        rawset(self, "Playing", false)
+        local signals = rawget(self, "signals")
+        if signals and signals.Ended then
+                signals.Ended:Fire()
+        end
+end
+
+-- A ProximityPrompt fires Triggered(player) when a player uses it. Nothing in a
+-- headless run presses the key, so tests call this directly; the game's own
+-- handler is what is being exercised either way.
+function Instance:Trigger(player)
+        if rawget(self, "ClassName") ~= "ProximityPrompt" then
+                return
+        end
+        if rawget(self, "Enabled") == false then
+                return
+        end
+        rawset(self, "triggeredCount", (rawget(self, "triggeredCount") or 0) + 1)
+        local signals = rawget(self, "signals")
+        if signals and signals.Triggered then
+                signals.Triggered:Fire(player)
+        end
+end
+
 function Instance:ClearAllChildren()
         for _, child in ipairs(rawget(self, "children")) do
                 rawset(child, "Parent", nil)
@@ -638,6 +718,26 @@ end
 
 function Instance:GetPivot()
         return rawget(self, "pivot") or CFrame.new(0, 0, 0)
+end
+
+-- Attributes: a small per-instance value store, used by the client to
+-- remember what it last drew on a panel so it does not rebuild it every
+-- frame. Reading one that was never set returns nil, as on the engine.
+function Instance:SetAttribute(name, value)
+        local attrs = rawget(self, "attributes")
+        if not attrs then
+                attrs = {}
+                rawset(self, "attributes", attrs)
+        end
+        attrs[name] = value
+end
+
+function Instance:GetAttribute(name)
+        local attrs = rawget(self, "attributes")
+        if not attrs then
+                return nil
+        end
+        return attrs[name]
 end
 
 --------------------------------------------------------------------------

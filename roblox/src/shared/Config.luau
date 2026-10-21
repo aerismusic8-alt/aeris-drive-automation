@@ -54,12 +54,31 @@ Config.Player = {
 	RespawnDelay = 4,
 }
 
--- Mobile-first combat: the player never has to tap to fight, so a session
--- works with one hand. Range is generous because the arena is small.
+-- Combat. Range is generous because the arena is small, and the attack button
+-- is one tap, so a phone session still works with one hand.
+--
+-- Auto-attack starts OFF. It used to start on, and that was the single biggest
+-- reason the game felt like a screensaver: the player joined, the character
+-- fought by itself, and the only real decision was which menu to open. A fight
+-- the player did not have to press anything for is not a fight. The toggle is
+-- still there and still one tap away, but the default has to be the version
+-- where the player is actually playing.
 Config.Combat = {
 	AttackRange = 30,
 	AttackInterval = 0.8,
-	AutoAttack = true,
+	AutoAttack = false,
+}
+
+-- Dying has to cost something, or the only way to lose is to stop playing.
+-- Charged in the fields that can kill you, never in the training field, and
+-- capped so one bad wave cannot wipe a session's progress.
+Config.Death = {
+	-- Percent of the player's coins taken on death in a lethal field.
+	CoinLossPercent = 0.1,
+	-- Never take more than this in one death, whatever the player is carrying.
+	MaxCoinLoss = 5000,
+	-- Below this balance nothing is taken, so a broke player is never stuck.
+	MinCoinsToCharge = 200,
 }
 
 Config.Economy = {
