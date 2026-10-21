@@ -23,6 +23,7 @@ on:
     paths:
       - 'AX_PC_CONTROL/pc1-roblox-open.ps1'
       - 'AX_PC_CONTROL/pc1-roblox-open-smoke.luau'
+      - 'AX_PC_CONTROL/pc1-garden-smoke.luau'
       - '.github/workflows/ax-pc1-roblox-open.yml'
 
 jobs:
