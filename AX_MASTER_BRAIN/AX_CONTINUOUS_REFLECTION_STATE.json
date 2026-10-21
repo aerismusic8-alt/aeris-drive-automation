@@ -34,6 +34,83 @@
     "material_contradiction_or_uncertainty": true
   },
   "current_reflection": {
+    "reflection_id": "REFLECTION_2026-10-21_EMBED_EXECUTION_LIFECYCLE",
+    "timestamp_utc": "2026-10-21T18:05:00Z",
+    "timestamp_local": "NOT RECORDED — ห้ามเดาเวลา",
+    "trigger": "IMPORTANT_K_DECISION",
+    "observed_state": "K asked where the autonomous engineering working method is embedded and instructed that it be embedded if absent, and reviewed on every step and continuously. Inspection found the repo already carried parts of it (AGENTS.md rules, PCSEV in AX_MASTER_STATE operating_principles, the Continuous Reflection cycle, the reporting protocol, the rehydration contract) but was missing the full lifecycle, the mandatory RESEARCH phase, the task-record schema, the ten-value state enum, the research-memory labels and the FACT/EXECUTED report format.",
+    "claims_reviewed": [
+      {
+        "claim": "The working method is fully embedded in canonical documents",
+        "classification": "INFERENCE",
+        "verification": "REJECTED"
+      },
+      {
+        "claim": "PCSEV existed as a six-stage subset",
+        "classification": "OBSERVED",
+        "verification": "PASS"
+      },
+      {
+        "claim": "The lifecycle, research phase, state enum, task schema and report format were absent",
+        "classification": "OBSERVED",
+        "verification": "PASS"
+      },
+      {
+        "claim": "AX_EXECUTION_LIFECYCLE_SPEC.md now exists and is reachable from AGENTS.md and AX_MASTER_STATE.json",
+        "classification": "EXECUTED_RESULT",
+        "verification": "PASS"
+      }
+    ],
+    "evidence_checked": [
+      {
+        "source": "AX_MASTER_BRAIN/AX_EXECUTION_LIFECYCLE_SPEC.md",
+        "detail": "created; 12 sections; binds to the other canonical docs"
+      },
+      {
+        "source": "AX_MASTER_BRAIN/AX_MASTER_STATE.json",
+        "detail": "execution_lifecycle key added after continuous_reflection; re-parsed as valid JSON"
+      },
+      {
+        "source": "AGENTS.md",
+        "detail": "mandatory-method paragraph added at the top of the working-rules section that the harness loads every session"
+      },
+      {
+        "source": "AX_CONTINUOUS_REFLECTION_SPEC.md and AX_MASTER_BRAIN_SPEC.md",
+        "detail": "cross-references added so WRITE-BACK resolves to reflection"
+      }
+    ],
+    "conflicts_found": [
+      "Two task registries coexist: AKATH_CORE/CANONICAL_TASK_REGISTRY.json (22 tasks) and AX_MASTER_BRAIN/AX_MASTER_TASK_REGISTRY_v2.json (10 tasks). The lifecycle spec does not choose between them; it defers to TASK_REPORTING_PROTOCOL.md. Surfaced, not resolved.",
+      "The lifecycle state enum differs from the status values in the registries (DONE/IN_PROGRESS/PENDING/OVERDUE/SUPERSEDED). The lifecycle states apply to the operational envelope; registry status remains authoritative for reporting. Surfaced, not silently merged."
+    ],
+    "corrections_made": [
+      "Embedded the missing lifecycle, research phase, state enum, task-record schema, research-memory labels and report format as a canonical spec.",
+      "Wired the spec into the always-loaded AGENTS.md and into AX_MASTER_STATE.json so rehydration finds it.",
+      "Encoded 'review every time and continuously' as a standing obligation with WRITE-BACK on every material step."
+    ],
+    "lessons": [
+      "A method that is only stated in chat is not embedded; it must live in a document the next session loads automatically.",
+      "When a new canonical document is added, register it in AX_MASTER_STATE.json and cross-reference it from the neighbouring specs, or rehydration will not find it.",
+      "Two registries and two status vocabularies already coexist here; record such conflicts rather than silently picking a winner."
+    ],
+    "state_changes": [
+      "AX_EXECUTION_LIFECYCLE_SPEC.md created.",
+      "AGENTS.md working-rules section now mandates the lifecycle and the report format.",
+      "AX_MASTER_STATE.json gained execution_lifecycle.",
+      "AX_CONTINUOUS_REFLECTION_SPEC.md and AX_MASTER_BRAIN_SPEC.md cross-reference it."
+    ],
+    "save_point_id": "PENDING_COMMIT",
+    "verification_status": "PENDING — files written; commit and path checks outstanding",
+    "provenance": [
+      "AX_MASTER_BRAIN/AX_EXECUTION_LIFECYCLE_SPEC.md",
+      "AGENTS.md",
+      "AX_MASTER_BRAIN/AX_MASTER_STATE.json",
+      "AX_MASTER_BRAIN/AX_CONTINUOUS_REFLECTION_SPEC.md",
+      "AX_MASTER_BRAIN/AX_MASTER_BRAIN_SPEC.md"
+    ]
+  },
+  "acceptance_gate": "CONTINUOUS_REFLECTION_VERIFIED; MASTER_COMPANY_STORAGE_VERIFIED",
+  "previous_reflection": {
     "reflection_id": "REFLECTION_2026-10-21_PC1_OPEN_EVIDENCE_AND_MISSING_TARGET",
     "timestamp_utc": "2026-10-21T17:49:58Z",
     "timestamp_local": "NOT RECORDED — ห้ามเดาเวลา",
@@ -128,69 +205,9 @@
       "git commit 74026f2"
     ]
   },
-  "acceptance_gate": "CONTINUOUS_REFLECTION_VERIFIED; MASTER_COMPANY_STORAGE_VERIFIED",
-  "previous_reflection": {
-    "reflection_id": "REFLECTION_2026-09-03_CANONICAL_FILE_ID_VERIFICATION",
-    "timestamp_utc": "NOT RECORDED — ห้ามเดาเวลา",
-    "timestamp_local": "NOT RECORDED — ห้ามเดาเวลา",
-    "trigger": "CANONICAL_FILE_ID_MANIFEST_ACCEPTANCE",
-    "observed_state": "Canonical A Master Brain File ID manifest was populated with five durable logical IDs and exact content hashes. GitHub Actions run 33707158558 passed runtime unit, runtime integration, fresh-process rehydration, two-runtime portability, source-of-truth conflict, File ID Persistence, File ID Manifest Builder, Continuous Reflection, evidence write-back, restart recovery, authoritative state write-back, interruption/resume, and Windows prerequisite checks.",
-    "claims_reviewed": [
-      {
-        "claim": "Canonical File ID manifest contains five durable logical IDs",
-        "classification": "EXECUTED_RESULT",
-        "verification": "PASS"
-      },
-      {
-        "claim": "Canonical file content hashes satisfy File ID verification",
-        "classification": "EXECUTED_RESULT",
-        "verification": "PASS"
-      },
-      {
-        "claim": "A Master Brain storage continuity gate can move to VERIFIED",
-        "classification": "EXECUTED_RESULT",
-        "verification": "PASS"
-      }
-    ],
-    "evidence_checked": [
-      {
-        "source": "GitHub Actions",
-        "run_id": 33707158558,
-        "workflow": "AX Control Hub Tests",
-        "status": "SUCCESS"
-      },
-      {
-        "source": "AX_MASTER_BRAIN/FILE_ID_MANIFEST.json",
-        "entries": 5,
-        "status": "PERSISTED"
-      }
-    ],
-    "conflicts_found": [],
-    "corrections_made": [
-      "Corrected an initial manifest hash error where Git blob SHAs had been placed in content_sha256 fields.",
-      "Replaced them with SHA-256 content hashes and re-ran acceptance tests."
-    ],
-    "lessons": [
-      "GitHub blob SHA values are not interchangeable with file content SHA-256 values.",
-      "Material master-state changes require manifest regeneration so canonical content hashes stay synchronized.",
-      "Acceptance evidence must come from the workflow that executes the exact current branch state."
-    ],
-    "state_changes": [
-      "Canonical File ID manifest persisted and verified.",
-      "File ID Persistence moved to VERIFIED.",
-      "MASTER_COMPANY_STORAGE moved to VERIFIED.",
-      "File ID Persistence task moved to COMPLETED with verified acceptance evidence."
-    ],
-    "save_point_id": "NOT RECORDED — ห้ามเดาเวลา",
-    "verification_status": "VERIFIED",
-    "provenance": [
-      "GitHub Actions run 33707158558",
-      "AX_MASTER_BRAIN/AX_CONTINUOUS_REFLECTION_SPEC.md",
-      "AX_MASTER_BRAIN/FILE_ID_MANIFEST.json"
-    ]
-  },
   "reflection_history": [
     "REFLECTION_2026-09-03_CANONICAL_FILE_ID_VERIFICATION",
-    "REFLECTION_2026-10-21_PC1_OPEN_EVIDENCE_AND_MISSING_TARGET"
+    "REFLECTION_2026-10-21_PC1_OPEN_EVIDENCE_AND_MISSING_TARGET",
+    "REFLECTION_2026-10-21_EMBED_EXECUTION_LIFECYCLE"
   ]
 }

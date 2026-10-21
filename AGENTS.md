@@ -4,8 +4,18 @@ Repository-specific notes for agents working in this repo.
 
 ## How to work on this repository
 
-Five rules, each one paid for by a mistake made here. They are not style
-preferences; each has a failure behind it.
+**The working method is mandatory, not advisory.** The canonical form lives in
+`AX_MASTER_BRAIN/AX_EXECUTION_LIFECYCLE_SPEC.md`. Read it before starting work
+and follow it: `INSPECT -> DEFINE -> RESEARCH -> ROOT CAUSE -> PLAN -> EXECUTE ->
+TEST -> VERIFY -> EVIDENCE -> WRITE-BACK -> NEXT ACTION`. Every material step
+ends with a review write-back (section 7 of that spec), and every work report
+uses the `FACT / EXECUTED / EVIDENCE / VERIFIED / CURRENT STATE / BLOCKER /
+NEXT ACTION` format. Reviewing the method, the principles and the experience is
+continuous, not a closing step.
+
+Five rules below are the repository-specific form of that method, each one paid
+for by a mistake made here. They are not style preferences; each has a failure
+behind it.
 
 **1. Measure, do not assume.** Before reporting what a credential, an endpoint or
 a permission can do, ask the live system and report what came back. A key was

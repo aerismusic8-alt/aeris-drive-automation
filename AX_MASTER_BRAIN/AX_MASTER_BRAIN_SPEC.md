@@ -39,6 +39,14 @@ The brain may preserve:
 8. Verified outcomes and business experience.
 9. Reusable constraints and operating principles.
 
+## Working method
+
+`AX_MASTER_BRAIN/AX_EXECUTION_LIFECYCLE_SPEC.md` is the canonical working method:
+`INSPECT -> DEFINE -> RESEARCH -> ROOT CAUSE -> PLAN -> EXECUTE -> TEST -> VERIFY
+-> EVIDENCE -> WRITE-BACK -> NEXT ACTION`. It extends the PCSEV operating
+principle and is enforced per repository by `AGENTS.md`. Its WRITE-BACK phase is
+the Continuous Reflection layer, so every material step leaves a lesson here.
+
 ## Rehydration
 
 `START → LOAD AKATH/AX STATE → LOAD TASK REGISTRY → LOAD EVIDENCE/VERIFICATION → LOAD A MASTER BRAIN KNOWLEDGE/EXPERIENCE → RESOLVE CONFLICTS → RECONSTRUCT AX CONTEXT → VERIFY → CONTINUE`
