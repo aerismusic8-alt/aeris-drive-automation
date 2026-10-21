@@ -1279,3 +1279,38 @@ the bug that mattered was at the call site: `Hud.luau` passed only the width.
 A test of the pure function alone would have passed on the broken build, which
 is why the reintroduction check now covers the landscape case against the real
 client rather than the arithmetic.
+
+### PC1 screenshots come back stale, so do not read them as a frozen game
+
+After the fixes above were published as version 25, the game was relaunched on
+PC1 and every desktop capture returned an identical frame, which reads as "the
+game is still frozen". It is not. Three checks say the client is running and
+drawing:
+
+* `Get-Process RobloxPlayerBeta` reports `Responding=True` and its CPU climbs by
+  about 2.1s over 6s, which is a client rendering at roughly a third of a core.
+  A hung client stops accruing CPU.
+* The window is foreground and `query session` reports the console session
+  `Active`.
+* The player log runs to 738s with no `LoadCharacter`, `Respawn` or death line,
+  and a respawn count of zero. The broken build respawned the player repeatedly,
+  so the absence of that line is the difference between the two builds.
+
+The capture path is what is broken: `Snapshot` and the window capture both
+return the same pixels no matter what changes on screen. The console session has
+one `1600x900` display attached and reports `OK`, so this is not a headless
+display; it looks like the desktop compositor is not being updated while no RDP
+client is connected, even though the console session is nominally active.
+
+Practical consequences:
+
+* Do not diagnose "is the game running" from a screenshot on PC1. Use the CPU
+  delta and the player log instead.
+* Keyboard input sent through the `Shell` tool does not reach the game, because
+  the Shell runs in a non-interactive session. Use the `Shortcut`, `Click` and
+  `Move` tools, which run in the interactive session. Note that `Shortcut` takes
+  `keys` as a string, not a list.
+* A visual check of movement still needs a real display. The layout and world
+  behaviour are covered by the suites, which is what the reintroduction check
+  exists to guarantee, but a screenshot of the character walking remains
+  unverified on this machine.
