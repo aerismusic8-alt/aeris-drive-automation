@@ -64,23 +64,30 @@ echo "PUBLISH_RESPONSE=$BODY"
 
 if [ "$HTTP_CODE" != "200" ]; then
   echo "PUBLISH=FAILED"
-  # 403 is the one failure with a known, fixed cause: the key does not carry
-  # universe-places:write. Nothing else on this endpoint returns 403.
+  # 403 is the one failure with a known, fixed cause, but the message decides
+  # which cause. A key has two independent locks:
   #
-  # It is worth spelling out because no probe can catch it earlier. This is the
-  # only endpoint that uses this scope and it is a POST, so there is no read
-  # call that shares the scope and could report it in advance. Publishing is
-  # the test.
+  #   "Scope not authorized"     -> the key lacks universe-places:write.
+  #   "Resources not authorized" -> the scope is present but the key's target
+  #                                 restrictions do not include this experience.
   #
-  # Editing a key's permissions can also drop this scope without any warning,
-  # which is how it went missing here: the key gained other scopes and lost the
-  # one that ships the game.
+  # They are worth telling apart because the fixes are in different screens and
+  # doing one when the other is missing changes nothing. No probe catches either
+  # in advance: this POST is the only endpoint that uses the scope, so publishing
+  # is the test.
   if [ "$HTTP_CODE" = "403" ]; then
-    echo "PUBLISH_DIAGNOSIS=key_lacks_universe-places:write"
-    echo "PUBLISH_FIX_1=Creator Dashboard > Open Cloud > API Keys > edit the key used by ROBLOX_API_KEY"
-    echo "PUBLISH_FIX_2=Access Permissions: add API system 'universe-places'"
-    echo "PUBLISH_FIX_3=For that system, tick the 'Write' operation for this experience"
-    echo "PUBLISH_FIX_4=Keep 'Restrict by Experience' on, with this experience selected"
+    if printf '%s' "$BODY" | grep -qi "Resources not authorized"; then
+      echo "PUBLISH_DIAGNOSIS=key_experience_restrictions_exclude_this_place"
+      echo "PUBLISH_FIX_1=Creator Dashboard > Open Cloud > API Keys > edit the key used by ROBLOX_API_KEY"
+      echo "PUBLISH_FIX_2=Experience Restrictions: add this experience, or drop the restriction"
+      echo "PUBLISH_FIX_3=An alternate key scoped to this experience works too; point the workflow at it"
+    else
+      echo "PUBLISH_DIAGNOSIS=key_lacks_universe-places:write"
+      echo "PUBLISH_FIX_1=Creator Dashboard > Open Cloud > API Keys > edit the key used by ROBLOX_API_KEY"
+      echo "PUBLISH_FIX_2=Access Permissions: add API system 'universe-places'"
+      echo "PUBLISH_FIX_3=For that system, tick the 'Write' operation for this experience"
+      echo "PUBLISH_FIX_4=Keep 'Restrict by Experience' on, with this experience selected"
+    fi
   fi
   exit 4
 fi

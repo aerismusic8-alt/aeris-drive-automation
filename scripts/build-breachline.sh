@@ -50,4 +50,3 @@ trap 'rm -rf "$STAGE"' EXIT
 
 echo "BUILD_PLACE=$OUT"
 echo "BUILD_BYTES=$(wc -c < "$OUT")"
-# retested 2026-10-21T20:47:33Z after the scope grant

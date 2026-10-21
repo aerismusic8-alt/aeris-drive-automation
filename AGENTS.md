@@ -1100,6 +1100,44 @@ Access Permissions and tick **Write** for the selected experience.
 After a key edit, re-run the pipeline before believing anything else about it.
 The measured table above is a snapshot, and a key edit invalidates it.
 
+### A key's resources are a second, quieter lock than its scopes
+
+The garden publishes. Breachline does not, and both use the same key. The
+garden POST returns `{"versionNumber":27}`; the Breachline POST returns 403
+`{"errors":[{"code":0,"message":"Resources not authorized."}]}`. Same key, same
+scope, same endpoint, same minute.
+
+That is the tell: `Resources not authorized` is not a scope failure. A scope
+failure says `Scope not authorized` and means the tick is missing. This one says
+the scope is present but does not reach the resource asked for. A key has two
+independent limitations, and the one that bit here is the second:
+
+- **Scopes** decide which operations the key may perform at all.
+- **Target restrictions** decide which universes and places those operations may
+  touch. "Restrict by Experience" narrows the key to the experiences selected
+  when the key was created.
+
+The key was built for the garden, so the garden is what is selected. Breachline
+lives in its own universe (10772257179, place 136310542172942) and is outside
+that selection, which is why a scope the key provably has does nothing for it.
+
+Two things follow:
+
+- A 403 with "Resources not authorized" must send you to the key's resource
+  list, not its permission list. Adding `universe-places:write` again would
+  change nothing, because it is already there.
+- The fix is to add Breachline's experience to the key's restrictions. Creator
+  Dashboard > Open Cloud > API Keys > edit the key used by `ROBLOX_API_KEY` >
+  Experience Restrictions > add **Breachline: Two Sites**, keeping the garden
+  selected as well. Or make a second key scoped to Breachline and use it for
+  `breachline/**`; that is the cleaner option if the two games are ever shipped
+  by different people.
+
+The publishing script already distinguishes the two 403s and prints the fix for
+the scope case. It cannot print the resource case from the response alone, so
+this note is the map: a 403 whose message says `Resources not authorized` is the
+restrictions, and a 403 whose message says `Scope not authorized` is the ticks.
+
 ### A name is not enough; the universe must be public
 
 Setting `displayName` succeeded and was confirmed by read-back, and the public
