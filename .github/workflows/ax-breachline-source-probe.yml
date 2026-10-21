@@ -1,0 +1,48 @@
+name: AX Breachline Source Probe
+
+# Breachline: Two Sites (universe 10772257179, root place 136310542172942) was
+# created in Studio. Its source is on no machine we can reach: not this repo,
+# not PC1's disk, not Studio's AutoSaves. The one remaining place it could live
+# is Roblox itself.
+#
+# This asks whether the Open Cloud key can read the place back. Every call is a
+# GET, so this is safe to run against the live experience at any time.
+#
+# Needs repo secret ROBLOX_API_KEY.
+
+on:
+  workflow_dispatch:
+    inputs:
+      universe_id:
+        description: 'Roblox universeId'
+        required: false
+        default: '10772257179'
+      place_id:
+        description: 'Roblox placeId'
+        required: false
+        default: '136310542172942'
+
+permissions:
+  contents: read
+
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Probe whether the key can read the place
+        env:
+          ROBLOX_API_KEY: ${{ secrets.ROBLOX_API_KEY }}
+          UNIVERSE_ID: ${{ inputs.universe_id }}
+          PLACE_ID: ${{ inputs.place_id }}
+        run: bash scripts/probe-breachline-source.sh
+
+      - name: Upload whatever came back
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: breachline-source-probe
+          path: probe-out/
+          if-no-files-found: warn

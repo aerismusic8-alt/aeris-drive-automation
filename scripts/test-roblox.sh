@@ -24,6 +24,44 @@ fi
 # here even when every unit test passes.
 "$LUAU" "$ROOT/roblox/tests/integration.luau" || exit 1
 
+# The story spine: every objective reachable, every reward paid once, every
+# objective translated, and a corrupt save cannot lock a player out.
+"$LUAU" "$ROOT/roblox/tests/quests.luau" || exit 1
+
+# The HUD is written in fixed pixels against a 1280x720 reference and most of
+# this game's players are on phones. This suite does the arithmetic a phone
+# screen would do and fails when a panel no longer fits one.
+"$LUAU" "$ROOT/roblox/tests/layout.luau" || exit 1
+
+# Balance tests compare the player's power curve against the monster curve. The
+# whole suite passed while bosses were mathematically unkillable, because no test
+# asked whether the two curves met. This one does.
+"$LUAU" "$ROOT/roblox/tests/balance.luau" || exit 1
+
+# AX Garden Legends is the current game. Its loop is pure arithmetic on a
+# timestamp -- buy, plant, grow, harvest, sell -- so the whole rule set runs
+# here with no engine. The offline-growth test is the load-bearing one: it
+# fast-forwards eight hours and asserts a crop ripened.
+"$LUAU" "$ROOT/roblox-garden/tests/run.luau" || exit 1
+
+# The runtime suite boots the real server, builds the real world and loads the
+# real client under a headless engine shim. It needs the sources as a Luau table
+# because the standalone CLI has no file I/O, so they are generated first.
+python3 "$ROOT/scripts/gen-roblox-sources.py" || exit 1
+"$LUAU" "$ROOT/roblox/tests/runtime.luau" || exit 1
+
+# AX Garden Legends runs the same way, against its own generated bundle. This is
+# the suite that proves the game is playable: it plants, harvests and sells a
+# crop through the real remotes, and checks the HUD fits a 360x640 phone. The
+# previous game passed every unit test while being unplayable, so this is the
+# one that matters.
+python3 "$ROOT/scripts/gen-roblox-sources.py" "$ROOT/roblox-garden/tests/.generated/Sources.luau" --src "$ROOT/roblox-garden/src" || exit 1
+"$LUAU" "$ROOT/roblox-garden/tests/runtime.luau" || exit 1
+
 # Wiring checks read the source, because the HUD cannot be executed outside
 # Roblox. This is what catches a renamed label or an unbound button.
-exec python3 "$ROOT/scripts/check-hud-wiring.py"
+python3 "$ROOT/scripts/check-hud-wiring.py" || exit 1
+
+# The lighting settings decide whether the game renders at all on a weak GPU,
+# which is the hardware the target mobile players are closest to.
+exec python3 "$ROOT/scripts/check-low-end-lighting.py"

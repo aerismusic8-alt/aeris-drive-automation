@@ -244,6 +244,18 @@ drops("Hornet", {
         { itemId = "Fluff", chance = 0.5, min = 1, max = 2 },
         { itemId = "ShortBow", chance = 0.03, min = 1, max = 1 },
 })
+drops("Poring", {
+        { itemId = "Jellopy", chance = 0.6, min = 1, max = 3 },
+        { itemId = "NoviceMace", chance = 0.03, min = 1, max = 1 },
+})
+drops("BabyBoar", {
+        { itemId = "Chitin", chance = 0.45, min = 1, max = 2 },
+        { itemId = "LeatherCap", chance = 0.03, min = 1, max = 1 },
+})
+drops("Lunatic", {
+        { itemId = "Fluff", chance = 0.5, min = 1, max = 3 },
+        { itemId = "Sandals", chance = 0.03, min = 1, max = 1 },
+})
 drops("SlimeKing", {
         { itemId = "BossToken", chance = 1.0, min = 1, max = 1 },
         { itemId = "LongSword", chance = 0.5, min = 1, max = 1 },
@@ -259,6 +271,15 @@ drops("RockGolem", {
         { itemId = "Stone", chance = 0.6, min = 1, max = 3 },
         { itemId = "IronOre", chance = 0.3, min = 1, max = 2 },
         { itemId = "Buckler", chance = 0.05, min = 1, max = 1 },
+})
+drops("Skeleton", {
+        { itemId = "Stone", chance = 0.4, min = 1, max = 2 },
+        { itemId = "IronOre", chance = 0.25, min = 1, max = 2 },
+        { itemId = "BoneWand", chance = 0.03, min = 1, max = 1 },
+})
+drops("Familiar", {
+        { itemId = "Fluff", chance = 0.45, min = 1, max = 2 },
+        { itemId = "Muffler", chance = 0.03, min = 1, max = 1 },
 })
 drops("CrystalGolem", {
         { itemId = "BossToken", chance = 1.0, min = 1, max = 1 },
@@ -289,6 +310,16 @@ drops("MagmaHound", {
         { itemId = "Ember", chance = 0.55, min = 1, max = 3 },
         { itemId = "IronOre", chance = 0.3, min = 1, max = 2 },
 })
+drops("FireElemental", {
+        { itemId = "Ember", chance = 0.5, min = 1, max = 3 },
+        { itemId = "StaffOfFire", chance = 0.03, min = 1, max = 1 },
+        { itemId = "Crown", chance = 0.02, min = 1, max = 1 },
+})
+drops("LavaToad", {
+        { itemId = "Chitin", chance = 0.4, min = 1, max = 2 },
+        { itemId = "Ember", chance = 0.4, min = 1, max = 2 },
+        { itemId = "Greaves", chance = 0.03, min = 1, max = 1 },
+})
 drops("VolcanoDragon", {
         { itemId = "BossToken", chance = 1.0, min = 1, max = 2 },
         { itemId = "DragonSlayer", chance = 0.4, min = 1, max = 1 },
@@ -303,6 +334,15 @@ drops("VoidWisp", {
 drops("RiftStalker", {
         { itemId = "RiftShard", chance = 0.55, min = 1, max = 3 },
         { itemId = "ArcWand", chance = 0.04, min = 1, max = 1 },
+})
+drops("AbyssHound", {
+        { itemId = "RiftShard", chance = 0.5, min = 1, max = 2 },
+        { itemId = "WindCloak", chance = 0.03, min = 1, max = 1 },
+})
+drops("VoidPriest", {
+        { itemId = "RiftShard", chance = 0.45, min = 1, max = 3 },
+        { itemId = "AmuletOfLuck", chance = 0.04, min = 1, max = 1 },
+        { itemId = "BluePotionBig", chance = 0.2, min = 1, max = 2 },
 })
 drops("VoidSovereign", {
         { itemId = "BossToken", chance = 1.0, min = 2, max = 4 },
@@ -319,6 +359,10 @@ drops("CelestialGuard", {
 drops("Seraph", {
         { itemId = "CelestialFeather", chance = 0.7, min = 1, max = 3 },
         { itemId = "ArcWand", chance = 0.05, min = 1, max = 1 },
+})
+drops("DivineKnight", {
+        { itemId = "CelestialFeather", chance = 0.55, min = 1, max = 2 },
+        { itemId = "PlateArmor", chance = 0.04, min = 1, max = 1 },
 })
 drops("HeavenGate", {
         { itemId = "BossToken", chance = 1.0, min = 3, max = 6 },

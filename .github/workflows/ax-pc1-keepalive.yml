@@ -1,0 +1,70 @@
+name: AX PC1 Keepalive
+
+# Installs the PC1 keepalive, which starts the GitHub Actions runner service and
+# the MeshCentral agent service when either has stopped.
+#
+# Those two services are the only reason AX can reach PC1 at all. The runner
+# carries queued jobs; the MeshCentral agent is the outbound connection that
+# makes phone remote control possible. When both are down the machine is
+# unreachable by every path and needs a person at the desk. That is exactly what
+# happened on 2026-10-19, so this workflow exists to make it not happen again.
+#
+# Note the bootstrap problem: this workflow needs the runner, so it cannot be
+# the thing that recovers a dead runner. The first install has to be done by
+# hand on PC1. After that the scheduled task keeps the machine reachable and
+# this workflow is only for re-installing or re-verifying.
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - 'AX_PC_CONTROL/pc1-keepalive.ps1'
+      - 'AX_PC_CONTROL/install-pc1-keepalive.ps1'
+      - 'AX_PC_CONTROL/pc1-remote-access-status.ps1'
+      - '.github/workflows/ax-pc1-keepalive.yml'
+
+jobs:
+  keepalive:
+    runs-on: self-hosted
+    steps:
+      - name: Verify PC1
+        shell: powershell
+        run: |
+          if ($env:COMPUTERNAME -ne 'DESKTOP-RGK6JKB') { throw "EXPECTED_PC1:$env:COMPUTERNAME" }
+          Write-Host "PC1=VERIFIED"
+
+      - name: Install the keepalive task
+        shell: powershell
+        run: |
+          $url = "https://raw.githubusercontent.com/aerismusic8-alt/aeris-drive-automation/$env:GITHUB_SHA/AX_PC_CONTROL/pc1-keepalive.ps1"
+          $p = Join-Path $env:TEMP 'pc1-keepalive.ps1'
+          Invoke-WebRequest -Uri $url -OutFile $p -UseBasicParsing
+          # The installer copies the keepalive next to itself, so stage both.
+          $dir = Split-Path $p -Parent
+          $installerUrl = "https://raw.githubusercontent.com/aerismusic8-alt/aeris-drive-automation/$env:GITHUB_SHA/AX_PC_CONTROL/install-pc1-keepalive.ps1"
+          $installer = Join-Path $dir 'install-pc1-keepalive.ps1'
+          Invoke-WebRequest -Uri $installerUrl -OutFile $installer -UseBasicParsing
+          & powershell.exe -NoProfile -ExecutionPolicy Bypass -File $installer
+          if ($LASTEXITCODE -ne 0) { throw "KEEPALIVE_INSTALL_EXIT:$LASTEXITCODE" }
+
+      - name: Report remote access state
+        if: always()
+        shell: powershell
+        run: |
+          $url = "https://raw.githubusercontent.com/aerismusic8-alt/aeris-drive-automation/$env:GITHUB_SHA/AX_PC_CONTROL/pc1-remote-access-status.ps1"
+          $p = Join-Path $env:TEMP 'pc1-remote-access-status.ps1'
+          Invoke-WebRequest -Uri $url -OutFile $p -UseBasicParsing
+          & powershell.exe -NoProfile -ExecutionPolicy Bypass -File $p
+          if ($LASTEXITCODE -ne 0) { throw "REMOTE_ACCESS_STATUS_EXIT:$LASTEXITCODE" }
+
+      - name: Upload keepalive evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: pc1-keepalive
+          path: |
+            C:\AX-Runtime\evidence\pc1-keepalive-heartbeat.json
+            C:\AX-Runtime\evidence\pc1-keepalive.log
+            C:\AX-Runtime\evidence\pc1-remote-access-status.json
+          if-no-files-found: warn
+          retention-days: 7

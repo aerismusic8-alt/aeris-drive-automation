@@ -14,6 +14,14 @@ A Continuous Reflection is a structured operational self-review layer. It is not
 
 Its purpose is to continuously inspect what A believes, what A has executed, what evidence exists, what remains uncertain, what changed, and what should be learned before continuing.
 
+## Relationship to the execution lifecycle
+
+`AX_MASTER_BRAIN/AX_EXECUTION_LIFECYCLE_SPEC.md` defines the working method,
+`INSPECT -> DEFINE -> RESEARCH -> ROOT CAUSE -> PLAN -> EXECUTE -> TEST -> VERIFY
+-> EVIDENCE -> WRITE-BACK -> NEXT ACTION`. Its WRITE-BACK phase is this
+reflection layer, so every material step produces a reflection record here. The
+reflection cycle below is the form that write-back takes.
+
 ## M support role
 
 M is A MASTER BRAIN's designated assistant. M may support reflection, evidence checking, state review and recovery work, but may not treat model-local assumptions as authoritative A state.

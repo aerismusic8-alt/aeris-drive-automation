@@ -1,0 +1,84 @@
+name: AX PC1 Tailnet Reach
+
+# Reach PC1 over the tailnet from a machine that is not on the home LAN.
+#
+# Why this exists: PC1 went dark because its Actions runner stopped, and every
+# recovery path went through that same runner, so none of them could run. This
+# workflow does not use the self-hosted runner at all. It runs on a GitHub
+# hosted runner, joins the tailnet, and probes PC1 directly. Whatever it finds
+# decides which way in is actually available.
+#
+# This is diagnostic first. Knowing whether 3389, 22 or 8090 answers on PC1 is
+# the difference between "a person has to be at the desk" and "there is a way
+# in right now", and that question cannot be answered from outside the tailnet.
+#
+# Setup, once: add a repository secret named TS_AUTHKEY holding a Tailscale
+# auth key for the tailnet. Create it in the admin console under
+# Settings -> Keys. An ephemeral, single-use key with a short expiry is the
+# right choice; it cannot be reused and it disappears from the machine list on
+# its own. The key is a credential, so it belongs in a secret and nowhere else.
+
+on:
+  workflow_dispatch:
+    inputs:
+      target:
+        description: 'PC1 tailnet address to probe'
+        required: false
+        default: '100.86.125.78'
+      ports:
+        description: 'Comma-separated ports to test'
+        required: false
+        default: '3389,22,8090,80,443'
+  # GitHub only registers a workflow on a non-default branch when one of its
+  # triggers fires there, so a workflow_dispatch-only file on this branch is
+  # never registered and always returns 404 on dispatch. This narrow push
+  # trigger is what makes the file dispatchable. It only re-runs the same
+  # read-only probe.
+  push:
+    paths:
+      - '.github/workflows/ax-pc1-tailnet-reach.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  reach:
+    # Deliberately not self-hosted: the whole point is a path that does not
+    # depend on PC1's runner being alive.
+    runs-on: ubuntu-latest
+    steps:
+      - name: Connect to the tailnet
+        uses: tailscale/github-action@v4
+        with:
+          authkey: ${{ secrets.TS_AUTHKEY }}
+          ping: ${{ inputs.target }}
+
+      - name: Tailnet state
+        run: |
+          echo "=== this runner ==="
+          tailscale ip -4 || true
+          echo "=== tailnet peers ==="
+          tailscale status || true
+
+      - name: Probe PC1
+        run: |
+          TARGET="${{ inputs.target }}"
+          PORTS="${{ inputs.ports }}"
+          echo "TARGET=$TARGET"
+          echo "PORTS=$PORTS"
+          echo ""
+          echo "=== reachability ==="
+          for p in $(echo "$PORTS" | tr ',' ' '); do
+            if timeout 5 bash -c "cat < /dev/null > /dev/tcp/$TARGET/$p" 2>/dev/null; then
+              echo "PORT_${p}=OPEN"
+            else
+              echo "PORT_${p}=closed_or_filtered"
+            fi
+          done
+          echo ""
+          echo "=== mcp health, if 8090 answered ==="
+          curl -sS -m 8 "http://$TARGET:8090/health" || echo "no mcp health response"
+          echo ""
+          echo "=== served https name, if any ==="
+          curl -sS -m 8 "https://desktop-rgk6jkb.tail8740ad.ts.net/health" \
+            || echo "no served response"

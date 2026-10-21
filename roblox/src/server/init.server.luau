@@ -13,6 +13,7 @@ local MarketplaceService = game:GetService("MarketplaceService")
 
 local Shared = ReplicatedStorage:WaitForChild("Shared")
 local Config = require(Shared.Config)
+local ClassLook = require(Shared:WaitForChild("ClassLook"))
 local Random = require(Shared.Random)
 local Stats = require(Shared.Stats)
 local Combat = require(Shared.Combat)
@@ -29,6 +30,7 @@ local World = require(script.World)
 local Codes = require(Shared.Codes)
 local Farm = require(Shared.Farm)
 local Axe = require(Shared.Axe)
+	local Quests = require(Shared.Quests)
 local Fields = require(Shared.Fields)
 local Enemies = require(Shared.Enemies)
 local Attributes = require(Shared.Attributes)
@@ -37,6 +39,8 @@ local Skills = require(Shared.Skills)
 local Items = require(Shared.Items)
 local Inventory = require(Shared.Inventory)
 local Text = require(Shared.Text)
+local Villagers = require(Shared.Villagers)
+local Death = require(Shared.Death)
 
 -- Remotes are created here so the client can rely on WaitForChild alone.
 local function ensureRemote(container: Instance, className: "RemoteEvent" | "RemoteFunction", name: string): Instance
@@ -84,7 +88,10 @@ local FarmState = ensureRemote(Remotes, "RemoteEvent", "FarmState") :: RemoteEve
 local WaveState = ensureRemote(Remotes, "RemoteEvent", "WaveState") :: RemoteEvent
 local PlayerState = ensureRemote(Remotes, "RemoteEvent", "PlayerState") :: RemoteEvent
 local Notify = ensureRemote(Remotes, "RemoteEvent", "Notify") :: RemoteEvent
+-- A villager was used. Carries which panel to open, for that client only.
+local OpenPanel = ensureRemote(Remotes, "RemoteEvent", "OpenPanel") :: RemoteEvent
 local CombatFx = ensureRemote(Remotes, "RemoteEvent", "CombatFx") :: RemoteEvent
+local AttackFx = ensureRemote(Remotes, "RemoteEvent", "AttackFx") :: RemoteEvent
 
 local store = DataStoreService:GetDataStore("AXArena_v3")
 local rateLimiter = RateLimiter.new()
@@ -135,6 +142,9 @@ type PlayerRecord = {
 	-- Auto modes. The player can switch either off and play by hand.
 	autoAttack: boolean,
 	autoPickup: boolean,
+	-- The story spine: which objective is active and how far along. On the record
+	-- so it saves and restores with everything else.
+	quests: any,
 	dirty: boolean,
 }
 
@@ -207,8 +217,19 @@ local function activeBuffs(record: PlayerRecord, now: number): { any }
 	return out
 end
 
-local function pushPlayerState(player: Player, record: PlayerRecord)
+-- `now` is the wall clock the economy uses; the farm counts growth against a
+-- monotonic clock instead, so the two are separate. This function used to
+-- reach for `broadcastNow`, a local belonging to the heartbeat loop, which is
+-- nil here -- so Farm.secondsUntilReady did arithmetic on nil and threw the
+-- moment any plot held a crop.
+-- The buff-folded combat sheet. Declared ahead of pushPlayerState because the
+-- combat maths it is built from sits further down the file, and a local is
+-- only visible after its declaration.
+local combatSheet: (PlayerRecord, number) -> any
+
+local function pushPlayerState(player: Player, record: PlayerRecord, clock: number?)
 	local now = os.time()
+	local farmClock = clock or os.clock()
 	local derived = Stats.derive(record.upgrades)
 	local petCoin, petDamage = Pets.equippedMultipliers(record.pets)
 	local rebirthCoin, rebirthDamage = Rebirth.multipliers(record.rebirth.count)
@@ -228,6 +249,9 @@ local function pushPlayerState(player: Player, record: PlayerRecord)
 		rebirthRequirement = Rebirth.levelRequirement(record.rebirth.count),
 		zone = record.zone,
 		field = record.field,
+		-- False only in the first field, which is the safe practice map. The HUD
+		-- uses this to tell the player they cannot die here.
+		fieldLethal = record.field == nil or Zones.isLethal(record.field),
 		fields = Fields.snapshot(record.level, Monetization.hasZonePass(record.entitlements)),
 		killStreak = record.killStreak,
 
@@ -245,9 +269,35 @@ local function pushPlayerState(player: Player, record: PlayerRecord)
 		coinMultiplier = coinMultiplier(record, now),
 		rebirthCoin = rebirthCoin,
 		rebirthDamage = rebirthDamage,
-		farm = Farm.snapshot(record.farm, broadcastNow),
+		farm = Farm.snapshot(record.farm, farmClock),
 		axe = Axe.snapshot(record.axe),
 		crops = Farm.list(),
+		-- The character sheet. Every one of these is read by the client's Stats,
+		-- Skills, Job and Bag tabs, which used to fall back to their empty
+		-- defaults because the payload carried none of them.
+		attributes = record.attributes,
+		attributeSheet = combatSheet(record, now),
+		attributePoints = Attributes.available(record.attributes, record.level),
+		attributeNames = Attributes.NAMES,
+		class = record.class,
+		className = Text.className(record.class),
+		classTagline = Text.classTagline(record.class),
+		classDef = Classes.getDef(record.class),
+		jobLevel = record.jobLevel,
+		jobXp = record.jobXp,
+		jobXpForNext = Classes.jobXpForNext(record.jobLevel),
+		skillPoints = skillPointsLeft(record),
+		skills = record.skills,
+		hotbar = Skills.hotbar(record.skills, record.class, combatSheet(record, now)),
+		sp = record.sp,
+		maxSp = record.maxSp,
+		equipment = record.equipment,
+		bag = record.inventory:snapshot(),
+		bagCapacity = record.inventory:capacity(),
+		autoAttack = record.autoAttack,
+		autoPickup = record.autoPickup,
+		buffs = activeBuffs(record, now),
+		quest = Quests.snapshot(record.quests),
 	})
 end
 
@@ -284,6 +334,7 @@ local function buildRecord(player: Player, saved: any): PlayerRecord
 		combatant = Combat.createCombatant(math.max(1, startingHealth)),
 		farm = Farm.new(),
 		axe = Axe.new(),
+		quests = Quests.fromSnapshot(data.quests),
 		attributes = attributes,
 		attributePoints = data.attributePoints,
 		class = data.class,
@@ -342,6 +393,7 @@ local function saveRecord(record: PlayerRecord): boolean
 		entitlements = record.entitlements,
 		daily = DailyRewards.snapshot(record.daily),
 		redeemed = Codes.snapshot(record.redeemed),
+		quests = record.quests,
 		updatedAt = os.time(),
 	}
 	local ok, err = pcall(function()
@@ -368,6 +420,43 @@ local function awardXp(record: PlayerRecord, amount: number): number
 	return gained
 end
 
+-- Advance the story spine by one event and pay the quest if it completes.
+-- Called from the places that already know something happened: a kill, a
+-- harvest, a travel, a class choice, an equip. Nothing polls.
+local function questEvent(record: PlayerRecord, kind: string, target: string?, count: number?)
+	local reward = Quests.onEvent(record.quests, kind, target, count)
+	if not reward then
+		record.dirty = true
+		return
+	end
+
+	record.coins = math.min(Config.Economy.MaxCoins, record.coins + reward.coins)
+	awardXp(record, reward.xp)
+	if reward.item then
+		local added = record.inventory:add(reward.item, math.max(1, reward.itemCount))
+		-- A full bag must not swallow the reward, so a failed add is reported
+		-- rather than ignored; the quest still completes.
+		if added ~= 0 then
+			notify(record.player, Text.get("full"))
+		end
+	end
+
+	if reward.item then
+		notify(record.player, Text.get("questItemReward", reward.coins, reward.xp,
+			Text.itemName(reward.item), math.max(1, reward.itemCount)))
+	else
+		notify(record.player, Text.get("questReward", reward.coins, reward.xp))
+	end
+
+	local nextDef = Quests.current(record.quests)
+	if nextDef then
+		notify(record.player, Text.get("questComplete") .. "  " .. Text.get(nextDef.titleKey))
+	else
+		notify(record.player, Text.get("questAllDone"))
+	end
+	record.dirty = true
+end
+
 -- One place for "an enemy died": the kill credit goes to the player who
 -- landed the last hit, and every reward scales with their multipliers.
 -- Returns the coin and XP the kill actually paid, so the client can show it.
@@ -389,6 +478,13 @@ local function rewardKill(record: PlayerRecord, wave: number, reward: number, bo
 	record.stats.kills += 1
 	if boss then
 		record.stats.bossKills = (record.stats.bossKills or 0) + 1
+	end
+
+	-- The story spine hears about the kill, including which monster it was and
+	-- whether it was the field boss, so a KILL_BOSS quest needs no extra state.
+	questEvent(record, "KILL", nil, 1)
+	if boss then
+		questEvent(record, "KILL_BOSS", record.field, 1)
 	end
 
 	local xp = Leveling.xpFromKill(wave) * Monetization.xpMultiplier(record.entitlements)
@@ -454,7 +550,7 @@ end
 
 -- The player's own sheet, with any running buffs folded in. Combat reads this
 -- rather than deriveCombat directly, so a Blessing actually changes the numbers.
-local function combatSheet(record: PlayerRecord, now: number)
+combatSheet = function(record: PlayerRecord, now: number)
 	local sheet = deriveCombat(record)
 	for id, buff in pairs(record.buffs) do
 		if now >= buff.until_ then
@@ -531,6 +627,9 @@ local function onPlayerAdded(player: Player)
 		-- still in one, otherwise town.
 		World.attachPlayer(player, character, record.field or "Town")
 		World.applyLook(record.field or "Town")
+		-- The job decides what the character wears, so it is applied on
+		-- every spawn rather than only when the job changes.
+		World.applyClassLook(character, record.class)
 		local humanoid = character:WaitForChild("Humanoid") :: Humanoid
 		-- Recompute per spawn so purchases and rebirths apply on the next life.
 		local derived = applySpawnStats(record)
@@ -755,10 +854,16 @@ TravelZone.OnServerInvoke = function(player: Player, placeId: any): (boolean, st
 		-- A field is a place you fight in, so start the first wave on arrival
 		-- instead of leaving the player standing alone for the intermission.
 		directorFor(destination):skipIntermission()
+		questEvent(record, "ENTER_FIELD", destination, 1)
 	end
 	record.lastZoneChange = now
 	record.dirty = true
 
+	-- Arriving somewhere new is a fresh start. Without this, a player who grinds
+	-- the safe first field down to its 1 HP floor and then travels to a real
+	-- field dies to the first hit before they can react. The safe field's whole
+	-- purpose is to be left, so leaving it must not be a trap.
+	applySpawnStats(record)
 	World.placePlayer(player, destination)
 	World.applyLook(destination)
 	pushPlayerState(player, record)
@@ -856,6 +961,7 @@ HarvestCrop.OnServerInvoke = function(player: Player, plotIndex: any): (boolean,
 	record.coins = math.min(Config.Economy.MaxCoins, record.coins + math.floor(reward.coins * coinMultiplier(record, now) + 0.5))
 	awardXp(record, reward.xp)
 	Axe.addCharges(record.axe, Config.Farm.AxeChargePerHarvest)
+	questEvent(record, "HARVEST", nil, 1)
 	record.dirty = true
 	pushPlayerState(player, record)
 	notify(player, Text.get("harvestGain", Text.cropName(reward.cropId), reward.coins))
@@ -879,8 +985,12 @@ UseAxe.OnServerInvoke = function(player: Player): (boolean, any, string?)
 		return false, nil, "NO_CHARACTER"
 	end
 	
-	local baseDamage = Stats.derive(record.upgrades).damage
-	local charges, damage = Axe.swing(record.axe, baseDamage)
+	-- The swing scales off the player's real attack, the same sheet the
+	-- auto-attack uses. It used to read Stats.derive(upgrades).damage, which
+	-- ignores attributes, equipment, pets and rebirth, so a full five-charge
+	-- swing was weaker than one ordinary hit: charging crops cost you damage.
+	local sheet = combatSheet(record, os.clock())
+	local charges, damage = Axe.swing(record.axe, sheet.attack)
 	
 	-- Hit every enemy inside the axe radius, not just the nearest one. Only
 	-- the player's own field is searched, so a swing in town can never reach a
@@ -969,6 +1079,17 @@ local function resolveHit(record: PlayerRecord, sheet: any, enemy: any, power: n
 	return dealt, isCrit
 end
 
+-- Tell everyone else that somebody swung, so a swing is visible to the
+-- whole field and not only to the player who tapped.
+local function broadcastAttack(player: Player, record: PlayerRecord)
+	local look = ClassLook.get(record.class)
+	AttackFx:FireAllClients({
+		kind = "attack",
+		userId = player.UserId,
+		style = look.swing,
+	})
+end
+
 -- Damage one enemy and, on a kill, run the shared reward path. Returns
 -- (killed, coins, xp).
 local function strike(player: Player, record: PlayerRecord, enemy: any, amount: number, isCrit: boolean)
@@ -1025,6 +1146,7 @@ local function performAttack(player: Player, record: PlayerRecord): (boolean, st
 		return true, nil
 	end
 
+	broadcastAttack(player, record)
 	strike(player, record, target, amount, isCrit)
 	record.dirty = true
 	return true, nil
@@ -1142,6 +1264,11 @@ AdvanceJob.OnServerInvoke = function(player: Player, target: any): (boolean, str
 	-- class bonus changes what the same skill scales off.
 	record.dirty = true
 	applySpawnStats(record)
+	questEvent(record, "CHOOSE_CLASS", nil, 1)
+	local character = player.Character
+	if character then
+		World.applyClassLook(character, record.class)
+	end
 	pushPlayerState(player, record)
 	notify(player, Text.get("jobAdvanceOk", Text.className(target)))
 	return true, nil
@@ -1302,6 +1429,10 @@ EquipItem.OnServerInvoke = function(player: Player, itemId: any): (boolean, stri
 		humanoid.MaxHealth = record.combatant.maxHealth
 		humanoid.Health = math.min(humanoid.Health, humanoid.MaxHealth)
 	end
+	-- Wearing something is a story step, so the spine hears about it. The slot
+	-- is passed through so a quest can ask for a weapon specifically.
+	local wornDef = Items.getDef(itemId)
+	questEvent(record, "EQUIP", wornDef and wornDef.slot or nil, 1)
 	pushPlayerState(player, record)
 	notify(player, Text.get("equipped", Text.itemName(itemId)))
 	return true, nil
@@ -1563,12 +1694,27 @@ RunService.Heartbeat:Connect(function(dt)
 		if not record then
 			return
 		end
-		local died = Combat.damageCombatant(record.combatant, damage)
+		-- The first field cannot kill. A monster still lands its hit and the
+		-- health bar still drops, but the last point is floored, so a new
+		-- character can grind there for as long as they like. Every later field
+		-- passes nothing here and is lethal.
+		local safeField = not Zones.isLethal(record.field or "")
+		local died = Combat.damageCombatant(record.combatant, damage, safeField)
 		if died then
 			local character = target.Character
 			local humanoid = character and character:FindFirstChildOfClass("Humanoid")
 			if humanoid then
 				humanoid.Health = 0
+			end
+			-- Losing in a lethal field costs coins. The training field cannot
+			-- kill, so it never reaches here with a charge to apply.
+			local penalty = Death.penalty(record.coins, not safeField)
+			if penalty.charged then
+				record.coins = penalty.remaining
+				notify(target, Text.get("deathPenalty", penalty.coins))
+			end
+			if record.field then
+				notify(target, Text.get("diedInField", Text.placeName(record.field)))
 			end
 			record.stats.deaths += 1
 			record.dirty = true
@@ -1648,6 +1794,31 @@ World.setPortalHandler(function(player: Player, placeId: string)
 	if TravelZone.OnServerInvoke then
 		TravelZone.OnServerInvoke(player, placeId)
 	end
+end)
+
+-- A villager was used. The server decides whether the player may talk to them
+-- (you have to be in town, and the villager has to exist), then tells that one
+-- client which panel to open. The panel itself is the client's business; this
+-- path only validates and routes, the same way a portal only asks for travel.
+World.setVillagerHandler(function(player: Player, villagerId: string)
+	local record = records[player.UserId]
+	if not record then
+		return
+	end
+	local def = Villagers.byId(villagerId)
+	if not def then
+		return
+	end
+	if not Villagers.opensKnown(def.opens) then
+		return
+	end
+	-- Villagers only talk in town. Standing in a field and opening the shop would
+	-- make the town pointless and let a player shop mid-fight.
+	if record.field ~= nil then
+		notify(player, Text.get("npcAway"))
+		return
+	end
+	OpenPanel:FireClient(player, { panel = def.opens, villager = def.id })
 end)
 
 -- Periodic persistence.

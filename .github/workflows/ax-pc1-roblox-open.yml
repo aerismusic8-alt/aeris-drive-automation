@@ -1,0 +1,115 @@
+name: AX PC1 Roblox Open
+
+# Opens AX Arena on PC1 and photographs it running.
+#
+# Why this exists: the published place is unrated, so Roblox will not let anyone
+# join it until the owner answers the maturity questionnaire. That makes the live
+# place useless as a way to check the code. This runs the built place file
+# locally instead, in a real Studio server and a real Studio client, and uploads
+# screenshots so the result can be looked at rather than inferred.
+#
+# The client opens a window, so the work has to happen in the interactive user's
+# session, not in the runner's service session. A scheduled task with
+# -LogonType Interactive does that, the same way the foreground capture does.
+
+on:
+  workflow_dispatch:
+    inputs:
+      ref:
+        description: 'Git ref to build and open (branch, tag or SHA)'
+        required: false
+        default: 'ax-arena-roblox-game'
+  push:
+    paths:
+      - 'AX_PC_CONTROL/pc1-roblox-open.ps1'
+      - 'AX_PC_CONTROL/pc1-roblox-open-smoke.luau'
+      - 'AX_PC_CONTROL/pc1-garden-smoke.luau'
+      - '.github/workflows/ax-pc1-roblox-open.yml'
+
+jobs:
+  open:
+    runs-on: self-hosted
+    steps:
+      - name: Verify PC1
+        shell: powershell
+        run: |
+          if ($env:COMPUTERNAME -ne 'DESKTOP-RGK6JKB') { throw "EXPECTED_PC1:$env:COMPUTERNAME" }
+          Write-Host "PC1=VERIFIED"
+
+      - name: Build the place first
+        shell: powershell
+        run: |
+          $ref = '${{ inputs.ref }}'
+          if (!$ref) { $ref = $env:GITHUB_SHA }
+          Write-Host "BUILD_REF=$ref"
+          $url = "https://raw.githubusercontent.com/aerismusic8-alt/aeris-drive-automation/$ref/AX_PC_CONTROL/pc1-roblox-build.ps1"
+          $p = Join-Path $env:TEMP "pc1-roblox-build.ps1"
+          Invoke-WebRequest -Uri $url -OutFile $p -UseBasicParsing
+          & powershell.exe -NoProfile -ExecutionPolicy Bypass -File $p
+          if ($LASTEXITCODE -ne 0) { throw "BUILD_EXIT:$LASTEXITCODE" }
+
+      - name: Create interactive open task
+        shell: powershell
+        run: |
+          $ref = '${{ inputs.ref }}'
+          if (!$ref) { $ref = $env:GITHUB_SHA }
+          $u = (Get-CimInstance Win32_ComputerSystem).UserName
+          if (!$u) { throw "NO_INTERACTIVE_USER" }
+          $sid = ([System.Security.Principal.NTAccount]$u).Translate([System.Security.Principal.SecurityIdentifier]).Value
+          $url = "https://raw.githubusercontent.com/aerismusic8-alt/aeris-drive-automation/$ref/AX_PC_CONTROL/pc1-roblox-open.ps1"
+          $p = Join-Path $env:TEMP "pc1-roblox-open.ps1"
+          Invoke-WebRequest -Uri $url -OutFile $p -UseBasicParsing
+          $arg = '-NoProfile -ExecutionPolicy Bypass -File "' + $p + '"'
+          $action = New-ScheduledTaskAction -Execute "powershell.exe" -Argument $arg
+          $principal = New-ScheduledTaskPrincipal -UserId $sid -LogonType Interactive -RunLevel Limited
+          # The run is a build plus a smoke test plus a server, a client and 30
+          # seconds of capture, so it needs more than the two minutes the
+          # foreground capture uses.
+          $settings = New-ScheduledTaskSettingsSet -ExecutionTimeLimit (New-TimeSpan -Minutes 15) -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries
+          $name = "AERIS-PC1-ROBLOX-OPEN"
+          Unregister-ScheduledTask -TaskName $name -Confirm:$false -ErrorAction SilentlyContinue
+          Register-ScheduledTask -TaskName $name -Action $action -Principal $principal -Settings $settings -Force | Out-Null
+          Start-ScheduledTask -TaskName $name
+          Write-Host "INTERACTIVE_USER=$u"
+          Write-Host "INTERACTIVE_SID=$sid"
+
+      - name: Wait for the open to finish
+        shell: powershell
+        run: |
+          $p = 'C:\AX-Runtime\evidence\pc1-roblox-open.json'
+          Remove-Item -LiteralPath $p -Force -ErrorAction SilentlyContinue
+          $deadline = (Get-Date).AddMinutes(14)
+          while ((Get-Date) -lt $deadline -and !(Test-Path $p)) { Start-Sleep -Seconds 5 }
+          if (!(Test-Path $p)) { throw "OPEN_EVIDENCE_MISSING:$p" }
+          $x = Get-Content $p -Raw | ConvertFrom-Json
+          Write-Host "STATUS=$($x.status)"
+          Write-Host "SMOKE_PASSED=$($x.smoke.passed)"
+          Write-Host "SMOKE_DETAIL=$($x.smoke.detail)"
+          Write-Host "GAME_RAN=$($x.run.gameRan)"
+          Write-Host "CAPTURE_COUNT=$(@($x.run.captures).Count)"
+          foreach ($n in @($x.notes)) { Write-Host "NOTE=$n" }
+
+      - name: Show the studio smoke log
+        if: always()
+        shell: powershell
+        run: |
+          $p = 'C:\AX-Runtime\evidence\studio-smoke.log'
+          if (Test-Path $p) {
+            Write-Host "----- studio smoke log -----"
+            Get-Content $p -Raw | Write-Host
+            Write-Host "----- end smoke log -----"
+          } else {
+            Write-Host "NO_SMOKE_LOG"
+          }
+
+      - name: Upload open evidence and screenshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: pc1-roblox-open
+          path: |
+            C:\AX-Runtime\evidence\pc1-roblox-open.json
+            C:\AX-Runtime\evidence\studio-smoke.log
+            C:\AX-Runtime\evidence\roblox-open\*.png
+          if-no-files-found: warn
+          retention-days: 7

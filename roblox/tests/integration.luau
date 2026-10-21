@@ -298,6 +298,52 @@ do
 end
 
 --------------------------------------------------------------------------
+section("SIM 8b: the first field cannot kill, so it can be farmed forever")
+--------------------------------------------------------------------------
+
+do
+        -- K asked for the level-1 map to be a place to build a character
+        -- without ever dying. The server floors the last point of health in a
+        -- non-lethal zone, so no number of hits can finish a player there.
+        local combatant = Combat.createCombatant(100)
+        local safe = not Zones.isLethal("Meadow")
+        check("the first field is marked safe", safe, "Meadow is lethal")
+
+        local died = false
+        local lowest = combatant.health
+        -- A hundred hits in a row: far more than any real fight.
+        for _ = 1, 100 do
+                died = Combat.damageCombatant(combatant, 25, safe)
+                lowest = math.min(lowest, combatant.health)
+                if died then
+                        break
+                end
+        end
+        check("a hundred hits still do not kill", not died, "the player died in the safe field")
+        check("the player is left at 1 HP", lowest == 1, "lowest=" .. lowest)
+        check("the player is still alive", combatant.alive, "alive=false")
+
+        -- And the field is still dangerous: the hits land.
+        check("the safe field still hurts", combatant.health < 100, "no damage was dealt")
+
+        -- Leaving for a real field makes the same hit lethal again.
+        local fighter = Combat.createCombatant(100)
+        local lethal = Zones.isLethal("Cavern")
+        check("the second field is lethal", lethal, "Cavern is safe")
+        check("a lethal field can kill", Combat.damageCombatant(fighter, 500, not lethal), "not killed")
+        -- Travel has to heal. Otherwise a player who grinds down to the safe floor
+        -- and walks into a lethal field is killed by the first hit, which makes
+        -- the safe field a trap rather than a training ground.
+        local traveller = Combat.createCombatant(100)
+        Combat.damageCombatant(traveller, 500, true)
+        check("the safe field leaves the player on 1 HP", traveller.health == 1, "health=" .. traveller.health)
+        traveller.health = traveller.maxHealth
+        traveller.alive = true
+        check("arriving at a new field heals", traveller.health == 100, "health=" .. traveller.health)
+        check("a healed player survives one more hit", not Combat.damageCombatant(traveller, 25, false), "died")
+end
+
+--------------------------------------------------------------------------
 section("SIM 8: death does not permanently disarm the player")
 --------------------------------------------------------------------------
 

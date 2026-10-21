@@ -16,6 +16,11 @@ export type ZoneDef = {
 	-- Multiplies coin rewards and enemy strength in this zone.
 	coinMultiplier: number,
 	difficultyMultiplier: number,
+	-- Whether a monster here can kill a player. The first field is where a new
+	-- character grinds forever, so it is deliberately non-lethal: damage there
+	-- stops at 1 HP. Every later field is lethal, and each one hits harder than
+	-- the last.
+	lethal: boolean,
 	-- Order shown in the UI.
 	index: number,
 }
@@ -27,6 +32,7 @@ local DEFS: { [string]: ZoneDef } = {
 		levelRequirement = 1,
 		coinMultiplier = 1.0,
 		difficultyMultiplier = 1.0,
+		lethal = false,
 		index = 1,
 	},
 	Cavern = {
@@ -35,6 +41,7 @@ local DEFS: { [string]: ZoneDef } = {
 		levelRequirement = 10,
 		coinMultiplier = 1.8,
 		difficultyMultiplier = 1.5,
+		lethal = true,
 		index = 2,
 	},
 	Volcano = {
@@ -43,6 +50,7 @@ local DEFS: { [string]: ZoneDef } = {
 		levelRequirement = 25,
 		coinMultiplier = 3.2,
 		difficultyMultiplier = 2.4,
+		lethal = true,
 		index = 3,
 	},
 	Void = {
@@ -51,6 +59,7 @@ local DEFS: { [string]: ZoneDef } = {
 		levelRequirement = 50,
 		coinMultiplier = 6.0,
 		difficultyMultiplier = 4.0,
+		lethal = true,
 		index = 4,
 	},
 	Heaven = {
@@ -59,6 +68,7 @@ local DEFS: { [string]: ZoneDef } = {
 		levelRequirement = 80,
 		coinMultiplier = 12.0,
 		difficultyMultiplier = 7.0,
+		lethal = true,
 		index = 5,
 	},
 }
@@ -118,6 +128,16 @@ end
 function Zones.difficultyMultiplier(zoneId: string): number
 	local def = DEFS[zoneId]
 	return def and def.difficultyMultiplier or 1
+end
+
+-- Whether monsters in this zone are allowed to kill the player. An unknown
+-- zone is treated as lethal, so a typo can never make the whole game safe.
+function Zones.isLethal(zoneId: string): boolean
+	local def = DEFS[zoneId]
+	if not def then
+		return true
+	end
+	return def.lethal
 end
 
 return Zones

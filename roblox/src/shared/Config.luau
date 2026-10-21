@@ -4,8 +4,8 @@
 
 local Config = {}
 
-Config.Version = "1.0.0"
-Config.GameName = "AX Arena"
+Config.Version = "1.0.1"
+Config.GameName = "AX Arena: Farm and Fight"
 
 Config.Tick = {
 	Rate = 30,
@@ -22,8 +22,11 @@ Config.Wave = {
 	BaseEnemyCount = 3,
 	EnemiesPerWave = 2,
 	MaxEnemiesPerWave = 40,
-	BaseEnemyHealth = 70,
-	HealthGrowth = 1.18,
+	BaseEnemyHealth = 60,
+	-- 1.18^wave grew faster than any attack a player could reach, so a wave 25
+	-- boss needed 400+ hits while killing the player in three seconds. 1.12
+	-- still ramps every wave but stays inside what levelling can answer.
+	HealthGrowth = 1.12,
 	BaseEnemyDamage = 5,
 	DamageGrowth = 1.09,
 	BaseReward = 25,
@@ -51,12 +54,31 @@ Config.Player = {
 	RespawnDelay = 4,
 }
 
--- Mobile-first combat: the player never has to tap to fight, so a session
--- works with one hand. Range is generous because the arena is small.
+-- Combat. Range is generous because the arena is small, and the attack button
+-- is one tap, so a phone session still works with one hand.
+--
+-- Auto-attack starts OFF. It used to start on, and that was the single biggest
+-- reason the game felt like a screensaver: the player joined, the character
+-- fought by itself, and the only real decision was which menu to open. A fight
+-- the player did not have to press anything for is not a fight. The toggle is
+-- still there and still one tap away, but the default has to be the version
+-- where the player is actually playing.
 Config.Combat = {
 	AttackRange = 30,
 	AttackInterval = 0.8,
-	AutoAttack = true,
+	AutoAttack = false,
+}
+
+-- Dying has to cost something, or the only way to lose is to stop playing.
+-- Charged in the fields that can kill you, never in the training field, and
+-- capped so one bad wave cannot wipe a session's progress.
+Config.Death = {
+	-- Percent of the player's coins taken on death in a lethal field.
+	CoinLossPercent = 0.1,
+	-- Never take more than this in one death, whatever the player is carrying.
+	MaxCoinLoss = 5000,
+	-- Below this balance nothing is taken, so a broke player is never stuck.
+	MinCoinsToCharge = 200,
 }
 
 Config.Economy = {
@@ -112,9 +134,6 @@ Config.Daily = {
 	},
 }
 
-Config.Codes = {
-	MaxAttemptsPerMinute = 10,
-}
 
 -- Ordered list keeps iteration deterministic across server restarts.
 Config.UpgradeOrder = { "Damage", "Health", "Speed", "CritChance" }
@@ -138,8 +157,14 @@ Config.Attributes = {
 	BaseAttack = 8,
 	AttackPerStr = 2,
 	AttackPerDex = 0.5,
+	-- Attack gained per character level. This is the term that keeps a player
+	-- able to hurt what their level unlocks: monster health grows 1.12^wave,
+	-- so an attack that only comes from the STR stat falls behind by the
+	-- fifth wave of every field.
+	AttackPerLevel = 3,
 	BaseMagicAttack = 6,
 	MagicAttackPerInt = 2.2,
+	MagicAttackPerLevel = 2.5,
 
 	-- Health and SP.
 	BaseHealth = 60,
@@ -322,8 +347,10 @@ Config.Fields = {
 Config.Enemies = {
 	-- Archetypes multiply the wave base. A boss is one big spawn that closes
 	-- the field out with a reward spike worth staying for.
-	BossHealthMul = 12,
-	BossDamageMul = 1.6,
+	-- A boss is a wall you can break with preparation, not a wall. At 12x health
+	-- a wave 5 boss took 15 hits and killed a level 1 player in 12 seconds.
+	BossHealthMul = 8,
+	BossDamageMul = 1.35,
 	BossRewardMul = 20,
 	BossSizeMul = 2.6,
 	BossXpMul = 8,
@@ -361,6 +388,10 @@ Config.Monetization = {
 Config.Codes = {
 	-- Promo codes reward engagement (Roblox trending rewards active play).
 	MaxRedemptionsPerPlayer = 1,
+	-- Attempts allowed per minute per player. This used to sit in a second
+	-- Config.Codes table higher up the file, which this one replaced
+	-- wholesale: assigning the same key twice drops the first silently.
+	MaxAttemptsPerMinute = 10,
 }
 
 --------------------------------------------------------------------------

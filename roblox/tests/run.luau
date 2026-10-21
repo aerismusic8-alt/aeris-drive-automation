@@ -28,6 +28,8 @@ local Attributes = require("../src/shared/Attributes")
 local Classes = require("../src/shared/Classes")
 local Skills = require("../src/shared/Skills")
 local Items = require("../src/shared/Items")
+local Villagers = require("../src/shared/Villagers")
+local Death = require("../src/shared/Death")
 
 --------------------------------------------------------------------------
 t.suite("Random")
@@ -277,6 +279,35 @@ t.test("player damage floors at zero and reports death", function()
 	t.assertTrue(died)
 	t.assertEqual(health, 0)
 	t.assertFalse(player.alive)
+end)
+
+t.test("a non-lethal hit floors at 1 HP instead of killing", function()
+        -- The first field is the practice map: a monster there can hurt the
+        -- player but never finish them, so a new character can grind forever.
+        local player = Combat.createCombatant(100)
+        local died, health = Combat.damageCombatant(player, 999, true)
+        t.assertFalse(died, "the first field killed the player")
+        t.assertEqual(health, 1)
+        t.assertTrue(player.alive, "the player died in the safe field")
+
+        -- Another hit must not sneak through the floor either.
+        died, health = Combat.damageCombatant(player, 999, true)
+        t.assertFalse(died, "a second hit killed the player")
+        t.assertEqual(health, 1)
+end)
+
+t.test("a lethal hit in a later field still kills", function()
+        local player = Combat.createCombatant(100)
+        local died, health = Combat.damageCombatant(player, 999, false)
+        t.assertTrue(died)
+        t.assertEqual(health, 0)
+        t.assertFalse(player.alive)
+
+        -- And the default is lethal, so a caller that forgets the flag cannot
+        -- accidentally make the whole game safe.
+        local other = Combat.createCombatant(100)
+        died = Combat.damageCombatant(other, 999)
+        t.assertTrue(died)
 end)
 
 t.test("healing cannot exceed max health or revive the dead", function()
@@ -1681,6 +1712,23 @@ t.test("serialization carries the daily streak and redeemed codes", function()
 	t.assertNotNil(string.find(text, '"RELEASE":555', 1, true))
 end)
 
+t.test("serialize carries the story spine", function()
+        -- Quests are part of SaveData, so a serialize that drops them would lose a
+        -- player's story on any JSON path while the table path kept it. The two
+        -- paths disagreeing is exactly the kind of bug that ships.
+        local save = SaveSchema.new()
+        save.quests = { index = 4, progress = 2, done = { talkToElder = true, firstBlood = true } }
+        local json = SaveSchema.serialize(save, 1234)
+        t.assertContains(json, '"quests":')
+        t.assertContains(json, '"index":4')
+        t.assertContains(json, '"progress":2')
+        t.assertContains(json, '"talkToElder":true')
+
+        -- A fresh save must still emit a usable object rather than "nil".
+        local fresh = SaveSchema.serialize(SaveSchema.new(), 1)
+        t.assertContains(fresh, '"quests":{"index":1,"progress":0,"done":{}}')
+end)
+
 t.test("the migrated save is a valid v4 save", function()
 	local v2 = {
 		version = 2,
@@ -2757,6 +2805,56 @@ t.test("equipment raises the sheet it feeds", function()
 	t.assertGreater(total, 0, "PlateArmor gives no attribute bonus")
 end)
 
+t.test("every monster has a drop table of its own", function()
+        -- A monster with no table still rolls the two generic potions, so it looks
+        -- fine in every other check while dropping nothing that identifies it. Ten
+        -- of sixteen monsters were in that state: you could farm the whole game and
+        -- never see Chitin, Stone or a Celestial Feather come off the monster that
+        -- is supposed to carry it. This guards the gap rather than the loot.
+        local generic = 0
+        for _, entry in ipairs(Items.dropsFor("NoSuchMonster")) do
+                generic += 1
+        end
+        t.assertGreater(generic, 0, "the generic table is empty, so this test proves nothing")
+
+        local bare: { string } = {}
+        for _, field in ipairs(Fields.list()) do
+                for _, archetype in ipairs(Enemies.roster(field.id)) do
+                        if #Items.dropsFor(archetype.id) <= generic then
+                                table.insert(bare, field.id .. ":" .. archetype.id)
+                        end
+                end
+                local boss = Enemies.boss(field.id)
+                if #Items.dropsFor(boss.id) <= generic then
+                        table.insert(bare, field.id .. ":BOSS:" .. boss.id)
+                end
+        end
+        t.assertEqual(#bare, 0, "monsters with only the generic drops: " .. table.concat(bare, ", "))
+end)
+
+t.test("a field's monsters drop that field's material", function()
+        -- The material names the field: Chitin is what Volcano and Meadow beasts
+        -- carry, Rift Shard is what the Void drops. If a monster in a field cannot
+        -- produce the field's material, that material is unobtainable in practice.
+        local materialFor: { [string]: string } = {
+                Cavern = "Stone",
+                Volcano = "Ember",
+                Void = "RiftShard",
+                Heaven = "CelestialFeather",
+        }
+        for field, material in pairs(materialFor) do
+                local found = false
+                for _, archetype in ipairs(Enemies.roster(field)) do
+                        for _, entry in ipairs(Items.dropsFor(archetype.id)) do
+                                if entry.itemId == material then
+                                        found = true
+                                end
+                        end
+                end
+                t.assertTrue(found, field .. " monsters never drop " .. material)
+        end
+end)
+
 t.test("every monster's drop table names real items", function()
 	for _, field in ipairs(Fields.list()) do
 		for _, archetype in ipairs(Enemies.roster(field.id)) do
@@ -2927,6 +3025,891 @@ t.test("a harder wave makes a monster tougher", function()
 				Enemies.scale(archetype, easy, mul).health, archetype.name)
 		end
 	end
+end)
+
+--------------------------------------------------------------------------
+t.suite("MonsterShapes")
+--------------------------------------------------------------------------
+
+local MonsterShapes = require("../src/shared/MonsterShapes")
+
+-- How far below a part's own centre its lowest point sits, in studs.
+--
+-- A Roblox Cylinder runs along its X axis, so a cylinder rotated 90 degrees
+-- about Z stands upright and its height is size[1], not size[2]. Reading
+-- size[2] regardless would report a hem disc as a tall column sunk into the
+-- ground. Every other shape is axis aligned in these recipes.
+local function halfHeight(part): number
+        if part.shape == "Cylinder" and part.rot and math.abs(part.rot[3] % 180) == 90 then
+                return part.size[1] / 2
+        end
+        return part.size[2] / 2
+end
+
+local function lowestPoint(recipe): number
+        local lowest = math.huge
+        for _, part in ipairs(recipe.parts) do
+                lowest = math.min(lowest, part.at[2] - halfHeight(part))
+        end
+        return lowest
+end
+
+t.test("every monster in the game has its own silhouette", function()
+        for _, field in ipairs(Fields.list()) do
+                local roster = Enemies.roster(field.id)
+                table.insert(roster, Enemies.boss(field.id))
+                for _, archetype in ipairs(roster) do
+                        t.assertTrue(MonsterShapes.PLANS[archetype.id] ~= nil,
+                                archetype.id .. " falls back to the generic shape")
+                end
+        end
+end)
+
+t.test("an unknown monster still gets a usable shape", function()
+        local recipe = MonsterShapes.get("NoSuchMonster")
+        t.assertGreater(#recipe.parts, 0, "no fallback parts")
+        t.assertNotNil(recipe.parts[1].name, "a part has no name")
+end)
+
+t.test("every recipe part is well formed", function()
+        for _, id in ipairs(MonsterShapes.knownIds()) do
+                local recipe = MonsterShapes.get(id)
+                t.assertGreater(#recipe.parts, 0, id .. " has no parts")
+                for _, part in ipairs(recipe.parts) do
+                        t.assertEqual(#part.size, 3, id .. "/" .. part.name .. " size is not a 3-vector")
+                        t.assertEqual(#part.at, 3, id .. "/" .. part.name .. " position is not a 3-vector")
+                        for axis = 1, 3 do
+                                t.assertGreater(part.size[axis], 0, id .. "/" .. part.name .. " has a zero dimension")
+                        end
+                        t.assertGreater(part.at[2], -0.01, id .. "/" .. part.name .. " starts below the ground")
+                end
+        end
+end)
+
+t.test("the recipe's primary part exists", function()
+        for _, id in ipairs(MonsterShapes.knownIds()) do
+                local recipe = MonsterShapes.get(id)
+                local found = false
+                for _, part in ipairs(recipe.parts) do
+                        if part.name == recipe.primary then
+                                found = true
+                        end
+                end
+                t.assertTrue(found, id .. " primary part " .. recipe.primary .. " is missing")
+        end
+end)
+
+t.test("a monster is built from more than a body and two eyes", function()
+        -- The complaint that started this work was that a monster was a box
+        -- with dots. A creature needs a silhouette to read at a distance, so
+        -- every recipe has to carry real detail parts.
+        local function detail(id: string): number
+                local recipe = MonsterShapes.get(id)
+                local core: { [string]: boolean } = { Body = true, Torso = true }
+                local count = 0
+                for _, part in ipairs(recipe.parts) do
+                        if not core[part.name] then
+                                count += 1
+                        end
+                end
+                return count
+        end
+        for _, id in ipairs(MonsterShapes.knownIds()) do
+                t.assertGreater(detail(id), 5, id .. " has only " .. detail(id) .. " detail parts")
+        end
+end)
+
+t.test("a monster is more than one shape", function()
+        -- A pile of blocks is still a pile of blocks. Each creature has to mix
+        -- its primitives so it is not a single extruded rectangle.
+        for _, id in ipairs(MonsterShapes.knownIds()) do
+                local recipe = MonsterShapes.get(id)
+                local shapes: { [string]: boolean } = {}
+                for _, part in ipairs(recipe.parts) do
+                        shapes[part.shape] = true
+                end
+                local distinct = 0
+                for _ in pairs(shapes) do
+                        distinct += 1
+                end
+                t.assertGreater(distinct, 1, id .. " is built from a single shape type")
+        end
+end)
+
+t.test("a monster stands on the ground and faces forward", function()
+        -- Every recipe is drawn in creature space, so a recipe that starts high
+        -- off the ground would float and one that reaches back would fight the
+        -- way it is turned to face the player. A hovering monster is the one
+        -- exception, and it has to say so in the data.
+        for _, id in ipairs(MonsterShapes.knownIds()) do
+                local recipe = MonsterShapes.get(id)
+                local lowest = lowestPoint(recipe)
+                local hasForward = false
+                for _, part in ipairs(recipe.parts) do
+                        if part.at[3] < 0 then
+                                hasForward = true
+                        end
+                end
+                t.assertTrue(hasForward, id .. " has nothing on its front")
+                if MonsterShapes.hovers(id) then
+                        t.assertGreater(lowest, 0.5, id .. " hovers but is drawn on the ground")
+                else
+                        t.assertLess(lowest, 1.5, id .. " floats " .. lowest .. " studs off the ground")
+                end
+        end
+end)
+
+t.test("every hovering monster is a real monster", function()
+        for _, id in ipairs(MonsterShapes.hoveringIds()) do
+                t.assertNotNil(MonsterShapes.PLANS[id], id .. " hovers but has no silhouette")
+        end
+end)
+
+t.test("the hovering set and the recipes agree", function()
+        -- The set is hand-kept, so this is what stops it drifting: a recipe
+        -- drawn in the air must be listed, and a listed monster must be drawn
+        -- in the air.
+        for _, id in ipairs(MonsterShapes.knownIds()) do
+                local recipe = MonsterShapes.get(id)
+                local drawnInAir = lowestPoint(recipe) > 1.0
+                t.assertEqual(MonsterShapes.hovers(id), drawnInAir,
+                        id .. (drawnInAir and " is drawn in the air but is not listed as hovering"
+                                or " is listed as hovering but is drawn on the ground"))
+        end
+end)
+
+t.test("no two monsters look the same", function()
+        -- A shared body plan is fine, but two monsters must never be the same
+        -- drawing in the same colour: the whole point of the shapes is that a
+        -- player reads which monster is in front of them at a glance.
+        local ids: { string } = {}
+        for _, field in ipairs(Fields.list()) do
+                for _, archetype in ipairs(Enemies.roster(field.id)) do
+                        table.insert(ids, archetype.id)
+                end
+                table.insert(ids, Enemies.boss(field.id).id)
+        end
+
+        local function signature(id: string): string
+                local recipe = MonsterShapes.get(id)
+                local def = Enemies.getDef(id)
+                local colour = def and def.color or { 0, 0, 0 }
+                local out = string.format("%d,%d,%d|", colour[1], colour[2], colour[3])
+                for _, part in ipairs(recipe.parts) do
+                        out = out .. part.name .. tostring(part.size[1]) .. tostring(part.size[2]) .. ","
+                end
+                return out
+        end
+
+        local seen: { [string]: string } = {}
+        for _, id in ipairs(ids) do
+                local key = signature(id)
+                t.assertNil(seen[key], id .. " looks identical to " .. tostring(seen[key]))
+                seen[key] = id
+        end
+end)
+
+--------------------------------------------------------------------------
+t.suite("ClassLook")
+--------------------------------------------------------------------------
+
+local ClassLook = require("../src/shared/ClassLook")
+
+t.test("every class in the game has a look", function()
+        for _, def in ipairs(Classes.list()) do
+                local look = ClassLook.get(def.id)
+                t.assertNotNil(look, def.id .. " has no look")
+                t.assertEqual(#look.bodyScale, 3, def.id .. " bodyScale is not a 3-vector")
+                t.assertNotNil(look.swing, def.id .. " has no swing style")
+        end
+end)
+
+t.test("a class look never falls back to the default silently", function()
+        local named: { [string]: boolean } = {}
+        for _, id in ipairs(ClassLook.knownIds()) do
+                named[id] = true
+        end
+        for _, def in ipairs(Classes.list()) do
+                t.assertTrue(named[def.id] == true, def.id .. " is missing from ClassLook.knownIds")
+        end
+end)
+
+t.test("every accent is well formed", function()
+        for _, id in ipairs(ClassLook.knownIds()) do
+                local look = ClassLook.get(id)
+                for _, accent in ipairs(look.accents) do
+                        t.assertEqual(#accent.size, 3, id .. "/" .. accent.name .. " size is not a 3-vector")
+                        t.assertEqual(#accent.at, 3, id .. "/" .. accent.name .. " position is not a 3-vector")
+                        t.assertEqual(#accent.color, 3, id .. "/" .. accent.name .. " colour is not a 3-vector")
+                        for axis = 1, 3 do
+                                t.assertGreater(accent.size[axis], 0, id .. "/" .. accent.name .. " has a zero dimension")
+                        end
+                end
+        end
+end)
+
+t.test("each job looks different from the one it came from", function()
+        for _, def in ipairs(Classes.list()) do
+                if def.parent then
+                        local mine = ClassLook.get(def.id)
+                        local parent = ClassLook.get(def.parent)
+                        local sameShirt = mine.shirt[1] == parent.shirt[1]
+                                and mine.shirt[2] == parent.shirt[2]
+                                and mine.shirt[3] == parent.shirt[3]
+                        local sameAccents = #mine.accents == #parent.accents
+                        t.assertFalse(sameShirt and sameAccents, def.id .. " looks identical to " .. def.parent)
+                end
+        end
+end)
+
+t.test("a swing style is one the animation module can draw", function()
+        local known = { slash = true, thrust = true, cast = true, stab = true, smite = true }
+        for _, id in ipairs(ClassLook.knownIds()) do
+                local look = ClassLook.get(id)
+                t.assertTrue(known[look.swing] == true, id .. " uses unknown swing " .. tostring(look.swing))
+        end
+end)
+
+--------------------------------------------------------------------------
+t.suite("ItemIcons")
+--------------------------------------------------------------------------
+
+local ItemIcons = require("../src/shared/ItemIcons")
+
+t.test("every item in the catalogue has an icon", function()
+        for _, def in ipairs(Items.list()) do
+                local icon = ItemIcons.get(def.id, def)
+                t.assertGreater(#icon.parts, 0, def.id .. " has no icon parts")
+                t.assertEqual(#icon.tilt, 3, def.id .. " tilt is not a 3-vector")
+        end
+end)
+
+t.test("every icon part is well formed", function()
+        for _, def in ipairs(Items.list()) do
+                local icon = ItemIcons.get(def.id, def)
+                for _, part in ipairs(icon.parts) do
+                        t.assertEqual(#part.size, 3, def.id .. "/" .. part.name .. " size is not a 3-vector")
+                        t.assertEqual(#part.at, 3, def.id .. "/" .. part.name .. " position is not a 3-vector")
+                        t.assertEqual(#part.color, 3, def.id .. "/" .. part.name .. " colour is not a 3-vector")
+                        for axis = 1, 3 do
+                                t.assertGreater(part.size[axis], 0, def.id .. "/" .. part.name .. " has a zero dimension")
+                        end
+                end
+        end
+end)
+
+t.test("a weapon is not drawn with an armour icon", function()
+        for _, def in ipairs(Items.list()) do
+                if def.kind == "equipment" and def.slot == "Weapon" then
+                        local icon = ItemIcons.get(def.id, def)
+                        local names: { [string]: boolean } = {}
+                        for _, part in ipairs(icon.parts) do
+                                names[part.name] = true
+                        end
+                        t.assertTrue(names.Blade or names.Orb or names.Head or names.Bow,
+                                def.id .. " has no weapon-shaped part")
+                end
+        end
+end)
+
+t.test("a bigger weapon draws a longer blade", function()
+        local function bladeLength(id: string): number
+                local def = Items.getDef(id)
+                local icon = ItemIcons.get(id, def)
+                for _, part in ipairs(icon.parts) do
+                        if part.name == "Blade" then
+                                return part.size[2]
+                        end
+                end
+                return 0
+        end
+        t.assertGreater(bladeLength("DragonSlayer"), bladeLength("ShortSword"),
+                "the Dragon Slayer is not longer than a Short Sword")
+end)
+
+t.test("a potion and a material do not share a silhouette", function()
+        local function names(id: string): { [string]: boolean }
+                local def = Items.getDef(id)
+                local icon = ItemIcons.get(id, def)
+                local out: { [string]: boolean } = {}
+                for _, part in ipairs(icon.parts) do
+                        out[part.name] = true
+                end
+                return out
+        end
+        local potion = names("RedPotion")
+        local shard = names("Crystal")
+        local shared = 0
+        for name in pairs(shard) do
+                if potion[name] then
+                        shared += 1
+                end
+        end
+        t.assertEqual(shared, 0, "a potion and a shard share part names")
+end)
+
+--------------------------------------------------------------------------
+t.suite("Scenery")
+--------------------------------------------------------------------------
+
+local Scenery = require("../src/shared/Scenery")
+
+t.test("every place in the game has a scenery plan", function()
+        t.assertNotNil(Scenery.plan("Town"), "Town has no plan")
+        for _, field in ipairs(Fields.list()) do
+                t.assertNotNil(Scenery.plan(field.id), field.id .. " has no scenery plan")
+        end
+end)
+
+t.test("every plan names only props that exist", function()
+        local places: { string } = { "Town" }
+        for _, field in ipairs(Fields.list()) do
+                table.insert(places, field.id)
+        end
+        for _, place in ipairs(places) do
+                local plan = Scenery.plan(place)
+                t.assertGreater(plan.count, 0, place .. " asks for no scenery")
+                t.assertGreater(#plan.kinds, 0, place .. " names no prop kinds")
+                for _, id in ipairs(plan.kinds) do
+                        t.assertNotNil(Scenery.kindDef(id), place .. " names unknown prop " .. id)
+                end
+        end
+end)
+
+t.test("every prop recipe is well formed", function()
+        for _, id in ipairs(Scenery.kindIds()) do
+                local def = Scenery.kindDef(id)
+                t.assertNotNil(def, id .. " has no definition")
+                t.assertGreater(def.base, 0, id .. " has a non-positive base size")
+                local prop = Scenery.build(id)
+                t.assertNotNil(prop, id .. " builds nothing")
+                t.assertGreater(#prop.parts, 0, id .. " has no parts")
+                t.assertGreater(prop.footprint, 0, id .. " has a zero footprint")
+                t.assertGreater(prop.height, 0, id .. " has zero height")
+                for _, part in ipairs(prop.parts) do
+                        t.assertEqual(#part.size, 3, id .. "/" .. part.name .. " size is not a 3-vector")
+                        t.assertEqual(#part.at, 3, id .. "/" .. part.name .. " position is not a 3-vector")
+                        for axis = 1, 3 do
+                                t.assertGreater(part.size[axis], 0, id .. "/" .. part.name .. " has a zero dimension")
+                        end
+                        t.assertGreater(part.at[2], -0.01, id .. "/" .. part.name .. " starts below the ground")
+                end
+        end
+end)
+
+t.test("every colour role has a material", function()
+        -- A role with no material would draw as default plastic, which is what
+        -- made the old maps look like untextured blocks.
+        local roles = {
+                "wood", "bark", "leaf", "leafDark", "stone", "stoneDark",
+                "metal", "cloth", "roof", "glow", "pale", "soil",
+        }
+        for _, role in ipairs(roles) do
+                t.assertNotEqual(Scenery.materialFor(role), "SmoothPlastic", role .. " has no material")
+        end
+end)
+
+t.test("every place has a full palette", function()
+        local roles = {
+                "wood", "bark", "leaf", "leafDark", "stone", "stoneDark",
+                "metal", "cloth", "roof", "glow", "pale", "soil",
+        }
+        local places: { string } = { "Town" }
+        for _, field in ipairs(Fields.list()) do
+                table.insert(places, field.id)
+        end
+        for _, place in ipairs(places) do
+                local palette = Scenery.palette(place)
+                for _, role in ipairs(roles) do
+                        local colour = palette[role]
+                        t.assertNotNil(colour, place .. " has no " .. role .. " colour")
+                        t.assertEqual(#colour, 3, place .. "/" .. role .. " is not a 3-vector")
+                end
+        end
+end)
+
+t.test("the same place scatters the same scenery every time", function()
+        -- A map that reshuffles between servers would put a tree through a
+        -- player who logged in on the next one.
+        for _, field in ipairs(Fields.list()) do
+                local seed = Scenery.seedFor(field.id)
+                local first = Scenery.scatter(field.id, { x = 0, y = 0, z = 0 }, 110, seed, {})
+                local second = Scenery.scatter(field.id, { x = 0, y = 0, z = 0 }, 110, seed, {})
+                t.assertEqual(#first, #second, field.id .. " scattered a different count")
+                for i = 1, #first do
+                        t.assertEqual(first[i].kind, second[i].kind, field.id .. " prop " .. i .. " changed kind")
+                        t.assertNear(first[i].x, second[i].x, 0.0001, field.id .. " prop " .. i .. " moved in x")
+                        t.assertNear(first[i].z, second[i].z, 0.0001, field.id .. " prop " .. i .. " moved in z")
+                end
+        end
+end)
+
+t.test("two places never scatter the same layout", function()
+        local seeds: { [number]: string } = {}
+        for _, field in ipairs(Fields.list()) do
+                local seed = Scenery.seedFor(field.id)
+                t.assertNil(seeds[seed], field.id .. " shares a seed with " .. tostring(seeds[seed]))
+                seeds[seed] = field.id
+        end
+end)
+
+t.test("every place gets a real amount of scenery", function()
+        -- A plan that is almost entirely rejected would leave the map empty,
+        -- which is the bug this whole module exists to fix.
+        for _, field in ipairs(Fields.list()) do
+                local placed = Scenery.scatter(field.id, { x = 0, y = 0, z = 0 }, 110, Scenery.seedFor(field.id), {})
+                t.assertGreater(#placed, 20, field.id .. " scattered only " .. #placed .. " props")
+        end
+        local town = Scenery.scatter("Town", { x = 0, y = 0, z = 0 }, 70, Scenery.seedFor("Town"), {})
+        t.assertGreater(#town, 15, "the town scattered only " .. #town .. " props")
+end)
+
+t.test("scenery never stands inside a keep-out circle", function()
+        -- This is the contract the world build relies on: the spawn pad, the
+        -- portals and the farm plots stay clear.
+        local keepOut = {
+                { x = 0, z = 0, radius = 30 },
+                { x = 60, z = 0, radius = 20 },
+                { x = -60, z = 0, radius = 20 },
+        }
+        for _, field in ipairs(Fields.list()) do
+                local placed = Scenery.scatter(field.id, { x = 0, y = 0, z = 0 }, 110, Scenery.seedFor(field.id), keepOut)
+                for _, spot in ipairs(placed) do
+                        for _, circle in ipairs(keepOut) do
+                                local dx, dz = spot.x - circle.x, spot.z - circle.z
+                                t.assertGreater(math.sqrt(dx * dx + dz * dz), circle.radius - 0.01,
+                                        field.id .. " put " .. spot.kind .. " inside a protected circle")
+                        end
+                end
+        end
+end)
+
+t.test("scenery never grows through itself", function()
+        for _, field in ipairs(Fields.list()) do
+                local placed = Scenery.scatter(field.id, { x = 0, y = 0, z = 0 }, 110, Scenery.seedFor(field.id), {})
+                for i = 1, #placed do
+                        for j = i + 1, #placed do
+                                local a, b = placed[i], placed[j]
+                                local dx, dz = a.x - b.x, a.z - b.z
+                                t.assertGreater(math.sqrt(dx * dx + dz * dz), 0.001,
+                                        field.id .. " stacked " .. a.kind .. " on " .. b.kind)
+                        end
+                end
+        end
+end)
+
+t.test("every place scatters its own families, not one shared set", function()
+        -- Each map must read as its own place. A shared prop set would make
+        -- the five fields the same forest in five colours.
+        local function kindsOf(place: string): { [string]: boolean }
+                local out: { [string]: boolean } = {}
+                for _, spot in ipairs(Scenery.scatter(place, { x = 0, y = 0, z = 0 }, 110, Scenery.seedFor(place), {})) do
+                        out[spot.kind] = true
+                end
+                return out
+        end
+        local fieldKinds: { [string]: { [string]: boolean } } = {}
+        for _, field in ipairs(Fields.list()) do
+                fieldKinds[field.id] = kindsOf(field.id)
+        end
+        for _, a in ipairs(Fields.list()) do
+                for _, b in ipairs(Fields.list()) do
+                        if a.id ~= b.id then
+                                local shared = 0
+                                for kind in pairs(fieldKinds[a.id]) do
+                                        if fieldKinds[b.id][kind] then
+                                                shared += 1
+                                        end
+                                end
+                                t.assertEqual(shared, 0, a.id .. " and " .. b.id .. " share " .. shared .. " prop kinds")
+                        end
+                end
+        end
+end)
+
+t.test("the town is furnished, not forested", function()
+        local kinds: { [string]: number } = {}
+        for _, spot in ipairs(Scenery.scatter("Town", { x = 0, y = 0, z = 0 }, 70, Scenery.seedFor("Town"), {})) do
+                kinds[spot.kind] = (kinds[spot.kind] or 0) + 1
+        end
+        t.assertGreater(kinds.House or 0, 0, "the town has no houses")
+        t.assertGreater(kinds.Lamp or 0, 0, "the town has no lamps")
+end)
+
+t.test("a floating prop hangs above the ground", function()
+        local placed = Scenery.scatter("Void", { x = 0, y = 0, z = 0 }, 110, Scenery.seedFor("Void"), {})
+        local floating = 0
+        for _, spot in ipairs(placed) do
+                if spot.kind == "VoidShard" then
+                        floating += 1
+                        t.assertGreater(spot.y, 5, "a Void shard sits on the ground")
+                end
+        end
+        t.assertGreater(floating, 0, "the Void has no floating shards")
+end)
+
+t.test("a solid prop collides and a small one does not", function()
+        t.assertTrue(Scenery.kindDef("Pine").solid, "a pine is walk-through")
+        t.assertFalse(Scenery.kindDef("Flowers").solid, "flowers block the player")
+end)
+
+t.test("the town is a walled city with a square, not just houses", function()
+        -- Ragnarok's Prontera is walled, built around a market square with a
+        -- fountain at its heart. These are the props that say so.
+        local gates: { number } = {}
+        for _, field in ipairs(Fields.list()) do
+                table.insert(gates, math.atan2(field.position.z, field.position.x))
+        end
+        local marks = Scenery.landmarks("Town", { x = 0, y = 0, z = 0 }, Config.Town.Radius, { gates = gates })
+
+        local seen: { [string]: number } = {}
+        for _, spot in ipairs(marks) do
+                seen[spot.kind] = (seen[spot.kind] or 0) + 1
+        end
+
+        t.assertGreater(seen.Fountain or 0, 0, "the square has no fountain")
+        t.assertGreater(seen.Church or 0, 0, "the city has no church")
+        t.assertGreater(seen.Wall or 0, 4, "the city has no wall")
+        t.assertGreater(seen.GateArch or 0, 0, "the wall has no gate")
+        t.assertGreater(seen.GateTower or 0, 1, "the gates have no towers")
+end)
+
+t.test("a town gate lines up with the portal behind it", function()
+        -- A gate the player cannot walk through is worse than no gate: the
+        -- road out of the square has to lead to the portal, not to a wall.
+        local gates: { number } = {}
+        for _, field in ipairs(Fields.list()) do
+                table.insert(gates, math.atan2(field.position.z, field.position.x))
+        end
+        local marks = Scenery.landmarks("Town", { x = 0, y = 0, z = 0 }, Config.Town.Radius, { gates = gates })
+
+        local arches: { any } = {}
+        for _, spot in ipairs(marks) do
+                if spot.kind == "GateArch" then
+                        table.insert(arches, spot)
+                end
+        end
+        t.assertEqual(#arches, #gates, "one gate per road, no more")
+
+        for _, gate in ipairs(gates) do
+                local edge = Config.Town.Radius - 8
+                local px, pz = math.cos(gate) * edge, math.sin(gate) * edge
+                local best = math.huge
+                for _, arch in ipairs(arches) do
+                        local dx, dz = arch.x - px, arch.z - pz
+                        best = math.min(best, math.sqrt(dx * dx + dz * dz))
+                end
+                -- The arch stands on the wall ring, the portal just inside it,
+                -- so the two are a few studs apart rather than coincident.
+                t.assertLess(best, 12, "a gate is not on the road to its portal")
+        end
+end)
+
+t.test("no landmark is built on a farm plot or the arrival pad", function()
+        -- The plots are gameplay and the pad is where the player lands. A
+        -- church on a plot would hide the crop and block the harvest.
+        local gates: { number } = {}
+        for _, field in ipairs(Fields.list()) do
+                table.insert(gates, math.atan2(field.position.z, field.position.x))
+        end
+        local marks = Scenery.landmarks("Town", { x = 0, y = 0, z = 0 }, Config.Town.Radius, { gates = gates })
+        local arrival = Fields.arrivalOf("Town")
+
+        for _, spot in ipairs(marks) do
+                local prop = Scenery.build(spot.kind, spot.size)
+                local half = prop.footprint / 2
+                for i = 1, Config.Farm.PlotCount do
+                        local angle = ((i - 1) / Config.Farm.PlotCount) * math.pi * 2
+                        local px = math.cos(angle) * Config.Farm.PlotRingRadius
+                        local pz = math.sin(angle) * Config.Farm.PlotRingRadius
+                        local dx, dz = spot.x - px, spot.z - pz
+                        t.assertGreater(math.sqrt(dx * dx + dz * dz), half,
+                                spot.kind .. " is built on farm plot " .. i)
+                end
+                local ax, az = spot.x - arrival.x, spot.z - arrival.z
+                t.assertGreater(math.sqrt(ax * ax + az * az), half,
+                        spot.kind .. " is built on the arrival pad")
+        end
+end)
+
+t.test("every monster field gets a gate and a landmark", function()
+        for _, field in ipairs(Fields.list()) do
+                local centre = Fields.positionOf(field.id)
+                local arrival = Fields.arrivalOf(field.id)
+                local marks = Scenery.landmarks(field.id, centre, Config.Fields.ArenaRadius, { arrival = arrival })
+
+                local seen: { [string]: boolean } = {}
+                for _, spot in ipairs(marks) do
+                        seen[spot.kind] = true
+                end
+
+                local hasGate = false
+                local hasLandmark = false
+                for kind in pairs(seen) do
+                        if string.find(kind, "Gate") then
+                                hasGate = true
+                        end
+                        if string.find(kind, "Shrine") or kind == "VoidMonolith" or kind == "HeavenStatue" then
+                                hasLandmark = true
+                        end
+                end
+                t.assertTrue(hasGate, field.id .. " has no gate")
+                t.assertTrue(hasLandmark, field.id .. " has no landmark")
+        end
+end)
+
+t.test("a wall panel runs along the wall, not through it", function()
+        -- A panel laid radially would stand on end and leave a gap between
+        -- neighbours. The panel's long axis is its X, so its yaw must put X
+        -- along the ring's tangent.
+        local gates: { number } = {}
+        local marks = Scenery.landmarks("Town", { x = 0, y = 0, z = 0 }, Config.Town.Radius, { gates = gates })
+        local walls = 0
+        for _, spot in ipairs(marks) do
+                if spot.kind ~= "Wall" then
+                        continue
+                end
+                walls += 1
+                local radial = math.atan2(spot.z, spot.x)
+                local yaw = math.rad(spot.yaw)
+                -- The panel's local X axis after a yaw of t is (cos t, -sin t).
+                local x1, x2 = math.cos(yaw), -math.sin(yaw)
+                local dotRadial = x1 * math.cos(radial) + x2 * math.sin(radial)
+                t.assertNear(dotRadial, 0, 0.001, "a wall panel is turned across the wall")
+        end
+        t.assertGreater(walls, 4, "the town has almost no wall")
+end)
+
+t.test("landmarks are placed on purpose, so they never move", function()
+        -- The scatter is seeded; the landmarks are not random at all. Two
+        -- builds must agree, or a returning player finds the church moved.
+        local gates: { number } = {}
+        for _, field in ipairs(Fields.list()) do
+                table.insert(gates, math.atan2(field.position.z, field.position.x))
+        end
+        local first = Scenery.landmarks("Town", { x = 0, y = 0, z = 0 }, Config.Town.Radius, { gates = gates })
+        local second = Scenery.landmarks("Town", { x = 0, y = 0, z = 0 }, Config.Town.Radius, { gates = gates })
+        t.assertEqual(#first, #second, "the town grew a landmark")
+        for i = 1, #first do
+                t.assertEqual(first[i].kind, second[i].kind, "landmark " .. i .. " changed kind")
+                t.assertNear(first[i].x, second[i].x, 0.0001, "landmark " .. i .. " moved")
+        end
+end)
+
+t.test("water is drawn as water, not as stone", function()
+        local palette = Scenery.palette("Town")
+        t.assertNotNil(palette.water, "the town has no water colour")
+        t.assertEqual(Scenery.materialFor("water"), "Glass", "water is not see-through")
+end)
+
+t.test("every place has landmarks and they name real props", function()
+        local places: { string } = { "Town" }
+        for _, field in ipairs(Fields.list()) do
+                table.insert(places, field.id)
+        end
+        for _, place in ipairs(places) do
+                local radius = (place == "Town") and Config.Town.Radius or Config.Fields.ArenaRadius
+                local marks = Scenery.landmarks(place, { x = 0, y = 0, z = 0 }, radius, { arrival = { x = 0, y = 0, z = 18 } })
+                t.assertGreater(#marks, 0, place .. " has no landmarks")
+                for _, spot in ipairs(marks) do
+                        t.assertNotNil(Scenery.kindDef(spot.kind), place .. " builds unknown landmark " .. spot.kind)
+                end
+        end
+end)
+
+t.test("only the first field is safe and each later field is deadlier", function()
+        local zones = Zones.list()
+        t.assertGreater(#zones, 1, "there is only one field")
+
+        -- The first field is the tutorial, so it must not kill.
+        t.assertFalse(Zones.isLethal(zones[1].id), "the first field can kill the player")
+        t.assertEqual(zones[1].id, "Meadow")
+
+        -- Every later field must be lethal and must hit harder than the one
+        -- before it, so moving on is always a real step up.
+        for i = 2, #zones do
+                t.assertTrue(Zones.isLethal(zones[i].id), zones[i].id .. " cannot kill the player")
+                t.assertGreater(zones[i].difficultyMultiplier, zones[i - 1].difficultyMultiplier,
+                        zones[i].id .. " is not harder than " .. zones[i - 1].id)
+                t.assertGreater(zones[i].coinMultiplier, zones[i - 1].coinMultiplier,
+                        zones[i].id .. " does not pay better than " .. zones[i - 1].id)
+                t.assertGreater(zones[i].levelRequirement, zones[i - 1].levelRequirement,
+                        zones[i].id .. " does not need a higher level than " .. zones[i - 1].id)
+        end
+
+        -- An unknown zone is treated as lethal, so a typo cannot make the game
+        -- safe by accident.
+        t.assertTrue(Zones.isLethal("NoSuchField"), "an unknown field was treated as safe")
+end)
+
+t.test("the safe field still deals damage, it just cannot finish the player", function()
+        -- A safe field that deals nothing would be a broken field. The rule is
+        -- about the killing blow, not about immunity.
+        local player = Combat.createCombatant(100)
+        local died, health = Combat.damageCombatant(player, 30, true)
+        t.assertFalse(died)
+        t.assertEqual(health, 70, "the safe field dealt no damage")
+end)
+
+--------------------------------------------------------------------------
+t.suite("Atmosphere")
+--------------------------------------------------------------------------
+
+local Atmosphere = require("../src/shared/Atmosphere")
+
+t.test("every place in the game has an atmosphere profile", function()
+        t.assertNotNil(Atmosphere.profileFor("Town"), "Town has no atmosphere")
+        for _, field in ipairs(Fields.list()) do
+                t.assertNotNil(Atmosphere.profileFor(field.id), field.id .. " has no atmosphere")
+        end
+end)
+
+t.test("every profile is inside what Roblox accepts", function()
+        -- An out-of-range value is silently clamped by the engine, which hides
+        -- a typo instead of failing a build.
+        for _, place in ipairs(Atmosphere.placeIds()) do
+                local p = Atmosphere.profileFor(place)
+                t.assertGreater(p.density, 0, place .. " density is not positive")
+                t.assertLess(p.density, 1, place .. " density is out of range")
+                t.assertGreater(p.cloudCover, 0, place .. " cloud cover is not positive")
+                t.assertLess(p.cloudCover, 1, place .. " cloud cover is out of range")
+                t.assertGreater(p.bloomIntensity, 0, place .. " bloom intensity is not positive")
+                t.assertLess(p.bloomIntensity, 3, place .. " bloom intensity is out of range")
+                t.assertGreater(p.brightness, 0.5, place .. " brightness is too dark")
+                t.assertLess(p.brightness, 2, place .. " brightness is too bright")
+                t.assertEqual(#p.color, 3, place .. " atmosphere colour is not a 3-vector")
+                t.assertEqual(#p.tint, 3, place .. " tint is not a 3-vector")
+                t.assertGreater(p.wind, 0, place .. " wind is not positive")
+        end
+end)
+
+t.test("the places do not all look the same", function()
+        -- If two places share a profile, the map that arrives is the map that
+        -- left, and travel stops meaning anything.
+        local seen: { [string]: string } = {}
+        for _, place in ipairs(Atmosphere.placeIds()) do
+                local p = Atmosphere.profileFor(place)
+                local key = string.format("%.3f|%.3f|%.3f|%.3f|%.3f|%.3f",
+                        p.density, p.cloudCover, p.bloomIntensity, p.brightness, p.contrast, p.saturation)
+                t.assertNil(seen[key], place .. " has the same atmosphere as " .. tostring(seen[key]))
+                seen[key] = place
+        end
+end)
+
+t.test("the town is the brightest place and the Void the dimmest", function()
+        local town = Atmosphere.profileFor("Town")
+        local void = Atmosphere.profileFor("Void")
+        t.assertGreater(town.brightness, void.brightness, "the town is not brighter than the Void")
+        t.assertGreater(void.bloomIntensity, town.bloomIntensity, "the Void does not glow more than the town")
+end)
+
+t.test("an unknown place falls back instead of failing", function()
+        local fallback = Atmosphere.profileFor("NoSuchPlace")
+        t.assertNotNil(fallback, "an unknown place has no profile")
+        t.assertNear(fallback.density, Atmosphere.profileFor("Town").density, 0.0001, "the fallback is not the town's")
+end)
+
+t.suite("Villagers")
+
+t.test("the town has people to talk to, not only props", function()
+        t.assertGreater(Villagers.Count, 0, "the town has no villagers at all")
+end)
+
+t.test("every villager names a panel the client can actually open", function()
+        -- A villager whose `opens` is not in the known set is a body that does
+        -- nothing when a player walks up and taps it, which is the exact bug the
+        -- town started with.
+        for _, def in ipairs(Villagers.List) do
+                t.assertTrue(Villagers.opensKnown(def.opens),
+                        def.id .. " opens an unknown panel: " .. tostring(def.opens))
+        end
+end)
+
+t.test("every villager has its own name and title text", function()
+        local seenName: { [string]: boolean } = {}
+        for _, def in ipairs(Villagers.List) do
+                t.assertNotEqual(Text.get(def.nameKey), def.nameKey, def.id .. " has no name text")
+                t.assertNotEqual(Text.get(def.titleKey), def.titleKey, def.id .. " has no title text")
+                t.assertNil(seenName[def.nameKey], def.id .. " shares a name with another villager")
+                seenName[def.nameKey] = true
+        end
+end)
+
+t.test("every villager stands inside the town and clear of the others", function()
+        -- The town radius is the floor a villager stands on; outside it they would
+        -- float over the world slab, and overlapping they would read as one body.
+        local town = Config.Town
+        local placed: { { x: number, z: number } } = {}
+        for _, def in ipairs(Villagers.List) do
+                local p = Villagers.positionOf(def)
+                local dist = math.sqrt(p.x * p.x + p.z * p.z)
+                t.assertLess(dist, town.Radius, def.id .. " stands outside the town floor")
+                for _, other in ipairs(placed) do
+                        local dx = p.x - other.x
+                        local dz = p.z - other.z
+                        t.assertGreater(math.sqrt(dx * dx + dz * dz), 6,
+                                def.id .. " stands on top of another villager")
+                end
+                table.insert(placed, { x = p.x, z = p.z })
+        end
+end)
+
+t.test("a villager is reachable by walking, not only by tapping a button", function()
+        -- The prompt's reach is what makes the town walkable. If it were zero the
+        -- villager would be decoration again.
+        t.assertGreater(Villagers.Reach, 4, "villagers cannot be reached by walking up")
+end)
+
+t.suite("Death penalty")
+
+t.test("the training field never charges for a death", function()
+        -- The first field cannot kill, and if it could not charge either then the
+        -- whole risk side of the game would be imaginary.
+        local penalty = Death.penalty(10000, false)
+        t.assertFalse(penalty.charged, "the safe field charged for a death")
+        t.assertEqual(penalty.remaining, 10000, "the safe field took coins")
+end)
+
+t.test("a lethal field charges a fraction of the balance", function()
+        local penalty = Death.penalty(1000, true)
+        t.assertTrue(penalty.charged, "a lethal death cost nothing")
+        t.assertEqual(penalty.coins, 100, "the charge is not the configured percent")
+        t.assertEqual(penalty.remaining, 900, "the balance after the charge is wrong")
+end)
+
+t.test("one death can never wipe a session's savings", function()
+        -- The cap is the whole point: without it a player carrying millions loses
+        -- millions in one bad wave and has no reason to come back.
+        local penalty = Death.penalty(1e9, true)
+        t.assertEqual(penalty.coins, Config.Death.MaxCoinLoss, "the cap was not applied")
+        t.assertEqual(penalty.remaining, 1e9 - Config.Death.MaxCoinLoss, "the capped balance is wrong")
+end)
+
+t.test("a player with almost nothing keeps what they have", function()
+        -- Taking the last coins off somebody who just died is how a bad session
+        -- becomes a reason to leave.
+        local penalty = Death.penalty(Config.Death.MinCoinsToCharge - 1, true)
+        t.assertFalse(penalty.charged, "a broke player was charged")
+        t.assertEqual(penalty.remaining, Config.Death.MinCoinsToCharge - 1, "a broke player lost coins")
+end)
+
+t.test("the charge never exceeds the balance", function()
+        -- The percent floor and the cap can both misbehave on a small balance; the
+        -- balance must never go negative whatever the config says.
+        for _, coins in ipairs({ 200, 201, 499, 1000, 999999 }) do
+                local penalty = Death.penalty(coins, true)
+                t.assertLess(penalty.remaining, coins + 1, "the balance grew after a death")
+                t.assertTrue(penalty.remaining >= 0, "the balance went negative at " .. tostring(coins))
+                t.assertTrue(penalty.coins <= coins, "the charge exceeded the balance at " .. tostring(coins))
+        end
+end)
+
+t.suite("Combat defaults")
+
+t.test("the player fights, the game does not fight for them", function()
+        -- Auto-attack defaulting on is what made the game a screensaver. This test
+        -- is the one that has to fail if somebody flips it back.
+        t.assertFalse(Config.Combat.AutoAttack, "auto-attack is on by default again")
 end)
 
 return t.finish()

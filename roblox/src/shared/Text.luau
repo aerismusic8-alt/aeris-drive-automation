@@ -21,8 +21,10 @@ local STRINGS: { [string]: string } = {
         field = "แผนที่",
         zone = "โซน",
         rebirth = "รีเบิร์ธ",
+        version = "เวอร์ชัน",
         combo = "คอมโบ",
         wave = "เวฟ",
+        menu = "เมนู",
         boss = "บอส",
         max = "สูงสุด",
 
@@ -48,6 +50,67 @@ local STRINGS: { [string]: string } = {
         waveNext = "%s: เวฟ %d ใน %d วิ",
         waveFighting = "%s: เวฟ %d - เหลือ %d ตัว",
         bossDown = "สังหารบอสได้!",
+        -- Shown while standing in the first field, which cannot kill the player.
+        safeField = "สนามฝึก: ศัตรูฆ่าเราไม่ได้ เก็บเวลได้เรื่อยๆ",
+
+        -- The people in Prontera Town. Each one opens the panel named by its
+        -- `opens` field, so the label under a villager always says what tapping
+        -- them will do.
+        npcElder = "ผู้เฒ่า",
+        npcElderTitle = "ภารกิจ",
+        npcMerchant = "พ่อค้า",
+        npcMerchantTitle = "ร้านค้า",
+        npcTrainer = "ครูฝึก",
+        npcTrainerTitle = "ตัวละคร",
+        npcCaptain = "กัปตัน",
+        npcCaptainTitle = "แผนที่",
+        npcKeeper = "ผู้ดูแล",
+        npcKeeperTitle = "รางวัล",
+        npcTapToOpen = "แตะเพื่อเปิด %s",
+        npcAway = "เดินเข้าไปใกล้ๆ แล้วแตะอีกครั้ง",
+
+        -- Death has to cost something outside the training field, or the only
+        -- way to lose is to stop playing.
+        diedInField = "คุณล้มใน %s — กลับไปที่เมือง",
+        deathPenalty = "เสีย %d เหรียญจากค่าฟื้น",
+        townAfterDeath = "พักที่เมืองก่อน แล้วค่อยออกไปใหม่",
+
+        -- Quest spine. One line at a time, so a new player always has a named
+        -- next action instead of a field full of monsters and no instructions.
+        quest = "ภารกิจ",
+        questComplete = "ภารกิจสำเร็จ!",
+        questReward = "ได้: +%d เหรียญ, +%d EXP",
+        questItemReward = "ได้: +%d เหรียญ, +%d EXP, %s x%d",
+        questProgress = "%s (%d/%d)",
+        questAllDone = "ทำภารกิจครบทุกข้อแล้ว!",
+        qFirstBlood = "เริ่มต้นที่ทุ่งหญ้า",
+        qFirstBloodBody = "กำจัดมอนสเตอร์ 3 ตัว (เดินชนแล้วสู้เองอัตโนมัติ)",
+        qPickJob = "เลือกอาชีพ",
+        qPickJobBody = "เปิดเมนู แล้วกด ตัวละคร เพื่อเลือกอาชีพแรก",
+        qPlantAndPick = "รู้จักฟาร์ม",
+        qPlantAndPickBody = "กด เก็บเกี่ยว ปลูกพืชแล้วเก็บให้ครบ 3 ครั้ง (ฟาร์มชาร์จขวาน)",
+        qSwingAxe = "ลองฟาดขวาน",
+        qSwingAxeBody = "เก็บพืชให้ได้ 5 ชาร์จ แล้วกด ขวาน ฟาดศัตรูรอบตัว (กำจัด 10 ตัว)",
+        qWearGear = "ใส่ของ",
+        qWearGearBody = "เปิดเมนู กระเป๋า แล้วใส่อาวุธที่ได้มา",
+        qSlimeKing = "ราชาสไลม์",
+        qSlimeKingBody = "ทุ่งหญ้า เวฟ 5 - สังหารบอส สไลม์คิง",
+        qCavern = "สู่ถ้ำคริสตัล",
+        qCavernBody = "ไปที่ แผนที่ แล้วเลือก ถ้ำคริสตัล (เวล 10)",
+        qCrystalGolem = "โกเลมคริสตัล",
+        qCrystalGolemBody = "ถ้ำคริสตัล เวฟ 5 - สังหารบอส โกเลมคริสตัล",
+        qVolcano = "สู่ภูเขาไฟ",
+        qVolcanoBody = "ไปที่ แผนที่ แล้วเลือก ภูเขาไฟเอมเบอร์ (เวล 25)",
+        qVolcanoDragon = "มังกรภูเขาไฟ",
+        qVolcanoDragonBody = "ภูเขาไฟ เวฟ 5 - สังหารบอส มังกรภูเขาไฟ",
+        qVoid = "สู่รอยแยกวอยด์",
+        qVoidBody = "ไปที่ แผนที่ แล้วเลือก รอยแยกวอยด์ (เวล 50)",
+        qVoidSovereign = "เจ้าแห่งวอยด์",
+        qVoidSovereignBody = "รอยแยกวอยด์ เวฟ 5 - สังหารบอส เจ้าแห่งวอยด์",
+        qHeaven = "ประตูสวรรค์",
+        qHeavenBody = "ไปที่ แผนที่ แล้วเลือก ประตูสวรรค์ (เวล 80)",
+        qHeavenGate = "ประตูสวรรค์ด่านสุดท้าย",
+        qHeavenGateBody = "สวรรค์ เวฟ 5 - สังหารบอส ประตูสวรรค์ - ด่านสุดท้ายของเนื้อเรื่อง",
 
         -- Travel list
         town = "เมือง",

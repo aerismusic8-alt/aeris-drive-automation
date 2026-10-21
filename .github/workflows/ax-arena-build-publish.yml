@@ -1,0 +1,238 @@
+name: AX Garden Build and Publish (PC1-independent)
+
+# Builds and publishes the place without PC1.
+#
+# This is the shipping path for AX Garden Legends. The file is still named after
+# the arena because renaming it would churn a workflow whose triggers are
+# path-scoped to itself, but the build, the artifact and the published config are
+# all the garden: `roblox-garden/` and `roblox-garden/publish-config.json`.
+# The arena in `roblox/` is legacy and is no longer published from here.
+#
+# Why this exists: every build and publish path ran on the self-hosted runner,
+# so when PC1 went offline the pipeline stopped entirely even though nothing
+# about building or publishing needs that machine. Rojo has a Linux binary and
+# publishing is one HTTPS POST to the Open Cloud API. Both run here.
+#
+# The self-hosted workflows are left in place; they are still the right tool for
+# anything that genuinely needs PC1 (Roblox Studio, screenshots, desktop work).
+# This workflow removes PC1 from the critical path for shipping the game.
+
+on:
+  workflow_dispatch:
+    inputs:
+      version_type:
+        description: 'Saved (private test) or Published (live)'
+        required: true
+        default: 'Published'
+        type: choice
+        options: [Saved, Published]
+      publish:
+        description: 'Publish to Roblox, or build only'
+        required: true
+        default: 'yes'
+        type: choice
+        options: [yes, no]
+  push:
+    paths:
+      - 'roblox-garden/**'
+      - 'scripts/build-place-linux.sh'
+      - 'scripts/publish-place-linux.sh'
+      - 'scripts/name-experience-linux.sh'
+      - 'scripts/probe-scopes-linux.sh'
+      - 'scripts/check-live-state-linux.sh'
+      - '.github/workflows/ax-arena-build-publish.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    # The gate lives here rather than in a dispatch from the tests workflow.
+    # Dispatching needs the target workflow to exist on the default branch, and
+    # `workflow_run` needs the same, so neither can gate a publish from a
+    # feature branch. Running the suite in the same workflow works on any
+    # branch, which is where this one actually runs.
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install Luau
+        run: bash scripts/install-luau.sh
+
+      - name: Run the test suite
+        run: bash scripts/test-roblox.sh
+
+  build:
+    needs: test
+    runs-on: ubuntu-latest
+    outputs:
+      place_path: ${{ steps.build.outputs.place_path }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Build the place with Rojo
+        id: build
+        run: |
+          bash scripts/build-place-linux.sh "$RUNNER_TEMP/AXGarden.rbxlx" | tee "$RUNNER_TEMP/build.log"
+          PLACE=$(grep -oP '(?<=^BUILD_PLACE=).*' "$RUNNER_TEMP/build.log")
+          echo "place_path=$PLACE" >> "$GITHUB_OUTPUT"
+
+      - name: Upload place artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: AXGarden-place
+          path: ${{ runner.temp }}/AXGarden.rbxlx
+          if-no-files-found: error
+
+  name:
+    needs: test
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      # Publishing a place does not name the experience, so its page read
+      # "Title-Unavailable" and there was no way to open the game from a phone.
+      # This sets the name from Config.luau. It is best effort: the key may only
+      # carry place-publishing scope, and the script reports that without
+      # failing the job.
+      - name: Set the experience name
+        env:
+          ROBLOX_API_KEY: ${{ secrets.ROBLOX_API_KEY }}
+        run: bash scripts/name-experience-linux.sh
+
+  probe:
+    needs: test
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      # What the automation can do is a property of the key, and the key is a
+      # list of ticked scopes. This asks Roblox which ones are live instead of
+      # assuming, so a missing scope shows up as a named gap and not as a
+      # mystery failure later. Read-only probes; safe to run against the live
+      # experience.
+      - name: Report which scopes the key has
+        env:
+          ROBLOX_API_KEY: ${{ secrets.ROBLOX_API_KEY }}
+        run: bash scripts/probe-scopes-linux.sh
+
+  publish:
+    needs: [test, build]
+    if: ${{ inputs.publish != 'no' }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Download the built place
+        uses: actions/download-artifact@v4
+        with:
+          name: AXGarden-place
+          path: ${{ runner.temp }}
+
+      - name: Publish through Open Cloud
+        id: publish
+        env:
+          ROBLOX_API_KEY: ${{ secrets.ROBLOX_API_KEY }}
+        run: |
+          set +e
+          bash scripts/publish-place-linux.sh \
+            "$RUNNER_TEMP/AXGarden.rbxlx" \
+            "${{ inputs.version_type }}" | tee "$RUNNER_TEMP/publish.log"
+          CODE=${PIPESTATUS[0]}
+          echo "exit_code=$CODE" >> "$GITHUB_OUTPUT"
+
+          # Exit 3 means the credential is absent. That is a known, honest
+          # state, not a build failure: report it and let the job pass so the
+          # signal stays meaningful instead of going red for a missing secret.
+          if [ "$CODE" = "3" ]; then
+            echo "::warning::Publishing is BLOCKED: ROBLOX_API_KEY is not set."
+            exit 0
+          fi
+          exit "$CODE"
+
+      - name: Verify the version exists on Roblox
+        if: steps.publish.outputs.exit_code == '0'
+        env:
+          ROBLOX_API_KEY: ${{ secrets.ROBLOX_API_KEY }}
+        run: |
+          # A 200 from the publish call is the API's word. This step tries to
+          # read the version back so the claim rests on Roblox's record.
+          #
+          # The versions list endpoint needs a read scope, and a key created for
+          # publishing often has only universe-places:write, in which case this
+          # comes back empty. An empty list here is therefore reported as
+          # UNVERIFIED rather than as a failure: it says nothing either way
+          # about whether the publish happened.
+          #
+          # The strong evidence for the publish itself is the versionNumber in
+          # the POST response, which Roblox assigns. It increments by one per
+          # publish, and watching it increment across two runs is what actually
+          # proves publishes are landing.
+          CFG=roblox-garden/publish-config.json
+          UNIVERSE=$(python3 -c "import json;print(json.load(open('$CFG'))['universeId'])")
+          PLACE=$(python3 -c "import json;print(json.load(open('$CFG'))['placeId'])")
+          echo "VERIFY universeId=$UNIVERSE placeId=$PLACE"
+
+          CODE=$(curl -sS -o "$RUNNER_TEMP/versions.json" -w '%{http_code}' \
+            -H "x-api-key: $ROBLOX_API_KEY" \
+            "https://apis.roblox.com/universes/v1/$UNIVERSE/places/$PLACE/versions" || echo 000)
+          echo "VERIFY_LIST_HTTP=$CODE"
+          head -c 400 "$RUNNER_TEMP/versions.json" || true
+          echo
+
+          python3 - <<'PY'
+          import json, os
+
+          p = os.path.join(os.environ["RUNNER_TEMP"], "versions.json")
+          try:
+              d = json.load(open(p))
+          except Exception as e:
+              print(f"VERIFY=UNVERIFIED reason=unreadable_response:{e}")
+              raise SystemExit(0)
+
+          versions = d.get("versions") or []
+          print(f"VERIFY_VERSION_COUNT={len(versions)}")
+          if versions:
+              v = versions[0]
+              print(f"VERIFY_LATEST_VERSION={v.get('versionNumber')}")
+              print(f"VERIFY_LATEST_CREATED={v.get('createTime')}")
+              print("VERIFY=PASS")
+          else:
+              print("VERIFY=UNVERIFIED reason=versions_list_empty")
+              print("VERIFY_NOTE=key_may_lack_read_scope; "
+                    "the POST versionNumber is the authoritative record")
+          PY
+
+      - name: Upload publish evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: pc1-independent-publish-evidence
+          path: ${{ runner.temp }}/publish.log
+          if-no-files-found: warn
+
+  # A green pipeline proved the wrong thing twice: a place published with no
+  # name, and a private universe. Every job passed while the game page said
+  # Title-Unavailable. Publishing a place and having a game a player can open are
+  # two different facts, and only the second one matters to a player.
+  #
+  # So this runs last and asks the questions a player asks, from outside, using
+  # no credential for the parts that are public. It is the step that would have
+  # caught both of those, and it is here so the next one cannot hide.
+  live-state:
+    needs: [publish, name]
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Check the game the way a player sees it
+        env:
+          ROBLOX_API_KEY: ${{ secrets.ROBLOX_API_KEY }}
+        run: bash scripts/check-live-state-linux.sh

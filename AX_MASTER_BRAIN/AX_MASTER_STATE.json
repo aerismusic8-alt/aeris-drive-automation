@@ -124,6 +124,27 @@
     "phase_1_acceptance_gate_independent": true,
     "verified_evidence": "GitHub Actions run 33707158558"
   },
+  "execution_lifecycle": {
+    "status": "CANONICAL",
+    "spec": "AX_MASTER_BRAIN/AX_EXECUTION_LIFECYCLE_SPEC.md",
+    "lifecycle": "INSPECT -> DEFINE -> RESEARCH -> ROOT CAUSE -> PLAN -> EXECUTE -> TEST -> VERIFY -> EVIDENCE -> WRITE-BACK -> NEXT ACTION",
+    "states": [
+      "NOT_STARTED",
+      "INSPECTING",
+      "RESEARCHING",
+      "READY_TO_EXECUTE",
+      "EXECUTING",
+      "TESTING",
+      "VERIFIED_PASS",
+      "BLOCKED",
+      "FAILED",
+      "NEEDS_HUMAN_AUTHORIZATION"
+    ],
+    "report_format": "FACT / EXECUTED / EVIDENCE / VERIFIED / CURRENT STATE / BLOCKER / NEXT ACTION",
+    "review_rule": "Every material step ends with a reflection write-back; review is continuous, not a closing step.",
+    "extends": "operating_principles PCSEV (short form)",
+    "repository_enforcement": "AGENTS.md 'How to work on this repository'"
+  },
   "current_system_state": {
     "ax_core": "LOCKED",
     "akath_runtime": "ACTIVE",

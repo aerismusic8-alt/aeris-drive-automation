@@ -1,0 +1,11 @@
+{
+  "universeId": 10771844216,
+  "placeId": 79945905295644,
+  "versionType": "Published",
+  "note": [
+    "AX Garden Legends. This is the universe the arena used; the garden replaces it.",
+    "universeId and placeId come from the Creator Dashboard URL.",
+    "No secret goes in this file. The API key lives in the GitHub secret ROBLOX_API_KEY.",
+    "A run form input still wins over these values when one is given."
+  ]
+}

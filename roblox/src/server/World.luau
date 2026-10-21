@@ -18,13 +18,20 @@ local Config = require(Shared:WaitForChild("Config"))
 local Fields = require(Shared:WaitForChild("Fields"))
 local Enemies = require(Shared:WaitForChild("Enemies"))
 local Items = require(Shared:WaitForChild("Items"))
+local MonsterShapes = require(Shared:WaitForChild("MonsterShapes"))
+local ClassLook = require(Shared:WaitForChild("ClassLook"))
+local Scenery = require(Shared:WaitForChild("Scenery"))
+local Atmosphere = require(Shared:WaitForChild("Atmosphere"))
 local Text = require(Shared:WaitForChild("Text"))
+local Villagers = require(Shared:WaitForChild("Villagers"))
 
 local World = {}
 
 local SPAWN_HEIGHT = 4
 local ENEMY_HEIGHT_OFFSET = 3
-local ENEMY_BASE_SIZE = Vector3.new(4, 5, 4)
+-- How far above a grounded monster a flying one drifts, in studs. Enough to
+-- clear a hedge, not so much that a melee swing cannot reach it.
+local HOVER_LIFT = 4
 local PLATFORM_HEIGHT = 4
 
 local enemies: { [number]: any } = {}
@@ -58,6 +65,15 @@ local portalTravel: ((Player, string) -> ())? = nil
 
 function World.setPortalHandler(handler: (Player, string) -> ())
         portalTravel = handler
+end
+
+-- Set by the server: the function a villager prompt calls when a player uses it.
+-- Kept as a callback for the same reason as portalTravel, so World never has to
+-- know which panel a villager opens or how that panel is validated.
+local villagerTalk: ((Player, string) -> ())? = nil
+
+function World.setVillagerHandler(handler: (Player, string) -> ())
+        villagerTalk = handler
 end
 
 -- Floating damage numbers, keyed by player. Each player only sees their own,
@@ -170,6 +186,8 @@ end
 -- Apply a place's look to the world. Roblox has one global Lighting service,
 -- so the look follows the player: entering a field re-lights the world for
 -- that field. This is what makes the maps feel like different places.
+local applyAtmosphere: (string) -> ()
+
 local function applyLook(placeId: string)
         local look = Fields.look(placeId)
         local Lighting = game:GetService("Lighting")
@@ -181,10 +199,256 @@ local function applyLook(placeId: string)
         Lighting.FogEnd = look.fogEnd
         Lighting.FogStart = look.fogEnd * 0.25
         Lighting.ClockTime = placeId == "Void" and 0 or (placeId == "Heaven" and 12 or 14)
-        Lighting.GlobalShadows = true
+        -- Low-end hardware is the target, not a fallback. This project ships
+        -- Voxel lighting with GlobalShadows off (default.project.json), because
+        -- the machines that cannot run it are the ones most players own: on an
+        -- Intel HD Graphics adapter the client's own shaders fail to load
+        -- ("shader ... is not available" in the client log) and the world draws
+        -- black, leaving only the HUD. Voxel does its shadow work on the CPU and
+        -- needs the least from the GPU. Re-asserted here because this call runs
+        -- on every field entry and Lighting is a single global service.
+        Lighting.GlobalShadows = false
+
+        -- The air is part of the look, so it is applied in the same call: a
+        -- caller that re-lights a place can never forget to re-grade it.
+        applyAtmosphere(placeId)
 end
 
 World.applyLook = applyLook
+
+-- The colour a scenery role is drawn in for this place.
+local function sceneryColor(role: string, palette: { [string]: { number } }): Color3
+        return rgb(palette[role] or { 200, 200, 200 })
+end
+
+-- A Roblox material from its name, so a bad name degrades to plastic instead
+-- of erroring inside the world build.
+local function material(name: string): Enum.Material
+        local ok, value = pcall(function()
+                return Enum.Material[name]
+        end)
+        if ok and value then
+                return value
+        end
+        return Enum.Material.SmoothPlastic
+end
+
+-- A part from a scenery recipe. Scenery describes a prop in prop space, the
+-- same convention as a monster, so the transform here is the same one.
+local function sceneryPart(spec: any, palette: { [string]: { number } }): BasePart
+        local instance: BasePart
+        if spec.shape == "Ball" then
+                instance = Instance.new("Part")
+                instance.Shape = Enum.PartType.Ball
+        elseif spec.shape == "Cylinder" then
+                instance = Instance.new("Part")
+                instance.Shape = Enum.PartType.Cylinder
+        elseif spec.shape == "Wedge" then
+                instance = Instance.new("WedgePart")
+        elseif spec.shape == "CornerWedge" then
+                instance = Instance.new("CornerWedgePart")
+        else
+                instance = Instance.new("Part")
+        end
+
+        instance.Name = spec.name
+        local size = spec.size
+        instance.Size = Vector3.new(size[1], size[2], size[3])
+        instance.Anchored = true
+        instance.Material = material(Scenery.materialFor(spec.color))
+        instance.Color = sceneryColor(spec.color, palette)
+        -- Water and glass are the only see-through props; the default 0 keeps
+        -- everything else solid-looking.
+        if spec.alpha then
+                instance.Transparency = spec.alpha
+        end
+        instance.TopSurface = Enum.SurfaceType.Smooth
+        instance.BottomSurface = Enum.SurfaceType.Smooth
+
+        local at = spec.at
+        local rotation = CFrame.new()
+        if spec.rot then
+                rotation = CFrame.Angles(math.rad(spec.rot[1]), math.rad(spec.rot[2]), math.rad(spec.rot[3]))
+        end
+        instance.CFrame = rotation * CFrame.new(Vector3.new(at[1], at[2], at[3]))
+        return instance
+end
+
+-- Scatter one place's scenery into the world.
+--
+-- keepOut is what stops a tree growing through the spawn pad, a portal or a
+-- farm plot: the caller names the circles to protect and the scatter respects
+-- them. Solid props collide so a forest is something you walk around, but the
+-- model's parts are CanQuery off so they never block the axe or a tap.
+local function buildScenery(parent: Model, placeId: string, centre: Vector3, radius: number, keepOut: { any })
+        local palette = Scenery.palette(placeId)
+        local placements = Scenery.scatter(placeId, { x = centre.X, y = centre.Y, z = centre.Z }, radius,
+                Scenery.seedFor(placeId), keepOut)
+
+        local group = Instance.new("Model")
+        group.Name = "Scenery"
+
+        for index, spot in ipairs(placements) do
+                local prop = Scenery.build(spot.kind, spot.size)
+                if prop then
+                        local model = Instance.new("Model")
+                        model.Name = string.format("%s_%d", spot.kind, index)
+                        for _, spec in ipairs(prop.parts) do
+                                local piece = sceneryPart(spec, palette)
+                                piece.CanCollide = spot.solid
+                                piece.CanQuery = false
+                                piece.CanTouch = false
+                                piece.Parent = model
+                        end
+                        model:PivotTo(CFrame.new(spot.x, spot.y, spot.z) * CFrame.Angles(0, math.rad(spot.yaw), 0))
+                        model.Parent = group
+                end
+        end
+
+        group.Parent = parent
+        return group
+end
+
+-- Turn a place's landmarks into keep-out circles, so the scatter leaves room
+-- for them. A landmark's own footprint is the radius, trimmed slightly so the
+-- scatter is not starved; props that are a floor rather than an obstacle (the
+-- paving) reserve nothing, so props may stand on them.
+-- Scenery is pure Luau, so it takes plain { x, y, z } tables, never a Vector3.
+-- The world works in Vector3, so the arrival point is converted once here
+-- rather than at each call. Passing the Vector3 straight through read as
+-- arrival.x == nil and threw inside Scenery, which killed the server script
+-- before it could serve a single player.
+local function landmarkOpts(opts: any): any
+        if not opts then
+                return nil
+        end
+        local out = {}
+        for key, value in pairs(opts) do
+                out[key] = value
+        end
+        if opts.arrival then
+                out.arrival = { x = opts.arrival.X, y = opts.arrival.Y, z = opts.arrival.Z }
+        end
+        return out
+end
+
+local function reserveLandmarks(
+        keepOut: { any },
+        placeId: string,
+        centre: Vector3,
+        radius: number,
+        opts: any
+)
+        for _, spot in ipairs(Scenery.landmarks(placeId, { x = centre.X, y = centre.Y, z = centre.Z }, radius, landmarkOpts(opts))) do
+                local def = Scenery.kindDef(spot.kind)
+                if not def or def.reserve ~= false then
+                        local prop = Scenery.build(spot.kind, spot.size)
+                        local footprint = prop and prop.footprint or 12
+                        table.insert(keepOut, { x = spot.x, z = spot.z, radius = footprint * 0.6 })
+                end
+        end
+end
+
+-- Build the structural props for a place: the fountain, the walls and gates,
+-- the church, the shrines and the paved approaches.
+--
+-- These are placed on purpose by Scenery.landmarks rather than scattered, and
+-- they are built after the scatter so the scatter can be told to keep clear of
+-- them. Returns the circles they occupy, so the caller can add them to the
+-- scatter's keep-out list on the next build.
+local function buildLandmarks(parent: Model, placeId: string, centre: Vector3, radius: number, opts: any)
+        local palette = Scenery.palette(placeId)
+        local placements = Scenery.landmarks(placeId, { x = centre.X, y = centre.Y, z = centre.Z }, radius, landmarkOpts(opts))
+
+        local group = Instance.new("Model")
+        group.Name = "Landmarks"
+
+        for index, spot in ipairs(placements) do
+                local prop = Scenery.build(spot.kind, spot.size)
+                if prop then
+                        local model = Instance.new("Model")
+                        model.Name = string.format("%s_%d", spot.kind, index)
+                        for _, spec in ipairs(prop.parts) do
+                                local piece = sceneryPart(spec, palette)
+                                piece.CanCollide = spot.solid
+                                piece.CanQuery = false
+                                piece.CanTouch = false
+                                piece.Parent = model
+                        end
+                        model:PivotTo(CFrame.new(spot.x, spot.y, spot.z) * CFrame.Angles(0, math.rad(spot.yaw), 0))
+                        model.Parent = group
+                end
+        end
+
+        group.Parent = parent
+        return group
+end
+
+-- The atmosphere effects. Roblox keeps one Lighting, so these are rebuilt per
+-- place rather than per map, exactly like applyLook.
+function applyAtmosphere(placeId: string)
+        local profile = Atmosphere.profileFor(placeId)
+        local Lighting = game:GetService("Lighting")
+
+        local atmosphere = Lighting:FindFirstChild("AXAtmosphere")
+        if not atmosphere then
+                atmosphere = Instance.new("Atmosphere")
+                atmosphere.Name = "AXAtmosphere"
+                atmosphere.Parent = Lighting
+        end
+        atmosphere.Density = profile.density
+        atmosphere.Offset = profile.offset
+        atmosphere.Color = rgb(profile.color)
+        atmosphere.Decay = rgb(profile.decay)
+        atmosphere.Glare = profile.glare
+        atmosphere.Haze = profile.haze
+
+        local clouds = Lighting:FindFirstChild("AXClouds")
+        if not clouds then
+                clouds = Instance.new("Clouds")
+                clouds.Name = "AXClouds"
+                clouds.Parent = Lighting
+        end
+        clouds.Cover = profile.cloudCover
+        clouds.Density = profile.cloudDensity
+        clouds.Color = rgb(profile.cloudColor)
+
+        local bloom = Lighting:FindFirstChild("AXBloom")
+        if not bloom then
+                bloom = Instance.new("BloomEffect")
+                bloom.Name = "AXBloom"
+                bloom.Parent = Lighting
+        end
+        bloom.Intensity = profile.bloomIntensity
+        bloom.Size = profile.bloomSize
+        bloom.Threshold = profile.bloomThreshold
+
+        local grade = Lighting:FindFirstChild("AXGrade")
+        if not grade then
+                grade = Instance.new("ColorCorrectionEffect")
+                grade.Name = "AXGrade"
+                grade.Parent = Lighting
+        end
+        grade.Brightness = profile.brightness - 1
+        grade.Contrast = profile.contrast
+        grade.Saturation = profile.saturation
+        grade.TintColor = rgb(profile.tint)
+
+        local rays = Lighting:FindFirstChild("AXSunRays")
+        if profile.sunRays > 0 then
+                if not rays then
+                        rays = Instance.new("SunRaysEffect")
+                        rays.Name = "AXSunRays"
+                        rays.Parent = Lighting
+                end
+                rays.Intensity = profile.sunRays
+                rays.Spread = 0.9
+        elseif rays then
+                rays:Destroy()
+        end
+end
+
+World.applyAtmosphere = applyAtmosphere
 
 -- A ring of floating light motes around a place. Purely visual, but it is what
 -- makes a map read as "somewhere" instead of a lit disc.
@@ -225,6 +489,84 @@ local function makeMotes(parent: Instance, centre: Vector3, radius: number, acce
         emitter.Parent = volume
 end
 
+-- Build one villager: a body, a name plate, and the prompt that opens their
+-- panel. The body is deliberately simple (a torso, a head, a held marker)
+-- because it is read at a distance on a phone, and it is built from the data in
+-- `Villagers` so a new villager is a table entry, not new builder code.
+local function buildVillager(parent: Instance, centre: Vector3, def: Villagers.VillagerDef): Model
+        local model = Instance.new("Model")
+        model.Name = "Villager_" .. def.id
+
+        local offset = Villagers.positionOf(def)
+        local base = centre + Vector3.new(offset.x, 0, offset.z)
+
+        local torso = Instance.new("Part")
+        torso.Name = "Torso"
+        torso.Size = Vector3.new(3, 4.5, 2)
+        torso.Position = base + Vector3.new(0, 2.25, 0)
+        torso.Anchored = true
+        torso.Material = Enum.Material.SmoothPlastic
+        torso.Color = rgb(def.body)
+        torso.Parent = model
+
+        local head = Instance.new("Part")
+        head.Name = "Head"
+        head.Shape = Enum.PartType.Ball
+        head.Size = Vector3.new(2, 2, 2)
+        head.Position = base + Vector3.new(0, 5.6, 0)
+        head.Anchored = true
+        head.Material = Enum.Material.SmoothPlastic
+        head.Color = rgb(def.body)
+        head.Parent = model
+
+        -- A tall, thin beam in the accent colour. On a small screen the crowd of
+        -- farm beds and portals hides a plain body, and the player needs to be
+        -- able to find the quest giver without walking the whole square.
+        if def.beacon then
+                local beam = Instance.new("Part")
+                beam.Name = "Beacon"
+                beam.Size = Vector3.new(1, 26, 1)
+                beam.Position = base + Vector3.new(0, 13, 0)
+                beam.Anchored = true
+                beam.CanCollide = false
+                beam.Material = Enum.Material.Neon
+                beam.Color = rgb(def.accent)
+                beam.Transparency = 0.35
+                beam.Parent = model
+        end
+
+        -- The name plate carries both who they are and what they do, so the
+        -- player never has to guess which one opens the shop. `makeSign` returns
+        -- the label and already sets the billboard's world offset, so the two
+        -- plates are stacked by their `height` argument.
+        local plate = makeSign(torso, Text.get(def.nameKey), 6, 12, rgb(def.accent))
+        plate.TextScaled = false
+        plate.TextSize = 15
+        makeSign(torso, Text.get(def.titleKey), 4.2, 12, Color3.fromRGB(255, 255, 255))
+
+        -- The prompt is the interaction. It is attached to the torso so its
+        -- distance is measured from the villager, and it calls the same server
+        -- path a HUD button would, so a tap and a button cannot disagree.
+        local prompt = Instance.new("ProximityPrompt")
+        prompt.Name = "Talk"
+        prompt.ActionText = Text.get(def.titleKey)
+        prompt.ObjectText = Text.get(def.nameKey)
+        prompt.HoldDuration = 0
+        prompt.MaxActivationDistance = Villagers.Reach
+        prompt.RequiresLineOfSight = false
+        prompt.Parent = torso
+
+        prompt.Triggered:Connect(function(player)
+                if villagerTalk then
+                        villagerTalk(player, def.id)
+                end
+        end)
+
+        model.PrimaryPart = torso
+        model.Parent = parent
+        return model
+end
+
 -- Build the town: a safe hub with the farm plots, a spawn pad and the portals
 -- out to every field. This is where a player lands and where they respawn.
 local function buildTown(parent: Model): Model
@@ -250,16 +592,9 @@ local function buildTown(parent: Model): Model
         spawn.Parent = town
         makeSign(spawn, Text.placeName("Town"), 8, 12, Color3.fromRGB(255, 236, 170))
 
-        -- A landmark in the middle: the obelisk the town is built around.
-        local obelisk = Instance.new("Part")
-        obelisk.Name = "Obelisk"
-        obelisk.Shape = Enum.PartType.Cylinder
-        obelisk.Size = Vector3.new(1, 10, 10)
-        obelisk.CFrame = CFrame.new(centre + Vector3.new(0, 9, 0)) * CFrame.Angles(0, 0, math.rad(90))
-        obelisk.Anchored = true
-        obelisk.Material = Enum.Material.Neon
-        obelisk.Color = Color3.fromRGB(150, 210, 255)
-        obelisk.Parent = town
+        -- The town centre is the market fountain, built by buildLandmarks from
+        -- the Scenery catalogue. It used to be a bare neon obelisk, which read
+        -- as a marker rather than as a town square.
 
         local townLook = Fields.look("Town")
         if townLook.motes then
@@ -304,6 +639,11 @@ local function buildTown(parent: Model): Model
 
         -- One portal per field, on the ring edge facing that field. Walking into
         -- it is the whole interaction; no menu is needed to travel.
+        local keepOut: { any } = {
+                -- The spawn pad and the obelisk, so nothing grows on the arrival.
+                { x = centre.X, z = centre.Z, radius = 16 },
+                { x = arrival.X, z = arrival.Z, radius = 22 },
+        }
         for _, field in ipairs(Fields.list()) do
                 local dx = field.position.x
                 local dz = field.position.z
@@ -312,6 +652,53 @@ local function buildTown(parent: Model): Model
                 local label = string.format("%s (%s %d)", Text.placeName(field.id), Text.get("level"),
                         field.levelRequirement)
                 makePortal(town, field.id, label, edge, rgb(Fields.look(field.id).accent))
+                -- Every portal keeps a clear approach, so a tree never stands
+                -- between the player and the map they are trying to enter.
+                table.insert(keepOut, { x = edge.X, z = edge.Z, radius = 20 })
+        end
+
+        -- The villagers stand in a ring around the fountain. They are gameplay,
+        -- so their ground is reserved before the scatter runs and they are built
+        -- after the scenery, so a tree can never grow where the quest giver stands
+        -- and hide them.
+        for _, def in ipairs(Villagers.List) do
+                local offset = Villagers.positionOf(def)
+                table.insert(keepOut, {
+                        x = centre.X + offset.x,
+                        z = centre.Z + offset.z,
+                        radius = 14,
+                })
+        end
+
+        -- The farm plots are gameplay, so nothing may stand on one.
+        for i = 1, Config.Farm.PlotCount do
+                local angle = ((i - 1) / Config.Farm.PlotCount) * math.pi * 2
+                table.insert(keepOut, {
+                        x = centre.X + math.cos(angle) * Config.Farm.PlotRingRadius,
+                        z = centre.Z + math.sin(angle) * Config.Farm.PlotRingRadius,
+                        radius = 12,
+                })
+        end
+
+        -- The structural props are placed on purpose, and the scatter must not
+        -- grow through them. They are reserved here, before the scatter runs,
+        -- so a tree never ends up inside the church or on the fountain.
+        local gateAngles: { number } = {}
+        for _, field in ipairs(Fields.list()) do
+                table.insert(gateAngles, math.atan2(field.position.z, field.position.x))
+        end
+        reserveLandmarks(keepOut, "Town", centre, def.radius, { gates = gateAngles })
+
+        buildScenery(town, "Town", centre, def.radius, keepOut)
+        buildLandmarks(town, "Town", centre, def.radius, { gates = gateAngles })
+
+        -- Built last so they stand in clear ground, and counted so a test can
+        -- assert the town has people in it rather than only props.
+        local villagerRoot = Instance.new("Folder")
+        villagerRoot.Name = "Villagers"
+        villagerRoot.Parent = town
+        for _, def in ipairs(Villagers.List) do
+                buildVillager(villagerRoot, centre, def)
         end
 
         town.Parent = parent
@@ -348,9 +735,42 @@ local function buildField(parent: Model, field): Model
                         field.levelRequirement, Text.tagline(field.id))
         makeSign(pad, sign, 10, 16, Color3.fromRGB(255, 255, 255))
 
-        -- A portal home, so leaving a field never needs a menu either.
-        makePortal(model, "Town", Text.get("returnToTown"), arrival + Vector3.new(14, 0, 0),
-                Color3.fromRGB(255, 214, 92))
+        -- A portal home, so leaving a field never needs a menu either. It sits
+        -- far enough to the side to clear the gate arch the player arrives under.
+        local home = arrival + Vector3.new(26, 0, 0)
+        makePortal(model, "Town", Text.get("returnToTown"), home, Color3.fromRGB(255, 214, 92))
+
+        -- The arrival pad and the portal home stay clear, so a monster field
+        -- never drops a tree on the spot the player lands on.
+        local keepOut: { any } = {
+                { x = arrival.X, z = arrival.Z, radius = 18 },
+                { x = home.X, z = home.Z, radius = 16 },
+        }
+
+        -- Monsters spawn on a ring, so the ring itself is protected. They are
+        -- anchored and moved by CFrame, which means a prop cannot trap one, but
+        -- a monster standing inside a tree still looks broken. Sixteen points
+        -- per ring covers any wave size without carving the map hollow.
+        local ringRadius = Config.Fields.SpawnRadius
+        for _, factor in ipairs({ 0.7, 1.0 }) do
+                local radius = ringRadius * factor
+                for step = 1, 16 do
+                        local angle = (step - 1) / 16 * math.pi * 2
+                        table.insert(keepOut, {
+                                x = centre.X + math.cos(angle) * radius,
+                                z = centre.Z + math.sin(angle) * radius,
+                                radius = 8,
+                        })
+                end
+        end
+
+        -- The field's own landmarks (its gate, landmark and paved approach) are
+        -- reserved before the scatter, so a tree never grows through the arch
+        -- the player walks in under.
+        reserveLandmarks(keepOut, field.id, centre, Config.Fields.ArenaRadius, { arrival = arrival })
+
+        buildScenery(model, field.id, centre, Config.Fields.ArenaRadius, keepOut)
+        buildLandmarks(model, field.id, centre, Config.Fields.ArenaRadius, { arrival = arrival })
 
         model.Parent = parent
         return model
@@ -434,33 +854,114 @@ function World.plotPosition(index: number): Vector3?
         return nil
 end
 
--- A monster's model. Size and colour come from the archetype, so a Slime and a
--- Rock Golem are different creatures rather than the same cube twice.
+-- A monster's model, built from its archetype's silhouette. A recipe is a list
+-- of parts in creature space: the origin is the ground, +Y is up, -Z is the way
+-- the creature faces. The whole recipe is scaled by the monster's sizeMul, so
+-- one shape serves a normal spawn and a boss without a second drawing.
+local function buildPart(spec: any, color: Color3, scale: number): BasePart
+        local instance: BasePart
+        if spec.shape == "Ball" then
+                instance = Instance.new("Part")
+                instance.Shape = Enum.PartType.Ball
+        elseif spec.shape == "Cylinder" then
+                instance = Instance.new("Part")
+                instance.Shape = Enum.PartType.Cylinder
+        elseif spec.shape == "Wedge" then
+                instance = Instance.new("WedgePart")
+        else
+                instance = Instance.new("Part")
+        end
+
+        instance.Name = spec.name
+        local size = spec.size
+        instance.Size = Vector3.new(size[1], size[2], size[3]) * scale
+        instance.Anchored = true
+        instance.CanCollide = false
+        instance.CanQuery = false
+        instance.CanTouch = false
+        instance.Material = Enum.Material.SmoothPlastic
+        instance.Color = color
+
+        -- Creature space -> world space. The part's own rotation is applied
+        -- first so an angled wing stays angled once the model is placed.
+        local at = spec.at
+        local offset = Vector3.new(at[1], at[2], at[3]) * scale
+        local rotation = CFrame.new()
+        if spec.rot then
+                rotation = CFrame.Angles(math.rad(spec.rot[1]), math.rad(spec.rot[2]), math.rad(spec.rot[3]))
+        end
+        instance.CFrame = rotation * CFrame.new(offset)
+        return instance
+end
+
+-- Resolve a colour role against the monster's own colour, so every monster
+-- keeps its identity while the parts that should stand out still do.
+local function roleColor(role: string, base: Color3): Color3
+        if role == "body" then
+                return base
+        elseif role == "dark" then
+                return base:Lerp(Color3.fromRGB(20, 18, 26), 0.45)
+        elseif role == "light" then
+                return base:Lerp(Color3.fromRGB(255, 255, 255), 0.45)
+        elseif role == "accent" then
+                return base:Lerp(Color3.fromRGB(255, 210, 90), 0.5)
+        elseif role == "metal" then
+                return Color3.fromRGB(198, 205, 218)
+        end
+        return Color3.fromRGB(24, 24, 30)
+end
+
 local function buildEnemyModel(enemy: any, position: Vector3): Model
         local model = Instance.new("Model")
         model.Name = "Enemy_" .. enemy.id
 
-        local size = ENEMY_BASE_SIZE * (enemy.sizeMul or 1)
-        local body = Instance.new("Part")
-        body.Name = "Body"
-        body.Size = size
-        body.Position = position + Vector3.new(0, size.Y / 2, 0)
-        body.Anchored = true
-        body.Material = enemy.boss and Enum.Material.Neon or Enum.Material.SmoothPlastic
-        body.Color = enemy.color or Color3.fromRGB(220, 70, 70)
-        body.Parent = model
+        local scale = enemy.sizeMul or 1
+        local base = enemy.color or Color3.fromRGB(220, 70, 70)
+        local recipe = MonsterShapes.get(enemy.archetype or enemy.name)
 
-        -- A boss gets a glow ring so it is unmistakable in a crowd.
+        local parts: { [string]: BasePart } = {}
+        local tallest = 0
+        for _, spec in ipairs(recipe.parts) do
+                local instance = buildPart(spec, roleColor(spec.color, base), scale)
+                instance.Parent = model
+                parts[spec.name] = instance
+                local top = spec.at[2] + spec.size[2] / 2
+                if top > tallest then
+                        tallest = top
+                end
+        end
+
+        -- Everything is built around the origin, so move the model to put its
+        -- feet on the spawn point.
+        local root = parts[recipe.primary] or parts.Body or model:FindFirstChildWhichIsA("BasePart")
+        model.PrimaryPart = root
+        -- A hovering monster's recipe already sits off the ground, so it is
+        -- lifted further to clear the props it flies over. A grounded one is
+        -- placed at the spawn point as drawn.
+        local lift = MonsterShapes.hovers(enemy.archetype or enemy.name) and HOVER_LIFT or 0
+        model:PivotTo(CFrame.new(position + Vector3.new(0, lift, 0)))
+
+        -- The chase code and the kill burst both look up a part called "Body",
+        -- and the health bar hangs off it. Rename the pivot so neither has to
+        -- learn about recipes.
+        if root and root.Name ~= "Body" then
+                root.Name = "Body"
+        end
+
+        -- A boss glows and carries a ring so it is unmistakable in a crowd.
         if enemy.boss then
+                for _, instance in pairs(parts) do
+                        instance.Material = Enum.Material.Neon
+                end
                 local aura = Instance.new("Part")
                 aura.Name = "BossAura"
                 aura.Shape = Enum.PartType.Cylinder
-                aura.Size = Vector3.new(1, size.X * 2.2, size.X * 2.2)
+                aura.Size = Vector3.new(1, scale * 12, scale * 12)
                 aura.CFrame = CFrame.new(position + Vector3.new(0, 1, 0)) * CFrame.Angles(0, 0, math.rad(90))
                 aura.Anchored = true
                 aura.CanCollide = false
                 aura.Material = Enum.Material.Neon
-                aura.Color = body.Color
+                aura.Color = base
                 aura.Transparency = 0.6
                 aura.Parent = model
         end
@@ -469,9 +970,9 @@ local function buildEnemyModel(enemy: any, position: Vector3): Model
         local bar = Instance.new("BillboardGui")
         bar.Name = "HealthBar"
         bar.Size = UDim2.new(enemy.boss and 10 or 4, 0, 0.6, 0)
-        bar.StudsOffsetWorldSpace = Vector3.new(0, size.Y * 0.8 + 2, 0)
+        bar.StudsOffsetWorldSpace = Vector3.new(0, tallest * scale + 2, 0)
         bar.AlwaysOnTop = true
-        bar.Parent = body
+        bar.Parent = root
 
         local track = Instance.new("Frame")
         track.Name = "Track"
@@ -497,7 +998,6 @@ local function buildEnemyModel(enemy: any, position: Vector3): Model
         label.Text = (enemy.name or "Monster") .. (enemy.boss and "  [BOSS]" or "")
         label.Parent = bar
 
-        model.PrimaryPart = body
         model.Parent = Workspace
         return model
 end
@@ -646,6 +1146,178 @@ function World.aliveCount(fieldId: string?): number
                 end
         end
         return count
+end
+
+--------------------------------------------------------------------------
+-- Class appearance. The class already changed the stat sheet; this is what
+-- makes a Knight look like a Knight. It works on both the R6 and R15 rigs
+-- because it only recolours the parts the rig already has and welds its own
+-- accents on, rather than rebuilding the avatar.
+--------------------------------------------------------------------------
+
+local BODY_PART_NAMES: { [string]: boolean } = {
+        Head = true,
+        Torso = true,
+        ["Left Arm"] = true,
+        ["Right Arm"] = true,
+        ["Left Leg"] = true,
+        ["Right Leg"] = true,
+        UpperTorso = true,
+        LowerTorso = true,
+        LeftUpperArm = true,
+        LeftLowerArm = true,
+        LeftHand = true,
+        RightUpperArm = true,
+        RightLowerArm = true,
+        RightHand = true,
+        LeftUpperLeg = true,
+        LeftLowerLeg = true,
+        LeftFoot = true,
+        RightUpperLeg = true,
+        RightLowerLeg = true,
+        RightFoot = true,
+}
+
+local ACCENT_PREFIX = "AXAccent_"
+
+-- Names that belong in the character's hand. Everything else rides the root.
+local HELD_NAMES = { "Blade", "Staff", "Bow", "Dagger" }
+
+local function isHeld(name: string): boolean
+        for _, held in ipairs(HELD_NAMES) do
+                if string.find(name, held) then
+                        return true
+                end
+        end
+        return false
+end
+
+-- Remove a previously applied set so advancing a job does not stack two
+-- costumes on one avatar.
+local function clearAccents(character: Model)
+        for _, child in ipairs(character:GetChildren()) do
+                if child.Name:sub(1, #ACCENT_PREFIX) == ACCENT_PREFIX then
+                        child:Destroy()
+                end
+        end
+end
+
+local function paintBody(character: Model, look: any)
+        -- A worn Shirt or Pants asset is drawn on top of the body part colours,
+        -- so the class palette would be invisible on a dressed avatar. Removing
+        -- them is what makes the two jobs actually look different in game.
+        for _, child in ipairs(character:GetChildren()) do
+                if child:IsA("Shirt") or child:IsA("Pants") or child:IsA("Clothing") then
+                        child:Destroy()
+                end
+        end
+        for _, part in ipairs(character:GetDescendants()) do
+                if part:IsA("BasePart") and BODY_PART_NAMES[part.Name] then
+                        if part.Name == "Head" then
+                                part.Color = rgb(look.skin)
+                        elseif string.find(part.Name, "Leg") or part.Name == "LowerTorso" then
+                                part.Color = rgb(look.pants)
+                        else
+                                part.Color = rgb(look.shirt)
+                        end
+                end
+        end
+end
+
+local function newAccentPart(shape: string): BasePart
+        if shape == "Ball" then
+                local p = Instance.new("Part")
+                p.Shape = Enum.PartType.Ball
+                return p
+        elseif shape == "Cylinder" then
+                local p = Instance.new("Part")
+                p.Shape = Enum.PartType.Cylinder
+                return p
+        elseif shape == "Wedge" then
+                return Instance.new("WedgePart")
+        end
+        return Instance.new("Part")
+end
+
+-- Wear one class look. `classId` comes from the save record, so a respawn and a
+-- job advance both end up here.
+--
+-- The accents wait for the right hand to exist, because a character is added
+-- before it is fully assembled and a weapon welded to a missing part would fall
+-- to the ground. A generation counter per character means a respawn during that
+-- wait cannot leave the previous costume welded to the new body.
+local lookGeneration: { [Model]: number } = {}
+
+function World.applyClassLook(character: Model, classId: string?)
+        if not character or not character.Parent then
+                return
+        end
+
+        local look = ClassLook.get(classId)
+        local root = character:FindFirstChild("HumanoidRootPart")
+        if not root or not root:IsA("BasePart") then
+                return
+        end
+
+        paintBody(character, look)
+
+        -- A slight build difference per class, so a Knight reads heavier than a
+        -- Thief even with no accents in view.
+        local humanoid = character:FindFirstChildOfClass("Humanoid")
+        if humanoid then
+                local scale = look.bodyScale
+                humanoid.BodyWidthScale = scale[1]
+                humanoid.BodyHeightScale = scale[2]
+                humanoid.BodyDepthScale = scale[3]
+        end
+
+        lookGeneration[character] = (lookGeneration[character] or 0) + 1
+        local mine = lookGeneration[character]
+
+        task.spawn(function()
+                -- The hand is not always present the instant the character is
+                -- added, so wait briefly for it before falling back to the root.
+                local hand = character:FindFirstChild("RightHand")
+                        or character:FindFirstChild("Right Arm")
+                        or character:WaitForChild("RightHand", 2)
+                        or root
+
+                -- A newer look landed while this one waited, or the character
+                -- died; either way this costume is stale and must not be worn.
+                if lookGeneration[character] ~= mine or not character.Parent then
+                        return
+                end
+
+                clearAccents(character)
+
+                for _, spec in ipairs(look.accents) do
+                        local part = newAccentPart(spec.shape)
+                        part.Name = ACCENT_PREFIX .. spec.name
+                        part.Size = Vector3.new(spec.size[1], spec.size[2], spec.size[3])
+                        part.Color = rgb(spec.color)
+                        part.Material = Enum.Material.SmoothPlastic
+                        part.CanCollide = false
+                        part.CanQuery = false
+                        part.CanTouch = false
+                        part.Massless = true
+                        part.Parent = character
+
+                        -- Place the part where the recipe says, measured from the
+                        -- root. The weld then locks that exact relative pose, so a
+                        -- hand-welded weapon keeps the designed position and still
+                        -- follows the arm.
+                        local rotation = CFrame.new()
+                        if spec.rot then
+                                rotation = CFrame.Angles(math.rad(spec.rot[1]), math.rad(spec.rot[2]), math.rad(spec.rot[3]))
+                        end
+                        part.CFrame = root.CFrame * rotation * CFrame.new(spec.at[1], spec.at[2], spec.at[3])
+
+                        local weld = Instance.new("WeldConstraint")
+                        weld.Part0 = isHeld(spec.name) and hand or root
+                        weld.Part1 = part
+                        weld.Parent = part
+                end
+        end)
 end
 
 -- Where the player stands when they arrive somewhere. Town and field arrivals
