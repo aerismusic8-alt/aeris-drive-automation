@@ -4,12 +4,14 @@ on:
   push:
     paths:
       - 'roblox/**'
+      - 'roblox-garden/**'
       - 'scripts/test-roblox.sh'
       - 'scripts/install-luau.sh'
       - '.github/workflows/ax-arena-tests.yml'
   pull_request:
     paths:
       - 'roblox/**'
+      - 'roblox-garden/**'
       - 'scripts/test-roblox.sh'
       - 'scripts/install-luau.sh'
       - '.github/workflows/ax-arena-tests.yml'
@@ -49,6 +51,13 @@ jobs:
           ./tools/luau/luau roblox/tests/quests.luau
           ./tools/luau/luau roblox/tests/layout.luau
           ./tools/luau/luau roblox/tests/balance.luau
+
+      # AX Garden Legends is the current game. Its whole loop is pure arithmetic
+      # on a timestamp, so the suite needs no shim: it plants, fast-forwards eight
+      # hours, and asserts the crop ripened. A garden that does not grow while the
+      # player is away has no retention mechanic at all.
+      - name: Run AX Garden Legends tests
+        run: ./tools/luau/luau roblox-garden/tests/run.luau
 
       # Boots the real server, builds the real world and loads the real client
       # under a headless engine shim. The unit, integration, quest and balance

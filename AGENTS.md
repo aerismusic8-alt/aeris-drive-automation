@@ -210,6 +210,44 @@ Rules learned the hard way:
 - A red test run must never reach players, so the dispatch sits after the last
   test step and only runs for a push to `ax-arena-roblox-game`.
 
+## The game is AX Garden Legends, not the arena
+
+The arena in `roblox/` was built and tested carefully and was not fun. The reason
+is structural, and worth writing down so the same mistake is not repeated: an
+arena is a game about *combat feel*, and combat feel cannot be verified by a test
+suite or read off a diff. Every design decision was a guess, and the guesses did
+not add up to something a person wants to play. The tests were green the whole
+time, because "is this fun" is not a test that existed.
+
+The replacement copies a loop that is already proven rather than inventing one.
+The genre leader on Roblox sits at roughly 36 billion visits and a 90% rating
+with no combat in it at all. Its loop is buy a seed, plant it, wait, harvest,
+sell, and upgrade -- patience and collection, with one mutation roll per harvest
+as the variance. The decisive property is that the whole loop is arithmetic on a
+timestamp: it is fully testable with no engine, so it is possible to know whether
+it works before a player sees it.
+
+`roblox-garden/` is the live game. `roblox/` is the previous one, kept because
+its test suites and its shim still run and still pass; it is not the thing to add
+features to.
+
+Rules that came out of the pivot:
+
+- **Pick a loop with a verifiable core.** If the fun of a feature cannot be
+  expressed as a number a test can check -- a ratio, a curve, a clamp, an
+  ordering -- then building it is a guess. The garden's fun is measurable: does
+  payout rise with patience, does a rare mutation stay rare, does an offline
+  absence ripen a crop, does a dearer egg give a better pet.
+- **Copy a proven loop, then change the items.** The genre is not the thing to
+  innovate on. The seeds, mutations, pets and their numbers are where this game
+  differs, and those are data in `Config.luau`, not code.
+- **Check the tests against broken code, always.** Three real defects were found
+  while writing the garden suite by putting the bug back and watching it fail:
+  a coarse price rounding that gave two different seeds the same cost, a sell
+  floor that paid one coin for a crop that no longer existed, and a flat pet
+  ladder where an egg 1500x dearer bought a pet only 2x better. None of them
+  would have been caught by reading the code.
+
 ## Language
 
 The player-facing text is Thai. `roblox/src/shared/Text.luau` is the only place

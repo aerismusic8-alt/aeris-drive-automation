@@ -38,6 +38,12 @@ fi
 # asked whether the two curves met. This one does.
 "$LUAU" "$ROOT/roblox/tests/balance.luau" || exit 1
 
+# AX Garden Legends is the current game. Its loop is pure arithmetic on a
+# timestamp -- buy, plant, grow, harvest, sell -- so the whole rule set runs
+# here with no engine. The offline-growth test is the load-bearing one: it
+# fast-forwards eight hours and asserts a crop ripened.
+"$LUAU" "$ROOT/roblox-garden/tests/run.luau" || exit 1
+
 # The runtime suite boots the real server, builds the real world and loads the
 # real client under a headless engine shim. It needs the sources as a Luau table
 # because the standalone CLI has no file I/O, so they are generated first.
