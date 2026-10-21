@@ -1324,3 +1324,86 @@ Practical consequences:
   behaviour are covered by the suites, which is what the reintroduction check
   exists to guarantee, but a screenshot of the character walking remains
   unverified on this machine.
+
+## Reviewing your own work
+
+The instruction on this project is to keep reviewing the pattern, the
+principles and the experience while working, not only at the end. That is a
+habit, not a deliverable, and this section is where its results land so the
+next session starts from them instead of rediscovering them.
+
+Work the loop: measure, act, verify, write down. Each pass through it should end
+with one of three outcomes -- a fact added below, a rule added to "How to work on
+this repository", or nothing learned, which is itself worth noticing. A session
+that changed code but added no line here either taught nothing or did not look.
+
+### A check that aborts early still prints pass
+
+The Studio smoke test printed `SMOKE_PASS=True` and `SMOKE_DETAIL=22 checks
+passed` while four of its checks had never run. Line 136 read
+`Lighting.Technology`, which Edit mode refuses without the `RobloxScript`
+capability, and the exception ended the script there. Everything below --
+ground, collision, spawn -- was silently skipped. The run still looked green
+because the checks that did execute passed and nothing counted the ones that did
+not.
+
+Two habits follow:
+
+* Wrap an engine read that cannot fail safely in `pcall`, so one unreadable
+  property cannot take the rest of the check list with it.
+* When a check produces a count, make the count the gate. "22 passed" is
+  meaningless unless the script also knows it meant to run 26 and says so when
+  it does not. The failure mode to design against is not a red check; it is a
+  short list of green ones.
+
+This is the same rule as "prove a check can fail before trusting it", applied to
+the number of checks rather than to one of them.
+
+### PowerShell 5.1: `@($list)` throws on a generic List
+
+The open-and-capture script ran the smoke test, entered Play mode, captured nine
+PNGs, and then died on the line that writes its evidence file:
+
+```
+$result = [ordered]@{ ... run = @{ captures = @($captures) } ... }
+```
+
+`@($captures)` on a `System.Collections.Generic.List[object]` throws "Argument
+types do not match" under Windows PowerShell 5.1, and the same throws for
+`List[string]`. The script runs under `-File`, so the throw happened before
+`Set-Content` and no evidence file appeared. Every downstream reader saw a
+missing file and reported a Studio failure, which was the wrong diagnosis for
+several runs. Turn a generic list into an array explicitly with `.ToArray()`, or
+pool it through `ForEach-Object`.
+
+The wider lesson is about where a crash lands. A script that does all its work
+and then fails while serialising the result looks, from outside, exactly like a
+script that did no work. When an evidence file is missing, read the run's own log
+for the last line before the gap before blaming the thing the evidence was meant
+to describe.
+
+### A commit message is not a file you can trust
+
+An amend used `git commit -F /tmp/commitmsg.txt` where the file was left over
+from an earlier commit in the same session. The staged content was correct and
+the message described a different change entirely. Nothing in the workflow
+catches this: the commit succeeds, the tree is right, and only the history is
+wrong. When the message must carry meaning, verify it after committing with
+`git log -1 --format=%B` rather than assuming the file still says what it said
+when it was written.
+
+### Look for the target before promising to change it
+
+A request arrived to upgrade an existing Counter-Strike style Roblox FPS called
+"beachline". It was looked for in the working tree, every branch, the full git
+history, the whole workspace filesystem, the task registries, the GitHub org's
+repository list, the account's published experiences, and the Roblox-wide game
+search. It exists in none of them; the only published experience is AX Garden
+Legends. The report said so and asked where the project is, rather than building
+a new game and calling it the existing one.
+
+The prompt for that request said, in its own words, to modify the existing
+project and not to create a new one. When a target cannot be found, the honest
+move is to stop and say what was searched, because the alternative silently
+turns "upgrade this" into "invent this" and the person cannot tell the
+difference until the result arrives.
