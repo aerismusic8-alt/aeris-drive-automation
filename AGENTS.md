@@ -231,6 +231,18 @@ it works before a player sees it.
 its test suites and its shim still run and still pass; it is not the thing to add
 features to.
 
+**The build and publish path must point at the game that is live.** For a while
+it did not. Every script and workflow still read `roblox/`, so the pipeline
+reported green, built the arena, and published the arena -- the garden was in the
+repo and not in the game. The failure is invisible from the outside because the
+publish really does succeed, on the wrong bytes. When a game is replaced, the
+defaults in `build-place-linux.sh`, `publish-place-linux.sh`,
+`name-experience-linux.sh`, `check-live-state-linux.sh` and the shipping workflow
+are part of the replacement, not an afterthought. The one place the old name
+lingers on purpose is the workflow's filename, because renaming a workflow whose
+triggers are path-scoped to itself churns more than it fixes; the name it prints
+is the garden's.
+
 Rules that came out of the pivot:
 
 - **Pick a loop with a verifiable core.** If the fun of a feature cannot be
@@ -247,6 +259,12 @@ Rules that came out of the pivot:
   floor that paid one coin for a crop that no longer existed, and a flat pet
   ladder where an egg 1500x dearer bought a pet only 2x better. None of them
   would have been caught by reading the code.
+- **A build verifier's markers must be identifiers that exist.** The PC1 build
+  script greps the built place for markers to prove the code shipped, not just
+  the instance names. When the verifier was retargeted at the garden, three
+  markers (`growthSeconds`, `buildWorld`, `cropName`) did not exist in the garden
+  sources and would have failed the build. Each marker was checked against a real
+  `rojo build` of the garden before the change was trusted.
 
 ### The shim must not be kinder than the engine
 
