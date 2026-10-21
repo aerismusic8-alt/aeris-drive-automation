@@ -26,7 +26,7 @@ import numpy as np
 
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), ".."))
 
-from axvision import engine, geometry, signature, state  # noqa: E402
+from axvision import capture, engine, geometry, signature, state  # noqa: E402
 
 
 def solid(w: int, h: int, colour: tuple[int, int, int]) -> np.ndarray:
@@ -207,6 +207,41 @@ class StateTests(unittest.TestCase):
     def test_stats_report_the_frame_size(self):
         st = state.classify_frame(noisy_world(640, 360))
         self.assertEqual((st.stats.width, st.stats.height), (640, 360))
+
+
+class GameWindowTests(unittest.TestCase):
+    """The game window is chosen by the process that owns it, not its title.
+
+    On PC1 a browser tab sat on a Roblox page, and the engine picked that
+    browser because its title contains "Roblox". It then read a web page and
+    called it the game. The title is not the identity; the owning process is.
+    """
+
+    def test_picks_the_player_over_a_browser_with_roblox_in_its_title(self):
+        windows = [
+            (101, "RobloxPlayerBeta.exe", "Roblox"),
+            (102, "msedge.exe", "Roblox | OpenHands - Personal - Microsoft Edge"),
+            (103, "explorer.exe", "Program Manager"),
+        ]
+        self.assertEqual(capture.pick_game_window(windows), 101)
+
+    def test_ignores_studio_without_needing_a_title_guess(self):
+        windows = [
+            (201, "RobloxStudioBeta.exe", "Roblox Studio - My Place"),
+            (202, "RobloxPlayerBeta.exe", "AX Arena: Farm and Fight"),
+        ]
+        self.assertEqual(capture.pick_game_window(windows), 202)
+
+    def test_returns_zero_when_only_other_windows_mention_roblox(self):
+        windows = [
+            (301, "chrome.exe", "Roblox - Google Chrome"),
+            (302, "notepad.exe", "notes about Roblox"),
+        ]
+        self.assertEqual(capture.pick_game_window(windows), 0)
+
+    def test_the_process_name_match_is_case_insensitive(self):
+        windows = [(401, "ROBLOXPLAYERBETA.EXE", "Roblox")]
+        self.assertEqual(capture.pick_game_window(windows), 401)
 
 
 class EngineTests(unittest.TestCase):

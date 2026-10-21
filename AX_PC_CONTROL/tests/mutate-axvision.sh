@@ -6,6 +6,7 @@ cd "$(dirname "$0")/.."
 cp axvision/signature.py /tmp/sig.bak
 cp axvision/state.py /tmp/state.bak
 cp axvision/engine.py /tmp/engine.bak
+cp axvision/capture.py /tmp/capture.bak
 
 count() { python3 tests/test_axvision.py 2>&1 | grep -cE "^(FAIL|ERROR):" ; }
 
@@ -62,6 +63,15 @@ open(p,'w').write(s)
 PY
 echo "failures: $(count)"
 cp /tmp/engine.bak axvision/engine.py
+
+echo "=== MUTATION 7: game window matched by title again, so a browser wins ==="
+python3 - <<'PY'
+p='axvision/capture.py'; s=open(p).read()
+s=s.replace("        if image.lower() == GAME_PROCESS.lower():","        if 'roblox' in _title.lower():")
+open(p,'w').write(s)
+PY
+echo "failures: $(count)"
+cp /tmp/capture.bak axvision/capture.py
 
 echo "=== restored: expect 0 failures ==="
 echo "failures: $(count)"

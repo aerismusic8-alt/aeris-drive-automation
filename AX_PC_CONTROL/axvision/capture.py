@@ -168,6 +168,40 @@ def window_title(hwnd: int) -> str:
     return buf.value
 
 
+GAME_PROCESS = "RobloxPlayerBeta.exe"
+
+
+def _window_pid(hwnd: int) -> int:
+    """The process id that owns a window."""
+    user32, _ = _libs()
+    pid = wintypes.DWORD()
+    user32.GetWindowThreadProcessId(hwnd, ctypes.byref(pid))
+    return int(pid.value)
+
+
+def _process_image_name(pid: int) -> str:
+    """A process's executable name, or an empty string.
+
+    ``OpenProcess`` with query-limited-information is enough to ask for the
+    image name and needs no elevation for another user's ordinary process.
+    """
+    if not pid:
+        return ""
+    kernel32 = ctypes.WinDLL("kernel32", use_last_error=True)
+    PROCESS_QUERY_LIMITED_INFORMATION = 0x1000
+    handle = kernel32.OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION, False, pid)
+    if not handle:
+        return ""
+    try:
+        size = wintypes.DWORD(260)
+        buf = ctypes.create_unicode_buffer(size.value)
+        if not kernel32.QueryFullProcessImageNameW(handle, 0, buf, ctypes.byref(size)):
+            return ""
+        return os.path.basename(buf.value)
+    finally:
+        kernel32.CloseHandle(handle)
+
+
 def find_window(title_part: str, exclude: str = "") -> int:
     """The handle of the first visible top-level window whose title contains a
     string, or 0.
@@ -200,13 +234,45 @@ def find_window(title_part: str, exclude: str = "") -> int:
     return int(found[0]) if found else 0
 
 
-def find_game_window() -> int:
-    """The live Roblox *player* window, preferring it over Studio.
+def pick_game_window(windows: list[tuple[int, str, str]]) -> int:
+    """Choose the game window from ``(handle, image_name, title)`` triples.
 
-    Studio's title contains "Roblox Studio"; the client's is the experience
-    name. When both are open the game is the one to watch.
+    Split out from the Windows enumeration so the choice itself is testable off
+    Windows: the bug was in the choice, not in the enumeration.
     """
-    return find_window("Roblox", exclude="Studio") or find_window("Roblox")
+    for handle, image, _title in windows:
+        if image.lower() == GAME_PROCESS.lower():
+            return handle
+    return 0
+
+
+def find_game_window() -> int:
+    """The live Roblox *player* window, or 0.
+
+    Matching the title alone is not enough. On PC1 a browser tab was open on a
+    Roblox page, and its title contains "Roblox" and not "Studio", so a title
+    match returned the browser: the engine was reading a web page and calling it
+    the game. The window has to belong to the player process itself, so the
+    match is made on the executable name that owns the window.
+
+    Studio's window belongs to ``RobloxStudioBeta.exe``, so this also picks the
+    client over the editor without a title guess.
+    """
+    user32, _ = _libs()
+    windows = []
+
+    @ctypes.WINFUNCTYPE(ctypes.c_bool, wintypes.HWND, wintypes.LPARAM)
+    def cb(hwnd, _lparam):
+        if not user32.IsWindowVisible(hwnd):
+            return True
+        image = _process_image_name(_window_pid(hwnd))
+        if image.lower() != GAME_PROCESS.lower():
+            return True
+        windows.append((int(hwnd), image, window_title(hwnd)))
+        return True
+
+    user32.EnumWindows(cb, 0)
+    return pick_game_window(windows)
 
 
 def window_rect(hwnd: int) -> tuple[int, int, int, int]:
