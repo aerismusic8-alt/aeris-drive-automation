@@ -548,6 +548,16 @@ unauthenticated request, because that request is itself a guest; do not read it
 as "the game is down". Check the page slug and the games API name alongside it,
 which is what `scripts/check-live-state-linux.sh` does.
 
+### `playableDevices` is not a field; do not chase it
+
+`https://games.roblox.com/v1/games?universeIds=<id>` has no `playableDevices`
+key. Reading it with a `.get()` default prints `None`, which looks like a
+misconfigured place and is not: Brookhaven, one of the most played experiences on
+the platform, prints `None` the same way because the key is absent there too. The
+player-device setting lives in the Creator Dashboard and is not exposed by this
+endpoint. If the device list needs changing, it is a dashboard edit, not an API
+call, and the missing key is not evidence of anything.
+
 ### The tests never ran the game, so the game shipped broken
 
 Every test in this repo loaded only the pure modules in `src/shared` through the
