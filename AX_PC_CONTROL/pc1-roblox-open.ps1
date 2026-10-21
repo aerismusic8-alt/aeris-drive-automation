@@ -241,8 +241,8 @@ $result = [ordered]@{
   studio        = [ordered]@{ exe = $studioExe; version = $studioVersion }
   placeFile     = $placeFile
   smoke         = [ordered]@{ passed = $smokePass; detail = $smokeDetail; log = $smokeLog }
-  run           = [ordered]@{ gameRan = $gameRan; captures = @($captures) }
-  notes         = @($notes)
+  run           = [ordered]@{ gameRan = $gameRan; captures = @($captures.ToArray()) }
+  notes         = @($notes.ToArray())
   status        = $overall
 }
 Set-Content -LiteralPath (Join-Path $evidenceDir 'pc1-roblox-open.json') -Value ($result | ConvertTo-Json -Depth 8) -Encoding UTF8

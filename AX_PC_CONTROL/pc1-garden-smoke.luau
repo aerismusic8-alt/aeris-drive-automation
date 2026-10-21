@@ -133,7 +133,17 @@ local Lighting = game:GetService("Lighting")
 report(Lighting:FindFirstChild("GardenSky") ~= nil, "lighting-sky", "GardenSky")
 report(Lighting:FindFirstChild("GardenAtmosphere") ~= nil, "lighting-atmosphere", "GardenAtmosphere")
 report(Lighting.GlobalShadows == false, "lighting-shadows-off", tostring(Lighting.GlobalShadows))
-report(Lighting.Technology == Enum.Technology.Voxel, "lighting-voxel", tostring(Lighting.Technology))
+
+-- Edit mode runs without the RobloxScript capability, so `Technology` is not
+-- readable there: reading it throws "lacking capability RobloxScript" and the
+-- uncaught error ended this script at the line, silently skipping every check
+-- below it. The read is wrapped so the rest of the smoke always runs, and the
+-- check reports what edit mode can actually see instead of a false failure.
+local okTech, tech = pcall(function()
+        return Lighting.Technology
+end)
+report(okTech and tech == Enum.Technology.Voxel, "lighting-voxel",
+        okTech and tostring(tech) or "unreadable in edit mode")
 
 -- The ground has to collide, or the player spawns and falls out of the world.
 local ground = world:FindFirstChild("Ground")
