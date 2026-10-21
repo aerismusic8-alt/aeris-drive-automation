@@ -276,6 +276,9 @@ local ENUM_MEMBERS = {
         EasingDirection = { Out = 1, In = 2, InOut = 3 },
         TextTruncate = { AtEnd = 1, None = 2 },
         ApplyStrokeMode = { Border = 1, Contextual = 2 },
+        -- The HUD sizes a scrolling list to its content with AutomaticSize, so
+        -- the enum has to resolve or every panel build throws.
+        AutomaticSize = { None = 1, X = 2, Y = 3, XY = 4 },
         ScrollingDirection = { Y = 1, X = 2, XY = 3 },
         TextXAlignment = { Center = 1, Left = 2, Right = 3 },
         TextYAlignment = { Center = 1, Top = 2, Bottom = 3 },
@@ -321,14 +324,31 @@ end
 
 function Signal:Connect(fn)
         table.insert(self.handlers, fn)
-        return {
-                Disconnect = function() end,
+        local connection
+        connection = {
                 Connected = true,
+                -- A real Disconnect stops the handler being called. Modelling it
+                -- as a no-op makes a test that disconnects and then fires the
+                -- signal see stale handlers, which is a test passing on a
+                -- behaviour the game does not have.
+                Disconnect = function()
+                        connection.Connected = false
+                        for index, handler in ipairs(self.handlers) do
+                                if handler == fn then
+                                        table.remove(self.handlers, index)
+                                        break
+                                end
+                        end
+                end,
         }
+        return connection
 end
 
 function Signal:Fire(...)
-        for _, fn in ipairs(self.handlers) do
+        -- Iterate a copy: a handler that connects or disconnects during the fire
+        -- must not disturb the walk.
+        local handlers = table.clone(self.handlers)
+        for _, fn in ipairs(handlers) do
                 fn(...)
         end
 end
@@ -341,7 +361,7 @@ local VALID_CLASSES = {}
 for _, name in ipairs({
         "Part", "WedgePart", "CornerWedgePart", "Model", "Folder", "SpawnLocation",
         "TextLabel", "TextButton", "TextBox", "Frame", "ScrollingFrame", "ScreenGui",
-        "UICorner", "UIStroke", "ViewportFrame", "Camera", "BillboardGui",
+        "UICorner", "UIStroke", "UIPadding", "ViewportFrame", "Camera", "BillboardGui",
         "ParticleEmitter", "PointLight", "WeldConstraint", "Atmosphere", "Clouds",
         "BloomEffect", "ColorCorrectionEffect", "SunRaysEffect",
         "Humanoid", "HumanoidRootPart", "MeshPart", "RemoteEvent", "RemoteFunction",
@@ -360,6 +380,12 @@ end
 
 local Instance = {}
 Instance.__index = Instance
+
+-- The screen the shim reports. A ScreenGui's AbsoluteSize is the viewport, and
+-- a child's AbsoluteSize is derived from its parent, so the HUD's layout maths
+-- has real numbers to work with rather than zeros. Kept in step with
+-- Camera.ViewportSize wherever that is set.
+local screenSize = Vector2.new(1280, 720)
 
 local function isA(self, className)
         if self.ClassName == className then
@@ -492,6 +518,27 @@ function Instance:__index(key)
         local raw = rawget(Instance, key)
         if raw ~= nil then
                 return raw
+        end
+        -- AbsoluteSize is derived, not stored: a GuiObject's absolute size is its
+        -- parent's absolute size times its scale, plus its offset. The garden HUD
+        -- reads it to size the progress fill, so returning nil here would make
+        -- the fill zero-width and look like a bug in the game rather than a gap
+        -- in the shim.
+        if key == "AbsoluteSize" then
+                local parent = rawget(self, "Parent")
+                local parentSize
+                if rawget(self, "ClassName") == "ScreenGui" or parent == nil then
+                        parentSize = screenSize
+                else
+                        parentSize = parent.AbsoluteSize
+                end
+                local size = rawget(self, "Size")
+                if not size then
+                        return parentSize
+                end
+                local x = (parentSize and parentSize.X or 0) * size.X.Scale + size.X.Offset
+                local y = (parentSize and parentSize.Y or 0) * size.Y.Scale + size.Y.Offset
+                return Vector2.new(x, y)
         end
         local signals = rawget(self, "signals")
         if signals and signals[key] then
@@ -632,17 +679,38 @@ end
 
 -- Server -> client pushes. Firing on the client side is how the harness feeds a
 -- payload to the HUD, which is what proves the client can actually render one.
+--
+-- The payload is deep-copied on the way out, because that is what the engine's
+-- remote serialisation does. Without the copy the "pushed" table is the server's
+-- own live save, so a later server-side mutation changes a payload the test
+-- already captured -- a test that passes or fails for a reason the real game
+-- does not have. Tables with a metatable are left alone: those are Instances,
+-- which the engine passes by reference.
+local function copyForRemote(value: any): any
+        if type(value) ~= "table" then
+                return value
+        end
+        if getmetatable(value) ~= nil then
+                return value
+        end
+        local out = {}
+        for key, inner in pairs(value) do
+                out[key] = copyForRemote(inner)
+        end
+        return out
+end
+
 function Instance:FireClient(_player, ...)
         local sig = rawget(self, "signals").OnClientEvent
         if sig then
-                sig:Fire(...)
+                sig:Fire(copyForRemote(...))
         end
 end
 
 function Instance:FireAllClients(...)
         local sig = rawget(self, "signals").OnClientEvent
         if sig then
-                sig:Fire(...)
+                sig:Fire(copyForRemote(...))
         end
 end
 
@@ -698,6 +766,18 @@ function Instance:Trigger(player)
         if signals and signals.Triggered then
                 signals.Triggered:Fire(player)
         end
+end
+
+function Instance:GetPropertyChangedSignal(property: string)
+        local signals = rawget(self, "propertySignals")
+        if not signals then
+                signals = {}
+                rawset(self, "propertySignals", signals)
+        end
+        if not signals[property] then
+                signals[property] = Signal.new()
+        end
+        return signals[property]
 end
 
 function Instance:ClearAllChildren()
@@ -843,7 +923,7 @@ local PlayersService = makeSignalHost({
 })
 
 function PlayersService:GetPlayers()
-        return {}
+        return rawget(self, "children") or {}
 end
 
 function PlayersService:GetPlayerFromCharacter()
@@ -908,6 +988,25 @@ function MarketplaceService:GetProductInfo()
         return nil
 end
 
+-- HttpService: the garden server stores its save as JSON, so it decodes with
+-- the engine's own decoder. The shim delegates to the CLI's json library so a
+-- save round trip is genuinely exercised rather than stubbed out.
+local HttpService = makeSignalHost({
+        ClassName = "HttpService",
+        Name = "HttpService",
+})
+
+function HttpService:JSONDecode(text)
+        if type(text) ~= "string" or text == "" then
+                error("HttpService:JSONDecode: empty input", 2)
+        end
+        return _G.json.decode(text)
+end
+
+function HttpService:JSONEncode(value)
+        return _G.json.encode(value)
+end
+
 local SERVICE_MAP = {
         ReplicatedStorage = ReplicatedStorage,
         Workspace = Workspace,
@@ -917,6 +1016,7 @@ local SERVICE_MAP = {
         DataStoreService = DataStoreService,
         TweenService = TweenService,
         MarketplaceService = MarketplaceService,
+        HttpService = HttpService,
 }
 
 local game = {
@@ -1255,6 +1355,7 @@ function Shim.harness(sources: { [string]: string })
         -- phone layout sets a smaller ViewportSize before loading the client,
         -- which is the same thing the engine does when the screen changes.
         Camera.ViewportSize = Vector2.new(1280, 720)
+        screenSize = Camera.ViewportSize
         rawset(Workspace, "children", { Camera })
         rawset(Workspace, "CurrentCamera", Camera)
 
@@ -1264,6 +1365,7 @@ function Shim.harness(sources: { [string]: string })
         local sharedFolder = moduleFolder("Shared", "shared", sources)
         local remotes = newInstance("Folder")
         remotes.Name = "Remotes"
+        remotes.Parent = ReplicatedStorage
         rawset(ReplicatedStorage, "children", { sharedFolder, remotes })
         rawset(ReplicatedStorage, "Remotes", remotes)
 
@@ -1310,6 +1412,24 @@ end
 
 function Shim.install(env)
         return install(env)
+end
+
+-- Put the harness on a given screen size. A test that cares about the phone
+-- layout calls this before loading the client, which is the same thing the
+-- engine does when the screen changes. Both the camera and the derived screen
+-- size move together, because the HUD reads AbsoluteSize off the ScreenGui.
+function Shim.setViewport(env, width: number, height: number)
+        Camera.ViewportSize = Vector2.new(width, height)
+        screenSize = Camera.ViewportSize
+end
+
+-- Write a save into the DataStore before a player joins. A save is stored as
+-- plain data, the same shape the server writes, so this is the exact record a
+-- returning player would have on disk. Used to test offline growth and to reach
+-- game states a new player cannot afford yet.
+function Shim.putSave(env, userId: number, payload: any)
+        local store = env.__game:GetService("DataStoreService"):GetDataStore("AXGardenLegends_v1")
+        store:SetAsync(tostring(userId), payload)
 end
 
 Shim.Vector3 = Vector3

@@ -17,7 +17,11 @@ so it can never go stale: a source edit is picked up on the next test run rather
 than being tested against a stale copy.
 
 Usage:
-    python3 scripts/gen-roblox-sources.py [output-path]
+    python3 scripts/gen-roblox-sources.py [output-path] [--src DIR]
+
+`--src` defaults to roblox/src. AX Garden Legends passes roblox-garden/src, so
+each game gets its own bundle and one game's sources can never leak into the
+other's runtime tests.
 """
 
 import json
@@ -25,8 +29,11 @@ import os
 import sys
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-SRC = os.path.join(ROOT, "roblox", "src")
+DEFAULT_SRC = os.path.join(ROOT, "roblox", "src")
 DEFAULT_OUT = os.path.join(ROOT, "roblox", "tests", ".generated", "Sources.luau")
+
+# Set from the command line before collect() runs.
+SRC = DEFAULT_SRC
 
 
 def collect() -> "list[tuple[str, str]]":
@@ -87,7 +94,17 @@ def render(files) -> str:
 
 
 def main() -> int:
-    out = sys.argv[1] if len(sys.argv) > 1 else DEFAULT_OUT
+    global SRC
+    args = [a for a in sys.argv[1:]]
+    src_override = None
+    if "--src" in args:
+        i = args.index("--src")
+        src_override = args[i + 1]
+        del args[i : i + 2]
+    out = args[0] if args else DEFAULT_OUT
+    if src_override:
+        SRC = src_override if os.path.isabs(src_override) else os.path.join(ROOT, src_override)
+
     files = collect()
     if not files:
         print("GEN_ROBLOX_SOURCES=FAIL reason=no_files_found", file=sys.stderr)

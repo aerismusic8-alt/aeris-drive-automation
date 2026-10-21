@@ -18,8 +18,11 @@ local Pets = require("../src/shared/Pets")
 local Garden = require("../src/shared/Garden")
 local Sell = require("../src/shared/Sell")
 local Collection = require("../src/shared/Collection")
+local Basket = require("../src/shared/Basket")
 local SaveSchema = require("../src/shared/SaveSchema")
+local Remotes = require("../src/shared/Remotes")
 local Text = require("../src/shared/Text")
+local HudLayout = require("../src/client/HudLayout")
 
 --------------------------------------------------------------------------
 t.suite("Rarity")
@@ -1007,6 +1010,214 @@ end)
 
 t.test("a negative duration reads as zero", function()
         t.assertEqual(Text.duration(-5), Text.get("secondsLeft", 0), "negative duration")
+end)
+
+--------------------------------------------------------------------------
+t.suite("Basket")
+--------------------------------------------------------------------------
+
+t.test("a new basket is empty and worth nothing", function()
+        local basket = Basket.new()
+        t.assertEqual(Basket.count(basket), 0, "count")
+        t.assertEqual(Basket.total(basket, Sell.newUpgrades(), { growth = 1, value = 1 }), 0, "total")
+end)
+
+t.test("adding a crop increases the count", function()
+        local basket = Basket.new()
+        local added = Basket.add(basket, { seedId = "Carrot", rarity = "Common", mutation = "None" }, 12)
+        t.assertTrue(added, "add returned false")
+        t.assertEqual(Basket.count(basket), 1, "count")
+end)
+
+t.test("the basket refuses to overflow past its capacity", function()
+        local basket = Basket.new()
+        for _ = 1, Config.Basket.Capacity do
+                t.assertTrue(Basket.add(basket, { seedId = "Carrot", rarity = "Common", mutation = "None" }, 12),
+                        "a crop within capacity was refused")
+        end
+        t.assertEqual(Basket.count(basket), Config.Basket.Capacity, "count at capacity")
+        t.assertFalse(Basket.add(basket, { seedId = "Carrot", rarity = "Common", mutation = "None" }, 12),
+                "a crop past capacity was accepted")
+end)
+
+t.test("selling empties the basket and returns the total", function()
+        local basket = Basket.new()
+        Basket.add(basket, { seedId = "Carrot", rarity = "Common", mutation = "None" }, 12)
+        Basket.add(basket, { seedId = "Carrot", rarity = "Common", mutation = "None" }, 12)
+        local total, sold = Basket.sellAll(basket, Sell.newUpgrades(), { growth = 1, value = 1 })
+        t.assertEqual(#sold, 2, "entries sold")
+        t.assertGreater(total, 0, "total earned")
+        t.assertEqual(Basket.count(basket), 0, "the basket was not emptied")
+end)
+
+t.test("the basket total follows a value upgrade bought after harvesting", function()
+        local basket = Basket.new()
+        Basket.add(basket, { seedId = "Carrot", rarity = "Common", mutation = "None" }, 12)
+        local base = Basket.total(basket, Sell.newUpgrades(), { growth = 1, value = 1 })
+
+        local upgraded = Sell.newUpgrades()
+        upgraded.valueLevel = 5
+        local better = Basket.total(basket, upgraded, { growth = 1, value = 1 })
+        t.assertGreater(better, base, "a value upgrade did not raise a held crop's worth")
+end)
+
+--------------------------------------------------------------------------
+t.suite("Remotes")
+--------------------------------------------------------------------------
+
+t.test("every remote name is unique", function()
+        local seen = {}
+        for _, name in ipairs(Remotes.all()) do
+                t.assertFalse(seen[name] == true, "duplicate remote name: " .. name)
+                seen[name] = true
+        end
+end)
+
+t.test("no remote name is empty", function()
+        for _, name in ipairs(Remotes.all()) do
+                t.assertGreater(#name, 0, "an empty remote name would be unusable")
+        end
+end)
+
+t.test("the client and server agree on the folder name", function()
+        t.assertEqual(Remotes.Folders.Remotes, "Remotes", "folder name")
+end)
+
+--------------------------------------------------------------------------
+t.suite("HudLayout")
+--------------------------------------------------------------------------
+
+-- This suite is the reason HudLayout is pure Luau. The previous game laid its
+-- HUD out inline and a panel ran off the top of a 360x640 phone. Here the same
+-- arithmetic a phone would do is checked directly.
+t.test("a panel fits the reference screen", function()
+        local height = HudLayout.panelHeight(HudLayout.DESIGN_WIDTH, HudLayout.DESIGN_HEIGHT)
+        t.assertGreater(height, 0, "the panel has no height on the design screen")
+end)
+
+t.test("every rect is on screen at the smallest phone size", function()
+        for _, entry in ipairs(HudLayout.rects(HudLayout.MIN_WIDTH, HudLayout.MIN_HEIGHT)) do
+                t.assertTrue(HudLayout.onScreen(entry.rect, HudLayout.MIN_WIDTH, HudLayout.MIN_HEIGHT),
+                        entry.name .. " is off screen on a phone")
+        end
+end)
+
+t.test("the top bar and bottom bar never overlap", function()
+        local rects = HudLayout.rects(HudLayout.MIN_WIDTH, HudLayout.MIN_HEIGHT)
+        local byName = {}
+        for _, entry in ipairs(rects) do
+                byName[entry.name] = entry.rect
+        end
+        t.assertFalse(HudLayout.overlaps(byName.topBar, byName.bottomBar), "top and bottom bars overlap")
+end)
+
+t.test("the panel sits between the two bars without overlapping either", function()
+        local rects = HudLayout.rects(HudLayout.MIN_WIDTH, HudLayout.MIN_HEIGHT)
+        local byName = {}
+        for _, entry in ipairs(rects) do
+                byName[entry.name] = entry.rect
+        end
+        t.assertFalse(HudLayout.overlaps(byName.panel, byName.topBar), "panel overlaps the top bar")
+        t.assertFalse(HudLayout.overlaps(byName.panel, byName.bottomBar), "panel overlaps the bottom bar")
+end)
+
+t.test("a plot cell is never smaller than a finger", function()
+        for _, width in ipairs({ 320, 360, 390, 414, 768, 1280 }) do
+                local cell = HudLayout.plotCellSize(width, 4)
+                t.assertTrue(cell >= HudLayout.MIN_TOUCH,
+                        "a plot cell on a " .. width .. "px screen is too small: " .. cell)
+        end
+end)
+
+t.test("bottom bar buttons are never smaller than a finger", function()
+        for _, width in ipairs({ 320, 360, 390, 414, 768, 1280 }) do
+                local buttonWidth, buttonHeight = HudLayout.bottomButtonSize(width, 5)
+                t.assertTrue(buttonWidth >= HudLayout.MIN_TOUCH,
+                        "a bottom button on a " .. width .. "px screen is too narrow: " .. buttonWidth)
+                t.assertTrue(buttonHeight >= HudLayout.MIN_TOUCH,
+                        "a bottom button on a " .. width .. "px screen is too short: " .. buttonHeight)
+        end
+end)
+
+t.test("the plot grid never runs off the right edge", function()
+        for _, width in ipairs({ 320, 360, 390, 414, 768, 1280 }) do
+                local columns = HudLayout.PLOT_GRID.columns
+                local cell = HudLayout.plotCellSize(width, columns)
+                local right = HudLayout.PAD + columns * (cell + HudLayout.PLOT_GRID.gap) - HudLayout.PLOT_GRID.gap
+                t.assertTrue(right <= width, "the plot grid runs off a " .. width .. "px screen by " .. (right - width))
+        end
+end)
+
+t.test("the scale never magnifies past the design size", function()
+        t.assertEqual(HudLayout.scale(HudLayout.DESIGN_WIDTH, HudLayout.DESIGN_HEIGHT), 1, "design scale")
+        t.assertEqual(HudLayout.scale(4000, 4000), 1, "a large screen is not stretched")
+end)
+
+t.test("a panel reports when its content does not fit", function()
+        local tall = HudLayout.panelHeight(HudLayout.MIN_WIDTH, HudLayout.MIN_HEIGHT) + 100
+        t.assertFalse(HudLayout.panelFits(HudLayout.MIN_WIDTH, HudLayout.MIN_HEIGHT, tall),
+                "a panel taller than the screen reported that it fits")
+end)
+
+--------------------------------------------------------------------------
+t.suite("SaveSchema: the basket and owned seeds survive a round trip")
+--------------------------------------------------------------------------
+
+t.test("a new save has an empty basket and no owned seeds", function()
+        local save = SaveSchema.new(0)
+        t.assertEqual(Basket.count(save.basket), 0, "basket count")
+        t.assertEqual(next(save.seedsOwned), nil, "seedsOwned should be empty")
+end)
+
+t.test("a basket and owned seeds survive migrate", function()
+        local save = SaveSchema.new(1000)
+        Basket.add(save.basket, { seedId = "Carrot", rarity = "Common", mutation = "None" }, 12)
+        save.seedsOwned["Carrot"] = 3
+
+        local restored = SaveSchema.migrate(save, 2000)
+        t.assertEqual(Basket.count(restored.basket), 1, "basket count after migrate")
+        t.assertEqual(restored.basket.entries[1].seedId, "Carrot", "basket entry seed")
+        t.assertEqual(restored.seedsOwned["Carrot"], 3, "owned seed count after migrate")
+end)
+
+t.test("migrate drops a basket entry naming a seed the game no longer has", function()
+        local save = SaveSchema.new(1000)
+        table.insert(save.basket.entries, { seedId = "Unobtainium", rarity = "Common", mutation = "None", value = 99 })
+        local restored = SaveSchema.migrate(save, 2000)
+        t.assertEqual(Basket.count(restored.basket), 0, "an unknown seed survived the migrate")
+end)
+
+t.test("migrate caps a hand-edited basket at the capacity", function()
+        local save = SaveSchema.new(1000)
+        for index = 1, Config.Basket.Capacity + 20 do
+                table.insert(save.basket.entries, { seedId = "Carrot", rarity = "Common", mutation = "None", value = 12 })
+        end
+        local restored = SaveSchema.migrate(save, 2000)
+        t.assertEqual(Basket.count(restored.basket), Config.Basket.Capacity, "basket was not capped")
+end)
+
+t.test("a snapshot is a deep copy, not a second reference", function()
+        local save = SaveSchema.new(1000)
+        Garden.plant(save.garden, 1, "Carrot", 1000)
+        local copy = SaveSchema.snapshot(save)
+
+        -- Mutating the live save must not change the snapshot, or a DataStore
+        -- write could be changed after it was handed over.
+        save.garden.plots[1].seedId = nil
+        save.coins = 999
+        t.assertEqual(copy.garden.plots[1].seedId, "Carrot", "the snapshot changed with the live save")
+        t.assertEqual(copy.coins, Config.Economy.StartingCoins, "the snapshot's coins changed")
+end)
+
+t.test("a save with a planted garden serialises without error", function()
+        -- The encoder must handle the plot array, which is keyed by integer.
+        -- A string-only key sorter would refuse to encode this at all.
+        local save = SaveSchema.new(1000)
+        Garden.plant(save.garden, 1, "Carrot", 1000)
+        Basket.add(save.basket, { seedId = "Carrot", rarity = "Common", mutation = "None" }, 12)
+        local ok, text = pcall(SaveSchema.serialize, save)
+        t.assertTrue(ok, "serialising a planted garden threw: " .. tostring(text))
+        t.assertGreater(#text, 0, "the serialised save is empty")
 end)
 
 --------------------------------------------------------------------------

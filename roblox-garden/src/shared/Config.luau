@@ -49,6 +49,19 @@ Config.Economy = {
         SellFloor = 1,
 }
 
+-- The basket holds harvested crops until the player cashes them in. Capped so a
+-- long session has a reason to go and sell rather than hoarding forever.
+Config.Basket = {
+        Capacity = 40,
+}
+
+-- The rotating shop. Six seeds on the shelf at a time, drawn by rarity weight,
+-- which is few enough to read on a phone and enough that a good seed is worth
+-- coming back for.
+Config.Shop = {
+        StockSize = 6,
+}
+
 -- Seeds. `growSeconds` is the patience cost and `baseValue` the payout, so a
 -- seed is only worth buying if the player is willing to wait for it. Both
 -- numbers rise together; a Divine seed is the reward for leaving the game
@@ -199,7 +212,7 @@ Config.Offline = {
 }
 
 Config.Save = {
-        SchemaVersion = 3,
+        SchemaVersion = 4,
         -- A save is written at most this often while a player is active.
         AutosaveSeconds = 60,
 }

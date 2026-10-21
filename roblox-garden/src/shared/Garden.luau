@@ -116,6 +116,10 @@ function Garden.harvest(state: State, index: number, now: number, rng: any, luck
         local Mutations = require("./Mutations")
         local mutation = Mutations.roll(rng, luck)
         return {
+                -- Which plot this came from. Harvest-all needs it to put back a
+                -- crop that did not fit in the basket, and it is the only place
+                -- the mapping is known once the plot has been cleared.
+                plotIndex = index,
                 seedId = seedId,
                 rarity = seed and seed.rarity or "Common",
                 mutation = mutation,

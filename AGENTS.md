@@ -248,6 +248,57 @@ Rules that came out of the pivot:
   ladder where an egg 1500x dearer bought a pet only 2x better. None of them
   would have been caught by reading the code.
 
+### The shim must not be kinder than the engine
+
+`roblox/tests/RobloxShim.luau` is shared by both games' runtime suites. A shim
+that is *simpler* than Roblox is worse than no shim, because it makes a test
+pass on behaviour the real game does not have. Three of these were found and
+fixed while bringing the garden runtime up, and each one had been silently
+weakening the arena's suite too:
+
+- **A remote payload is deep-copied on the way out.** The engine serialises a
+  table across a remote, so the client never shares a table with the server. The
+  shim used to hand the *live* save to the client, so a test that captured a
+  payload and then watched the server mutate its own save saw the captured value
+  change -- a test failing for a reason that cannot happen in Roblox. `FireClient`
+  and `FireAllClients` now copy, skipping tables with a metatable (those are
+  Instances, which really are passed by reference).
+- **`Signal:Disconnect` actually disconnects.** It used to be a no-op, so a test
+  that connected, disconnected, then fired still ran the dead handler. Connect
+  returns a connection whose `Disconnect` removes the handler; `Fire` iterates a
+  copy so a handler that connects or disconnects mid-fire cannot disturb the walk.
+- **A missing child errors, it does not hang.** `WaitForChild` raises when the
+  child is absent and nothing is scheduled to create it. A hang reads as a flaky
+  timeout; an error names the missing remote.
+
+Two more gaps that were not bugs but made the suite blind: `UIPadding` was not a
+modelled class, and the harness never set `Parent` on the `Remotes` folder it
+created, so a test walking up from a remote found nothing.
+
+### A save is a table, not a JSON string
+
+`SaveSchema.snapshot(save)` returns a deep copy of the save as plain data, and
+that is what the DataStore is given -- the same shape the arena stores. The
+snapshot matters: writing the live save would let the game mutate the record
+after it was handed over. `migrate` still accepts a string, so a save written by
+an older JSON build loads and is repaired.
+
+The hand-rolled encoder must handle **integer keys**, because a garden's plots
+are keyed by plot index. A string-only key sorter throws on any planted garden,
+which is to say on every save a real player would ever write.
+
+### Reintroduce every fixed bug
+
+`roblox-garden/tests/reintroduce.py` puts each fixed defect back one at a time,
+runs **both** garden suites, and fails unless the expected test fails. A test
+that passes with and without the fix proves nothing. It regenerates the source
+bundle inside the loop, because the runtime suite loads the generated bundle and
+an edit to `src/` would otherwise have no effect at all. Run it after adding a
+test that is meant to guard a fix.
+
+Both garden suites are wired into `scripts/test-roblox.sh`, so the fast unit
+suite (137 tests) and the runtime suite (37 tests) run with the rest of the repo.
+
 ## Language
 
 The player-facing text is Thai. `roblox/src/shared/Text.luau` is the only place

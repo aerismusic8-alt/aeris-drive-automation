@@ -50,6 +50,14 @@ fi
 python3 "$ROOT/scripts/gen-roblox-sources.py" || exit 1
 "$LUAU" "$ROOT/roblox/tests/runtime.luau" || exit 1
 
+# AX Garden Legends runs the same way, against its own generated bundle. This is
+# the suite that proves the game is playable: it plants, harvests and sells a
+# crop through the real remotes, and checks the HUD fits a 360x640 phone. The
+# previous game passed every unit test while being unplayable, so this is the
+# one that matters.
+python3 "$ROOT/scripts/gen-roblox-sources.py" "$ROOT/roblox-garden/tests/.generated/Sources.luau" --src "$ROOT/roblox-garden/src" || exit 1
+"$LUAU" "$ROOT/roblox-garden/tests/runtime.luau" || exit 1
+
 # Wiring checks read the source, because the HUD cannot be executed outside
 # Roblox. This is what catches a renamed label or an unbound button.
 python3 "$ROOT/scripts/check-hud-wiring.py" || exit 1
