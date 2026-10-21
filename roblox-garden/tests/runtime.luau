@@ -595,13 +595,28 @@ t.test("no plot button is drawn on the world screen", function()
         State:FireClient(clientPlayer, payload)
 
         local gui = clientPlayer.PlayerGui:FindFirstChild("AXGardenHud")
-        for index = 1, 12 do
-                local plot = gui:FindFirstChild("Plot" .. tostring(index))
-                t.assertTrue(plot == nil,
-                        "plot " .. index .. " is still a child of the screen, covering the world")
-        end
-        -- The panel is the only thing between the bars, and it is closed.
         local panel = gui:FindFirstChild("Panel")
+        -- Every plot button must live under the panel, and the grid must be a
+        -- direct child of it. A recursive search is used because the plots are
+        -- children of the grid: checking only the screen's direct children
+        -- passed even when the grid itself was parented to the screen.
+        local plots = 0
+        for _, node in ipairs(gui:GetDescendants()) do
+                if node.Name:match("^Plot%d+$") then
+                        plots += 1
+                        local parent = node.Parent
+                        while parent ~= nil and parent ~= panel do
+                                parent = parent.Parent
+                        end
+                        t.assertTrue(parent == panel,
+                                node.Name .. " is outside the panel, so it is drawn on the world screen")
+                end
+        end
+        t.assertEqual(plots, 12, "expected twelve plot buttons under the panel, found " .. plots)
+
+        local grid = gui:FindFirstChild("Grid")
+        t.assertTrue(grid == nil, "the grid is a direct child of the screen, covering the world")
+        -- The panel is the only thing between the bars, and it is closed.
         t.assertFalse(panel.Visible, "the panel is open on boot")
 end)
 
