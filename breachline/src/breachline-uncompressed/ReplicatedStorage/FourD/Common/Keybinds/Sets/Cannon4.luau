@@ -1,0 +1,50 @@
+return {
+	Id = "Cannon4",
+	ActionPrefix = "Cannon4",
+	Binds = {
+		{
+			Id = "YawLeft",
+			Description = "Aim Left",
+			Keyboard = Enum.KeyCode.A,
+			Gamepad = Enum.KeyCode.DPadLeft,
+			Category = "Aim",
+		},
+		{
+			Id = "YawRight",
+			Description = "Aim Right",
+			Keyboard = Enum.KeyCode.D,
+			Gamepad = Enum.KeyCode.DPadRight,
+			Category = "Aim",
+		},
+		{
+			Id = "PitchUp",
+			Description = "Aim Up",
+			Keyboard = Enum.KeyCode.W,
+			Gamepad = Enum.KeyCode.DPadUp,
+			Category = "Aim",
+		},
+		{
+			Id = "PitchDown",
+			Description = "Aim Down",
+			Keyboard = Enum.KeyCode.S,
+			Gamepad = Enum.KeyCode.DPadDown,
+			Category = "Aim",
+		},
+		{
+			Id = "Fire",
+			Description = "Fire Cannon",
+			Keyboard = Enum.UserInputType.MouseButton1,
+			Gamepad = Enum.KeyCode.ButtonR2,
+			Category = "Combat",
+			Touch = { Face = "Left", Icon = "Fire" },
+		},
+		{
+			Id = "Exit",
+			Description = "Dismount",
+			Keyboard = Enum.KeyCode.E,
+			Gamepad = Enum.KeyCode.ButtonB,
+			Category = "Combat",
+			Touch = { Face = "Exit", Icon = "Exit" },
+		},
+	},
+}
