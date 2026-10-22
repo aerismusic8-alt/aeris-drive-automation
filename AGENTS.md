@@ -95,6 +95,12 @@ Note `luau-compile --binary` needs a file path, not stdin.
 Write access comes from a GitHub App, not a personal token. The default
 `GITHUB_TOKEN` in this sandbox is read-only (all writes return 403).
 
+The symptom is easy to misread: if the remote URL is set from `$GITHUB_TOKEN`,
+`git fetch` still succeeds and `git push` returns `403 ... denied to <account>`.
+Read that as "the remote holds the wrong token", not "the branch is protected" --
+the read-only token authenticates, it just cannot write. Reset the remote with
+`scripts/use-app-token.sh` rather than hand-editing the URL from the environment.
+
 - Key and config: `~/.config/aeris/gh-app.pem` + `gh-app.json`
 - Mint a token: `node scripts/gh-app-token.mjs` (add `--export` for a shell line)
 - Installation tokens expire after ~1 hour. Mint fresh per operation.
