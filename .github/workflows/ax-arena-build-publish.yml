@@ -31,7 +31,11 @@ on:
         required: true
         default: 'yes'
         type: choice
-        options: [yes, no]
+        # Quoted: unquoted yes/no parse as YAML booleans, so GitHub's
+        # allowed values became 'true'/'false'. The default then matched
+        # neither, and the `!= 'no'` guard was never false -- choosing
+        # 'build only' published anyway.
+        options: ['yes', 'no']
   push:
     paths:
       - 'roblox-garden/**'
@@ -41,6 +45,7 @@ on:
       - 'scripts/probe-scopes-linux.sh'
       - 'scripts/check-live-state-linux.sh'
       - '.github/workflows/ax-arena-build-publish.yml'
+      - 'scripts/check-workflow-inputs.py'
 
 permissions:
   contents: read
@@ -59,6 +64,9 @@ jobs:
 
       - name: Install Luau
         run: bash scripts/install-luau.sh
+
+      - name: Check dispatch inputs
+        run: python3 scripts/check-workflow-inputs.py
 
       - name: Run the test suite
         run: bash scripts/test-roblox.sh

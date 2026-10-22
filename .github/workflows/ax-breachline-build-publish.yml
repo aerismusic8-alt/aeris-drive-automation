@@ -28,7 +28,11 @@ on:
         required: true
         default: 'yes'
         type: choice
-        options: [yes, no]
+        # Quoted: unquoted yes/no parse as YAML booleans, so GitHub's
+        # allowed values became 'true'/'false'. The default then matched
+        # neither, and the `!= 'no'` guard was never false -- choosing
+        # 'build only' published anyway.
+        options: ['yes', 'no']
   push:
     paths:
       - 'breachline/**'
@@ -37,6 +41,7 @@ on:
       - 'scripts/fetch-rbxmk.sh'
       - 'scripts/publish-place-linux.sh'
       - 'scripts/check-breachline-build.py'
+      - 'scripts/check-workflow-inputs.py'
       - '.github/workflows/ax-breachline-build-publish.yml'
 
 permissions:
@@ -72,6 +77,13 @@ jobs:
       # module that was added to the overlay but never parented fails here.
       - name: Verify the built place
         run: python3 scripts/check-breachline-build.py
+
+      # This workflow is not run by scripts/test-roblox.sh, so it checks its own
+      # dispatch inputs. An unquoted `options: [yes, no]` parses as booleans, and
+      # the `publish != 'no'` guard below then never matches -- the build-only
+      # choice publishes.
+      - name: Check dispatch inputs
+        run: python3 scripts/check-workflow-inputs.py
 
       - name: Upload place artifact
         uses: actions/upload-artifact@v4

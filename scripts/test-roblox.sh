@@ -64,4 +64,9 @@ python3 "$ROOT/scripts/check-hud-wiring.py" || exit 1
 
 # The lighting settings decide whether the game renders at all on a weak GPU,
 # which is the hardware the target mobile players are closest to.
-exec python3 "$ROOT/scripts/check-low-end-lighting.py"
+python3 "$ROOT/scripts/check-low-end-lighting.py" || exit 1
+
+# Dispatch inputs are not game code, but an unquoted `options: [yes, no]` turns
+# into booleans, and then a "build only" choice publishes to the live place. The
+# check is here because that failure is invisible in the run that causes it.
+exec python3 "$ROOT/scripts/check-workflow-inputs.py"

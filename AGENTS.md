@@ -1108,7 +1108,13 @@ The measured table above is a snapshot, and a key edit invalidates it.
 
 ### A key's resources are a second, quieter lock than its scopes
 
-The garden publishes. Breachline does not, and both use the same key. The
+Resolved: adding **Breachline: Two Sites** to the key's Experience Restrictions
+was granted, and the Breachline POST now returns `{"versionNumber":13}` with the
+same key that publishes the garden. The account below is kept because the
+diagnosis is the reusable part, and because the same lock can be set again on any
+new key.
+
+The garden publishes. Breachline did not, and both use the same key. The
 garden POST returns `{"versionNumber":27}`; the Breachline POST returns 403
 `{"errors":[{"code":0,"message":"Resources not authorized."}]}`. Same key, same
 scope, same endpoint, same minute.
@@ -1139,10 +1145,10 @@ Two things follow:
   `breachline/**`; that is the cleaner option if the two games are ever shipped
   by different people.
 
-The publishing script already distinguishes the two 403s and prints the fix for
-the scope case. It cannot print the resource case from the response alone, so
-this note is the map: a 403 whose message says `Resources not authorized` is the
-restrictions, and a 403 whose message says `Scope not authorized` is the ticks.
+The publishing script distinguishes both 403s from the response text and prints
+the matching fix, so a run that fails this way names its own cause: a 403 whose
+message says `Resources not authorized` is the restrictions, and a 403 whose
+message says `Scope not authorized` is the ticks.
 
 ### A name is not enough; the universe must be public
 
@@ -1390,6 +1396,33 @@ Work the loop: measure, act, verify, write down. Each pass through it should end
 with one of three outcomes -- a fact added below, a rule added to "How to work on
 this repository", or nothing learned, which is itself worth noticing. A session
 that changed code but added no line here either taught nothing or did not look.
+
+### An unquoted `yes` in a workflow input is a boolean
+
+The publish workflows offered `options: [yes, no]` for a "publish or build only"
+choice. YAML 1.1 reads unquoted `yes`/`no` as booleans, so GitHub was given the
+allowed values `true` and `false`. The documented word was rejected -- dispatching
+with `"publish": "yes"` returns HTTP 422, and only `"true"` is accepted -- and the
+guard `if: ${{ inputs.publish != 'no' }}` was never false, because the value is the
+boolean `false`, not the string `'no'`. Choosing "build and verify only" published
+to the live place anyway, and the run looked clean.
+
+Both halves matter. The 422 is loud; the guard is silent, and it is the one that
+touches a live experience. Quoting the options fixes both:
+
+    options: ['yes', 'no']
+
+`scripts/check-workflow-inputs.py` now fails on any unquoted boolean word in a
+choice option or a string/choice default, and runs from `scripts/test-roblox.sh`
+plus both publish workflows. It only judges `choice` and `string` inputs: a
+`type: boolean` input with `default: true` is correct and is left alone. It also
+skips comment lines, because the comment explaining the bug contains the buggy
+text and a checker that reads its own explanation as configuration is a checker
+that fails on the fix.
+
+The rule: quote any `options:` value that is a YAML boolean word. Then read the
+guard that consumes the input and ask what the value actually is, not what the
+file appears to say.
 
 ### Look up a singleton by class, not by name
 
