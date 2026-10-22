@@ -59,6 +59,14 @@ jobs:
       - name: Run AX Garden Legends tests
         run: ./tools/luau/luau roblox-garden/tests/run.luau
 
+      # Breachline had no test suite at all, so its round loop had never been run
+      # outside Roblox Studio. This suite boots the real match layer under the
+      # engine shim and plays a round through the real remotes.
+      - name: Run Breachline runtime tests
+        run: |
+          python3 scripts/gen-roblox-sources.py breachline/tests/.generated/Sources.luau --src breachline/src/breachline-uncompressed
+          ./tools/luau/luau breachline/tests/runtime.luau
+
       # Boots the real server, builds the real world and loads the real client
       # under a headless engine shim. The unit, integration, quest and balance
       # suites all passed while the game was unplayable, because none of them

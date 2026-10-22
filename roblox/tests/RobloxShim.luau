@@ -319,6 +319,16 @@ local ENUM_MEMBERS = {
         ProductPurchaseDecision = { NotProcessedYet = 1, PurchaseGranted = 2 },
         -- Services use these; the shim only needs the names to resolve.
         RunContext = { Server = 1, Client = 2, Legacy = 3 },
+        -- The buy menu opens on the B key and the client reads the keycode off
+        -- the input object. Only the codes the game compares against are here;
+        -- an unmodelled one raises, which is the shim's contract.
+        KeyCode = { Unknown = 0, B = 1, One = 2, Two = 3, Three = 4, Four = 5, R = 6, E = 7 },
+        CameraMode = { Classic = 1, LockFirstPerson = 2 },
+        -- The weapon's server raycast excludes the tool and the shooter.
+        RaycastFilterType = { Exclude = 1, Include = 2, Blacklist = 1, Whitelist = 2 },
+        HumanoidStateType = { Running = 1, Dead = 2, Jumping = 3 },
+        HumanoidRigType = { R6 = 1, R15 = 2 },
+        Platform = { Windows = 1, Macintosh = 2, Linux = 3, Android = 4, iOS = 5 },
 }
 
 local Enum = {}
@@ -425,6 +435,10 @@ for _, name in ipairs({
         -- Triggered with the player who triggered it, and a Sound remembers the
         -- id it was given and plays it, because that is what the game reads back.
         "ProximityPrompt", "ClickDetector", "Sound",
+        -- Breachline's match layer. A weapon is a Tool in a player's Backpack,
+        -- a team is a Team in the Teams service, and a range target signals a
+        -- hit through a BindableEvent.
+        "Tool", "Backpack", "Team", "BindableEvent",
 }) do
         VALID_CLASSES[name] = true
 end
@@ -460,6 +474,20 @@ local function isA(self, className)
         if className == "Instance" then
                 return true
         end
+        -- A Tool and a Backpack are both containers the match code looks up by
+        -- class, and a Player is a Model for the weapon's ancestry walk.
+        if className == "Tool" then
+                return self.ClassName == "Tool"
+        end
+        if className == "Backpack" then
+                return self.ClassName == "Backpack"
+        end
+        if className == "Model" then
+                return self.ClassName == "Model" or self.ClassName == "Player"
+        end
+        if className == "Player" then
+                return self.ClassName == "Player"
+        end
         return false
 end
 
@@ -480,6 +508,16 @@ local function newInstance(className: string)
                 self.Size = Vector3.new(1, 1, 1)
                 self.CFrame = CFrame.new(0, 0, 0)
                 self.Position = Vector3.new(0, 0, 0)
+                -- Physics and render defaults the match code and the range
+                -- targets read back: a target flips CanQuery on death, a planted
+                -- bomb is Anchored, and a vest is Massless.
+                self.Anchored = false
+                self.CanCollide = true
+                self.CanQuery = true
+                self.CanTouch = true
+                self.Massless = false
+                self.Transparency = 0
+                self.Color = Color3.fromRGB(163, 162, 165)
                 -- A Part defaults to a Block in the engine, and the garden sets
                 -- Shape to Ball or Cylinder on most of its scenery. Without the
                 -- default every part read back as nil and a shape test could not
@@ -503,6 +541,31 @@ local function newInstance(className: string)
                 -- Flipped by :InputHoldBegin/:InputHoldEnd in the engine. Kept
                 -- here so a test can assert a prompt was armed before it fired.
                 self.triggeredCount = 0
+        end
+
+        -- A Tool is a weapon in a Backpack or a character. The game reads its
+        -- Name, parents it, and (for the starting gun) checks it is a Tool.
+        if className == "Tool" then
+                self.CanBeDropped = true
+                self.RequiresHandle = true
+                self.Enabled = true
+        end
+
+        -- A BindableEvent is the range target's damage channel: RangeTargets
+        -- parents one named TakeDamage under each target, and the weapon fires
+        -- it. Modelling it as a real Signal is what lets a hit be observed.
+        if className == "BindableEvent" then
+                self.Event = Signal.new()
+        end
+
+        -- A Humanoid carries health, and the weapon's damage path calls
+        -- TakeDamage on it while the match loop waits on Died. Both are modelled
+        -- so a shot that lands is observable and a death ends the round.
+        if className == "Humanoid" then
+                self.Health = 100
+                self.MaxHealth = 100
+                self.WalkSpeed = 16
+                self.JumpPower = 50
         end
 
         -- A Sound carries the id it was told to play and whether it is playing,
@@ -626,6 +689,17 @@ function Instance:__index(key)
                 local sig = Signal.new()
                 rawget(self, "signals")[key] = sig
                 return sig
+        end
+        -- A child is reachable by name, the way the engine resolves it. The
+        -- match code depends on this: it walks `range.BombSites`,
+        -- `site.PlantPrompt` and `state.JoinMatch` rather than calling
+        -- FindFirstChild, so without the lookup the round loop sees nil.
+        if type(key) == "string" then
+                for _, child in ipairs(rawget(self, "children") or {}) do
+                        if rawget(child, "Name") == key then
+                                return child
+                        end
+                end
         end
         return nil
 end
@@ -852,6 +926,33 @@ function Instance:GetPropertyChangedSignal(property: string)
         return signals[property]
 end
 
+-- Clone deep-copies a subtree, which is how the shop hands a player a weapon:
+-- it clones the template out of ServerStorage and parents the copy to the
+-- Backpack. The copy carries the same ClassName, Name, source and children, so
+-- the clone is the same weapon the template is.
+function Instance:Clone()
+        local function copy(node)
+                local out = setmetatable({}, Instance)
+                for key, value in pairs(rawget(node, "__props") or {}) do
+                        rawset(out, key, value)
+                end
+                for key, value in pairs(node) do
+                        if key ~= "children" and key ~= "signals" and key ~= "Parent" then
+                                rawset(out, key, value)
+                        end
+                end
+                rawset(out, "children", {})
+                rawset(out, "signals", {})
+                rawset(out, "Parent", nil)
+                for _, child in ipairs(rawget(node, "children")) do
+                        local childCopy = copy(child)
+                        childCopy.Parent = out
+                end
+                return out
+        end
+        return copy(self)
+end
+
 function Instance:ClearAllChildren()
         for _, child in ipairs(rawget(self, "children")) do
                 rawset(child, "Parent", nil)
@@ -862,7 +963,21 @@ end
 -- Models move as a unit. The shim only needs the pivot to be readable, since
 -- the world builder positions monsters through it.
 function Instance:PivotTo(cf)
+        local previous = rawget(self, "pivot") or CFrame.new(0, 0, 0)
         rawset(self, "pivot", cf)
+        -- Move the parts with the pivot. A character is spawned by pivoting it to
+        -- a SpawnLocation, and the match code then checks the distance from the
+        -- character's root to a bomb site -- so a pivot that did not move the
+        -- root would make every plant look out of range.
+        local delta = cf.Position - previous.Position
+        for _, descendant in ipairs(self:GetDescendants()) do
+                local partCFrame = rawget(descendant, "CFrame")
+                if partCFrame and rawget(descendant, "Size") then
+                        local moved = CFrame.new(partCFrame.Position + delta)
+                        rawset(descendant, "CFrame", moved)
+                        rawset(descendant, "Position", moved.Position)
+                end
+        end
         if rawget(self, "PrimaryPart") then
                 rawget(self, "PrimaryPart").CFrame = cf
         end
@@ -881,7 +996,68 @@ function Instance:SetAttribute(name, value)
                 attrs = {}
                 rawset(self, "attributes", attrs)
         end
+        local previous = attrs[name]
         attrs[name] = value
+
+        -- A change has to notify, or a HUD that only refreshes on the signal
+        -- would never repaint. The engine fires both the generic AttributeChanged
+        -- and the per-name signal, so both are fired here.
+        if previous ~= value then
+                local signals = rawget(self, "attributeSignals")
+                if signals and signals[name] then
+                        signals[name]:Fire()
+                end
+                local generic = rawget(self, "signals")
+                if generic and generic.AttributeChanged then
+                        generic.AttributeChanged:Fire(name, value)
+                end
+        end
+end
+
+-- The per-name attribute signal. The HUDs connect this for Money, Armor, HasSMG,
+-- Alive and Phase, so it has to be a stable Signal per name.
+function Instance:GetAttributeChangedSignal(name: string)
+        local signals = rawget(self, "attributeSignals")
+        if not signals then
+                signals = {}
+                rawset(self, "attributeSignals", signals)
+        end
+        if not signals[name] then
+                signals[name] = Signal.new()
+        end
+        return signals[name]
+end
+
+-- TakeDamage is the engine's own damage entry point and the last thing the
+-- weapon's applyDamage does. A test reads Health back, so the number that lands
+-- is the number the game computed, armour multiplier included.
+function Instance:TakeDamage(amount: number)
+        if rawget(self, "ClassName") ~= "Humanoid" then
+                error("RobloxShim: TakeDamage is only modelled on a Humanoid", 2)
+        end
+        if type(amount) ~= "number" then return end
+        local health = rawget(self, "Health") or 100
+        local next = math.max(0, health - amount)
+        rawset(self, "Health", next)
+        if next <= 0 then
+                local signals = rawget(self, "signals")
+                if signals and signals.Died then
+                        signals.Died:Fire()
+                end
+        end
+end
+
+function Instance:MoveTo(_position)
+        return nil
+end
+
+function Instance:LoadAnimation(animation)
+        -- The weapon rig loads an animation and calls Play. Returning a stub with
+        -- Play/Stop keeps the rig loadable without modelling the animation graph.
+        if animation == nil then
+                error("RobloxShim: LoadAnimation needs an Animation", 2)
+        end
+        return setmetatable({ Play = function() end, Stop = function() end, AdjustSpeed = function() end }, {})
 end
 
 function Instance:GetAttribute(name)
@@ -986,12 +1162,29 @@ local function makePlayer(userId: number, name: string)
         player.PlayerGui = gui
         player.Character = nil
 
+        -- A Backpack is where the shop puts a bought weapon and where the match
+        -- code looks for one. Created with the player, as the engine does.
+        local backpack = newInstance("Backpack")
+        backpack.Name = "Backpack"
+        backpack.Parent = player
+        player.Backpack = backpack
+
+        -- Team is nil until the match assigns one, exactly as on join. Kept as a
+        -- real field so the weapon's same-team check reads a real Team.
+        player.Team = nil
+        player.Neutral = true
+
         player.LoadCharacter = function()
                 local character = newInstance("Model")
                 character.Name = player.Name
                 local root = newInstance("Part")
                 root.Name = "HumanoidRootPart"
                 root.Parent = character
+                -- The weapon validates a shot by comparing the client camera to
+                -- the shooter's Head, so a character without one cannot fire.
+                local head = newInstance("Part")
+                head.Name = "Head"
+                head.Parent = character
                 local humanoid = newInstance("Humanoid")
                 humanoid.Name = "Humanoid"
                 humanoid.Parent = character
@@ -1016,7 +1209,17 @@ function PlayersService:GetPlayers()
         return rawget(self, "children") or {}
 end
 
-function PlayersService:GetPlayerFromCharacter()
+-- The weapon resolves its victim with GetPlayerFromCharacter, and the match
+-- layer needs it to tell a team-mate hit from an enemy hit. A stub returning nil
+-- made the whole damage path unreachable, so this walks the registered players
+-- and matches on Character identity -- the same lookup the engine does.
+function PlayersService:GetPlayerFromCharacter(character)
+        if character == nil then return nil end
+        for _, player in ipairs(rawget(self, "children") or {}) do
+                if rawget(player, "Character") == character then
+                        return player
+                end
+        end
         return nil
 end
 
@@ -1097,6 +1300,68 @@ function HttpService:JSONEncode(value)
         return _G.json.encode(value)
 end
 
+-- Teams is a service whose children are Team instances, and Breachline's whole
+-- match layer is keyed on them: MatchManager assigns `player.Team`, and the
+-- weapon's damage code refuses a shot whose shooter and victim share a team.
+-- The teams are created here rather than in the harness because
+-- MatchManager reads `Teams.Attackers` and `Teams.Defenders` as raw fields, and
+-- makeSignalHost's __index would hand back a Signal for a missing key rather
+-- than nil -- so a missing team would look like a team and the assignment would
+-- silently go nowhere.
+local Teams = makeSignalHost({ ClassName = "Teams", Name = "Teams", children = {} })
+local function makeTeam(name: string, color: any)
+        local team = newInstance("Team")
+        team.Name = name
+        team.TeamColor = color
+        team.Parent = Teams
+        return team
+end
+Teams.Attackers = makeTeam("Attackers", Color3.fromRGB(196, 84, 62))
+Teams.Defenders = makeTeam("Defenders", Color3.fromRGB(76, 118, 168))
+
+-- ServerStorage holds the shop's weapon templates, which MatchShop clones into
+-- a player's Backpack. Breachline names it directly, so it is modelled as a
+-- real container the harness can populate.
+local ServerStorage = makeService("ServerStorage")
+ServerStorage.Parent = nil
+
+-- CollectionService tags range targets as damageable; the weapon walks up from
+-- the hit part looking for the tag. A real tag store is what makes that path
+-- testable rather than assumed.
+local tagStore: { [string]: { [any]: boolean } } = {}
+local CollectionService = makeSignalHost({ ClassName = "CollectionService", Name = "CollectionService" })
+function CollectionService:AddTag(instance, tag)
+        tagStore[tag] = tagStore[tag] or {}
+        tagStore[tag][instance] = true
+end
+function CollectionService:RemoveTag(instance, tag)
+        if tagStore[tag] then tagStore[tag][instance] = nil end
+end
+function CollectionService:HasTag(instance, tag)
+        return tagStore[tag] ~= nil and tagStore[tag][instance] == true
+end
+function CollectionService:GetTagged(tag)
+        local out = {}
+        for instance in pairs(tagStore[tag] or {}) do
+                table.insert(out, instance)
+        end
+        return out
+end
+
+-- UserInputService is how the buy menu opens on B. InputBegan is fired by a
+-- test with a synthetic input object, so the keybind is exercised rather than
+-- read as text.
+local UserInputService = makeSignalHost({ ClassName = "UserInputService", Name = "UserInputService" })
+function UserInputService:GetPlatform()
+        return Enum.Platform and Enum.Platform.Android or nil
+end
+function UserInputService:TouchEnabled()
+        return true
+end
+function UserInputService:GetFocusedTextBox()
+        return nil
+end
+
 local SERVICE_MAP = {
         ReplicatedStorage = ReplicatedStorage,
         Workspace = Workspace,
@@ -1108,6 +1373,10 @@ local SERVICE_MAP = {
         TweenService = TweenService,
         MarketplaceService = MarketplaceService,
         HttpService = HttpService,
+        Teams = Teams,
+        ServerStorage = ServerStorage,
+        CollectionService = CollectionService,
+        UserInputService = UserInputService,
 }
 
 local game = {
@@ -1117,6 +1386,91 @@ local game = {
         PlaceId = 0,
         JobId = "shim",
 }
+-- RaycastParams is a value the weapon fills in and hands to Workspace:Raycast.
+-- Modelled as a table the fields are set on, so the weapon's assignment works.
+local RaycastParams = {}
+RaycastParams.__index = RaycastParams
+RaycastParams.__type = "RaycastParams"
+function RaycastParams.new()
+        return setmetatable({
+                FilterType = nil,
+                FilterDescendantsInstances = {},
+                IgnoreWater = false,
+                CollisionGroup = "Default",
+        }, RaycastParams)
+end
+
+-- Workspace:Raycast. The weapon uses it twice per shot to find the server-side
+-- aim point and the barrel hit, then damages the instance it returns. The
+-- intersection here is a ray/axis-aligned-box test over the descendants of
+-- Workspace, honouring the exclude list. It is deliberately simple: it is a test
+-- double for "did the ray reach the target", not a physics engine, and the
+-- filtered instances the game passes are what it must respect.
+local function rayIntersectsPart(origin, direction, part, maxDistance)
+        local cf = rawget(part, "CFrame")
+        local size = rawget(part, "Size")
+        if not cf or not size then return nil end
+        -- Work in the part's local frame so a rotated part still intersects.
+        local rel = origin - cf.Position
+        local localOrigin = Vector3.new(rel:Dot(cf.RightVector or Vector3.new(1, 0, 0)),
+                rel:Dot(cf.UpVector or Vector3.new(0, 1, 0)),
+                rel:Dot(cf.LookVector or Vector3.new(0, 0, 1)))
+        local dir = Vector3.new(direction:Dot(cf.RightVector or Vector3.new(1, 0, 0)),
+                direction:Dot(cf.UpVector or Vector3.new(0, 1, 0)),
+                direction:Dot(cf.LookVector or Vector3.new(0, 0, 1)))
+        local half = Vector3.new(size.X / 2, size.Y / 2, size.Z / 2)
+        local tmin, tmax = 0, maxDistance
+        for _, axis in ipairs({ "X", "Y", "Z" }) do
+                local o, d, h = localOrigin[axis], dir[axis], half[axis]
+                if math.abs(d) < 1e-9 then
+                        if o < -h or o > h then return nil end
+                else
+                        local t1, t2 = (-h - o) / d, (h - o) / d
+                        if t1 > t2 then t1, t2 = t2, t1 end
+                        if t1 > tmin then tmin = t1 end
+                        if t2 < tmax then tmax = t2 end
+                        if tmin > tmax then return nil end
+                end
+        end
+        return tmin
+end
+
+function Workspace:Raycast(origin, direction, params)
+        local distance = direction.Magnitude
+        if distance <= 0 then return nil end
+        local unit = direction / distance
+        local excluded = {}
+        if params and params.FilterDescendantsInstances then
+                for _, inst in ipairs(params.FilterDescendantsInstances) do
+                        excluded[inst] = true
+                        for _, d in ipairs(inst:GetDescendants()) do excluded[d] = true end
+                end
+        end
+        local best, bestT = nil, distance
+        local function visit(node)
+                for _, child in ipairs(rawget(node, "children")) do
+                        if not excluded[child] then
+                                local size = rawget(child, "Size")
+                                local cf = rawget(child, "CFrame")
+                                if size and cf and rawget(child, "CanQuery") ~= false then
+                                        local t = rayIntersectsPart(origin, unit, child, distance)
+                                        if t and t < bestT then bestT, best = t, child end
+                                end
+                                visit(child)
+                        end
+                end
+        end
+        visit(self)
+        if not best then return nil end
+        return {
+                Instance = best,
+                Position = origin + unit * bestT,
+                Distance = bestT,
+                Normal = Vector3.new(0, 1, 0),
+                Material = Enum.Material.Plastic,
+        }
+end
+
 function game:GetService(name)
         local svc = SERVICE_MAP[name]
         if not svc then
@@ -1147,6 +1501,17 @@ end
 local taskQueue = {}
 local taskStepCap = 2000
 local taskResumeCap = 8
+
+-- A round loop is `while true do ... task.wait(1) ... end`, so draining it to
+-- completion is impossible and draining it with the default resume cap would
+-- abandon it after eight waits. The limits are therefore mutable: a match test
+-- raises them and then steps the loop with Shim.tick, one resume at a time, so
+-- it can read the state between phases. The defaults are unchanged, which is
+-- what keeps the garden's behaviour identical.
+function Shim.setTaskLimits(opts)
+        if opts.stepCap then taskStepCap = opts.stepCap end
+        if opts.resumeCap then taskResumeCap = opts.resumeCap end
+end
 
 local task = {}
 
@@ -1211,6 +1576,30 @@ task.drain = function(maxSteps: number?)
         return steps
 end
 
+-- Resume exactly one queued job once, then re-queue it if it is still
+-- suspended. This is the stepper a match test uses: one tick advances the
+-- round loop by one `task.wait`, so the phase the test observes is the phase the
+-- server is really in rather than a guess from a bulk drain.
+function Shim.tick(env, times)
+        for _ = 1, (times or 1) do
+                local job = table.remove(taskQueue, 1)
+                if not job then
+                        return
+                end
+                local ok, err = coroutine.resume(job.co, table.unpack(job.args))
+                job.args = {}
+                if not ok then
+                        error("RobloxShim: queued task failed: " .. tostring(err), 2)
+                end
+                if coroutine.status(job.co) ~= "dead" then
+                        job.resumes += 1
+                        if job.resumes < taskResumeCap then
+                                table.insert(taskQueue, job)
+                        end
+                end
+        end
+end
+
 local function install(env: { [string]: any })
         env.Vector3 = Vector3
         env.CFrame = CFrame
@@ -1225,6 +1614,7 @@ local function install(env: { [string]: any })
         env.ColorSequenceKeypoint = ColorSequenceKeypoint
         env.NumberRange = NumberRange
         env.Enum = Enum
+        env.RaycastParams = RaycastParams
         env.Instance = { new = newInstance }
         env.game = game
         -- typeof is an engine global, so a module that reads GuiService:GetGuiInset
@@ -1433,6 +1823,15 @@ end
 -- otherwise share world state, connected handlers and saved data. Clearing them
 -- here is what makes each test start from an empty engine.
 local function resetEngine()
+        -- Drop any work left queued by a previous harness. A game's round loop is
+        -- `while true do ... task.wait(1) ... end`, so it is still queued when a
+        -- test finishes; without clearing it here the next harness inherits a
+        -- live loop from the previous one, and Shim.tick resumes the wrong
+        -- coroutine. That is a test-harness bug, not a game bug, but it makes
+        -- every match test read another test's world.
+        for i = #taskQueue, 1, -1 do
+                taskQueue[i] = nil
+        end
         rawset(Workspace, "children", {})
         rawset(Workspace, "signals", {})
 
@@ -1449,6 +1848,19 @@ local function resetEngine()
         rawset(ReplicatedStorage, "signals", {})
         rawset(ReplicatedStorage, "Remotes", nil)
 
+        -- The containers Breachline adds. They are module-level like the rest,
+        -- so without clearing them a second harness would inherit the first
+        -- one's weapon templates, tags and team membership.
+        rawset(ServerStorage, "children", {})
+        rawset(ServerStorage, "signals", {})
+        rawset(Teams, "children", {})
+        rawset(Teams, "signals", {})
+        rawset(Teams, "Attackers", nil)
+        rawset(Teams, "Defenders", nil)
+        for tag in pairs(tagStore) do
+                tagStore[tag] = nil
+        end
+
         for key in pairs(storeData) do
                 storeData[key] = nil
         end
@@ -1456,6 +1868,12 @@ end
 
 function Shim.harness(sources: { [string]: string })
         resetEngine()
+
+        -- resetEngine clears the team store, so the two teams Breachline keys on
+        -- are rebuilt here. They are the same two instances the engine would
+        -- have, so a harness always starts with Attackers and Defenders present.
+        Teams.Attackers = makeTeam("Attackers", Color3.fromRGB(196, 84, 62))
+        Teams.Defenders = makeTeam("Defenders", Color3.fromRGB(76, 118, 168))
 
         -- Every harness starts on the reference screen. A test that wants the
         -- phone layout sets a smaller ViewportSize before loading the client,
@@ -1551,5 +1969,27 @@ Shim.CFrame = CFrame
 Shim.Color3 = Color3
 Shim.UDim2 = UDim2
 Shim.Signal = Signal
+
+-- The same module folder the garden harness uses, exported so a second game can
+-- build its own service tree out of its own bundle. Breachline reaches its match
+-- modules through ReplicatedStorage and its weapon scripts through ServerStorage,
+-- and both have to resolve by name for the glue's own lookups to work.
+Shim.moduleFolder = moduleFolder
+
+-- The engine globals a module environment needs -- Vector3, CFrame, Instance,
+-- Enum and friends -- returned fresh so a test that builds its own place can use
+-- the same datatypes the code under test does. Nothing engine-global is mutated.
+function Shim.globals()
+        local env = {}
+        install(env)
+        return env
+end
+
+-- A standalone loader over a source bundle. A test that needs to require a
+-- module directly -- rather than through a booted server's own require -- uses
+-- this, so the module it gets is the same instance the server would load.
+function Shim.loader(sources)
+        return makeRequire(sources, install({}))
+end
 
 return Shim
