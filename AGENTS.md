@@ -1385,6 +1385,31 @@ with one of three outcomes -- a fact added below, a rule added to "How to work o
 this repository", or nothing learned, which is itself worth noticing. A session
 that changed code but added no line here either taught nothing or did not look.
 
+### Look up a singleton by class, not by name
+
+The scene pass was meant to keep one copy of each Lighting effect and had a
+helper that searched `Lighting:FindFirstChild("BloomEffect")`. The place ships
+those effects named `Bloom`, `SunRays` and `DustDistrictColor`, so the search
+never matched, the helper created a second instance beside the original, and the
+build shipped two of each. Roblox renders every copy under Lighting, so the haze,
+the bloom and the colour grade all applied twice.
+
+The reason it survived the checks is worth more than the fix: the build checker
+asserted "exactly one atmosphere" and nothing else. Atmosphere was the one effect
+whose duplicate was obvious enough to write an assertion for, so the assertion
+covered the instance that was already being handled and not the three beside it.
+A test written from the same misunderstanding as the code confirms the mistake.
+
+What replaced it counts every singleton effect class -- Atmosphere, SunRays,
+Bloom, ColorCorrection, DepthOfField, Sky -- and requires exactly one of each. It
+was confirmed to fail on the pre-fix artifact (three failures: SunRays, Bloom,
+ColorCorrection) and pass after, so it is a test that can fail, not decoration.
+
+The rule: when a property must be unique among siblings, find the instance by
+`ClassName` and count the whole set, never by the name you intend to give it. And
+when writing the assertion, ask which siblings share the constraint, not only
+which one the current code touches.
+
 ### A check that aborts early still prints pass
 
 The Studio smoke test printed `SMOKE_PASS=True` and `SMOKE_DETAIL=22 checks

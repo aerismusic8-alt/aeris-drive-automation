@@ -93,13 +93,19 @@ local function apply(instance, properties)
 	end
 end
 
----Keep exactly the atmosphere named `keep`, removing any other. Two of them
----stack, and stacking is the bug.
-local function collapseAtmospheres(keep)
+---Keep exactly one instance of `className`, named `keep`, removing any others.
+---Two of the same effect stack, and stacking is the bug: the place shipped with
+---two Atmospheres, two Blooms, two colour corrections and two sun-rays, so the
+---haze, the glow and the grade all landed twice.
+---
+---The key is the class, not the name. The shipped copies are named "Bloom",
+---"SunRays" and "DustDistrictColor", so a lookup by name finds nothing and
+---creates a duplicate beside the original.
+local function collapse(className, keep)
 	local kept = nil
 	for _, child in ipairs(Lighting:GetChildren()) do
-		if child.ClassName == "Atmosphere" then
-			if child.Name == keep then
+		if child.ClassName == className then
+			if kept == nil then
 				kept = child
 			else
 				child:Destroy()
@@ -108,31 +114,21 @@ local function collapseAtmospheres(keep)
 	end
 
 	if not kept then
-		kept = Instance.new("Atmosphere")
-		kept.Name = keep
+		kept = Instance.new(className)
 		kept.Parent = Lighting
 	end
 
+	kept.Name = keep
 	return kept
 end
 
-local function ensure(className, name)
-	local existing = Lighting:FindFirstChild(className)
-	if existing then return existing end
-
-	local created = Instance.new(className)
-	created.Name = name
-	created.Parent = Lighting
-	return created
-end
-
-local atmosphere = collapseAtmospheres("DustDistrictAtmosphere")
+local atmosphere = collapse("Atmosphere", "DustDistrictAtmosphere")
 apply(atmosphere, ATMOSPHERE_PROPERTIES)
 
 apply(Lighting, LIGHTING_PROPERTIES)
-apply(ensure("SunRaysEffect", "SunRays"), SUN_RAYS)
-apply(ensure("BloomEffect", "Bloom"), BLOOM)
-apply(ensure("ColorCorrectionEffect", "DustDistrictColor"), COLOR)
+apply(collapse("SunRaysEffect", "SunRays"), SUN_RAYS)
+apply(collapse("BloomEffect", "Bloom"), BLOOM)
+apply(collapse("ColorCorrectionEffect", "DustDistrictColor"), COLOR)
 
 fs.write(outPath, place, "rbxl")
 print(string.format("SCENE_OK out=%s", outPath))

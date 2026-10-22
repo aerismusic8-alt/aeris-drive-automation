@@ -54,6 +54,12 @@ jobs:
       - name: Fetch rbxmk
         run: bash scripts/fetch-rbxmk.sh
 
+      # The base place is not committed; it is unpacked from the compact zstd
+      # original in breachline-src/. The unpack repacks zstd chunks, so it needs
+      # the Python binding. Without this the build fails on a fresh checkout.
+      - name: Install zstandard
+        run: python3 -m pip install --quiet zstandard
+
       - name: Build the place
         id: build
         run: |

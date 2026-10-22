@@ -132,11 +132,22 @@ local mirror = "differ"
 if ci and ciM and ci.Source == ciM.Source then mirror = "same" end
 print("MIRROR=" .. mirror)
 local l = place:FindFirstChild("Lighting")
-local atms = 0
+-- Every one of these is a singleton: Roblox renders all copies, so a second
+-- one stacks. The place shipped with two of each, which is why this counts by
+-- class rather than checking Atmosphere alone.
+local SINGLETON_CLASSES = {
+  "Atmosphere", "SunRaysEffect", "BloomEffect",
+  "ColorCorrectionEffect", "DepthOfFieldEffect", "Sky",
+}
+local counts = {}
+for _, name in ipairs(SINGLETON_CLASSES) do counts[name] = 0 end
 for _, c in ipairs(l:GetChildren()) do
-  if c.ClassName == "Atmosphere" then atms = atms + 1 end
+  if counts[c.ClassName] ~= nil then counts[c.ClassName] = counts[c.ClassName] + 1 end
 end
-print("ATMOSPHERES=" .. atms)
+for _, name in ipairs(SINGLETON_CLASSES) do
+  print("EFFECT " .. name .. "=" .. counts[name])
+end
+print("ATMOSPHERES=" .. counts["Atmosphere"])
 print("CLOCKTIME=" .. tostring(l.ClockTime))
 local const = find({"ReplicatedStorage","FourD","Architects","Firearm2","Common","Constants"})
 local tunables = "no"
@@ -165,6 +176,16 @@ print("ASSIST_TUNABLES=" .. tunables)
             check(f"present {expected}", have[expected] == "yes")
 
         check("weapon copy is mirrored", value("MIRROR") == "same", str(value("MIRROR")))
+        # A second copy of any of these stacks at runtime, so exactly one of
+        # each is required. Checking only Atmosphere let the duplicated Bloom,
+        # colour correction and sun-rays through.
+        effects = {
+            line.split()[1]: int(line.rsplit("=", 1)[1])
+            for line in out.splitlines()
+            if line.startswith("EFFECT ") and "=" in line
+        }
+        for name, n in effects.items():
+            check(f"exactly one {name}", n == 1, str(n))
         check("exactly one atmosphere", value("ATMOSPHERES") == "1", str(value("ATMOSPHERES")))
         check("scene clock is set", value("CLOCKTIME") not in (None, "nil"), str(value("CLOCKTIME")))
         check("aim tunables present", value("ASSIST_TUNABLES") == "yes")
