@@ -478,4 +478,171 @@ t.test("the winner rules match the phases the server drives", function()
 	t.assertEqual(r3, "Time Expired", "reason")
 end)
 
+--------------------------------------------------------------------------
+t.suite("breachline/weapon")
+
+-- The shot-to-damage path, driven through the real Firearm2Server script.
+--
+-- Why this exists. A round can run to completion with a gun that does nothing.
+-- The shop hands the player a Tool, but the code that turns a trigger pull into
+-- damage is a separate script living inside that Tool, and nothing here had ever
+-- run it -- the match suite above kills players by firing the damage path's
+-- remote directly, which never enters the weapon. This suite boots the actual
+-- script against a Tool built like the shipped one and fires through its own
+-- Fire remote, so a broken shot is a failure rather than a green suite.
+--
+-- What this does not cover: the client half (camera, input, HUD, aim assist) and
+-- the replicated tracer. Those need a real client and are NOT VERIFIED.
+
+local Constants = Shim.loader(Sources)("ReplicatedStorage/FourD/Architects/Firearm2/Common/Constants")
+local ARMOR_MULTIPLIER = 0.65
+
+-- A Tool shaped like the shipped CompactSMG, with the real weapon script booted
+-- inside it. The script gates on `script.Parent:IsA("Tool")` and reads its
+-- tunables off the Tool, so both have to be real. Params come from the same
+-- Constants module the weapon reads its defaults from, rather than being
+-- hand-copied, so the test and the code cannot drift apart.
+local function equipWeapon(env, shooter)
+	Shim.mount(Sources, env, "ReplicatedStorage", "ReplicatedStorage/FourD")
+
+	local tool = Instance.new("Tool")
+	tool.Name = "CompactSMG"
+	local remotes = Instance.new("Folder")
+	remotes.Name = "Remotes"
+	remotes.Parent = tool
+	local fire, ammoChanged
+	for _, remoteName in ipairs({ "AmmoChanged", "Fire", "ReloadAck", "ReloadCancel", "Reload", "ReloadStarted", "ShotReplicate" }) do
+		local remote = Instance.new("RemoteEvent")
+		remote.Name = remoteName
+		remote.Parent = remotes
+		if remoteName == "Fire" then fire = remote end
+		if remoteName == "AmmoChanged" then ammoChanged = remote end
+	end
+
+	-- The weapon reports ammo to the owner over this remote, so listening is the
+	-- only way to see that a shot was really consumed rather than dropped.
+	local ammo = { reported = nil }
+	ammoChanged.OnClientEvent:Connect(function(value)
+		ammo.reported = value
+	end)
+
+	-- ShotOrigin is where the server traces from; without it the handler warns
+	-- and drops the shot before any damage is applied.
+	local origin = Instance.new("Attachment")
+	origin.Name = "ShotOrigin"
+	origin.WorldPosition = Vector3.new(0, 5, 0)
+	origin.Parent = tool
+
+	for key, value in pairs(Constants.DEFAULT_PARAMS) do
+		if type(value) ~= "table" then
+			tool:SetAttribute(key, value)
+		end
+	end
+
+	tool.Parent = shooter.Character
+	Shim.runScript(Sources, env, "ServerStorage/WeaponTemplates/CompactSMG/Firearm2Server.server", tool)
+	return tool, fire, ammo
+end
+
+-- Two players on opposite teams, alive, with heads at known positions so a shot
+-- can be aimed. The match loop is not started: this suite tests the weapon, and
+-- the match layer has its own suite above.
+local function weaponEnv()
+	local env = Shim.harness(Sources)
+	local ReplicatedStorage = env.__game:GetService("ReplicatedStorage")
+	local Workspace = env.__game:GetService("Workspace")
+	local Players = env.__game:GetService("Players")
+	local Teams = env.__game:GetService("Teams")
+
+	local matchState = Instance.new("Folder")
+	matchState.Name = "MatchState"
+	matchState:SetAttribute("Phase", "Combat")
+	matchState.Parent = ReplicatedStorage
+	rawset(ReplicatedStorage, "MatchState", matchState)
+
+	local function place(player, position)
+		player.LoadCharacter()
+		player.Character.Parent = Workspace
+		for _, partName in ipairs({ "HumanoidRootPart", "Head" }) do
+			local part = player.Character:FindFirstChild(partName)
+			part.CFrame = CFrame.new(position)
+			part.Position = position
+		end
+		return player.Character
+	end
+
+	local shooter = Shim.makePlayer(2, "Shooter")
+	local victim = Shim.makePlayer(3, "Victim")
+	rawset(Players, "children", { shooter, victim })
+	shooter.Team = Teams.Attackers
+	victim.Team = Teams.Defenders
+	shooter:SetAttribute("Alive", true)
+	victim:SetAttribute("Alive", true)
+	place(shooter, Vector3.new(0, 5, 0))
+	place(victim, Vector3.new(0, 5, -20))
+
+	local tool, fire, ammo = equipWeapon(env, shooter)
+	return env, shooter, victim, tool, fire, ammo
+end
+
+local function fireShot(shooter, fire, victim)
+	local camera = CFrame.new(shooter.Character:FindFirstChild("Head").Position)
+	fire.OnServerEvent:Fire(shooter, camera, victim.Character:FindFirstChild("Head").Position)
+end
+
+local function victimHealth(victim)
+	return victim.Character:FindFirstChildOfClass("Humanoid").Health
+end
+
+t.test("a shot from the real weapon damages an enemy and spends a round", function()
+	local env, shooter, victim, tool, fire, ammo = weaponEnv()
+	local magSize = tool:GetAttribute("AmmoMagSize")
+	Shim.advanceClock(1)
+	fireShot(shooter, fire, victim)
+	t.assertNear(victimHealth(victim), 100 - Constants.DEFAULT_PARAMS.DamagePerRound, 0.01,
+		"an enemy hit takes the weapon's configured damage")
+	t.assertEqual(ammo.reported, magSize - 1, "the shot spent one round from the magazine")
+end)
+
+t.test("armor reduces the damage a shot deals", function()
+	local env, shooter, victim, tool, fire = weaponEnv()
+	victim:SetAttribute("Armor", true)
+	Shim.advanceClock(1)
+	fireShot(shooter, fire, victim)
+	local expected = 100 - Constants.DEFAULT_PARAMS.DamagePerRound * ARMOR_MULTIPLIER
+	t.assertNear(victimHealth(victim), expected, 0.01, "an armored enemy takes 65% of the damage")
+end)
+
+t.test("a shot at a team-mate does no damage", function()
+	local env, shooter, victim, tool, fire = weaponEnv()
+	victim.Team = shooter.Team
+	Shim.advanceClock(1)
+	fireShot(shooter, fire, victim)
+	t.assertEqual(victimHealth(victim), 100, "a team-mate is not hurt by their own team")
+end)
+
+t.test("a shot outside the combat phases does no damage", function()
+	local env, shooter, victim, tool, fire = weaponEnv()
+	env.__game:GetService("ReplicatedStorage").MatchState:SetAttribute("Phase", "Buy Phase")
+	Shim.advanceClock(1)
+	fireShot(shooter, fire, victim)
+	t.assertEqual(victimHealth(victim), 100, "the server rejects damage outside combat")
+end)
+
+t.test("a second shot inside the fire interval is ignored", function()
+	local env, shooter, victim, tool, fire, ammo = weaponEnv()
+	local magSize = tool:GetAttribute("AmmoMagSize")
+	Shim.advanceClock(1)
+	fireShot(shooter, fire, victim)
+	local afterFirst = victimHealth(victim)
+	-- No clock advance: the same instant, so the rate limiter must drop it.
+	fireShot(shooter, fire, victim)
+	t.assertEqual(victimHealth(victim), afterFirst, "firing faster than the weapon allows does nothing")
+	t.assertEqual(ammo.reported, magSize - 1, "the dropped shot spent no round")
+	Shim.advanceClock(1)
+	fireShot(shooter, fire, victim)
+	t.assertLess(victimHealth(victim), afterFirst, "once the interval passes the next shot lands")
+	t.assertEqual(ammo.reported, magSize - 2, "the second landed shot spent a round")
+end)
+
 t.finish()

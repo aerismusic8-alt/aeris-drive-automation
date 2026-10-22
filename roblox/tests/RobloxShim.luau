@@ -50,6 +50,13 @@ function Vector3.__mul(a, b)
         return Vector3.new(a.X * b.X, a.Y * b.Y, a.Z * b.Z)
 end
 
+function Vector3.__div(a, b)
+        if type(b) == "number" then
+                return Vector3.new(a.X / b, a.Y / b, a.Z / b)
+        end
+        return Vector3.new(a.X / b.X, a.Y / b.Y, a.Z / b.Z)
+end
+
 function Vector3.__unm(a)
         return Vector3.new(-a.X, -a.Y, -a.Z)
 end
@@ -99,24 +106,35 @@ end
 
 local CFrame = {}
 CFrame.__index = CFrame
+-- The firearm rig guards its shot handler with `typeof(cameraCF) ~= "CFrame"`,
+-- and typeof reads the class table's tag. Without this the guard rejected every
+-- shot and the damage path was unreachable from a test.
+CFrame.__type = "CFrame"
 
 function CFrame.new(x: any, y: number?, z: number?)
+        -- A Roblox CFrame faces -Z, so a fresh one looks along (0, 0, -1). The
+        -- shim keeps only the position and a look vector, which is all the
+        -- firearm rig reads back: it dots the camera's LookVector against the
+        -- shot direction to reject a spoofed aim.
         if type(x) == "table" and getmetatable(x) == Vector3 then
-                return setmetatable({ Position = x }, CFrame)
+                return setmetatable({ Position = x, LookVector = Vector3.new(0, 0, -1) }, CFrame)
         end
-        return setmetatable({ Position = Vector3.new(x or 0, y or 0, z or 0) }, CFrame)
+        return setmetatable({ Position = Vector3.new(x or 0, y or 0, z or 0), LookVector = Vector3.new(0, 0, -1) }, CFrame)
 end
 
 function CFrame.Angles(_rx: number?, _ry: number?, _rz: number?)
         return setmetatable({ Position = Vector3.new(0, 0, 0) }, CFrame)
 end
 
-function CFrame.lookAt(at, _look)
-        return setmetatable({ Position = at }, CFrame)
+function CFrame.lookAt(at, look)
+        local dir = look - at
+        local magnitude = dir.Magnitude
+        local unit = if magnitude > 0.001 then dir / magnitude else Vector3.new(0, 0, -1)
+        return setmetatable({ Position = at, LookVector = unit }, CFrame)
 end
 
 function CFrame.__mul(a, b)
-        return setmetatable({ Position = a.Position + b.Position }, CFrame)
+        return setmetatable({ Position = a.Position + b.Position, LookVector = a.LookVector or Vector3.new(0, 0, -1) }, CFrame)
 end
 
 function CFrame.__add(a, b)
@@ -340,8 +358,20 @@ setmetatable(Enum, {
                         return cached
                 end
                 local members = ENUM_MEMBERS[group]
+                -- A group the shim has not enumerated is treated permissively:
+                -- its members are created on demand. The defined groups above stay
+                -- strict, because those are the ones this game's code compares
+                -- against and a typo there should still fail. The weapon rig
+                -- touches a long tail of input, camera and render enums whose
+                -- exact values no test depends on -- erroring on those would block
+                -- the damage path for no benefit.
+                local strict = members ~= nil
                 if not members then
-                        error("RobloxShim: unknown Enum." .. tostring(group), 2)
+                        members = setmetatable({}, {
+                                __index = function(_, member)
+                                        return member
+                                end,
+                        })
                 end
                 local out = {}
                 -- Enum items are singletons in the engine, so `a.Shape ==
@@ -353,7 +383,10 @@ setmetatable(Enum, {
                 setmetatable(out, {
                         __index = function(_, member)
                                 if members[member] == nil then
-                                        error("RobloxShim: unknown Enum." .. group .. "." .. tostring(member), 2)
+                                        if strict then
+                                                error("RobloxShim: unknown Enum." .. group .. "." .. tostring(member), 2)
+                                        end
+                                        members[member] = 0
                                 end
                                 local item = items[member]
                                 if not item then
@@ -439,6 +472,9 @@ for _, name in ipairs({
         -- a team is a Team in the Teams service, and a range target signals a
         -- hit through a BindableEvent.
         "Tool", "Backpack", "Team", "BindableEvent",
+        -- The firearm rig welds itself to the character with a Motor6D and owns
+        -- an UnreliableRemoteEvent for muzzle flashes.
+        "Motor6D", "UnreliableRemoteEvent",
 }) do
         VALID_CLASSES[name] = true
 end
@@ -558,9 +594,36 @@ local function newInstance(className: string)
                 self.Event = Signal.new()
         end
 
+        -- The hold weld. setupHoldWeld assigns Part0/Part1/C0/C1, so the fields
+        -- exist rather than being raw writes the rig would read back as nil.
+        if className == "Motor6D" then
+                self.Part0 = nil
+                self.Part1 = nil
+                self.C0 = CFrame.new(0, 0, 0)
+                self.C1 = CFrame.new(0, 0, 0)
+        end
+
         -- A Humanoid carries health, and the weapon's damage path calls
         -- TakeDamage on it while the match loop waits on Died. Both are modelled
         -- so a shot that lands is observable and a death ends the round.
+        -- A weapon's shot origin is an Attachment on the tool, and its world
+        -- position is what the ballistics solve from. Defaulting it here keeps
+        -- a tool that never set a CFrame from erroring on the read.
+        if className == "Attachment" then
+                self.CFrame = CFrame.new(0, 0, 0)
+                self.WorldPosition = Vector3.new(0, 0, 0)
+                self.WorldCFrame = CFrame.new(0, 0, 0)
+        end
+
+        -- A ProximityPrompt carries its player-facing text, which the plant and
+        -- defuse prompts set and a test can read back.
+        if className == "ProximityPrompt" then
+                self.ActionText = ""
+                self.ObjectText = ""
+                self.HoldDuration = 0
+                self.Enabled = true
+        end
+
         if className == "Humanoid" then
                 self.Health = 100
                 self.MaxHealth = 100
@@ -629,6 +692,10 @@ local INSTANCE_EVENTS = {
         Triggered = true,
         Played = true,
         Ended = true,
+        -- Tool events. The firearm rig welds itself to the character on Equipped
+        -- and tears the weld down on Unequipped.
+        Equipped = true,
+        Unequipped = true,
 }
 
 -- Remotes carry their own events. The client connects OnClientEvent and the
@@ -636,6 +703,9 @@ local INSTANCE_EVENTS = {
 -- is exactly the class of failure this harness exists to catch.
 local REMOTE_EVENTS = {
         RemoteEvent = { OnClientEvent = true, OnServerEvent = true },
+        -- The firearm rig replicates muzzle flashes over an unreliable remote,
+        -- so it needs the same OnClientEvent/OnServerEvent surface.
+        UnreliableRemoteEvent = { OnClientEvent = true, OnServerEvent = true },
         RemoteFunction = { OnClientInvoke = true, OnServerInvoke = true },
 }
 
@@ -1031,6 +1101,39 @@ end
 -- TakeDamage is the engine's own damage entry point and the last thing the
 -- weapon's applyDamage does. A test reads Health back, so the number that lands
 -- is the number the game computed, armour multiplier included.
+-- IsDescendantOf walks the parent chain, the way the pickup guard's
+-- `Tool:IsDescendantOf(workspace)` does.
+function Instance:IsDescendantOf(ancestor)
+        local current = rawget(self, "Parent")
+        while current do
+                if current == ancestor then return true end
+                current = rawget(current, "Parent")
+        end
+        return false
+end
+
+-- IsA walks the class name against the queried class. The shim has no class
+-- hierarchy, so it matches the exact class name and the base classes a script in
+-- this game actually asks about.
+local ISA_BASES = {
+        BasePart = { "Part", "WedgePart", "CornerWedgePart", "MeshPart", "UnionOperation", "TrussPart" },
+        Part = { "WedgePart", "CornerWedgePart", "MeshPart", "UnionOperation" },
+        GuiObject = { "Frame", "TextLabel", "TextButton", "ImageLabel", "ImageButton", "TextBox", "ScrollingFrame", "ViewportFrame" },
+        LayerCollector = { "ScreenGui", "SurfaceGui", "BillboardGui" },
+}
+
+function Instance:IsA(className: string)
+        local own = rawget(self, "ClassName")
+        if own == className then return true end
+        local bases = ISA_BASES[className]
+        if bases then
+                for _, base in ipairs(bases) do
+                        if own == base then return true end
+                end
+        end
+        return false
+end
+
 function Instance:TakeDamage(amount: number)
         if rawget(self, "ClassName") ~= "Humanoid" then
                 error("RobloxShim: TakeDamage is only modelled on a Humanoid", 2)
@@ -1229,7 +1332,23 @@ end
 
 -- RunService.Heartbeat is never fired by the harness; the tests drive the loop
 -- themselves by calling the callback they captured.
+-- A controllable monotonic clock for the game code that rate-limits on
+-- os.clock(). The real clock counts from process start, so a limiter of
+-- 1/FireRate seconds rejects the first shot of a test that runs in
+-- milliseconds; advancing this lets a test fire at will. os.time is deliberately
+-- left alone -- it is a wall clock the save code uses.
+local engineClock = 1000
+Shim.advanceClock = function(seconds: number)
+        engineClock += seconds
+end
+
 local RunService = makeSignalHost({ ClassName = "RunService", Name = "RunService" })
+
+-- The harness runs server code, so the server branches of the glue execute and
+-- the client branches do not -- the same split the engine gives a server script.
+function RunService:IsServer() return true end
+function RunService:IsClient() return false end
+function RunService:IsStudio() return false end
 
 -- DataStore: in-memory, so a save/load round trip is exercised without a
 -- network. A store that always returned nil would hide the load path.
@@ -1632,6 +1751,7 @@ local function install(env: { [string]: any })
                 end
                 return type(value)
         end
+        env.os = setmetatable({ clock = function() return engineClock end }, { __index = os })
         env.task = task
         env.wait = task.wait
         env.spawn = task.spawn
@@ -1657,7 +1777,7 @@ end
 -- test cannot read a .luau file. scripts/gen-roblox-sources.py writes the whole
 -- roblox/src tree into tests/.generated/Sources.luau, and test-roblox.sh
 -- regenerates it before every run so it can never be stale.
-local function makeRequire(sources: { [string]: string }, env: { [string]: any })
+local function makeRequire(sources: { [string]: string }, env: { [string]: any }, scriptOverrides: { [string]: any }?)
         local cache = {}
         local pending = {}
         -- One table, shared by every module, standing in for the engine's _G.
@@ -1697,11 +1817,20 @@ local function makeRequire(sources: { [string]: string }, env: { [string]: any }
         -- Roblox, which is the class of shim/game mismatch this file exists to
         -- avoid.
         local function folderHandle(dir: string)
-                return setmetatable({ __path = dir, Name = dir:match("([^/]+)$") or dir }, {
+                local folder = setmetatable({ __path = dir, Name = dir:match("([^/]+)$") or dir }, {
                         __index = function(_, childName)
                                 return handle(dir .. "/" .. childName)
                         end,
                 })
+                -- The bundle is a source tree, so a container that is a Tool or a
+                -- Model in the real place is a folder here. A script that guards
+                -- on `script.Parent:IsA("Tool")` must not be short-circuited by
+                -- that flattening, so the container reports the classes a script
+                -- container can be.
+                folder.IsA = function(_, className)
+                        return className == "Tool" or className == "Model" or className == "Folder"
+                end
+                return folder
         end
 
         local load
@@ -1740,17 +1869,30 @@ local function makeRequire(sources: { [string]: string }, env: { [string]: any }
                 -- siblings; for a plain module they are a subfolder of its name.
                 local isInit = path:match("/init%.[^/]+$") ~= nil or path:match("^init%.") ~= nil
                 local childDir = isInit and dir or path
-                local scriptObj = setmetatable({
-                        __path = path,
-                        Name = path:match("([^/]+)$"),
-                }, {
-                        __index = function(_, childName)
-                                if childName == "Parent" then
-                                        return folderHandle(dir)
-                                end
-                                return handle(childDir .. "/" .. childName)
-                        end,
-                })
+                -- A caller can hand in the instance `script` should be, which is
+                -- what lets a server script whose parent is a real Tool (the
+                -- firearm rig) run against a real Tool rather than the loader's
+                -- folder stand-in. Everything else keeps the folder handle.
+                local scriptObj = scriptOverrides and scriptOverrides[path]
+                if not scriptObj then
+                        -- A real Folder carrying the script's bundle path. Making
+                        -- it a real instance rather than a bare handle is what
+                        -- lets a module that treats `script` as an instance --
+                        -- MuzzleFlashFx calls script:FindFirstChild and parents a
+                        -- remote under it -- run outside Roblox.
+                        scriptObj = newInstance("Folder")
+                        scriptObj.Name = path:match("([^/]+)$")
+                        rawset(scriptObj, "__path", path)
+                        setmetatable(scriptObj, {
+                                __index = function(self, childName)
+                                        if childName == "Parent" then
+                                                return folderHandle(dir)
+                                        end
+                                        return handle(childDir .. "/" .. childName) or Instance.__index(self, childName)
+                                end,
+                                __newindex = Instance.__newindex,
+                        })
+                end
 
                 -- A Roblox module reads `require` and `script` as globals, not
                 -- parameters. Each module gets its own environment that falls
@@ -1832,6 +1974,8 @@ local function resetEngine()
         for i = #taskQueue, 1, -1 do
                 taskQueue[i] = nil
         end
+        -- A fresh engine starts its monotonic clock at zero.
+        engineClock = 1000
         rawset(Workspace, "children", {})
         rawset(Workspace, "signals", {})
 
@@ -1985,11 +2129,86 @@ function Shim.globals()
         return env
 end
 
+-- Mount a bundle's subtree under a service, so the glue's own path lookups --
+-- ReplicatedStorage.FourD, ServerStorage.WeaponTemplates -- resolve to real
+-- folders whose children the loader can require. Without this the weapon
+-- script's `require(FourD.Architects...)` cannot resolve and the damage path is
+-- unreachable outside Roblox.
+--
+-- The tree is built out of real shim Instances, so child-by-name lookup,
+-- WaitForChild, FindFirstChild and GetDescendants all behave as they do in the
+-- engine. A bundle directory that also has its own source (an init module, or
+-- Firearm2 which is both a module and a folder of submodules) gets a __path so
+-- it can be required as well as descended into; a plain leaf module is a table
+-- with __path, which the loader's require accepts.
+function Shim.mount(sources, env, serviceName, root)
+        local service = env.__game:GetService(serviceName)
+
+        local function hasChildren(dir: string): boolean
+                local prefix = dir .. "/"
+                for path in pairs(sources) do
+                        if path:sub(1, #prefix) == prefix then
+                                return true
+                        end
+                end
+                return false
+        end
+
+        local function build(dir: string)
+                local node = newInstance("Folder")
+                node.Name = dir:match("([^/]+)$") or dir
+                if sources[dir] then
+                        rawset(node, "__path", dir)
+                end
+
+                local prefix = dir .. "/"
+                local names = {}
+                for path in pairs(sources) do
+                        if path:sub(1, #prefix) == prefix then
+                                local head = path:sub(#prefix + 1):match("^([^/]+)")
+                                if head then names[head] = true end
+                        end
+                end
+
+                for name in pairs(names) do
+                        local childPath = prefix .. name
+                        if hasChildren(childPath) then
+                                local child = build(childPath)
+                                rawset(child, "Parent", node)
+                                table.insert(rawget(node, "children"), child)
+                        else
+                                local leaf = setmetatable({ __path = childPath, Name = name }, Instance)
+                                table.insert(rawget(node, "children"), leaf)
+                        end
+                end
+                return node
+        end
+
+        local mount = build(root)
+        mount.Name = root:match("([^/]+)$") or root
+        rawset(mount, "Parent", service)
+        table.insert(rawget(service, "children"), mount)
+        return mount
+end
+
 -- A standalone loader over a source bundle. A test that needs to require a
 -- module directly -- rather than through a booted server's own require -- uses
 -- this, so the module it gets is the same instance the server would load.
 function Shim.loader(sources)
         return makeRequire(sources, install({}))
+end
+
+-- Run a source at `path` as if it were a child of `container`, which is where a
+-- real place puts it: the firearm rig is a Script inside the weapon Tool, so
+-- `script.Parent` is the Tool and `script.Parent:IsA("Tool")` gates it. Binding
+-- `script` to the container itself instead would make script.Parent the
+-- character and the script would return before connecting anything.
+function Shim.runScript(sources, env, path, container)
+        local scriptInstance = newInstance("Folder")
+        scriptInstance.Name = (path:match("([^/]+)$") or path):gsub("%.[^.]+$", "")
+        scriptInstance.Parent = container
+        local loader = makeRequire(sources, env, { [path] = scriptInstance })
+        return loader(path)
 end
 
 return Shim
