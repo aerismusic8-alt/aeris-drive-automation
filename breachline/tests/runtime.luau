@@ -895,4 +895,102 @@ t.test("a match plays on one map and the next match rotates", function()
         t.assertEqual(dust:FindFirstChild("Attackers Spawn").Enabled, false, "the old map's spawns are off")
 end)
 
+t.suite("breachline/client")
+
+-- The client half, loaded and driven.
+--
+-- Why this suite exists. Everything above runs the server and the world, and
+-- the file's own header said the client was NOT VERIFIED because it "needs a
+-- real client". That was true of the shim, not of the game: the shim was missing
+-- UIListLayout and five other UI classes the HUD instantiates, so the HUD script
+-- aborted on its first layout object and no test could load it at all. The
+-- client half -- the menu a player presses PLAY on, the score bar, the buy card
+-- -- had therefore never been executed by any test, on the build that shipped.
+--
+-- These tests load the real MatchHud.client against the real containers and
+-- press the real button. They assert the two things a player needs and nothing
+-- more: the menu appears, and pressing PLAY reaches the server.
+
+local function clientEnv()
+        local env = Shim.harness(Sources)
+        local ReplicatedStorage = env.__game:GetService("ReplicatedStorage")
+
+        local matchState = Instance.new("Folder")
+        matchState.Name = "MatchState"
+        for _, remoteName in ipairs({ "JoinMatch", "BuyItem" }) do
+                local remote = Instance.new("RemoteEvent")
+                remote.Name = remoteName
+                remote.Parent = matchState
+        end
+        matchState.Parent = ReplicatedStorage
+        rawset(ReplicatedStorage, "MatchState", matchState)
+        matchState:SetAttribute("MapName", "Dust District")
+        matchState:SetAttribute("Phase", "Waiting for Players")
+
+        -- The HUD requires MobileControls out of this tree at load, so a missing
+        -- mount is a client that never starts -- exactly the failure this suite
+        -- is here to catch.
+        Shim.mount(Sources, env, "ReplicatedStorage", "ReplicatedStorage/FourD")
+
+        local ok, err = pcall(function()
+                env.__load("StarterPlayer/StarterPlayerScripts/MatchHud.client")
+        end)
+        return env, ok, err, matchState
+end
+
+local function findPlay(gui)
+        local menu = gui:FindFirstChild("MainMenu")
+        local card = menu and menu:FindFirstChild("Frame")
+        return card and card:FindFirstChild("Play")
+end
+
+t.test("the client HUD loads and builds its menu", function()
+        local env, ok, err = clientEnv()
+        t.assertTrue(ok, "MatchHud.client failed to load: " .. tostring(err))
+
+        local gui = env.__player.PlayerGui:FindFirstChild("MatchHud")
+        t.assertNotNil(gui, "the client built no MatchHud ScreenGui")
+
+        local bar = gui:FindFirstChild("TopColumn")
+        t.assertNotNil(bar, "the client built no top column")
+        t.assertNotNil(bar:FindFirstChild("ScoreAndTime"), "no score bar")
+        t.assertNotNil(bar:FindFirstChild("Objective"), "no objective line")
+
+        local play = findPlay(gui)
+        t.assertNotNil(play, "the menu has no PLAY button, so a player cannot join")
+        t.assertEqual(play.ClassName, "TextButton", "PLAY is pressable")
+end)
+
+t.test("the menu heading follows the map the server selected", function()
+        local env, ok = clientEnv()
+        t.assertTrue(ok, "client failed to load")
+        local gui = env.__player.PlayerGui:FindFirstChild("MatchHud")
+        local menu = gui:FindFirstChild("MainMenu")
+        local card = menu:FindFirstChild("Frame")
+        local heading = card:FindFirstChild("Heading")
+        t.assertEqual(heading.Text, "Dust District", "heading shows the map name")
+end)
+
+t.test("pressing PLAY reaches the server and the menu closes", function()
+        local env, ok = clientEnv()
+        t.assertTrue(ok, "client failed to load")
+
+        local matchState = env.__game:GetService("ReplicatedStorage").MatchState
+        local joined = 0
+        matchState.JoinMatch.OnServerEvent:Connect(function() joined += 1 end)
+
+        local player = env.__player
+        local Players = env.__game:GetService("Players")
+        table.insert(rawget(Players, "children"), player)
+        rawset(player, "Parent", Players)
+
+        local gui = player.PlayerGui:FindFirstChild("MatchHud")
+        local play = findPlay(gui)
+        play.Activated:Fire()
+
+        t.assertEqual(joined, 1, "PLAY fired JoinMatch once")
+        t.assertEqual(gui:FindFirstChild("MainMenu").Visible, false, "the menu closed on PLAY")
+        t.assertEqual(player.CameraMode, G.Enum.CameraMode.LockFirstPerson, "the camera went first person")
+end)
+
 t.finish()

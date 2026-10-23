@@ -321,7 +321,7 @@ local ENUM_MEMBERS = {
         },
         SurfaceType = { Smooth = 1, Studs = 2, Inlet = 3 },
         PartType = { Ball = 1, Cylinder = 2, Block = 3, Wedge = 4 },
-        Font = { GothamBlack = 1, GothamBold = 2, Gotham = 3 },
+        Font = { GothamBlack = 1, GothamBold = 2, Gotham = 3, GothamMedium = 4, GothamSemibold = 5 },
         ScreenInsets = { CoreUISafeInsets = 1, None = 2, DeviceSafeInsets = 3 },
         ZIndexBehavior = { Sibling = 1, Global = 2 },
         EasingStyle = { Quad = 1, Quart = 2, Sine = 3, Linear = 4 },
@@ -456,6 +456,12 @@ for _, name in ipairs({
         "Part", "WedgePart", "CornerWedgePart", "Model", "Folder", "SpawnLocation",
         "TextLabel", "TextButton", "TextBox", "Frame", "ScrollingFrame", "ScreenGui",
         "UICorner", "UIStroke", "UIPadding", "ViewportFrame", "Camera", "BillboardGui",
+        -- The HUD lays itself out with these. They were absent, which meant no
+        -- test could load the client at all: the first UIListLayout aborted the
+        -- script, so the whole client half was unverifiable. Modelling them as
+        -- instances is what lets the client half run in a test.
+        "UIListLayout", "UISizeConstraint", "UIScale", "UITextSizeConstraint",
+        "UIGridLayout", "UIAspectRatioConstraint", "UIGradient",
         "ParticleEmitter", "PointLight", "WeldConstraint", "Atmosphere", "Clouds", "Sky",
         "BloomEffect", "ColorCorrectionEffect", "SunRaysEffect",
         "Humanoid", "HumanoidRootPart", "MeshPart", "RemoteEvent", "RemoteFunction",
@@ -501,6 +507,12 @@ local screenSize = Vector2.new(1280, 720)
 -- declared further down would be a different upvalue and the derivation would
 -- read a nil global instead.
 local guiInset = Vector2.new(0, 36)
+
+-- Forward-declared for the same reason as guiInset: Instance:FireServer below
+-- needs the Players service to attribute a client call, and the service itself
+-- is built much further down. A `local` declared there would be a different
+-- upvalue and FireServer would read a nil global.
+local PlayersService
 
 local function isA(self, className)
         if self.ClassName == className then
@@ -931,6 +943,18 @@ function Instance:FireClient(_player, ...)
         end
 end
 
+-- The client side of a remote: the glue calls FireServer and the server's
+-- OnServerEvent runs. Without this a client script that reports anything back --
+-- the match HUD's join button is the first thing a player touches -- died on a
+-- nil method, and because the shim could not load the client at all, no test
+-- ever saw it.
+function Instance:FireServer(...)
+        local sig = rawget(self, "signals").OnServerEvent
+        if sig then
+                sig:Fire(PlayersService.LocalPlayer, ...)
+        end
+end
+
 function Instance:FireAllClients(...)
         local sig = rawget(self, "signals").OnClientEvent
         if sig then
@@ -1285,6 +1309,11 @@ local function makePlayer(userId: number, name: string)
         player.Team = nil
         player.Neutral = true
 
+        -- The camera mode the client sets on PLAY. A real Player carries the
+        -- property from the start; without it the client's own write was the
+        -- first access and a test reading it back hit a nil.
+        player.CameraMode = Enum.CameraMode.Classic
+
         player.LoadCharacter = function()
                 local character = newInstance("Model")
                 character.Name = player.Name
@@ -1309,7 +1338,7 @@ local function makePlayer(userId: number, name: string)
 end
 
 Shim.makePlayer = makePlayer
-local PlayersService = makeSignalHost({
+PlayersService = makeSignalHost({
         ClassName = "Players",
         Name = "Players",
         children = {},
