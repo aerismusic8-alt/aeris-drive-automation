@@ -147,13 +147,26 @@ jobs:
           #
           # --save-images is what makes a screenshot usable: it writes the PNG
           # and reports the path, instead of reporting only its size.
+          #
+          # The MCP SDK prints a task-group traceback to stderr while it tears
+          # the session down, after the tool has already answered. A native
+          # command's stderr is a terminating error under
+          # ErrorActionPreference=Stop, so that teardown noise killed the step
+          # before the result was written and the real answer was lost. stderr
+          # goes to its own file and the exit code decides what happened.
+          $errFile = Join-Path $shotDir 'mcp-call.err'
+          $ErrorActionPreference = 'Continue'
           $out = & $python $client `
             --url "http://127.0.0.1:$port/mcp" `
             --call $env:MCP_TOOL `
             --args $env:MCP_ARGS `
-            --save-images $shotDir 2>&1 | Out-String
+            --save-images $shotDir 2>$errFile | Out-String
           $code = $LASTEXITCODE
           Write-Host $out
+          if (Test-Path -LiteralPath $errFile) {
+            $errText = Get-Content -LiteralPath $errFile -Raw
+            if ($errText) { Write-Host "MCP_STDERR=$errText" }
+          }
           Set-Content -LiteralPath (Join-Path $shotDir 'mcp-call.json') -Value $out -Encoding UTF8
 
           # Also leave a copy where the evidence upload expects it.
