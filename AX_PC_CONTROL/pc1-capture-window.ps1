@@ -1,7 +1,8 @@
 param(
   [string]$ProcessName = 'RobloxPlayerBeta',
   [string]$OutDir = 'C:\AX-Runtime\evidence\capture',
-  [int]$WaitSeconds = 4
+  [int]$WaitSeconds = 4,
+  [int]$WaitForWindowSeconds = 40
 )
 
 # Photograph one process's window, and nothing else.
@@ -91,13 +92,27 @@ function Get-Title([IntPtr]$h) {
 
 New-Item -ItemType Directory -Path $OutDir -Force | Out-Null
 
-$proc = Get-Process -Name $ProcessName -ErrorAction SilentlyContinue | Select-Object -First 1
+# Roblox relaunches itself on join, so the process that is running when this
+# starts may not be the one that ends up with the game window. Watch every
+# instance of the name for up to WaitForWindowSeconds before giving up.
+$hwnd = [IntPtr]::Zero
+$proc = $null
+$deadline = (Get-Date).AddSeconds($WaitForWindowSeconds)
+while ((Get-Date) -lt $deadline) {
+  $procs = @(Get-Process -Name $ProcessName -ErrorAction SilentlyContinue)
+  Write-Host "PROC_COUNT=$($procs.Count)"
+  foreach ($p in $procs) {
+    $h = [AXCapture]::FindWindow([uint32]$p.Id)
+    if ($h -ne [IntPtr]::Zero) { $hwnd = $h; $proc = $p; break }
+  }
+  if ($hwnd -ne [IntPtr]::Zero) { break }
+  Start-Sleep -Seconds 3
+}
+
 if (-not $proc) {
   Write-Host "CAPTURE_FAIL=NO_PROCESS:$ProcessName"
   exit 2
 }
-
-$hwnd = [AXCapture]::FindWindow([uint32]$proc.Id)
 if ($hwnd -eq [IntPtr]::Zero) {
   Write-Host "CAPTURE_FAIL=NO_WINDOW pid=$($proc.Id)"
   exit 3
