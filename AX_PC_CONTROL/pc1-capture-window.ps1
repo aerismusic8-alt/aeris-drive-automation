@@ -2,7 +2,9 @@ param(
   [string]$ProcessName = 'RobloxPlayerBeta',
   [string]$OutDir = 'C:\AX-Runtime\evidence\capture',
   [int]$WaitSeconds = 4,
-  [int]$WaitForWindowSeconds = 40
+  [int]$WaitForWindowSeconds = 40,
+  [string]$LaunchPlaceId = '',
+  [int]$LaunchWaitSeconds = 90
 )
 
 # Photograph one process's window, and nothing else.
@@ -91,6 +93,27 @@ function Get-Title([IntPtr]$h) {
 }
 
 New-Item -ItemType Directory -Path $OutDir -Force | Out-Null
+
+# Launch the experience here, in the runner's own session, when asked.
+# A player started through the MCP Shell tool runs in a service session with no
+# desktop, so it has a process but never a visible window, and there is nothing
+# to photograph. Launching from a workflow step puts it on the interactive
+# desktop where it can actually draw.
+if ($LaunchPlaceId) {
+  Write-Host "LAUNCHING placeId=$LaunchPlaceId"
+  Start-Process "roblox://placeId=$LaunchPlaceId"
+  $launchDeadline = (Get-Date).AddSeconds($LaunchWaitSeconds)
+  while ((Get-Date) -lt $launchDeadline) {
+    Start-Sleep -Seconds 5
+    $n = @(Get-Process -Name $ProcessName -ErrorAction SilentlyContinue).Count
+    Write-Host "LAUNCH_WAIT procs=$n"
+    $found = $false
+    foreach ($p in @(Get-Process -Name $ProcessName -ErrorAction SilentlyContinue)) {
+      if ([AXCapture]::FindWindow([uint32]$p.Id) -ne [IntPtr]::Zero) { $found = $true; break }
+    }
+    if ($found) { Write-Host 'LAUNCH_WINDOW_UP'; break }
+  }
+}
 
 # Roblox relaunches itself on join, so the process that is running when this
 # starts may not be the one that ends up with the game window. Watch every
