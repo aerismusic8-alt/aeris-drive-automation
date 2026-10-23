@@ -335,6 +335,16 @@ suite (137 tests) and the runtime suite (37 tests) run with the rest of the repo
 
 ## Language
 
+**The user is Thai and reads Thai.** Report to the user in Thai, not English.
+This covers the chat reply and every work report in the
+`FACT / EXECUTED / EVIDENCE / VERIFIED / CURRENT STATE / BLOCKER / NEXT ACTION`
+format. English is fine for identifiers, file paths, commands, commit messages
+and code comments -- the things that have to stay English to work -- but the
+prose around them is Thai.
+
+A report the user cannot read is not a report. Writing English at them costs
+them the whole session, so this is a correctness rule here, not a courtesy.
+
 The player-facing text is Thai. `roblox/src/shared/Text.luau` is the only place
 a Thai string lives; every screen, sign and notification reads from it.
 
