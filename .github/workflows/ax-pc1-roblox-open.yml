@@ -19,16 +19,26 @@ on:
         description: 'Git ref to build and open (branch, tag or SHA)'
         required: false
         default: 'ax-arena-roblox-game'
+      game:
+        description: 'Which game to open'
+        required: true
+        default: 'breachline'
+        type: choice
+        options: [breachline, garden]
   push:
     paths:
       - 'AX_PC_CONTROL/pc1-roblox-open.ps1'
       - 'AX_PC_CONTROL/pc1-roblox-open-smoke.luau'
+      - 'AX_PC_CONTROL/pc1-breachline-smoke.luau'
       - 'AX_PC_CONTROL/pc1-garden-smoke.luau'
       - '.github/workflows/ax-pc1-roblox-open.yml'
 
 jobs:
   open:
     runs-on: self-hosted
+    permissions:
+      actions: read
+      contents: read
     steps:
       - name: Verify PC1
         shell: powershell
@@ -37,6 +47,7 @@ jobs:
           Write-Host "PC1=VERIFIED"
 
       - name: Build the place first
+        if: ${{ (inputs.game || 'breachline') == 'garden' }}
         shell: powershell
         run: |
           $ref = '${{ inputs.ref }}'
@@ -48,18 +59,65 @@ jobs:
           & powershell.exe -NoProfile -ExecutionPolicy Bypass -File $p
           if ($LASTEXITCODE -ne 0) { throw "BUILD_EXIT:$LASTEXITCODE" }
 
+      # Breachline is built by its own workflow, which needs rbxmk rather than
+      # Rojo and publishes a binary place. PC1 fetches that build's artifact
+      # rather than rebuilding it, so the file opened here is the exact one that
+      # shipped. There is no release to pull from; the artifact is the record.
+      - name: Download the Breachline place
+        if: ${{ (inputs.game || 'breachline') == 'breachline' }}
+        shell: powershell
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $repo = 'aerismusic8-alt/aeris-drive-automation'
+          $h = @{ Authorization = "Bearer $env:GITHUB_TOKEN"; Accept = 'application/vnd.github+json' }
+          $dir = 'C:\AX-Build\breachline'
+          New-Item -ItemType Directory -Path $dir -Force | Out-Null
+          $out = Join-Path $dir 'breachline.rbxl'
+          Remove-Item -LiteralPath $out -Force -ErrorAction SilentlyContinue
+
+          $runs = Invoke-RestMethod -Headers $h -Uri "https://api.github.com/repos/$repo/actions/workflows/ax-breachline-build-publish.yml/runs?status=success&per_page=10"
+          $found = $null
+          foreach ($r in $runs.workflow_runs) {
+            $arts = Invoke-RestMethod -Headers $h -Uri "https://api.github.com/repos/$repo/actions/runs/$($r.id)/artifacts"
+            $a = $arts.artifacts | Where-Object { $_.name -eq 'breachline-place' } | Select-Object -First 1
+            if ($a) { $found = $a; Write-Host "BREACHLINE_RUN=$($r.id) sha=$($r.head_sha.Substring(0,8))"; break }
+          }
+          if (!$found) { throw "BREACHLINE_ARTIFACT_MISSING: no successful build has uploaded one" }
+
+          $zip = Join-Path $env:TEMP 'breachline-place.zip'
+          Invoke-WebRequest -Headers $h -Uri $found.archive_download_url -OutFile $zip -UseBasicParsing
+          $extract = Join-Path $env:TEMP 'breachline-place'
+          Remove-Item -Recurse -Force $extract -ErrorAction SilentlyContinue
+          Expand-Archive -LiteralPath $zip -DestinationPath $extract -Force
+          $file = Get-ChildItem -Path $extract -Recurse -Filter 'breachline.rbxl' | Select-Object -First 1
+          if (!$file) { throw "BREACHLINE_ARTIFACT_EMPTY: no breachline.rbxl inside the zip" }
+          Copy-Item -LiteralPath $file.FullName -Destination $out -Force
+          Write-Host "BREACHLINE_PLACE=$out"
+          Write-Host "BREACHLINE_BYTES=$((Get-Item $out).Length)"
+
       - name: Create interactive open task
         shell: powershell
         run: |
           $ref = '${{ inputs.ref }}'
           if (!$ref) { $ref = $env:GITHUB_SHA }
+          $game = '${{ inputs.game }}'
+          if (!$game) { $game = 'breachline' }
           $u = (Get-CimInstance Win32_ComputerSystem).UserName
           if (!$u) { throw "NO_INTERACTIVE_USER" }
           $sid = ([System.Security.Principal.NTAccount]$u).Translate([System.Security.Principal.SecurityIdentifier]).Value
           $url = "https://raw.githubusercontent.com/aerismusic8-alt/aeris-drive-automation/$ref/AX_PC_CONTROL/pc1-roblox-open.ps1"
           $p = Join-Path $env:TEMP "pc1-roblox-open.ps1"
           Invoke-WebRequest -Uri $url -OutFile $p -UseBasicParsing
-          $arg = '-NoProfile -ExecutionPolicy Bypass -File "' + $p + '"'
+          if ($game -eq 'breachline') {
+            # Point the opener at the Breachline place and its own smoke test,
+            # rather than the garden's, which checks a world this place has none of.
+            $smoke = "https://raw.githubusercontent.com/aerismusic8-alt/aeris-drive-automation/$ref/AX_PC_CONTROL/pc1-breachline-smoke.luau"
+            $smokePath = Join-Path $env:TEMP "pc1-breachline-smoke.luau"
+            Invoke-WebRequest -Uri $smoke -OutFile $smokePath -UseBasicParsing
+            $arg = '-NoProfile -ExecutionPolicy Bypass -File "' + $p + '" -PlaceFile "C:\AX-Build\breachline\breachline.rbxl" -SmokeScript "' + $smokePath + '"'
+          } else {
+            $arg = '-NoProfile -ExecutionPolicy Bypass -File "' + $p + '"'
+          }
           $action = New-ScheduledTaskAction -Execute "powershell.exe" -Argument $arg
           $principal = New-ScheduledTaskPrincipal -UserId $sid -LogonType Interactive -RunLevel Limited
           # The run is a build plus a smoke test plus a server, a client and 30
@@ -70,6 +128,7 @@ jobs:
           Unregister-ScheduledTask -TaskName $name -Confirm:$false -ErrorAction SilentlyContinue
           Register-ScheduledTask -TaskName $name -Action $action -Principal $principal -Settings $settings -Force | Out-Null
           Start-ScheduledTask -TaskName $name
+          Write-Host "GAME=$game"
           Write-Host "INTERACTIVE_USER=$u"
           Write-Host "INTERACTIVE_SID=$sid"
 
@@ -83,11 +142,18 @@ jobs:
           if (!(Test-Path $p)) { throw "OPEN_EVIDENCE_MISSING:$p" }
           $x = Get-Content $p -Raw | ConvertFrom-Json
           Write-Host "STATUS=$($x.status)"
+          Write-Host "PLACE_FILE=$($x.placeFile)"
           Write-Host "SMOKE_PASSED=$($x.smoke.passed)"
           Write-Host "SMOKE_DETAIL=$($x.smoke.detail)"
           Write-Host "GAME_RAN=$($x.run.gameRan)"
           Write-Host "CAPTURE_COUNT=$(@($x.run.captures).Count)"
           foreach ($n in @($x.notes)) { Write-Host "NOTE=$n" }
+          # The evidence file is the result. A run that wrote one but never got
+          # the game up is a failure, not a pass -- previously the step only
+          # checked the file existed, so a Studio that died on load looked green.
+          if ($x.status -eq 'FAILED') { throw "OPEN_FAILED:$($x.smoke.detail)" }
+          if (-not $x.smoke.passed) { throw "SMOKE_FAILED:$($x.smoke.detail)" }
+          if (-not $x.run.gameRan) { throw "GAME_DID_NOT_RUN: no window captured" }
 
       - name: Show the studio smoke log
         if: always()

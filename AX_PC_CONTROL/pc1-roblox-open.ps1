@@ -26,6 +26,7 @@
 param(
   [string]$BuildRoot = 'C:\AX-Build',
   [string]$SmokeScript = '',
+  [string]$PlaceFile = '',
   [int]$StudioLoadSeconds = 90,
   [int]$PlayStartSeconds = 45,
   [int]$CaptureSeconds = 36
@@ -40,6 +41,45 @@ New-Item -ItemType Directory -Path $evidenceDir -Force | Out-Null
 New-Item -ItemType Directory -Path $shotDir -Force | Out-Null
 
 $notes = New-Object System.Collections.Generic.List[string]
+$captures = New-Object System.Collections.Generic.List[object]
+
+# Defaults for everything the evidence file reports. A throw before a value is
+# set -- Studio missing, the place missing -- still has to produce a file, or the
+# workflow cannot tell "the run failed" from "the run never started". Both looked
+# like OPEN_EVIDENCE_MISSING, which is what made the PC1 failures unreadable.
+$smokePass = $false
+$smokeDetail = 'not-run'
+$gameRan = $false
+$studioExe = ''
+$studioVersion = ''
+$placeFile = ''
+$smokeLog = ''
+$overall = 'FAILED'
+
+function Write-OpenEvidence($reason) {
+  if ($reason) { $notes.Add("aborted: $reason") }
+  if ($smokeLog -and !(Test-Path -LiteralPath $smokeLog)) { $smokeLog = '' }
+  $result = [ordered]@{
+    schemaVersion = 1
+    capturedAt    = (Get-Date).ToUniversalTime().ToString('o')
+    hostname      = $env:COMPUTERNAME
+    studio        = [ordered]@{ exe = $studioExe; version = $studioVersion }
+    placeFile     = $placeFile
+    smoke         = [ordered]@{ passed = $smokePass; detail = $smokeDetail; log = $smokeLog }
+    run           = [ordered]@{ gameRan = $gameRan; captures = @($captures.ToArray()) }
+    notes         = @($notes.ToArray())
+    status        = $overall
+  }
+  Set-Content -LiteralPath (Join-Path $evidenceDir 'pc1-roblox-open.json') -Value ($result | ConvertTo-Json -Depth 8) -Encoding UTF8
+}
+
+# Any terminating error below writes what is known and stops, instead of leaving
+# no evidence behind at all.
+trap {
+  Write-OpenEvidence "$($_.Exception.Message) (line $($_.InvocationInfo.ScriptLineNumber))"
+  Write-Host "OPEN_ABORTED=$($_.Exception.Message)"
+  exit 1
+}
 
 # --- Locate Roblox Studio ------------------------------------------------
 # The runner can execute as SYSTEM, where LOCALAPPDATA points at systemprofile
@@ -67,12 +107,15 @@ $studioVersion = $studioExes[0].VersionInfo.ProductVersion
 Write-Host "STUDIO_EXE=$studioExe"
 Write-Host "STUDIO_VERSION=$studioVersion"
 
-$placeFile = Join-Path $BuildRoot 'AXGarden.rbxlx'
+$placeFile = $PlaceFile
 # The arena build is legacy but still present on some machines; preferring the
 # garden keeps this script pointed at the game that ships.
-if (!(Test-Path -LiteralPath $placeFile)) {
-  $legacy = Join-Path $BuildRoot 'AXArena.rbxlx'
-  if (Test-Path -LiteralPath $legacy) { $placeFile = $legacy }
+if (!$placeFile) {
+  $placeFile = Join-Path $BuildRoot 'AXGarden.rbxlx'
+  if (!(Test-Path -LiteralPath $placeFile)) {
+    $legacy = Join-Path $BuildRoot 'AXArena.rbxlx'
+    if (Test-Path -LiteralPath $legacy) { $placeFile = $legacy }
+  }
 }
 if (!(Test-Path -LiteralPath $placeFile)) { throw "PLACE_FILE_MISSING:$placeFile (run the build first)" }
 Write-Host "PLACE_FILE=$placeFile"
@@ -120,9 +163,12 @@ if ($SmokeScript -and (Test-Path -LiteralPath $SmokeScript)) {
   if (Test-Path -LiteralPath $guess) { $smoke = $guess }
 }
 
-$smokePass = $false
-$smokeDetail = 'not-run'
 if ($smoke) {
+  # A throw anywhere in here used to abort the whole script before the evidence
+  # file was written, so a failed run and a run that never started looked the
+  # same from the workflow: OPEN_EVIDENCE_MISSING. The failure is recorded and
+  # the run continues to the play phase instead.
+  try {
   Remove-Item -LiteralPath $smokeLog -Force -ErrorAction SilentlyContinue
   Write-Host "SMOKE_SCRIPT=$smoke"
   # Studio resolves relative paths against its own working directory, so both
@@ -157,6 +203,10 @@ if ($smoke) {
   } else {
     $smokeDetail = 'Studio wrote no output file'
   }
+  } catch {
+    $smokeDetail = "smoke phase threw: $($_.Exception.Message)"
+    Write-Host "SMOKE_THREW=$($_.Exception.Message)"
+  }
 } else {
   $smokeDetail = 'smoke script not supplied and not found in the build tree'
 }
@@ -165,8 +215,6 @@ Write-Host "SMOKE_DETAIL=$smokeDetail"
 
 # --- Phase 2: open the place and start Play mode -------------------------
 $studioProc = $null
-$gameRan = $false
-$captures = New-Object System.Collections.Generic.List[object]
 
 try {
   Write-Host "OPEN_PLACE=$placeFile"
@@ -225,6 +273,10 @@ try {
   Write-Host "STUDIO_ALIVE=$alive"
   Write-Host "CAPTURE_COUNT=$($captures.Count)"
   Write-Host "TITLES=$($titles -join ' | ')"
+} catch {
+  # Same reason as the smoke phase: record the failure, do not lose the evidence.
+  $notes.Add("play phase threw: $($_.Exception.Message)")
+  Write-Host "PLAY_THREW=$($_.Exception.Message)"
 } finally {
   if ($studioProc -and !$studioProc.HasExited) {
     try { $studioProc.Kill() } catch { }
@@ -234,18 +286,7 @@ try {
 $overall = 'PARTIAL'
 if ($smokePass -and $gameRan) { $overall = 'OPENED' }
 
-$result = [ordered]@{
-  schemaVersion = 1
-  capturedAt    = (Get-Date).ToUniversalTime().ToString('o')
-  hostname      = $env:COMPUTERNAME
-  studio        = [ordered]@{ exe = $studioExe; version = $studioVersion }
-  placeFile     = $placeFile
-  smoke         = [ordered]@{ passed = $smokePass; detail = $smokeDetail; log = $smokeLog }
-  run           = [ordered]@{ gameRan = $gameRan; captures = @($captures.ToArray()) }
-  notes         = @($notes.ToArray())
-  status        = $overall
-}
-Set-Content -LiteralPath (Join-Path $evidenceDir 'pc1-roblox-open.json') -Value ($result | ConvertTo-Json -Depth 8) -Encoding UTF8
+Write-OpenEvidence
 
 Write-Host "SMOKE=$smokePass"
 Write-Host "GAME_RAN=$gameRan"
