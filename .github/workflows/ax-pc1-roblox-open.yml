@@ -120,10 +120,13 @@ jobs:
           }
           $action = New-ScheduledTaskAction -Execute "powershell.exe" -Argument $arg
           $principal = New-ScheduledTaskPrincipal -UserId $sid -LogonType Interactive -RunLevel Limited
-          # The run is a build plus a smoke test plus a server, a client and 30
-          # seconds of capture, so it needs more than the two minutes the
-          # foreground capture uses.
-          $settings = New-ScheduledTaskSettingsSet -ExecutionTimeLimit (New-TimeSpan -Minutes 15) -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries
+          # The run opens Studio twice -- a RunScript smoke pass, then the place
+          # itself with a server, a client and the capture window -- and Studio
+          # has to load a three-map place each time. The earlier 15-minute limit
+          # killed the task before it wrote its evidence, so the run looked like
+          # it had never started. The limit is set above the time the phases
+          # actually take, not at it.
+          $settings = New-ScheduledTaskSettingsSet -ExecutionTimeLimit (New-TimeSpan -Minutes 30) -AllowStartIfOnBatteries -DontStopIfGoingOnBatteries
           $name = "AERIS-PC1-ROBLOX-OPEN"
           Unregister-ScheduledTask -TaskName $name -Confirm:$false -ErrorAction SilentlyContinue
           Register-ScheduledTask -TaskName $name -Action $action -Principal $principal -Settings $settings -Force | Out-Null
@@ -136,10 +139,28 @@ jobs:
         shell: powershell
         run: |
           $p = 'C:\AX-Runtime\evidence\pc1-roblox-open.json'
+          $progress = 'C:\AX-Runtime\evidence\pc1-roblox-open.progress.json'
           Remove-Item -LiteralPath $p -Force -ErrorAction SilentlyContinue
-          $deadline = (Get-Date).AddMinutes(14)
-          while ((Get-Date) -lt $deadline -and !(Test-Path $p)) { Start-Sleep -Seconds 5 }
-          if (!(Test-Path $p)) { throw "OPEN_EVIDENCE_MISSING:$p" }
+          Remove-Item -LiteralPath $progress -Force -ErrorAction SilentlyContinue
+          $deadline = (Get-Date).AddMinutes(28)
+          $lastStage = ''
+          while ((Get-Date) -lt $deadline -and !(Test-Path $p)) {
+            if (Test-Path $progress) {
+              $stage = (Get-Content $progress -Raw | ConvertFrom-Json).stage
+              if ($stage -ne $lastStage) { Write-Host "OPEN_STAGE=$stage"; $lastStage = $stage }
+            }
+            Start-Sleep -Seconds 5
+          }
+          if (!(Test-Path $p)) {
+            # Say how far the run got. Without this the only message is that the
+            # file is absent, which is the same for a task that never started, a
+            # task that was killed mid-way, and one that failed at the end.
+            if (Test-Path $progress) {
+              $g = Get-Content $progress -Raw | ConvertFrom-Json
+              throw "OPEN_EVIDENCE_MISSING:$p (last stage: $($g.stage))"
+            }
+            throw "OPEN_EVIDENCE_MISSING:$p (no progress written: the task did not run)"
+          }
           $x = Get-Content $p -Raw | ConvertFrom-Json
           Write-Host "STATUS=$($x.status)"
           Write-Host "PLACE_FILE=$($x.placeFile)"

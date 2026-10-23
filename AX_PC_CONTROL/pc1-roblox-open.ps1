@@ -73,6 +73,24 @@ function Write-OpenEvidence($reason) {
   Set-Content -LiteralPath (Join-Path $evidenceDir 'pc1-roblox-open.json') -Value ($result | ConvertTo-Json -Depth 8) -Encoding UTF8
 }
 
+# The result file above is written once, at the end. A run that is killed from
+# outside -- the scheduled task's execution time limit, a reboot -- never gets
+# there, and then the evidence directory cannot say how far it got. This
+# heartbeat is written as the run passes each stage, so a run that dies still
+# leaves behind the stage it died in.
+function Write-OpenProgress($stage) {
+  $progress = [ordered]@{
+    schemaVersion = 1
+    capturedAt    = (Get-Date).ToUniversalTime().ToString('o')
+    hostname      = $env:COMPUTERNAME
+    stage         = $stage
+    placeFile     = $placeFile
+    smoke         = [ordered]@{ passed = $smokePass; detail = $smokeDetail }
+    notes         = @($notes.ToArray())
+  }
+  Set-Content -LiteralPath (Join-Path $evidenceDir 'pc1-roblox-open.progress.json') -Value ($progress | ConvertTo-Json -Depth 8) -Encoding UTF8
+}
+
 # Any terminating error below writes what is known and stops, instead of leaving
 # no evidence behind at all.
 trap {
@@ -106,6 +124,7 @@ $studioExe = $studioExes[0].FullName
 $studioVersion = $studioExes[0].VersionInfo.ProductVersion
 Write-Host "STUDIO_EXE=$studioExe"
 Write-Host "STUDIO_VERSION=$studioVersion"
+Write-OpenProgress 'studio-located'
 
 $placeFile = $PlaceFile
 # The arena build is legacy but still present on some machines; preferring the
@@ -212,6 +231,7 @@ if ($smoke) {
 }
 Write-Host "SMOKE_PASS=$smokePass"
 Write-Host "SMOKE_DETAIL=$smokeDetail"
+Write-OpenProgress 'smoke-finished'
 
 # --- Phase 2: open the place and start Play mode -------------------------
 $studioProc = $null
@@ -223,6 +243,7 @@ try {
     '--localPlaceFile', $placeFile
   )
   $notes.Add("studio pid $($studioProc.Id) opened the place")
+  Write-OpenProgress 'studio-opened'
 
   # Studio has to load a place with five dressed maps in it, so give it room.
   # Firing F5 early types into the splash screen and nothing happens.
@@ -246,6 +267,7 @@ try {
   Write-Host "SEND_F5"
   [System.Windows.Forms.SendKeys]::SendWait('{F5}')
   $notes.Add('sent F5 to start Play mode')
+  Write-OpenProgress 'play-requested'
 
   Start-Sleep -Seconds $PlayStartSeconds
 
@@ -287,7 +309,6 @@ $overall = 'PARTIAL'
 if ($smokePass -and $gameRan) { $overall = 'OPENED' }
 
 Write-OpenEvidence
-
 Write-Host "SMOKE=$smokePass"
 Write-Host "GAME_RAN=$gameRan"
 Write-Host "SHOTS=$($captures.Count)"
