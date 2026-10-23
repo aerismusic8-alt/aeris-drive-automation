@@ -137,13 +137,16 @@ jobs:
           # that runs here, as a real step, and the MCP call below stays short.
           if ($env:PRE_COMMAND) {
             Write-Host "PRE_COMMAND=$env:PRE_COMMAND"
-            $pre = $env:PRE_COMMAND
-            if (-not (Test-Path -LiteralPath $pre)) {
-              $name = Split-Path -Leaf $pre
-              $raw = "https://raw.githubusercontent.com/aerismusic8-alt/aeris-drive-automation/$($env:GITHUB_REF_NAME)/AX_PC_CONTROL/$name"
-              Write-Host "PRE_COMMAND_FETCH=$raw"
-              Invoke-WebRequest -Uri $raw -OutFile $pre -UseBasicParsing
-            }
+            # Always take the repository copy. Downloading only when the path is
+            # missing let a stale script on PC1 keep running forever: the first
+            # run created the file, and every later run reused it, so a fix to
+            # the script appeared to change nothing.
+            $name = Split-Path -Leaf $env:PRE_COMMAND
+            $raw = "https://raw.githubusercontent.com/aerismusic8-alt/aeris-drive-automation/$($env:GITHUB_REF_NAME)/AX_PC_CONTROL/$name"
+            $pre = Join-Path $env:TEMP $name
+            Write-Host "PRE_COMMAND_FETCH=$raw"
+            Invoke-WebRequest -Uri $raw -OutFile $pre -UseBasicParsing
+            Write-Host "PRE_COMMAND_FILE=$pre"
             & powershell.exe -NoProfile -ExecutionPolicy Bypass -File $pre
             Write-Host "PRE_COMMAND_EXIT=$LASTEXITCODE"
           }
