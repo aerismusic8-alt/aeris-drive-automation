@@ -117,6 +117,28 @@ def _build_http_client(auth_key: str | None, tailnet_proxy: str | None, url: str
     return httpx2.AsyncClient(**kwargs)
 
 
+def _resolve_args(args) -> dict:
+    """Tool arguments, read from --args-file when it is given.
+
+    Windows PowerShell 5.1 drops the double quotes when it hands an inline JSON
+    string to a native program, so `--args '{"command":"hostname"}'` reaches
+    this process as `{command:hostname}` and json.loads rejects it. The file
+    path is passed through untouched, which is why it is the safer channel on
+    that host.
+    """
+    if getattr(args, "args_file", None):
+        with open(args.args_file, encoding="utf-8") as fh:
+            raw = fh.read()
+        try:
+            parsed = json.loads(raw)
+        except json.JSONDecodeError as exc:
+            raise SystemExit(f"--args-file is not valid JSON: {exc}") from exc
+        if not isinstance(parsed, dict):
+            raise SystemExit("--args-file must hold a JSON object")
+        return parsed
+    return _parse_args(args.args)
+
+
 def _parse_args(raw: str | None) -> dict:
     if not raw:
         return {}
@@ -260,7 +282,7 @@ async def run(args: argparse.Namespace) -> int:
                     print(json.dumps(report, indent=2, ensure_ascii=False))
                     return 1
 
-                result = await session.call_tool(args.call, _parse_args(args.args))
+                result = await session.call_tool(args.call, _resolve_args(args))
                 report["tool"] = args.call
                 report["result"] = _render_result(
                     result,
@@ -334,6 +356,13 @@ def main() -> int:
     parser.add_argument("--list-tools", action="store_true", help="List the tools the server exposes")
     parser.add_argument("--call", help="Tool name to call")
     parser.add_argument("--args", help="JSON object of tool arguments")
+    parser.add_argument(
+        "--args-file",
+        help="Path to a file holding the JSON tool arguments. Use this instead of "
+        "--args when the caller is Windows PowerShell 5.1: it strips the quotes "
+        "out of an inline JSON argument before it reaches the process, so --args "
+        "arrives mangled. A file survives that.",
+    )
     parser.add_argument(
         "--save-images",
         default=os.environ.get("WINREMOTE_SAVE_IMAGES"),

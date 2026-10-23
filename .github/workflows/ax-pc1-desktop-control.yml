@@ -145,6 +145,12 @@ jobs:
           # rather than being interpolated into this script, so a JSON argument
           # containing quotes cannot break out into PowerShell.
           #
+          # The arguments go through a file, not an inline --args value.
+          # PowerShell 5.1 strips the double quotes out of an inline JSON string
+          # on its way to a native program, so the client saw `{command:x}`
+          # instead of `{"command":"x"}` and rejected it. The file is written by
+          # this process and read by the client, and nothing rewrites it.
+          #
           # --save-images is what makes a screenshot usable: it writes the PNG
           # and reports the path, instead of reporting only its size.
           #
@@ -154,12 +160,14 @@ jobs:
           # ErrorActionPreference=Stop, so that teardown noise killed the step
           # before the result was written and the real answer was lost. stderr
           # goes to its own file and the exit code decides what happened.
+          $argsFile = Join-Path $shotDir 'mcp-args.json'
+          Set-Content -LiteralPath $argsFile -Value $env:MCP_ARGS -Encoding UTF8
           $errFile = Join-Path $shotDir 'mcp-call.err'
           $ErrorActionPreference = 'Continue'
           $out = & $python $client `
             --url "http://127.0.0.1:$port/mcp" `
             --call $env:MCP_TOOL `
-            --args $env:MCP_ARGS `
+            --args-file $argsFile `
             --save-images $shotDir 2>$errFile | Out-String
           $code = $LASTEXITCODE
           Write-Host $out
