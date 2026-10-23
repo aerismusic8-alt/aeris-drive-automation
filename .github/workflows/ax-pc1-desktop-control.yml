@@ -78,9 +78,15 @@ jobs:
         run: |
           $python = (Get-Command python -ErrorAction SilentlyContinue).Source
           if (-not $python) { throw 'PYTHON_NOT_FOUND' }
+          # pip writes dependency-resolver notes to stderr, and a native command's
+          # stderr becomes a terminating error under ErrorActionPreference=Stop.
+          # The install was fine; the run died on the warning. The exit code is
+          # the thing to trust here, so stderr is merged into the log instead.
+          $ErrorActionPreference = 'Continue'
           & $python -m pip install --quiet --upgrade mcp httpx2 2>&1 | Out-String | Write-Host
+          $install = $LASTEXITCODE
           & $python -c "import mcp, httpx2" 2>&1 | Out-String | Write-Host
-          if ($LASTEXITCODE -ne 0) { throw 'MCP_CLIENT_DEPS_FAILED' }
+          if ($install -ne 0 -or $LASTEXITCODE -ne 0) { throw 'MCP_CLIENT_DEPS_FAILED' }
           Write-Host 'MCP_CLIENT_DEPS=ok'
 
       - name: Make sure the MCP server is up
