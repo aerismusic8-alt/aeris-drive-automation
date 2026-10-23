@@ -3,9 +3,38 @@ local Players = game:GetService("Players")
 local Teams = game:GetService("Teams")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Rules = require(ReplicatedStorage.MatchModules.RoundRules)
+local MapRegistry = require(ReplicatedStorage.MatchModules.MapRegistry)
 local state = ReplicatedStorage.MatchState
-local range = workspace.PrototypeRange
-local sites = range.BombSites
+
+-- Which maps the place carries. Read out of Workspace rather than listed here,
+-- so adding a map to the build is all it takes to put it in the rotation.
+local maps = MapRegistry.collect(workspace)
+local activeMap = nil
+
+---Make `map` the one a round is played on. Its spawns and plant prompts are
+---switched on and every other map's are switched off, so a player cannot spawn
+---into or plant on a map that is not being played.
+local function selectMap(map)
+    if not map then return end
+    activeMap = map
+    for _, other in ipairs(maps) do
+        if other.id == map.id then
+            MapRegistry.activate(other.model)
+        else
+            MapRegistry.deactivate(other.model)
+        end
+    end
+    state:SetAttribute("MapId", map.id)
+    state:SetAttribute("MapName", map.name)
+end
+
+---The map after the current one in rotation order, wrapping at the end. Called
+---with no map selected yet it picks the first, so the server always has a map
+---to start on.
+local function advanceMap()
+    selectMap(MapRegistry.next(maps, activeMap and activeMap.id or nil))
+end
+
 local participants = {}
 local roundId = 0
 local resolved = false
@@ -63,7 +92,7 @@ local function spawnForRound(player)
     local root = character:WaitForChild("HumanoidRootPart", 8)
     local humanoid = character:WaitForChild("Humanoid", 8)
     if not root or not humanoid then return end
-    local spawn = range:FindFirstChild(player.Team.Name .. " Spawn")
+    local spawn = activeMap and activeMap.model:FindFirstChild(player.Team.Name .. " Spawn")
     if spawn then character:PivotTo(spawn.CFrame * CFrame.new(0, 4, 0)) end
     player:SetAttribute("Alive", true)
     humanoid.Died:Connect(function()
@@ -90,7 +119,7 @@ local function plant(player, site)
     bombPart.Position = site.Position + Vector3.new(0, .7, 0)
     bombPart.Color = Color3.fromRGB(76, 79, 67)
     bombPart.Material = Enum.Material.Metal
-    bombPart.Parent = range
+    bombPart.Parent = activeMap and activeMap.model or workspace
     local prompt = Instance.new("ProximityPrompt")
     prompt.Name = "DefusePrompt"
     prompt.ActionText = "Defuse bomb"
@@ -111,9 +140,34 @@ local function plant(player, site)
     state:SetAttribute("BombSite", bombSite)
     setPhase("Planted", Rules.BombSeconds)
 end
-for _, site in ipairs(sites:GetChildren()) do
-    site.PlantPrompt.Triggered:Connect(function(player) plant(player, site) end)
+---Bind a plant prompt to the round. The prompt belongs to a map, and the map
+---changes every few rounds, so the site is read back from the prompt when it
+---fires rather than captured here -- a captured site would still point at the
+---map the match has left.
+local function bindSite(site)
+    if not site.PlantPrompt then return end
+    site.PlantPrompt.Triggered:Connect(function(player)
+        plant(player, site)
+    end)
 end
+
+-- Bind the sites of every map once. Only the active map's prompts are enabled,
+-- so a trigger can only arrive from the map being played, but binding all of
+-- them means a map added to the rotation needs no rebinding.
+for _, map in ipairs(maps) do
+    local folder = map.model:FindFirstChild("BombSites")
+    if folder then
+        for _, site in ipairs(folder:GetChildren()) do
+            bindSite(site)
+        end
+    end
+end
+
+-- Pick a map before anything can spawn. Until this runs every map's spawns are
+-- enabled, so a player joining during "Waiting for Players" could be placed on a
+-- map the match is not being played on.
+advanceMap()
+
 state.JoinMatch.OnServerEvent:Connect(function(player)
     if participants[player] then return end
     participants[player] = true
@@ -166,6 +220,10 @@ task.spawn(function()
             setPhase("Waiting for Players", 0)
             task.wait(1)
         end
+        -- A match is played on one map from start to finish; the rotation moves
+        -- between matches, not between rounds, so both teams learn the map they
+        -- are on before it changes under them. The first match uses the map
+        -- selected at startup.
         countdown("Warm-up", Rules.WarmupSeconds, false)
         if countPlayers() < Rules.MinimumPlayers then continue end
         roundId += 1
@@ -199,6 +257,8 @@ task.spawn(function()
             state:SetAttribute("AttackersScore", 0)
             state:SetAttribute("DefendersScore", 0)
             roundId = 0
+            -- The next match is played on the next map in the rotation.
+            advanceMap()
         elseif roundId == 3 then
             for player in pairs(participants) do
                 if player.Team == Teams.Attackers then player.Team = Teams.Defenders

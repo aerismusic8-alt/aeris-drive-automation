@@ -53,6 +53,23 @@ local SHORT_SCREEN_SCALE = 0.85
 
 local STORAGE_PREFIX = "MobileControls_"
 
+-- Bounds for the two settings the player owns. A stored value is player
+-- input, and the panel's sliders are not the only way to write it: a stale
+-- attribute from an older build is enough to pin the scale at zero, which
+-- reads as a broken cluster rather than a setting. Clamping on read means
+-- every consumer gets a usable value, and the panel's own limits are only a
+-- convenience on top.
+local MIN_SCALE = 0.6
+local MAX_SCALE = 1.6
+local MIN_TRANSPARENCY = 0
+local MAX_TRANSPARENCY = 0.7
+
+local function clampNumber(value, low, high, default)
+	if typeof(value) ~= "number" then return default end
+	if value ~= value then return default end
+	return math.clamp(value, low, high)
+end
+
 local function readSetting(key, default)
 	local value = player:GetAttribute(STORAGE_PREFIX .. key)
 	if value == nil then return default end
@@ -84,8 +101,8 @@ function MobileControls:SetAvailable(available: { [string]: boolean })
 end
 
 function MobileControls:_applySettings()
-	local scale = readSetting("Scale", 1)
-	local transparency = readSetting("Transparency", 0)
+	local scale = clampNumber(readSetting("Scale", 1), MIN_SCALE, MAX_SCALE, 1)
+	local transparency = clampNumber(readSetting("Transparency", 0), MIN_TRANSPARENCY, MAX_TRANSPARENCY, 0)
 
 	self._scale.Scale = scale * self._baseScale
 	for _, button in pairs(self._buttons) do
@@ -218,6 +235,16 @@ function MobileControls:Enable()
 		end))
 	end
 
+	-- The settings panel writes these attributes, and it may well be open when a
+	-- change is made, so the cluster has to follow them while it is up rather
+	-- than only read them once at construction.
+	for _, key in ipairs({ "Scale", "Transparency" }) do
+		local attribute = STORAGE_PREFIX .. key
+		table.insert(connections, player:GetAttributeChangedSignal(attribute):Connect(function()
+			self:_applySettings()
+		end))
+	end
+
 	self._connections = connections
 	self:_updateScale()
 	self:_applySettings()
@@ -261,6 +288,11 @@ function MobileControls.new()
 end
 
 MobileControls.readSetting = readSetting
+MobileControls.STORAGE_PREFIX = STORAGE_PREFIX
+MobileControls.MIN_SCALE = MIN_SCALE
+MobileControls.MAX_SCALE = MAX_SCALE
+MobileControls.MIN_TRANSPARENCY = MIN_TRANSPARENCY
+MobileControls.MAX_TRANSPARENCY = MAX_TRANSPARENCY
 MobileControls.writeSetting = writeSetting
 
 return MobileControls

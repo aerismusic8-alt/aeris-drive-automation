@@ -84,9 +84,14 @@ local function buildPlace(env)
 	matchModules.Parent = ReplicatedStorage
 	rawset(ReplicatedStorage, "MatchModules", matchModules)
 
-	-- PrototypeRange: the playable map. The server names it directly.
+	-- PrototypeRange: the first map. The server picks it out of Workspace by the
+	-- attributes MapRegistry reads, so the fixture carries the same three the
+	-- build stamps onto the real place.
 	local proto = Instance.new("Model")
 	proto.Name = "PrototypeRange"
+	proto:SetAttribute("MapId", "dust-district")
+	proto:SetAttribute("MapName", "Dust District")
+	proto:SetAttribute("MapOrder", 1)
 	rawset(Workspace, "PrototypeRange", proto)
 	proto.Parent = Workspace
 
@@ -119,6 +124,39 @@ local function buildPlace(env)
 		spawn.Name = spawnName
 		spawn.CFrame = CFrame.new(position)
 		spawn.Parent = proto
+	end
+
+	-- Foundry: the second map, far enough away that a spawn on one is never inside
+	-- the other. The rotation has nothing to rotate to without it, so a test that
+	-- asserts the map changes needs a real second map.
+	local foundry = Instance.new("Model")
+	foundry.Name = "Foundry"
+	foundry:SetAttribute("MapId", "foundry")
+	foundry:SetAttribute("MapName", "Foundry")
+	foundry:SetAttribute("MapOrder", 2)
+	foundry.Parent = Workspace
+
+	local foundrySites = Instance.new("Folder")
+	foundrySites.Name = "BombSites"
+	foundrySites.Parent = foundry
+	for _, siteName in ipairs({ "A", "B" }) do
+		local site = Instance.new("Part")
+		site.Name = siteName
+		site.Anchored = true
+		site.Size = Vector3.new(6, 1, 6)
+		site.CFrame = CFrame.new(Vector3.new(siteName == "A" and 160 or 240, 0, -40))
+		site.Parent = foundrySites
+		local prompt = Instance.new("ProximityPrompt")
+		prompt.Name = "PlantPrompt"
+		prompt.ActionText = "Plant bomb"
+		prompt.HoldDuration = 3
+		prompt.Parent = site
+	end
+	for _, spawnName in ipairs({ "Attackers Spawn", "Defenders Spawn" }) do
+		local spawn = Instance.new("SpawnLocation")
+		spawn.Name = spawnName
+		spawn.CFrame = CFrame.new(Vector3.new(spawnName == "Attackers Spawn" and 188 or 212, 0, 70))
+		spawn.Parent = foundry
 	end
 
 	-- A range target, so the damage path has something tagged to hit.
@@ -643,6 +681,218 @@ t.test("a second shot inside the fire interval is ignored", function()
 	fireShot(shooter, fire, victim)
 	t.assertLess(victimHealth(victim), afterFirst, "once the interval passes the next shot lands")
 	t.assertEqual(ammo.reported, magSize - 2, "the second landed shot spent a round")
+end)
+
+--------------------------------------------------------------------------
+t.suite("breachline/controls")
+
+-- Which touch controls a weapon may show.
+--
+-- Why this exists. The cluster draws a fixed set of buttons for every weapon, so
+-- a weapon with iron sights was given a SCOPE button that did nothing when
+-- tapped. The decision is a pure function of the weapon's params, and it is the
+-- thing that decides whether a button is on screen at all, so it is tested here
+-- rather than left to a Studio session.
+local WeaponControls = Shim.loader(Sources)("ReplicatedStorage/FourD/Architects/Firearm2/Common/WeaponControls")
+
+t.test("a weapon with iron sights hides the scope button", function()
+        t.assertFalse(WeaponControls.hasOptic({ AimMode = "default" }), "default aim is not an optic")
+        t.assertEqual(WeaponControls.available({ AimMode = "default" }).Scope, false, "SCOPE is hidden")
+end)
+
+t.test("a weapon with an optic shows the scope button", function()
+        t.assertTrue(WeaponControls.hasOptic({ AimMode = "scope" }), "scope aim is an optic")
+        t.assertEqual(WeaponControls.available({ AimMode = "scope" }).Scope, true, "SCOPE is shown")
+end)
+
+t.test("a weapon with no params hides the scope button rather than erroring", function()
+        t.assertFalse(WeaponControls.hasOptic(nil), "no params is not an optic")
+        t.assertFalse(WeaponControls.hasOptic("scope"), "a non-table is not an optic")
+        t.assertEqual(WeaponControls.available(nil).Scope, false, "SCOPE is hidden")
+end)
+
+t.test("only the scope button is ever turned off", function()
+        -- The rest of the cluster is the same gun to gun; a second entry here
+        -- would silently hide a verb the player needs.
+        local available = WeaponControls.available({ AimMode = "default" })
+        local names = {}
+        for name in pairs(available) do
+                table.insert(names, name)
+        end
+        t.assertEqual(#names, 1, "exactly one control is decided per weapon")
+        t.assertEqual(names[1], "Scope", "and it is the scope button")
+end)
+
+t.suite("breachline/maps")
+
+-- The rotation and the contract it reads.
+--
+-- Why this exists. The place shipped one map and the server named it directly,
+-- so "which map are we playing" was a constant. The rotation turns it into
+-- state, and state that is only exercised by playing a full match to four round
+-- wins is state nobody checks. These tests drive the registry against the same
+-- map contract the build stamps onto the real place, and then play a real match
+-- out to its end to prove the server actually moves to the second map.
+local MapRegistry = Shim.loader(Sources)("ReplicatedStorage/MatchModules/MapRegistry")
+
+-- The registry reads a container's children, so a plain table of Models is not
+-- enough -- it has to be a real instance the shim will enumerate.
+local function mapContainer(env, models)
+        local folder = Instance.new("Folder")
+        folder.Name = "Maps"
+        for _, model in ipairs(models) do model.Parent = folder end
+        return folder
+end
+
+local function mapModel(name, id, order)
+        local model = Instance.new("Model")
+        model.Name = name
+        model:SetAttribute("MapId", id)
+        model:SetAttribute("MapName", name)
+        model:SetAttribute("MapOrder", order)
+
+        local sites = Instance.new("Folder")
+        sites.Name = "BombSites"
+        sites.Parent = model
+        for _, siteName in ipairs({ "A", "B" }) do
+                local site = Instance.new("Part")
+                site.Name = siteName
+                site.Parent = sites
+                local prompt = Instance.new("ProximityPrompt")
+                prompt.Name = "PlantPrompt"
+                prompt.Parent = site
+        end
+        for _, spawnName in ipairs({ "Attackers Spawn", "Defenders Spawn" }) do
+                local spawn = Instance.new("SpawnLocation")
+                spawn.Name = spawnName
+                spawn.Parent = model
+        end
+        return model
+end
+
+t.test("a complete map satisfies the contract", function()
+        local env = Shim.harness(Sources)
+        local model = mapModel("Alpha", "alpha", 1)
+        t.assertEqual(#MapRegistry.problems(model), 0, "a complete map has no problems")
+        t.assertTrue(MapRegistry.isMap(model), "and is recognised as a map")
+end)
+
+t.test("an incomplete map names what is missing", function()
+        local env = Shim.harness(Sources)
+        local model = mapModel("Alpha", "alpha", 1)
+        model:FindFirstChild("BombSites"):FindFirstChild("B"):Destroy()
+        local problems = MapRegistry.problems(model)
+        t.assertEqual(#problems, 1, "one problem is reported")
+        t.assertTrue(problems[1]:find("two bomb sites") ~= nil, "and it names the missing site: " .. tostring(problems[1]))
+end)
+
+t.test("a map with no id is rejected", function()
+        local env = Shim.harness(Sources)
+        local model = mapModel("Alpha", "alpha", 1)
+        model:SetAttribute("MapId", nil)
+        local problems = MapRegistry.problems(model)
+        t.assertTrue(#problems >= 1, "a map with no id is a problem")
+        t.assertFalse(MapRegistry.isMap(model), "and is not a map")
+end)
+
+t.test("collect skips a half-built map and sorts by order", function()
+        local env = Shim.harness(Sources)
+        local second = mapModel("Second", "second", 2)
+        local first = mapModel("First", "first", 1)
+        local broken = mapModel("Broken", "broken", 3)
+        broken:FindFirstChild("BombSites"):Destroy()
+
+        local maps = MapRegistry.collect(mapContainer(env, { second, broken, first }))
+        t.assertEqual(#maps, 2, "the half-built map is skipped, not returned")
+        t.assertEqual(maps[1].id, "first", "order 1 comes first")
+        t.assertEqual(maps[2].id, "second", "order 2 comes second")
+end)
+
+t.test("the rotation advances and wraps", function()
+        local env = Shim.harness(Sources)
+        local maps = MapRegistry.collect(mapContainer(env, {
+                mapModel("First", "first", 1),
+                mapModel("Second", "second", 2),
+        }))
+        t.assertEqual(MapRegistry.next(maps, nil).id, "first", "an unknown current map starts at the first")
+        t.assertEqual(MapRegistry.next(maps, "first").id, "second", "the rotation advances")
+        t.assertEqual(MapRegistry.next(maps, "second").id, "first", "and wraps at the end")
+        t.assertEqual(MapRegistry.next(maps, "gone").id, "first", "a removed map falls back to the first")
+end)
+
+t.test("deactivating a map switches off its spawns and plant prompts", function()
+        local env = Shim.harness(Sources)
+        local model = mapModel("Alpha", "alpha", 1)
+        MapRegistry.deactivate(model)
+        t.assertEqual(model:GetAttribute("MapActive"), false, "the map is marked inactive")
+        for _, descendant in ipairs(model:GetDescendants()) do
+                if descendant.ClassName == "SpawnLocation" or descendant.ClassName == "ProximityPrompt" then
+                        t.assertEqual(descendant.Enabled, false, descendant.Name .. " is disabled")
+                end
+        end
+end)
+
+t.test("the range targets are bound on the map that carries them", function()
+        local env = boot()
+        -- The targets used to be found by naming one map. Now every map is
+        -- scanned, so a target on the second map is bound too -- and a target
+        -- that was never tagged takes no damage from the firearm rig.
+        local foundry = G.workspace:FindFirstChild("Foundry")
+        local target = Instance.new("Part")
+        target.Name = "Target"
+        target.CFrame = CFrame.new(0, 1, -60)
+        target.Parent = foundry
+        local billboard = Instance.new("BillboardGui")
+        billboard.Name = "TargetLabel"
+        billboard.Parent = target
+        local label = Instance.new("TextLabel")
+        label.Name = "TextLabel"
+        label.Text = "100 HP"
+        label.Parent = billboard
+
+        -- Re-run the script against the map that now carries a target, the way
+        -- the server would after the map is in the place.
+        env.__load("ServerScriptService/RangeTargets.server")
+
+        local damage = target:FindFirstChild("TakeDamage")
+        t.assertNotNil(damage, "the second map's target got a damage event")
+        t.assertEqual(target:GetAttribute("TargetHealth"), nil, "health starts unset until the first hit")
+        damage.Event:Fire(30)
+        t.assertEqual(target:GetAttribute("TargetHealth"), 70, "the target took the damage")
+        t.assertEqual(label.Text, "70 HP", "and its label follows")
+end)
+
+t.test("a match plays on one map and the next match rotates", function()
+        local env = boot()
+        local a = join(env, 2, "Alpha")
+        local b = join(env, 3, "Bravo")
+
+        -- The first match starts on the first map in order.
+        t.assertEqual(state:GetAttribute("MapId"), "dust-district", "the first match is on the first map")
+
+        -- Only the active map's spawns are enabled, so a round cannot start a
+        -- player on the map the match has left.
+        local dust = range
+        local foundry = G.workspace:FindFirstChild("Foundry")
+        t.assertNotNil(foundry, "the second map is in the place")
+        t.assertEqual(dust:FindFirstChild("Attackers Spawn").Enabled, true, "the active map's spawns are on")
+        t.assertEqual(foundry:FindFirstChild("Attackers Spawn").Enabled, false, "the idle map's spawns are off")
+
+        -- Win a match: four rounds to the defenders, which is ScoreToWin.
+        local rules = Shim.loader(Sources)("ReplicatedStorage/MatchModules/RoundRules")
+        for _ = 1, rules.ScoreToWin do
+                tickUntil(env, function() return phase() == "Combat" end, 600, "combat")
+                a.Character:FindFirstChildOfClass("Humanoid"):TakeDamage(100)
+                tickUntil(env, function() return phase() == "Round End" end, 300, "round end")
+                tickUntil(env, function() return phase() ~= "Round End" end, 300, "next round")
+        end
+
+        -- The match is over, and the next one is on the other map.
+        tickUntil(env, function() return state:GetAttribute("MapId") == "foundry" end, 400, "rotation to the second map")
+        t.assertEqual(state:GetAttribute("MapId"), "foundry", "the next match rotated to the second map")
+        t.assertEqual(state:GetAttribute("MapName"), "Foundry", "and its name follows")
+        t.assertEqual(foundry:FindFirstChild("Attackers Spawn").Enabled, true, "the new map's spawns are on")
+        t.assertEqual(dust:FindFirstChild("Attackers Spawn").Enabled, false, "the old map's spawns are off")
 end)
 
 t.finish()

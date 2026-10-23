@@ -482,6 +482,14 @@ end
 local Instance = {}
 Instance.__index = Instance
 
+-- The engine's typeof() reports an Instance as "Instance", and shipped guards
+-- test exactly that: recenterModelPivot and FourDToolAuthority both reject a
+-- non-Instance with `typeof(x) ~= "Instance"`. The typeof global below reads
+-- this tag off the class table, so without it every instance looked like a
+-- plain table and those guards dropped real work -- a map model handed to the
+-- registry was rejected as "not a Model" for the same reason.
+Instance.__type = "Instance"
+
 -- The screen the shim reports. A ScreenGui's AbsoluteSize is the viewport, and
 -- a child's AbsoluteSize is derived from its parent, so the HUD's layout maths
 -- has real numbers to work with rather than zeros. Kept in step with

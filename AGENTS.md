@@ -1519,3 +1519,45 @@ project and not to create a new one. When a target cannot be found, the honest
 move is to stop and say what was searched, because the alternative silently
 turns "upgrade this" into "invent this" and the person cannot tell the
 difference until the result arrives.
+
+### A dead module is not a working one
+
+`breachline/overlay/ReplicatedStorage/MatchModules/MapRegistry.luau` existed,
+was unit-testable, and was required by nothing. It read a map contract out of
+Workspace -- `MapId`/`MapName`/`MapOrder`, two `BombSites` with a `PlantPrompt`,
+an Attackers and a Defenders `SpawnLocation` -- but no map carried those
+attributes and `MatchManager.server.luau` named `workspace.PrototypeRange`
+directly. "Which map are we playing" was a constant, so the rotation had nothing
+to rotate and the registry was never on the code path.
+
+Shipping a module and wiring it are separate pieces of work, and only the second
+one changes behaviour. A file that exists and has tests can still be dead. The
+check that catches it is not "does the module exist" but "does anything require
+it, and is the thing it replaces gone": the build validator now asserts the
+match layer requires `MapRegistry`, that `workspace.PrototypeRange` no longer
+appears in it, and that `MapRegistry.collect(` and `advanceMap(` are both
+called.
+
+### The shim's `typeof` was wrong for instances, and it hid two shipped guards
+
+`roblox/tests/RobloxShim.luau` tagged `Vector3`, `CFrame` and `Color3` with
+`__type` so the engine's `typeof` could tell them apart, but it never tagged
+`Instance`. So `typeof(model)` returned `"table"`, while the engine returns
+`"Instance"`. Two shipped guards test exactly that -- `recenterModelPivot` and
+`FourDToolAuthority` both `return` on `typeof(x) ~= "Instance"` -- and a third
+path broke the same way: `MapRegistry.problems` rejects a non-Model, so every
+map the new rotation collected came back with zero maps.
+
+The fix was one line, `Instance.__type = "Instance"`, and it turned a `maps=0`
+into a passing rotation. The lesson is that a shim's defaults are part of the
+contract: when the code under test branches on a type name, the shim has to
+answer with the name the engine would, not the underlying Lua type.
+
+### Advance state at the point it is used, not at the top of the loop
+
+The first rotation wiring called `advanceMap()` inside the round loop, just
+before the warm-up. The end-to-end test caught it immediately: the opening match
+ran on the *second* map, because "advance, then play" skips the first. The
+rotation belongs after a match is won, not before a round starts. A test that
+plays a real match to `ScoreToWin` and reads `MapId` back is what makes that
+ordering mistake visible; a test that only reads the registry would not have.

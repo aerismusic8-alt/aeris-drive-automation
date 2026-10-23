@@ -63,7 +63,7 @@ python3 "$ROOT/scripts/gen-roblox-sources.py" "$ROOT/roblox-garden/tests/.genera
 # runs a round through the real remotes, and reads the score back. Breachline
 # shipped with no test suite at all, which is why its systems had never been run
 # outside Roblox Studio.
-python3 "$ROOT/scripts/gen-roblox-sources.py" "$ROOT/breachline/tests/.generated/Sources.luau" --src "$ROOT/breachline/src/breachline-uncompressed" || exit 1
+python3 "$ROOT/scripts/gen-roblox-sources.py" "$ROOT/breachline/tests/.generated/Sources.luau" --src "$ROOT/breachline/src/breachline-uncompressed" --overlay "$ROOT/breachline/overlay" || exit 1
 "$LUAU" "$ROOT/breachline/tests/runtime.luau" || exit 1
 
 # Wiring checks read the source, because the HUD cannot be executed outside

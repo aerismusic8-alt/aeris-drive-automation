@@ -23,6 +23,11 @@ local Players = game:GetService("Players")
 local player = Players.LocalPlayer
 local state = game:GetService("ReplicatedStorage"):WaitForChild("MatchState")
 
+-- The control settings are stored on player attributes that MobileControls
+-- owns. Reading the names and bounds from that module rather than repeating the
+-- literals here is what stops the panel and the cluster drifting apart.
+local MobileControls = require(game:GetService("ReplicatedStorage"):WaitForChild("FourD").Common.MobileControls)
+
 local gui = Instance.new("ScreenGui")
 gui.Name = "MatchHud"
 gui.ResetOnSpawn = false
@@ -130,7 +135,7 @@ heading.BackgroundTransparency = 1
 heading.Font = Enum.Font.GothamBold
 heading.TextColor3 = Color3.fromRGB(246, 239, 216)
 heading.TextScaled = true
-heading.Text = "DUST DISTRICT"
+heading.Text = state:GetAttribute("MapName") or "DUST DISTRICT"
 heading.LayoutOrder = 1
 heading.Parent = card
 
@@ -176,6 +181,232 @@ playSize.MaxTextSize = 28
 playSize.MinTextSize = 16
 playSize.Parent = play
 
+-- The touch cluster is the whole interface on a phone, and its size and
+-- opacity are the two things a player wants to change: the default buttons sit
+-- under the thumb for one hand size and not another, and an opaque cluster
+-- hides the corner of the screen the player is watching. Both are stored as
+-- player attributes, which MobileControls reads and follows live, so a change
+-- made here applies to a cluster that is already on screen.
+local SETTINGS_PREFIX = MobileControls.STORAGE_PREFIX
+
+local settings = Instance.new("TextButton")
+settings.Name = "Settings"
+settings.Size = UDim2.new(1, 0, 0, 40)
+settings.BackgroundColor3 = Color3.fromRGB(72, 80, 72)
+settings.TextColor3 = Color3.fromRGB(243, 239, 226)
+settings.Font = Enum.Font.GothamMedium
+settings.TextScaled = true
+settings.Text = "CONTROLS"
+settings.Selectable = true
+settings.LayoutOrder = 4
+settings.Parent = card
+
+local settingsCorner = Instance.new("UICorner")
+settingsCorner.CornerRadius = UDim.new(0, 10)
+settingsCorner.Parent = settings
+
+local settingsSize = Instance.new("UITextSizeConstraint")
+settingsSize.MaxTextSize = 20
+settingsSize.MinTextSize = 12
+settingsSize.Parent = settings
+
+local panel = Instance.new("Frame")
+panel.Name = "SettingsPanel"
+panel.Size = UDim2.new(0.9, 0, 0, 200)
+panel.Position = UDim2.fromScale(0.5, 0.5)
+panel.AnchorPoint = Vector2.new(0.5, 0.5)
+panel.BackgroundColor3 = Color3.fromRGB(53, 58, 52)
+panel.Visible = false
+panel.ZIndex = 4
+panel.Parent = menu
+
+local panelCorner = Instance.new("UICorner")
+panelCorner.CornerRadius = UDim.new(0, 14)
+panelCorner.Parent = panel
+
+local panelPadding = Instance.new("UIPadding")
+panelPadding.PaddingLeft = UDim.new(0, 18)
+panelPadding.PaddingRight = UDim.new(0, 18)
+panelPadding.PaddingTop = UDim.new(0, 16)
+panelPadding.PaddingBottom = UDim.new(0, 16)
+panelPadding.Parent = panel
+
+local panelScale = Instance.new("UIScale")
+panelScale.Parent = panel
+
+local panelLayout = Instance.new("UIListLayout")
+panelLayout.FillDirection = Enum.FillDirection.Vertical
+panelLayout.SortOrder = Enum.SortOrder.LayoutOrder
+panelLayout.Padding = UDim.new(0, 10)
+panelLayout.Parent = panel
+
+local panelHeading = Instance.new("TextLabel")
+panelHeading.Size = UDim2.new(1, 0, 0, 40)
+panelHeading.BackgroundTransparency = 1
+panelHeading.Font = Enum.Font.GothamBold
+panelHeading.TextColor3 = Color3.fromRGB(246, 239, 216)
+panelHeading.TextScaled = true
+panelHeading.Text = "CONTROL SETTINGS"
+panelHeading.LayoutOrder = 1
+panelHeading.Parent = panel
+
+local panelHeadingSize = Instance.new("UITextSizeConstraint")
+panelHeadingSize.MaxTextSize = 26
+panelHeadingSize.MinTextSize = 14
+panelHeadingSize.Parent = panelHeading
+
+-- A slider is a track plus a fill; the fill's width is the value and a tap
+-- anywhere on the track sets it. That is enough for two settings and avoids a
+-- dragging gesture that competes with the look drag on the same thumb.
+local function slider(parent, order, caption, minimum, maximum, initial)
+        local row = Instance.new("Frame")
+        row.Size = UDim2.new(1, 0, 0, 56)
+        row.BackgroundTransparency = 1
+        row.LayoutOrder = order
+        row.Parent = parent
+
+        local text = Instance.new("TextLabel")
+        text.Name = "Caption"
+        text.Size = UDim2.new(1, 0, 0, 22)
+        text.BackgroundTransparency = 1
+        text.Font = Enum.Font.GothamMedium
+        text.TextColor3 = Color3.fromRGB(214, 212, 200)
+        text.TextScaled = true
+        text.TextXAlignment = Enum.TextXAlignment.Left
+        text.Text = caption
+        text.Parent = row
+
+        local textSize = Instance.new("UITextSizeConstraint")
+        textSize.MaxTextSize = 16
+        textSize.MinTextSize = 10
+        textSize.Parent = text
+
+        local track = Instance.new("TextButton")
+        track.Name = "Track"
+        track.Size = UDim2.new(1, 0, 0, 26)
+        track.Position = UDim2.new(0, 0, 0, 26)
+        track.BackgroundColor3 = Color3.fromRGB(33, 36, 33)
+        track.Text = ""
+        track.AutoButtonColor = false
+        track.Selectable = true
+        track.Parent = row
+
+        local trackCorner = Instance.new("UICorner")
+        trackCorner.CornerRadius = UDim.new(0, 8)
+        trackCorner.Parent = track
+
+        local fill = Instance.new("Frame")
+        fill.Name = "Fill"
+        fill.Size = UDim2.new(0, 0, 1, 0)
+        fill.BackgroundColor3 = Color3.fromRGB(119, 138, 103)
+        fill.Parent = track
+
+        local fillCorner = Instance.new("UICorner")
+        fillCorner.CornerRadius = UDim.new(0, 8)
+        fillCorner.Parent = fill
+
+        local state = { Minimum = minimum, Maximum = maximum, Value = initial }
+        local onChange = nil
+
+        local function draw()
+                local span = state.Maximum - state.Minimum
+                local fraction = if span > 0 then (state.Value - state.Minimum) / span else 0
+                fill.Size = UDim2.new(fraction, 0, 1, 0)
+                text.Text = caption .. "  " .. string.format("%d%%", math.floor(state.Value * 100 + 0.5))
+                if onChange then onChange(state.Value) end
+        end
+
+        state.Set = function(value)
+                state.Value = math.clamp(value, state.Minimum, state.Maximum)
+                draw()
+        end
+        state.SetChangeHandler = function(handler)
+                onChange = handler
+                draw()
+        end
+        state.Draw = draw
+        state.Track = track
+
+        return state
+end
+
+local scaleSlider = slider(panel, 2, "BUTTON SIZE", MobileControls.MIN_SCALE, MobileControls.MAX_SCALE, 1)
+local alphaSlider = slider(panel, 3, "BUTTON OPACITY", MobileControls.MIN_TRANSPARENCY, MobileControls.MAX_TRANSPARENCY, 0)
+
+local close = Instance.new("TextButton")
+close.Name = "Close"
+close.Size = UDim2.new(1, 0, 0, 44)
+close.BackgroundColor3 = Color3.fromRGB(72, 80, 72)
+close.TextColor3 = Color3.fromRGB(243, 239, 226)
+close.Font = Enum.Font.GothamBold
+close.TextScaled = true
+close.Text = "DONE"
+close.Selectable = true
+close.LayoutOrder = 4
+close.Parent = panel
+
+local closeCorner = Instance.new("UICorner")
+closeCorner.CornerRadius = UDim.new(0, 10)
+closeCorner.Parent = close
+
+local closeSize = Instance.new("UITextSizeConstraint")
+closeSize.MaxTextSize = 20
+closeSize.MinTextSize = 12
+closeSize.Parent = close
+
+local function refreshPanelScale()
+        local camera = workspace.CurrentCamera
+        local viewport = camera and camera.ViewportSize
+        if not viewport then return end
+        panelScale.Scale = math.min(1, (viewport.X * 0.92) / 420, (viewport.Y * 0.82) / 220)
+end
+
+-- Sliders read the stored value so the panel opens showing what is in effect,
+-- including a value written by an earlier session.
+scaleSlider.Set(tonumber(player:GetAttribute(SETTINGS_PREFIX .. "Scale")) or 1)
+alphaSlider.Set(tonumber(player:GetAttribute(SETTINGS_PREFIX .. "Transparency")) or 0)
+
+scaleSlider.SetChangeHandler(function(value)
+        player:SetAttribute(SETTINGS_PREFIX .. "Scale", value)
+end)
+alphaSlider.SetChangeHandler(function(value)
+        player:SetAttribute(SETTINGS_PREFIX .. "Transparency", value)
+end)
+
+-- The track is narrower than the row, and a tap near its right edge means
+-- "almost maximum" rather than "maximum", so the fraction is taken from where
+-- on the track the input landed.
+local function bindSlider(state)
+        state.Track.InputBegan:Connect(function(input)
+                if input.UserInputType ~= Enum.UserInputType.MouseButton1
+                        and input.UserInputType ~= Enum.UserInputType.Touch then
+                        return
+                end
+
+                local x = input.Position.X - state.Track.AbsolutePosition.X
+                local width = state.Track.AbsoluteSize.X
+                if width <= 0 then return end
+
+                local fraction = math.clamp(x / width, 0, 1)
+                state.Set(state.Minimum + fraction * (state.Maximum - state.Minimum))
+        end)
+end
+
+bindSlider(scaleSlider)
+bindSlider(alphaSlider)
+
+settings.Activated:Connect(function()
+        menu.Visible = true
+        card.Visible = false
+        panel.Visible = true
+        refreshPanelScale()
+end)
+
+close.Activated:Connect(function()
+        panel.Visible = false
+        card.Visible = true
+end)
+
 local function refreshScale()
 	local camera = workspace.CurrentCamera
 	local viewport = camera and camera.ViewportSize
@@ -196,6 +427,12 @@ play.Activated:Connect(function()
 	state.JoinMatch:FireServer()
 	menu.Visible = false
 	player.CameraMode = Enum.CameraMode.LockFirstPerson
+end)
+
+-- The map changes between matches, so the heading follows it rather than
+-- staying on whatever map the player first saw.
+state:GetAttributeChangedSignal("MapName"):Connect(function()
+        heading.Text = state:GetAttribute("MapName") or heading.Text
 end)
 
 local function update()
@@ -270,6 +507,7 @@ end)
 local camera = workspace.CurrentCamera
 if camera then
 	camera:GetPropertyChangedSignal("ViewportSize"):Connect(refreshScale)
+	camera:GetPropertyChangedSignal("ViewportSize"):Connect(refreshPanelScale)
 end
 
 refreshScale()

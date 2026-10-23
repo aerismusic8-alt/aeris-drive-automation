@@ -35,6 +35,7 @@ local player = Players.LocalPlayer
 
 local FourD = ReplicatedStorage:WaitForChild("FourD")
 local Constants = require(FourD.Architects.Firearm2.Common.Constants)
+local WeaponControls = require(FourD.Architects.Firearm2.Common.WeaponControls)
 local Dumpster = require(FourD.Libs.Dumpster)
 local Keybinds = require(FourD.Common.Keybinds)
 local MobileControls = require(FourD.Common.MobileControls)
@@ -77,6 +78,32 @@ local function humanoid(): Humanoid?
 	local character = player.Character
 	if not character then return nil end
 	return character:FindFirstChildOfClass("Humanoid")
+end
+
+---The Tool this module was shipped inside. ClientInput is a child of the tool's
+---ClientModules folder, so the weapon's own attributes are one ancestor away.
+---Walking rather than indexing `script.Parent.Parent` keeps it correct for both
+---the starting copy and the shop copy, which are the same rig at two paths.
+local function weaponTool(): Tool?
+	local node = script.Parent
+	while node do
+		if node:IsA("Tool") then return node end
+		node = node.Parent
+	end
+	return nil
+end
+
+---The params the cluster's availability is decided from, read off the Tool the
+---same way the controller reads them.
+local function weaponParams(): { [string]: any }
+	local tool = weaponTool()
+	if not tool then return {} end
+
+	local params = {}
+	for _, key in Constants.PARAM_KEYS do
+		params[key] = tool:GetAttribute(key)
+	end
+	return params
 end
 
 -- Public Methods
@@ -199,6 +226,10 @@ function ClientInput:_enableTouch(dumpster: any)
 	local controls = MobileControls.new()
 	controls:Enable()
 	dumpster:Add(controls)
+
+	-- A weapon with iron sights has nothing for SCOPE to do, so its button is
+	-- hidden rather than left on screen doing nothing when tapped.
+	controls:SetAvailable(WeaponControls.available(weaponParams()))
 
 	local function button(name: string): TextButton?
 		return controls:GetButton(name)
@@ -360,6 +391,12 @@ function ClientInput:Disable()
 	self._scopeHeld = false
 	self._crouching = false
 	player:SetAttribute(CROUCH_ATTRIBUTE, 0)
+
+	-- The camera reads the scope state off a player attribute, not off this
+	-- module, so putting the tool away has to clear it here or the next weapon
+	-- is drawn still zoomed. This is the one piece of state that outlives the
+	-- tool and therefore cannot be left to the dumpster.
+	player:SetAttribute(SCOPE_ATTRIBUTE, 0)
 end
 
 function ClientInput:Destroy()

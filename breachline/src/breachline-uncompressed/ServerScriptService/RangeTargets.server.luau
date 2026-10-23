@@ -1,10 +1,21 @@
 -- Shooting-range targets take server-authoritative damage from the firearm rig.
 local CollectionService = game:GetService("CollectionService")
 local TweenService = game:GetService("TweenService")
-local range = workspace:WaitForChild("PrototypeRange")
 
-for _, target in ipairs(range:GetChildren()) do
-    if target.Name ~= "Target" then continue end
+-- Targets live on whichever map carries them, so every map is scanned rather
+-- than one being named here. A map added to the build gets its practice range
+-- bound without touching this script, and naming a map that the rotation later
+-- drops would hang the server on WaitForChild forever.
+local function eachRangeTarget(fn)
+    for _, map in ipairs(workspace:GetChildren()) do
+        if not map:GetAttribute("MapId") then continue end
+        for _, target in ipairs(map:GetChildren()) do
+            if target.Name == "Target" then fn(target) end
+        end
+    end
+end
+
+local function bindTarget(target)
     local damageEvent = Instance.new("BindableEvent")
     damageEvent.Name = "TakeDamage"
     damageEvent.Parent = target
@@ -40,3 +51,5 @@ for _, target in ipairs(range:GetChildren()) do
         end)
     end)
 end
+
+eachRangeTarget(bindTarget)

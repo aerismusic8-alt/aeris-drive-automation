@@ -34,26 +34,43 @@ DEFAULT_OUT = os.path.join(ROOT, "roblox", "tests", ".generated", "Sources.luau"
 
 # Set from the command line before collect() runs.
 SRC = DEFAULT_SRC
+OVERLAY = None
 
 
-def collect() -> "list[tuple[str, str]]":
-    """Every .luau under roblox/src, as (logical path, source).
-
-    The logical path is the one the shim's require understands: relative to
-    roblox/src and without the extension, e.g. "shared/Config" or "server/World".
-    """
-    out = []
-    for dirpath, dirnames, filenames in os.walk(SRC):
+def collect_from(root: str) -> "dict[str, str]":
+    """Every .luau under `root`, as logical path -> source."""
+    out = {}
+    for dirpath, dirnames, filenames in os.walk(root):
         dirnames.sort()
         for name in sorted(filenames):
             if not name.endswith(".luau"):
                 continue
             full = os.path.join(dirpath, name)
-            rel = os.path.relpath(full, SRC).replace(os.sep, "/")
+            rel = os.path.relpath(full, root).replace(os.sep, "/")
             logical = rel[: -len(".luau")]
             with open(full, encoding="utf-8") as fh:
-                out.append((logical, fh.read()))
+                out[logical] = fh.read()
     return out
+
+
+def collect() -> "list[tuple[str, str]]":
+    """Every source the game actually ships, as (logical path, source).
+
+    The logical path is the one the shim's require understands: relative to the
+    source root and without the extension, e.g. "shared/Config" or "server/World".
+
+    An overlay root is laid on top of SRC, file by file. This matters because the
+    overlay is the code that ships: breachline's mobile input, aim assist and HUD
+    live there, and the build replaces the upstream file with the overlay's copy
+    at the same path. Bundling only SRC tested a game nobody runs -- the overlay
+    could not even be required, because a file that exists only in the overlay was
+    not in the bundle at all. Later roots win, which is the same order the build
+    applies them in.
+    """
+    merged = collect_from(SRC)
+    if OVERLAY:
+        merged.update(collect_from(OVERLAY))
+    return sorted(merged.items())
 
 
 def lua_long_string(text: str) -> str:
@@ -94,16 +111,27 @@ def render(files) -> str:
 
 
 def main() -> int:
-    global SRC
+    global SRC, OVERLAY
     args = [a for a in sys.argv[1:]]
     src_override = None
+    overlay_override = None
     if "--src" in args:
         i = args.index("--src")
         src_override = args[i + 1]
         del args[i : i + 2]
+    if "--overlay" in args:
+        i = args.index("--overlay")
+        overlay_override = args[i + 1]
+        del args[i : i + 2]
     out = args[0] if args else DEFAULT_OUT
     if src_override:
         SRC = src_override if os.path.isabs(src_override) else os.path.join(ROOT, src_override)
+    if overlay_override:
+        OVERLAY = (
+            overlay_override
+            if os.path.isabs(overlay_override)
+            else os.path.join(ROOT, overlay_override)
+        )
 
     files = collect()
     if not files:
