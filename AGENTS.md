@@ -1733,6 +1733,28 @@ play two rounds, the same team loses both, and the second loss must pay more
 than the first. Reintroducing the flat payout makes three tests fail -- two pure
 and that one -- and a test that passes with the bug present proves nothing.
 
+### The economy is published, and the version number is the proof
+
+Commit `5e9852c` pushed to `breachline/**`, which fired
+`ax-breachline-build-publish.yml` on a hosted runner -- no PC1 involved. The
+run `39951015438` built, verified, and published:
+
+```
+PUBLISH_URL=https://apis.roblox.com/universes/v1/10772257179/places/136310542172942/versions?versionType=Published
+PUBLISH_HTTP=200
+PUBLISH_RESPONSE={"versionNumber":18}
+PUBLISH=OK universeId=10772257179 placeId=136310542172942 versionType=Published
+```
+
+The version number was confirmed from outside the repository, which is the only
+check that matters: `games.roblox.com/v1/games?universeIds=10772257179` reports
+`updated = 2026-10-23T12:08:09.3Z`, matching the publish log's `12:08:09Z`. The
+previous published build was version 14 (see the map note above), so this change
+is live.
+
+Publishing still needs no PC1 and no Studio. The PC1 runner being broken blocks
+desktop work and screenshots, not shipping.
+
 ### A lone player must be able to play
 
 The game gated every round on `Rules.MinimumPlayers = 2`. On a new experience
