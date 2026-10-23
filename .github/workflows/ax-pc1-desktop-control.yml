@@ -39,6 +39,10 @@ on:
         description: 'winremote-mcp port on PC1'
         required: false
         default: '8090'
+      pre_command:
+        description: 'Optional PowerShell file on PC1 to run as its own step before the MCP call. Runs in the runner session with no 30-second limit, which is what a window capture or any other multi-second job needs.'
+        required: false
+        default: ''
       start_server:
         description: 'Start the MCP server task if it is not already answering'
         required: false
@@ -60,6 +64,7 @@ jobs:
       MCP_TOOL: ${{ inputs.tool || 'GetSystemInfo' }}
       MCP_ARGS: ${{ inputs.args || '{}' }}
       MCP_PORT: ${{ inputs.port || '8090' }}
+      PRE_COMMAND: ${{ inputs.pre_command || '' }}
     steps:
       # Self-hosted runners reuse their workspace between jobs, so without an
       # explicit checkout the client script below can be missing or stale.
@@ -127,6 +132,22 @@ jobs:
           $shotDir = 'C:\AX-Runtime\evidence\desktop-control'
           New-Item -ItemType Directory -Path $shotDir -Force | Out-Null
 
+          # A window capture has to raise a window and wait for it to settle,
+          # which outlives the MCP tool's own 30-second ceiling. Anything like
+          # that runs here, as a real step, and the MCP call below stays short.
+          if ($env:PRE_COMMAND) {
+            Write-Host "PRE_COMMAND=$env:PRE_COMMAND"
+            $pre = $env:PRE_COMMAND
+            if (-not (Test-Path -LiteralPath $pre)) {
+              $name = Split-Path -Leaf $pre
+              $raw = "https://raw.githubusercontent.com/aerismusic8-alt/aeris-drive-automation/$($env:GITHUB_REF_NAME)/AX_PC_CONTROL/$name"
+              Write-Host "PRE_COMMAND_FETCH=$raw"
+              Invoke-WebRequest -Uri $raw -OutFile $pre -UseBasicParsing
+            }
+            & powershell.exe -NoProfile -ExecutionPolicy Bypass -File $pre
+            Write-Host "PRE_COMMAND_EXIT=$LASTEXITCODE"
+          }
+
           # Find the client script. The repository is checked out in the runner
           # workspace, so prefer that over a copy in the runtime folder.
           $client = Join-Path $env:GITHUB_WORKSPACE 'AX_PC_CONTROL\ax-winremote-mcp.py'
@@ -192,5 +213,6 @@ jobs:
           path: |
             C:\AX-Runtime\evidence\desktop-control\*
             C:\AX-Runtime\evidence\pc1-desktop-control.json
+            C:\AX-Runtime\evidence\capture\*
           if-no-files-found: warn
           retention-days: 14
