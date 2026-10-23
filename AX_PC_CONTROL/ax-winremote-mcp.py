@@ -38,6 +38,16 @@ import os
 import sys
 
 import httpx2
+
+# PC1 is Windows, where stdout defaults to a legacy code page rather than UTF-8.
+# A tool result carrying any non-ASCII character -- a Thai filename in a file
+# listing, a glyph in a screenshot caption -- raised UnicodeEncodeError inside
+# print() and killed the call, so Shell and Snapshot reported an error for
+# results they had already fetched successfully. Force UTF-8 so the JSON is
+# written intact on every host.
+if hasattr(sys.stdout, "reconfigure"):
+    sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+
 from mcp import ClientSession
 from mcp.client.streamable_http import create_mcp_http_client, streamable_http_client
 
