@@ -127,7 +127,10 @@ def _resolve_args(args) -> dict:
     that host.
     """
     if getattr(args, "args_file", None):
-        with open(args.args_file, encoding="utf-8") as fh:
+        # utf-8-sig, not utf-8: PowerShell's Set-Content -Encoding UTF8 writes a
+        # BOM, and json.loads rejects a leading BOM. utf-8-sig accepts the file
+        # either way, so a caller that does not write one still works.
+        with open(args.args_file, encoding="utf-8-sig") as fh:
             raw = fh.read()
         try:
             parsed = json.loads(raw)
