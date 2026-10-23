@@ -58,7 +58,14 @@ PLACE_ID="${PLACE_ID:-$CFG_PLACE_ID}"
 
 WANT_NAME=$(python3 - "$CFG_LUAU" <<'PY'
 import re, sys
-src = open(sys.argv[1], encoding="utf-8").read()
+# A missing or non-Luau file means there is no expected name to compare against,
+# which is the case for a game that keeps its name in publish-config.json only.
+# Reading it must not raise, or the whole check dies before it looks at the game.
+try:
+    src = open(sys.argv[1], encoding="utf-8").read()
+except Exception:
+    print("")
+    raise SystemExit(0)
 m = re.search(r'Config\.GameName\s*=\s*"([^"]+)"', src)
 print(m.group(1) if m else "")
 PY

@@ -127,3 +127,34 @@ jobs:
             exit 0
           fi
           exit "$CODE"
+
+  # Publishing a place and having a game a player can open are two different
+  # facts, and only the second one matters to a player. The garden has had this
+  # job since a green pipeline proved the wrong thing twice -- a place published
+  # with no name, and a private universe -- while every job passed and the game
+  # page said Title-Unavailable. Breachline never had it, so nothing in its
+  # pipeline had ever asked whether the universe is reachable.
+  #
+  # It runs last, needs no credential for the parts that are public, and reads
+  # the things a player reads: the game page redirect, the name the games API
+  # reports, and -- with the key -- the universe's visibility, because a PRIVATE
+  # universe is unreachable however good the build is.
+  live-state:
+    needs: publish
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Check the game the way a player sees it
+        env:
+          ROBLOX_API_KEY: ${{ secrets.ROBLOX_API_KEY }}
+          CFG_JSON: ${{ github.workspace }}/breachline/publish-config.json
+          # Breachline has no Config.luau, so there is no expected name to compare
+          # against and the name check is skipped; the page redirect, the API name
+          # being present and not [TITLE UNAVAILABLE], and the visibility read all
+          # still run. Pointing this at the garden's Config.luau would compare
+          # Breachline's name to the garden's and fail for the wrong reason.
+          CFG_LUAU: ${{ github.workspace }}/breachline/publish-config.json
+        run: bash scripts/check-live-state-linux.sh
