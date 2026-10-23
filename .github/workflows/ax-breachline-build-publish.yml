@@ -158,3 +158,16 @@ jobs:
           # Breachline's name to the garden's and fail for the wrong reason.
           CFG_LUAU: ${{ github.workspace }}/breachline/publish-config.json
         run: bash scripts/check-live-state-linux.sh
+
+      - name: Dump the full universe object for both games
+        if: always()
+        env:
+          ROBLOX_API_KEY: ${{ secrets.ROBLOX_API_KEY }}
+        run: |
+          if [ -z "$ROBLOX_API_KEY" ]; then echo "NO_KEY"; exit 0; fi
+          for U in 10772257179 10771844216; do
+            echo "=============== universe $U ==============="
+            curl -sS -m 20 -H "x-api-key: $ROBLOX_API_KEY" \
+              "https://apis.roblox.com/cloud/v2/universes/$U" | head -c 3000
+            echo
+          done
