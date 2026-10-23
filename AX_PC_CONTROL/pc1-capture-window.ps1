@@ -70,7 +70,8 @@ public static class AXCapture {
     ShowWindow(h, 9);   // SW_RESTORE
     ShowWindow(h, 3);   // SW_MAXIMIZE
     IntPtr fg = GetForegroundWindow();
-    uint fgThread = GetWindowThreadProcessId(fg, out uint _);
+    uint fgPid;
+    uint fgThread = GetWindowThreadProcessId(fg, out fgPid);
     uint me = GetCurrentThreadId();
     AttachThreadInput(fgThread, me, true);
     BringWindowToTop(h);
@@ -107,7 +108,7 @@ $before = Get-Title $hwnd
 Start-Sleep -Seconds $WaitSeconds
 
 $fg = [AXCapture]::Foreground()
-$fgPid = 0
+[uint32]$fgPid = 0
 [void][AXCapture]::GetWindowThreadProcessId($fg, [ref]$fgPid)
 $fgTitle = Get-Title $fg
 
