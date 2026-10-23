@@ -13,10 +13,13 @@
 
 $here = Split-Path -Parent $MyInvocation.MyCommand.Path
 $capture = Join-Path $here 'pc1-capture-window.ps1'
-if (-not (Test-Path -LiteralPath $capture)) {
-  $raw = "https://raw.githubusercontent.com/aerismusic8-alt/aeris-drive-automation/$($env:GITHUB_REF_NAME)/AX_PC_CONTROL/pc1-capture-window.ps1"
-  Invoke-WebRequest -Uri $raw -OutFile $capture -UseBasicParsing
-}
+
+# Always take the repository copy. An older one already sits in this folder on
+# PC1, and reusing it silently ran a version with no launch support, which read
+# as a capture failure rather than a stale file.
+$raw = "https://raw.githubusercontent.com/aerismusic8-alt/aeris-drive-automation/$($env:GITHUB_REF_NAME)/AX_PC_CONTROL/pc1-capture-window.ps1"
+Invoke-WebRequest -Uri $raw -OutFile $capture -UseBasicParsing
+Write-Host "CAPTURE_SCRIPT=$capture"
 
 & $capture -ProcessName RobloxPlayerBeta `
   -OutDir 'C:\AX-Runtime\evidence\capture' `

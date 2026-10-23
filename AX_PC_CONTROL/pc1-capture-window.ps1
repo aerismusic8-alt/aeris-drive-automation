@@ -100,6 +100,14 @@ New-Item -ItemType Directory -Path $OutDir -Force | Out-Null
 # to photograph. Launching from a workflow step puts it on the interactive
 # desktop where it can actually draw.
 if ($LaunchPlaceId) {
+  # A player left over from an earlier attempt can hold the single-instance
+  # lock and swallow the new launch, leaving the old windowless process behind.
+  # Clear the field first so the launch below is the one that ends up running.
+  foreach ($old in @(Get-Process -Name $ProcessName -ErrorAction SilentlyContinue)) {
+    try { $old.Kill(); Write-Host "KILLED_STALE pid=$($old.Id)" } catch { }
+  }
+  Start-Sleep -Seconds 3
+
   Write-Host "LAUNCHING placeId=$LaunchPlaceId"
   Start-Process "roblox://placeId=$LaunchPlaceId"
   $launchDeadline = (Get-Date).AddSeconds($LaunchWaitSeconds)
