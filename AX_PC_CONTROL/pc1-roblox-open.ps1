@@ -150,6 +150,34 @@ public static class AXWin {
   [DllImport("user32.dll", CharSet=CharSet.Unicode)] public static extern int GetWindowText(IntPtr h, StringBuilder t, int c);
   [DllImport("user32.dll")] public static extern bool SetForegroundWindow(IntPtr h);
   [DllImport("user32.dll")] public static extern bool ShowWindow(IntPtr h, int cmd);
+  [DllImport("user32.dll")] public static extern bool BringWindowToTop(IntPtr h);
+  [DllImport("user32.dll")] public static extern bool SetWindowPos(IntPtr h, IntPtr after, int x, int y, int cx, int cy, uint flags);
+  [DllImport("user32.dll")] public static extern uint GetWindowThreadProcessId(IntPtr h, out uint pid);
+  [DllImport("kernel32.dll")] public static extern uint GetCurrentThreadId();
+  [DllImport("user32.dll")] public static extern bool AttachThreadInput(uint a, uint b, bool attach);
+
+  // Windows refuses SetForegroundWindow from a background process, which is why
+  // the F5 keystroke used to land in whatever window the session happened to be
+  // showing. Attaching to the current foreground thread's input queue lifts that
+  // restriction for the duration of the call.
+  public static void ForceForeground(IntPtr h) {
+    ShowWindow(h, 3);   // SW_MAXIMIZE
+    IntPtr fg = GetForegroundWindow();
+    uint fgPid;
+    uint fgThread = GetWindowThreadProcessId(fg, out fgPid);
+    uint me = GetCurrentThreadId();
+    AttachThreadInput(fgThread, me, true);
+    BringWindowToTop(h);
+    SetWindowPos(h, IntPtr.Zero, 0, 0, 0, 0, 0x0001 | 0x0002 | 0x0040); // NOSIZE|NOMOVE|SHOWWINDOW
+    SetForegroundWindow(h);
+    AttachThreadInput(fgThread, me, false);
+  }
+
+  public static uint WindowPid(IntPtr h) {
+    uint pid;
+    GetWindowThreadProcessId(h, out pid);
+    return pid;
+  }
 }
 '@
 
@@ -253,13 +281,15 @@ try {
   }
 
   # Bring Studio to the front before sending the key. Without the focus the
-  # keystroke lands in whatever window the session happens to be showing.
+  # keystroke lands in whatever window the session happens to be showing, and
+  # the screenshots below then show that window instead of the game.
   $hwnd = $studioProc.MainWindowHandle
   if ($hwnd -ne [IntPtr]::Zero) {
-    [void][AXWin]::ShowWindow($hwnd, 3)   # 3 = SW_MAXIMIZE
-    [void][AXWin]::SetForegroundWindow($hwnd)
+    [AXWin]::ForceForeground($hwnd)
     Start-Sleep -Seconds 3
     Write-Host "FOCUS_TITLE=$(Get-WindowTitle $hwnd)"
+    $fgPid = [AXWin]::WindowPid([AXWin]::GetForegroundWindow())
+    Write-Host "FOCUS_IS_STUDIO=$($fgPid -eq $studioProc.Id)"
   } else {
     $notes.Add('studio reported no main window handle; the F5 key may not land')
   }
@@ -275,25 +305,35 @@ try {
   $n = 0
   while ((Get-Date) -lt $deadline) {
     $n++
+    # Re-assert the focus each frame. Studio can lose it while Play mode loads,
+    # and a frame of whatever took over is not evidence about the game.
+    if ($hwnd -ne [IntPtr]::Zero) { [AXWin]::ForceForeground($hwnd) }
+    Start-Sleep -Seconds 1
     $img = Save-Screenshot 'roblox-open'
     $fg = [AXWin]::GetForegroundWindow()
     $title = Get-WindowTitle $fg
+    $fgPid = [AXWin]::WindowPid($fg)
     $captures.Add([pscustomobject]@{
       timestampUtc = (Get-Date).ToUniversalTime().ToString('o')
       image        = $img
       foreground   = $title
+      isStudio     = ($fgPid -eq $studioProc.Id)
     })
-    Write-Host "CAPTURE=$n TITLE=$title"
-    Start-Sleep -Seconds 6
+    Write-Host "CAPTURE=$n STUDIO=$($fgPid -eq $studioProc.Id) TITLE=$title"
+    Start-Sleep -Seconds 5
   }
 
   # Play mode renames the window, so a live window plus a captured title is the
-  # signal that the game started rather than the editor just sitting there.
+  # signal that the game started rather than the editor just sitting there. A
+  # frame only counts when Studio itself was in front: a picture of the browser
+  # proves nothing about the game, which is what an earlier run uploaded.
   $alive = ($studioProc -and !$studioProc.HasExited)
-  $titles = @($captures | ForEach-Object { $_.foreground } | Where-Object { $_ })
+  $studioShots = @($captures | Where-Object { $_.isStudio })
+  $titles = @($studioShots | ForEach-Object { $_.foreground } | Where-Object { $_ })
   $gameRan = ($alive -and ($titles.Count -gt 0))
   Write-Host "STUDIO_ALIVE=$alive"
   Write-Host "CAPTURE_COUNT=$($captures.Count)"
+  Write-Host "STUDIO_CAPTURE_COUNT=$($studioShots.Count)"
   Write-Host "TITLES=$($titles -join ' | ')"
 } catch {
   # Same reason as the smoke phase: record the failure, do not lose the evidence.
