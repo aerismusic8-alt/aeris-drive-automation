@@ -425,6 +425,32 @@ print("MAPS_FOUND=" .. tostring(#xs))
             "requiredPlayers(" in shipped_match,
             "the server would still demand two players",
         )
+        # A player must be admitted without the client asking. CharacterAutoLoads
+        # is off, so a client whose HUD never drew -- a script error, a slow
+        # device, a missed tap -- got no character and could never enter, which
+        # is the "loads for minutes" report. Admission therefore has to be
+        # server-driven, and the round loop must survive an error rather than
+        # end and leave a live server that never starts another round.
+        check(
+            "the shipped match layer admits players on join",
+            "PlayerAdded:Connect" in shipped_match and "admit(" in shipped_match,
+            "a player would have no character until the client fired JoinMatch",
+        )
+        check(
+            "the shipped match layer admits players already in the server",
+            "Players:GetPlayers()" in shipped_match,
+            "a player who joined before the script ran would never be admitted",
+        )
+        check(
+            "the shipped match layer keeps the round loop alive",
+            "pcall(roundLoopIteration)" in shipped_match,
+            "one error would end the match loop for the life of the server",
+        )
+        check(
+            "the shipped match layer guards a missing team on spawn",
+            "teamName = player.Team and player.Team.Name" in shipped_match,
+            "an unassigned team would raise inside the round loop",
+        )
     finally:
         shutil.rmtree(work, ignore_errors=True)
 

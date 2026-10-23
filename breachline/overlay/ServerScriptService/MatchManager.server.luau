@@ -97,7 +97,11 @@ local function spawnForRound(player)
     local root = character:WaitForChild("HumanoidRootPart", 8)
     local humanoid = character:WaitForChild("Humanoid", 8)
     if not root or not humanoid then return end
-    local spawn = activeMap and activeMap.model:FindFirstChild(player.Team.Name .. " Spawn")
+    -- Team can be nil for a player who joined while the round loop was between
+    -- assignments. Reading it through a guard keeps that from raising, because an
+    -- error here used to propagate out of the round loop and end the match.
+    local teamName = player.Team and player.Team.Name
+    local spawn = teamName and activeMap and activeMap.model:FindFirstChild(teamName .. " Spawn")
     if spawn then character:PivotTo(spawn.CFrame * CFrame.new(0, 4, 0)) end
     player:SetAttribute("Alive", true)
     humanoid.Died:Connect(function()
@@ -173,15 +177,38 @@ end
 -- map the match is not being played on.
 advanceMap()
 
-state.JoinMatch.OnServerEvent:Connect(function(player)
+---Put `player` in the match. Both the menu's PLAY button and the automatic
+---admission below go through here, so there is one admission path.
+local function admit(player)
     if participants[player] then return end
+    if player.Parent ~= Players then return end
     participants[player] = true
     assignTeam(player)
-    -- Late arrivals wait until the next buy phase.
-    if player.Character == nil then spawnForRound(player) end
-    player:SetAttribute("Alive", false)
+    -- A player gets a character on arrival rather than waiting for a round to
+    -- start, so joining never leaves someone staring at a menu. The round loop
+    -- respawns everyone at the start of each round regardless.
+    if player.Character == nil then
+        spawnForRound(player)
+    else
+        player:SetAttribute("Alive", true)
+    end
     updateAlive()
+end
+
+-- A player is admitted as soon as they arrive, not when a button is pressed.
+-- The game used to wait for the client to fire JoinMatch, which meant a player
+-- whose HUD never drew -- a client script error, a slow device, a missed tap --
+-- had no character at all, because CharacterAutoLoads is off. That reads as
+-- "loads for minutes and never gets in". The menu still fires JoinMatch; it is
+-- now a no-op for someone already admitted rather than the only way in.
+Players.PlayerAdded:Connect(function(player)
+    admit(player)
 end)
+for _, player in ipairs(Players:GetPlayers()) do
+    admit(player)
+end
+
+state.JoinMatch.OnServerEvent:Connect(admit)
 Players.PlayerRemoving:Connect(function(player)
     participants[player] = nil
     updateAlive()
@@ -217,64 +244,79 @@ local function finishRound(winner, reason)
     setPhase("Round End", Rules.EndSeconds)
 end
 
+---One pass of the match loop: a round, its result, and the rotation that
+---follows. It is a function so the driver below can catch a failure and start a
+---fresh round instead of leaving the server with no loop at all.
+local function roundLoopIteration()
+    clearBomb()
+    pendingResult = nil
+    while countPlayers() < requiredPlayers(countPlayers()) do
+        setPhase("Waiting for Players", 0)
+        state:SetAttribute("Practice", false)
+        task.wait(1)
+    end
+    -- A match is played on one map from start to finish; the rotation moves
+    -- between matches, not between rounds, so both teams learn the map they
+    -- are on before it changes under them. The first match uses the map
+    -- selected at startup.
+    -- One player is a practice round. The flag is what the HUD keys off,
+    -- and it is recomputed every round so a second player joining turns
+    -- practice off without a restart.
+    local practice = countPlayers() < Rules.MinimumPlayers
+    state:SetAttribute("Practice", practice)
+    countdown("Warm-up", Rules.WarmupSeconds, false)
+    if countPlayers() < requiredPlayers(countPlayers()) then return end
+    roundId += 1
+    resolved = false
+    state:SetAttribute("Round", roundId)
+    state:SetAttribute("Reason", "")
+    clearBomb()
+    for player in pairs(participants) do
+        if player.Parent == Players then spawnForRound(player) end
+    end
+    updateAlive()
+    if not countdown("Buy Phase", Rules.BuySeconds, true) then return end
+    if countPlayers() < requiredPlayers(countPlayers()) then return end
+    if not countdown("Combat", Rules.RoundSeconds, true) then return end
+    if bombPart and not pendingResult then
+        countdown("Planted", Rules.BombSeconds, true)
+        if not pendingResult and countPlayers() >= requiredPlayers(countPlayers()) then
+            pendingResult = {"Attackers", "Bomb Detonated"}
+        end
+    elseif not pendingResult and countPlayers() >= requiredPlayers(countPlayers()) then
+        local winner, reason = Rules.winner("Combat", "Idle", alive("Attackers"), alive("Defenders"), 0, practice)
+        pendingResult = {winner or "Defenders", reason or "Time Expired"}
+    end
+    if countPlayers() < requiredPlayers(countPlayers()) then return end
+    finishRound(pendingResult[1], pendingResult[2])
+    countdown("Round End", Rules.EndSeconds, false)
+    if state:GetAttribute("AttackersScore") >= Rules.ScoreToWin or state:GetAttribute("DefendersScore") >= Rules.ScoreToWin then
+        local champ = if state:GetAttribute("AttackersScore") > state:GetAttribute("DefendersScore") then "Attackers" else "Defenders"
+        state:SetAttribute("Reason", champ .. " win the match")
+        countdown("Match Result", 10, false)
+        state:SetAttribute("AttackersScore", 0)
+        state:SetAttribute("DefendersScore", 0)
+        roundId = 0
+        -- The next match is played on the next map in the rotation.
+        advanceMap()
+    elseif roundId == 3 then
+        for player in pairs(participants) do
+            if player.Team == Teams.Attackers then player.Team = Teams.Defenders
+            elseif player.Team == Teams.Defenders then player.Team = Teams.Attackers end
+        end
+    end
+end
+
+-- The loop must never end. An uncaught error used to kill the thread that runs
+-- the match, which left a live server where no round ever starts again: players
+-- join, get a character, and nothing happens for minutes. A failure is logged
+-- and the next round begins instead.
 task.spawn(function()
     while true do
-        clearBomb()
-        pendingResult = nil
-        while countPlayers() < requiredPlayers(countPlayers()) do
-            setPhase("Waiting for Players", 0)
-            state:SetAttribute("Practice", false)
-            task.wait(1)
-        end
-        -- A match is played on one map from start to finish; the rotation moves
-        -- between matches, not between rounds, so both teams learn the map they
-        -- are on before it changes under them. The first match uses the map
-        -- selected at startup.
-        -- One player is a practice round. The flag is what the HUD keys off,
-        -- and it is recomputed every round so a second player joining turns
-        -- practice off without a restart.
-        local practice = countPlayers() < Rules.MinimumPlayers
-        state:SetAttribute("Practice", practice)
-        countdown("Warm-up", Rules.WarmupSeconds, false)
-        if countPlayers() < requiredPlayers(countPlayers()) then continue end
-        roundId += 1
-        resolved = false
-        state:SetAttribute("Round", roundId)
-        state:SetAttribute("Reason", "")
-        clearBomb()
-        for player in pairs(participants) do
-            if player.Parent == Players then spawnForRound(player) end
-        end
-        updateAlive()
-        if not countdown("Buy Phase", Rules.BuySeconds, true) then continue end
-        if countPlayers() < requiredPlayers(countPlayers()) then continue end
-        if not countdown("Combat", Rules.RoundSeconds, true) then continue end
-        if bombPart and not pendingResult then
-            countdown("Planted", Rules.BombSeconds, true)
-            if not pendingResult and countPlayers() >= requiredPlayers(countPlayers()) then
-                pendingResult = {"Attackers", "Bomb Detonated"}
-            end
-        elseif not pendingResult and countPlayers() >= requiredPlayers(countPlayers()) then
-            local winner, reason = Rules.winner("Combat", "Idle", alive("Attackers"), alive("Defenders"), 0, practice)
-            pendingResult = {winner or "Defenders", reason or "Time Expired"}
-        end
-        if countPlayers() < requiredPlayers(countPlayers()) then continue end
-        finishRound(pendingResult[1], pendingResult[2])
-        countdown("Round End", Rules.EndSeconds, false)
-        if state:GetAttribute("AttackersScore") >= Rules.ScoreToWin or state:GetAttribute("DefendersScore") >= Rules.ScoreToWin then
-            local champ = if state:GetAttribute("AttackersScore") > state:GetAttribute("DefendersScore") then "Attackers" else "Defenders"
-            state:SetAttribute("Reason", champ .. " win the match")
-            countdown("Match Result", 10, false)
-            state:SetAttribute("AttackersScore", 0)
-            state:SetAttribute("DefendersScore", 0)
-            roundId = 0
-            -- The next match is played on the next map in the rotation.
-            advanceMap()
-        elseif roundId == 3 then
-            for player in pairs(participants) do
-                if player.Team == Teams.Attackers then player.Team = Teams.Defenders
-                elseif player.Team == Teams.Defenders then player.Team = Teams.Attackers end
-            end
+        local ok, err = pcall(roundLoopIteration)
+        if not ok then
+            warn(string.format("[Breachline] round loop error, continuing: %s", tostring(err)))
+            task.wait(2)
         end
     end
 end)

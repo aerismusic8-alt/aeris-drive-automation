@@ -429,6 +429,19 @@ play.Activated:Connect(function()
 	player.CameraMode = Enum.CameraMode.LockFirstPerson
 end)
 
+-- The server admits a player on arrival, so the menu must not sit on top of a
+-- game that is already running. It hides as soon as the player has a character,
+-- which is the same moment the round loop can place them. The button still
+-- works for anyone who wants to dismiss it early.
+local function hideMenuWhenPlaying()
+	if player.Character and player.Character:FindFirstChildOfClass("Humanoid") then
+		menu.Visible = false
+	end
+end
+
+if player.Character then hideMenuWhenPlaying() end
+player.CharacterAdded:Connect(hideMenuWhenPlaying)
+
 -- The map changes between matches, so the heading follows it rather than
 -- staying on whatever map the player first saw.
 state:GetAttributeChangedSignal("MapName"):Connect(function()
