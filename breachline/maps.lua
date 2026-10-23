@@ -48,11 +48,13 @@ local ORDER_ATTRIBUTE = "MapOrder"
 
 local RANGE_NAME = "PrototypeRange"
 local FOUNDRY_NAME = "Foundry"
+local DEPOT_NAME = "Depot"
 
--- How far the second map sits from the first. The two are never in the world at
+-- How far each built map sits from the next. The maps are never in the world at
 -- the same time -- the server moves the inactive one out -- so this only has to
 -- be clear of an overlap for the build, not for play.
 local FOUNDRY_OFFSET = 200
+local DEPOT_OFFSET = -200
 
 --------------------------------------------------------------------------
 -- Building blocks
@@ -237,11 +239,83 @@ bombSite(sites, "A", Vector3.new(X - 30, 0.16, -20))
 bombSite(sites, "B", Vector3.new(X + 30, 0.16, -20))
 
 --------------------------------------------------------------------------
+-- Map 3: Depot
+--------------------------------------------------------------------------
+
+-- The two maps above are both open ground with cover scattered on it. Depot is
+-- the opposite shape: a container yard where the lanes are the gaps between
+-- solid blocks, so fights happen at the corners of cover rather than across an
+-- open field. A third map that played like either of the first two would not be
+-- worth rotating to.
+local existingDepot = Workspace:FindFirstChild(DEPOT_NAME)
+if existingDepot then existingDepot:Destroy() end
+
+local depot = Instance.new("Model")
+depot.Name = DEPOT_NAME
+depot:SetAttribute(ID_ATTRIBUTE, "depot")
+depot:SetAttribute(NAME_ATTRIBUTE, "Depot")
+depot:SetAttribute(ORDER_ATTRIBUTE, 3)
+depot:SetAttribute("MapActive", false)
+depot.Parent = Workspace
+
+local D = DEPOT_OFFSET
+local CONCRETE = Color3.fromRGB(112, 114, 118)
+local PAINT = Color3.fromRGB(72, 108, 132)
+local CONTAINER = Color3.fromRGB(158, 76, 58)
+
+-- Same footprint as the other two, so a player's sense of distance carries over.
+part(depot, "Ground", Vector3.new(90, 2, 112), CFrame.new(D, -1, 0), CONCRETE)
+part(depot, "West Wall", Vector3.new(2, 15, 112), CFrame.new(D - 45, 7.5, 0), CONCRETE)
+part(depot, "East Wall", Vector3.new(2, 15, 112), CFrame.new(D + 45, 7.5, 0), CONCRETE)
+part(depot, "Backstop", Vector3.new(90, 19, 2), CFrame.new(D, 9.5, -55), CONCRETE)
+part(depot, "Rear Wall", Vector3.new(90, 10, 2), CFrame.new(D, 5, 55), CONCRETE)
+
+-- Containers stacked two high down the middle, with a walkable gap between each
+-- row. The blocks are tall enough to break a sightline across the map but short
+-- enough to see over from the raised site platforms.
+local CONTAINERS = {
+        { D - 20, 3, 24, 34, 6, 8 },
+        { D + 20, 3, 24, 34, 6, 8 },
+        { D - 20, 3, -24, 34, 6, 8 },
+        { D + 20, 3, -24, 34, 6, 8 },
+        { D, 3, 0, 34, 6, 8 },
+        { D, 9, 0, 34, 6, 8 },
+        { D - 32, 3, -2, 8, 6, 30 },
+        { D + 32, 3, -2, 8, 6, 30 },
+}
+for _, c in ipairs(CONTAINERS) do
+        part(depot, "Container", Vector3.new(c[4], c[5], c[6]), CFrame.new(c[1], c[2], c[3]), CONTAINER)
+end
+
+-- Low cover along the approaches, so a lane is never a straight run to a site.
+local DEPOT_COVER = {
+        { D - 10, 2.5, 40 },
+        { D + 10, 2.5, 40 },
+        { D - 10, 2.5, -42 },
+        { D + 10, 2.5, -42 },
+}
+for _, c in ipairs(DEPOT_COVER) do
+        part(depot, "Cover", Vector3.new(8, 5, 3), CFrame.new(c[1], c[2], c[3]), PAINT)
+end
+
+spawn(depot, "Attackers Spawn", Vector3.new(D - 12, 0.5, 46))
+spawn(depot, "Defenders Spawn", Vector3.new(D + 12, 0.5, -46))
+
+-- Sites at opposite corners rather than side by side, so a defender rotates
+-- across the map between them and an attacker has to commit to one approach.
+local depotSites = Instance.new("Folder")
+depotSites.Name = "BombSites"
+depotSites.Parent = depot
+bombSite(depotSites, "A", Vector3.new(D - 28, 0.16, 20))
+bombSite(depotSites, "B", Vector3.new(D + 28, 0.16, -20))
+
+--------------------------------------------------------------------------
 -- Verify before writing
 --------------------------------------------------------------------------
 
 validate(range)
 validate(foundry)
+validate(depot)
 
 if #failures > 0 then
 	io.stderr:write("MAPS_FAILED: maps missing part of the contract:\n")
@@ -250,4 +324,4 @@ if #failures > 0 then
 end
 
 fs.write(outPath, place, "rbxl")
-print(string.format("MAPS_OK maps=2 out=%s", outPath))
+print(string.format("MAPS_OK maps=3 out=%s", outPath))

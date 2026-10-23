@@ -98,8 +98,8 @@ def main() -> int:
         check("maps pass succeeds", maps.returncode == 0, maps.stderr[-400:])
         check("maps pass reports no failures", "MAPS_FAILED" not in maps.stdout, maps.stdout[-400:])
         check(
-            "maps pass built two maps",
-            any(line.startswith("MAPS_OK") and "maps=2" in line for line in maps.stdout.splitlines()),
+            "maps pass built three maps",
+            any(line.startswith("MAPS_OK") and "maps=3" in line for line in maps.stdout.splitlines()),
             maps.stdout[-400:],
         )
 
@@ -230,12 +230,20 @@ for _, child in ipairs(ws:GetChildren()) do
       child.Name, id, name, order, sites, spawns))
   end
 end
--- Two maps that overlap in the world put one team's spawn inside the other map.
--- The rotation never has both active, but an overlap is still a build mistake.
+-- Maps that overlap in the world put one team's spawn inside another map. The
+-- rotation never has two active at once, but an overlap is still a build
+-- mistake, so every pair has to be clear of the others.
 local xs = {}
 for _, x in pairs(groundX) do table.insert(xs, x) end
 local apart = "no"
-if #xs == 2 and math.abs(xs[1] - xs[2]) > 90 then apart = "yes" end
+if #xs >= 2 then
+  apart = "yes"
+  for i = 1, #xs do
+    for j = i + 1, #xs do
+      if math.abs(xs[i] - xs[j]) <= 90 then apart = "no" end
+    end
+  end
+end
 print("MAPS_APART=" .. apart)
 print("MAPS_FOUND=" .. tostring(#xs))
 """,
@@ -298,7 +306,7 @@ print("MAPS_FOUND=" .. tostring(#xs))
             for line in out.splitlines()
             if line.startswith("MAP ") and "=" in line
         }
-        check("two maps are in the built place", len(maps_seen) == 2, str(list(maps_seen)))
+        check("three maps are in the built place", len(maps_seen) == 3, str(list(maps_seen)))
         for name, fields in maps_seen.items():
             check(f"map {name} has an id", fields.get("id") not in (None, "nil", ""), str(fields.get("id")))
             check(f"map {name} has a name", fields.get("name") not in (None, "nil", ""), str(fields.get("name")))
@@ -306,8 +314,9 @@ print("MAPS_FOUND=" .. tostring(#xs))
             check(f"map {name} has two plantable sites", fields.get("sites") == "2", str(fields.get("sites")))
             check(f"map {name} has both team spawns", fields.get("spawns") == "2", str(fields.get("spawns")))
         orders = sorted(int(f["order"]) for f in maps_seen.values() if f.get("order", "").isdigit())
-        check("map orders are distinct", len(orders) == len(set(orders)) == 2, str(orders))
-        check("the two maps do not overlap", value("MAPS_APART") == "yes", str(value("MAPS_APART")))
+        check("map orders are distinct", len(orders) == len(set(orders)) == 3, str(orders))
+        check("every pair of maps is apart", value("MAPS_APART") == "yes", str(value("MAPS_APART")))
+        check("the rotation has three maps to rotate", value("MAPS_FOUND") == "3", str(value("MAPS_FOUND")))
 
         # The overlay's own behaviour cannot be run outside Roblox, so the parts
         # of it that are wiring -- which module the client requires, which
