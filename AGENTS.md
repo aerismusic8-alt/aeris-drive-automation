@@ -1700,6 +1700,39 @@ trusting the build log:
 tools/rbxmk/rbxmk run --allow-insecure-paths /tmp/dump/verify_fix.lua breachline/build/breachline.rbxl
 ```
 
+### The economy has to be a decision, not a formality
+
+The round payout was flat: 1500 to the winners, 900 to the losers, forever, with
+no ceiling on how much a player could hold. That is not a CS-like economy even
+though the shop looks like one. With a flat payout the team that wins the
+opening rounds can afford armor and the SMG every round while the other cannot,
+so the first few rounds decide the match and the rest is played out; and with no
+ceiling, money stops being scarce and the shop stops being a choice.
+
+The fix keeps the shop prices (SMG 700, armor 600) and the starting money (800)
+and changes only the payout, which lives in `RoundRules` so it can be tested
+without an engine:
+
+| | before | after |
+| --- | --- | --- |
+| win | 1500 flat | 1500 flat |
+| loss | 900 flat | 900 + 500 per consecutive loss |
+| loss cap | none | streak held at 5, so a loss tops out at 2900 |
+| money ceiling | none | 16000 |
+
+A win resets that team's streak, so the bonus tracks a live streak and not a
+season total, and the ceiling is applied by `Rules.addMoney` so a payout cannot
+be written anywhere that quietly exceeds it.
+
+Two things this cost, both worth repeating. First, the streak is advanced for
+the loser and cleared for the winner **before** the payout loop reads it, so the
+round just lost is counted in its own bonus; reading it after the loop pays one
+step behind. Second, `Rules.roundReward` is a pure function and a test of it
+proves only arithmetic. The wiring test is the one that matters: two players
+play two rounds, the same team loses both, and the second loss must pay more
+than the first. Reintroducing the flat payout makes three tests fail -- two pure
+and that one -- and a test that passes with the bug present proves nothing.
+
 ### A lone player must be able to play
 
 The game gated every round on `Rules.MinimumPlayers = 2`. On a new experience

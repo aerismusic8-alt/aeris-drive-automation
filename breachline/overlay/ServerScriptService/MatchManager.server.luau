@@ -41,6 +41,10 @@ local resolved = false
 local bombPart = nil
 local bombSite = ""
 local pendingResult = nil
+-- Consecutive rounds lost by each team, counting the round just finished. It is
+-- what the loss bonus grows with, and it is reset on a win so the bonus tracks
+-- a live streak rather than a season total.
+local lossStreak = { Attackers = 0, Defenders = 0 }
 Players.CharacterAutoLoads = false
 
 local function countPlayers()
@@ -85,7 +89,7 @@ local function assignTeam(player)
     end
     player.Team = if a <= d then Teams.Attackers else Teams.Defenders
     player.Neutral = false
-    player:SetAttribute("Money", 800)
+    player:SetAttribute("Money", Rules.StartMoney)
     player:SetAttribute("Alive", false)
 end
 local function spawnForRound(player)
@@ -235,10 +239,17 @@ local function finishRound(winner, reason)
     resolved = true
     state:SetAttribute("Reason", reason)
     state:SetAttribute(winner .. "Score", (state:GetAttribute(winner .. "Score") or 0) + 1)
+    -- The streak is advanced for the loser and cleared for the winner before the
+    -- payout reads it, so the round that was just lost is counted in its own
+    -- bonus and a win starts the next loss back at the base rate.
+    for team in pairs(lossStreak) do
+        if team == winner then lossStreak[team] = 0 else lossStreak[team] += 1 end
+    end
     for player in pairs(participants) do
         if player.Parent == Players then
-            local bonus = if player.Team and player.Team.Name == winner then 1500 else 900
-            player:SetAttribute("Money", (player:GetAttribute("Money") or 0) + bonus)
+            local won = player.Team ~= nil and player.Team.Name == winner
+            local bonus = Rules.roundReward(won, lossStreak[player.Team and player.Team.Name or ""])
+            player:SetAttribute("Money", Rules.addMoney(player:GetAttribute("Money"), bonus))
         end
     end
     setPhase("Round End", Rules.EndSeconds)
@@ -297,6 +308,10 @@ local function roundLoopIteration()
         state:SetAttribute("AttackersScore", 0)
         state:SetAttribute("DefendersScore", 0)
         roundId = 0
+        -- A new match starts a fresh economy, so neither team carries a bonus
+        -- earned in the match that just ended.
+        lossStreak.Attackers = 0
+        lossStreak.Defenders = 0
         -- The next match is played on the next map in the rotation.
         advanceMap()
     elseif roundId == 3 then

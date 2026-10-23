@@ -46,4 +46,51 @@ function Rules.winner(phase, bombStatus, attackers, defenders, remaining, practi
     if remaining <= 0 then return "Defenders", "Time Expired" end
     return nil
 end
+
+---The money a player is given when they have no history.
+Rules.StartMoney = 800
+
+---The most money a player may hold.
+---
+---Without a ceiling the loss bonus compounds across a long match, both teams
+---stop having to choose at the shop, and the economy stops being a decision.
+Rules.MaxMoney = 16000
+
+---The flat win bonus.
+Rules.WinReward = 1500
+
+---The loss bonus before any streak, and what each consecutive loss adds.
+---
+---This is the loss bonus that keeps a match close. With a flat payout a team
+---that loses the first few rounds is priced out of the rest of the match: the
+---winners can afford armor and the SMG every round while the losers cannot, so
+---the opening rounds decide the match and the rest is a formality. Paying more
+---after each loss lets the losing team buy again and keeps the score live.
+Rules.LossReward = 900
+Rules.LossStreakStep = 500
+
+---The streak at which the loss bonus stops growing. Past this a long match is
+---not decided by who lost first.
+Rules.LossStreakCap = 5
+
+---What a finished round pays one player.
+---
+---`won` is whether this player's team took the round. `lossStreak` is how many
+---rounds that team has now lost in a row, counting this one, so the first loss
+---passes 1. A win pays the flat bonus; a loss pays the base plus a step per
+---consecutive loss, held at the cap.
+function Rules.roundReward(won, lossStreak)
+    if won then return Rules.WinReward end
+    local streak = math.clamp(lossStreak or 1, 1, Rules.LossStreakCap)
+    return Rules.LossReward + Rules.LossStreakStep * (streak - 1)
+end
+
+---Money after a payout, held at the ceiling.
+---
+---Kept here rather than at the call site so the ceiling has exactly one
+---definition, and a payout cannot be written that quietly exceeds it.
+function Rules.addMoney(money, amount)
+    local held = if typeof(money) == "number" then money else 0
+    return math.min(held + amount, Rules.MaxMoney)
+end
 return Rules

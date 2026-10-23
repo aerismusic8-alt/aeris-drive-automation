@@ -547,6 +547,85 @@ t.test("the winner rules match the phases the server drives", function()
 	t.assertEqual(r3, "Time Expired", "reason")
 end)
 
+t.test("a loss pays more the longer the losing streak runs", function()
+	local rules = Rules
+	t.assertEqual(rules.roundReward(false, 1), 900, "the first loss pays the base")
+	t.assertEqual(rules.roundReward(false, 2), 1400, "a second loss pays a step more")
+	t.assertEqual(rules.roundReward(false, 3), 1900, "and keeps growing")
+end)
+
+t.test("a win pays a flat bonus whatever the streak was", function()
+	t.assertEqual(Rules.roundReward(true, 0), 1500, "a win pays the win reward")
+	t.assertEqual(Rules.roundReward(true, 4), 1500, "a win does not scale with losses")
+end)
+
+t.test("the loss bonus stops growing at the cap", function()
+	local atCap = Rules.roundReward(false, Rules.LossStreakCap)
+	local pastCap = Rules.roundReward(false, Rules.LossStreakCap + 3)
+	t.assertEqual(atCap, pastCap,
+		"past the cap the bonus is flat, so a long match is not decided by who lost first")
+end)
+
+t.test("money is held at the ceiling", function()
+	t.assertEqual(Rules.addMoney(0, 500), 500, "a small payout adds")
+	t.assertEqual(Rules.addMoney(Rules.MaxMoney - 100, 500), Rules.MaxMoney,
+		"a payout that would exceed the ceiling is clamped")
+	t.assertEqual(Rules.addMoney(Rules.MaxMoney, 1500), Rules.MaxMoney,
+		"a player already at the ceiling stays there")
+	t.assertEqual(Rules.addMoney(nil, 900), 900,
+		"a player with no money attribute is paid as if they had none")
+end)
+
+t.test("losing a second round in a row pays more than the first", function()
+	local env = boot()
+	local a = join(env, 2, "Alpha")
+	local b = join(env, 3, "Bravo")
+	-- Round 1: the defender dies, so the attacker takes it and the defender's
+	-- loss streak goes to one.
+	tickUntil(env, function() return phase() == "Combat" end, 400, "combat 1")
+	b.Character:FindFirstChildOfClass("Humanoid"):TakeDamage(100)
+	tickUntil(env, function() return phase() == "Round End" end, 200, "round end 1")
+	local afterFirstLoss = money(b)
+	t.assertEqual(afterFirstLoss, 800 + 900, "the first loss pays the base bonus")
+	-- Round 2: the same team loses again, so its streak is two and the bonus
+	-- grows. This is the half a pure test of roundReward cannot prove: that the
+	-- server advances the streak and pays from it.
+	tickUntil(env, function() return state:GetAttribute("Round") == 2 end, 400, "round 2")
+	tickUntil(env, function() return phase() == "Combat" end, 400, "combat 2")
+	b.Character:FindFirstChildOfClass("Humanoid"):TakeDamage(100)
+	tickUntil(env, function() return phase() == "Round End" end, 200, "round end 2")
+	t.assertEqual(money(b), afterFirstLoss + 1400,
+		"the second consecutive loss pays a larger bonus")
+end)
+
+t.test("a win resets the losing team's bonus to the base rate", function()
+	local env = boot()
+	local a = join(env, 2, "Alpha")
+	local b = join(env, 3, "Bravo")
+	-- Round 1: the defender loses, building a streak.
+	tickUntil(env, function() return phase() == "Combat" end, 400, "combat 1")
+	b.Character:FindFirstChildOfClass("Humanoid"):TakeDamage(100)
+	tickUntil(env, function() return phase() == "Round End" end, 200, "round end 1")
+	local afterLoss = money(b)
+	-- Round 2: the attacker dies this time, so the defender wins and its streak
+	-- clears. Round 3 is where the reset is visible: the defender loses again and
+	-- must be paid the base bonus rather than the third step of a stale streak.
+	tickUntil(env, function() return state:GetAttribute("Round") == 2 end, 400, "round 2")
+	tickUntil(env, function() return phase() == "Combat" end, 400, "combat 2")
+	a.Character:FindFirstChildOfClass("Humanoid"):TakeDamage(100)
+	tickUntil(env, function() return phase() == "Round End" end, 200, "round end 2")
+	local afterWin = money(b)
+	t.assertEqual(afterWin, afterLoss + 1500, "the win paid the flat win bonus")
+	tickUntil(env, function() return state:GetAttribute("Round") == 3 end, 400, "round 3")
+	tickUntil(env, function() return phase() == "Combat" end, 400, "combat 3")
+	-- The sides swap only after round 3 finishes, so b is still the defender and
+	-- losing here is its first loss since the win.
+	b.Character:FindFirstChildOfClass("Humanoid"):TakeDamage(100)
+	tickUntil(env, function() return phase() == "Round End" end, 200, "round end 3")
+	t.assertEqual(money(b), afterWin + 900,
+		"after a win the next loss pays the base bonus, not a third-step one")
+end)
+
 --------------------------------------------------------------------------
 t.suite("breachline/weapon")
 

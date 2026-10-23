@@ -434,6 +434,37 @@ print("MAPS_FOUND=" .. tostring(#xs))
             "requiredPlayers(" in shipped_match,
             "the server would still demand two players",
         )
+        # The economy has to be a decision, not a formality. A flat payout lets
+        # the team that wins the opening rounds buy armor and the SMG every round
+        # while the other cannot, so the match is decided early and the rest is
+        # played out. The loss bonus has to grow with the streak, stop growing at
+        # the cap, and be held under a ceiling -- and the server has to pay from
+        # those rules rather than a literal, or the rules module is decoration.
+        check(
+            "the shipped rules grow the loss bonus with the streak",
+            "LossStreakStep" in shipped_rules and "roundReward" in shipped_rules,
+            "a flat payout prices the losing team out of the match",
+        )
+        check(
+            "the shipped rules cap the loss streak",
+            "LossStreakCap" in shipped_rules,
+            "an uncapped bonus compounds until money stops mattering",
+        )
+        check(
+            "the shipped rules hold money at a ceiling",
+            "MaxMoney" in shipped_rules and "addMoney" in shipped_rules,
+            "money would grow without limit and the shop would stop being a choice",
+        )
+        check(
+            "the shipped match layer pays from the rules, not a literal",
+            "Rules.roundReward(" in shipped_match and "Rules.addMoney(" in shipped_match,
+            "the server would ignore the streak and the ceiling",
+        )
+        check(
+            "the shipped match layer tracks each team's loss streak",
+            "lossStreak" in shipped_match,
+            "the bonus could not grow with consecutive losses",
+        )
         # A player must be admitted without the client asking. CharacterAutoLoads
         # is off, so a client whose HUD never drew -- a script error, a slow
         # device, a missed tap -- got no character and could never enter, which
