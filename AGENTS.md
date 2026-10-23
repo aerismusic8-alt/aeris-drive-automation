@@ -1418,6 +1418,68 @@ Practical consequences:
   exists to guarantee, but a screenshot of the character walking remains
   unverified on this machine.
 
+## Skills that exist but never load, and a reference that is not here
+
+Measured 2026-10-23, because a skill being present in settings is not the same
+as a skill being usable.
+
+The account's `agent_settings.agent_context.skills` holds **72** skills. This
+session's `<available_skills>` listed **69**, and the diff is not noise:
+
+```
+in settings, not visible to the session:
+  monetization-playbook     <- the Roblox/DevEx/free-cloud knowledge
+  openhands-capabilities
+  show-me
+  software-factory
+```
+
+So do not plan around a skill you cannot see. Before relying on one, read it
+back from the API, which returns the full text:
+
+```bash
+curl -s -H "Authorization: Bearer $OPENHANDS_API_KEY" \
+  "https://app.all-hands.dev/api/v1/settings" \
+| python3 -c "
+import json,sys
+for s in json.load(sys.stdin)['agent_settings']['agent_context']['skills']:
+    if s['name'] == 'monetization-playbook':
+        print(s['content'])
+"
+```
+
+**`monetization-playbook` points at a toolkit that is not in this repository.**
+It opens with "Runnable toolkit (verified 2026-10-23) — use this, do not
+re-derive it" and gives commands for `tools/freegen/bootstrap.sh` and
+`tools/freegen/freegen.py`. There is no `freegen` anywhere in this repository,
+on any branch, or on this machine. The skill was written against a different
+project (it references AiPASS and PC1 from the channel work). Its `resources`
+and `source` fields are `null` and its `is_agentskills_format` is `false`.
+
+Treat those `tools/freegen/...` commands as unavailable. Do not copy them into
+a workflow and then debug the missing file.
+
+What *is* real is the endpoint table, and it was re-measured here rather than
+trusted:
+
+| Channel | Endpoint | Result 2026-10-23 |
+| --- | --- | --- |
+| Image | `image.pollinations.ai/prompt/<prompt>` | `200`, `image/jpeg`, 40 KB, SOF marker present |
+| Text | `text.pollinations.ai/openai` | `200`, model `gpt-oss-20b`, answered correctly |
+
+The skill's own limits held: image is rate-limited per IP and answers `402`
+with `Retry-After` past it, and **no free no-key video endpoint exists**.
+`ffmpeg` and `edge-tts` are not installed in this sandbox, so the assembly and
+TTS steps need `bootstrap.sh`-style setup that the missing toolkit would have
+provided.
+
+The Roblox half of the skill agrees with Roblox's own documentation, which was
+checked separately: publishing to all ages since 2026-05-19 needs an age check,
+ID verification (facial age estimation for under-18), 2FA, an active
+Plus/Premium subscription for two consecutive months **or** a one-time
+refundable 1,000 Robux fee, and passing an evaluation. Identity verification is
+the user's step — an agent must not handle it.
+
 ## Reviewing your own work
 
 The instruction on this project is to keep reviewing the pattern, the
