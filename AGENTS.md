@@ -2,6 +2,9 @@
 
 Repository-specific notes for agents working in this repo.
 
+Operational detail for PC1, the self-hosted runner and the AX workflows lives in
+`.agents/skills/ax-pc1-ops.md`. Read it before debugging a PC1 run.
+
 ## How to work on this repository
 
 **The working method is mandatory, not advisory.** The canonical form lives in
@@ -702,6 +705,26 @@ status with the integration token (`/actions/runners` returns 403), so the
 signal is the queue itself: a job that has not been picked up in minutes, while
 an earlier job on the same runner finished in seconds, means the runner is down
 and someone has to start it on PC1.
+
+### A job that fails with zero steps is the runner, not the script
+
+Measured 2026-10-23. A runner can pick up a job, hold it for about ten minutes
+and then fail it at setup with `steps: []` and a job log URL that answers
+`BlobNotFound`, because no log was ever written. Every desktop-control run on
+this branch failed that way, including a probe whose only step was a
+`GetSystemInfo` call.
+
+The discrimination test is a rerun of a job that already succeeded. If a green
+job now fails the same way, the runner cannot run jobs and no edit to a script
+can matter. That test was run here: a previously green `AX PC1 Desktop Control`
+job failed on rerun after 10 min 1 s with zero steps. Rerunning the failing open
+run and rereading its script would have proved nothing.
+
+Do not read the two outages as one. On the same day, `https://desktop-rgk6jkb.
+tail8740ad.ts.net/health` answered `200` and `/mcp` answered `401` — the machine
+and its MCP service were up while the runner was broken. `401` on `/mcp` is the
+healthy answer (service running, token required); `000` is down and `502` is the
+proxy up with the upstream still booting.
 
 ### A running runner can still be pointed at the wrong repository
 
