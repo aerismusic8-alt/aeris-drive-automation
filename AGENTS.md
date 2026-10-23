@@ -1561,3 +1561,17 @@ ran on the *second* map, because "advance, then play" skips the first. The
 rotation belongs after a match is won, not before a round starts. A test that
 plays a real match to `ScoreToWin` and reads `MapId` back is what makes that
 ordering mistake visible; a test that only reads the registry would not have.
+
+### The map work is published, and the build proves it went out
+
+The two-map rotation is live. The `ax-breachline-build-publish.yml` run for
+commit `10d9013` reports `MAPS_OK maps=2`, `BUILD_BYTES=940063`, `57/57 checks
+passed`, then `PUBLISH_HTTP=200` with `{"versionNumber":14}`. The public games
+API agrees on the timestamp: `updated = 2026-10-23T01:45:47.031Z` for universe
+10772257179.
+
+The previous published build was `BUILD_BYTES=929250` -- 10,813 bytes and one
+map smaller. That gap is the whole of this change, and it is why "the workflow
+went green" is not the same claim as "the maps are live": a green run of the old
+commit would have looked identical apart from the byte count and the version
+number. Read those two numbers back, not the colour of the run.
