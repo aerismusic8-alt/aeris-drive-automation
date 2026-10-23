@@ -452,7 +452,10 @@ local function update()
 	end
 
 	local goal = "Waiting for Players"
-	if phase == "Warm-up" then goal = "Warm-up: get ready" end
+	-- One player is a practice round, and saying so is the difference between
+	-- "this game is broken" and "I am warming up alone on purpose".
+	local practice = state:GetAttribute("Practice") == true
+	if phase == "Warm-up" then goal = if practice then "Practice round: warm-up, you are alone" else "Warm-up: get ready" end
 	if phase == "Buy Phase" then goal = "Buy Phase: prepare your weapon" end
 	if phase == "Combat" then goal = if team == "Attackers" then "Reach Bomb Site A or B" else "Defend the Bomb Sites" end
 	if phase == "Planted" then goal = if team == "Attackers" then "Protect the Bomb" else "Defuse the Bomb" end

@@ -1585,3 +1585,63 @@ map smaller. That gap is the whole of this change, and it is why "the workflow
 went green" is not the same claim as "the maps are live": a green run of the old
 commit would have looked identical apart from the byte count and the version
 number. Read those two numbers back, not the colour of the run.
+
+### A fix in `src/` is not a fix that ships
+
+The Breachline place is not built from `breachline/src/`. It is built from
+`breachline/base.rbxl` plus `breachline/overlay/`, and the overlay is the only
+tree whose files reach the published place. `src/breachline-uncompressed/` is
+the readable copy of the recovered base, kept for review.
+
+That distinction cost a real bug. The single-player fix was written into
+`src/breachline-uncompressed/ServerScriptService/MatchManager.server.luau` and
+`src/.../MatchModules/RoundRules.luau`, the local tests passed, the build
+passed, and the built place still contained the *old* `MinimumPlayers` gate --
+because the overlay had no copy of either file, so the build left the base
+versions in place. The same trap makes a check lie: `check-breachline-build.py`
+reads `overlay/<path>` and falls back to `src/<path>`, so a check can pass by
+reading the fixed `src` while the place ships the unfixed base.
+
+The rule: to change server or rules code, copy the file into the overlay and
+edit it there. `scripts/check-breachline-build.py` now asserts that the overlay
+ships `ServerScriptService/MatchManager.server.luau` and
+`ReplicatedStorage/MatchModules/RoundRules.luau`, and that the shipped copies
+carry the practice gate, so the fallback can no longer hide this.
+
+To confirm a fix is really in the place, read the built source back rather than
+trusting the build log:
+
+```
+tools/rbxmk/rbxmk run --allow-insecure-paths /tmp/dump/verify_fix.lua breachline/build/breachline.rbxl
+```
+
+### A lone player must be able to play
+
+The game gated every round on `Rules.MinimumPlayers = 2`. On a new experience
+with nobody else on the server, the first player to arrive -- and so every
+player -- was parked on "Waiting for Players" forever: the page loaded, the menu
+came up, PLAY reached the server, and then nothing ever happened. That is the
+"looks unplayable" report, and it had nothing to do with the client, the age
+rating, mobile, or the publish.
+
+The fix is a practice round, not a lower minimum. `Rules.requiredPlayers(count)`
+returns 1 for a lone player and `MinimumPlayers` from two up, so the competitive
+gate is unchanged and nobody can win a scored round alone. One player runs the
+same loop as two, with the same goal, so warm-up, buy, combat and the bomb can
+all be learned solo.
+
+One rule had to change with it. `Rules.winner` now takes a `practice` flag and
+suppresses the elimination wins while keeping the objective ones. Without it,
+"the defenders are all dead" is true the instant combat opens in a one-player
+round -- there are no defenders -- so the round ended immediately and combat
+never ran. The bomb and the clock still decide a practice round.
+
+### Luau if-expressions take no `end`
+
+This toolchain's Luau parses `if c then a else b` as an expression with **no**
+trailing `end`. Writing `goal = if c then a else b end` inside a block leaves
+that `end` to close the enclosing `if`/`function`, and the parser then reports
+`Expected <eof>, got 'end'` at the end of the file. The existing HUD lines look
+like they use `end` only because the `end` they end with closes the `if` on the
+same line. Match that form, or the HUD will not compile and every client test
+fails with "failed to compile" rather than a useful message.

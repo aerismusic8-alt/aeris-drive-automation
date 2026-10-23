@@ -238,15 +238,39 @@ local function money(player) return player:GetAttribute("Money") end
 --------------------------------------------------------------------------
 t.suite("breachline/match")
 
--- The match cannot start with one player, and must start with two. That is the
--- first thing the round loop gates on, and it is the first thing a player does.
-t.test("one player does not start a round", function()
+-- A lone player must be able to play. The game shipped gating every round on
+-- two players, so the first player to arrive -- and the only player, on a new
+-- experience with nobody else on the server -- was parked on "Waiting for
+-- Players" forever. The page loaded, the menu came up, PLAY worked, and then
+-- nothing ever happened. That is the "looks unplayable" report, and this is the
+-- test that would have caught it.
+t.test("one player starts a practice round instead of waiting forever", function()
 	local env = boot()
 	local solo = join(env, 2, "Solo")
-	Shim.tick(env, 5)
-	t.assertEqual(phase(), "Waiting for Players", "phase with one player")
-	t.assertEqual(attr(solo, "Alive"), false, "a waiting player is not alive")
-	t.assertNil(state:GetAttribute("Round"), "no round was started")
+	tickUntil(env, function() return phase() == "Buy Phase" end, 300, "practice buy phase")
+	t.assertEqual(phase(), "Buy Phase", "a lone player reached the buy phase")
+	t.assertEqual(state:GetAttribute("Practice"), true, "the round is marked practice")
+	t.assertNotNil(state:GetAttribute("Round"), "a round number was assigned")
+	t.assertEqual(attr(solo, "Alive"), true, "the lone player spawned")
+end)
+
+t.test("a practice round reaches combat with the player alive", function()
+	local env = boot()
+	local solo = join(env, 2, "Solo")
+	tickUntil(env, function() return phase() == "Combat" end, 400, "practice combat")
+	t.assertEqual(phase(), "Combat", "a lone player reached combat")
+	t.assertEqual(attr(solo, "Alive"), true, "the lone player is alive in combat")
+	t.assertNotNil(solo.Character, "the lone player has a character")
+end)
+
+t.test("a second player clears the practice flag", function()
+	local env = boot()
+	join(env, 2, "Solo")
+	tickUntil(env, function() return phase() == "Buy Phase" end, 300, "practice buy phase")
+	t.assertEqual(state:GetAttribute("Practice"), true, "one player is practice")
+	join(env, 3, "Second")
+	tickUntil(env, function() return state:GetAttribute("Practice") == false end, 400, "practice off")
+	t.assertEqual(state:GetAttribute("Practice"), false, "two players is a scored round")
 end)
 
 t.test("two players start warm-up, then a buy phase", function()
@@ -500,8 +524,15 @@ t.suite("breachline/rules")
 -- uses, so the round loop and this suite agree on one source of truth.
 local Rules = Shim.loader(Sources)("ReplicatedStorage/MatchModules/RoundRules")
 
-t.test("RoundRules refuses to start a match below the minimum", function()
-	t.assertEqual(Rules.MinimumPlayers, 2, "minimum players")
+t.test("the competitive minimum stays two", function()
+	t.assertEqual(Rules.MinimumPlayers, 2, "a scored match still needs two players")
+end)
+
+t.test("one player is required for a practice round, two for a scored one", function()
+	t.assertEqual(Rules.requiredPlayers(0), 1, "one player can warm up")
+	t.assertEqual(Rules.requiredPlayers(1), 1, "a lone player can warm up")
+	t.assertEqual(Rules.requiredPlayers(2), 2, "a scored round needs two")
+	t.assertEqual(Rules.requiredPlayers(5), 2, "and stays at two")
 end)
 
 t.test("the winner rules match the phases the server drives", function()

@@ -395,6 +395,36 @@ print("MAPS_FOUND=" .. tostring(#xs))
             all(attr in maps_lua for attr in ("MapId", "MapName", "MapOrder")),
             "the build and the registry disagree on the attribute names",
         )
+
+        # The fallback above reads src when the overlay has no copy, which is
+        # what makes the recovered source reviewable -- and is also how a fix
+        # landed in src and never reached the place: the check read the fixed
+        # src, passed, and the published MatchManager kept its old rules. The
+        # match layer and its rules are shipped as overlay copies, so assert the
+        # copies exist rather than trusting the fallback.
+        for shipped in (
+            "ServerScriptService/MatchManager.server.luau",
+            "ReplicatedStorage/MatchModules/RoundRules.luau",
+        ):
+            check(
+                f"the overlay ships {shipped}",
+                (OVERLAY / shipped).is_file(),
+                "a fix in src alone would never be published",
+            )
+        shipped_rules_path = OVERLAY / "ReplicatedStorage/MatchModules/RoundRules.luau"
+        shipped_match_path = OVERLAY / "ServerScriptService/MatchManager.server.luau"
+        shipped_rules = shipped_rules_path.read_text(encoding="utf-8") if shipped_rules_path.is_file() else ""
+        shipped_match = shipped_match_path.read_text(encoding="utf-8") if shipped_match_path.is_file() else ""
+        check(
+            "the shipped rules can start a round with one player",
+            "requiredPlayers" in shipped_rules,
+            "a lone player would wait on 'Waiting for Players' forever",
+        )
+        check(
+            "the shipped match layer gates on the practice rule",
+            "requiredPlayers(" in shipped_match,
+            "the server would still demand two players",
+        )
     finally:
         shutil.rmtree(work, ignore_errors=True)
 
