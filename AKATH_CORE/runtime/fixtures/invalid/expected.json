@@ -1,0 +1,16 @@
+{
+  "approved_without_verification.json": "approved_lesson_requires_verified_pass",
+  "bad_evidence_hash.json": "evidence.sha256",
+  "bad_timestamp.json": "created_at",
+  "confidence_out_of_range.json": "perception.confidence",
+  "missing_evidence_source.json": "evidence.source",
+  "missing_perception_provenance.json": "perception.provenance",
+  "missing_required_field.json": "missing:outcome",
+  "no_evidence.json": "input.evidence",
+  "pass_without_evidence.json": "pass_requires_independent_verifier_evidence_and_timestamp",
+  "pass_without_timestamp.json": "pass_requires_independent_verifier_evidence_and_timestamp",
+  "pass_without_verifier.json": "pass_requires_independent_verifier_evidence_and_timestamp",
+  "unknown_modality.json": "input.modalities.unknown",
+  "unknown_verification_status.json": "verification.status",
+  "unredacted.json": "privacy_redaction_incomplete"
+}

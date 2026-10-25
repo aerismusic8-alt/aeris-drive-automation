@@ -1,0 +1,335 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/aerismusic8-alt/aeris-drive-automation/blob/main/AKATH_CORE/experience-record.schema.json",
+  "title": "AKATH Multimodal Experience Record",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "experience_id",
+    "task_id",
+    "created_at",
+    "input",
+    "perception",
+    "context",
+    "plan",
+    "actions",
+    "outcome",
+    "verification",
+    "lesson",
+    "privacy"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": "1.0"
+    },
+    "experience_id": {
+      "type": "string",
+      "minLength": 8,
+      "maxLength": 160,
+      "pattern": "^[A-Za-z0-9._:-]+$"
+    },
+    "task_id": {
+      "type": "string",
+      "minLength": 3,
+      "maxLength": 160
+    },
+    "created_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "input": {
+      "type": "object",
+      "required": [
+        "modalities",
+        "evidence"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "modalities": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "enum": [
+              "image",
+              "video",
+              "audio",
+              "text",
+              "desktop",
+              "action_trace",
+              "structured"
+            ]
+          }
+        },
+        "evidence": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": [
+              "sha256",
+              "uri",
+              "source"
+            ],
+            "additionalProperties": false,
+            "properties": {
+              "sha256": {
+                "type": "string",
+                "pattern": "^[a-fA-F0-9]{64}$"
+              },
+              "uri": {
+                "type": "string",
+                "minLength": 1
+              },
+              "source": {
+                "type": "string",
+                "minLength": 1
+              },
+              "captured_at": {
+                "type": "string",
+                "format": "date-time"
+              },
+              "license_or_permission": {
+                "type": "string"
+              },
+              "redacted": {
+                "type": "boolean"
+              }
+            }
+          }
+        }
+      }
+    },
+    "perception": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "modality",
+          "tool",
+          "version",
+          "summary",
+          "confidence"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "modality": {
+            "enum": [
+              "image",
+              "video",
+              "audio",
+              "text",
+              "desktop",
+              "action_trace",
+              "structured"
+            ]
+          },
+          "tool": {
+            "type": "string",
+            "minLength": 1
+          },
+          "version": {
+            "type": "string",
+            "minLength": 1
+          },
+          "summary": {
+            "type": "string"
+          },
+          "confidence": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 1
+          },
+          "timestamp_ms": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "evidence_sha256": {
+            "type": "string",
+            "pattern": "^[a-fA-F0-9]{64}$"
+          }
+        }
+      }
+    },
+    "context": {
+      "type": "object",
+      "required": [
+        "situation",
+        "hypothesis"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "situation": {
+          "type": "string"
+        },
+        "hypothesis": {
+          "type": "string"
+        },
+        "constraints": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "plan": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "actions": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "action",
+          "result"
+        ],
+        "additionalProperties": false,
+        "properties": {
+          "action": {
+            "type": "string"
+          },
+          "result": {
+            "type": "string"
+          },
+          "evidence_sha256": {
+            "type": "string",
+            "pattern": "^[a-fA-F0-9]{64}$"
+          },
+          "idempotency_key": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "outcome": {
+      "type": "object",
+      "required": [
+        "expected_postconditions",
+        "observed"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "expected_postconditions": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "observed": {
+          "type": "string"
+        },
+        "metrics": {
+          "type": "object"
+        }
+      }
+    },
+    "verification": {
+      "type": "object",
+      "required": [
+        "status",
+        "verifier",
+        "evidence",
+        "reasons"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "status": {
+          "enum": [
+            "NOT_VERIFIED",
+            "PASS",
+            "FAIL",
+            "BLOCKED"
+          ]
+        },
+        "verifier": {
+          "type": "string"
+        },
+        "evidence": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "reasons": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "verified_at": {
+          "type": "string",
+          "format": "date-time"
+        }
+      }
+    },
+    "lesson": {
+      "type": "object",
+      "required": [
+        "candidate",
+        "confidence",
+        "review_state",
+        "applicability"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "candidate": {
+          "type": "string"
+        },
+        "confidence": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "review_state": {
+          "enum": [
+            "CANDIDATE",
+            "APPROVED",
+            "REJECTED"
+          ]
+        },
+        "applicability": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "contradictions": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "privacy": {
+      "type": "object",
+      "required": [
+        "classification",
+        "redaction_complete",
+        "retention_policy"
+      ],
+      "additionalProperties": false,
+      "properties": {
+        "classification": {
+          "enum": [
+            "PUBLIC",
+            "INTERNAL",
+            "CONFIDENTIAL",
+            "RESTRICTED"
+          ]
+        },
+        "redaction_complete": {
+          "type": "boolean"
+        },
+        "retention_policy": {
+          "type": "string",
+          "minLength": 1
+        }
+      }
+    }
+  }
+}
