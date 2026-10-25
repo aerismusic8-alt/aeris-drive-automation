@@ -1,0 +1,55 @@
+name: AKATH Multimodal Experience Contract
+
+# Gate A from AKATH_CORE/MULTIMODAL_AUTONOMOUS_LEARNING_SPEC.md: the experience
+# record schema and its validator must reject malformed records, unknown
+# statuses, missing hashes, invalid timestamps, and any PASS that carries no
+# independent verifier evidence.
+#
+# Pure Linux job — no self-hosted runner, no secrets, no network.
+
+on:
+  push:
+    paths:
+      - 'AKATH_CORE/experience-record.schema.json'
+      - 'AKATH_CORE/runtime/experience-record-validator.mjs'
+      - 'AKATH_CORE/runtime/fixtures/**'
+      - 'scripts/test-multimodal-experience-record.mjs'
+      - '.github/workflows/akath-multimodal-experience-contract.yml'
+  pull_request:
+    paths:
+      - 'AKATH_CORE/experience-record.schema.json'
+      - 'AKATH_CORE/runtime/experience-record-validator.mjs'
+      - 'AKATH_CORE/runtime/fixtures/**'
+      - 'scripts/test-multimodal-experience-record.mjs'
+      - '.github/workflows/akath-multimodal-experience-contract.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  contract:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Validate schema parses and validator mirrors it
+        run: |
+          set -euo pipefail
+          node --input-type=module -e '
+            import { readFileSync } from "node:fs";
+            const schema = JSON.parse(readFileSync("AKATH_CORE/experience-record.schema.json", "utf8"));
+            if (schema.$schema !== "https://json-schema.org/draft/2020-12/schema") {
+              throw new Error("unexpected $schema: " + schema.$schema);
+            }
+            console.log("schema OK:", schema.title);
+          '
+
+      - name: Run experience record contract tests
+        run: node scripts/test-multimodal-experience-record.mjs

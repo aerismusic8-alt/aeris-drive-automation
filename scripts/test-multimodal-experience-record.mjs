@@ -1,80 +1,125 @@
 #!/usr/bin/env node
+// Test suite for the AKATH multimodal experience record contract.
+//
+// Runs under plain `node` (no package.json, no dependencies). It exercises the
+// shared validator against the JSON fixtures in
+// AKATH_CORE/runtime/fixtures/{valid,invalid}/ and, first of all, asserts that
+// the validator's own field/enum lists still match the schema file — so a
+// schema edit that the validator does not mirror fails here.
+//
+//   node scripts/test-multimodal-experience-record.mjs
+//
+// Exit 0 = all cases pass. Exit 1 = a case failed (details on stderr).
+
 import assert from "node:assert/strict";
+import { readFileSync, readdirSync } from "node:fs";
+import { fileURLToPath } from "node:url";
+import { dirname, join } from "node:path";
 
-const SHA = "a".repeat(64);
-const valid = () => ({
-  schema_version: "1.0",
-  experience_id: "exp:test-0001",
-  task_id: "AKATH-MULTIMODAL-LEARNING-001",
-  created_at: "2026-10-25T12:00:00.000Z",
-  input: {
-    modalities: ["image", "audio"],
-    evidence: [{ sha256: SHA, uri: "evidence://fixture/sample", source: "test-fixture", redacted: true }]
-  },
-  perception: [{ modality: "image", tool: "fixture-parser", version: "1.0", summary: "sample", confidence: 0.99, evidence_sha256: SHA }],
-  context: { situation: "fixture", hypothesis: "test validation" },
-  plan: ["validate record"],
-  actions: [{ action: "validate", result: "success", evidence_sha256: SHA, idempotency_key: "test-0001" }],
-  outcome: { expected_postconditions: ["schema accepted"], observed: "schema accepted" },
-  verification: { status: "PASS", verifier: "independent-fixture-check", evidence: ["test://validation"], reasons: [], verified_at: "2026-10-25T12:00:01.000Z" },
-  lesson: { candidate: "schema validation is repeatable", confidence: 1, review_state: "CANDIDATE", applicability: ["schema test"], contradictions: [] },
-  privacy: { classification: "INTERNAL", redaction_complete: true, retention_policy: "test fixture only" }
-});
+import {
+  validateExperienceRecord,
+  assertValidatorMatchesSchema,
+} from "../AKATH_CORE/runtime/experience-record-validator.mjs";
 
-function validate(record) {
-  const errors = [];
-  const required = ["schema_version", "experience_id", "task_id", "created_at", "input", "perception", "context", "plan", "actions", "outcome", "verification", "lesson", "privacy"];
-  for (const key of required) if (!(key in record)) errors.push("missing:" + key);
-  if (record.schema_version !== "1.0") errors.push("schema_version");
-  if (typeof record.experience_id !== "string" || !/^[A-Za-z0-9._:-]{8,160}$/.test(record.experience_id)) errors.push("experience_id");
-  if (!record.input || !Array.isArray(record.input.modalities) || record.input.modalities.length === 0) errors.push("input.modalities");
-  if (record.input && (!Array.isArray(record.input.evidence) || record.input.evidence.length === 0)) errors.push("input.evidence");
-  for (const ev of record.input?.evidence ?? []) {
-    if (!/^[a-fA-F0-9]{64}$/.test(ev.sha256 ?? "")) errors.push("evidence.sha256");
-    if (typeof ev.uri !== "string" || !ev.uri) errors.push("evidence.uri");
-    if (typeof ev.source !== "string" || !ev.source) errors.push("evidence.source");
+const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
+const SCHEMA_PATH = join(ROOT, "AKATH_CORE", "experience-record.schema.json");
+const FIXTURES = join(ROOT, "AKATH_CORE", "runtime", "fixtures");
+
+const readJson = (p) => JSON.parse(readFileSync(p, "utf8"));
+
+const cases = [];
+function check(name, fn) {
+  try {
+    fn();
+    cases.push({ name, result: "pass" });
+  } catch (error) {
+    cases.push({ name, result: "fail", error: error.message });
   }
-  for (const p of record.perception ?? []) {
-    if (typeof p.tool !== "string" || !p.tool || typeof p.version !== "string" || !p.version) errors.push("perception.provenance");
-    if (typeof p.confidence !== "number" || p.confidence < 0 || p.confidence > 1) errors.push("perception.confidence");
-  }
-  const allowed = ["NOT_VERIFIED", "PASS", "FAIL", "BLOCKED"];
-  if (!record.verification || !allowed.includes(record.verification.status)) errors.push("verification.status");
-  if (record.verification?.status === "PASS") {
-    if (!record.verification.verifier || !Array.isArray(record.verification.evidence) || record.verification.evidence.length === 0 || !record.verification.verified_at) {
-      errors.push("pass_requires_independent_verifier_evidence_and_timestamp");
-    }
-  }
-  if (!record.lesson || !["CANDIDATE", "APPROVED", "REJECTED"].includes(record.lesson.review_state)) errors.push("lesson.review_state");
-  if (record.lesson?.review_state === "APPROVED" && record.verification?.status !== "PASS") errors.push("approved_lesson_requires_verified_pass");
-  if (!record.privacy || !["PUBLIC", "INTERNAL", "CONFIDENTIAL", "RESTRICTED"].includes(record.privacy.classification)) errors.push("privacy.classification");
-  if (record.privacy?.redaction_complete !== true) errors.push("privacy_redaction_incomplete");
-  return { ok: errors.length === 0, errors };
 }
 
-const good = validate(valid());
-assert.equal(good.ok, true, JSON.stringify(good));
+// 1. The validator and the schema must agree.
+check("validator matches schema field and enum lists", () => {
+  const problems = assertValidatorMatchesSchema(readJson(SCHEMA_PATH));
+  assert.deepEqual(problems, [], `validator/schema drift: ${problems.join(", ")}`);
+});
 
-const noEvidence = valid();
-noEvidence.input.evidence[0].sha256 = "not-a-hash";
-assert.equal(validate(noEvidence).ok, false, "reject malformed evidence hash");
+// 2. Every valid fixture must be accepted.
+const validDir = join(FIXTURES, "valid");
+for (const file of readdirSync(validDir).filter((f) => f.endsWith(".json")).sort()) {
+  check(`valid fixture accepted: ${file}`, () => {
+    const result = validateExperienceRecord(readJson(join(validDir, file)));
+    assert.equal(result.ok, true, `unexpected errors: ${result.errors.join(", ")}`);
+  });
+}
 
-const falsePass = valid();
-falsePass.verification.evidence = [];
-assert.ok(validate(falsePass).errors.includes("pass_requires_independent_verifier_evidence_and_timestamp"), "PASS must require verifier evidence");
+// 3. Every invalid fixture must be rejected, with the expected error present.
+const invalidDir = join(FIXTURES, "invalid");
+const expected = readJson(join(invalidDir, "expected.json"));
+for (const file of Object.keys(expected).sort()) {
+  check(`invalid fixture rejected: ${file}`, () => {
+    const result = validateExperienceRecord(readJson(join(invalidDir, file)));
+    assert.equal(result.ok, false, "record was accepted but should have been rejected");
+    assert.ok(
+      result.errors.includes(expected[file]),
+      `expected error "${expected[file]}", got: ${result.errors.join(", ")}`,
+    );
+  });
+}
 
-const unverifiedApproved = valid();
-unverifiedApproved.verification.status = "NOT_VERIFIED";
-unverifiedApproved.lesson.review_state = "APPROVED";
-assert.ok(validate(unverifiedApproved).errors.includes("approved_lesson_requires_verified_pass"), "unverified lesson must not be promoted");
+// 4. The specific rules the task calls out, asserted directly so a fixture
+//    rename cannot silently drop coverage.
+const valid = readJson(join(validDir, "akath-mm-0001.json"));
 
-const unredacted = valid();
-unredacted.privacy.redaction_complete = false;
-assert.ok(validate(unredacted).errors.includes("privacy_redaction_incomplete"), "reject unredacted record");
+check("PASS without independent verifier evidence is rejected", () => {
+  const r = structuredClone(valid);
+  r.verification.evidence = [];
+  const out = validateExperienceRecord(r);
+  assert.ok(out.errors.includes("pass_requires_independent_verifier_evidence_and_timestamp"));
+});
+
+check("unknown verification status is rejected", () => {
+  const r = structuredClone(valid);
+  r.verification.status = "PROBABLY";
+  assert.ok(validateExperienceRecord(r).errors.includes("verification.status"));
+});
+
+check("malformed evidence hash is rejected", () => {
+  const r = structuredClone(valid);
+  r.input.evidence[0].sha256 = "zzzz";
+  assert.ok(validateExperienceRecord(r).errors.includes("evidence.sha256"));
+});
+
+check("unverified lesson cannot be promoted to APPROVED", () => {
+  const r = structuredClone(valid);
+  r.verification.status = "NOT_VERIFIED";
+  r.lesson.review_state = "APPROVED";
+  assert.ok(validateExperienceRecord(r).errors.includes("approved_lesson_requires_verified_pass"));
+});
+
+check("record without evidence is rejected", () => {
+  const r = structuredClone(valid);
+  r.input.evidence = [];
+  assert.ok(validateExperienceRecord(r).errors.includes("input.evidence"));
+});
+
+check("record with unknown top-level key is rejected", () => {
+  const r = structuredClone(valid);
+  r.secret_token = "should-not-be-here";
+  assert.ok(validateExperienceRecord(r).errors.includes("unknown_key:.secret_token"));
+});
+
+const failed = cases.filter((c) => c.result === "fail");
+for (const c of cases) {
+  if (c.result === "fail") console.error(`FAIL ${c.name}\n     ${c.error}`);
+}
 
 console.log(JSON.stringify({
   suite: "AKATH multimodal experience record contract",
-  result: "PASS",
-  cases: 5,
-  checks: ["valid record accepted", "bad evidence hash rejected", "PASS without evidence rejected", "unverified lesson promotion rejected", "unredacted record rejected"]
+  result: failed.length === 0 ? "PASS" : "FAIL",
+  cases: cases.length,
+  passed: cases.length - failed.length,
+  failed: failed.length,
+  checks: cases.map((c) => `${c.result === "pass" ? "ok" : "FAIL"} ${c.name}`),
 }, null, 2));
+
+process.exit(failed.length === 0 ? 0 : 1);
