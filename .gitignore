@@ -16,3 +16,4 @@ aeris938-1/library/covers/*.png
 # Python bytecode from the aeris938-1 pipeline
 aeris938-1/**/__pycache__/
 *.pyc
+aeris938-1/dist/
