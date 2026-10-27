@@ -797,3 +797,27 @@ so readiness reports `secrets=NONE` even when tokens exist. Naming one token res
 
 **Never render into `/tmp`** — a pod recycle wipes it (lost a 385 MB render). Use
 `work/<ep>/` in the repo; `ops/ax_setup.py` restores deps after a recycle.
+
+## ChatGPT/OpenAI API: exists, but not free in practice (checked 2026-10-27)
+K asked "ChatGPT มี API ให้ใช้ไหม". Answer from the official pages, not from memory:
+- Yes: `platform.openai.com`, base `https://api.openai.com/v1`, auth `OPENAI_API_KEY`.
+- **A ChatGPT Plus/Pro subscription does NOT include API access.** The API is a separate
+  prepaid balance. This is the usual confusion.
+- No permanent free tier like Gemini's. `platform.openai.com/docs/guides/rate-limits` lists
+  tiers: Free (allowed geography only, $100/mo cap), Build ($5 credit purchases, $500/mo),
+  Launch ($100), Grow ($500). The old trial grant expired, so it needs a paid balance.
+- Gemini by contrast (`ai.google.dev/gemini-api/docs/pricing`) has a real free tier for text,
+  but **image generation is paid-only** (~$0.0336 per 1K image). That is why aeris938-1 drives
+  the Gemini **web app** for images instead of an API key.
+
+## aeris938-1: pod recycle is the recurring failure, not quota (2026-10-27)
+A recycled pod keeps `/workspace` but drops `/tmp`, apt packages and pip packages. Symptoms:
+`ffprobe: command not found`, `/tmp/*.py gone`, `work/<ep>/*.mp4` present but ffprobe says
+"moov atom not found". Recovery is one command: `aeris938-1/scripts/setup-env.sh`. Keep temp
+scripts in the repo, never `/tmp`.
+Episode 01 (`01-hin-haeng-khwam-jam`) is now rendered: 16.84 min, 1920x1080 h264 25fps, AAC
+48k stereo, -17.1 LUFS, 352/352 narration lines timed. Render fixes now guarded by tests:
+write `<name>.partial.mp4` then rename (a killed ffmpeg leaves a truncated file that still
+stats as finished); `_preset_for()` uses `veryfast` past 600 s; Ken Burns intermediate sized to
+zoom headroom not a flat 2x (16 live branches); audio pinned `-ar 48000 -ac 2` because a 24 kHz
+mono voice + 48 kHz mono bed mixed to a 96 kHz mono track. Tests: 54 pass.
