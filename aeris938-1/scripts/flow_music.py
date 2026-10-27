@@ -22,17 +22,41 @@ APP = "Google Flow Music"
 URL = "https://www.flowmusic.app/"
 CREATE_URL = "https://www.flowmusic.app/session?t=true"
 
+# The music-fx tool redirects labs.google -> flowmusic.google -> flowmusic.app.
+# flowmusic.google is a real Google host, but the app itself is served from
+# flowmusic.app (Cloudflare, Let's Encrypt cert) and contacts no Google API. It
+# presents itself as a Google product, so it is treated as third-party: the
+# operator signs in there themselves and the agent never fills a credential in.
+ORIGIN_NOTE = (
+    "flowmusic.app is NOT served by Google (Cloudflare / Let's Encrypt).\n"
+    "  labs.google/fx/tools/music-fx -> flowmusic.google -> flowmusic.app\n"
+    "  Sign in there yourself if you accept the terms; the agent will not."
+)
+
 AUDIO_SELECTOR = "audio"
 DOWNLOAD_LABELS = ("download", "ดาวน์โหลด", "save")
 
 
+def _signed_out_markers(text: str) -> bool:
+    """The landing copy that only shows before a session exists."""
+    low = (text or "").lower()
+    if "create a song" in low and "free to start with a google account" in low:
+        return True
+    if "start a session to create a song" in low:
+        return True
+    return False
+
+
+def _has_composer(page) -> bool:
+    return page.locator(
+        "textarea, div[contenteditable='true'], input[type='text']"
+    ).count() > 0
+
+
 def _already_logged_in(page) -> bool:
-    body = page.inner_text("body").lower()
-    if "welcome to the studio" in body and "get started" in body:
+    if _signed_out_markers(page.inner_text("body")):
         return False
-    if "sign up" in body and "log in" in body and "create song" not in body:
-        return False
-    return True
+    return _has_composer(page)
 
 
 def generate(prompt: str, key: str, *, timeout: float = 600.0, force: bool = False,
@@ -50,7 +74,7 @@ def generate(prompt: str, key: str, *, timeout: float = 600.0, force: bool = Fal
         page.wait_for_timeout(4000)
 
         if not _already_logged_in(page):
-            raise LoginRequired(login_instructions(APP))
+            raise LoginRequired(login_instructions(APP) + "\n\n" + ORIGIN_NOTE)
 
         # Pick the instrumental path when asked, so a song does not arrive with
         # vocals that would fight the narration.
@@ -66,7 +90,15 @@ def generate(prompt: str, key: str, *, timeout: float = 600.0, force: bool = Fal
                         pass
 
         box = page.locator("textarea, div[contenteditable='true'], input[type='text']").first
-        box.click(timeout=20_000)
+        try:
+            box.click(timeout=20_000)
+        except Exception as exc:
+            # The composer was there a moment ago; a reshuffle is a login wall
+            # in disguise, so say that rather than leaking a Playwright trace.
+            raise LoginRequired(
+                login_instructions(APP) + "\n\n" + ORIGIN_NOTE +
+                f"\n\n(composer disappeared: {type(exc).__name__})"
+            ) from exc
         box.type(prompt, delay=15)
         page.wait_for_timeout(800)
         page.keyboard.press("Enter")

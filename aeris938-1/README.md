@@ -95,9 +95,26 @@ python3 -c "import sys;sys.path.insert(0,'aeris938-1/scripts');import library;pr
 - **`-vsync vfr` with `-r` is a hard error** on modern ffmpeg; use `-fps_mode cfr`.
 - **ffmpeg input indices shift** when an optional input is omitted. They are
   counted explicitly, and a missing still falls back to a solid backdrop.
-- **`flowmusic.app` is a third-party site**, not Google. The redirect chain is
-  `labs.google/fx/tools/music-fx` -> `flowmusic.google` -> `flowmusic.app`
-  (Let's Encrypt cert, not Google Trust Services). Treat it as third-party.
+- **`flowmusic.app` is a third-party site, not Google.** The chain is
+  `labs.google/fx/tools/music-fx` -> `flowmusic.google` (real Google, Google
+  Trust Services cert) -> **`flowmusic.app`** (Cloudflare IP 104.26.x, Let's
+  Encrypt cert). The app is a Next.js bundle that contacts no Google API — its
+  only third-party requests are Google Fonts and GTM. It presents itself as
+  "Google Flow Music" while not being served by Google, so it is treated as
+  third-party: **the operator signs in there themselves and the agent never
+  fills a credential in.** `flow_music.py` prints this warning every run.
+
+## Recommended path for music
+
+Given the above, prefer the offline bed for anything unattended:
+
+```bash
+python3 aeris938-1/scripts/make_music.py <story>-mood calm --duration 120
+```
+
+It needs no account, is deterministic and is royalty-free. `make_story.py` picks
+up `<story>-mood` from the music manifest automatically. Use `flow_music.py`
+only when the operator is present and accepts the third-party terms.
 
 ## Tests
 
@@ -105,6 +122,6 @@ python3 -c "import sys;sys.path.insert(0,'aeris938-1/scripts');import library;pr
 python3 -m pytest aeris938-1/tests/test_pipeline.py -q
 ```
 
-31 tests. They call the real synthesiser and the real ffmpeg, because the
+34 tests. They call the real synthesiser and the real ffmpeg, because the
 failures that matter here (silent audio, unshaped tone marks, a loudness target
 missed by a decibel) are exactly the ones a mock would hide.

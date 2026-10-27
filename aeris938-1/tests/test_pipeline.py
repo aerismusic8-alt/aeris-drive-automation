@@ -251,3 +251,27 @@ def test_login_instructions_name_the_app_and_the_link():
     text = browser.login_instructions("Gemini")
     assert "Gemini" in text
     assert "vnc.html" in text
+
+
+def test_flowmusic_signed_out_copy_is_detected():
+    """The landing copy only shows before a session exists."""
+    import flow_music
+    landing = ("Create song\n\nDescribe the song you want and Google Flow Music "
+               "writes, produces, and sings it in seconds. Start a session to "
+               "create a song with AI.\n\nFree to start with a Google Account.")
+    assert flow_music._signed_out_markers(landing) is True
+    assert flow_music._signed_out_markers("Describe your song. Genre, mood, tempo") is False
+
+
+def test_flowmusic_warns_that_the_host_is_third_party():
+    import flow_music
+    assert "NOT served by Google" in flow_music.ORIGIN_NOTE
+    assert "Let's Encrypt" in flow_music.ORIGIN_NOTE
+
+
+def test_gemini_login_gate_marker_is_the_one_actually_seen():
+    """Verified live: signed out, Gemini says this and image gen is blocked."""
+    import gemini_image
+    page_text = "ลงชื่อเข้าใช้เพื่อสร้างรูปภาพและอื่นๆ อีกมากมาย"
+    assert "ลงชื่อเข้าใช้เพื่อ" in page_text and "สร้างรูปภาพ" in page_text
+    assert gemini_image.URL.endswith("gemini.google.com/app")
