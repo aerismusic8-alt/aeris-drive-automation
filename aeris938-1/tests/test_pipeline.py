@@ -187,6 +187,140 @@ def test_compose_requires_karaoke_and_audio(tmp_path):
                         out=tmp_path / "o.mp4")
 
 
+def test_compose_scenes_rejects_a_bad_plan(tmp_path):
+    """Bad plans fail loudly: a crossfade longer than a scene eats the clip."""
+    img = tmp_path / "a.png"
+    compose._run(["ffmpeg", "-y", "-v", "error", "-f", "lavfi",
+                  "-i", "color=c=red:s=64x64:d=1", "-frames:v", "1", str(img)])
+    audio = tmp_path / "a.wav"
+    compose._run(["ffmpeg", "-y", "-v", "error", "-f", "lavfi",
+                  "-i", "anullsrc=r=48000:cl=stereo", "-t", "3", str(audio)])
+    ass = tmp_path / "k.ass"
+    ass.write_text("[Script Info]\n", encoding="utf-8")
+
+    with pytest.raises(ValueError):
+        compose.compose_scenes(scenes=[], audio=audio, ass=ass, out=tmp_path / "o.mp4")
+    with pytest.raises(FileNotFoundError):
+        compose.compose_scenes(scenes=[{"image": tmp_path / "gone.png", "duration": 3}],
+                               audio=audio, ass=ass, out=tmp_path / "o.mp4")
+    with pytest.raises(ValueError):
+        compose.compose_scenes(scenes=[{"image": img, "duration": 0}],
+                               audio=audio, ass=ass, out=tmp_path / "o.mp4")
+    # A crossfade as long as the scene would consume it entirely.
+    with pytest.raises(ValueError):
+        compose.compose_scenes(
+            scenes=[{"image": img, "duration": 2}, {"image": img, "duration": 2}],
+            audio=audio, ass=ass, out=tmp_path / "o.mp4", crossfade=3.0)
+
+
+def test_compose_scenes_runs_longer_than_a_single_still(tmp_path):
+    """Two scenes crossfaded must total sum(durations) - one crossfade."""
+    img = tmp_path / "a.png"
+    compose._run(["ffmpeg", "-y", "-v", "error", "-f", "lavfi",
+                  "-i", "color=c=0x224466:s=1920x1080:d=1", "-frames:v", "1", str(img)])
+    audio = tmp_path / "a.wav"
+    compose._run(["ffmpeg", "-y", "-v", "error", "-f", "lavfi",
+                  "-i", "anullsrc=r=48000:cl=stereo", "-t", "9", str(audio)])
+    ass = tmp_path / "k.ass"
+    ass.write_text("[Script Info]\n", encoding="utf-8")
+
+    out = tmp_path / "o.mp4"
+    report = compose.compose_scenes(
+        scenes=[{"image": img, "duration": 5.0}, {"image": img, "duration": 5.0}],
+        audio=audio, ass=ass, out=out, crossfade=1.5)
+    assert abs(report["duration_seconds"] - 8.5) < 0.3, report
+    assert report["scenes"] == 2
+    assert report["video"]["width"] == 1920 and report["video"]["height"] == 1080
+
+
+def test_compose_scenes_promotes_atomically(tmp_path):
+    """A render writes beside the target and renames, so a killed run never
+    leaves a truncated file that still stats as the finished clip."""
+    img = tmp_path / "a.png"
+    compose._run(["ffmpeg", "-y", "-v", "error", "-f", "lavfi",
+                  "-i", "color=c=0x224466:s=1920x1080:d=1", "-frames:v", "1", str(img)])
+    audio = tmp_path / "a.wav"
+    compose._run(["ffmpeg", "-y", "-v", "error", "-f", "lavfi",
+                  "-i", "anullsrc=r=48000:cl=stereo", "-t", "3", str(audio)])
+    ass = tmp_path / "k.ass"
+    ass.write_text("[Script Info]\n", encoding="utf-8")
+
+    out = tmp_path / "o.mp4"
+    compose.compose_scenes(scenes=[{"image": img, "duration": 3.0}],
+                           audio=audio, ass=ass, out=out)
+    assert out.exists()
+    assert not (tmp_path / "o.partial.mp4").exists(), "the scratch file must not survive"
+
+
+def test_compose_scenes_pins_stereo_48k(tmp_path):
+    """Voice (24k mono) and bed (48k mono) mixed without a pinned rate produced
+    a 96 kHz mono track, which is not what a player expects."""
+    img = tmp_path / "a.png"
+    compose._run(["ffmpeg", "-y", "-v", "error", "-f", "lavfi",
+                  "-i", "color=c=0x224466:s=1920x1080:d=1", "-frames:v", "1", str(img)])
+    audio = tmp_path / "a.wav"
+    compose._run(["ffmpeg", "-y", "-v", "error", "-f", "lavfi",
+                  "-i", "anullsrc=r=24000:cl=mono", "-t", "3", str(audio)])
+    ass = tmp_path / "k.ass"
+    ass.write_text("[Script Info]\n", encoding="utf-8")
+
+    out = tmp_path / "o.mp4"
+    compose.compose_scenes(scenes=[{"image": img, "duration": 3.0}],
+                           audio=audio, ass=ass, out=out)
+    info = compose.probe(out)
+    sound = next(s for s in info["streams"] if s["codec_type"] == "audio")
+    assert sound["channels"] == 2, sound
+    assert int(sound["sample_rate"]) == 48000, sound
+
+
+def test_long_render_uses_a_faster_preset():
+    """A quarter-hour render must not be so slow that a pod recycle kills it."""
+    assert compose._preset_for(60) == "medium"
+    assert compose._preset_for(1010) == "veryfast"
+
+
+def test_plan_scenes_covers_the_whole_narration(tmp_path):
+    """Scene durations must add back to the audio, or the clip cuts a sentence.
+
+    Each scene is padded by the crossfade because the renderer subtracts one
+    crossfade per join. With 16 scenes that padding is 22.5 seconds -- losing it
+    silently truncates the ending.
+    """
+    import make_story
+
+    meta = {"scenes": [f"ฉาก {i}" for i in range(1, 5)]}
+    timing = {"duration_seconds": 40.0, "lines": [
+        {"text": f"บรรทัด {i}", "start": i * 2.0, "end": i * 2.0 + 1.5, "matched": True}
+        for i in range(20)]}
+    crossfade = 1.5
+    plan = make_story.plan_scenes(meta, timing, crossfade=crossfade)
+
+    assert [p["index"] for p in plan] == [1, 2, 3, 4]
+    assert plan[0]["start"] == 0.0
+    # The last scene runs from its first line to the end of the audio, with no
+    # padding: there is no join after it.
+    assert plan[-1]["duration"] == pytest.approx(40.0 - 30.0, abs=0.01)
+    # Every earlier scene is padded by the crossfade the renderer will subtract.
+    assert plan[0]["duration"] == pytest.approx(11.5, abs=0.01)
+
+    rendered = sum(p["duration"] for p in plan) - crossfade * (len(plan) - 1)
+    assert rendered == pytest.approx(40.0, abs=0.01), (
+        "the plan must render to exactly the narration length")
+
+
+def test_plan_scenes_needs_scenes_and_timed_lines():
+    import make_story
+
+    with pytest.raises(ValueError):
+        make_story.plan_scenes({"scenes": []},
+                               {"duration_seconds": 1, "lines": [
+                                   {"text": "x", "start": 0, "end": 1, "matched": True}]})
+    with pytest.raises(ValueError):
+        make_story.plan_scenes({"scenes": ["ฉาก"]},
+                               {"duration_seconds": 1, "lines": [
+                                   {"text": "x", "start": 0, "end": 1, "matched": False}]})
+
+
 def test_loudnorm_reaches_its_target(tmp_path):
     """Two-pass loudnorm is the only version that lands on the target."""
     quiet = tmp_path / "quiet.wav"
@@ -275,6 +409,114 @@ def test_gemini_login_gate_marker_is_the_one_actually_seen():
     page_text = "ลงชื่อเข้าใช้เพื่อสร้างรูปภาพและอื่นๆ อีกมากมาย"
     assert "ลงชื่อเข้าใช้เพื่อ" in page_text and "สร้างรูปภาพ" in page_text
     assert gemini_image.URL.endswith("gemini.google.com/app")
+
+
+def test_gemini_still_selector_takes_the_newest_not_the_first():
+    """Every still stays on the page, so the newest is the LAST match.
+
+    This was a real bug: the selector used `.find()`, which returns the oldest
+    still, so scene 2 was saved as a byte-identical copy of scene 1. The two
+    images had the same sha256 and nothing failed.
+    """
+    import gemini_image
+
+    for js in (gemini_image._GRAB_LAST_JS, gemini_image._FINGERPRINT_JS):
+        assert "a.length - 1" in js, "must take the last still, not the first"
+        assert ".find(" not in js, "`.find()` returns the oldest still"
+
+    assert "blob:" in gemini_image._GRAB_LAST_JS, "stills are served from blob URLs"
+    assert "naturalWidth" in gemini_image._GRAB_LAST_JS
+
+
+def test_gemini_completion_waits_for_stable_pixels_not_a_label():
+    """The "generating" label stays on screen after the picture is done.
+
+    Verified live: gating completion on that text times out on a finished image,
+    so the wait has to watch the pixels settle instead. If a marker check comes
+    back, this test should be deleted along with the reason it exists.
+    """
+    import gemini_image
+
+    src = Path(SCRIPTS / "gemini_image.py").read_text(encoding="utf-8")
+    wait_body = src.split("def _wait_for_new_image", 1)[1].split("\ndef ", 1)[0]
+    assert "GENERATING_MARKER" not in wait_body, (
+        "the generating label never clears; gate on pixel stability instead"
+    )
+    assert "STABLE_SAMPLES" in wait_body and "fp" in wait_body
+    assert gemini_image.STABLE_SAMPLES >= 2, "one sample cannot show stability"
+
+
+def test_scene_stills_are_keyed_by_position_and_reused(tmp_path, monkeypatch):
+    """Scene N maps to a stable key, so a re-run reuses instead of regenerating."""
+    import make_story
+
+    for kind in ("img", "cover", "music"):
+        d = tmp_path / kind
+        d.mkdir()
+        monkeypatch.setitem(library.KINDS, kind, d)
+
+    calls: list[str] = []
+
+    def fake_generate(prompt, key, *, force=False):
+        calls.append(key)
+        existing = library.find("img", key)
+        if existing and not force:
+            return {"status": "REUSED", "entry": existing}
+        out = library.KINDS["img"] / f"{library.entry_id('img', key)}.png"
+        out.write_bytes(b"\x89PNG" + prompt.encode("utf-8"))
+        return {"status": "CREATED", "entry": library.add("img", key, out)}
+
+    import gemini_image
+    monkeypatch.setattr(gemini_image, "generate", fake_generate)
+
+    stories = tmp_path / "stories"
+    stories.mkdir()
+    (stories / "s.txt").write_text(
+        "# TITLE: ทดสอบ\n# SCENE: ฉากหนึ่ง\n# SCENE: ฉากสอง\n\nบรรทัดหนึ่ง\n",
+        encoding="utf-8")
+    monkeypatch.setattr(make_story, "STORIES", stories)
+    monkeypatch.setattr(make_story, "WORK", tmp_path / "work")
+    monkeypatch.setattr(make_story, "ROOT", tmp_path)
+
+    # Narration, karaoke and compose are exercised elsewhere; here the point is
+    # the image step and the keys it uses. The timing must still carry matched
+    # lines, because the scene plan is built from them.
+    monkeypatch.setattr(make_story, "narrate", lambda *a, **k: {
+        "audio": "a.mp3", "duration_seconds": 4.0, "line_count": 2,
+        "matched_lines": 2, "unmatched_lines": 0,
+        "lines": [{"text": "บรรทัดหนึ่ง", "start": 0.1, "end": 2.0, "matched": True},
+                  {"text": "บรรทัดสอง", "start": 2.0, "end": 4.0, "matched": True}]})
+    monkeypatch.setattr(make_story.karaoke, "build_ass",
+                        lambda *a, **k: {"cues": 1, "skipped_lines": 0})
+
+    def fake_cover(title, out, **k):
+        out.parent.mkdir(parents=True, exist_ok=True)
+        out.write_bytes(b"\x89PNG cover")
+        return {"file": str(out)}
+
+    monkeypatch.setattr(make_story.covers, "make_cover", fake_cover)
+    monkeypatch.setattr(make_story.compose, "compose_scenes",
+                        lambda **k: {"output": "o.mp4", "bytes": 1,
+                                     "duration_seconds": 4.0, "scenes": len(k["scenes"]),
+                                     "video": {"width": 1920, "height": 1080}})
+    monkeypatch.setattr(make_story.compose, "compose", lambda **k: {
+        "output": "o.mp4", "bytes": 1, "duration_seconds": 1.0,
+        "video": {"width": 1920, "height": 1080}})
+    monkeypatch.setattr(make_story.compose, "measure_loudness",
+                        lambda p: {"integrated_lufs": -17.0})
+
+    report = make_story.build("s", with_music=False, with_images=True)
+    assert calls == ["s-scene1", "s-scene2"], f"unexpected scene keys: {calls}"
+    assert report["steps"]["images"]["count"] == 2
+    assert "hero" in report["steps"], "scene 1 must be recorded as the hero"
+
+    # A second run must reuse both stills rather than generating them again.
+    calls.clear()
+    make_story.build("s", with_music=False, with_images=True)
+    assert calls == ["s-scene1", "s-scene2"]
+    assert library.find("img", "s-hero") is not None
+
+
 
 
 # --- music preset selection ------------------------------------------------

@@ -3,19 +3,6 @@
   "kind": "music",
   "entries": [
     {
-      "id": "music-01-hin-haeng-khwam-jam-mood",
-      "kind": "music",
-      "file": "library/music/music-01-hin-haeng-khwam-jam-mood.mp3",
-      "bytes": 970604,
-      "sha256": "0f7d7993fcb292ffa471a87b3666f2a5740dbfe4c486032f837a509fa5fa63e2",
-      "created_at": "2026-10-27T15:17:32Z",
-      "source": "ffmpeg-synth",
-      "mood": "calm",
-      "duration_seconds": 40.0,
-      "bpm": 60,
-      "integrated_lufs": -19.8
-    },
-    {
       "id": "music-02-nak-su-phu-thuk-thing-mood",
       "kind": "music",
       "file": "library/music/music-02-nak-su-phu-thuk-thing-mood.mp3",
@@ -40,7 +27,20 @@
       "duration_seconds": 120.0,
       "bpm": 60,
       "integrated_lufs": -20.0
+    },
+    {
+      "id": "music-01-hin-haeng-khwam-jam-mood",
+      "kind": "music",
+      "file": "library/music/music-01-hin-haeng-khwam-jam-mood.mp3",
+      "bytes": 24335468,
+      "sha256": "b70f3d30b69f0b1981bdff693b4e83a6259c3565008b8b2208e3e961a9b42b52",
+      "created_at": "2026-10-27T18:33:48Z",
+      "source": "ffmpeg-synth",
+      "mood": "calm",
+      "duration_seconds": 1013.544,
+      "bpm": 60,
+      "integrated_lufs": -20.4
     }
   ],
-  "updated_at": "2026-10-27T15:30:11Z"
+  "updated_at": "2026-10-27T18:33:48Z"
 }
