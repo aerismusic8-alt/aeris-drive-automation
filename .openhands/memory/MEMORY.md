@@ -2,6 +2,25 @@
 
 Index only. Detail lives in the daily logs (`2026-10-23.md`, `2026-10-22.md`).
 
+## 🎬 aeris938-1 — Thai story -> karaoke episode pipeline (2026-10-27)
+`aeris938-1/` builds a finished 1080p karaoke episode from a Thai story file with **no paid
+API**: edge-tts narration + boundary-derived per-line timing -> pythainlp-segmented
+`\k`-timed ASS -> burned in with libass -> per-story cover -> optional music bed -> ffmpeg
+render, then two-pass loudnorm to -17 LUFS. Asset manifests carry SHA-256 so a re-run
+reuses instead of regenerating. 34 pytest tests run the real synthesiser and real ffmpeg.
+
+**Two facts worth keeping:**
+1. **`flowmusic.app` is NOT Google.** `labs.google/fx/tools/music-fx` -> `flowmusic.google`
+   (Google Trust Services cert) -> `flowmusic.app` (Cloudflare, Let's Encrypt). The app
+   contacts no Google API. It brands itself "Google Flow Music". Third-party: the operator
+   signs in themselves; the agent must never fill a credential there.
+2. **The sandbox can be given a real desktop the operator signs into.** sudo + apt work.
+   `scripts/desktop.sh up` = Xvfb:99 + openbox + x11vnc:5900 + noVNC:12000 + headful
+   Chromium on CDP :9222. `https://work-1-<host>/vnc.html` returns 200 and `/websockify`
+   upgrades to 101, so the operator logs in once and the agent drives that session via
+   `connect_over_cdp`. That is the "browser, not API" path for login-only web apps.
+Detail in `.openhands/memory/2026-10-27.md`. Commits `46e4d05`, `5149c65` on `main` (not pushed).
+
 ## 📦 HANDING THE AI TO ANOTHER ACCOUNT? `ops/ax_build_upgrade_pack.py` (2026-10-26)
 One tarball that upgrades an agent: both skills, the rails, `MEMORY.md` + daily logs, the
 Thai guides, and a portable copy of the vault (the KV vault is account-scoped, so it cannot

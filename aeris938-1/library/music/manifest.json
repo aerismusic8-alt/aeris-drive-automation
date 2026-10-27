@@ -14,7 +14,20 @@
       "duration_seconds": 40.0,
       "bpm": 60,
       "integrated_lufs": -19.8
+    },
+    {
+      "id": "music-02-nak-su-phu-thuk-thing-mood",
+      "kind": "music",
+      "file": "library/music/music-02-nak-su-phu-thuk-thing-mood.mp3",
+      "bytes": 970604,
+      "sha256": "46cb9ed60e8f1053bdd1ac43c276dbbcd1f3ca202b5e05df0a7ef10a715ca9fd",
+      "created_at": "2026-10-27T15:23:10Z",
+      "source": "ffmpeg-synth",
+      "mood": "sad",
+      "duration_seconds": 40.0,
+      "bpm": 52,
+      "integrated_lufs": -19.9
     }
   ],
-  "updated_at": "2026-10-27T15:17:32Z"
+  "updated_at": "2026-10-27T15:23:10Z"
 }
