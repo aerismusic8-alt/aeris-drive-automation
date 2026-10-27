@@ -4,3 +4,15 @@ AKATH_CORE/runtime/evidence.jsonl
 
 # Vendored tooling (fetch with scripts/install-luau.sh)
 tools/
+
+# aeris938-1 pipeline: generated assets and renders are large; manifests are kept.
+aeris938-1/work/
+aeris938-1/library/img/*.png
+aeris938-1/library/img/*.jpg
+aeris938-1/library/music/*.mp3
+aeris938-1/library/covers/*.png
+!aeris938-1/library/*/manifest.json
+
+# Python bytecode from the aeris938-1 pipeline
+aeris938-1/**/__pycache__/
+*.pyc

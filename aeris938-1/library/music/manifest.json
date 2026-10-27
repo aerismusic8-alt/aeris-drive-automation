@@ -1,0 +1,20 @@
+{
+  "schema_version": 1,
+  "kind": "music",
+  "entries": [
+    {
+      "id": "music-01-hin-haeng-khwam-jam-mood",
+      "kind": "music",
+      "file": "library/music/music-01-hin-haeng-khwam-jam-mood.mp3",
+      "bytes": 970604,
+      "sha256": "0f7d7993fcb292ffa471a87b3666f2a5740dbfe4c486032f837a509fa5fa63e2",
+      "created_at": "2026-10-27T15:17:32Z",
+      "source": "ffmpeg-synth",
+      "mood": "calm",
+      "duration_seconds": 40.0,
+      "bpm": 60,
+      "integrated_lufs": -19.8
+    }
+  ],
+  "updated_at": "2026-10-27T15:17:32Z"
+}
