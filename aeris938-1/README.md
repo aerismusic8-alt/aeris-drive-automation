@@ -104,17 +104,28 @@ python3 -c "import sys;sys.path.insert(0,'aeris938-1/scripts');import library;pr
   third-party: **the operator signs in there themselves and the agent never
   fills a credential in.** `flow_music.py` prints this warning every run.
 
-## Recommended path for music
+## Music is generated automatically
 
-Given the above, prefer the offline bed for anything unattended:
+`make_story.py` needs no manual music step. If `<story>-mood` is not already in
+the library it reads the story's `# MOOD:` line, picks the closest preset and
+synthesises a bed:
 
-```bash
-python3 aeris938-1/scripts/make_music.py <story>-mood calm --duration 120
+```
+# MOOD: อบอุ่น สงบ เหมือนเล่านิทานให้ลูกฟัง   -> calm
+# MOOD: sad warm thai folk, slow            -> sad
+# MOOD: ลึกลับ ขลัง                          -> mystic
 ```
 
-It needs no account, is deterministic and is royalty-free. `make_story.py` picks
-up `<story>-mood` from the music manifest automatically. Use `flow_music.py`
-only when the operator is present and accepts the third-party terms.
+Presets: `calm`, `warm`, `sad`, `hopeful`, `mystic`, `epic`. An unrecognised
+mood falls back to `calm` rather than failing. Override by generating a bed
+yourself first:
+
+```bash
+python3 aeris938-1/scripts/make_music.py <story>-mood epic --duration 150
+```
+
+The bed is **not** used for anything unattended from a web generator, because
+`flowmusic.app` is third-party (see below).
 
 ## Tests
 
@@ -122,6 +133,6 @@ only when the operator is present and accepts the third-party terms.
 python3 -m pytest aeris938-1/tests/test_pipeline.py -q
 ```
 
-34 tests. They call the real synthesiser and the real ffmpeg, because the
+44 tests. They call the real synthesiser and the real ffmpeg, because the
 failures that matter here (silent audio, unshaped tone marks, a loudness target
 missed by a decibel) are exactly the ones a mock would hide.

@@ -27,7 +27,20 @@
       "duration_seconds": 40.0,
       "bpm": 52,
       "integrated_lufs": -19.9
+    },
+    {
+      "id": "music-03-dokmai-khong-phor-mood",
+      "kind": "music",
+      "file": "library/music/music-03-dokmai-khong-phor-mood.mp3",
+      "bytes": 2890412,
+      "sha256": "342261a256d0a4679482bbefc2863f15231be327e5b73df56a772452178f3c00",
+      "created_at": "2026-10-27T15:30:11Z",
+      "source": "ffmpeg-synth",
+      "mood": "calm",
+      "duration_seconds": 120.0,
+      "bpm": 60,
+      "integrated_lufs": -20.0
     }
   ],
-  "updated_at": "2026-10-27T15:23:10Z"
+  "updated_at": "2026-10-27T15:30:11Z"
 }

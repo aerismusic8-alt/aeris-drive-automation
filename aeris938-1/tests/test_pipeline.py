@@ -275,3 +275,62 @@ def test_gemini_login_gate_marker_is_the_one_actually_seen():
     page_text = "ลงชื่อเข้าใช้เพื่อสร้างรูปภาพและอื่นๆ อีกมากมาย"
     assert "ลงชื่อเข้าใช้เพื่อ" in page_text and "สร้างรูปภาพ" in page_text
     assert gemini_image.URL.endswith("gemini.google.com/app")
+
+
+# --- music preset selection ------------------------------------------------
+
+@pytest.mark.parametrize("mood,expected", [
+    ("sad warm thai folk, slow, instrumental", "sad"),
+    ("calm thai folk, khamen sai", "calm"),
+    ("ลึกลับ ขลัง", "mystic"),
+    ("อบอุ่น สงบ เหมือนเล่านิทานให้ลูกฟัง", "calm"),
+    ("", "calm"),
+    ("something nobody anticipated", "calm"),
+])
+def test_mood_line_picks_a_preset(mood, expected):
+    """A story should not have to know preset names to get a bed."""
+    import make_music
+    assert make_music.preset_for(mood) == expected
+
+
+def test_every_preset_is_usable_by_the_synthesiser():
+    import make_music
+    for preset in make_music.MOODS:
+        assert preset in make_music.MOODS
+        assert make_music.preset_for(preset) in make_music.MOODS
+
+
+def test_unknown_preset_is_refused(tmp_path, monkeypatch):
+    import make_music
+    monkeypatch.setattr(library, "ROOT", tmp_path)
+    monkeypatch.setattr(library, "KINDS", {"music": tmp_path / "music"})
+    (tmp_path / "music").mkdir()
+    with pytest.raises(ValueError, match="unknown mood"):
+        make_music.make("not-a-mood", "k")
+
+
+def test_music_synthesis_produces_real_audio(tmp_path, monkeypatch):
+    """The offline bed is the no-account fallback, so it must actually sound."""
+    import make_music
+    monkeypatch.setattr(library, "ROOT", tmp_path)
+    monkeypatch.setattr(library, "KINDS", {"music": tmp_path / "music"})
+    (tmp_path / "music").mkdir()
+    result = make_music.make("calm", "test-mood", duration=6.0)
+    entry = result["entry"]
+    assert result["status"] == "CREATED"
+    assert entry["bytes"] > 10_000
+    loudness = compose.measure_loudness(tmp_path / entry["file"])
+    assert loudness["integrated_lufs"] is not None
+    assert -30 < loudness["integrated_lufs"] < -10, "a bed that is silent or clipping is not a bed"
+
+
+def test_ensure_for_story_reuses_an_existing_bed(tmp_path, monkeypatch):
+    import make_music
+    monkeypatch.setattr(library, "ROOT", tmp_path)
+    monkeypatch.setattr(library, "KINDS", {"music": tmp_path / "music"})
+    (tmp_path / "music").mkdir()
+    first = make_music.ensure_for_story("story-x", "calm", duration=5.0)
+    assert first["status"] == "CREATED"
+    second = make_music.ensure_for_story("story-x", "calm", duration=5.0)
+    assert second["status"] == "REUSED"
+    assert second["entry"]["sha256"] == first["entry"]["sha256"]

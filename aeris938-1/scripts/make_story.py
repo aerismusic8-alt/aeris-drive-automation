@@ -98,7 +98,9 @@ def build(name: str, *, voice: str = VOICE_MALE, rate: str = DEFAULT_RATE,
                                   source="pipeline")
     report["steps"]["cover"] = {"file": cover_entry["file"], "bytes": cover_entry["bytes"]}
 
-    # 4. Optional music bed from the library, by mood key.
+    # 4. Music bed. Prefer one already in the library; otherwise synthesise an
+    # offline bed from the story's MOOD line, so an unattended run never ships
+    # silent. flowmusic.app is third-party and deliberately not used here.
     music_path = None
     if with_music:
         mood_key = f"{name}-mood"
@@ -107,10 +109,20 @@ def build(name: str, *, voice: str = VOICE_MALE, rate: str = DEFAULT_RATE,
             music_path = ROOT / mood_entry["file"]
             report["steps"]["music"] = {"file": mood_entry["file"], "reused": True}
         else:
-            report["steps"]["music"] = {
-                "missing": True,
-                "hint": f"generate with: scripts/flow_music.py {mood_key} \"{meta.get('mood','')}\"",
-            }
+            import make_music
+            try:
+                gen = make_music.ensure_for_story(name, meta.get("mood", ""))
+                entry = gen["entry"]
+                music_path = ROOT / entry["file"]
+                report["steps"]["music"] = {
+                    "file": entry["file"], "reused": False,
+                    "preset": gen.get("preset"), "source": entry.get("source"),
+                }
+            except Exception as exc:  # noqa: BLE001 - a missing bed is not fatal
+                report["steps"]["music"] = {
+                    "missing": True, "error": f"{type(exc).__name__}: {exc}",
+                    "hint": f"scripts/flow_music.py {mood_key} \"{meta.get('mood','')}\"",
+                }
 
     # 5. Compose.
     clip = work / f"{name}.mp4"

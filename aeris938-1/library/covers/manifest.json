@@ -23,7 +23,18 @@
       "title": "นกสีขาวผู้ถูกทิ้ง",
       "subtitle": "เรื่องที่ 2 · นิทานไทย",
       "source": "pipeline"
+    },
+    {
+      "id": "cover-03-dokmai-khong-phor-cover",
+      "kind": "cover",
+      "file": "library/covers/cover-03-dokmai-khong-phor-cover.png",
+      "bytes": 24789,
+      "sha256": "bd6d9f93e9ed7ca3df46b5f36a92fe64aaaad7a38a7aebb30f8db1b2bf185646",
+      "created_at": "2026-10-27T15:30:08Z",
+      "title": "ดอกไม้ของพ่อ",
+      "subtitle": "เรื่องที่ 3 · นิทานไทย",
+      "source": "pipeline"
     }
   ],
-  "updated_at": "2026-10-27T15:23:30Z"
+  "updated_at": "2026-10-27T15:30:08Z"
 }

@@ -126,6 +126,40 @@ def make(mood: str, key: str, *, duration: float = 90.0, force: bool = False) ->
     return {"status": "CREATED", "entry": entry}
 
 
+# Keywords a story's MOOD line may use, mapped to the closest preset. A story
+# should not have to know the preset names to get a bed.
+MOOD_HINTS = {
+    "sad": ("sad", "เศร้า", "โศก", "mourn", "loss", "ทิ้ง", "จากไป"),
+    "calm": ("calm", "สงบ", "นิ่ง", "gentle", "soft", "นุ่ม", "folk", "lull"),
+    "warm": ("warm", "อบอุ่น", "อุ่น", "home", "family", "หมู่บ้าน"),
+    "hopeful": ("hopeful", "หวัง", "สว่าง", "bright", "rise", "journey", "เดินทาง"),
+    "mystic": ("mystic", "ลึกลับ", "ขลัง", "magic", "หิน", "memory", "ความจำ"),
+    "epic": ("epic", "สงคราม", "battle", "hero", "ยิ่งใหญ่", "storm"),
+}
+
+
+def preset_for(mood_text: str) -> str:
+    """Pick a preset from a free-text MOOD line, defaulting to calm."""
+    low = (mood_text or "").lower()
+    for preset, hints in MOOD_HINTS.items():
+        if any(h in low for h in hints):
+            return preset
+    return "calm"
+
+
+def ensure_for_story(story_name: str, mood_text: str, *, duration: float = 120.0) -> dict:
+    """Guarantee a bed exists for this story, generating one when absent."""
+    key = f"{story_name}-mood"
+    existing = library.find("music", key)
+    if existing:
+        return {"status": "REUSED", "entry": existing, "preset": existing.get("mood")}
+    preset = preset_for(mood_text)
+    result = make(preset, key, duration=duration)
+    result["preset"] = preset
+    return result
+
+
+
 def main() -> int:
     ap = argparse.ArgumentParser(description="Synthesise a mood music bed offline")
     ap.add_argument("key")
