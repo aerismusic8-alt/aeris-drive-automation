@@ -81,11 +81,34 @@ The account already owns **three** experiences, which proves creation works here
   pointing into the dead pod's `/tmp` stopped Chromium binding port 9222, while
   every status check still said "UP". Cleared, and the desktop is healthy.
 
-## What still needs K (one thing)
+## The list-places 404 — solved, and it was our bug (2026-10-28)
 
-**Reissue the Roblox Open Cloud key with `universe-places:write` for universe
-10771844216.** The current `ROBLOX_API_KEY` returns 404 on place reads, so
-unattended publishes cannot run. Everything else is now in the agent's hands.
+After K updated the key, the workflow still failed, so I read the raw log instead of
+the conclusion. The universe read had actually been working all along:
 
-The 1,000-Robux fee for under-16 reach is deliberately left undone — it is a paid
-option and Rule #1 cancels it.
+```
+UNIVERSE_HTTP_STATUS=200   UNIVERSE_NAME=AX Garden Legends   UNIVERSE_VISIBILITY=PUBLIC
+LIST_URL=https://apis.roblox.com/cloud/v2/universes/10771844216/places
+HTTP_STATUS=404
+```
+
+The script was calling a URL that **does not exist**. The 835-path spec has
+`/cloud/v2/universes/{universe_id}/places/{place_id}` (singular, id required) and **no
+list path at all**, so that 404 was guaranteed for any key with any scope — which is why
+it read as a permissions problem.
+
+The correct call is on a different host and needs no credential:
+
+```
+GET https://develop.roblox.com/v1/universes/10771844216/places
+-> 200 {"data":[{"id":79945905295644,"name":"AX Garden Legends",...}]}
+```
+
+Fixed in `AX_PC_CONTROL/pc1-roblox-list-places.ps1` and pushed. The workflow now ends
+`completed success` with `PLACE_ID=79945905295644`.
+
+## What still needs K
+
+Nothing, for the place id. The one open item is the 1,000-Robux under-16 publishing fee,
+and that is deliberately not paid — it is a paid option and Rule #1 cancels it. The free
+route is the 16+ rating plus the free 250-engaged-player review.

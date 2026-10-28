@@ -1107,6 +1107,16 @@ create a new game...". New experiences come from **Studio**, which is installed 
 The account already owns **three** experiences (10771844216 AX Garden Legends,
 10772257179 Breachline: Two Sites, 10772257646 Legends of Celestia), which proves
 creation works on this account.
-**Publishing is still stuck for a different reason:** the repo secret `ROBLOX_API_KEY`
-returns 404 on `universe-places` reads, so it needs reissue with
-`universe-places:write` before unattended publishes work again.
+**RESOLVED 2026-10-28 — the 404 was OUR URL, not the credential.** `pc1-roblox-list-places.ps1`
+called `https://apis.roblox.com/cloud/v2/universes/{id}/places`, which **does not exist**:
+the full 835-path spec has only `/cloud/v2/universes/{universe_id}/places/{place_id}`
+(singular, needs the id). A list endpoint 404s for every key regardless of scope, so the
+symptom looked exactly like a permissions problem and sent us chasing key scopes.
+**The real endpoint is `GET https://develop.roblox.com/v1/universes/{universeId}/places`** —
+it is on `develop.roblox.com`, returns `{"data":[{"id","universeId","name","description"}]}`,
+and is **public: no API key needed**. Fixed; workflow now `completed success`, place
+`79945905295644`.
+Lesson: before blaming a credential, confirm the path exists in the provider's own spec.
+Also `x-api-key` on the universe read does work now (HTTP 200, `visibility=PUBLIC`).
+Read the spec with `curl -sL https://create.roblox.com/docs/cloud/openapi.json` and grep
+`paths`; it is 3.9 MB and lists each path's `servers` entry.
