@@ -324,3 +324,56 @@ Current ground truth, all three owned experiences:
 AX Garden Legends is already `Minimal` and still has zero players, so its ceiling is not
 the rating. Its problem is that nobody knows it exists — which is the distribution
 question, not a publishing-permission one.
+
+## 7. The 16+ ceiling is gone — questionnaire submitted (2026-10-28)
+
+Section 6 said the fix was a form. It was done, on the owner's own browser, and it
+worked. This is the first time the primary experience has been eligible for anyone
+other than an age-checked adult.
+
+**What was done.** The Maturity & Compliance questionnaire was opened at
+`create.roblox.com/dashboard/creations/experiences/10773483379/content-rating` and
+answered for the most extreme content the game actually shows. All 17 categories were
+completed. The answers: violence **yes**, intensity **mild** (Roblox defines mild as
+"implied or unrealistic"), frequency **occasional**; blood, fear, crude humour, gambling,
+strong language, romance, alcohol, social hangout, free-form user creation, sensitive
+issues, cross-experience content, AI interaction, paid random items, paid trading, media
+sharing and autoplaying media all **no**. That matches the code: cartoon monsters that
+vanish at zero health, an axe with no gore, no blood anywhere.
+
+**Read back from the public API, not the dashboard.**
+
+```
+POST apis.roblox.com/experience-guidelines-api/experience-guidelines/get-age-recommendation
+{"universeId":10773483379}
+-> displayName "Minimal", contentMaturity "minimal",
+   descriptor "Violence (Occasional/Mild)", intensity mild, frequency occasional
+```
+
+The `content-may-vary` descriptor that produced the "Content May Vary / 16+" label is
+gone. AX Garden Legends (10771844216) was rated in the same pass and reads `Minimal`
+with no descriptors at all.
+
+**The project's own sampler agrees.** `scripts/roblox-live-state.py` at 2026-10-28T16:21Z:
+
+| universe | role | maturity | reach |
+| --- | --- | --- | --- |
+| 10773483379 | primary | Minimal | eligible_for_under_16_after_evaluation |
+| 10771844216 | legacy | Minimal | eligible_for_under_16_after_evaluation |
+| 10772257179 | legacy | Moderate | eligible_for_under_16_after_evaluation |
+| 383310974 | control (Adopt Me) | Minimal | eligible_for_under_16_after_evaluation |
+
+AX Arena 2 now reads exactly like the control. Before this change it read `16+ only`,
+the strictest possible label.
+
+**What is left, stated plainly.** The label is no longer the ceiling. Under-16 reach is
+still gated by the Kids-and-Select step — a Roblox Plus/Premium subscription held for two
+consecutive months, or the one-time publishing fee — and by the 250-engaged-player
+evaluation. Those are unchanged and are not what this session fixed. What changed is that
+the *self-inflicted* part of the gate, an unanswered questionnaire, is answered.
+
+**How it was done without Studio.** PC1's Edge was driven through the Windows UI
+Automation tree: `uia2.ps1` dumps every control with its Unicode label and screen
+coordinates, and `uia_invoke.ps1` activates a control by name through its UIA pattern
+rather than by a guessed pixel. That is what made a Thai-language form tractable without
+OCR guesswork, and it is reusable for any future dashboard task.
