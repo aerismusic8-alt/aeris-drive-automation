@@ -4,85 +4,88 @@ Answers to the three questions, each with the evidence behind it. Measured
 2026-10-28 UTC. The standing goals in `AKATH_CORE/CANONICAL_TASK_REGISTRY.json`
 (`AKATH-ROBLOX-GOAL-PLAYABLE-001`, `AKATH-ROBLOX-GOAL-REVENUE-001`) stay open.
 
-## 1. Can we log in as @navintas938?
+## 1. Login as @navintas938 — DONE
 
-**Not yet, and there is no credential to log in with.** The account exists —
-`navintas938`, user id `11825689233` — but nothing holds its password or a live
-session:
+K signed in through the cloud desktop. Verified with the site's own authenticated
+endpoint, not the page title:
 
-| Where checked | Result |
+```
+GET users.roblox.com/v1/users/authenticated
+-> {"id":11825689233,"name":"navintas938","displayName":"navintas938"}
+```
+
+`.ROBLOSECURITY` is present (1178 chars; 17 `roblox.com` cookies). The session was
+saved to `/workspace/ax-tools/aeris938-state/roblox-storage.json`, which lives on
+persistent storage, so it survives a pod recycle. The agent now acts as the owner.
+
+## 2. Can a player get in and play? — the answer depends on who asks
+
+The same universe, two calls seconds apart:
+
+| Viewer | Result |
 | --- | --- |
-| Sandbox env / OpenHands secrets | no Roblox secret |
-| PC1 env, `C:\AX-Runtime`, Chrome profiles | no `navintas938`, no `ROBLOSECURITY` cookie |
-| PC1 Roblox client session | **expired** — Studio log says `Authenticated : NO`, then `Failed to logout discarded security cookie ... 401` |
+| authenticated owner | `{"playabilityStatus":"Playable","isPlayable":true}` |
+| anonymous | `{"playabilityStatus":"GuestProhibited","isPlayable":false}` |
 
-A login needs K to type the password once, into a screen the agent can drive. The
-free path is already standing up:
+So the game **is** playable and public. The earlier `isPlayable: false` reading was
+an **anonymous probe**, not a broken build — that is why it looked like a defect.
 
-```
-https://work-1-<work-host>/vnc.html?autoconnect=1&resize=scale
-VNC password: in /workspace/ax-tools/aeris938-state/vnc.pass.txt
-```
+The real limit is the **audience setting**. Creator Hub, `จัดการผู้ชม`:
 
-The Roblox login page is open in that desktop. The agent never types the
-password; K does, and the session then lives in the persistent profile under
-`/workspace`.
+- access: `สาธารณะ` (public) — already set
+- audience: `อายุ 16 ปีขึ้นไปและเพื่อนที่เชื่อได้` (16+ and trusted friends)
 
-## 2. Can a player get in and play?
+To open it to under-16 players, Roblox lists four steps, and **two of them cost
+money or require a government ID**:
 
-**No. `isPlayable: false`.**
+| Step | State | Cost |
+| --- | --- | --- |
+| Enable 2FA | incomplete | free |
+| 250 engaged players / high-engagement review | 0 people at 2026-10-28 | free, needs real players |
+| Kids & Select publishing fee | incomplete | **1,000 Robux** |
+| Verify identity with government ID | complete | — |
 
-```
-GET games.roblox.com/v1/games/multiget-playability-status?universeIds=10771844216
--> playabilityStatus: "GuestProhibited", isPlayable: false
-```
+**Rule #1 forbids the paid route**, so the 1,000-Robux fee is not an option and is
+not proposed. The free road to a wider audience is the 16+ rating plus the free
+250-engaged-player review.
 
-The game page reports maturity **"Minimal • Ages 16+"**, 3 visits, 0 playing. The
-experience is not reachable by a normal player.
+## 3. Can we create a game? — not via API, yes via Studio
 
-The build is not the problem. Publishes **succeeded** on 2026-10-19
-(`AX PC1 Roblox Publish` run 39238793933), and the repo secret `ROBLOX_API_KEY`
-exists. The gate is the **maturity & compliance questionnaire** plus activation —
-the `ContextualPlayabilityUnrated` condition `AGENTS.md` already describes. Only
-the account holder can clear it.
+The Open Cloud API **cannot** create an experience: the full spec
+(`create.roblox.com/docs/cloud/openapi.json`, 835 paths) has no POST that creates a
+universe or place. The Creator Hub creations page has **no create affordance**
+either — its only buttons are menu, search, notifications and sort.
 
-## 3. Can we create a game?
+Roblox's own docs are explicit — *"When you open Studio and create a new game, your
+project starts with a single place..."*. New experiences come from **Studio**.
 
-**Not through the API. Yes through Studio, which is installed on PC1.**
+Studio is installed on PC1:
+`C:\Program Files\Roblox\Versions\version-7aaa6838d36c4448\RobloxStudioBeta.exe`
+(player at `version-9ac85957...`). It is the free path, and no paid API is involved.
 
-Read from the full OpenAPI spec (`create.roblox.com/docs/cloud/openapi.json`,
-835 paths): there is **no** POST that creates a universe or a place. The API can
-only publish to one that already exists:
+The account already owns **three** experiences, which proves creation works here:
 
-```
-POST /universes/v1/{universeId}/places/{placeId}/versions   # publish a version
-POST /v1/universes/{universeId}/activate                     # go public
-POST /legacy-develop/v1/universes/{universeId}/activate      # legacy switch
-```
-
-So creating a *new* experience needs either the Creator Dashboard web UI or
-Roblox Studio. Studio is on PC1 — `C:\Program Files\Roblox\Versions\version-7aaa6838d36c4448\RobloxStudioBeta.exe`,
-with the Player at `version-9ac85957...`. Both are the free path: no paid API is
-involved anywhere in this project.
-
-`AX Garden Legends` already exists as an experience, so publishing our game needs
-no new creation step — only the maturity gate above.
+| universeId | name |
+| --- | --- |
+| 10771844216 | AX Garden Legends |
+| 10772257179 | Breachline: Two Sites |
+| 10772257646 | Legends of Celestia |
 
 ## What was fixed on the way here
 
-- **PC1's Actions runner served a different repo.** It was registered to
-  `farmmer938-lgtm/ax-ai-benchmark`, so every dispatch for this repo sat at
-  `queued` forever. A second runner, `PC1-AERIS`, is now registered to
+- **PC1's Actions runner served a different repo** — it was registered to
+  `farmmer938-lgtm/ax-ai-benchmark`, so every dispatch for this repo sat at `queued`
+  forever. A second runner, `PC1-AERIS`, is now registered to
   `aerismusic8-alt/aeris-drive-automation` and **online**.
-- **`ROBLOX_API_KEY` cannot list places** — `GET` returns 404 for
-  `universe 10771844216` (evidence `pc1-roblox-list-places.json`). The key is
-  present but does not carry `universe-places:read` for this universe, so publish
-  capability is unproven for the current key.
+- **Chromium CDP died silently after a pod recycle** — a stale `SingletonLock`
+  pointing into the dead pod's `/tmp` stopped Chromium binding port 9222, while
+  every status check still said "UP". Cleared, and the desktop is healthy.
 
-## What K has to do (three things, all one-time)
+## What still needs K (one thing)
 
-1. **Sign in to Roblox as @navintas938** through the noVNC link above.
-2. **Submit the maturity & compliance questionnaire** in the Creator Dashboard
-   (Maturity & Compliance), which is what flips `isPlayable` to true.
-3. **Reissue the Roblox Open Cloud key** with `universe-places:write` for universe
-   `10771844216`, so publishes can run unattended again.
+**Reissue the Roblox Open Cloud key with `universe-places:write` for universe
+10771844216.** The current `ROBLOX_API_KEY` returns 404 on place reads, so
+unattended publishes cannot run. Everything else is now in the agent's hands.
+
+The 1,000-Robux fee for under-16 reach is deliberately left undone — it is a paid
+option and Rule #1 cancels it.
