@@ -1,32 +1,30 @@
-# Push status — branch `aeris938-1-pipeline`
+# Push status — resolved
 
-## Blocked: the token in this pod is read-only
+## Pushing works now, through PC1
 
-The four commits are ready locally but could not be pushed. Verified, not assumed:
+The four commits listed below were pushed long ago; they are in `main`. What was
+blocked was *further* pushes, because the sandbox token is read-only.
 
+- The sandbox `GITHUB_TOKEN` is a **GitHub App installation token** with no write
+  scope. `x-oauth-scopes` is empty and `allows_permissionless_access=true`, so
+  every push returns 403. `GET /repos/...` reporting `push: true` is the **user's
+  role**, not the token's scope — do not trust it.
+- The App key that would mint a write token lived at `~/.config/aeris/gh-app.pem`,
+  on the ephemeral overlay. It is gone in a fresh pod, and `ax_vault.py` excludes
+  `.pem`/`.key` by design.
+- **PC1 holds a classic PAT that can write.** So the sandbox hands the commits to
+  PC1 and PC1 pushes.
+
+```bash
+./scripts/push-via-pc1.sh          # bundle -> PC1 -> git push -> prints remote SHA
 ```
-$ git push https://x-access-token:$GITHUB_TOKEN@github.com/aerismusic8-alt/... aeris938-1-pipeline
-remote: Permission to aerismusic8-alt/aeris-drive-automation.git denied to aerismusic8-alt.
-fatal: ... The requested URL returned error: 403
 
-$ curl -X POST .../git/refs -d '{"ref":"refs/heads/aeris938-1-pipeline","sha":"<40-char sha>"}'
-{"message": "Resource not accessible by integration", "status": 403}
-```
+Verified 2026-10-28: `0001ef8d..90da7a80` then `90da7a80..e111653e`, both
+`main -> main`.
 
-Notes on the diagnosis:
+## The commits that were once waiting
 
-- `GET /repos/...` reports `permissions: {admin: true, push: true, ...}`, but that
-  is the **role of the user**, not the scope of the token. Do not trust it.
-- `x-oauth-scopes` is empty and `allows_permissionless_access=true`, so this is a
-  **GitHub App installation token**, not a PAT.
-- `scripts/gh-app-token.mjs` cannot mint a write token here: no key exists at
-  `/workspace/.secrets/gh-app` or `~/.config/aeris`. The AGENTS.md instructions
-  assume a key that this pod does not have.
-- No other GitHub secret is present in this environment.
-
-So the push needs a credential that lives outside this pod.
-
-## Commits waiting
+All four are in `main` and on `origin/main`:
 
 ```
 9e27393 aeris938-1: generate the music bed automatically from the story's MOOD line
@@ -35,47 +33,4 @@ ee449b5 aeris938-1: second story, and session findings in memory
 46e4d05 aeris938-1: Thai story -> karaoke episode pipeline
 ```
 
-`origin/main` (`0001ef8`) is an ancestor of all four, so this is a clean
-fast-forward — no rebase needed.
-
-## How to finish it
-
-Any one of these works.
-
-**A. From this pod, with a writable token.** Mint a GitHub App token that has
-`contents: write` (or supply a PAT), then:
-
-```bash
-cd /workspace/project/18444af13cb4492dbf62e607001170f1/aeris-drive-automation
-git push "https://x-access-token:$WRITABLE_TOKEN@github.com/aerismusic8-alt/aeris-drive-automation.git" \
-  aeris938-1-pipeline
-```
-
-**B. From a machine that already has the app key.**
-
-```bash
-node scripts/gh-app-token.mjs --export    # then use the token as above
-```
-
-**C. Apply the patches anywhere.** A bundle and a patch series are in `dist/`:
-
-```bash
-git fetch /path/to/dist/aeris938-1-pipeline.bundle aeris938-1-pipeline:aeris938-1-pipeline
-# or
-git am dist/patches/*.patch
-```
-
-`dist/` is gitignored because it holds binaries; copy it out of the pod before it
-recycles.
-
-## Opening the PR
-
-Per AGENTS.md, `create_pr` uses the read-only token and returns 403. Once the
-branch is on the remote, open the PR with the REST API using a writable token:
-
-```bash
-python3 scripts/gh-api.py POST /repos/aerismusic8-alt/aeris-drive-automation/pulls \
-  --body-file pr.json
-```
-
-with `{"title": "...", "head": "aeris938-1-pipeline", "base": "main", "body": "..."}`.
+The `aeris938-1-pipeline` branch is obsolete; work happens on `main`.
