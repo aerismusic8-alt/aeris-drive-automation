@@ -635,6 +635,39 @@ check("the compact panel is built to the height the bar measures against",
       built is not None and heights and int(built.group(1)) == heights[0],
       "COMBAT_COMPACT.panelHeight and COMBAT_COMPACT_HEIGHT disagree, so the bar is placed against the wrong panel")
 
+print("\nWIRING R: a Robux purchase actually pays the buyer")
+
+# The catalogue, the receipt handler and the client prompt are three places that
+# must agree on the same numeric asset id. They were wired to the catalogue's
+# string key instead, so every real purchase resolved to "unknown product" and
+# granted nothing while the gamepasses sat on sale. These checks read the source
+# because a receipt cannot be replayed from a test.
+money = read(SHARED / "Monetization.luau")
+
+check("the catalogue carries an asset id per product",
+      money.count("assetId = ") >= 6,
+      "a product is sold but has no asset id, so it can never be resolved")
+
+check("receipts resolve by asset id, not by the catalogue key",
+      "Monetization.forAsset(receiptInfo.ProductId)" in server,
+      "ProcessReceipt keys off the string id, so every purchase is refused as unknown")
+
+check("a gamepass purchase is announced, not silently dropped",
+      "PromptGamePassPurchaseFinished:Connect" in server,
+      "a gamepass has no handler, so buying one grants nothing")
+
+check("gamepass ownership is re-read from the platform, not the event flag",
+      "UserOwnsGamePassAsync" in server,
+      "ownership is taken from a client-supplied boolean")
+
+check("ownership is reconciled on join as well as on purchase",
+      "pcall(reconcileGamepasses, player)" in server,
+      "a pass bought on the website or in another server is never restored")
+
+check("only gamepasses are restored from ownership",
+      "Monetization.restoreGamepasses" in money and "Monetization.gamepasses()" in money,
+      "a consumable dev product restored from ownership would pay out every join")
+
 print(f"\nWIRING: {passed} passed, {len(failures)} failed")
 for failure in failures:
     print(f"  FAIL  {failure}")

@@ -616,9 +616,22 @@ local function spawnForField(fieldId: string, plan: any, spawnIndex: number, now
 	return scaled
 end
 
+-- Forward declaration: the gamepass reconcile is defined near the receipt
+-- handlers at the bottom, but onPlayerAdded below already calls it.
+local reconcileGamepasses: (Player) -> number
+
 local function onPlayerAdded(player: Player)
 	local record = loadRecord(player)
 	records[player.UserId] = record
+
+	-- Restore permanent passes the platform already knows about. A player can buy
+	-- one on the website or in another server, so the save alone is not enough.
+	task.spawn(function()
+		local ok, err = pcall(reconcileGamepasses, player)
+		if not ok then
+			warn("[AX Arena] gamepass reconcile failed for " .. player.Name .. ": " .. tostring(err))
+		end
+	end)
 
 	player.CharacterAdded:Connect(function(character)
 		-- Place the character on the arena spawn. The part in Workspace is only a
@@ -1568,7 +1581,19 @@ PickUpDrop.OnServerInvoke = function(player: Player, dropId: any, all: any): (bo
 	pushPlayerState(player, record)
 	return true, taken, nil
 end
-
+	-- A gamepass purchase does not reach ProcessReceipt. The platform announces it
+	-- here; reconcileGamepasses re-reads ownership from the platform rather than
+	-- trusting the boolean this event carries.
+	MarketplaceService.PromptGamePassPurchaseFinished:Connect(function(player, gamePassId, wasPurchased)
+		if not wasPurchased then
+			return
+		end
+		-- Ignore anything that is not one of our passes.
+		if not Monetization.forAsset(gamePassId) then
+			return
+		end
+		reconcileGamepasses(player)
+	end)
 MarketplaceService.ProcessReceipt = function(receiptInfo)
 	local player = Players:GetPlayerByUserId(receiptInfo.PlayerId)
 	if not player then
@@ -1576,7 +1601,10 @@ MarketplaceService.ProcessReceipt = function(receiptInfo)
 		return Enum.ProductPurchaseDecision.NotProcessedYet
 	end
 
-	local product = Monetization.get(receiptInfo.ProductId)
+	-- The receipt carries the numeric asset id, not the catalogue key, so resolve
+	-- it through the catalogue. Keying off the string id here meant every real
+	-- purchase fell through as "unknown product" and was granted nothing.
+	local product = Monetization.forAsset(receiptInfo.ProductId)
 	local productId = product and product.id
 	if not productId then
 		-- Unknown product id: grant nothing but stop retrying forever.
@@ -1848,3 +1876,36 @@ game:BindToClose(function()
 end)
 
 print(string.format("[AX Arena] server ready (schema v%d)", Config.Persistence.SchemaVersion))
+
+-- A gamepass does not go through ProcessReceipt. The platform tells us the
+-- purchase finished, but the only trustworthy source of truth is
+-- UserOwnsGamePassAsync -- the event argument is a client-supplied boolean.
+-- The player may also have bought it on the website or in another server, so
+-- ownership is re-read here and again on join. Defined after onPlayerAdded,
+-- which calls it, hence the forward declaration above.
+reconcileGamepasses = function(player: Player): number
+	local record = records[player.UserId]
+	if not record then
+		return 0
+	end
+	local ownedIds: { [number]: boolean } = {}
+	for _, product in ipairs(Monetization.gamepasses()) do
+		local assetId = product.assetId
+		if assetId then
+			local ok, owns = pcall(function()
+				return MarketplaceService:UserOwnsGamePassAsync(player.UserId, assetId)
+			end)
+			if ok and owns then
+				ownedIds[assetId] = true
+			end
+		end
+	end
+	local next, changed = Monetization.restoreGamepasses(record.entitlements, ownedIds)
+	if changed then
+		record.entitlements = next
+		record.dirty = true
+		applySpawnStats(record)
+		pushPlayerState(player, record)
+	end
+	return changed and 1 or 0
+end

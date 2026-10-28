@@ -1182,6 +1182,78 @@ t.test("every product has a positive price and description", function()
 	end
 end)
 
+t.test("every product carries the Roblox asset id it is sold under", function()
+	-- A product without an assetId is advertised but cannot be prompted, and a
+	-- receipt for it can never be resolved. Both leave a buyer unpaid.
+	local seen = {}
+	for _, product in ipairs(Monetization.list()) do
+		t.assertTrue(type(product.assetId) == "number", product.id)
+		t.assertFalse(seen[product.assetId] == true, product.id)
+		seen[product.assetId] = true
+	end
+end)
+
+t.test("a receipt resolves back to its product by asset id", function()
+	-- ProcessReceipt hands us the numeric asset id, never the catalogue key.
+	for _, product in ipairs(Monetization.list()) do
+		local found = Monetization.forAsset(product.assetId)
+		t.assertTrue(found ~= nil, product.id)
+		t.assertEqual(found.id, product.id)
+	end
+end)
+
+t.test("an unknown asset id resolves to nothing", function()
+	t.assertNil(Monetization.forAsset(1))
+	t.assertNil(Monetization.forAsset(nil))
+end)
+
+t.test("restoring ownership grants a gamepass the platform reports", function()
+	local ent = Monetization.newEntitlements()
+	local vip = Monetization.get("Vip")
+	local next, changed = Monetization.restoreGamepasses(ent, { [vip.assetId] = true })
+	t.assertTrue(changed)
+	t.assertTrue(Monetization.owns(next, "Vip"))
+	-- The input must not be mutated, or a failed reconcile would still stick.
+	t.assertFalse(Monetization.owns(ent, "Vip"))
+end)
+
+t.test("restoring ownership changes nothing when the pass is not owned", function()
+	local ent = Monetization.newEntitlements()
+	local next, changed = Monetization.restoreGamepasses(ent, {})
+	t.assertFalse(changed)
+	t.assertFalse(Monetization.owns(next, "Vip"))
+end)
+
+t.test("a dev product is never restored from ownership", function()
+	-- A dev product is consumable. Restoring it from ownership would pay it out
+	-- on every single join, so it must be excluded.
+	local ent = Monetization.newEntitlements()
+	local boost = Monetization.get("DoubleCoins1h")
+	local next = Monetization.restoreGamepasses(ent, { [boost.assetId] = true })
+	t.assertFalse(Monetization.owns(next, "DoubleCoins1h"))
+	local lucky = Monetization.get("LuckyBoost")
+	local next2 = Monetization.restoreGamepasses(ent, { [lucky.assetId] = true })
+	t.assertEqual(next2.luckyCharges, 0)
+end)
+
+t.test("restoring ownership keeps boosts and charges already held", function()
+	local ent = Monetization.newEntitlements()
+	local bought = Monetization.grant(ent, "DoubleCoins1h", 1000)
+	local next = Monetization.restoreGamepasses(bought.entitlements, {})
+	t.assertEqual(next.boosts["DoubleCoins1h"], 1000 + 3600)
+	local lucky = Monetization.grant(next, "LuckyBoost", 1000)
+	local after = Monetization.restoreGamepasses(lucky.entitlements, {})
+	t.assertEqual(after.luckyCharges, 10)
+end)
+
+t.test("gamepasses are listed separately from dev products", function()
+	for _, product in ipairs(Monetization.gamepasses()) do
+		t.assertEqual(product.kind, "gamepass")
+		t.assertFalse(product.repeatable)
+	end
+	t.assertTrue(#Monetization.gamepasses() >= 4)
+end)
+
 t.test("unknown products cannot be granted", function()
 	local result, reason = Monetization.grant(Monetization.newEntitlements(), "FreeRobux", 0)
 	t.assertNil(result)

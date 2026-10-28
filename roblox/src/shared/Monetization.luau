@@ -30,6 +30,7 @@ export type Product = {
 local PRODUCTS: { [string]: Product } = {
 	Vip = {
 		id = "Vip",
+		assetId = 2058971598,
 		kind = "gamepass",
 		name = "VIP",
 		robux = 199,
@@ -38,6 +39,7 @@ local PRODUCTS: { [string]: Product } = {
 	},
 	AutoHatch = {
 		id = "AutoHatch",
+		assetId = 2058839555,
 		kind = "gamepass",
 		name = "Auto Hatch",
 		robux = 149,
@@ -46,6 +48,7 @@ local PRODUCTS: { [string]: Product } = {
 	},
 	FastWalk = {
 		id = "FastWalk",
+		assetId = 2058521556,
 		kind = "gamepass",
 		name = "Super Speed",
 		robux = 99,
@@ -54,6 +57,7 @@ local PRODUCTS: { [string]: Product } = {
 	},
 	DoubleCoins1h = {
 		id = "DoubleCoins1h",
+		assetId = 3723348935,
 		kind = "devproduct",
 		name = "2x Coins (1 hour)",
 		robux = 25,
@@ -62,6 +66,7 @@ local PRODUCTS: { [string]: Product } = {
 	},
 	LuckyBoost = {
 		id = "LuckyBoost",
+		assetId = 3723349634,
 		kind = "devproduct",
 		name = "Lucky Boost",
 		robux = 35,
@@ -70,6 +75,7 @@ local PRODUCTS: { [string]: Product } = {
 	},
 	ZonePass = {
 		id = "ZonePass",
+		assetId = 2059001519,
 		kind = "gamepass",
 		name = "Zone Pass",
 		robux = 299,
@@ -88,6 +94,34 @@ function Monetization.list(): { Product }
 	local out: { Product } = {}
 	for _, id in ipairs(ORDER) do
 		table.insert(out, PRODUCTS[id])
+	end
+	return out
+end
+
+-- Reverse lookup by Roblox asset id. The platform hands the receipt back with a
+-- numeric id, but the catalogue is keyed by string id, so without this the
+-- receipt path can never resolve a product and no purchase is ever granted.
+function Monetization.forAsset(assetId: number?): Product?
+	if type(assetId) ~= "number" then
+		return nil
+	end
+	for _, product in ipairs(Monetization.list()) do
+		if product.assetId == assetId then
+			return product
+		end
+	end
+	return nil
+end
+
+-- The gamepasses. Ownership is permanent and must be restored from the platform
+-- on join, because a player can buy one on the website or in another server and
+-- our save would never hear about it.
+function Monetization.gamepasses(): { Product }
+	local out: { Product } = {}
+	for _, product in ipairs(Monetization.list()) do
+		if product.kind == "gamepass" then
+			table.insert(out, product)
+		end
 	end
 	return out
 end
@@ -239,6 +273,37 @@ function Monetization.fromSnapshot(data: any): Entitlements
 	end
 	ent.luckyCharges = math.max(0, math.floor(tonumber(data.luckyCharges) or 0))
 	return ent
+end
+
+-- Restore permanent gamepass ownership reported by the platform. `ownedIds` is the
+-- set of asset ids the player is entitled to. Only gamepasses are applied: a
+-- dev product is consumable and must be granted from a receipt, not from
+-- ownership, or a single purchase would pay out on every join.
+-- Returns the new entitlements and whether anything changed.
+function Monetization.restoreGamepasses(
+	ent: Entitlements,
+	ownedIds: { [number]: boolean }
+): (Entitlements, boolean)
+	local next: Entitlements = {
+		owned = {},
+		boosts = {},
+		luckyCharges = ent.luckyCharges,
+	}
+	for k, v in pairs(ent.owned) do
+		next.owned[k] = v
+	end
+	for k, v in pairs(ent.boosts) do
+		next.boosts[k] = v
+	end
+	local changed = false
+	for _, product in ipairs(Monetization.gamepasses()) do
+		local assetId = product.assetId
+		if assetId and ownedIds[assetId] and not next.owned[product.id] then
+			next.owned[product.id] = true
+			changed = true
+		end
+	end
+	return next, changed
 end
 
 return Monetization
