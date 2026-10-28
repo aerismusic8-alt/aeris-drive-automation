@@ -8,10 +8,15 @@ DISPLAY_NUM="${AERIS_DISPLAY:-:99}"
 SCREEN="${AERIS_SCREEN:-1600x900x24}"
 VNC_PORT="${AERIS_VNC_PORT:-5900}"
 NOVNC_PORT="${AERIS_NOVNC_PORT:-12000}"
-LOG_DIR="${AERIS_LOG_DIR:-/tmp/aeris938}"
-RUN_DIR="${AERIS_RUN_DIR:-/tmp/aeris938}"
-VNC_PASSFILE="${AERIS_VNC_PASSFILE:-$HOME/.aeris938/vnc.pass}"
-CHROME_PROFILE="${AERIS_CHROME_PROFILE:-$HOME/.aeris938/chrome-profile}"
+# State lives on the persistent volume, NOT under $HOME. $HOME (/home/openhands)
+# is on the container overlay, which is discarded when the pod recycles -- so a
+# profile kept there loses the Google login and the operator has to sign in
+# again every session. /workspace survives, so the login survives with it.
+STATE_DIR="${AERIS_STATE_DIR:-/workspace/ax-tools/aeris938-state}"
+LOG_DIR="${AERIS_LOG_DIR:-$STATE_DIR/logs}"
+RUN_DIR="${AERIS_RUN_DIR:-$STATE_DIR/run}"
+VNC_PASSFILE="${AERIS_VNC_PASSFILE:-$STATE_DIR/vnc.pass}"
+CHROME_PROFILE="${AERIS_CHROME_PROFILE:-$STATE_DIR/chrome-profile}"
 CDP_PORT="${AERIS_CDP_PORT:-9222}"
 
 mkdir -p "$LOG_DIR" "$RUN_DIR" "$(dirname "$VNC_PASSFILE")" "$CHROME_PROFILE"
@@ -60,6 +65,7 @@ start_chrome() {
     --disable-features=Translate,MediaRouter \
     --user-data-dir="$CHROME_PROFILE" \
     --remote-debugging-address=127.0.0.1 --remote-debugging-port="$CDP_PORT" \
+    --remote-allow-origins='*' \
     --window-size=1500,860 --window-position=20,20 \
     --lang=th-TH "https://accounts.google.com/" \
     >"$LOG_DIR/chrome.log" 2>&1 &

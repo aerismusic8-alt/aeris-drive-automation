@@ -164,6 +164,40 @@ for pure Linux jobs — the Luau test workflow uses it.
 
 Do not commit binaries; `tools/` is gitignored on purpose.
 
+## The cloud desktop (login-only web apps)
+
+Some tools here have no API and are behind a Google login the agent must never type:
+**Flow Music** (`flowmusic.app`, real music beds) and **Gemini web**
+(`gemini.google.com`, episode images). The route is a desktop the agent can drive and
+the operator can sign into once. Read
+`.agents/skills/ax-cloud-desktop/SKILL.md` before touching either.
+
+```bash
+python3 .agents/skills/ax-cloud-desktop/scripts/bootstrap.py    # bring it up (idempotent)
+python3 .agents/skills/ax-cloud-desktop/scripts/check_login.py  # is it signed in?
+```
+
+Three facts that cost real time and will bite again:
+
+- **`$HOME` is not persistent.** `/home/openhands` is on the container overlay; only
+  `/workspace` survives a pod recycle. State (the chrome profile, hence the Google
+  login) lives in `/workspace/ax-tools/aeris938-state/`. A profile under `$HOME` loses
+  the login on every recycle and the operator has to sign in again.
+- **Chrome needs `--remote-allow-origins=*`** or every CDP websocket is refused with
+  403 and Playwright cannot attach, even though the browser is running.
+- **`vnc.html` returns 200 even when the VNC backend is dead** — it is a static page.
+  Run `bootstrap.py --status`, not a curl, to know whether the desktop is up.
+
+The operator signs in via
+`https://work-1-<work-host>/vnc.html?autoconnect=1&resize=scale` (the `work-1-...` host
+from the session's work_hosts, never `hostname`). Sending a `flowmusic.app/session/<id>`
+link does not help: that is an in-app route, not a credential, and without the cookie it
+redirects to the landing page.
+
+A real track is registered in `library/music/` (`source: flowmusic-web`), and
+`make_story.py` prefers a library track over the synth bed. `compose.py` loops a short
+track with `-stream_loop -1`, so a 3-minute song fills a 5-minute episode.
+
 ### The farm loop
 
 `Farm.luau` and `Axe.luau` are the "farm" half of the game. Farming is not a

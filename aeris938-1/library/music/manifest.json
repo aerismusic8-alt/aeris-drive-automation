@@ -31,16 +31,16 @@
     {
       "id": "music-01-hin-haeng-khwam-jam-mood",
       "kind": "music",
-      "file": "library/music/music-01-hin-haeng-khwam-jam-mood.mp3",
-      "bytes": 24335468,
-      "sha256": "b70f3d30b69f0b1981bdff693b4e83a6259c3565008b8b2208e3e961a9b42b52",
-      "created_at": "2026-10-27T18:33:48Z",
-      "source": "ffmpeg-synth",
-      "mood": "calm",
-      "duration_seconds": 1013.544,
-      "bpm": 60,
-      "integrated_lufs": -20.4
+      "file": "library/music/music-01-hin-haeng-khwam-jam-mood-flowmusic.mp3",
+      "bytes": 3726073,
+      "sha256": "30bf8329ce8d9a1c111e32c6f3546f81200251e7a58d4f05af35aada4415eb52",
+      "created_at": "2026-10-28T06:21:12Z",
+      "source": "flowmusic-web",
+      "provider": "www.flowmusic.app",
+      "mood": "calm thai folk, khamen sai, warm, slow, instrumental",
+      "duration_seconds": 179.952,
+      "note": "real song generated in Google Flow Music; loops to fill the episode"
     }
   ],
-  "updated_at": "2026-10-27T18:33:48Z"
+  "updated_at": "2026-10-28T06:21:12Z"
 }
