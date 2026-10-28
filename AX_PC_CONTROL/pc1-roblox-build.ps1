@@ -43,15 +43,21 @@ Write-Host "ROJO_VERSION=$rojoVersion"
 $REPO_URL = 'https://github.com/aerismusic8-alt/aeris-drive-automation.git'
 $BRANCH = 'ax-arena-roblox-game'
 
+# The runner service account owns neither C:\AX-Build nor the clone that an
+# earlier run made, so git refuses with "dubious ownership". Pass the exception
+# per invocation: the service account cannot always write a global git config,
+# and editing one machine's config would not survive a rebuild.
+$GIT = @('-c', "safe.directory=$repoDir", '-c', 'safe.directory=*')
+
 if (Test-Path (Join-Path $repoDir '.git')) {
   Write-Host "REPO=syncing"
-  & git -C $repoDir fetch --depth 1 origin $BRANCH
-  & git -C $repoDir checkout -f FETCH_HEAD
-  & git -C $repoDir clean -fdx
+  & git @GIT -C $repoDir fetch --depth 1 origin $BRANCH
+  & git @GIT -C $repoDir checkout -f FETCH_HEAD
+  & git @GIT -C $repoDir clean -fdx
 } else {
   Write-Host "REPO=cloning"
   New-Item -ItemType Directory -Path $repoDir -Force | Out-Null
-  & git clone --depth 1 --branch $BRANCH $REPO_URL $repoDir
+  & git @GIT clone --depth 1 --branch $BRANCH $REPO_URL $repoDir
 }
 if ($LASTEXITCODE -ne 0) { throw "GIT_FAILED:$LASTEXITCODE" }
 
