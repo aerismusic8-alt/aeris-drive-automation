@@ -49,6 +49,7 @@ local COLORS = {
 	muted = Color3.fromRGB(150, 158, 176),
 	gold = Color3.fromRGB(255, 206, 84),
 	green = Color3.fromRGB(86, 210, 130),
+	red = Color3.fromRGB(232, 96, 96),
 	blue = Color3.fromRGB(96, 170, 255),
 	disabled = Color3.fromRGB(70, 74, 88),
 }
@@ -496,12 +497,14 @@ function Hud.build(): ScreenGui
 		{ id = "Skills", text = Text.get("skills") },
 		{ id = "Job", text = Text.get("job") },
 		{ id = "Bag", text = Text.get("inventory") },
+		{ id = "Shop", text = Text.get("shop") },
 	}
 	for index, def in ipairs(tabDefs) do
 		local width = 1 / #tabDefs
 		local tab = button(tabs, "Tab_" .. def.id, def.text, UDim2.new(width, -6, 1, 0),
 			UDim2.new((index - 1) * width, 3, 0, 0), COLORS.disabled)
 		tab.TextSize = 16
+		tab.TextScaled = true
 		tab.ZIndex = 22
 	end
 

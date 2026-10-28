@@ -113,6 +113,12 @@ local state = {
 	-- Which character tab is open, and whether the panel is up at all.
 	charTab = "Stats",
 	charOpen = false,
+	-- The shop tab shares the character panel; the villager opens it directly.
+	shopOpen = false,
+	-- The last RequestShop payload, so the shop tab renders without a
+	-- network call on every frame.
+	shop = nil,
+	shopError = nil,
 	-- Whether the rewards overlay (daily, code) is up.
 	rewardsOpen = false,
 	-- Which standing panels are folded down to a bar. Keyed by panel name,
@@ -571,6 +577,75 @@ local function renderJobTab(list: Instance)
 	list.CanvasSize = UDim2.new(0, 0, 0, row * 54 + 20)
 end
 
+-- Shop tab: the Robux catalogue, straight from the server. Prices come from
+-- Monetization.list() and a product with no assetId is refused by the server,
+-- so this only renders what can actually be bought. Tapping one hands the
+-- purchase to Roblox; the server grants it on the receipt.
+local function renderShopTab(list: Instance)
+	list:ClearAllChildren()
+	local shop = state.shop
+	local row = 0
+
+	local header = charRow(list, "ShopHeader", row + 1, 30)
+	header.Text = Text.get("shop")
+	header.TextColor3 = Hud.COLORS.gold
+	row += 1
+
+	if not shop then
+		local loading = charRow(list, "ShopLoading", row + 1, 30)
+		loading.Text = Text.get("shopLoading")
+		loading.TextColor3 = Hud.COLORS.muted
+		list.CanvasSize = UDim2.new(0, 0, 0, 60)
+		return
+	end
+
+	if state.shopError then
+		local reason = state.shopError
+		local label = reason == "NOT_CONFIGURED" and Text.get("notConfigured")
+			or reason == "SHOP_UNAVAILABLE" and Text.get("shopUnavailable")
+			or tostring(reason)
+		local banner = charRow(list, "ShopError", row + 1, 30)
+		banner.Text = Text.get("shopFailed", label)
+		banner.TextColor3 = Hud.COLORS.red
+		row += 1
+	end
+
+	local products = shop.products or {}
+	if #products == 0 then
+		local empty = charRow(list, "ShopEmpty", row + 1, 30)
+		empty.Text = Text.get("shopEmpty")
+		empty.TextColor3 = Hud.COLORS.muted
+		list.CanvasSize = UDim2.new(0, 0, 0, 60)
+		return
+	end
+
+	for _, product in ipairs(products) do
+		local owned = shop.owned and shop.owned[product.id] == true
+		local line = charRow(list, "Product_" .. product.id, row + 1, 52)
+		line.Text = string.format("%s  -  %d R$\n%s", product.name, product.robux, product.description)
+		line.TextColor3 = Hud.COLORS.text
+		row += 1
+
+		local label = owned and Text.get("owned") or Text.get("buy")
+		local buy = Hud.button(list, "Buy_" .. product.id, label, UDim2.new(0, 96, 0, 40),
+			UDim2.new(1, -108, 0, row * 58 - 52), owned and Hud.COLORS.disabled or Hud.COLORS.green)
+		buy.ZIndex = 23
+		buy.TextSize = 16
+		buy.Active = not owned
+		if not owned then
+			buy.Activated:Connect(function()
+				local ok, reason = Intent.buyProduct(product.id)
+				if not ok then
+					state.shopError = reason
+					render()
+				end
+			end)
+		end
+	end
+
+	list.CanvasSize = UDim2.new(0, 0, 0, row * 58 + 20)
+end
+
 -- Bag tab: worn gear as icon tiles, then the bag as a grid of icon tiles. A
 -- tile shows the object itself, and a tap does the one thing that item can do
 -- -- equip a weapon, use a potion -- so the grid needs no per-row buttons and a
@@ -709,7 +784,7 @@ function renderCharacter(gui: Instance)
 
 	local tabs = panel:FindFirstChild("Tabs")
 	if tabs then
-		for _, id in ipairs({ "Stats", "Skills", "Job", "Bag" }) do
+		for _, id in ipairs({ "Stats", "Skills", "Job", "Bag", "Shop" }) do
 			local tab = tabs:FindFirstChild("Tab_" .. id)
 			if tab and tab:IsA("TextButton") then
 				tab.BackgroundColor3 = (state.charTab == id) and Hud.COLORS.gold or Hud.COLORS.disabled
@@ -729,6 +804,8 @@ function renderCharacter(gui: Instance)
 		renderSkillsTab(list)
 	elseif state.charTab == "Job" then
 		renderJobTab(list)
+	elseif state.charTab == "Shop" then
+		renderShopTab(list)
 	else
 		renderBagTab(list)
 	end
@@ -1181,6 +1258,22 @@ local function wireButtons()
 		render()
 	end
 
+	-- The catalogue changes rarely but the owned flags change on a purchase,
+	-- so the shop is refreshed when its surface opens rather than kept live.
+	local function refreshShop()
+		state.shop = Intent.fetchShop()
+		state.shopError = nil
+	end
+
+	local function openShop()
+		travel.Visible = false
+		state.rewardsOpen = false
+		state.charTab = "Shop"
+		state.charOpen = true
+		refreshShop()
+		render()
+	end
+
 	mapButton.Activated:Connect(openTravel)
 
 	closeTravel.Activated:Connect(function()
@@ -1254,11 +1347,14 @@ local function wireButtons()
 		render()
 	end)
 
-	for _, id in ipairs({ "Stats", "Skills", "Job", "Bag" }) do
+	for _, id in ipairs({ "Stats", "Skills", "Job", "Bag", "Shop" }) do
 		local tab = tabs:FindFirstChild("Tab_" .. id)
 		if tab and tab:IsA("TextButton") then
 			tab.Activated:Connect(function()
 				state.charTab = id
+				if id == "Shop" then
+					refreshShop()
+				end
 				render()
 			end)
 		end
@@ -1279,10 +1375,7 @@ local function wireButtons()
 		elseif panel == "character" then
 			openCharacter()
 		elseif panel == "shop" then
-			-- The shop lives in the character sheet's bag tab today; open
-			-- there rather than inventing a second shop surface.
-			state.charTab = "Bag"
-			openCharacter()
+			openShop()
 		elseif panel == "quests" then
 			-- Quests are the tracker in the corner; a tap brings it back if
 			-- the player folded it away.

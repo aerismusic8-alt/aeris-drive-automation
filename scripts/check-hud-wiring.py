@@ -668,6 +668,29 @@ check("only gamepasses are restored from ownership",
       "Monetization.restoreGamepasses" in money and "Monetization.gamepasses()" in money,
       "a consumable dev product restored from ownership would pay out every join")
 
+print("\nWIRING S: a purchase surface exists and reaches the prompt")
+
+# The money path can be perfect and still earn nothing if no button calls it.
+# `Intent.buyProduct` was defined but unreachable: the villager that opens the
+# shop pointed at the Bag tab, which renders items, not products. A defined-but-
+# uncalled function is invisible to every other check.
+shop_tab = "renderShopTab" in client
+check("a shop surface renders the catalogue",
+      shop_tab and "Shop" in hud,
+      "no surface renders Monetization.list(), so nothing is purchasable")
+
+check("the shop tab is reachable from the tab strip",
+      'ipairs({ "Stats", "Skills", "Job", "Bag", "Shop" })' in client,
+      "the Shop tab exists but no tab button switches to it")
+
+check("the shop villager opens the shop, not the bag",
+      'elseif panel == "shop" then\n\t\t\topenShop()' in client,
+      "the shop villager opens the Bag tab, which shows no products")
+
+check("a buy button actually calls buyProduct",
+      "Intent.buyProduct(product.id)" in client,
+      "buyProduct is defined but no button calls it, so the prompt never runs")
+
 print(f"\nWIRING: {passed} passed, {len(failures)} failed")
 for failure in failures:
     print(f"  FAIL  {failure}")

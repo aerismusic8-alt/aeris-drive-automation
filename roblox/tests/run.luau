@@ -2264,6 +2264,8 @@ t.test("the buttons and panels all have text", function()
                 "town", "here", "locked", "returnToTown", "plot", "ready",
                 "rebirthDone", "returnedToTown", "entered", "dailyGain", "codeGain",
                 "harvestGain", "purchaseApplied",
+                "shop", "buy", "owned", "shopLoading", "shopEmpty", "shopFailed",
+                "notConfigured", "shopUnavailable",
         }
         local missing = Text.missingKeys(keys)
         t.assertEqual(#missing, 0, "missing translations: " .. table.concat(missing, ", "))
@@ -2305,6 +2307,8 @@ t.test("the Thai lines are actually Thai", function()
                 "farm", "map", "chooseField", "townPickField", "redeem", "cancel", "returnToTown",
                 "here", "PronteraTown", "Meadow", "Cavern", "Volcano", "Void", "Heaven",
                 "Wheat", "Carrot", "Star",
+                "shop", "buy", "owned", "shopLoading", "shopEmpty", "shopFailed",
+                "notConfigured", "shopUnavailable",
         }
         for _, key in ipairs(keys) do
                 t.assertTrue(hasThai(Text.get(key)), key .. " is not Thai")

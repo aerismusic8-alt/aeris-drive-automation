@@ -142,6 +142,17 @@ local STRINGS: { [string]: string } = {
         harvestGain = "เก็บ %s ได้: +%d เหรียญ",
         purchaseApplied = "ซื้อสำเร็จ: %s",
 
+        -- Shop. The catalogue itself is English (it is the same text the
+        -- Roblox dashboard shows), but the buttons around it are Thai.
+        shop = "ร้านค้า",
+        buy = "ซื้อ",
+        owned = "มีแล้ว",
+        shopLoading = "กำลังโหลด...",
+        shopEmpty = "ยังไม่มีของขาย",
+        shopFailed = "ซื้อไม่สำเร็จ: %s",
+        notConfigured = "ยังไม่เปิดขาย",
+        shopUnavailable = "เชื่อมต่อร้านค้าไม่ได้",
+
         -- Farm plot signs
         plot = "แปลง %d",
         ready = "สุกแล้ว",
