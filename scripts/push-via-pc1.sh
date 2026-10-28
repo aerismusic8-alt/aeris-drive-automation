@@ -42,7 +42,9 @@ python3 - "$SANDBOX_URL" "$REPO" "$BRANCH" "$PC1_MCP" <<'PY'
 import json, os, sys, urllib.request, urllib.error
 
 sandbox, repo, branch, mcp = sys.argv[1:5]
-token = os.environ["PC1_MCP_TOKEN_2"]
+token = os.environ.get("PC1_MCP_TOKEN_2") or os.environ.get("PC1_MCP_TOKEN")
+if not token:
+    raise SystemExit("PC1_MCP_TOKEN_2 is not set; name it in the invoking command so the secret is injected")
 _session = {"id": None}
 
 def post(payload):
