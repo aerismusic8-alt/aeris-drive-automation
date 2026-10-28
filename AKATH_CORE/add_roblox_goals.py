@@ -35,8 +35,34 @@ GOALS = [
             "The game runs a full session without server errors",
             "Progress saves and reloads across sessions",
         ],
-        "evidence": None,
-        "verification": {"verified": False, "reasons": ["Not published to Roblox yet"]},
+        "evidence": {
+            "universeId": 10773483379,
+            "rootPlaceId": 98458071284292,
+            "name": "AX Arena 2: Monster Fields",
+            "publishedVersion": 2,
+            "publishedAt": "2026-10-28T12:59:22Z",
+            "uploadBytes": 576246,
+            "sourceBlocks": 39,
+            "publishHttpStatus": 200,
+            "publisher": "PC1 (self-hosted runner) via Roblox Open Cloud API",
+            "builtFrom": "ax-arena-roblox-game",
+            "verifiedAt": "2026-10-28T13:20:00Z",
+            "notes": [
+                "The place is published without Roblox Studio; Rojo builds it and the "
+                "Open Cloud API publishes it.",
+                "An anonymous playability probe reads GuestProhibited; the owner probe "
+                "reads Playable. The gate is the audience rating, not the build.",
+                "main and ax-arena-roblox-game diverged on 2026-10-19; the live place "
+                "runs the branch's roblox/ (39 source blocks), not main's (28).",
+            ],
+        },
+        "verification": {
+            "verified": False,
+            "reasons": [
+                "Published and owner-playable, but an anonymous player still cannot join: "
+                "the audience rating gate keeps under-16 reach closed",
+            ],
+        },
         "completed_at": None,
         "payload": {
             "action": "roblox_game_playable_by_all",
@@ -46,7 +72,11 @@ GOALS = [
             "standing_goal": True,
             "repo": "aerismusic8-alt/aeris-drive-automation",
             "path": "roblox/",
-            "blocker": "Publishing requires Roblox Studio (desktop only)",
+            "blocker": (
+                "Anonymous join is refused by the audience rating (16+ and trusted "
+                "friends). The free road is the 16+ rating plus the 250-engaged-player "
+                "review; the paid 1,000-Robux under-16 fee is ruled out by Rule #1."
+            ),
         },
         "started_at": "2026-10-18T00:00:00.000Z",
         "attempt": 1,
@@ -73,7 +103,19 @@ GOALS = [
             "A purchase grants its entitlement and persists",
             "Revenue is visible in the Roblox dashboard",
         ],
-        "evidence": None,
+        "evidence": {
+            "catalogue": "roblox/src/shared/Monetization.luau (6 products, prices server-side)",
+            "assetIdsSet": False,
+            "targetUniverseId": 10773483379,
+            "verifiedAt": "2026-10-28T13:20:00Z",
+            "notes": [
+                "No gamepass or developer-product id exists yet, so every product "
+                "reports assetId=nil and the client refuses to prompt.",
+                "The catalogue is the older roblox/ tree. The live place runs the "
+                "ax-arena-roblox-game branch, so confirm which tree owns the shop "
+                "before creating assets.",
+            ],
+        },
         "verification": {"verified": False, "reasons": ["No Roblox asset ids set yet"]},
         "completed_at": None,
         "payload": {
@@ -84,7 +126,10 @@ GOALS = [
             "standing_goal": True,
             "repo": "aerismusic8-alt/aeris-drive-automation",
             "path": "roblox/src/shared/Monetization.luau",
-            "blocker": "Needs gamepass/product asset ids from the Roblox website",
+            "blocker": (
+                "Needs gamepass/product asset ids from the Roblox website, created "
+                "under navintas938 for universe 10773483379."
+            ),
         },
         "started_at": "2026-10-18T00:00:00.000Z",
         "attempt": 1,
@@ -113,7 +158,11 @@ def main() -> int:
         merged["attempt"] = existing.get("attempt", goal["attempt"])
         merged["result"] = existing.get("result", goal["result"])
         merged["status"] = existing.get("status", goal["status"])
-        merged["evidence"] = existing.get("evidence", goal["evidence"])
+        # A recorded value wins over the template's, so re-running this does not
+        # erase evidence a session already gathered. `existing.get(k, default)`
+        # is not enough: the key exists and holds None, which would win.
+        if existing.get("evidence") is not None:
+            merged["evidence"] = existing["evidence"]
         if existing.get("verification", {}).get("verified"):
             merged["verification"] = existing["verification"]
         existing.clear()

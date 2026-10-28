@@ -161,3 +161,76 @@ The new experience, created this way and then published into:
 Anonymous play still reads `GuestProhibited` — that is the audience rating gate, not a
 broken build (see section 2). Under-16 reach still needs the paid 1,000-Robux fee or the
 free 250-engaged-player review, and Rule #1 keeps the fee unpaid.
+
+## 5. Re-verified 2026-10-28 13:1x UTC — and the real risk is the branch, not the publish
+
+Re-measured from the sandbox, not from the previous write-up. Everything below is a
+response I read myself this session.
+
+**Live state of the new universe.**
+
+```
+GET games.roblox.com/v1/games?universeIds=10773483379
+-> name "AX Arena 2: Monster Fields", rootPlaceId 98458071284292,
+   creator navintas938 (11825689233), created 2026-10-28T12:25:54Z,
+   updated 2026-10-28T12:59:23Z, visits 0, playing 0
+GET games.roblox.com/v1/games/multiget-playability-status?universeIds=10773483379
+-> {"playabilityStatus":"GuestProhibited","isPlayable":false}   (anonymous probe)
+```
+
+The last publish was **version 2**, `PUBLISHED_VERSION=2`, `HTTP_STATUS=200`,
+`UPLOAD_BYTES=576246`, from the run at `2026-10-28T12:59:22Z`. The artifact
+`pc1-roblox-publish-evidence.json` on PC1 says the same:
+
+```json
+{"status":"PUBLISHED","versionNumber":2,"universeId":"10773483379",
+ "placeId":"98458071284292","versionType":"Published","uploadBytes":576246}
+```
+
+**Where the published code actually came from — read this before trusting a green run.**
+The build step reported `BUILD_REF=main`, which reads as "main was published". It was
+not. `AX_PC_CONTROL/pc1-roblox-build.ps1` carries `$BRANCH = 'ax-arena-roblox-game'`
+hard-coded, so the script was *fetched* from main but it clones and builds the **branch**:
+
+```
+BUILD_REF=main
+HEAD is now at 967753a Temporary: dump both universe objects from the live-state job
+Building project 'AXArena'
+SOURCE_BLOCKS=39   SCRIPT_INSTANCES=39
+```
+
+39 source blocks is the branch's `roblox/` (32 shared + 5 client + 2 server = 39 files).
+`main`'s `roblox/` has 28 files (24 + 2 + 2), so **main's newer game code is not what is
+live**. The two refs diverged at `6f2e48b` (2026-10-19) and `main` is 35 ahead / 135 behind
+the branch. The live place is the branch snapshot.
+
+**The 12:33 failure was not the game.** That run had `ref=ax-arena-roblox-game`, so the
+build step fetched the *branch's* build script, which builds `roblox-garden/`:
+
+```
+HEAD is now at 967753a ...
+Building project 'AXGardenLegends'
+[ERROR rojo] failed to create file `C:\AX-Build\AXGarden.rbxlx`
+        Caused by: Access is denied. (os error 5)
+```
+
+`AXGarden.rbxlx` already exists on PC1 and is locked, so Rojo could not overwrite it. That
+is a stale artifact, not a code fault — and the same `ref` choice is why the file path
+differs between the two runs.
+
+**The 12:48 failure was the key, and it is fixed.** `HTTP_STATUS=403` on the publish POST,
+because `ROBLOX_API_KEY` did not yet list the new universe. After the key was edited in
+Creator Hub, the next run at 12:59 returned `HTTP_STATUS=200 PUBLISHED_VERSION=2`.
+
+**Sandbox GitHub write is still read-only** (re-checked): `POST /git/refs` -> **403**,
+`x-oauth-scopes` empty, `allows_permissionless_access=true`. The write path remains
+`scripts/push-via-pc1.sh`. PC1's MCP is reachable and answering
+(`GetSystemInfo` -> Windows 11, 4 cores, 5.8/8.1 GB used, booted 2026-10-22).
+
+### The open question for K
+
+Two refs both call themselves the game. `main` holds the newer `roblox/` (Ragnarok
+systems, `Config.Version = "1.0.0"`); the branch holds a larger `roblox/` (32 modules,
+`Config.Version = "1.0.1"`, plus `roblox-garden/` and `breachline/`). The live place runs
+the branch's. Reconciling them is the thing that decides what players actually get, and
+it is a deliberate choice, not a mechanical merge.

@@ -1,6 +1,26 @@
 # MEMORY
 
-Index only. Detail lives in the daily logs (`2026-10-23.md`, `2026-10-22.md`).
+Index only. Detail lives in the daily logs (`2026-10-28.md`, `2026-10-27.md`, `2026-10-23.md`, `2026-10-22.md`).
+
+## ⚠️ Roblox: `BUILD_REF` LIES — the live place is the `ax-arena-roblox-game` BRANCH, not `main` (verified 2026-10-28)
+`AX PC1 Roblox Publish` logs `BUILD_REF=main`, but `AX_PC_CONTROL/pc1-roblox-build.ps1` hard-codes
+`$BRANCH = 'ax-arena-roblox-game'`. The script is fetched from the ref you pass; **the code it builds
+always comes from that branch.** Proof: `SOURCE_BLOCKS=39` = the branch's `roblox/` (32 shared + 5
+client + 2 server); `main`'s `roblox/` has 28 files (24+2+2). The refs diverged at `6f2e48b`
+(2026-10-19); `main` is 35 ahead / 135 behind. `main` = newer Ragnarok systems, `Config.Version
+"1.0.0"`; branch = bigger tree, `"1.0.1"`, plus `roblox-garden/` + `breachline/`. **Editing `roblox/`
+on `main` reaches no player.** Decide which ref owns the game before promising a change ships.
+**Live:** universe `10773483379` "AX Arena 2: Monster Fields", rootPlace `98458071284292`, owner
+navintas938, published **version 2** at `2026-10-28T12:59:22Z` (576,246 B, HTTP 200). Anonymous
+probe = `GuestProhibited` (the audience-rating gate, 16+); owner probe = `Playable`.
+**Red-run causes:** 12:33 = `ref=ax-arena-roblox-game` fetched the *branch's* build script, which
+builds `roblox-garden/`, and a locked stale `C:\AX-Build\AXGarden.rbxlx` gave "Access is denied
+(os error 5)"; 12:48 = `HTTP_STATUS=403` because `ROBLOX_API_KEY` did not list the new universe yet
+(fixed in Creator Hub, next run 200). PC1's own clone `C:\AX-Build\repo` is at branch `967753a` and
+its `publish-config.json` still points at the OLD universe 10771844216.
+**Generator bug fixed:** `add_roblox_goals.py` did `existing.get("evidence", goal[...])`, which never
+fired because the key exists holding `None`, so a re-run **wiped** recorded evidence. Now
+`if existing.get("evidence") is not None`. Detail: `.openhands/memory/2026-10-28.md`.
 
 ## 🎬 aeris938-1 — Thai story -> karaoke episode pipeline (2026-10-27)
 `aeris938-1/` builds a finished 1080p karaoke episode from a Thai story file with **no paid

@@ -100,23 +100,33 @@ Run the tests before every push:
 cd roblox && ../tools/luau/luau tests/run.luau
 ```
 
-Publishing needs Roblox Studio, which is desktop-only. `roblox/PUBLISH-FROM-PHONE.md`
+Publishing does not need Roblox Studio: `AX_PC_CONTROL/pc1-roblox-build.ps1` builds the
+place with Rojo and `pc1-roblox-publish.ps1` uploads it through the Open Cloud API. What
+Studio is still needed for is *creating* a new experience. `roblox/PUBLISH-FROM-PHONE.md`
 covers what can and cannot be done from a phone.
 
 ## Shipping to Roblox
 
-The live place can lag the branch in two different ways, and both look the same
-to a player: "the game is still the old game". Check them in this order.
+The live place can lag the branch in three different ways, and they all look the
+same to a player: "the game is still the old game". Check them in this order.
 
 1. **Was a version published for this commit?** Open the latest
    `AX PC1 Roblox Publish` run and read `HEAD is now at <sha>` plus
    `PUBLISHED_VERSION`. If the SHA is old, the build used a stale ref.
-2. **Is the experience playable at all?** A version can be published and still
+2. **Which ref does the build actually read?** `BUILD_REF` in the log is only the
+   ref the *script* was fetched from. `pc1-roblox-build.ps1` hard-codes
+   `$BRANCH = 'ax-arena-roblox-game'`, so the code it builds always comes from
+   that branch. A run that says `BUILD_REF=main` still publishes the branch.
+   `SOURCE_BLOCKS` tells you which tree you got: 39 is the branch's `roblox/`,
+   28 is `main`'s.
+3. **Is the experience playable at all?** A version can be published and still
    be unplayable. Roblox keeps a new experience private until the account
    holder submits the Maturity & Compliance questionnaire. Query
    `https://games.roblox.com/v1/games/multiget-playability-status?universeIds=<id>`
    and expect `isPlayable: true`. `ContextualPlayabilityUnrated` means the
    questionnaire is outstanding, and only the account owner can fix it.
+   `GuestProhibited` is a different, narrower gate: the experience is live and
+   owner-playable, but its audience rating (16+) refuses an anonymous join.
 
 Rules learned the hard way:
 
