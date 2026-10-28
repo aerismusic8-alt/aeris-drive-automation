@@ -112,3 +112,52 @@ Fixed in `AX_PC_CONTROL/pc1-roblox-list-places.ps1` and pushed. The workflow now
 Nothing, for the place id. The one open item is the 1,000-Robux under-16 publishing fee,
 and that is deliberately not paid — it is a paid option and Rule #1 cancels it. The free
 route is the 16+ rating plus the free 250-engaged-player review.
+
+## 4. A brand-new game exists and is public (2026-10-28)
+
+Section 3 said new experiences need Studio. That is true for a human clicking through the
+Creator Hub, but it is not the whole truth: **Studio itself creates a universe over HTTP**,
+and the endpoint is visible in the Studio binary.
+
+```
+POST https://apis.roblox.com/universes/v1/universes/create
+body: {"templatePlaceID": <int>, "placeName": "...", "description": "..."}
+-> 200 {"universeId":..., "rootPlaceId":...}
+```
+
+It needs the signed-in `.ROBLOSECURITY` cookie and a CSRF token
+(`POST auth.roblox.com/v2/logout`, read `x-csrf-token`), not the Open Cloud API key.
+`templatePlaceID` must be a Roblox base template id — our own place ids are rejected with
+`place id ... is not a valid template`.
+
+The new experience, created this way and then published into:
+
+| field | value |
+| --- | --- |
+| universeId | 10773483379 |
+| rootPlaceId | 98458071284292 |
+| name | AX Arena 2: Monster Fields |
+| privacyType | Public |
+| isActive | true |
+| published version | 2 (576,246 bytes, 39 source blocks) |
+| playability (owner) | `Playable` |
+
+### The three steps that made it real
+
+1. **Rename** — `PATCH develop.roblox.com/v1/universes/{id}/configuration` with
+   `{"name": ...}` returns 200. The first attempt also wrote the Thai working title.
+2. **Publish** — the Open Cloud path (`POST apis.roblox.com/universes/v1/{u}/places/{p}/versions?versionType=Published`)
+   returned **403** because `ROBLOX_API_KEY` was scoped to the three older universes only.
+   Fixed by editing the key in Creator Hub → ส่วนขยาย API → แก้ไข → the "ค้นหาประสบการณ์"
+   box now offers the new experience; tick it and save. Then the same workflow run
+   returned `HTTP_STATUS=200 PUBLISHED_VERSION=2`.
+3. **Make it public** — `privacyType` will **not** change by PATCH; the field is
+   read-only. The free path is Creator Hub → จัดการผู้ชม → เปิดตัวต่อสาธารณะบน Roblox,
+   answer the maturity questionnaire (our cartoon combat is "no restricted content"),
+   then **เผยแพร่**. After that `privacyType=Public isActive=true`.
+
+### Still true
+
+Anonymous play still reads `GuestProhibited` — that is the audience rating gate, not a
+broken build (see section 2). Under-16 reach still needs the paid 1,000-Robux fee or the
+free 250-engaged-player review, and Rule #1 keeps the fee unpaid.

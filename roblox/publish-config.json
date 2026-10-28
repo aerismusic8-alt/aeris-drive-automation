@@ -1,9 +1,12 @@
 {
-  "universeId": 10771844216,
-  "placeId": 79945905295644,
+  "universeId": 10773483379,
+  "placeId": 98458071284292,
   "versionType": "Published",
   "note": [
-    "AX Arena: Farm and Fight, created 2026-10-19.",
+    "AX Arena 2: Monster Fields, created 2026-10-28 (public, isActive).",
+    "The older universe 10771844216 (AX Garden Legends) is still live.",
+    "ROBLOX_API_KEY must list this universeId under universe-places:write, or the",
+    "publish returns 403; add it in Creator Hub -> API keys -> Edit -> experience search.",
     "universeId and placeId come from the Creator Dashboard URL.",
     "No secret goes in this file. The API key lives in the GitHub secret ROBLOX_API_KEY.",
     "A run form input still wins over these values when one is given."
