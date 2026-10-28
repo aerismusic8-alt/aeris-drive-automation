@@ -58,6 +58,10 @@ local state = {
 	coins = 0,
 	upgrades = {},
 	stats = { kills = 0, wavesCleared = 0, deaths = 0 },
+	-- The active story objective, straight from the server. The tracker
+	-- below draws it; it used to be read without ever being written, so the
+	-- one panel that tells a new player what to do stayed empty forever.
+	quest = nil,
 	derived = nil,
 	health = 0,
 	maxHealth = 0,
@@ -859,6 +863,7 @@ PlayerState.OnClientEvent:Connect(function(payload)
 	state.autoAttack = payload.autoAttack == true
 	state.autoPickup = payload.autoPickup ~= false
 	state.buffs = payload.buffs or {}
+	state.quest = payload.quest or state.quest
 
 	render()
 end)

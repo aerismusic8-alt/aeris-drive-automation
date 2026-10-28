@@ -691,6 +691,50 @@ check("a buy button actually calls buyProduct",
       "Intent.buyProduct(product.id)" in client,
       "buyProduct is defined but no button calls it, so the prompt never runs")
 
+print("\nWIRING T: every field the client draws is one the client stores")
+
+# A payload field can be sent by the server, read by the client, and still never
+# reach the screen, because the client forgot to copy it out of the payload into
+# its state table. `state.quest` was exactly this: the server put the objective
+# in every PlayerState, the tracker read `state.quest`, and nothing ever assigned
+# it, so the one panel that tells a new player what to do rendered nothing from
+# the first join onward. Nothing failed, because reading a missing key is nil.
+#
+# So: for each field the server sends, if the client reads it as `state.X`, the
+# client must also assign `state.X` somewhere. The read alone proves nothing.
+assigned = set(re.findall(r"state\.(\w+)\s*=", client))
+read = set(re.findall(r"state\.(\w+)\b", client))
+
+# The quest snapshot is the one that regressed; pin it explicitly and by shape.
+check("the client stores the quest snapshot it draws",
+      "state.quest = payload.quest" in client,
+      "the tracker reads state.quest but nothing assigns it, so it is always blank")
+
+check("the quest snapshot is a field the server actually sends",
+      re.search(r"^\s+quest = Quests\.snapshot", server, re.M) is not None,
+      "the client waits for a field the server never sends")
+
+check("the tracker draws the objective, not a placeholder",
+      'setLabel(gui, "QuestBody"' in client and 'Text.get(quest.bodyKey)' in client,
+      "the tracker does not render the objective body")
+
+# Any other state field the client reads but never assigns is the same bug
+# waiting to happen. Known-initialised scalars are fine; a nil-able table that
+# only ever gets read is not.
+reads_without_assign = sorted(
+    name for name in read - assigned
+    if name not in {"coins", "upgrades", "stats"}
+)
+# `state.X` reads that are guarded by a declared default are acceptable, so only
+# flag the ones that are never declared either.
+# Anything declared in the state table counts, including a table with fields
+# (`folded = { Actions = true }`), so match any tab-indented assignment.
+declared = set(re.findall(r"^\t(\w+) =", client, re.M))
+never_stored = sorted(n for n in reads_without_assign if n not in declared)
+check("no field is read from client state without ever being stored",
+      not never_stored,
+      "read but never written: " + ", ".join(never_stored))
+
 print(f"\nWIRING: {passed} passed, {len(failures)} failed")
 for failure in failures:
     print(f"  FAIL  {failure}")

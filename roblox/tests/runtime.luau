@@ -282,6 +282,33 @@ t.test("a real state payload renders into the HUD without error", function()
                 t.assertTrue(string.find(coinsText, tostring(payload.coins), 1, true) ~= nil,
                         "the Coins label does not show the pushed balance: " .. coinsText)
         end
+
+        -- The objective tracker. The server puts `quest` in every payload, but the
+        -- client used to read state.quest without ever assigning it, so this panel
+        -- drew nothing for every player from the first join onward. Asserting that
+        -- the panel merely exists is what let that ship, so assert it carries the
+        -- objective: a non-empty line that is the translated text, not the raw key.
+        local questBody = labelText("QuestBody")
+        t.assertTrue(questBody ~= nil and questBody ~= "", "the quest tracker body is blank")
+        if questBody and payload.quest then
+                t.assertNotEqual(questBody, payload.quest.bodyKey,
+                        "the tracker shows the raw text key instead of the objective")
+                -- The translated line must still contain a Thai codepoint, so a tracker that
+                -- fell back to the English key cannot pass as translated.
+                -- The translated line must still contain a Thai codepoint, so a tracker
+                -- that fell back to the English key cannot pass as translated. Thai
+                -- lives in U+0E00..U+0E7F, which the "Thai text" suite already checks.
+                local hasThai = false
+                for _, code in utf8.codes(questBody) do
+                	if code >= 0x0E00 and code <= 0x0E7F then
+                		hasThai = true
+                		break
+                	end
+                end
+                t.assertTrue(hasThai, "the objective is not in Thai: " .. questBody)
+        end
+        local questTitle = labelText("QuestTitle")
+        t.assertTrue(questTitle ~= nil and questTitle ~= "", "the quest title is blank")
 end)
 
 t.test("the HUD is built to fit the phone screen it is on", function()

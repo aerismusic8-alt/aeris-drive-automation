@@ -18,11 +18,28 @@ local Enemies = require("../src/shared/Enemies")
 t.suite("Quests: the story has an order and pays once")
 --------------------------------------------------------------------------
 
+-- Drive the spine forward until the active quest has the given kind, or the
+-- spine ends. Tests used to hardcode "the first quest is a kill quest", which
+-- broke the moment the opening objective changed. Naming the kind keeps each
+-- test about the behaviour it checks, not about the order of the spine.
+local function advanceToKind(state, kind)
+        local guard = 0
+        while Quests.current(state) and Quests.current(state).kind ~= kind do
+                local def = Quests.current(state)
+                Quests.onEvent(state, def.kind, def.target, def.count)
+                guard += 1
+                if guard > 100 then
+                        return nil
+                end
+        end
+        return Quests.current(state)
+end
+
 t.test("the spine starts on the first quest and reports progress", function()
         local state = Quests.new()
         local def = Quests.current(state)
         t.assertNotNil(def, "a new save has no active quest")
-        t.assertEqual(def.id, "first_blood", "the story does not start at the first quest")
+        t.assertEqual(def.id, Quests.list()[1].id, "the story does not start at the first quest")
 
         local snap = Quests.snapshot(state)
         t.assertEqual(snap.progress, 0, "a fresh quest is already partly done")
@@ -32,15 +49,16 @@ end)
 
 t.test("an event of the wrong kind does not advance the quest", function()
         local state = Quests.new()
-        -- The first quest is a KILL quest, so a harvest must not count.
+        -- The opening quest is ENTER_FIELD, so a harvest must not count.
         local reward = Quests.onEvent(state, "HARVEST", nil, 1)
-        t.assertNil(reward, "a harvest completed a kill quest")
+        t.assertNil(reward, "a harvest advanced a quest it has nothing to do with")
         t.assertEqual(Quests.snapshot(state).progress, 0, "the wrong event moved the progress")
 end)
 
 t.test("a quest pays once and only when it completes", function()
         local state = Quests.new()
-        local def = Quests.current(state)
+        local def = advanceToKind(state, "KILL")
+        t.assertNotNil(def, "the spine never asks for a kill")
         local paid = 0
         for _ = 1, def.count do
                 local reward = Quests.onEvent(state, "KILL", nil, 1)
@@ -56,9 +74,11 @@ end)
 
 t.test("a targetless quest accepts any target, a targeted one does not", function()
         local state = Quests.new()
-        -- The first quest has no target, so any monster counts. It wants three
-        -- kills, which is the count below.
-        t.assertNotNil(Quests.onEvent(state, "KILL", "Slime", 3), "a targetless quest refused a valid target")
+        -- The first kill quest has no target, so any monster counts.
+        local def = advanceToKind(state, "KILL")
+        t.assertNotNil(def, "the spine never asks for a kill")
+        t.assertNil(def.target, "the first kill quest is targeted, so this test proves nothing")
+        t.assertNotNil(Quests.onEvent(state, "KILL", "Slime", def.count), "a targetless quest refused a valid target")
         -- The first quest is now done. Skip ahead to the
         -- boss quest and check that a different field is refused.
         while Quests.current(state) and Quests.current(state).kind ~= "KILL_BOSS" do
@@ -74,9 +94,11 @@ end)
 
 t.test("one call can satisfy several steps at once", function()
         local state = Quests.new()
-        -- A single harvest can count for more than one, which the farm needs
+        -- A single event can count for more than one, which the farm needs
         -- because one tap can fill a plot.
-        local reward = Quests.onEvent(state, "KILL", nil, 10)
+        local def = advanceToKind(state, "KILL")
+        t.assertNotNil(def, "the spine never asks for a kill")
+        local reward = Quests.onEvent(state, "KILL", def.target, 10)
         t.assertNotNil(reward, "a large count did not complete a small quest")
 end)
 
@@ -161,6 +183,31 @@ t.test("a snapshot round trip restores the same position", function()
         t.assertEqual(after.id, before.id, "the quest changed across a save")
         t.assertEqual(after.progress, before.progress, "the progress changed across a save")
         t.assertEqual(after.done, before.done, "the completed count changed across a save")
+end)
+
+t.test("the first quest names a place the player can actually reach", function()
+        -- The original opening quest asked a new player to kill 3 monsters while
+        -- they stood in town, which has none. A first instruction that cannot be
+        -- followed is worse than no instruction: the player reads it, finds
+        -- nothing to kill, and leaves. Whatever the spine opens with, it must be
+        -- reachable from the town spawn at level 1.
+        local first = Quests.current(Quests.new())
+        t.assertNotNil(first, "the spine has no first quest")
+        t.assertEqual(first.kind, "ENTER_FIELD", "the first quest does not send the player anywhere")
+        t.assertNotNil(first.target, "the first quest names no place")
+        t.assertNotEqual(first.target, "Town", "the first quest sends the player to town")
+
+        -- And the player must be allowed in at level 1 with no pass, or the
+        -- objective is a locked door.
+        local ok = Fields.canEnter(first.target, 1, false)
+        t.assertTrue(ok, "the first quest sends the player somewhere locked at level 1")
+
+        -- The body has to name the place the same way the travel menu does, or
+        -- the player is told to look for a label that does not exist. Both come
+        -- from Text, so a rename in one place cannot silently break the other.
+        local body = Text.get(first.bodyKey)
+        t.assertContains(body, Text.placeName(first.target), "the quest body does not name the place")
+        t.assertContains(body, Text.get("map"), "the quest body does not name the button to press")
 end)
 
 t.test("the story teaches the farm before it asks for the boss", function()

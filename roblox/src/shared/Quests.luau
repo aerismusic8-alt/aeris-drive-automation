@@ -52,6 +52,24 @@ export type State = {
 
 local QUESTS: { QuestDef } = {
         {
+                -- A new player spawns in town, and town has no monsters. The old
+                -- opening objective said "kill 3 monsters" while the player stood
+                -- in the one place that cannot satisfy it, which is the worst
+                -- possible first instruction: the game is asking for something
+                -- and the player has no idea where. Send them to the field
+                -- first, so the very first line names a place they can reach.
+                id = "go_to_meadow",
+                titleKey = "qGoToMeadow",
+                bodyKey = "qGoToMeadowBody",
+                kind = "ENTER_FIELD",
+                target = "Meadow",
+                count = 1,
+                coins = 60,
+                xp = 15,
+                item = nil,
+                itemCount = 0,
+        },
+        {
                 id = "first_blood",
                 titleKey = "qFirstBlood",
                 bodyKey = "qFirstBloodBody",
