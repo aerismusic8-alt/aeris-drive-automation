@@ -18,7 +18,10 @@ BRANCH="${1:-main}"
 REPO="aerismusic8-alt/aeris-drive-automation"
 STATE=/tmp/serve
 
-# The pod's public URL, used to hand the bundle to PC1. Override if the work host differs.
+# The pod's public URL, used to hand the bundle to PC1. The work host is per-pod and
+# changes on every recycle, so a hardcoded default goes stale and the script then hangs
+# on PC1's bundle download for its full timeout. Override with the live host from the
+# session's work_hosts: SANDBOX_URL=https://work-2-<host>.prod-runtime.all-hands.dev
 SANDBOX_URL="${SANDBOX_URL:-https://work-2-jhakqeqvkcqlwmjh.prod-runtime.all-hands.dev}"
 PC1_MCP="${PC1_MCP:-https://desktop-rgk6jkb.tail8740ad.ts.net/mcp}"
 
@@ -36,6 +39,15 @@ echo "[+] bundle: $(du -h "$STATE/repo.bundle" | cut -f1)"
 if ! curl -sf -o /dev/null "http://127.0.0.1:12001/repo.bundle"; then
   ( cd "$STATE" && nohup python3 -m http.server 12001 --bind 0.0.0.0 >/tmp/http-push.log 2>&1 & )
   sleep 3
+fi
+
+# Fail fast if PC1 will not be able to reach the bundle. A stale host would otherwise
+# burn the full download timeout with no useful error.
+if ! curl -sf -o /dev/null --max-time 20 "$SANDBOX_URL/repo.bundle"; then
+  echo "[!] $SANDBOX_URL/repo.bundle is not reachable." >&2
+  echo "    The work host changes per pod; pass the live one:" >&2
+  echo "    SANDBOX_URL=https://work-2-<host>.prod-runtime.all-hands.dev $0 ${BRANCH}" >&2
+  exit 1
 fi
 
 python3 - "$SANDBOX_URL" "$REPO" "$BRANCH" "$PC1_MCP" <<'PY'
