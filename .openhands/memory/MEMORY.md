@@ -10,10 +10,21 @@ returns the same value for a famous working thing is measuring itself — put a 
 call.** Same trap caught `playableDevices: None` (Adopt Me returns `None` too; the field is just
 unpopulated there). `scripts/roblox-live-state.py` carries Adopt Me as a control for this reason.
 
-## ⚠️ The reach gate is a FORM, not a payment — order matters (verified 2026-10-28)
-`get-age-recommendation` for `10773483379` -> **"Content May Vary", minAge 16**. Roblox's doc
-(`production/promotion/content-maturity`): a Content May Vary label is **16+ only**. So the ceiling is
-self-inflicted: the questionnaire is incomplete. Correct order (`production/publishing/kids-and-select`):
+## ✅ The questionnaire is DONE; the remaining 16+ cap is NOT the label (verified 2026-10-28)
+Submitted the full Maturity & Compliance questionnaire for `10773483379` (and `10771844216`) on
+the owner's Edge via UIA. `get-age-recommendation` now returns **Minimal**, descriptor
+"Violence (Occasional/Mild)"; the `content-may-vary` descriptor is gone. **But `minimumAge` is still
+16** — and that is NOT a leftover. Measured the same API across games: Grow a Garden `7436755782`
+(Minimal, descriptor "Suitable for everyone") = min **0**; Adopt Me `383310974` = min **0**; AX
+Garden Legends = Minimal, *no* descriptor, min **16**. So **the maturity label does not set
+minimumAge.** The 16 cap is the under-16 Kids-and-Select gate (2FA + 250 engaged players + fee/
+subscription) that Grow a Garden and Adopt Me have cleared and the AX games have not. Do not
+re-open the questionnaire expecting the age to drop.
+**Also fixed:** `10773483379` had `description: null`, so it was unlisted in search. Wrote a Thai
+description on Game Details; verified non-null.
+Historical note on the mechanism, still true: Roblox's doc
+(`production/promotion/content-maturity`): a Content May Vary label is **16+ only**, so the ceiling
+was self-inflicted while the questionnaire was incomplete. Correct order (`production/publishing/kids-and-select`):
 1. **Complete the FULL Maturity & Compliance questionnaire** — free, and the *blocking* step. The first
    page alone yields 16+. Page: Creator Dashboard -> experience -> **Publish settings -> Content rating**.
 2. Label must become Minimal/Mild/Moderate for under-16 tiers to be eligible.
@@ -40,14 +51,20 @@ client + 2 server); `main`'s `roblox/` has 28 files (24+2+2). The refs diverged 
 "1.0.0"`; branch = bigger tree, `"1.0.1"`, plus `roblox-garden/` + `breachline/`. **Editing `roblox/`
 on `main` reaches no player.** Decide which ref owns the game before promising a change ships.
 **Live:** universe `10773483379` "AX Arena 2: Monster Fields", rootPlace `98458071284292`, owner
-navintas938, published **version 2** at `2026-10-28T12:59:22Z` (576,246 B, HTTP 200). Reach gate =
-the **"Content May Vary" maturity label** (16+ only), not the playability probe — see the section
-above. Owner-authenticated read = `Playable`.
+navintas938, published **version 2** at `2026-10-28T12:59:22Z` (576,246 B, HTTP 200). Maturity is
+now **Minimal** and the description is set; the remaining 16+ cap is the **Kids-and-Select** gate,
+not the label — see the section above. Owner-authenticated read = `Playable`.
 **Red-run causes:** 12:33 = `ref=ax-arena-roblox-game` fetched the *branch's* build script, which
 builds `roblox-garden/`, and a locked stale `C:\AX-Build\AXGarden.rbxlx` gave "Access is denied
 (os error 5)"; 12:48 = `HTTP_STATUS=403` because `ROBLOX_API_KEY` did not list the new universe yet
 (fixed in Creator Hub, next run 200). PC1's own clone `C:\AX-Build\repo` is at branch `967753a` and
 its `publish-config.json` still points at the OLD universe 10771844216.
+## `push-via-pc1.sh` has a per-pod SANDBOX_URL baked in (verified 2026-10-28)
+Its default `SANDBOX_URL` (`work-2-jhakqeqvkcqlwmjh...`) dies with the pod, so the script hangs on
+PC1's bundle download for the full 300 s timeout with no error. It now probes first and exits with
+the override, but pass the live host anyway: `SANDBOX_URL=https://work-2-<host>.prod-runtime.all-hands.dev
+./scripts/push-via-pc1.sh`. PC1's `GITHUB_TOKEN` is a writable 40-char classic PAT. Pushed
+`7ce4464b..0d1e5009`, `0d1e5009..38bd1e56`, `38bd1e56..ba03d3ed` this way.
 **Generator bug fixed:** `add_roblox_goals.py` did `existing.get("evidence", goal[...])`, which never
 fired because the key exists holding `None`, so a re-run **wiped** recorded evidence. Now
 `if existing.get("evidence") is not None`. Detail: `.openhands/memory/2026-10-28.md`.
