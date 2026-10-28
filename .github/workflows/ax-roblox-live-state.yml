@@ -1,0 +1,58 @@
+name: AX Roblox Live State
+
+# Pulls the live state of every AX experience once an hour and commits it to
+# data/roblox-live-state.jsonl.
+#
+# Why a schedule and not a manual run: the reach question ("can people actually
+# get in?") was answered wrong twice from a single reading taken out of context.
+# A trend makes the next change obvious instead of surprising — visits and
+# playing that stay at zero after a maturity fix is a different problem from
+# visits and playing that never moved because nothing was ever published.
+#
+# Why GitHub's own token is fine here: every endpoint the script reads is public
+# and no secret is used. That is deliberate. A job that needs a credential is a
+# job that can be blocked by an expired credential at 3am, and this one is meant
+# to be the thing that still reports when everything else is broken.
+
+on:
+  schedule:
+    # Every hour, on the hour (UTC). GitHub may delay a scheduled run under load;
+    # the script records its own capture time, so a late run is still honest.
+    - cron: '0 * * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+# Two runs writing the same file must not race. Queue instead of cancel, so an
+# hourly reading is never silently dropped.
+concurrency:
+  group: ax-roblox-live-state
+  cancel-in-progress: false
+
+jobs:
+  sample:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Pull the live state
+        run: python3 scripts/roblox-live-state.py
+
+      - name: Commit the new reading
+        run: |
+          set -euo pipefail
+          if git diff --quiet -- data/roblox-live-state.jsonl; then
+            echo "no change to record"
+            exit 0
+          fi
+          git config user.name  "ax-live-state"
+          git config user.email "ax-live-state@users.noreply.github.com"
+          git add data/roblox-live-state.jsonl
+          git commit -m "data(roblox): hourly live-state reading $(date -u +%Y-%m-%dT%H:%MZ)"
+          # Another push may have landed while this job ran. Rebase onto it rather
+          # than failing, because a dropped hourly reading is exactly the gap this
+          # job exists to prevent.
+          git pull --rebase --autostash origin "${GITHUB_REF_NAME}"
+          git push

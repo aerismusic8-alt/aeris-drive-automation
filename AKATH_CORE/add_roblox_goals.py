@@ -46,12 +46,19 @@ GOALS = [
             "publishHttpStatus": 200,
             "publisher": "PC1 (self-hosted runner) via Roblox Open Cloud API",
             "builtFrom": "ax-arena-roblox-game",
-            "verifiedAt": "2026-10-28T13:20:00Z",
+            "maturityLabel": "Content May Vary",
+            "reach": "16_plus_only",
+            "verifiedAt": "2026-10-28T14:15:00Z",
             "notes": [
                 "The place is published without Roblox Studio; Rojo builds it and the "
                 "Open Cloud API publishes it.",
-                "An anonymous playability probe reads GuestProhibited; the owner probe "
-                "reads Playable. The gate is the audience rating, not the build.",
+                "The anonymous playability probe is NOT a verdict on the game. Every "
+                "Roblox experience answers GuestProhibited to a logged-out caller, "
+                "including Adopt Me. See roblox/ROBLOX938-1-STATUS.md section 2.",
+                "The real gate is the maturity label: 'Content May Vary' is 16+ only. "
+                "Completing the full Maturity & Compliance questionnaire is the free "
+                "fix and is the blocking step; the fee and the 250-engaged-player "
+                "evaluation apply only after it.",
                 "main and ax-arena-roblox-game diverged on 2026-10-19; the live place "
                 "runs the branch's roblox/ (39 source blocks), not main's (28).",
             ],
@@ -59,8 +66,9 @@ GOALS = [
         "verification": {
             "verified": False,
             "reasons": [
-                "Published and owner-playable, but an anonymous player still cannot join: "
-                "the audience rating gate keeps under-16 reach closed",
+                "Published and owner-playable, but the experience carries the "
+                "'Content May Vary' label, which Roblox restricts to age-checked "
+                "16+ users, so a general player still cannot join",
             ],
         },
         "completed_at": None,
@@ -73,9 +81,11 @@ GOALS = [
             "repo": "aerismusic8-alt/aeris-drive-automation",
             "path": "roblox/",
             "blocker": (
-                "Anonymous join is refused by the audience rating (16+ and trusted "
-                "friends). The free road is the 16+ rating plus the 250-engaged-player "
-                "review; the paid 1,000-Robux under-16 fee is ruled out by Rule #1."
+                "Two gates, in order. (1) Free: complete the full Maturity & "
+                "Compliance questionnaire to replace the 'Content May Vary' label, "
+                "which is what confines it to 16+. (2) Paid: under-16 reach then "
+                "needs a 2-month Roblox Plus/Premium subscription or the one-time "
+                "fee, which Rule #1 rules out."
             ),
         },
         "started_at": "2026-10-18T00:00:00.000Z",
@@ -132,6 +142,110 @@ GOALS = [
             ),
         },
         "started_at": "2026-10-18T00:00:00.000Z",
+        "attempt": 1,
+        "result": None,
+        "verified_at": None,
+    },
+    {
+        "task_id": "AKATH-ROBLOX-GOAL-REACH-002",
+        "type": "PRODUCT",
+        "title": "Get real players into the game (distribution and reach)",
+        "capability": "product",
+        "action": "roblox_game_distribution",
+        "status": "IN_PROGRESS",
+        "created_at": "2026-10-28T00:00:00.000Z",
+        "deadline_at": None,
+        "milestones": [
+            "Clear the free maturity gate so a signed-in player can join",
+            "A public, indexed game page with a name, icon and description",
+            "A first real play session by someone who is not the owner",
+            "A repeatable way to bring players in, not a one-off link",
+        ],
+        "completion_criteria": [
+            "A player who is not the owner joins and plays a full session",
+            "The experience is discoverable without being handed a direct link",
+            "Play sessions are observed over time, not assumed",
+        ],
+        "evidence": {
+            "reasons_why_not_yet": [
+                "All three owned experiences have 0-3 visits, so nobody has ever "
+                "arrived except the owner",
+                "AX Arena 2 carries the 'Content May Vary' label, so even a "
+                "signed-in player is refused",
+                "AX Garden Legends is already 'Minimal' and still has 0 players, "
+                "so its ceiling is discovery, not permission",
+            ],
+            "sampleTool": "scripts/roblox-live-state.py (hourly, no credential)",
+            "verifiedAt": "2026-10-28T14:15:00Z",
+        },
+        "verification": {
+            "verified": False,
+            "reasons": ["No non-owner play session has been observed on any universe"],
+        },
+        "completed_at": None,
+        "payload": {
+            "action": "roblox_game_distribution",
+            "capability": "product",
+            "canonical": True,
+            "autonomous": True,
+            "standing_goal": True,
+            "repo": "aerismusic8-alt/aeris-drive-automation",
+            "path": "roblox/",
+            "blocker": (
+                "Publishing is solved; being found is not. The maturity label must be "
+                "fixed first, then the page needs an icon, a description and a reason "
+                "to click, and the game needs to be shown to people."
+            ),
+        },
+        "started_at": "2026-10-28T00:00:00.000Z",
+        "attempt": 1,
+        "result": None,
+        "verified_at": None,
+    },
+    {
+        "task_id": "AKATH-ROBLOX-MONITOR-HOURLY-003",
+        "type": "OPS",
+        "title": "Sample the live state of every Roblox experience hourly",
+        "capability": "ops",
+        "action": "roblox_live_state_hourly",
+        "status": "IN_PROGRESS",
+        "created_at": "2026-10-28T00:00:00.000Z",
+        "deadline_at": None,
+        "milestones": [
+            "A puller that needs no credential, so it survives an expired key",
+            "A control universe beside ours, so a logged-out probe is not read as a fault",
+            "An hourly schedule that commits each reading to a time series",
+        ],
+        "completion_criteria": [
+            "A reading is recorded every hour without manual action",
+            "The record distinguishes a game fault from a probe artefact",
+        ],
+        "evidence": {
+            "script": "scripts/roblox-live-state.py",
+            "workflow": ".github/workflows/ax-roblox-live-state.yml",
+            "series": "data/roblox-live-state.jsonl",
+            "schedule": "0 * * * * (hourly, UTC)",
+            "controlUniverse": "383310974 Adopt Me!",
+            "verifiedAt": "2026-10-28T14:15:00Z",
+        },
+        "verification": {
+            "verified": False,
+            "reasons": [
+                "The workflow is committed but has not yet completed a scheduled run",
+            ],
+        },
+        "completed_at": None,
+        "payload": {
+            "action": "roblox_live_state_hourly",
+            "capability": "ops",
+            "canonical": True,
+            "autonomous": True,
+            "standing_goal": True,
+            "repo": "aerismusic8-alt/aeris-drive-automation",
+            "path": "scripts/roblox-live-state.py",
+            "blocker": None,
+        },
+        "started_at": "2026-10-28T00:00:00.000Z",
         "attempt": 1,
         "result": None,
         "verified_at": None,

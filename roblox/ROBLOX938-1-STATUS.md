@@ -25,10 +25,27 @@ The same universe, two calls seconds apart:
 | Viewer | Result |
 | --- | --- |
 | authenticated owner | `{"playabilityStatus":"Playable","isPlayable":true}` |
-| anonymous | `{"playabilityStatus":"GuestProhibited","isPlayable":false}` |
+| anonymous (logged out) | `{"playabilityStatus":"GuestProhibited","isPlayable":false}` |
 
 So the game **is** playable and public. The earlier `isPlayable: false` reading was
-an **anonymous probe**, not a broken build — that is why it looked like a defect.
+an **anonymous probe**, not a broken build.
+
+**Why that probe must never be read as a verdict about the game.** It reports the
+*caller's* state, not the game's. Adopt Me — the most-played experience on Roblox,
+`Minimal`, `minAge 0` — answers the same thing to a logged-out caller:
+
+```
+multiget-playability-status?universeIds=383310974,1685941,10773483379,10771844216
+383310974  GuestProhibited          <- Adopt Me, 231k playing right now
+1686885941 GuestProhibited          <- Brookhaven
+10773483379 GuestProhibited         <- ours
+10771844216 GuestProhibited         <- ours
+```
+
+Four universes, one answer, and the only shared property is that the caller is not
+signed in. `scripts/roblox-live-state.py` therefore records this field **with a
+control universe beside it** and refuses to treat it as a reach signal. The reach
+signal is the maturity label, in section 6.
 
 The real limit is the **audience setting**. Creator Hub, `จัดการผู้ชม`:
 
@@ -234,3 +251,76 @@ systems, `Config.Version = "1.0.0"`); the branch holds a larger `roblox/` (32 mo
 `Config.Version = "1.0.1"`, plus `roblox-garden/` and `breachline/`). The live place runs
 the branch's. Reconciling them is the thing that decides what players actually get, and
 it is a deliberate choice, not a mechanical merge.
+
+## 6. The reach gate, named exactly — and it is a form, not a payment (2026-10-28)
+
+Sections 2 and 4 said under-16 reach needs "the paid 1,000-Robux fee **or** the free
+250-engaged-player review". That framing was wrong in a way that matters: it read as
+"pay, or already be popular", and neither is the first step. Read from Roblox's own docs
+(`production/promotion/content-maturity` and `production/publishing/kids-and-select`),
+the order is:
+
+1. **Complete the full Maturity & Compliance questionnaire.** Free, and it is the
+   blocking step. Roblox states the rule plainly: *"Games with a Content May Vary label
+   are only accessible to age-checked Roblox users ages 16+."* Our primary experience
+   carries exactly that label, so the 16+ ceiling is self-inflicted and reversible.
+2. The label must become **Minimal, Mild, or Moderate** for the younger tiers to be
+   eligible at all.
+3. **Only then** do the fee/subscription and the 250-engaged-player evaluation apply.
+
+The current label, read from the public API rather than the dashboard:
+
+```
+POST apis.roblox.com/experience-guidelines-api/experience-guidelines/get-age-recommendation
+{"universeId":10773483379}
+-> displayName "Content May Vary", minimumAge 16, contentMaturity "moderate",
+   descriptors ["content-may-vary"]
+```
+
+`content-may-vary` is the descriptor for *"the game contains content that varies at
+runtime"* — normally the honest answer for a game with free-form user creation. AX Arena
+has none, so this is most likely an unanswered or default answer rather than a considered
+one. Fixing it is a form, on a page, by the account owner.
+
+### The fix, in order
+
+1. Creator Dashboard -> the experience -> **Publish settings -> Content rating**
+   (`การตั้งค่าเผยแพร่ -> การจัดอันดับเนื้อหา`).
+2. Answer **every** question. The first page alone yields 16+; the whole questionnaire is
+   what unlocks Minimal/Mild/Moderate.
+3. Answer for *"the most mature or extreme content players can encounter"*. AX Arena's
+   combat is cartoon: monsters disappear at zero health, there is no blood, and the axe
+   swing has no gore. That reads as **Mild** violence, *Occasional* frequency, no blood,
+   no fear. Do not claim less than the game shows.
+4. Submit. The label updates on the main details page immediately, and it is safe to
+   retake the questionnaire at any time.
+
+**The honest caveat.** Steps 1-4 are free and are the real fix. But the *last* thing
+standing between AX Arena and a player under 16 is item 3 of the Kids-and-Select list:
+either a Roblox Plus/Premium subscription held for two consecutive months, or the
+one-time refundable publishing fee. That is the genuine paid gate, and Rule #1 still
+cancels it. So the free outcome is: **age-checked 16+ players can join once the label is
+fixed**, and under-16 reach stays closed until the fee is paid or the subscription runs.
+
+That is a real improvement over today regardless — right now *nobody* who is merely
+signed in can join, because the label is the strictest one.
+
+### Reach, sampled hourly
+
+`scripts/roblox-live-state.py` plus `.github/workflows/ax-roblox-live-state.yml` record
+every AX experience plus a control (Adopt Me) into `data/roblox-live-state.jsonl`, hourly.
+It uses no credential, so it still reports when a key has expired. It prints `reach` as a
+verdict per universe, and the control line is what stops a logged-out probe being mistaken
+for a broken game again.
+
+Current ground truth, all three owned experiences:
+
+| universe | name | label | reach | visits | playing |
+| --- | --- | --- | --- | --- | --- |
+| 10773483379 | AX Arena 2: Monster Fields | Content May Vary | 16+ only | 0 | 0 |
+| 10771844216 | AX Garden Legends | Minimal | eligible after evaluation | 3 | 0 |
+| 10772257179 | Breachline: Two Sites | Moderate | eligible after evaluation | 0 | 0 |
+
+AX Garden Legends is already `Minimal` and still has zero players, so its ceiling is not
+the rating. Its problem is that nobody knows it exists — which is the distribution
+question, not a publishing-permission one.
