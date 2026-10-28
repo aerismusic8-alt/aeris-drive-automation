@@ -1021,17 +1021,30 @@
         "publishHttpStatus": 200,
         "publisher": "PC1 (self-hosted runner) via Roblox Open Cloud API",
         "builtFrom": "ax-arena-roblox-game",
-        "verifiedAt": "2026-10-28T13:20:00Z",
+        "verifiedAt": "2026-10-28T22:50:00Z",
         "notes": [
           "The place is published without Roblox Studio; Rojo builds it and the Open Cloud API publishes it.",
           "An anonymous playability probe reads GuestProhibited; the owner probe reads Playable. The gate is the audience rating, not the build.",
           "main and ax-arena-roblox-game diverged on 2026-10-19; the live place runs the branch's roblox/ (39 source blocks), not main's (28)."
-        ]
+        ],
+        "published_versions": [
+          3,
+          4
+        ],
+        "live_universe_id": "10773483379",
+        "live_place_id": "98458071284292",
+        "publish_run_id": 40748491371,
+        "publish_commit": "d095921",
+        "published_at": "2026-10-28T18:40:44Z",
+        "build_verifier": "CHECK_SHOP=True, SOURCE_BLOCKS=39",
+        "page_status": "ใช้งานอยู่ (Active), maturity Minimal, server size 50",
+        "reach": "eligible_for_under_16_after_evaluation (so 16+ can join now)",
+        "note": "Publishing no longer needs Studio: PC1 builds with Rojo and uploads through Open Cloud."
       },
       "verification": {
         "verified": false,
         "reasons": [
-          "Published and owner-playable, but the experience carries the 'Content May Vary' label, which Roblox restricts to age-checked 16+ users, so a general player still cannot join"
+          "Published as version 4 and publicly reachable, but no human session has been observed, so 'a player who has never seen the game can join and play' is not yet directly witnessed."
         ]
       },
       "completed_at": null,
@@ -1043,10 +1056,10 @@
         "standing_goal": true,
         "repo": "aerismusic8-alt/aeris-drive-automation",
         "path": "roblox/",
-        "blocker": "Two gates, in order. (1) Free: complete the full Maturity & Compliance questionnaire to replace the 'Content May Vary' label, which is what confines it to 16+. (2) Paid: under-16 reach then needs a 2-month Roblox Plus/Premium subscription or the one-time fee, which Rule #1 rules out."
+        "blocker": "None for publishing. Remaining: a human has not yet joined a session, and under-16 reach still needs the engagement evaluation (250 engaged players + 2FA + fee)."
       },
       "started_at": "2026-10-18T00:00:00.000Z",
-      "attempt": 1,
+      "attempt": 2,
       "result": null,
       "verified_at": null
     },
@@ -1071,19 +1084,57 @@
         "Revenue is visible in the Roblox dashboard"
       ],
       "evidence": {
-        "catalogue": "roblox/src/shared/Monetization.luau (6 products, prices server-side)",
-        "assetIdsSet": false,
-        "targetUniverseId": 10773483379,
-        "verifiedAt": "2026-10-28T13:20:00Z",
-        "notes": [
-          "No gamepass or developer-product id exists yet, so every product reports assetId=nil and the client refuses to prompt.",
-          "The catalogue is the older roblox/ tree. The live place runs the ax-arena-roblox-game branch, so confirm which tree owns the shop before creating assets."
-        ]
+        "catalogue": {
+          "Vip": {
+            "kind": "gamepass",
+            "assetId": 2058971598,
+            "robux": 199
+          },
+          "AutoHatch": {
+            "kind": "gamepass",
+            "assetId": 2058839555,
+            "robux": 149
+          },
+          "FastWalk": {
+            "kind": "gamepass",
+            "assetId": 2058521556,
+            "robux": 99
+          },
+          "ZonePass": {
+            "kind": "gamepass",
+            "assetId": 2059001519,
+            "robux": 299
+          },
+          "DoubleCoins1h": {
+            "kind": "devproduct",
+            "assetId": 3723348935,
+            "robux": 25
+          },
+          "LuckyBoost": {
+            "kind": "devproduct",
+            "assetId": 3723349634,
+            "robux": 35
+          }
+        },
+        "verified_against": "Creator Hub dashboard + apis.roblox.com/game-passes/v1",
+        "four_defects_fixed": [
+          "products had no assetId, so the prompt refused",
+          "ProcessReceipt resolved by string key but Roblox sends the numeric asset id",
+          "no gamepass handler existed (gamepasses never reach ProcessReceipt)",
+          "Intent.buyProduct was defined but never called: no purchase surface existed"
+        ],
+        "purchase_ui": "Shop tab in the character panel (renderShopTab)",
+        "guards": [
+          "WIRING R: money path agrees on the numeric asset id",
+          "WIRING S: a purchase surface exists and calls buyProduct"
+        ],
+        "tests": "roblox/tests/run.luau 374 pass, incl. the catalogue pinned to the live ids",
+        "verifiedAt": "2026-10-28T22:50:00Z"
       },
       "verification": {
         "verified": false,
         "reasons": [
-          "No Roblox asset ids set yet"
+          "All six products are live and the grant path is implemented and tested, but no real Robux has been spent, so revenue is not observed. The agent cannot spend Robux."
         ]
       },
       "completed_at": null,
@@ -1095,10 +1146,10 @@
         "standing_goal": true,
         "repo": "aerismusic8-alt/aeris-drive-automation",
         "path": "roblox/src/shared/Monetization.luau",
-        "blocker": "Needs gamepass/product asset ids from the Roblox website, created under navintas938 for universe 10773483379."
+        "blocker": null
       },
       "started_at": "2026-10-18T00:00:00.000Z",
-      "attempt": 1,
+      "attempt": 2,
       "result": null,
       "verified_at": null
     },
@@ -1129,7 +1180,8 @@
           "AX Garden Legends is already 'Minimal' and still has 0 players, so its ceiling is discovery, not permission"
         ],
         "sampleTool": "scripts/roblox-live-state.py (hourly, no credential)",
-        "verifiedAt": "2026-10-28T14:15:00Z"
+        "verifiedAt": "2026-10-28T22:50:00Z",
+        "maturityGate": "CLEARED 2026-10-28: the label is now Minimal and the page reads ใช้งานอยู่ (Active), so the 'Content May Vary' cap is gone. Reach is eligible_for_under_16_after_evaluation, i.e. 16+ can join now."
       },
       "verification": {
         "verified": false,
@@ -1146,7 +1198,7 @@
         "standing_goal": true,
         "repo": "aerismusic8-alt/aeris-drive-automation",
         "path": "roblox/",
-        "blocker": "Publishing is solved; being found is not. The maturity label must be fixed first, then the page needs an icon, a description and a reason to click, and the game needs to be shown to people."
+        "blocker": "The permission gate is cleared; the remaining gate is discovery. The page still needs an icon and a reason to click, and the game needs to be shown to people. All owned experiences have 0-3 visits, so nobody has arrived except the owner."
       },
       "started_at": "2026-10-28T00:00:00.000Z",
       "attempt": 1,
@@ -1177,12 +1229,19 @@
         "series": "data/roblox-live-state.jsonl",
         "schedule": "0 * * * * (hourly, UTC)",
         "controlUniverse": "383310974 Adopt Me!",
-        "verifiedAt": "2026-10-28T14:15:00Z"
+        "verifiedAt": "2026-10-28T22:50:00Z",
+        "firstScheduledRun": {
+          "runId": 40760184496,
+          "event": "schedule",
+          "conclusion": "success",
+          "at": "2026-10-28T20:05:48Z",
+          "headSha": "90fc44d43661345b647e84865d30dab36129d0f1"
+        }
       },
       "verification": {
         "verified": false,
         "reasons": [
-          "The workflow is committed but has not yet completed a scheduled run"
+          "The first scheduled run has completed (40760184496, 2026-10-28T20:05:48Z), so the schedule works. It is not yet verified over several consecutive hours."
         ]
       },
       "completed_at": null,
