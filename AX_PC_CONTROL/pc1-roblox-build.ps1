@@ -101,6 +101,7 @@ $markers = [ordered]@{
   rebirth       = 'MaxRebirths'
   zones         = 'coinMultiplier'
   monetization  = 'ProcessReceipt'
+  shop          = 'renderShopTab'
   saveSchema    = 'SchemaVersion'
   serverLoop    = 'Heartbeat'
   clientIntent  = 'InvokeServer'
