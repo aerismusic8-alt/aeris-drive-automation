@@ -50,7 +50,11 @@ if ($uni.code -eq 200) {
   Write-Host "UNIVERSE_ERROR=$(($uni.body | ConvertTo-Json -Depth 6 -Compress))"
 }
 
-$uri = "https://apis.roblox.com/cloud/v2/universes/$universeId/places?maxPageSize=50"
+# The list endpoint lives on develop.roblox.com. The cloud/v2 spec has no
+# "list places" path at all, so apis.roblox.com/cloud/v2/.../places 404s for
+# every key no matter what scopes it holds. This one is public and needs no
+# credential; the API key is only used for the universe read above.
+$uri = "https://develop.roblox.com/v1/universes/$universeId/places"
 Write-Host "LIST_URL=$uri"
 
 $placesResult = Get-Json $uri
@@ -62,12 +66,9 @@ $raw = ($body | ConvertTo-Json -Depth 8 -Compress)
 
 $places = @()
 if ($statusCode -eq 200) {
-  foreach ($p in @($body.places)) {
-    # The id also lives at the end of the resource path.
-    $id = $p.id
-    if (!$id -and $p.path) { $id = ($p.path -split '/')[-1] }
-    $places += [ordered]@{ id = "$id"; name = "$($p.displayName)" }
-    Write-Host ("PLACE_ID={0} NAME={1}" -f $id, $p.displayName)
+  foreach ($p in @($body.data)) {
+    $places += [ordered]@{ id = "$($p.id)"; name = "$($p.name)" }
+    Write-Host ("PLACE_ID={0} NAME={1}" -f $p.id, $p.name)
   }
   if ($places.Count -eq 0) { Write-Host "PLACE_COUNT=0" }
 } else {
