@@ -1057,3 +1057,16 @@ Chrome profiles). PC1's Roblox client session is expired: the Studio log says
 `Authenticated : NO` and `Failed to logout discarded security cookie ... 401`. Roblox
 Studio **and** Player are both installed on PC1 (versions 7aaa6838 / 9ac85957), which is
 the only free path to create/edit an experience.
+
+## Chromium CDP dies after a pod recycle — stale SingletonLock (2026-10-28)
+After a recycle the desktop looked fine (`Xvfb/openbox/x11vnc/websockify` all UP, noVNC
+returns 200) but `chromium` ran with the correct `--remote-debugging-port=9222` and
+**never bound 9222**, so every Playwright `connect_over_cdp` failed with connection
+refused. Cause: `chrome-profile/SingletonLock` is a symlink into `/tmp` of the **dead
+pod** (`runtime-...-gdtg4-2724`), left behind because the profile lives on persistent
+`/workspace` while `/tmp` does not. `bootstrap.py` keeps reporting chromium "UP" because
+it matches the command line, not the port.
+**Fix:** `pkill -9 -f /usr/lib/chromium; rm -f <profile>/Singleton* <profile>/DevToolsActivePort`,
+then relaunch chromium manually with the flags bootstrap uses (including
+`--remote-allow-origins=*`, without which CDP rejects the websocket with 403).
+Verify with `curl -s http://127.0.0.1:9222/json/version`.
