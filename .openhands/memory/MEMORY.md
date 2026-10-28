@@ -997,3 +997,13 @@ the ephemeral `$HOME` and is gone; `ax_vault.py` excludes `.pem`/`.key` by desig
 403s (the sandbox `GITHUB_TOKEN` is read-only). Commits are local and safe; K must
 re-drop the key at `~/.config/aeris/` or `/workspace/.secrets/gh-app/` (both are
 candidate dirs in `gh-app-token.mjs`) to restore push.
+
+## 🔴 กฎถาวรข้อที่ 1 (K, 2026-10-28): ฟรีเท่านั้น
+**"อันดับแรกต้องฟรี ถ้ามีการจ่ายเงิน ไม่ต้องคุยต่ออีกยกเลิกไปเลย"**
+ทุกทางเลือกต้องฟรี 100% ถ้าต้องจ่ายเงิน (API เสียตังค์, subscription, เครดิต) → **ยกเลิกทันที
+ไม่ต้องเสนอ ไม่ต้องเทียบราคา** ใช้เฉพาะทางที่ไม่เสียเงิน:
+- รูป/เพลง/ข้อความ: ทำผ่านเบราว์เซอร์ที่ลอคอินอยู่ (gemini web, flowmusic.app) — ฟรี
+- narration: `edge-tts` — ฟรี
+- ffmpeg, luau, GitHub, OpenHands — ฟรี
+**ห้ามเสนอ OpenAI API / ChatGPT API อีก** (ผมเคยเสนอ ~$0.25/ตอน — K สั่งยกเลิกแนวทางนี้)
+แม้จะถูกหรือดีกว่า ถ้าเสียเงิน = ไม่เอา

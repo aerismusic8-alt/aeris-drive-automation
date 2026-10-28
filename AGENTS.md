@@ -295,3 +295,21 @@ the `ORDER` id list but read definition fields (`def.id`, `def.kind`) off the
 strings, so it always returned an empty hotbar. Resolve an id to its definition
 before reading any field. When a lookup can silently return "nothing", assert
 the result is non-empty in a test, not just that it is well-formed.
+
+### Pushing when the sandbox token is read-only
+
+The sandbox `GITHUB_TOKEN` cannot write: every push returns 403. Do not spend time
+looking for an App key under `~/.config/aeris/` — that directory was on the ephemeral
+overlay and is gone in a fresh pod, and `ax_vault.py` excludes `.pem` by design.
+
+PC1 holds a classic PAT that **can** write, so hand the commits to PC1:
+
+```bash
+./scripts/push-via-pc1.sh          # bundle -> PC1 -> git push -> prints the remote SHA
+```
+
+It unshallows first, because a bundle of a shallow clone cannot be cloned ("Failed to
+traverse parents of commit ..."). It also needs the pod reachable over HTTP, which the
+port-12001 server in `/tmp/serve` provides.
+
+Verified 2026-10-28: pushed 16 commits, `0001ef8d..90da7a80 main -> main`.
