@@ -279,6 +279,65 @@ def test_long_render_uses_a_faster_preset():
     assert compose._preset_for(1010) == "veryfast"
 
 
+def test_music_bed_is_audible_in_the_pauses(tmp_path):
+    """The bed must be audible between narration lines, not buried under them.
+
+    Ep01 shipped with the bed at -18 dB mixed with a plain `amix`. Measured on
+    the finished file the music sat ~20 dB under the voice and could not be
+    heard in the ~1 s gaps between lines, which is where a bed does its work.
+    The bug was invisible in the report, which only recorded that a bed was
+    passed in. This renders a real clip and asserts the pause is not a dead
+    hole relative to the voice.
+    """
+    import math
+    import struct
+    import wave
+
+    sr = 16000
+
+    def rms_db(samples):
+        r = math.sqrt(sum(v * v for v in samples) / len(samples) + 1e-9)
+        return 20 * math.log10(r / 32768.0)
+
+    # 12 s voice with a 4 s silent gap in the middle; a quiet tone as the bed.
+    voice = tmp_path / "voice.wav"
+    compose._run(["ffmpeg", "-y", "-v", "error", "-f", "lavfi",
+                  "-i", "sine=frequency=500:duration=12:sample_rate=48000",
+                  "-af", "volume=0.1,volume=0.0:enable='between(t,4,8)'", str(voice)])
+    bed = tmp_path / "bed.wav"
+    compose._run(["ffmpeg", "-y", "-v", "error", "-f", "lavfi",
+                  "-i", "sine=frequency=220:duration=4:sample_rate=48000",
+                  "-af", "volume=0.1", str(bed)])
+    img = tmp_path / "a.png"
+    compose._run(["ffmpeg", "-y", "-v", "error", "-f", "lavfi",
+                  "-i", "color=c=0x224466:s=320x180:d=1", "-frames:v", "1", str(img)])
+    ass = tmp_path / "k.ass"
+    ass.write_text("[Script Info]\n", encoding="utf-8")
+
+    out = tmp_path / "o.mp4"
+    compose.compose_scenes(scenes=[{"image": img, "duration": 12.0}],
+                           audio=voice, ass=ass, out=out, music=bed)
+
+    pcm = tmp_path / "o.wav"
+    compose._run(["ffmpeg", "-y", "-v", "error", "-i", str(out),
+                  "-ac", "1", "-ar", str(sr), str(pcm)])
+    w = wave.open(str(pcm))
+    raw = w.readframes(w.getnframes())
+    w.close()
+    samples = struct.unpack("<%dh" % (len(raw) // 2), raw)
+
+    def at(a, b):
+        return rms_db(samples[int(a * sr):int(b * sr)])
+
+    voice_level = at(1.0, 3.5)
+    pause_level = at(5.0, 7.5)
+    # The pause must not be a hole: the bed has to be within 9 dB of the voice.
+    # At the shipped -18 dB/plain-mix settings this gap measured 18 dB.
+    assert voice_level - pause_level < 9.0, (
+        f"bed is buried {voice_level - pause_level:.1f} dB under the voice; "
+        "it will not be heard in the pauses")
+
+
 def test_plan_scenes_covers_the_whole_narration(tmp_path):
     """Scene durations must add back to the audio, or the clip cuts a sentence.
 

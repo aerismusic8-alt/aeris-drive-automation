@@ -35,15 +35,36 @@ def probe(path: Path) -> dict:
     return json.loads(out.stdout)
 
 
+# The bed must be audible on its own but step aside for the voice. A plain
+# `amix` does neither: it leaves the music at whatever gain it was given, so a
+# bed set low enough to sit under speech is inaudible in the ~1 s pauses
+# between narration lines, and one set high enough to hear fights the voice.
+# These are the sidechain settings that resolve that, measured on ep01.
+MUSIC_GAIN_DB = -4.0
+DUCK = {"threshold": 0.008, "ratio": 18.0, "attack": 15.0, "release": 350.0}
+
+
 def _audio_filter(audio_idx: int, music_idx: int | None, duration: float,
                   music_gain_db: float, fade: float) -> tuple[str, list[str]]:
-    """Narration on top, bed ducked underneath. Shared by both renderers."""
+    """Narration on top, bed genuinely ducked underneath. Both renderers share it.
+
+    The bed is played at `music_gain_db` and compressed by the narration as a
+    sidechain, so it lifts into the pauses and drops under a line. Both sources
+    are pinned to the same format first: the voice arrives mono at 24 kHz and
+    the bed mono at 48 kHz, and `sidechaincompress` wants a common layout.
+    """
     if music_idx is None:
         return f"[{audio_idx}:a]anull[a]", ["-map", "[a]"]
+    fmt = "aformat=sample_fmts=fltp:sample_rates=48000:channel_layouts=stereo"
     fc = (
-        f"[{music_idx}:a]volume={music_gain_db}dB,afade=t=in:d={fade},"
+        f"[{audio_idx}:a]{fmt},asplit=2[narr][sc];"
+        f"[{music_idx}:a]{fmt},volume={music_gain_db}dB,"
+        f"afade=t=in:d={fade},"
         f"afade=t=out:st={max(0.0, duration - fade)}:d={fade}[bed];"
-        f"[{audio_idx}:a][bed]amix=inputs=2:duration=first:dropout_transition=0:normalize=0[a]"
+        f"[bed][sc]sidechaincompress=threshold={DUCK['threshold']}"
+        f":ratio={DUCK['ratio']}:attack={DUCK['attack']}"
+        f":release={DUCK['release']}:makeup=1[duck];"
+        f"[narr][duck]amix=inputs=2:duration=first:dropout_transition=0:normalize=0[a]"
     )
     return fc, ["-map", "[a]"]
 
@@ -128,7 +149,7 @@ def _ken_burns(duration: float, direction: str, zoom_to: float = 1.12) -> str:
 
 
 def compose_scenes(*, scenes: list[dict], audio: Path, ass: Path, out: Path,
-                   music: Path | None = None, music_gain_db: float = -18.0,
+                   music: Path | None = None, music_gain_db: float = MUSIC_GAIN_DB,
                    fade: float = 1.2, crossfade: float = 1.5,
                    direction: str = "auto") -> dict:
     """Render a long-form clip: one still per scene, panned, crossfaded, timed.
@@ -219,7 +240,7 @@ def compose_scenes(*, scenes: list[dict], audio: Path, ass: Path, out: Path,
 
 def compose(*, image: Path | None = None, audio: Path, ass: Path, out: Path,
             duration: float | None = None, music: Path | None = None,
-            music_gain_db: float = -18.0, fade: float = 1.2,
+            music_gain_db: float = MUSIC_GAIN_DB, fade: float = 1.2,
             font_size: int = 0) -> dict:
     """Render one clip. Returns a report with the MEASURED output properties."""
     image, audio, ass, out = (Path(p) if p else None for p in (image, audio, ass, out))
@@ -263,15 +284,9 @@ def compose(*, image: Path | None = None, audio: Path, ass: Path, out: Path,
     vf.append(f"subtitles='{_escape_filter_path(ass)}'")
 
     if music is not None:
-        # Narration must stay on top even during pauses, so the bed is ducked
-        # rather than merely mixed.
-        filter_complex = (
-            f"{video_src}{','.join(vf)}[v];"
-            f"[{music_idx}:a]volume={music_gain_db}dB,afade=t=in:d={fade},"
-            f"afade=t=out:st={max(0.0, duration - fade)}:d={fade}[bed];"
-            f"[{audio_idx}:a][bed]amix=inputs=2:duration=first:dropout_transition=0:normalize=0[a]"
-        )
-        maps = ["-map", "[v]", "-map", "[a]"]
+        afc, amap = _audio_filter(audio_idx, music_idx, duration, music_gain_db, fade)
+        filter_complex = f"{video_src}{','.join(vf)}[v];{afc}"
+        maps = ["-map", "[v]"] + amap
     else:
         filter_complex = f"{video_src}{','.join(vf)}[v]"
         maps = ["-map", "[v]", "-map", f"{audio_idx}:a"]
