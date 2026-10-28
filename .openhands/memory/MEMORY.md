@@ -2,6 +2,35 @@
 
 Index only. Detail lives in the daily logs (`2026-10-28.md`, `2026-10-27.md`, `2026-10-23.md`, `2026-10-22.md`).
 
+## ⚠️ The `GuestProhibited` alarm was a broken instrument — use a CONTROL (verified 2026-10-28)
+`multiget-playability-status` reports the **caller's** state, not the game's. A logged-out caller gets
+`GuestProhibited` from *every* Roblox experience: Adopt Me (`Minimal`, 234k playing) and Brookhaven
+return it too. So "anonymous player is blocked" was describing the probe. **Rule: any probe that
+returns the same value for a famous working thing is measuring itself — put a control in the same
+call.** Same trap caught `playableDevices: None` (Adopt Me returns `None` too; the field is just
+unpopulated there). `scripts/roblox-live-state.py` carries Adopt Me as a control for this reason.
+
+## ⚠️ The reach gate is a FORM, not a payment — order matters (verified 2026-10-28)
+`get-age-recommendation` for `10773483379` -> **"Content May Vary", minAge 16**. Roblox's doc
+(`production/promotion/content-maturity`): a Content May Vary label is **16+ only**. So the ceiling is
+self-inflicted: the questionnaire is incomplete. Correct order (`production/publishing/kids-and-select`):
+1. **Complete the FULL Maturity & Compliance questionnaire** — free, and the *blocking* step. The first
+   page alone yields 16+. Page: Creator Dashboard -> experience -> **Publish settings -> Content rating**.
+2. Label must become Minimal/Mild/Moderate for under-16 tiers to be eligible.
+3. **Only then** does the fee/subscription + 250-engaged-player evaluation apply.
+Earlier notes had 2 and 3 before 1, which made the next step look like "pay or already be popular".
+**AX Garden Legends is already `Minimal` with 3 visits** — its ceiling is DISCOVERY, not permission.
+Shipped code is healthy: live branch `ax-arena-roblox-game` suites = 365/0 + 57/0 + 7/0 + 19/0 + 12/0.
+(`runtime.luau` needs the Rojo-generated `./.generated/Sources`; harness gap, not a game fault.)
+
+## PC1 can dispatch workflows; the sandbox cannot (verified 2026-10-28)
+PC1's `gh` is authed as `aerismusic8-alt` with `gist, read:org, repo, workflow`. The sandbox
+`GITHUB_TOKEN` cannot dispatch (403 "Resource not accessible by integration") — but PC1 can:
+`& 'C:\Program Files\GitHub CLI\gh.exe' workflow run <wf>.yml --ref main --repo OWNER/REPO`.
+No local LLM on PC1: Ollama is not installed (only an unused `C:\AX-Runtime\OllamaSetup.exe`).
+The Roblox Open Cloud API key is a **GitHub secret**, not a file on PC1.
+`/workspace/ax-tools/` is **gone** — it was assumed persistent, so the Roblox login died with it.
+
 ## ⚠️ Roblox: `BUILD_REF` LIES — the live place is the `ax-arena-roblox-game` BRANCH, not `main` (verified 2026-10-28)
 `AX PC1 Roblox Publish` logs `BUILD_REF=main`, but `AX_PC_CONTROL/pc1-roblox-build.ps1` hard-codes
 `$BRANCH = 'ax-arena-roblox-game'`. The script is fetched from the ref you pass; **the code it builds
@@ -11,8 +40,9 @@ client + 2 server); `main`'s `roblox/` has 28 files (24+2+2). The refs diverged 
 "1.0.0"`; branch = bigger tree, `"1.0.1"`, plus `roblox-garden/` + `breachline/`. **Editing `roblox/`
 on `main` reaches no player.** Decide which ref owns the game before promising a change ships.
 **Live:** universe `10773483379` "AX Arena 2: Monster Fields", rootPlace `98458071284292`, owner
-navintas938, published **version 2** at `2026-10-28T12:59:22Z` (576,246 B, HTTP 200). Anonymous
-probe = `GuestProhibited` (the audience-rating gate, 16+); owner probe = `Playable`.
+navintas938, published **version 2** at `2026-10-28T12:59:22Z` (576,246 B, HTTP 200). Reach gate =
+the **"Content May Vary" maturity label** (16+ only), not the playability probe — see the section
+above. Owner-authenticated read = `Playable`.
 **Red-run causes:** 12:33 = `ref=ax-arena-roblox-game` fetched the *branch's* build script, which
 builds `roblox-garden/`, and a locked stale `C:\AX-Build\AXGarden.rbxlx` gave "Access is denied
 (os error 5)"; 12:48 = `HTTP_STATUS=403` because `ROBLOX_API_KEY` did not list the new universe yet

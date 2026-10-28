@@ -119,14 +119,28 @@ same to a player: "the game is still the old game". Check them in this order.
    that branch. A run that says `BUILD_REF=main` still publishes the branch.
    `SOURCE_BLOCKS` tells you which tree you got: 39 is the branch's `roblox/`,
    28 is `main`'s.
-3. **Is the experience playable at all?** A version can be published and still
-   be unplayable. Roblox keeps a new experience private until the account
-   holder submits the Maturity & Compliance questionnaire. Query
-   `https://games.roblox.com/v1/games/multiget-playability-status?universeIds=<id>`
-   and expect `isPlayable: true`. `ContextualPlayabilityUnrated` means the
-   questionnaire is outstanding, and only the account owner can fix it.
-   `GuestProhibited` is a different, narrower gate: the experience is live and
-   owner-playable, but its audience rating (16+) refuses an anonymous join.
+3. **Can the intended audience join?** Read the **maturity label**, not the
+   playability probe. `games.roblox.com/v1/games/multiget-playability-status`
+   answers for the *caller*: a logged-out caller gets `GuestProhibited` from
+   every experience on Roblox, including Adopt Me, so it says nothing about your
+   game. The label is the real gate:
+
+   ```bash
+   curl -s -X POST -H 'Content-Type: application/json' \
+     -d '{"universeId":10773483379}' \
+     https://apis.roblox.com/experience-guidelines-api/experience-guidelines/get-age-recommendation
+   ```
+
+   `displayName: "Content May Vary"` means **16+ only**; `Minimal`, `Mild` and
+   `Moderate` are eligible for the younger tiers. The label comes from the
+   Maturity & Compliance questionnaire, and a *partial* one defaults to the
+   strictest — the first page alone yields 16+. Fill in the **whole** form at
+   Creator Dashboard -> experience -> **Publish settings -> Content rating**.
+   Only the account owner can do this.
+   `ContextualPlayabilityUnrated` is a different symptom and also means the
+   questionnaire is outstanding.
+   `scripts/roblox-live-state.py` reads this for every owned universe on an
+   hourly schedule and keeps Adopt Me in the same call as a control.
 
 Rules learned the hard way:
 
