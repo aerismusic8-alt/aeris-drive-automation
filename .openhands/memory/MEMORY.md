@@ -927,3 +927,41 @@ login-only) — sign into both in the one session while you are there.
 **`flowmusic.app` is third-party, not Google** (Cloudflare/Let's Encrypt; the chain is
 labs.google/fx/tools/music-fx -> flowmusic.google -> flowmusic.app). `flow_music.py` prints
 this warning every run. K should decide knowingly whether to sign in there.
+
+## ✅ Skill added so the login no longer has to be explained (2026-10-28)
+K: "เพิ่มเป็น setting skill ในopenhandเลยได้ไหม ให้ใช้ได้ทุกเซสชั่นไม่ต้องมาบอกว่าหายอีก".
+Done. `.agents/skills/ax-cloud-desktop/` (workspace root `/workspace/project`, which is
+persistent AND already how `ax-pc1-ops` / `youtube-channel-builder` ship). Also committed
+inside the repo and packed into the AX vault, and summarised in `AGENTS.md`.
+Scripts, all run for real before committing:
+- `scripts/bootstrap.py` (+`--status`) — installs the VNC stack and starts all 5 processes
+- `scripts/check_login.py` — answers "signed in?" from **cookies**, not page titles
+- `scripts/shot.py`, `scripts/set-vnc-password.sh`, `scripts/flowmusic_download.py`
+
+**Why the login kept disappearing (the actual bug, both halves fixed):**
+1. `desktop.sh` kept the chrome profile in `$HOME/.aeris938`. `$HOME` is
+   `/home/openhands`, on the **container overlay — only `/workspace` survives a pod
+   recycle**. So the Google login died with the pod, every time. State now lives in
+   `/workspace/ax-tools/aeris938-state/`.
+2. chromium was started without `--remote-allow-origins=*`, so **every CDP websocket was
+   403 "Rejected an incoming WebSocket connection from the origin"** and Playwright could
+   not attach — the browser looked broken while running fine.
+Neither was K's mistake. The operator should sign in **once**, now.
+
+**The GitHub App key is gone for the same reason** — `~/.config/aeris/gh-app.pem` was on
+the overlay, so `gh-app-token.mjs` fails ("No app credentials found") and pushes 403.
+`ax_vault.py` excludes credentials by design, so the key must be re-provisioned by K.
+Until then: commit locally; pushes need the key back.
+
+**Real music is DONE and registered.** Flow Music (signed in as aerismusic8@gmail.com,
+24 google cookies + flowmusic `sb-sb-auth-token`) produced "Calm Thai Folk"/"Bedtime Thai
+Folk", 3:00, 3.7 MB, 165 kbps -> `library/music/music-01-hin-haeng-khwam-jam-mood-flowmusic.mp3`,
+registered with `source=flowmusic-web`. `make_story.py` now resolves the real track, and
+`compose.py` loops it (`-stream_loop -1`) to fill 5:05. The synth bed is kept as
+`*.synth.mp3` for reference. 55 tests pass.
+
+**Flow Music download is fiddly (recorded so it is never re-derived):** `More options for
+<title>` -> `Download` -> a **submenu** (`Download video`/`Get stems`/`M4A`/`MP3`/`WAV`).
+The `MP3` node is a `div`, not a button, and `locator.click()` times out on it. Use
+`Browser.setDownloadBehavior` with an explicit `downloadPath` then click the leaf in JS.
+Progress hitting 100% is NOT the finish; the finish is the duration readout leaving `0:00`.
