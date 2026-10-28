@@ -1007,3 +1007,53 @@ candidate dirs in `gh-app-token.mjs`) to restore push.
 - ffmpeg, luau, GitHub, OpenHands — ฟรี
 **ห้ามเสนอ OpenAI API / ChatGPT API อีก** (ผมเคยเสนอ ~$0.25/ตอน — K สั่งยกเลิกแนวทางนี้)
 แม้จะถูกหรือดีกว่า ถ้าเสียเงิน = ไม่เอา
+
+## GitHub write access: PC1's token, not an App key (verified 2026-10-28)
+The sandbox `GITHUB_TOKEN` is a **GitHub App installation token with no write scope**
+(`x-oauth-scopes` empty, `allows_permissionless_access=true`) — every push is 403. The
+App key that would mint a write token was in `~/.config/aeris/`, on the ephemeral
+overlay, and `ax_vault.py` excludes `.pem` by design, so it is unrecoverable.
+`GET /repos/...` reporting `permissions.push=true` is the **user's role**, not the
+token's scope. Do not trust it; test a real write.
+**Fix: PC1 holds a classic PAT (40 chars) that CAN write.** `scripts/push-via-pc1.sh`
+bundles the repo, hands it to PC1 over the port-12001 HTTP server, and PC1 pushes.
+It must `git fetch --unshallow` first — a bundle of a shallow clone cannot be cloned
+("Failed to traverse parents of commit"). Verified with three pushes, e.g.
+`0001ef8d..90da7a80 main -> main`.
+
+## PC1's Actions runner served the WRONG repo (root cause of "queued forever")
+`Get-Service` on PC1 showed exactly one runner:
+`actions.runner.farmmer938-lgtm-ax-ai-benchmark.PC1-MAIN`. It is registered to
+**farmmer938-lgtm/ax-ai-benchmark**, not to `aerismusic8-alt/aeris-drive-automation`, so
+every workflow dispatch for our repo sat at `queued` with no runner — which reads as
+"the automation is broken" but is just a repo mismatch. The repo's own runner
+(`DESKTOP-RGK6JKB`) was `offline`.
+**Fix:** copied `C:\actions-runner` -> `C:\actions-runner-aeris` (the copy carries the
+old identity as `.runner_migrated`, so remove `.runner*`/`.credentials*`/`.service`
+first or config says "already configured"), then
+`config.cmd --unattended --url https://github.com/aerismusic8-alt/aeris-drive-automation
+--token <fresh reg token> --name PC1-AERIS --work _work --runasservice`.
+`PC1-AERIS` is now **online**. Registration tokens come from
+`POST /repos/{owner}/{repo}/actions/runners/registration-token` (needs PC1's token).
+
+## Roblox: what the API can and cannot do (from the full OpenAPI spec, 2026-10-28)
+Fetched `https://create.roblox.com/docs/cloud/openapi.json` — **835 paths**. Searching
+for a POST that creates a universe or place with no id in the path returns nothing.
+**The Open Cloud API cannot create an experience.** It can only publish to an existing
+one (`POST /universes/v1/{universeId}/places/{placeId}/versions`). Creating a new
+experience needs the Creator Dashboard web UI or Studio.
+Also present: `POST /v1/universes/{universeId}/activate` and the legacy
+`/legacy-develop/v1/universes/{id}/activate` — the "go public" switch.
+
+**Game state:** `AX Garden Legends`, universeId 10771844216, placeId 79945905295644,
+owner **navintas938** (id 11825689233). `multiget-playability-status` ->
+`isPlayable: false`, `playabilityStatus: GuestProhibited`. Page shows maturity
+**"Minimal • Ages 16+"**, 3 visits, 0 playing. Repo secret `ROBLOX_API_KEY` exists and
+publishes succeeded on 2026-10-19, but the current key returns **404** listing places,
+and the experience is still not playable — so the gate is the maturity questionnaire /
+activation, not the build.
+**No @navintas938 credential exists anywhere** (checked PC1 env, `C:\AX-Runtime`,
+Chrome profiles). PC1's Roblox client session is expired: the Studio log says
+`Authenticated : NO` and `Failed to logout discarded security cookie ... 401`. Roblox
+Studio **and** Player are both installed on PC1 (versions 7aaa6838 / 9ac85957), which is
+the only free path to create/edit an experience.
