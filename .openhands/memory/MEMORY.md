@@ -895,3 +895,35 @@ first or it errors.
 Real music would come from Flow Music (`flow_music.py`) but that is a login-only third-party web
 app and the README deliberately does not use it unattended. The bed being audible is the fix;
 "is a synth pad good enough" is K's call.
+
+## 🎬 Real-music path is BUILT and WAITING on one human sign-in (2026-10-28)
+K chose "real music, not the synth bed". Everything needed is in place; the only missing
+step is a human logging in, which is by design — `flow_music.py` refuses rather than the agent
+typing a credential.
+
+**The cloud desktop is up** (Xvfb+openbox+x11vnc+noVNC+chromium with CDP):
+    /workspace/ax-tools/aeris938-state/desktop.sh up|status|restart-chrome
+    noVNC: https://work-1-jhakqeqvkcqlwmjh.prod-runtime.all-hands.dev/vnc.html?autoconnect=1&resize=scale
+    VNC password: /workspace/ax-tools/aeris938-state/vnc.pass.txt  (not in git)
+Then sign in to flowmusic.app in that desktop and run:
+    cd aeris938-1 && python3 scripts/flow_music.py <key> "<prompt>"
+The pipeline then picks the library track up automatically (it prefers a library track over
+the synth bed). The cover + images come from the same desktop via `gemini_image.py` (also
+login-only) — sign into both in the one session while you are there.
+
+**Three environment facts that cost time and will bite again:**
+1. **`$HOME` is NOT on the persistent volume.** `/home/openhands` is on the overlay; only
+   `/workspace` survives a pod recycle. The stock `scripts/desktop.sh` puts the chrome profile
+   in `$HOME/.aeris938`, so the Google login dies with the pod. My `desktop.sh` keeps the
+   profile under `/workspace/ax-tools/aeris938-state/` for that reason.
+2. **Desktop packages are not in the repo and vanish on recycle:** `sudo apt-get install -y
+   xvfb openbox x11vnc websockify novnc` plus `pip install playwright websocket-client`.
+   `scripts/setup-env.sh` covers ffmpeg/fonts/edge-tts/Pillow/playwright but NOT the VNC stack.
+3. **CDP rejects the websocket without `--remote-allow-origins=*`** ("Rejected an incoming
+   WebSocket connection from origin ..."). A bare `chromium --remote-debugging-port=9222` is
+   not enough to drive it from Python; the flag is required or every CDP call 403s.
+`vnc.html` returns HTTP 200 even when the VNC backend is down — it is a static page. Check
+`desktop.sh status`, not the HTTP code, to know whether the desktop is actually up.
+**`flowmusic.app` is third-party, not Google** (Cloudflare/Let's Encrypt; the chain is
+labs.google/fx/tools/music-fx -> flowmusic.google -> flowmusic.app). `flow_music.py` prints
+this warning every run. K should decide knowingly whether to sign in there.
