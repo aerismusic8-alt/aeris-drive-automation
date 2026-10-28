@@ -965,3 +965,35 @@ registered with `source=flowmusic-web`. `make_story.py` now resolves the real tr
 The `MP3` node is a `div`, not a button, and `locator.click()` times out on it. Use
 `Browser.setDownloadBehavior` with an explicit `downloadPath` then click the leaf in JS.
 Progress hitting 100% is NOT the finish; the finish is the duration readout leaving `0:00`.
+
+## Deliverable 2+3 delivered to Drive, verified by hash (2026-10-28)
+`H:\My Drive\AX Content Lab\aeris938-1\` now holds, byte-for-byte verified:
+- `01-hin-haeng-khwam-jam.mp4` 171,256,482 B sha256 `48c7d809...` (1920x1080 h264 25 fps,
+  25262 frames, 1010.48 s = 16:50, audio aac 48k stereo, **-17.0 LUFS**)
+- `music-01-hin-haeng-khwam-jam-mood-flowmusic.mp3` 3,726,073 B sha256 `30bf8329...`
+Both hashes match local exactly. The video stream is byte-identical to the pre-music
+render (same 25262 frames) — only the audio was re-encoded, which is what
+`compose.normalise_audio` does (copies video, re-encodes audio).
+
+**How to prove a re-render actually used the new music (reusable technique):** you cannot
+just eyeball the mux. Take the video, compute per-second RMS, take the quietest ~40 s
+(narration pauses => music-dominant), and compare the **spectral centroid** to each
+candidate track. Result: video 1247 Hz vs real Flow Music 1232 Hz (15 Hz apart) vs synth
+bed 330 Hz (916 Hz away). Cross-correlation also favoured the real track but weakly
+(+0.025 vs +0.007) because narration dominates; the quiet-window centroid is the
+decisive test.
+
+**PC1 upload pattern that works (schtasks quoting bites):** the MCP `Shell` tool caps at
+~30 s, so write the PowerShell to a file with **`FileWrite`** (no quoting problems), then
+`schtasks /Create /TN x /TR "powershell -NoProfile -ExecutionPolicy Bypass -File <path>"
+/SC ONCE /ST 00:00 /F; schtasks /Run /TN x`, and poll the log with `Shell`. Do NOT inline
+the script in /TR — a path with spaces ("My Drive") splits and schtasks errors with
+"Invalid argument/option - 'Drive\AX'". Pull over HTTP from the pod (port 12001) rather
+than uploading, and clean the task up with `/Delete /F`.
+
+**Still blocked on K:** the GitHub App private key. `~/.config/aeris/gh-app.pem` was on
+the ephemeral `$HOME` and is gone; `ax_vault.py` excludes `.pem`/`.key` by design, and
+`/workspace/.secrets/gh-app` does not exist. So `gh-app-token.mjs` fails and `git push`
+403s (the sandbox `GITHUB_TOKEN` is read-only). Commits are local and safe; K must
+re-drop the key at `~/.config/aeris/` or `/workspace/.secrets/gh-app/` (both are
+candidate dirs in `gh-app-token.mjs`) to restore push.
