@@ -866,3 +866,32 @@ The old note "PC1 remote control is DOWN" is now STALE. Verified end to end:
   assets tarball. DriveFS log showed `active_uploads: 0` and attributes `Normal` = uploaded to cloud.
 - **PC1 also holds the repo at `C:\AERIS-Work\aeris-drive-automation`** (no `aeris938-1/` subdir yet).
   PC1 can reach the sandbox public URL fine (`curl.exe -sI` -> 200, correct Content-Length).
+
+## 🎵 The music bed was SILENT-IN-PRACTICE — root cause and fix (2026-10-28)
+K said "ยังไม่ได้ใส่เพลง ซาวด์ดนตรี". The bed WAS in the file, but you could not hear it.
+**How to tell whether a bed is really audible (do this, do not trust the report):**
+- `corr(residual, bed)` where residual = mix - k*narration. It was **0.9136** on ep01, which
+  proved the music was present and not encode noise. A report that merely says `music_bed: <path>`
+  proves nothing — that is exactly how this shipped.
+- Level check: extract the same 1 s window from a *pause* and from *speech* and compare.
+**Root cause, two compounding bugs:**
+1. `compose.py` mixed the bed with a plain `amix` at `music_gain_db=-18.0`. That put the music
+   **19.9 dB** under the voice (-40.3 dBFS in pauses vs -20.4 speech). The comment said the bed
+   was "ducked"; no ducking existed.
+2. The Thai narration has **no long gaps** — 352 gaps of mean 1.02 s, total 360 s of the 1010 s.
+   So a bed that is only quiet is never audible anywhere; the 1 s gaps are the ONLY place it can be
+   heard, and -18 dB buried it there too.
+**Fix (commit `0319347`):** bed at `MUSIC_GAIN_DB = -4.0`, genuinely sidechain-ducked with
+`sidechaincompress` (threshold 0.008, ratio 18, attack 15 ms, release 350 ms), then two-pass
+loudnorm back to **-17.0 LUFS**. Both renderers now share one `_audio_filter`; the old `compose()`
+had its own inline un-ducked copy that could drift. ep01 re-muxed (video stream copied, so the
+picture is untouched) and re-uploaded to Drive: bed now 6.4 dB under voice, -26.5 dBFS in pauses.
+**Tuning method that worked:** isolate the bed through the duck chain (`bed` + narration as
+sidechain only, output the bed) and measure bed@speech vs bed@pause. `amix` level readings lie
+because they include the voice; that cost me three wrong sweeps. `sidechaincompress` needs both
+inputs at a common layout — pin `aformat=sample_fmts=fltp:sample_rates=48000:channel_layouts=stereo`
+first or it errors.
+**Still open:** the bed is *synthesised* (`make_music.py`, ffmpeg sine layers), not a real song.
+Real music would come from Flow Music (`flow_music.py`) but that is a login-only third-party web
+app and the README deliberately does not use it unattended. The bed being audible is the fix;
+"is a synth pad good enough" is K's call.
