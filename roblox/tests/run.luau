@@ -1193,6 +1193,27 @@ t.test("every product carries the Roblox asset id it is sold under", function()
 	end
 end)
 
+t.test("the catalogue is pinned to the ids the products are really sold under", function()
+        -- The ids below were read back from the live Creator Hub and the
+        -- catalogue API. Editing one here or in Monetization.luau without
+        -- updating the other silently breaks the money path: the client
+        -- prompts for an id that is not this product, or the receipt resolves
+        -- to nothing. A mismatch is a typo, not a design choice.
+        local LIVE = {
+                Vip = 2058971598,
+                AutoHatch = 2058839555,
+                FastWalk = 2058521556,
+                ZonePass = 2059001519,
+                DoubleCoins1h = 3723348935,
+                LuckyBoost = 3723349634,
+        }
+        for id, assetId in pairs(LIVE) do
+                local product = Monetization.get(id)
+                t.assertTrue(product ~= nil, id .. " is missing from the catalogue")
+                t.assertEqual(product.assetId, assetId, id .. " is sold under a different asset id")
+        end
+end)
+
 t.test("a receipt resolves back to its product by asset id", function()
 	-- ProcessReceipt hands us the numeric asset id, never the catalogue key.
 	for _, product in ipairs(Monetization.list()) do
