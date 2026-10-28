@@ -821,3 +821,21 @@ write `<name>.partial.mp4` then rename (a killed ffmpeg leaves a truncated file 
 stats as finished); `_preset_for()` uses `veryfast` past 600 s; Ken Burns intermediate sized to
 zoom headroom not a flat 2x (16 live branches); audio pinned `-ar 48000 -ac 2` because a 24 kHz
 mono voice + 48 kHz mono bed mixed to a 96 kHz mono track. Tests: 54 pass.
+
+## Google Drive is NOT reachable from this sandbox — no Drive-scoped credential exists (proved 2026-10-27)
+K asked to put aeris938-1's episode on Google Drive (`aerismusic8@gmail.com`). Verified, not assumed:
+- **Every** Google refresh token in this pod is scope `https://www.googleapis.com/auth/youtube` ONLY:
+  YOUTUBE_REFRESH_TOKEN, YT_REFRESH_TOKEN, YT_CH1..CH4_REFRESH_TOKEN. A `drive/v3/about` call with a
+  freshly minted access token returns **403**. No Drive scope anywhere.
+- No service-account key, no `credentials.json`/`token.json`, no rclone/gdrive config, no MCP server
+  with Drive, and the 6 automations are all `enabled=false` (HOLD still in force).
+- The knowledge vault stores knowledge only; it refuses credential-shaped files by design.
+- **GitHub write is also still 403** (installation token): `POST /releases` returns
+  "Resource not accessible by integration". `git push --dry-run` prompts for a password. No app key at
+  `/workspace/.secrets/gh-app` or `~/.config/aeris`. So no permanent URL can be minted from this pod.
+To actually deliver, one of these must happen:
+1. Add a Drive-scoped OAuth secret (or `drive.file`) and re-run — then a `drive/v3` upload works.
+2. K signs into Drive **once** in the cloud desktop (`scripts/desktop.sh up`, noVNC on :12000), then the
+   agent drives that logged-in Chromium via CDP :9222 to upload. This is the project's own design
+   (Gemini/Flow Music already work this way).
+3. Temporary only: serve the mp4 over the pod's public URL (port 12000/12001) — dies when the pod recycles.
