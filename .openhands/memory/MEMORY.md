@@ -839,3 +839,30 @@ To actually deliver, one of these must happen:
    agent drives that logged-in Chromium via CDP :9222 to upload. This is the project's own design
    (Gemini/Flow Music already work this way).
 3. Temporary only: serve the mp4 over the pod's public URL (port 12000/12001) — dies when the pod recycles.
+
+## ✅ PC1 IS BACK ONLINE + Google Drive delivery works (proved 2026-10-27/28)
+The old note "PC1 remote control is DOWN" is now STALE. Verified end to end:
+- **PC1 winremote MCP lives at `https://desktop-rgk6jkb.tail8740ad.ts.net/mcp`** (tailnet direct,
+  NOT app.all-hands.dev/mcp). `/health` -> 200 `{"status":"ok","auth":"required","upstream":"local-mcp"}`.
+  Auth = `Authorization: Bearer $PC1_MCP_TOKEN_2`. 45 tools incl. Shell, FileWrite, FileDownload,
+  FileUpload, Snapshot, GetSystemInfo. MCP needs the session dance: `initialize` returns
+  `Mcp-Session-Id` header, then send `notifications/initialized`, then `tools/call`. Copy of the
+  client: `/tmp/pc1lib.py` (rebuilt each session; ~40 lines).
+- **PC1 has Google Drive File Stream mounted as drive letters**, which is the clean delivery path:
+  `G:\` = kongkeat.938@gmail.com, **`H:\` = aerismusic8@gmail.com (the one K wants)**, `I:\` = a 3rd.
+  Confirmed by parsing `C:\Users\User\AppData\Local\Google\DriveFS\Logs\drive_fs.txt` for
+  `mount_point` + account name.
+- **Delivery recipe that works (no Drive API credential needed):**
+  1. serve the artifact from the sandbox: `cd <dir> && python3 -m http.server 12001 --bind 0.0.0.0`
+     -> public `https://work-2-<host>.prod-runtime.all-hands.dev/<file>` (work-1 = port 12000).
+  2. On PC1, curl it straight into the Drive folder. **The 30 s MCP Shell cap kills a 170 MB
+     download**, so run it detached via a scheduled task:
+     `schtasks /create /tn X /tr "powershell -File C:\AX-Runtime\x.ps1" /sc once /st 23:59 /f`
+     then `schtasks /run /tn X`; poll the `.done` marker file. `Start-Process curl` did NOT survive
+     the cap — schtasks did.
+  3. Verify with SHA-256 on BOTH sides, then delete the scheduled task.
+  Done for ep01: `H:\My Drive\AX Content Lab\aeris938-1\` now holds the 170,245,628 B mp4
+  (sha `11a85baa...6be8a`, matched), the 1.2 MB cover (sha `fae9a83b...e3705`, matched) and a 41 MB
+  assets tarball. DriveFS log showed `active_uploads: 0` and attributes `Normal` = uploaded to cloud.
+- **PC1 also holds the repo at `C:\AERIS-Work\aeris-drive-automation`** (no `aeris938-1/` subdir yet).
+  PC1 can reach the sandbox public URL fine (`curl.exe -sI` -> 200, correct Content-Length).
