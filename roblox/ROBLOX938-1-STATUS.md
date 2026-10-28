@@ -377,3 +377,42 @@ Automation tree: `uia2.ps1` dumps every control with its Unicode label and scree
 coordinates, and `uia_invoke.ps1` activates a control by name through its UIA pattern
 rather than by a guessed pixel. That is what made a Thai-language form tractable without
 OCR guesswork, and it is reusable for any future dashboard task.
+
+### The 16+ cap that remains is Kids-and-Select, not the label (measured)
+
+The label is fixed but the age recommendation still reads `minimumAge 16`. That is not a
+leftover from the old label. Comparing the same API across games shows the split:
+
+| universe | game | maturity | descriptor | minimumAge |
+| --- | --- | --- | --- | --- |
+| 7436755782 | Grow a Garden | Minimal | Suitable for everyone | 0 |
+| 383310974 | Adopt Me | Minimal | Suitable for everyone | 0 |
+| 10771844216 | AX Garden Legends | Minimal | *(none)* | 16 |
+| 10773483379 | AX Arena 2 | Minimal | Violence (Occasional/Mild) | 16 |
+| 10772257179 | Breachline | Moderate | Violence (Occasional/Moderate) | 16 |
+
+Two Minimal games read 0 and two read 16, so the maturity label alone does not set the
+age. The difference is the under-16 gate the audience page names explicitly
+(`จัดการผู้ชม`): two-step verification, 250 engaged players, and the Kids-and-Select
+publishing fee/subscription. Grow a Garden and Adopt Me have cleared it; the AX
+experiences have not. That gate is a business decision, not a bug, and it is the same one
+section 6 identified. What this session removed is the *strictest* label, "Content May
+Vary", which Roblox restricts to age-checked 16+ users; the AX experiences no longer carry
+it.
+
+### Discovery fix: the primary experience had no description (2026-10-28)
+
+`games.roblox.com/v1/games?universeIds=10773483379` returned `description: null`. The
+search listing carries the description, so the game was unlisted in the one place a
+player would find it, and the live-state doc already names distribution — not permission
+— as AX Garden Legends' real problem. A Thai description was written on the Game Details
+page (`รายละเอียดเกม`) and saved:
+
+```
+ปลูกพืชเพื่อชาร์จขวาน ฟันมอนสเตอร์เป็นระลอก เก็บเลเวล ไอเท็ม และอาชีพ
+แล้วออกเดินทางผ่าน 5 ทุ่ง: ทุ่งหญ้า ถ้ำคริสตัล ภูเขาไฟ รอยแยกวอยด์ และประตูสวรรค์
+```
+
+Verified back through the same API: the field is no longer null. This is the free part of
+the distribution problem and it is now done for the primary experience. Search visibility
+for a zero-visit game still depends on Roblox's ranking, which no owner controls.
