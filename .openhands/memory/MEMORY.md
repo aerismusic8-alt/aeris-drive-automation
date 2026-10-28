@@ -1070,3 +1070,43 @@ it matches the command line, not the port.
 then relaunch chromium manually with the flags bootstrap uses (including
 `--remote-allow-origins=*`, without which CDP rejects the websocket with 403).
 Verify with `curl -s http://127.0.0.1:9222/json/version`.
+
+## Roblox @navintas938: logged in, and the real visibility gate (verified 2026-10-28)
+K signed in through the noVNC desktop. Confirmed with
+`users.roblox.com/v1/users/authenticated` -> `{"id":11825689233,"name":"navintas938"}`.
+`.ROBLOSECURITY` is 1178 chars; 17 roblox cookies. Session saved to
+`/workspace/ax-tools/aeris938-state/roblox-storage.json` (persistent, survives recycle).
+The desktop VNC password is `ax938` (`/workspace/ax-tools/aeris938-state/vnc.pass.txt`).
+
+**Playability is viewer-dependent, and that is the whole story.** Same universe
+10771844216, two calls seconds apart:
+- authenticated owner -> `{"playabilityStatus":"Playable","isPlayable":true}`
+- anonymous context -> `{"playabilityStatus":"GuestProhibited","isPlayable":false}`
+So "is the game playable" can never be answered from an unauthenticated probe. The
+earlier `GuestProhibited` reading was not a broken build — it was an anonymous read.
+
+**The gate is the audience setting, not the maturity questionnaire.** Creator Hub ->
+`/dashboard/creations/experiences/10771844216/audience-reach` ("จัดการผู้ชม") says
+`การเข้าถึงเกม: สาธารณะ` (access: public) but
+`การเข้าถึงผู้ชม: อายุ 16 ปีขึ้นไปและเพื่อนที่เชื่อได้` (audience: 16+ and trusted friends).
+To reach under-16 players, four steps are listed, **two of them cost money or identity**:
+1. enable 2FA (free) — incomplete
+2. 250 engaged players / high-engagement review — "you may pay a refundable fee to speed
+   it up", 0 people at 2026-10-28 (free path exists but needs real players)
+3. **pay 1,000 Robux publishing fee for Kids and Select** — incomplete, and **ruled out by
+   K's Rule #1 (free only)**. Do not propose it.
+4. verify identity with a government ID — complete
+Under Rule #1 the free road to a public game is: keep the 16+ rating and rely on the
+free 250-engaged-player review. Do not spend Robux.
+
+**Creating a game:** the Open Cloud API cannot (no `POST /universes` in 835 paths) and
+the Creator Hub creations page has **no create affordance** — its only buttons are
+menu/search/notifications/sort. Roblox docs are explicit: "When you open Studio and
+create a new game...". New experiences come from **Studio**, which is installed on PC1
+(`C:\Program Files\Roblox\Versions\version-7aaa6838d36c4448\RobloxStudioBeta.exe`).
+The account already owns **three** experiences (10771844216 AX Garden Legends,
+10772257179 Breachline: Two Sites, 10772257646 Legends of Celestia), which proves
+creation works on this account.
+**Publishing is still stuck for a different reason:** the repo secret `ROBLOX_API_KEY`
+returns 404 on `universe-places` reads, so it needs reissue with
+`universe-places:write` before unattended publishes work again.
