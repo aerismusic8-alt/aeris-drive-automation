@@ -12,7 +12,10 @@ Chromium running on the sandbox**, which the operator signs into once through a
 browser link. The agent then drives that already-authenticated session.
 
 Nothing here asks for, stores or transmits a password. The operator types it
-into their own browser; the session cookies stay in `~/.aeris938/chrome-profile`.
+into their own browser; the session cookies stay in
+`/workspace/ax-tools/aeris938-state/chrome-profile`. That path is deliberate: `$HOME`
+is on the container overlay and is **discarded on a pod recycle**, so a profile kept
+there loses the Google login every time. Only `/workspace` survives.
 
 ## Quick start
 
@@ -124,8 +127,22 @@ yourself first:
 python3 aeris938-1/scripts/make_music.py <story>-mood epic --duration 150
 ```
 
-The bed is **not** used for anything unattended from a web generator, because
-`flowmusic.app` is third-party (see below).
+A **real track** beats the synthesised bed, and `make_story.py` prefers one. Generate
+it in Flow Music, then register it under the mood key:
+
+```bash
+python3 -c "import sys;sys.path.insert(0,'aeris938-1/scripts');import library,pathlib;\
+library.add('music','01-hin-haeng-khwam-jam-mood',pathlib.Path('<file>.mp3'),\
+source='flowmusic-web',provider='www.flowmusic.app',mood='calm thai folk')"
+```
+
+`compose.py` loops a short track with `-stream_loop -1`, so a 3-minute song fills a
+5-minute episode. `library.find('music', f'{name}-mood')` is the only lookup; a miss
+falls back to the bed rather than failing.
+
+The bed is still **not** generated unattended from the web, because `flowmusic.app` is
+third-party (see below): the operator signs in and starts the song, the agent drives the
+already-authenticated session and downloads the result.
 
 ## Tests
 
