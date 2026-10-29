@@ -1,6 +1,55 @@
 # MEMORY
 
-Index only. Detail lives in the daily logs (`2026-10-28.md`, `2026-10-27.md`, `2026-10-23.md`, `2026-10-22.md`).
+Index only. Detail lives in the daily logs (`2026-10-29.md`, `2026-10-28.md`, `2026-10-27.md`, `2026-10-23.md`, `2026-10-22.md`).
+
+## ✅ ax-account: one skill covering all four repos in the account (2026-10-29)
+`.agents/skills/ax-account/` consolidates `aeris-drive-automation`, `ai-content-lab`,
+`autonomous-zero-baht`, `autonomous-zero-baht-1`: identity/authority, Rule #1 (free
+only), project map, shared conventions, environment/delivery.
+**How skills load (verified):** project = `<workspace>/.agents/skills/`; user =
+`~/.agents/skills/` (**every** conversation; probe confirmed `origin: "user"`); org = a
+GitHub repo named **`.agents`** at `skills/<name>/SKILL.md` (reaches all repos; does not
+exist, and the sandbox token cannot create repos — 403 — so it is a one-time operator
+action).
+**`$HOME` is ephemeral, only `/workspace` survives**, so the skill's durable home is the
+repo's `.agents/skills/` (git-tracked); run `scripts/install-agent-skills.sh` after a
+recycle to restore the user-level copy that every conversation sees. Inspect the live
+catalog with header `X-Session-API-Key` (not `Authorization: Bearer`, which 401s) at
+`http://127.0.0.1:60000/api/skills/catalog`; `POST /api/skills/install` lands in the
+also-ephemeral `~/.openhands/skills/installed/`. `AGENTS.md` points at the skill.
+
+## ❌ music938-1 is a FAILURE — TTS reshaped to a melody is not singing (2026-10-29)
+K ordered all 20 songs destroyed and the failure recorded: "งานเพลงแบบนี้คือล้มเหลวมากๆ".
+4.0 GB / 6434 files deleted. Only the 20 Thai lyrics and the scripts survive.
+**Root cause:** the vocal was a Piper Thai **TTS voice pitch-shifted onto a melody**. That is not a
+sung vocal, and no amount of mixing fixes it. The earlier "silent syllable" work, the LUFS matching
+and the clip guard were all real but cosmetic — polishing a recording that should never have been
+made. **Rule: a sung vocal cannot be produced by post-processing a speaking voice. If the
+deliverable is a song and the only voice available is TTS, say so before building anything.** A real
+singing model (Suno, Flow Music, trained SVS/RVC) is required; otherwise ship an instrumental.
+**Two further mistakes worth not repeating:** (1) Rule #1 "ฟรีเท่านั้น" cannot yield a listenable
+Thai song from free TTS + offline synth — the free route is Flow Music, which is login-gated, and
+that login was never resolved; building the substitute engine because it was the runnable thing is
+how a pipeline ends up 4 GB of the wrong artifact. (2) Delivery was never established first: Drive
+was blocked on all three routes (API disabled in project 888023422403, PC1 `/mcp` 401, desktop
+Google login expired) and `git push`/`workflow_dispatch` are 403, so the pack could only ever be a
+pod-local URL that dies on recycle. **Resolve the voice source AND the delivery channel before
+generating media.** Reusable half if a real singer appears: `music938-1/lyrics/` and `scripts/`.
+
+## ✅ music938-1 voice source RESOLVED: Flow Music, driven by its own API (2026-10-29)
+The real singer the failure note demanded is **Flow Music** (`flowmusic.app`), free and
+login-only, already signed in on the cloud desktop. `music938-1/scripts/flow_song.py` drives it.
+**All `/__api/...` reads need the app's Supabase bearer token** (`supabase.auth.getSession()` ->
+`Authorization: Bearer <access_token>`); a raw fetch 401s. Capture it off a real request.
+Key endpoints: `POST /__api/clips` (getClips, watch this for the finished clip), `GET
+/__api/stems/clip/{id}` (**4-stem split** vocals/drums/bass/other, no throttle), `/__api/models`,
+`/__api/after-hours/sessions/*` (POSTs are admin-only -> 401 for this account).
+**Length:** the create pass is clamped to **180s** for every model, and length is not a field — it is
+baked into the lyrics as `[End - m:ss]`. So **Extend** (Remix -> Extend) is mandatory for the 3.5-5
+min brief, not a fallback. Karaoke = sum the non-vocal stems (better than center-cancel).
+**The 429 is account-wide and intermittent, not a quota:** every tool-call 429s while credits read
+free/6000 tokens, but six songs rendered in a 26-minute window on 2026-10-29, so a batch with a
+short backoff ladder catches the open windows.
 
 ## ⚠️ The `GuestProhibited` alarm was a broken instrument — use a CONTROL (verified 2026-10-28)
 `multiget-playability-status` reports the **caller's** state, not the game's. A logged-out caller gets
@@ -889,25 +938,45 @@ stats as finished); `_preset_for()` uses `veryfast` past 600 s; Ken Burns interm
 zoom headroom not a flat 2x (16 live branches); audio pinned `-ar 48000 -ac 2` because a 24 kHz
 mono voice + 48 kHz mono bed mixed to a 96 kHz mono track. Tests: 54 pass.
 
-## Google Drive is NOT reachable from this sandbox — no Drive-scoped credential exists (proved 2026-10-27)
+## Google Drive delivery — still blocked, but the reason changed (re-proved 2026-10-29)
 K asked to put aeris938-1's episode on Google Drive (`aerismusic8@gmail.com`). Verified, not assumed:
-- **Every** Google refresh token in this pod is scope `https://www.googleapis.com/auth/youtube` ONLY:
-  YOUTUBE_REFRESH_TOKEN, YT_REFRESH_TOKEN, YT_CH1..CH4_REFRESH_TOKEN. A `drive/v3/about` call with a
-  freshly minted access token returns **403**. No Drive scope anywhere.
-- No service-account key, no `credentials.json`/`token.json`, no rclone/gdrive config, no MCP server
-  with Drive, and the 6 automations are all `enabled=false` (HOLD still in force).
-- The knowledge vault stores knowledge only; it refuses credential-shaped files by design.
+- **STALE as of 2026-10-29:** "every Google refresh token is youtube-only" is no longer true.
+  `GDRIVE_REFRESH_TOKEN` now exists and mints a token with scope **`drive.file`**. It still 403s,
+  but for a different reason: **the Drive API is disabled in Cloud project 888023422403**
+  (`gdrive-client.json`'s own project) — "Google Drive API has not been used in project
+  888023422403 before or it is disabled". Only a project owner can enable it. The YouTube tokens
+  (YOUTUBE_REFRESH_TOKEN, YT_REFRESH_TOKEN, YT_CH1..CH4_REFRESH_TOKEN) remain youtube-only.
+- The three routes and why each fails: (1) Drive API — disabled in the project; (2) PC1 Drive
+  File Stream (`H:\`) — `desktop-rgk6jkb.tail8740ad.ts.net/health` is 200 but **`/mcp` is 401** for
+  both PC1 tokens, the winremote key rotated; (3) desktop browser upload — the Google login in the
+  desktop Chromium has **expired** (account chooser shows "Signed out"). `scripts/gdrive-upload-browser.py`
+  is complete and needs only that login. Also: `git push` with the sandbox GITHUB_TOKEN is 403 and
+  `workflow_dispatch` is 403, so a PC1 workflow cannot be triggered from here either.
+- **What works for a preview:** serve the pack on port 12001 →
+  `https://work-2-<workhost>.prod-runtime.all-hands.dev/` (200 on every file). Dies on pod recycle.
+  `music938-1/scripts/serve-pack.sh` stages `/tmp/deliver` and serves it; start the server with
+  `setsid ... </dev/null &` or the shell hangs. `zip` is not installed — use python `zipfile`.
+- Superseded detail (2026-10-27, kept for the account facts): no service-account key, no
+  `credentials.json`/`token.json`, no rclone/gdrive config, no MCP server with Drive, and the 6
+  automations are all `enabled=false` (HOLD still in force). The knowledge vault stores knowledge
+  only; it refuses credential-shaped files by design.
 - **GitHub write is also still 403** (installation token): `POST /releases` returns
   "Resource not accessible by integration". `git push --dry-run` prompts for a password. No app key at
   `/workspace/.secrets/gh-app` or `~/.config/aeris`. So no permanent URL can be minted from this pod.
 To actually deliver, one of these must happen:
-1. Add a Drive-scoped OAuth secret (or `drive.file`) and re-run — then a `drive/v3` upload works.
-2. K signs into Drive **once** in the cloud desktop (`scripts/desktop.sh up`, noVNC on :12000), then the
-   agent drives that logged-in Chromium via CDP :9222 to upload. This is the project's own design
-   (Gemini/Flow Music already work this way).
+1. Enable the Drive API in project 888023422403 (owner only), then `scripts/gdrive-upload.py` works
+   with the existing `drive.file` token. Or add a Drive-scoped OAuth secret.
+2. K signs into Google **once** in the cloud desktop (`scripts/desktop.sh up`, noVNC on :12000), then
+   the agent drives that logged-in Chromium via CDP :9222 with `scripts/gdrive-upload-browser.py`.
+   This is the project's own design (Gemini/Flow Music already work this way). The login is currently
+   EXPIRED, so this is the cheapest unblock.
 3. Temporary only: serve the mp4 over the pod's public URL (port 12000/12001) — dies when the pod recycles.
 
 ## ✅ PC1 IS BACK ONLINE + Google Drive delivery works (proved 2026-10-27/28)
+> **STALE as of 2026-10-29:** the winremote `/mcp` now returns **401** for both PC1 tokens — the
+> auth key rotated and the secrets are old. `/health` still answers 200, so the box is up but not
+> drivable. Refresh the key (`ops/pc1_fix_remote.ps1`) and re-add `PC1_MCP_TOKEN_2`, or use route 2
+> above. The Drive File Stream mount facts below are still true when the box is drivable.
 The old note "PC1 remote control is DOWN" is now STALE. Verified end to end:
 - **PC1 winremote MCP lives at `https://desktop-rgk6jkb.tail8740ad.ts.net/mcp`** (tailnet direct,
   NOT app.all-hands.dev/mcp). `/health` -> 200 `{"status":"ok","auth":"required","upstream":"local-mcp"}`.
