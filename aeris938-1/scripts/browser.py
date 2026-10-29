@@ -21,6 +21,10 @@ class LoginRequired(RuntimeError):
     """Raised when the target app is showing a sign-in wall."""
 
 
+class RateLimited(RuntimeError):
+    """Raised when the app returns 429; the caller should back off and retry."""
+
+
 def cdp_alive(url: str | None = None) -> bool:
     # Resolved per call, not bound at import: the desktop may be started after
     # this module is loaded.
