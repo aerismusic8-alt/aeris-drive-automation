@@ -93,7 +93,9 @@ def meta_bpm(meta: dict) -> str | None:
 # any longer request back to 180s), so this is the seed length and Extend is what
 # carries a song into the 3.5-5 min brief.
 CREATE_LENGTH = "3:00"
-MIN_SECONDS = 205.0
+# 3.5 min, the same floor report.py enforces, so a take that passes
+# here cannot fail the brief later.
+MIN_SECONDS = 210.0
 
 
 def _open_compose(page):
