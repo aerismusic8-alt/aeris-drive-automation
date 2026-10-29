@@ -64,7 +64,7 @@ jobs:
       # engine shim and plays a round through the real remotes.
       - name: Run Breachline runtime tests
         run: |
-          python3 scripts/gen-roblox-sources.py breachline/tests/.generated/Sources.luau --src breachline/src/breachline-uncompressed
+          python3 scripts/gen-roblox-sources.py breachline/tests/.generated/Sources.luau --src breachline/src/breachline-uncompressed --overlay breachline/overlay
           ./tools/luau/luau breachline/tests/runtime.luau
 
       # Boots the real server, builds the real world and loads the real client
