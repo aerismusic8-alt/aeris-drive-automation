@@ -25,6 +25,15 @@ class RateLimited(RuntimeError):
     """Raised when the app returns 429; the caller should back off and retry."""
 
 
+class TooShort(RuntimeError):
+    """Raised when a take is shorter than the brief; retry rather than ship it."""
+
+    def __init__(self, slug: str, seconds: float):
+        super().__init__(f"{slug}: take is {seconds:.0f}s, under the floor")
+        self.slug = slug
+        self.seconds = seconds
+
+
 def cdp_alive(url: str | None = None) -> bool:
     # Resolved per call, not bound at import: the desktop may be started after
     # this module is loaded.

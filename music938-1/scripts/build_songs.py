@@ -78,6 +78,8 @@ def run_one(slug: str, force: bool) -> tuple[str, dict | None]:
             data = {"raw": line[-1]}
     if proc.returncode == 4 or (data or {}).get("status") == "RATE_LIMITED":
         return "RATE_LIMITED", data
+    if proc.returncode == 5 or (data or {}).get("status") == "TOO_SHORT":
+        return "TOO_SHORT", data
     if proc.returncode != 0:
         return "ERROR", {"rc": proc.returncode, "err": (proc.stderr or "")[-300:]}
     return "OK", data
@@ -119,6 +121,14 @@ def main() -> int:
                 wait = BACKOFF_STEPS[min(backoff, len(BACKOFF_STEPS) - 1)]
                 backoff += 1
                 print(f"[429] {slug}: throttled, sleeping {wait}s", flush=True)
+                time.sleep(wait)
+                continue
+            if status == "TOO_SHORT":
+                # The take rendered but came back under the floor and Extend did
+                # not rescue it. Re-create from scratch, spaced out.
+                backoff += 1
+                wait = BACKOFF_STEPS[min(backoff, len(BACKOFF_STEPS) - 1)]
+                print(f"[short] {slug}: {data}, retrying in {wait}s", flush=True)
                 time.sleep(wait)
                 continue
             # A browser hiccup or a crash in the driver is transient: retry the

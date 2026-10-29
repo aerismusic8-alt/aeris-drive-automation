@@ -118,8 +118,9 @@ def _expand(page, section: str):
 def _set_advanced(page, length: str, bpm: str | None):
     """Advanced mode exposes BPM and Length for the Lyria model.
 
-    Length is mm:ss. Without it the model picked its own length (~3:00), under
-    the 3.5 min floor; setting it is what puts a song in the 3.5-5 min range.
+    Length is mm:ss and is a *seed*, not a cap: the app clamps the create pass to
+    3:00 and folds the value into the lyrics as `[End - m:ss]`. The 3.5-5 min
+    brief is reached by Extend, not by asking for a longer create.
     The fields are addressed by their <label> sibling: the inputs share a
     placeholder ("Auto"), so index-based selectors hit the wrong one.
     """
@@ -357,8 +358,8 @@ def _extend(page, clip_id: str, clips: dict, since: str, exclude: set,
             timeout: float = 420.0, flags: dict | None = None):
     """Open Remix -> Extend and render the song out longer.
 
-    A single create pass honours Length up to 5:00, so this is only a fallback
-    for a take the model returned short. The panel extends by a default step;
+    This is the step that reaches the 3.5-5 min brief: the create pass is clamped
+    to 3:00, so a seed take is always short. The panel extends by a default step;
     the instruction is what keeps the singer and key the same.
     """
     page.goto(f"https://www.flowmusic.app/song/{clip_id}",
@@ -487,6 +488,16 @@ def generate(slug: str, *, timeout: float = 480.0, force: bool = False) -> dict:
     raw.unlink(missing_ok=True)
     rawext.unlink(missing_ok=True)
 
+    # A take below the floor is not a song for this pack. Writing it would make
+    # the batch skip the slug forever (it resumes on "song-*.mp3 exists"), so a
+    # short take is discarded and reported as retryable instead.
+    dur = _seconds(out)
+    if dur < MIN_SECONDS:
+        out.unlink(missing_ok=True)
+        if flags.get("rate_limited"):
+            raise B.RateLimited(slug)
+        raise B.TooShort(slug, dur)
+
     # The clip id that ends up being the master is the one to split. This is a
     # plain read, so a throttle on generation does not affect it.
     master_id = (ext or base)["id"]
@@ -499,7 +510,6 @@ def generate(slug: str, *, timeout: float = 480.0, force: bool = False) -> dict:
         finally:
             pg2.close()
     _karaoke(out, kar, stems=stems)
-    dur = _seconds(out)
     return {"status": "CREATED", "file": str(out), "karaoke": str(kar),
             "seconds": round(dur, 1), "bytes": out.stat().st_size,
             "clip_id": base["id"], "extended": extended}
@@ -525,6 +535,10 @@ def main() -> int:
     except B.RateLimited:
         print(json.dumps({"status": "RATE_LIMITED", "slug": args.slug}))
         return 4
+    except B.TooShort as exc:
+        print(json.dumps({"status": "TOO_SHORT", "slug": args.slug,
+                          "seconds": round(exc.seconds, 1)}))
+        return 5
     print(json.dumps(r, ensure_ascii=False))
     return 0
 
