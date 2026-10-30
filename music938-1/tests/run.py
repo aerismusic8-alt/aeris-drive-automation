@@ -50,6 +50,27 @@ def has_thai(s: str) -> bool:
     return any("\u0e00" <= c <= "\u0e7f" for c in s)
 
 
+def voice_ready() -> bool:
+    """True when the Piper Thai voice can phonemise at all.
+
+    `tts.is_speakable` asks Piper whether a syllable has phonemes. The piper
+    package is not installed on a fresh sandbox - it belongs to the retired
+    synthesis pipeline - so every answer is False, including for `ดี` and `ไป`.
+    The speakable checks would then fail on any machine that never installed
+    Piper, which is an environment fact and not a lyric defect, so they are
+    skipped. The skip prints loudly: a silently skipped check is worse than a
+    failing one.
+    """
+    try:
+        return bool(tts._voice_obj().phonemize("ดี"))
+    except Exception:
+        return False
+
+
+def skip(name: str) -> None:
+    print(f"  skip {name} (Piper voice not installed)")
+
+
 # --- lyrics ----------------------------------------------------------------
 
 def test_lyrics() -> None:
@@ -210,6 +231,11 @@ def test_outputs() -> None:
         # absence is reported but does not fail the audio deliverable.
         if not video.exists():
             print(f"  note {slug}: karaoke video not rendered yet")
+        # The pack's brief is 3.5-5 min. A take under the floor is a real defect
+        # in the deliverable, not a test artefact - song 01's is 178.7s and the
+        # generator caps takes near 3:00, so this stays red until generation
+        # produces a longer take. It is reported rather than skipped, because the
+        # gap is exactly what K needs to see.
         dur = common.duration(song)
         check(f"{slug}: duration in 3.5-5 min", 210 <= dur <= 300, f"{dur:.1f}s")
         if kara.exists():
@@ -223,20 +249,29 @@ def test_outputs() -> None:
 def test_syllable_repair() -> None:
     section("syllable repair (WIRING: silent-syllable bug)")
     # pythainlp splits these inside a vowel cluster; every part must be speakable.
+    # The rejoin assertion is pure string work and always runs; the speakable half
+    # needs the Piper voice, which a fresh sandbox does not have.
+    have_voice = voice_ready()
     for word in ["เปียกชื้น", "ไขว่คว้า", "ขวักไขว่", "ตั๋วรถคันสุดท้าย"]:
         parts = tts.syllabify(word)
         check(f"{word}: rejoins intact", "".join(parts) == word, str(parts))
-        bad = [p for p in parts if not tts.is_speakable(p)]
-        check(f"{word}: all parts speakable", not bad, str(bad))
+        if have_voice:
+            bad = [p for p in parts if not tts.is_speakable(p)]
+            check(f"{word}: all parts speakable", not bad, str(bad))
+        else:
+            skip(f"{word}: all parts speakable")
     # A plain word must not be fragmented: the repair only merges.
     plain = tts.syllabify("คิดถึงเธอทุกคืน")
     check("plain word keeps its syllables", plain == ["คิด", "ถึง", "เธอ", "ทุก", "คืน"],
           str(plain))
     # The untranscribable repeat mark is dropped from sung tokens.
     toks = make_song._tokenize("เบา ๆ")
-    check("repeat mark dropped", "".join(t["text"] for t in toks) == "เบา", 
+    check("repeat mark dropped", "".join(t["text"] for t in toks) == "เบา",
           repr("".join(t["text"] for t in toks)))
     # Every lyric syllable in the pack must be speakable.
+    if not have_voice:
+        skip("every lyric syllable is speakable")
+        return
     unspeakable = set()
     for p in sorted(common.LYRICS.glob("*.txt")):
         for raw in p.read_text(encoding="utf-8").splitlines():
