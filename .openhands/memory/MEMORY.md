@@ -60,22 +60,22 @@ true-instrumental karaoke mix, cover art and a 1920x1080 word-synced video.
 ### Competitor scan — what actually wins these search terms (2026-10-30)
 
 `music938-1/scripts/competitor_scan.py` scanned 8 Thai queries → **43 channels /
-1,546 videos for 885 API units** (`work/competitors.json`; queries in
-`competitor-queries.txt`; write-up `music938-1/COMPETITOR-ANALYSIS.md`). Five
-findings, all implemented and pinned by `tests/run.py`:
+1,546 videos for 885 units** (`work/competitors.json`, queries in
+`competitor-queries.txt`, write-up `music938-1/COMPETITOR-ANALYSIS.md`). All five
+findings are implemented and pinned by `tests/run.py`:
 
 1. **Compilations are the watch-hour lever**: median 3,578 views vs 1,410 for a
    song, and **1 h watched per view vs 0.05 h**. `compile_album.py` builds the
-   `<theme> <n> เพลง (เลือกเพลงฟังได้)` title + a chapter list, and refuses under
+   `<theme> <n> เพลง (เลือกเพลงฟังได้)` title + chapters, and refuses under
    `MIN_TRACKS = 12` (a `N เพลง` title over 1 song is a lie).
 2. **`เลือกเพลงฟังได้` is the strongest signal**: 37 winner titles (≥100k) carry
    it, **0** loser titles (<1k) do. It is only honest with chapter timestamps.
-3. **Winning titles are short**: ≥100k → 47.9 chars, `|` in 8%; <1k → 60.7 chars,
-   `|` in 38.9%. Every `| AERIS Music` suffix removed; titles now ≤60 chars.
-4. **Our art was measurably flat**: luminance std 13.4-23.9 vs **21.7-80.1** for
-   the top-12 competitor thumbnails. Brightening the palette does *not* fix this —
-   a flat frame just gets lighter. Needs `_highlight()` + deeper `_vignette()` +
-   `_text_band()`; all art now 41-58.
+3. **Winning titles are short**: ≥100k → 47.9 chars, `|` in 8%; <1k → 60.7, 38.9%.
+   Every `| AERIS Music` suffix removed; all titles now ≤60 chars.
+4. **Our art was still measurably flat**: luminance std 13.4-23.9 vs **21.7-80.1**
+   for the top-12 competitor thumbnails. Brightening a palette does *not* fix it —
+   a flat frame just gets lighter. `_highlight()` + deeper `_vignette()` +
+   `_text_band()` do; all art is now 41-58.
 5. Active channels ship **~3.89 uploads/week**; ours 1.01/wk, gated by catalogue.
 
 Method: thumbnails at `i.ytimg.com/vi/<id>/hqdefault.jpg` (480x360, enough for a
@@ -97,8 +97,9 @@ played fine, so nothing downstream ever failed.
   is not enough. Both paths now raise on a missing font. `test_thai_font` guards it.
 - **Near-black frames.** `PALETTES` was tuned on a bright monitor and then a 0.52
   vignette stacked on top: covers measured lum 47/255, std 11.7 — hence "no
-  background". Raised the anchors, vignette 0.28, and the Shorts chain no longer
-  adds another `-0.22`. Now 98/255, std 25.5.
+  background". Anchors raised and the Shorts chain no longer adds another `-0.22`.
+  Brightness is not contrast, though — see the competitor scan below, which found
+  the frames still too flat and fixed it properly.
 - **YouTube cannot swap a file under an id.** A bad clip is upload-then-delete, in
   that order. `scripts/replace_video.py` does the whole job: new id, playlist
   re-add, **playlist placeholder removal** (a delete leaves a `Deleted video`), and
