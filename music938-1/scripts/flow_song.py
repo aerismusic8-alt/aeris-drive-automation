@@ -105,6 +105,23 @@ def _moods_in_use() -> set[str]:
     return moods
 
 
+def _sung_line_count(path: Path) -> int:
+    """Lines the model is asked to sing (no headers, no section tags)."""
+    n = 0
+    for raw in path.read_text(encoding="utf-8").splitlines():
+        s = raw.strip()
+        if not s or s.startswith("#") or (s.startswith("[") and s.endswith("]")):
+            continue
+        n += 1
+    return n
+
+
+# The create pass is capped near 180s. A lyric of ~22 lines fills only part of
+# that and leaves the take under the 3.5-minute floor even when Extend succeeds,
+# so every song needs the full verse/chorus form the first song has.
+MIN_SUNG_LINES = 30
+
+
 def meta_bpm(meta: dict) -> str | None:
     tempo = (meta.get("tempo") or "").strip()
     return tempo if tempo.isdigit() else None
@@ -571,10 +588,8 @@ def main() -> int:
                     help="verify every lyric MOOD has a style, then exit")
     args = ap.parse_args()
     if args.check:
-        used, missing = _moods_in_use(), set()
-        for mood in sorted(used):
-            if mood not in STYLE:
-                missing.add(mood)
+        used = _moods_in_use()
+        missing = {m for m in used if m not in STYLE}
         for mood in sorted(used):
             mark = "ok " if mood in STYLE else "MISSING"
             print(f"  {mark:8} {mood}")
@@ -583,6 +598,19 @@ def main() -> int:
                   f"{', '.join(sorted(missing))}", file=sys.stderr)
             return 1
         print(f"\nall {len(used)} moods have their own style")
+
+        short = []
+        for f in sorted(LYRICS_DIR.glob("*.txt")):
+            n = _sung_line_count(f)
+            if n < MIN_SUNG_LINES:
+                short.append((f.stem, n))
+        if short:
+            print(f"\n{len(short)} lyric(s) are too short to fill the brief "
+                  f"(need {MIN_SUNG_LINES}+ sung lines):", file=sys.stderr)
+            for slug, n in short:
+                print(f"  {n:3} lines  {slug}", file=sys.stderr)
+            return 1
+        print(f"all lyrics have {MIN_SUNG_LINES}+ sung lines")
         return 0
     if args.list:
         for f in sorted(LYRICS_DIR.glob("*.txt")):
