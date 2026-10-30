@@ -179,15 +179,22 @@ def _ass_escape(p: Path) -> str:
 
 
 def render(slug: str, *, preview: float | None = None,
-           timing: Path | None = None) -> Path:
-    kara = ROOT / "library" / "songs" / f"karaoke-{slug}.mp3"
+           timing: Path | None = None, mix: str = "karaoke") -> Path:
+    """Render one video for a song.
+
+    `mix="karaoke"` uses the backing-only instrumental (the sing-along version).
+    `mix="song"` uses the full mix with the vocal (the main release). Both share
+    the same subtitles, cover and motion, so a song yields two catalogue videos
+    for one generation.
+    """
+    audio = ROOT / "library" / "songs" / f"{mix}-{slug}.mp3"
     cover = ROOT / "library" / "covers" / f"cover-{slug}.jpg"
-    for p in (kara, cover):
+    for p in (audio, cover):
         if not p.exists():
             raise FileNotFoundError(f"missing {p}; run flow_song.py first")
 
     meta, lines = load_lyrics(slug)
-    duration = _duration(kara)
+    duration = _duration(audio)
     if timing and timing.exists():
         markers = json.loads(timing.read_text(encoding="utf-8")).get("markers") or []
         timed = _from_markers(lines, markers) if markers else estimate(lines, duration)
@@ -196,15 +203,15 @@ def render(slug: str, *, preview: float | None = None,
 
     work = ROOT / "work" / slug
     work.mkdir(parents=True, exist_ok=True)
-    ass_path = work / "karaoke.ass"
+    ass_path = work / f"{mix}.ass"
     ass_path.write_text(build_ass(timed, meta, duration), encoding="utf-8")
 
-    out = ROOT / "library" / "karaoke" / f"karaoke-{slug}.mp4"
+    out = ROOT / "library" / "karaoke" / f"{mix}-{slug}.mp4"
     out.parent.mkdir(parents=True, exist_ok=True)
 
     zoom = ("scale=2400:-1,zoompan=z='min(zoom+0.00035,1.18)':d=1:"
             "x='iw/2-(iw/zoom/2)':y='ih/2-(ih/zoom/2)':s=%dx%d:fps=%d" % (W, H, FPS))
-    args = ["-loop", "1", "-i", str(cover), "-i", str(kara),
+    args = ["-loop", "1", "-i", str(cover), "-i", str(audio),
             "-filter_complex", f"[0:v]{zoom},ass={_ass_escape(ass_path)}[v]",
             "-map", "[v]", "-map", "1:a",
             "-c:v", "libx264", "-preset", "veryfast", "-crf", "20",
@@ -224,8 +231,12 @@ def main() -> int:
                     help="render only the first N seconds")
     ap.add_argument("--timing", type=Path, default=None,
                     help="JSON with real markers from the clip's lyrics_timing")
+    ap.add_argument("--mix", choices=("karaoke", "song", "both"), default="karaoke",
+                    help="which mix to burn; 'both' renders the karaoke and the song")
     args = ap.parse_args()
-    print(render(args.slug, preview=args.preview, timing=args.timing))
+    mixes = ("karaoke", "song") if args.mix == "both" else (args.mix,)
+    for mix in mixes:
+        print(render(args.slug, preview=args.preview, timing=args.timing, mix=mix))
     return 0
 
 

@@ -93,18 +93,22 @@ def karaoke_video(slug: str) -> bool:
 
 
 def render_video(slug: str) -> None:
-    """Burn the karaoke video after the audio exists.
+    """Burn the karaoke and song videos after the audio exists.
 
-    A failure here is not fatal to the song: the mp3s are the deliverable and
-    the video can be re-rendered later from what is already on disk.
+    Two videos per song, from one generation: the karaoke mix is the sing-along
+    version, the song mix is the main release. A failure here is not fatal to
+    the song: the mp3s are the deliverable and a video can be re-rendered later
+    from what is already on disk.
     """
-    if karaoke_video(slug):
-        return
-    proc = subprocess.run(
-        [sys.executable, str(ROOT / "scripts" / "make_karaoke.py"), slug],
-        capture_output=True, text=True)
-    if proc.returncode != 0:
-        log(f"[warn] {slug}: karaoke video failed: {(proc.stderr or '')[-200:]}")
+    mixes = [m for m in ("karaoke", "song")
+             if not (ROOT / "library" / "karaoke" / f"{m}-{slug}.mp4").exists()]
+    for mix in mixes:
+        proc = subprocess.run(
+            [sys.executable, str(ROOT / "scripts" / "make_karaoke.py"), slug,
+             "--mix", mix],
+            capture_output=True, text=True)
+        if proc.returncode != 0:
+            log(f"[warn] {slug}: {mix} video failed: {(proc.stderr or '')[-200:]}")
 
 
 def run_one(slug: str, force: bool) -> tuple[str, dict | None]:
