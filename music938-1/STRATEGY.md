@@ -7,22 +7,50 @@ forever** (K's Rule #1). Every tool below is free.
 
 YouTube monetization needs **1,000 subscribers AND 4,000 qualified watch hours in
 12 months** (or 1,000 subs and 10M Shorts views in 90 days). The channel today is
-0 subs, 8 videos, 11m19s of catalogue, 442 lifetime views.
+0 subs, 8 videos, 11m19s of catalogue, 449 lifetime views.
 
-Watch hours are the binding constraint, not subscribers, and not song count.
+## Discovery first — the channel's own numbers say so
 
-## The arithmetic that decides the method
+Measured 2026-10-30, per video:
+
+| video | views |
+|---|---|
+| Short (22s), 2026-08 | **234** |
+| Short (23s), 2026-08 | **126** |
+| long-form visualizer (3m) | 32 |
+| Short (48s), 2026-08 | 22 |
+| Short (57s), 2026-10 | 20 |
+| Short (57s), 2026-10 | 8 |
+| long-form (4m), 2026-10 | **1** |
+
+**382 of 449 views came from Shorts. Long-form got ~33.** A channel with no
+subscribers gets no long-form impressions — YouTube gives Shorts free
+distribution and long-form almost nothing until an audience exists. So the plan
+has two stages, in this order:
+
+1. **Discovery (now):** a Short per song. Vertical, chorus hook, big Thai
+   captions. Free reach. This is the only thing that has ever moved this channel.
+2. **Watch hours (once there is an audience):** the long-form songs, karaoke and
+   compilations. These are what earn the 4,000 hours, but they need someone
+   watching first.
+
+A Short is under 60s, so it does **not** wait on the 3.5-minute floor that gates
+the songs. The rail runs today, on song 01, while generation is still throttled.
+
+## The arithmetic that decides the release shape
 
 - One 3-minute song watched once = **0.05 h**. Songs alone would need ~80,000 views.
 - One 60-minute compilation watched once = **1.0 h**. It would need ~4,000 views.
 - Same songs. Same generation cost. **20x less audience for the same hours.**
 
-So the release shape is not "20 songs". It is:
+So each song is released as three videos from one generation:
 
-1. **20 songs**, each released twice — the song and the karaoke (one generation,
-   two catalogue videos).
-2. **Album compilations** — 60-minute runs of the songs acrossfaded, one upload,
-   a full watch hour per view. This is the main lever.
+1. a **Short** — the chorus hook, for discovery
+2. the **song** — the main long-form release
+3. the **karaoke** — the sing-along long-form
+
+and every ~10 songs become one **compilation** — the watch-hour lever, once the
+Shorts have built an audience for it.
 
 ## What is free and what it costs
 
@@ -58,6 +86,8 @@ the dead zone only burns the retry ladder.
 
 - Generation runs on the windows; it cannot be forced and does not need to be.
 - **Release at most 6 uploads/day**, spread across the day, not dumped at once.
+- **Lead with Shorts.** `release.py --plan` puts the Short first, then the song
+  and karaoke, so discovery comes before the watch-hour videos.
 - The first upload of the pack stays **private for K** to approve. `--public` is
   a deliberate opt-in, never a default.
 - One new compilation per ~10 songs, so a compilation is never thin.
@@ -66,10 +96,15 @@ the dead zone only burns the retry ladder.
 
 ```bash
 # generate (window-aware; run it and leave it)
-python3 scripts/build_songs.py --workers 2
+python3 scripts/build_songs.py
 
-# what would be released, and when
+# a Short from any song already on disk (runs even while throttled)
+python3 scripts/make_short.py 01-khon-di-thi-chak-pai
+python3 scripts/make_short.py --all
+
+# what would be released, and when (Shorts first)
 python3 scripts/release.py --plan --days 7
+python3 scripts/release.py --plan --shorts        # the discovery queue only
 
 # release the next item (private for K; add --public to publish)
 python3 scripts/release.py --next
