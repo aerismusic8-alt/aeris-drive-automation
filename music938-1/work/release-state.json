@@ -31,9 +31,11 @@
    "slug": "01-khon-di-thi-chak-pai",
    "kind": "song",
    "variant": "",
-   "video_id": "oliw1meKfcQ",
+   "video_id": "ASuxGEvJBlw",
    "at": "2026-10-30T16:11:39+00:00",
-   "public": true
+   "public": true,
+   "replaced_at": "2026-10-30T16:57:06+00:00",
+   "replaced_from": "oliw1meKfcQ"
   },
   {
    "slug": "01-khon-di-thi-chak-pai",
@@ -42,6 +44,15 @@
    "video_id": "SWS1vJJgkow",
    "at": "2026-10-30T16:11:47+00:00",
    "public": true
+  },
+  {
+   "slug": "01-khon-di-thi-chak-pai",
+   "kind": "song",
+   "variant": "",
+   "video_id": "ASuxGEvJBlw",
+   "at": "2026-10-30T16:57:04+00:00",
+   "public": true,
+   "replaces": "oliw1meKfcQ"
   }
  ],
  "playlists": {
