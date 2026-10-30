@@ -139,6 +139,15 @@ def describe(slug: str, kind: str, variant: str = "") -> tuple[str, str, list[st
 
     `variant` distinguishes the hook cuts of one song, so three Shorts from the
     same song are three different uploads rather than a duplicate.
+
+    Title shape is set from the competitor scan (2026-10-30, `work/competitors.json`):
+    of 1,546 videos, the ones past 100k views averaged 47.9 characters and used
+    `|` in only 8% of titles, while the sub-1k videos averaged 60.7 characters and
+    used `|` in 38.9%. YouTube truncates past ~60 characters, so the tail is what
+    gets cut first. The old titles appended `| AERIS Music` to every single
+    release, which is the losing shape; the brand is already the channel name, so
+    it is dropped from the Shorts and karaoke titles and the words are spent on
+    searchable Thai instead.
     """
     h = parse_lyrics(slug)
     title_th = h.get("TITLE", slug)
@@ -151,7 +160,7 @@ def describe(slug: str, kind: str, variant: str = "") -> tuple[str, str, list[st
         hook = f" (ท่อนที่ {m.group(1)})"
 
     if kind == "short":
-        title = f"{title_th}{hook} #{n} — เพลงไทย #Shorts | AERIS Music"
+        title = f"{title_th}{hook} #เพลงไทย #Shorts"
         desc = (
             f"🎵 {title_th} (ท่อนฮุก)\n\n"
             f"{tagline}\n\n"
@@ -160,7 +169,7 @@ def describe(slug: str, kind: str, variant: str = "") -> tuple[str, str, list[st
             f"{HASHTAGS} #Shorts"
         )
     elif kind == "karaoke":
-        title = f"{title_th} (คาราโอเกะ) — ร้องตามได้ | AERIS Music"
+        title = f"{title_th} (คาราโอเกะ) ร้องตามได้"
         desc = (
             f"🎤 {title_th} — เวอร์ชันคาราโอเกะ (ไม่มีเสียงร้อง)\n\n"
             f"ร้องตามได้เลย! {tagline}\n\n"
@@ -170,7 +179,7 @@ def describe(slug: str, kind: str, variant: str = "") -> tuple[str, str, list[st
             f"{HASHTAGS}"
         )
     else:
-        title = f"{title_th} — {tagline} | AERIS Music"
+        title = f"{title_th} — {tagline}"
         desc = (
             f"🎵 {title_th}\n\n"
             f"{tagline}\n\n"

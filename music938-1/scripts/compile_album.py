@@ -32,6 +32,9 @@ LYRICS = ROOT / "lyrics"
 
 W, H, FPS = 1920, 1080, 25
 CROSSFADE = 4.0  # seconds of overlap between tracks
+# Below this the `N เพลง` in the title is not credible. The scan's winning
+# compilations carry 32-110 songs; 12 is a floor for a "รวมเพลง" to feel real.
+MIN_TRACKS = 12
 
 
 def parse_lyrics(slug: str) -> dict:
@@ -90,6 +93,48 @@ def build_tracklist(slugs: list[str]) -> str:
     return "\n".join(lines)
 
 
+def build_chapters(slugs: list[str]) -> str:
+    """A YouTube chapter list, so a viewer can jump to the song they want.
+
+    This is the part that makes the `(เลือกเพลงฟังได้)` promise in the title real.
+    The competitor scan found it is the single strongest signal in the whole
+    dataset: 37 of the videos past 100k views carry that phrase and **none** of
+    the sub-1k videos do. It only works if the timestamps are in the description,
+    so the chapters are built from the same durations the render uses.
+    """
+    lines, t = [], 0.0
+    for i, slug in enumerate(slugs, 1):
+        h = parse_lyrics(slug)
+        total = int(round(t))
+        lines.append(f"{total // 60:02d}:{total % 60:02d} {i:02d}. {h.get('TITLE', slug)}")
+        t += duration(SONGS / f"song-{slug}.mp3") - CROSSFADE
+    return "\n".join(lines)
+
+
+def compilation_title(name: str, n_tracks: int) -> str:
+    """The title shape the scan says wins: `<theme> <n> เพลง (เลือกเพลงฟังได้)`.
+
+    The three highest-viewed videos in the dataset are all this shape and all run
+    past 2 hours. Keep it under 60 characters so nothing is truncated.
+    """
+    title = f"{name} {n_tracks} เพลง (เลือกเพลงฟังได้)"
+    return title[:100]
+
+
+def compilation_description(name: str, slugs: list[str]) -> str:
+    """Description with the chapter list, which is what enables song skipping."""
+    return (
+        f"🎵 {name} — รวม {len(slugs)} เพลงไทย ร้องด้วยเสียงจริง\n\n"
+        f"👉 กดเลือกเพลงที่อยากฟังได้จากรายการด้านล่าง\n\n"
+        f"⏱️ รายการเพลง\n{build_chapters(slugs)}\n\n"
+        f"🎧 ฟังเพลิน ๆ ได้ทั้งวัน ไม่ต้องกดเปลี่ยน\n"
+        f"🎤 ทุกเพลงมีเวอร์ชันคาราโอเกะในช่อง\n"
+        f"✨ AERIS Music — เพลงไทยที่ตั้งใจทำ\n\n"
+        f"#เพลงไทย #รวมเพลงไทย #เพลงเพื่อชีวิต #เพลงเศร้า #เพลงเพราะ "
+        f"#คาราโอเกะ #AERISMusic #เพลงฟังสบาย\n"
+    )
+
+
 def render(name: str, slugs: list[str], *, out_name: str | None = None) -> Path:
     if not slugs:
         raise SystemExit("no songs to compile — nothing built yet")
@@ -146,9 +191,25 @@ def main() -> int:
     if not slugs:
         print("nothing built yet — no song-*.mp3 with a cover on disk")
         return 0
+    # A compilation of one or two songs is not a compilation: the title says
+    # "N เพลง" and a viewer who opens it for 3 minutes feels misled. The scan's
+    # winning compilations carry 32-110 songs. Hold the shape until the
+    # catalogue can support it rather than shipping a thin one under a big title.
+    if len(slugs) < MIN_TRACKS:
+        print(f"only {len(slugs)} song(s) on disk; a compilation needs at least "
+              f"{MIN_TRACKS} for the title to be honest. Nothing written.")
+        return 0
     total = sum(duration(SONGS / f"song-{s}.mp3") for s in slugs) - CROSSFADE * (len(slugs) - 1)
-    print(f"{args.name} — {len(slugs)} tracks, ~{total/60:.1f} min\n")
+    title = compilation_title(args.name, len(slugs))
+    print(f"{title}\n{len(slugs)} tracks, ~{total/60:.1f} min\n")
     print(build_tracklist(slugs))
+    # The description and the chapter list are what let a viewer skip to a song,
+    # so they are written next to the render and handed to yt_publish.py.
+    desc_file = COMPILED / f"{args.out or 'compilation'}.txt"
+    desc_file.parent.mkdir(parents=True, exist_ok=True)
+    desc_file.write_text(compilation_description(args.name, slugs), encoding="utf-8")
+    (COMPILED / f"{args.out or 'compilation'}.title").write_text(title, encoding="utf-8")
+    print(f"\ntitle: {title}\ndesc -> {desc_file}")
     if args.list or not args.render:
         print("\n(pass --render to build it)")
         return 0

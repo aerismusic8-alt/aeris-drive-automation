@@ -37,6 +37,43 @@ has two stages, in this order:
 A Short is under 60s, so it does **not** wait on the 3.5-minute floor that gates
 the songs. The rail runs today, on song 01, while generation is still throttled.
 
+## What 43 competitor channels say (measured 2026-10-30)
+
+Full write-up and method: `COMPETITOR-ANALYSIS.md`. Raw data: `work/competitors.json`
+(43 channels, 1,546 videos, 885 API units). Re-run with `scripts/competitor_scan.py`.
+This is not a style opinion — it is what the channels that already win these search
+terms actually do.
+
+**1. Long compilations get more views and vastly more watch time.**
+
+| format | n | median views | p75 | p90 |
+|---|---|---|---|---|
+| Short ≤60s | 65 | 1,300 | 10,803 | 55,027 |
+| Song 1–5 min | 742 | 1,410 | 8,582 | 56,184 |
+| **Compilation ≥30 min** | **573** | **3,578** | **17,276** | **126,372** |
+
+**2. `เลือกเพลงฟังได้` is the strongest single signal in the dataset.** 37 videos
+past 100k views carry the phrase; **zero** of the sub-1k videos do. It is a promise
+that the long file can be skipped around in — which is only true if the
+description carries chapter timestamps. Both the title phrase and the chapters are
+now built by `compile_album.py`, and a 12-track floor stops a thin one shipping.
+
+**3. Winner titles are shorter and use `|` far less.** Past 100k: 47.9 chars, `|`
+in 8% of titles. Under 1k: 60.7 chars, `|` in 38.9%. YouTube truncates past ~60
+characters, so a long title hides its own tail. Every `| AERIS Music` suffix was
+removed from the Short and karaoke titles.
+
+**4. Our thumbnails were measurably flat.** Luminance standard deviation: the top
+12 competitor thumbnails span **21.7–80.1**; ours measured **13.4–23.9**. Raising
+the palette brightness did not move it — the frame stayed flat, just lighter. A
+light source (`_highlight`), a deeper vignette and a dark title band
+(`_text_band`) now put every cover and thumbnail at **41–58**. `covers.py` and the
+test suite pin this.
+
+**5. Active channels ship ~4 uploads/week.** Three of the top channels upload at
+3.89/week — the quota ceiling. We are at 1.01/week, gated by how many songs exist,
+not by release discipline.
+
 ## The arithmetic that decides the release shape
 
 - One 3-minute song watched once = **0.05 h**. Songs alone would need ~80,000 views.
@@ -90,7 +127,12 @@ the dead zone only burns the retry ladder.
   and karaoke, so discovery comes before the watch-hour videos.
 - The first upload of the pack stays **private for K** to approve. `--public` is
   a deliberate opt-in, never a default.
-- One new compilation per ~10 songs, so a compilation is never thin.
+- **Target ~4 uploads/week once the catalogue supports it.** The scan measured
+  three of the largest Thai music channels at 3.89/week — the practical quota
+  ceiling. We are at 1.01/week today; the limit is how many songs exist, not the
+  release schedule.
+- One new compilation per ~12 songs, so a compilation is never thin. The title
+  says `N เพลง`, so a 1-song "compilation" would be a lie.
 
 ## Commands
 
@@ -110,7 +152,12 @@ python3 scripts/release.py --plan --shorts        # the discovery queue only
 python3 scripts/release.py --next
 
 # build a 60-minute compilation from what is on disk
+# (writes the title and the chapter list; refuses under 12 tracks)
 python3 scripts/compile_album.py --name "รวมเพลงไทยเพื่อชีวิต" --max 60 --render
+
+# re-read the competition and refresh the evidence
+python3 scripts/competitor_scan.py --queries-file competitor-queries.txt \
+    --per-query 6 --videos 40 --out work/competitors.json
 ```
 
 ## Known gaps, stated plainly

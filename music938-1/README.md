@@ -61,6 +61,8 @@ python3 scripts/build_songs.py --only 01,02
 python3 scripts/flow_song.py 07-huachai-si-thao        # one song
 python3 scripts/make_karaoke.py 07-huachai-si-thao --preview 30
 python3 scripts/report.py                # what exists, and whether it meets the brief
+python3 scripts/competitor_scan.py --queries-file competitor-queries.txt \
+    --out work/competitors.json          # what the competition actually does
 python3 tests/run.py                     # fast offline checks
 ```
 

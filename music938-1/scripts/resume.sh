@@ -33,12 +33,22 @@ if ! python3 -c "import PIL, pythainlp" >/dev/null 2>&1; then
 fi
 python3 -c "import PIL, pythainlp; print('  pillow+pythainlp ok')"
 
+# ffmpeg lives on the container overlay too, and a recycle takes it. Without it
+# every render dies with `FileNotFoundError: 'ffprobe'` *after* the generation
+# call has already been spent, so a rare window is burned on a song that then
+# cannot be encoded. Check it before the batch, not when it is already too late.
+if ! command -v ffmpeg >/dev/null 2>&1 || ! command -v ffprobe >/dev/null 2>&1; then
+  echo "  ffmpeg missing - installing"
+  sudo apt-get update -qq && sudo DEBIAN_FRONTEND=noninteractive apt-get install -y -qq ffmpeg
+fi
+command -v ffprobe >/dev/null && echo "  ffmpeg ok" || { echo "  ffmpeg STILL MISSING - renders will fail" >&2; exit 1; }
+
 echo "[4/4] batch"
 if pgrep -f "build_songs.py" >/dev/null 2>&1; then
   echo "  already running"
 else
   cd "$REPO"
-  nohup python3 "$ROOT/scripts/build_songs.py" --workers 1 > /tmp/batch.log 2>&1 &
+  nohup python3 "$ROOT/scripts/build_songs.py" --workers 1 >> "$ROOT/work/batch.log" 2>&1 &
   sleep 4
   echo "  started pid $(pgrep -f build_songs.py | head -1)"
 fi

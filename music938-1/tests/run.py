@@ -393,6 +393,79 @@ def test_shorts() -> None:
     check("vertical canvas", (make_short.W, make_short.H) == (1080, 1920))
 
 
+def test_thumb_contrast() -> None:
+    """A thumbnail must not be flat.
+
+    Measured 2026-10-30 against 12 top competitor thumbnails: their luminance
+    standard deviation spans 21.7-80.1, while ours measured 13.4-23.9 - every
+    frame we had was at the bottom of that range, which is why they disappear in
+    a feed. The floor here is the competitor minimum, not a style opinion.
+    """
+    section("thumbnail contrast (competitor floor)")
+    from PIL import Image, ImageStat
+    floor = 21.7
+    made = sorted((ROOT / "library" / "thumbs").glob("thumb-song-*.png"))
+    if not made:
+        skip("no thumbnails on disk yet")
+        return
+    worst = None
+    for p in made:
+        im = Image.open(p).convert("L").resize((64, 36))
+        sd = ImageStat.Stat(im).stddev[0]
+        if worst is None or sd < worst[1]:
+            worst = (p.name, sd)
+    check(f"every song thumbnail has spread >= {floor}", worst[1] >= floor,
+          f"worst {worst[0]} std={worst[1]:.1f}")
+    covers = sorted((ROOT / "library" / "covers").glob("*.jpg"))
+    if covers:
+        sds = [ImageStat.Stat(Image.open(p).convert("L").resize((64, 36))).stddev[0]
+               for p in covers]
+        check(f"every cover has spread >= {floor}", min(sds) >= floor,
+              f"min std={min(sds):.1f}")
+
+
+def test_titles() -> None:
+    """Release titles must fit the shape the competitor scan says wins.
+
+    Of 1,546 scanned videos, the ones past 100k views averaged 47.9 characters
+    and used `|` in 8% of titles; the sub-1k ones averaged 60.7 and used `|` in
+    38.9%. YouTube truncates past ~60 characters, so a long title hides its own
+    tail. This pins the fix: no `| AERIS Music` suffix, and under 60 characters.
+    """
+    section("release titles (competitor shape)")
+    import release
+    slug = "01-khon-di-thi-chak-pai"
+    for kind, variant in (("song", ""), ("karaoke", ""),
+                          ("short", "short-song-h1-01-khon-di-thi-chak-pai"),
+                          ("short", "")):
+        title, _desc, _tags = release.describe(slug, kind, variant)
+        check(f"{kind}/{variant or 'plain'} title <= 60 chars", len(title) <= 60,
+              f"{len(title)}: {title}")
+        check(f"{kind}/{variant or 'plain'} title has no brand suffix",
+              "AERIS Music" not in title, title)
+    # The Short must still be discoverable as a Short.
+    st, _, _ = release.describe(slug, "short", "")
+    check("short title carries #Shorts", "#Shorts" in st, st)
+
+
+def test_compilation() -> None:
+    """A compilation's title and chapters are the watch-hour lever.
+
+    `เลือกเพลงฟังได้` is the strongest signal in the scan (37 winner titles, 0
+    loser titles). It only holds if the description carries timestamps, so both
+    the phrase and the chapter list are checked, and the thin-catalogue guard is
+    checked so a 1-song "compilation" can never ship.
+    """
+    section("compilation (watch-hour lever)")
+    import compile_album
+    title = compile_album.compilation_title("รวมเพลงไทยเพื่อชีวิต", 24)
+    check("title carries เลือกเพลงฟังได้", "เลือกเพลงฟังได้" in title, title)
+    check("title states the track count", "24 เพลง" in title, title)
+    check("title fits 60 chars", len(title) <= 60, f"{len(title)}")
+    check("a 12-song floor is enforced", compile_album.MIN_TRACKS >= 12,
+          str(compile_album.MIN_TRACKS))
+
+
 def main() -> int:
     test_lyrics()
     test_tokenizer()
@@ -406,6 +479,9 @@ def main() -> int:
     test_normalize_floor()
     test_level_ordering()
     test_shorts()
+    test_thumb_contrast()
+    test_titles()
+    test_compilation()
     test_outputs()
     print(f"\n{PASS} passed, {FAIL} failed")
     if FAILURES:
