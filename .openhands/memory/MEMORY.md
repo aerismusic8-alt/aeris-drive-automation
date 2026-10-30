@@ -51,6 +51,25 @@ min brief, not a fallback. Karaoke = sum the non-vocal stems (better than center
 free/6000 tokens, but six songs rendered in a 26-minute window on 2026-10-29, so a batch with a
 short backoff ladder catches the open windows.
 
+### Measured facts (2026-10-30, not inferred)
+- **The UI's Generate hits the same `POST /__api/producer/tool-call`** and 429s identically.
+  Body is empty, auth is the app bearer, response is exactly `{"detail":"Too Many Requests"}`.
+  **There is no model picker and no separate UI path** — a probe for model/combobox controls
+  returns 0. So "use the UI instead of the API" is not a way around the throttle.
+- **The window is the scarce resource, not the throttle.** 6 songs in 26 min is ~4.3 min/song,
+  and a serial batch idles through most of a window. `build_songs.py` now runs `--workers 2`
+  (default) so one song generates while another encodes stems/karaoke. Songs stay sequential;
+  the overlap is between songs. `flow_song.py --keep-tabs` is required, because the tab sweep
+  would otherwise close a sibling worker's tab mid-generation.
+- **Real karaoke timing exists only on the Lyria agent path.** A clip's
+  `operation.op_type == "lyria__generate_song"` carries `operation.timing_markers`, and
+  `lyrics_timing.value.markers` appears when its status is `completed`. A compose-form clip has
+  neither, so the karaoke sweep is estimated by design — say so, do not call it note-accurate.
+- **A pod recycle wipes the pip environment.** numpy/pillow/pythainlp/python-crfsuite are gone
+  after a recycle (numpy is needed by the dead Piper scripts; pillow+pythainlp+crfsuite by the
+  live karaoke render). Reinstall before running the tests. The batch log now mirrors to
+  `music938-1/work/batch.log` on persistent /workspace because /tmp does not survive.
+
 ## ⚠️ The `GuestProhibited` alarm was a broken instrument — use a CONTROL (verified 2026-10-28)
 `multiget-playability-status` reports the **caller's** state, not the game's. A logged-out caller gets
 `GuestProhibited` from *every* Roblox experience: Adopt Me (`Minimal`, 234k playing) and Brookhaven
