@@ -27,6 +27,9 @@ music938-1/work/*
 # release.py writes it under work/. If it is ignored, a fresh clone re-uploads
 # every song as a duplicate.
 !music938-1/work/release-state.json
+# Same reason as the ledger: this is the list of clips that shipped broken and
+# still need replacing, and it is only useful to a session that can read it.
+!music938-1/work/pending-replacements.json
 music938-1/library/songs/*.mp3
 music938-1/library/songs/*.wav
 music938-1/library/songs/stems-*/

@@ -1,0 +1,12 @@
+{
+  "_why": "Song 01's first render shipped with tofu text and a near-black background. The main song video was replaced on 2026-10-30; these four are still the broken render on @aerismusicth. A replacement spends an upload slot, and the Data API allows 6 per Pacific day, so they wait for the quota to reset (07:00 UTC). Each new file is already rendered correctly in library/.",
+  "channel": "ch3",
+  "slug": "01-khon-di-thi-chak-pai",
+  "pending": [
+    {"kind": "karaoke", "old": "SWS1vJJgkow"},
+    {"kind": "short", "old": "ANwgi7J_ras", "variant": "short-song-h1-01-khon-di-thi-chak-pai"},
+    {"kind": "short", "old": "JId5J48t4a4", "variant": "short-song-h2-01-khon-di-thi-chak-pai"},
+    {"kind": "short", "old": "CXRH7sW6Gcw", "variant": "short-song-h3-01-khon-di-thi-chak-pai"}
+  ],
+  "_run": "python3 scripts/replace_video.py --slug 01-khon-di-thi-chak-pai --kind karaoke --old SWS1vJJgkow --yes   (one per free upload slot; the song video was oliw1meKfcQ -> ASuxGEvJBlw)"
+}
