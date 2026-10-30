@@ -20,7 +20,13 @@ aeris938-1/dist/
 
 # music938-1: generated audio, video, covers and caches are large; scripts,
 # lyrics, tests and the manifests are tracked.
-music938-1/work/
+# Ignore the contents, not the directory: git cannot re-include a file inside an
+# ignored directory, and the release ledger below must survive a clone.
+music938-1/work/*
+# The release ledger is the only record of what is already on YouTube, and
+# release.py writes it under work/. If it is ignored, a fresh clone re-uploads
+# every song as a duplicate.
+!music938-1/work/release-state.json
 music938-1/library/songs/*.mp3
 music938-1/library/songs/*.wav
 music938-1/library/songs/stems-*/
