@@ -1,0 +1,228 @@
+{
+  "_note": "Canonical 4-channel registry. This is the single source of truth for channel direction, goal and branding. Read ops/AX_CHANNELS.md for the narrative version and the clip-making recipe. Confirmed by K 2026-10-24. Account: aerismusic8@gmail.com.",
+  "_rules": {
+    "budget": "0 THB, free generative AI only",
+    "audio_first": "Build and measure the audio bed before any picture. The music bed must never be louder than the voice, even in pauses.",
+    "loudness_target": "-17 LUFS integrated, true peak <= -1 dBFS, pauses 5-6 dB down",
+    "never_claim": "Never claim to have watched or heard anything. Report measured numbers only.",
+    "upload": "AX does not upload. K reviews first. Publish only when K says so.",
+    "rename": "A display-name change needs K's explicit approval. Direction changes are already confirmed.",
+    "rotation": "Account rotation is forbidden.",
+    "first_work_review": "K reviews the FIRST work of each channel. Upload only after K approves. Once approved, the episode shape becomes that channel's template and an automation is created for it."
+  },
+  "channels": {
+    "ch1": {
+      "key": "ch1",
+      "id": "UCI6EfsgM1HNjrYarvigxyrQ",
+      "handle": "@tatagenxgeny",
+      "direction_th": "ช่องปรัชญา",
+      "direction_en": "life philosophy",
+      "goal": "A philosophy talk in Thai, long enough to live inside, warm and plain-spoken. Keep the listener to the end.",
+      "runtime_minutes": [
+        10,
+        13
+      ],
+      "format": "stills + Thai narration + music bed",
+      "voice": "th-TH-NiwatNeural",
+      "imagery": "open skies, roads, hands, coffee, rain, quiet streets - not temple imagery",
+      "status": "76 videos live; dominant series ปรัชญาชีวิต ~11 min",
+      "automation_id": "c5dc94de-ecd9-4615-9da1-2ddc4ed0adff",
+      "automation_name": "AX 4Ch Farmer - ตาต้า GenX Shop",
+      "cron_utc": "0 1 * * *",
+      "branding": {
+        "_name_note": "Handle @tatagenxgeny and current name 'ตาต้า GenX Shop' say SHOP while the catalogue is philosophy. A rename needs K's explicit approval.",
+        "current_name": "ตาต้า GenX Shop",
+        "proposed_name": "ตาต้า ปรัชญาชีวิต",
+        "proposed_handle_unchanged": "@tatagenxgeny",
+        "defaultLanguage": "th",
+        "country": "TH",
+        "keywords": "ปรัชญาชีวิต,ปรัชญา,ข้อคิดชีวิต,แง่คิด,มุมมองชีวิต,กำลังใจ,ใช้ชีวิต,ความสุข,ความสงบ,คิดบวก,ปล่อยวาง,เติบโต,philosophy,life lessons,thai philosophy,wisdom,mindfulness,self growth,calm,reflection",
+        "description": "🌿 ปรัชญาชีวิต — มุมมองดี ๆ ที่ทำให้วันธรรมดาเบาสบายขึ้น\n\nช่องนี้เล่าเรื่องปรัชญาและข้อคิดชีวิตด้วยเสียงบรรยายนุ่ม ๆ ฟังเพลิน เหมาะกับตอนทำงาน บนรถ หรือก่อนนอน\n\n🕊️ ฟังแล้วใจนิ่งขึ้น\n💡 ข้อคิดที่ใช้ได้จริงทุกวัน\n🎧 เสียงบรรยายฟังสบาย ไม่เร่งเร้า\n\n#ปรัชญาชีวิต #ข้อคิดชีวิต #กำลังใจ #แง่คิด #ใช้ชีวิต"
+      },
+      "content_lab": {
+        "slug": "genx",
+        "live_name": "ตาต้า GenX Shop",
+        "account": "openhands-1",
+        "videos_seen": 26,
+        "angle": "ช่องปรัชญา — พูดปรัชญาที่คนฟังจนจบ",
+        "quota_short": "—",
+        "_videos_seen_note": "public video count, channels.list part=statistics, measured 2026-10-24"
+      }
+    },
+    "ch2": {
+      "key": "ch2",
+      "id": "UCM3QO5L_pmj34n1JVlbhh-w",
+      "handle": "@farmmer-n9t",
+      "direction_th": "ช่องธรรมะก่อนนอน",
+      "direction_en": "dhamma before sleep",
+      "goal": "Someone presses play in bed and is asleep before the end. Calm, slow, no sudden changes. They come back every night.",
+      "runtime_minutes": [
+        10,
+        12
+      ],
+      "format": "stills + Thai narration + music bed (the reference implementation of the rail)",
+      "voice": "th-TH-NiwatNeural",
+      "imagery": "temples, candles, lotus, mist, dawn, monks - low contrast, never sharpened",
+      "status": "11 videos live, all ธรรมะก่อนนอน 10-12 min",
+      "automation_id": "9dd39ced-9e92-4ac8-a422-cb1e071c94ba",
+      "automation_name": "AX 4Ch Farmer - Farmmer (ธรรมะก่อนนอน)",
+      "cron_utc": "30 13 * * *",
+      "branding": {
+        "title": "Farmmer — ธรรมะก่อนนอน",
+        "defaultLanguage": "th",
+        "country": "TH",
+        "keywords": "ธรรมะก่อนนอน,ธรรมะ,ฟังธรรม,บทสวด,คำสอนพระพุทธเจ้า,ปล่อยวาง,สมาธิ,นอนไม่หลับ,ผ่อนคลาย,ความสงบ,ข้อคิดชีวิต,กำลังใจ,dhamma,bedtime,buddhism,meditation,thai dharma,relax,sleep,calm",
+        "description": "🌙 ธรรมะก่อนนอน — ปล่อยใจให้สงบ หลับสบายด้วยคำสอนพระพุทธเจ้า\n\nช่องนี้รวบรวมคำสอนและบทสวดจากพระพุทธเจ้า เรียบเรียงเป็นเสียงบรรยายนุ่ม ๆ ฟังสบาย ๆ เหมาะกับช่วงก่อนนอนและเวลาที่ใจต้องการความสงบ\n\n🕊️ ฟังทุกคืน เพื่อใจที่เบาสบาย\n📿 ตามรอยคำสอนพระพุทธเจ้า\n🎧 เสียงบรรยายนุ่ม ๆ ผ่อนคลาย\n\n#ธรรมะ #ธรรมะก่อนนอน #ฟังธรรม #สมาธิ #ปล่อยวาง #บทสวด",
+        "_verified": "defaultLanguage=th, country=TH, keywords Thai (measured via API 2026-10-24)"
+      },
+      "content_lab": {
+        "slug": "dharma",
+        "live_name": "Farmmer",
+        "account": "openhands-1",
+        "videos_seen": 10,
+        "angle": "ช่องธรรมะก่อนนอน — หลับก่อนจบ กลับมาทุกคืน",
+        "quota_short": "— (rail ต้นแบบ)",
+        "_videos_seen_note": "public video count, channels.list part=statistics, measured 2026-10-24"
+      },
+      "first_work": {
+        "episode": "ch2_ep_heart_rest_th",
+        "title": "เหนื่อยทั้งวัน แค่อยากให้ใจได้พัก — ธรรมะก่อนนอน",
+        "script": "scripts_th/ch2_ep_heart_rest_th.md",
+        "work_dir": "work/ep_ch2",
+        "review_page": "https://work-1-jfkelnziqxowxccg.prod-runtime.all-hands.dev/",
+        "measured": {
+          "seconds": 755.5,
+          "runtime": "12:35",
+          "resolution": "1920x1080",
+          "fps": 25,
+          "audio": "aac 48000 Hz stereo",
+          "integrated_lufs": -17.0,
+          "true_peak_dbfs": -3.7,
+          "silences_gt_1_2s": 0,
+          "voice_vs_bed_offset_db": 0.3,
+          "static_motion_steps": 0,
+          "size_mb": 233
+        },
+        "status": "RENDERED — NOT UPLOADED. Waiting for K's review (first-work rule)."
+      }
+    },
+    "ch3": {
+      "key": "ch3",
+      "id": "UCm44BjAn03ruOF-WaA3ZRww",
+      "handle": "@aerismusicth",
+      "direction_th": "ช่องสร้างศิลปินเพลง",
+      "direction_en": "build a music artist",
+      "goal": "Build a named artist and release a real body of work. One artist per month, 10 songs, direction taken from real charts.",
+      "runtime_minutes": [
+        3,
+        4
+      ],
+      "format": "music first, then the visual. AI stills + ffmpeg motion; AiPASS Seedance only for hero shots.",
+      "voice": "instrumental / sung - no TTS narration",
+      "imagery": "artist visual identity: portrait, palette, cover art language",
+      "status": "4 videos live, 'NAVIYA — FIRST LIGHT', best 232 views",
+      "automation_id": "119f290e-b501-4eb4-82f9-95a65fb08709",
+      "automation_name": "AX 4Ch Farmer - AERIS Music",
+      "cron_utc": "0 4 * * *",
+      "quota_note": "AiPASS music = 10 tracks/MONTH. Ten tracks is exactly one artist's release, so the cadence is one artist per month.",
+      "branding": {
+        "title": "AERIS Music",
+        "defaultLanguage": "th",
+        "country": "TH",
+        "keywords": "เพลงไทย,เพลงใหม่,ศิลปินไทย,AERIS,เพลงเพราะ,เพลงฟังสบาย,เพลงอินดี้,เพลงป็อป,music,thai music,thai artist,new music,indie pop",
+        "description": "🎵 AERIS Music — ค่ายเพลงที่สร้างศิลปินทีละคน\n\nเราสร้างศิลปินขึ้นมาอย่างตั้งใจ ปล่อยเพลงเป็นชุด ให้ได้รู้จักตัวตนของเขาจริง ๆ ไม่ใช่เพลงเดี่ยว ๆ ที่ผ่านมาแล้วผ่านไป\n\n🎤 ศิลปินทีละคน ปล่อยเป็นชุด\n🎧 เพลงเพราะ ฟังได้ทุกวัน\n✨ สร้างจากความตั้งใจ ไม่ใช่ความเร็ว\n\n#AERISMusic #เพลงไทย #ศิลปินไทย #เพลงใหม่ #เพลงเพราะ",
+        "_fix_needed": "Description is English only. Apply the Thai description above."
+      },
+      "content_lab": {
+        "slug": "aeris-music",
+        "live_name": "AERIS Music",
+        "account": null,
+        "videos_seen": 4,
+        "angle": "ช่องสร้างศิลปินเพลง — 1 ศิลปิน/เดือน 10 เพลง",
+        "quota_short": "AiPASS เพลง 10/เดือน",
+        "_videos_seen_note": "public video count, channels.list part=statistics, measured 2026-10-24"
+      }
+    },
+    "ch4": {
+      "key": "ch4",
+      "id": "UC7gCIu4G_7QCEJ8hJ-34zoQ",
+      "handle": "@kongkeatpratumma",
+      "direction_th": "ช่องละคร · การ์ตูนอะนิเมะ",
+      "direction_en": "drama and anime cartoon",
+      "goal": "An episodic drama / anime series that people follow episode to episode. Consistent characters, a continuing story.",
+      "runtime_minutes": [
+        10,
+        25
+      ],
+      "format": "episode body from AI stills + ffmpeg motion; AiPASS Seedance reserved for hero shots and title sequences",
+      "voice": "edge-tts Thai; alternate voices and vary rate slightly if the drama needs multiple speakers",
+      "imagery": "fixed character sheet first (appearance, outfit, palette), then scene stills with the same style prompt and seed per character",
+      "status": "empty - 0 videos; handle @kongkeatpratumma exists (verified via API 2026-10-24); display name still the account holder name, needs K",
+      "automation_id": "5a1ccd35-f228-4021-8b63-b5e4e285fa9d",
+      "automation_name": "AX 4Ch Farmer - kongkeat pratumma",
+      "cron_utc": "30 14 * * *",
+      "quota_note": "AiPASS video = 10 clips/MONTH at ~4.1 s = ~50 s of AI motion per month. A 25-min episode is ~1500 s, so episode bodies can never be AI video.",
+      "branding": {
+        "_name_note": "Handle @kongkeatpratumma and name 'kongkeat pratumma' are the account holder's, not a series brand. A display name needs K's approval.",
+        "current_name": "kongkeat pratumma",
+        "proposed_name": null,
+        "defaultLanguage": "th",
+        "country": "TH",
+        "keywords": "ละครไทย,การ์ตูน,อนิเมะ,ซีรี่ย์,การ์ตูนไทย,อนิเมะไทย,นิยายภาพ,drama,thai drama,anime,animation,series,cartoon",
+        "description": null,
+        "_decision_needed": "Series concept and name. Character sheet, story arc and episode length come from that."
+      },
+      "content_lab": {
+        "slug": "aeris-anime",
+        "live_name": "kongkeat pratumma",
+        "account": null,
+        "videos_seen": 0,
+        "angle": "ช่องละคร · การ์ตูนอะนิเมะ — ซีรี่ส์ที่คนติดตามตอนต่อตอน",
+        "quota_short": "AiPASS วิดีโอ 10/เดือน ≈ 50 วิ",
+        "_videos_seen_note": "public video count, channels.list part=statistics, measured 2026-10-24"
+      }
+    }
+  },
+  "free_rails": {
+    "image": {
+      "tool": "Pollinations flux",
+      "limit": "~1 per 45 s, capped 1024x576, 402 common - always keep a fallback"
+    },
+    "stills_fallback": {
+      "tool": "Wikimedia Commons",
+      "limit": "English queries only; Thai returns 0 pages. Keep CC0/PD/CC BY/BY-SA, exclude NC and ND"
+    },
+    "narration": {
+      "tool": "edge-tts",
+      "limit": "2 Thai voices only: th-TH-NiwatNeural (prefer), th-TH-PremwadeeNeural"
+    },
+    "music": {
+      "tool": "AiPASS สร้างเพลง / Lyria 3 Clip",
+      "limit": "10 tracks / month"
+    },
+    "video": {
+      "tool": "AiPASS Seedance",
+      "limit": "10 clips / month, ~4.1 s each"
+    },
+    "images_aipass": {
+      "tool": "AiPASS Nano Banana 2",
+      "limit": "20 / day"
+    },
+    "assemble": {
+      "tool": "ffmpeg",
+      "limit": "25-min episode verified 1920x1080 at -16.8 LUFS"
+    },
+    "own_music": {
+      "tool": "CC0 tracks",
+      "limit": "https://farmmer938-lgtm.github.io/aeris-store/free/tracks/<name>.mp3"
+    }
+  },
+  "measured_limits": {
+    "script_sizing": "13.6 Thai chars/s at rate=-8%. 9365 chars -> 12:35, accurate to 0.4%.",
+    "music_bed_gain": 0.34,
+    "music_bed_warning": "At 0.9 the bed hits -14.8 LUFS against a -16.8 LUFS voice and every pause is louder than the speech.",
+    "aipass_loudness": "AiPASS music arrives at -12 to -14 LUFS; match the reference rather than forcing it down.",
+    "reencode": "Re-encoding stills-heavy 1080p at crf 25 cut 499 MB -> 166 MB at SSIM 0.970 / PSNR 36.7 dB. Always re-encode before upload."
+  },
+  "_generated": "channels.json and site/channels.html in ai-content-lab are produced by `ax_channels.py emit-content-lab` / `emit-html`. Edit this file, re-run both, never hand-edit the outputs."
+}

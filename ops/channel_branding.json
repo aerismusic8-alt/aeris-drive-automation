@@ -1,0 +1,34 @@
+{
+  "_note": "Proposed branding for the 4 channels, grounded in what each channel actually publishes (read 2026-10-24). `ops/yt_branding.py apply <ch>` sends the COMPLETE channel object so no field is cleared. Awaiting K's approval before writing.",
+
+  "ch1": {
+    "_observed": "76 videos. Dominant series is 'ปรัชญาชีวิต' (life philosophy), ~11 min each. Also one shopping video and 2 short music clips. Name says 'Shop' but the recent catalogue is philosophy.",
+    "_decision_needed": "Is ch1 the shop/lifestyle channel, the philosophy channel, or both? Name choice depends on the answer.",
+    "defaultLanguage": "th",
+    "country": "TH"
+  },
+
+  "ch2": {
+    "_observed": "11 videos, all 'ธรรมะก่อนนอน' (dhamma before sleep), 10-12 min. Name 'Farmmer' does not describe the content. Keywords still read 'lanternwild kids cartoon animal stories kids songs' - leftovers from content that was deleted. defaultLanguage is 'en' on an all-Thai channel.",
+    "_decision_needed": "Keep the Farmmer handle visible, or drop it and name purely for the concept?",
+    "title": "Farmmer — ธรรมะก่อนนอน",
+    "defaultLanguage": "th",
+    "country": "TH",
+    "keywords": "ธรรมะก่อนนอน,ธรรมะ,ฟังธรรม,บทสวด,คำสอนพระพุทธเจ้า,ปล่อยวาง,สมาธิ,นอนไม่หลับ,ผ่อนคลาย,ความสงบ,ข้อคิดชีวิต,กำลังใจ,dhamma,bedtime,buddhism,meditation,thai dharma,relax,sleep,calm",
+    "description": "🌙 ธรรมะก่อนนอน — ปล่อยใจให้สงบ หลับสบายด้วยคำสอนพระพุทธเจ้า\n\nช่องนี้รวบรวมคำสอนและบทสวดจากพระพุทธเจ้า เรียบเรียงเป็นเสียงบรรยายนุ่ม ๆ ฟังสบาย ๆ เหมาะกับช่วงก่อนนอนและเวลาที่ใจต้องการความสงบ\n\n🕊️ ฟังทุกคืน เพื่อใจที่เบาสบาย\n📿 ตามรอยคำสอนพระพุทธเจ้า\n🎧 เสียงบรรยายนุ่ม ๆ ผ่อนคลาย\n\n#ธรรมะ #ธรรมะก่อนนอน #ฟังธรรม #สมาธิ #ปล่อยวาง #บทสวด"
+  },
+
+  "ch3": {
+    "_observed": "4 videos, all 'NAVIYA — FIRST LIGHT' (music, 22s-3min). Name and concept match well. Description is English only. Best-performing video has 232 views.",
+    "_decision_needed": "K's original 4-channel spec said ch3 = 3D anime cartoon and ch4 = music label, but in reality ch3 is already the music label. Confirm ch3 stays the music label.",
+    "defaultLanguage": "th",
+    "country": "TH"
+  },
+
+  "ch4": {
+    "_observed": "0 videos. No description, no keywords, no language, no banner. Completely undefined.",
+    "_decision_needed": "What is ch4 for? The original spec said 'ค่ายเพลง' (music label) but ch3/AERIS Music already occupies that. Options: (a) second music label for a different genre/artist, (b) the ซีรี่/ละครดราม่า series channel, (c) something else K has in mind. No name can be chosen without this.",
+    "defaultLanguage": "th",
+    "country": "TH"
+  }
+}
