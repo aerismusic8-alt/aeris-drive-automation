@@ -33,6 +33,11 @@ ROOT = Path(__file__).resolve().parent.parent
 W, H = 1920, 1080
 FPS = 25
 FONT = "Noto Sans Thai"
+# The sandbox image carries no Thai font, so libass substituted a Latin one and
+# every Thai syllable drew as a tofu box. The font is bundled under
+# music938-1/fonts (fetch with scripts/install-thai-font.sh) and handed to libass
+# explicitly: without fontsdir libass never looks here.
+FONTS_DIR = ROOT / "fonts"
 PRIMARY = "&H0000C8FF"    # after a word is sung: warm amber
 SECONDARY = "&H00FFFFFF"  # before: white
 OUTLINE = "&H00101010"
@@ -178,6 +183,20 @@ def _ass_escape(p: Path) -> str:
     return str(p).replace("\\", "\\\\").replace(":", "\\:")
 
 
+def ass_filter(ass_path: Path) -> str:
+    """The `ass=` filter with the bundled font, or fail loudly if it is missing.
+
+    Without a Thai font libass substitutes a Latin face and every syllable draws
+    as a tofu box - a silent, ugly failure that still produces a playable file.
+    Better to stop here than to render another unwatchable clip.
+    """
+    if not any(FONTS_DIR.glob("*.ttf")):
+        raise FileNotFoundError(
+            f"no font in {FONTS_DIR}; run scripts/install-thai-font.sh first "
+            f"(without it Thai lyrics render as tofu boxes)")
+    return (f"ass={_ass_escape(ass_path)}:fontsdir={_ass_escape(FONTS_DIR)}")
+
+
 def render(slug: str, *, preview: float | None = None,
            timing: Path | None = None, mix: str = "karaoke") -> Path:
     """Render one video for a song.
@@ -212,7 +231,7 @@ def render(slug: str, *, preview: float | None = None,
     zoom = ("scale=2400:-1,zoompan=z='min(zoom+0.00035,1.18)':d=1:"
             "x='iw/2-(iw/zoom/2)':y='ih/2-(ih/zoom/2)':s=%dx%d:fps=%d" % (W, H, FPS))
     args = ["-loop", "1", "-i", str(cover), "-i", str(audio),
-            "-filter_complex", f"[0:v]{zoom},ass={_ass_escape(ass_path)}[v]",
+            "-filter_complex", f"[0:v]{zoom},{ass_filter(ass_path)}[v]",
             "-map", "[v]", "-map", "1:a",
             "-c:v", "libx264", "-preset", "veryfast", "-crf", "20",
             "-pix_fmt", "yuv420p", "-r", str(FPS),

@@ -33,7 +33,7 @@ ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from make_karaoke import (  # noqa: E402  reuse the lyric engine
     FONT, LEAD, OUTLINE, PRIMARY, SECONDARY, _duration, _escape, _ts,
-    _words, estimate, load_lyrics,
+    _words, ass_filter, estimate, load_lyrics,
 )
 
 W, H = 1080, 1920
@@ -210,14 +210,14 @@ def render(slug: str, *, mix: str = "song", out_dir: Path | None = None,
         scrim = int(H * 0.52)
         return (
             f"[0:v]scale={W}:{H}:force_original_aspect_ratio=increase,crop={W}:{H},"
-            f"gblur=sigma=32,eq=brightness=-0.22:saturation=0.8[bg];"
+            f"gblur=sigma=32,eq=brightness=-0.06:saturation=1.05[bg];"
             f"[0:v]scale={cw}:-1[fg];"
             f"[bg][fg]overlay=(W-w)/2:{cy}[base];"
             f"[base]drawbox=x=0:y={scrim}:w={W}:h={H - scrim}:"
-            f"color=black@0.45:t=fill[scrimd];"
+            f"color=black@0.38:t=fill[scrimd];"
             f"[scrimd]zoompan=z='min(zoom+0.0005,1.12)':d=1:"
             f"x='iw/2-(iw/zoom/2)':y='ih/2-(ih/zoom/2)':s={W}x{H}:fps={FPS}[zp];"
-            f"[zp]ass={_ass_escape(ass)}[v]"
+            f"[zp]{ass_filter(ass)}[v]"
         )
 
     written: list[Path] = []

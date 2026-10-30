@@ -161,6 +161,49 @@ def test_duration_target() -> None:
 
 # --- ASS karaoke -----------------------------------------------------------
 
+def test_thai_font() -> None:
+    section("Thai font (WIRING: tofu-box lyric bug)")
+    # libass draws a Thai syllable as a box when the style's font is absent, and
+    # the clip still plays, so nothing downstream notices. The font must be
+    # bundled and must actually reach the ass filter.
+    font_path = make_karaoke.FONTS_DIR / "NotoSansThai.ttf"
+    bundled = font_path.is_file()
+    check("font is bundled", bundled, str(font_path))
+    # ass_filter raises when the font is gone, which is the point of it, but a
+    # raise here would abort the whole suite instead of failing one check.
+    try:
+        filt = make_karaoke.ass_filter(Path("/tmp/x.ass"))
+    except FileNotFoundError as exc:
+        filt = ""
+        check("ass filter builds with the bundled font", False, str(exc))
+    else:
+        check("ass filter builds with the bundled font", True)
+    check("ass filter passes fontsdir", "fontsdir=" in filt, filt)
+    check("ass filter points at the bundle",
+          str(make_karaoke.FONTS_DIR) in filt, filt)
+    # The render style must name the family the bundled font declares, or libass
+    # picks a different face and falls back to boxes anyway.
+    check("style names Noto Sans Thai", "Noto Sans Thai" in make_karaoke.FONT)
+    if not bundled:
+        return
+    # A Thai glyph must survive a real rasterise through the bundled file. If
+    # the font lost its Thai block, the mask would be empty or a solid block.
+    import numpy as np
+    from PIL import Image, ImageDraw, ImageFont
+    font = ImageFont.truetype(str(font_path), 64)
+    img = Image.new("L", (600, 120), 0)
+    ImageDraw.Draw(img).text((10, 20), "คนดี", font=font, fill=255)
+    mask = np.asarray(img) > 128
+    check("Thai glyphs rasterise", mask.sum() > 300, f"{int(mask.sum())} px")
+    # A tofu box is a solid rectangle: every inked row would be the same width.
+    # Thai text has a tall ascender row and a thin tone-mark row above it, so the
+    # run of distinct row widths must be wider than a box's flat profile.
+    row_w = mask.sum(1)
+    inked = row_w[row_w > 0]
+    distinct = len(set(inked.tolist()))
+    check("glyphs are not boxes", distinct >= 6, f"{distinct} distinct row widths")
+
+
 def test_ass() -> None:
     section("ASS karaoke")
     timed = [
@@ -355,6 +398,7 @@ def main() -> int:
     test_tokenizer()
     test_music()
     test_duration_target()
+    test_thai_font()
     test_ass()
     test_karaoke_estimate()
     test_lyrics_parse()

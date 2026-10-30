@@ -15,26 +15,49 @@ from PIL import Image, ImageDraw, ImageFilter, ImageFont
 
 from common import LIBRARY
 
-THAI_FONT = "/usr/share/fonts/truetype/noto/NotoSansThai-Regular.ttf"
-THAI_FONT_BOLD = "/usr/share/fonts/truetype/noto/NotoSansThai-Bold.ttf"
-LATIN_FONT = "/usr/share/fonts/truetype/noto/NotoSans-Regular.ttf"
+# The sandbox ships no Thai font, and the path these constants used to point at
+# does not exist on it: covers.py fell through to Pillow's bitmap default, which
+# has no Thai glyphs, so every cover title drew as tofu boxes. The font is
+# bundled instead (fetch with scripts/install-thai-font.sh). Noto Sans Thai is a
+# variable font, so the weight axis is selected rather than needing a second file.
+FONTS_DIR = Path(__file__).resolve().parent.parent / "fonts"
+THAI_FONT = str(FONTS_DIR / "NotoSansThai.ttf")
+LATIN_FONT = "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf"
 
 # Mood -> (hue, saturation, value) anchors for the background gradient.
+# The values were picked when the frame was judged on a bright monitor; on a
+# phone the covers came out near-black (luminance ~47/255) and the art read as
+# "no background at all". They are raised so the gradient is visibly coloured.
 PALETTES = {
-    "sad":     ((222, 0.55, 0.30), (268, 0.45, 0.16)),
-    "calm":    ((200, 0.50, 0.34), (232, 0.40, 0.18)),
-    "warm":    ((24, 0.62, 0.46), (344, 0.48, 0.22)),
-    "hopeful": ((46, 0.58, 0.52), (168, 0.42, 0.24)),
-    "mystic":  ((276, 0.55, 0.30), (196, 0.50, 0.16)),
-    "epic":    ((12, 0.60, 0.40), (300, 0.50, 0.18)),
+    "sad":     ((222, 0.62, 0.58), (268, 0.52, 0.34)),
+    "calm":    ((200, 0.58, 0.60), (232, 0.48, 0.38)),
+    "warm":    ((24, 0.68, 0.70), (344, 0.55, 0.44)),
+    "hopeful": ((46, 0.64, 0.72), (168, 0.50, 0.46)),
+    "mystic":  ((276, 0.62, 0.58), (196, 0.56, 0.36)),
+    "epic":    ((12, 0.66, 0.64), (300, 0.56, 0.40)),
 }
 
 
-def _font(path: str, size: int) -> ImageFont.FreeTypeFont:
+def _font(path: str, size: int, *, bold: bool = False) -> ImageFont.FreeTypeFont:
+    """Load a font, failing loudly rather than silently drawing tofu.
+
+    The old version fell back to Pillow's bitmap default, which has no Thai
+    glyphs: the cover still rendered, so a broken title looked like a design
+    choice instead of an error. Missing font is now an error.
+    """
     try:
-        return ImageFont.truetype(path, size)
-    except OSError:
-        return ImageFont.load_default()
+        font = ImageFont.truetype(path, size)
+    except OSError as exc:
+        raise FileNotFoundError(
+            f"cannot load font {path}: {exc}. Run scripts/install-thai-font.sh."
+        ) from exc
+    if bold:
+        # Noto Sans Thai ships one variable file; ask it for the heavy weight.
+        try:
+            font.set_variation_by_name("Bold")
+        except (OSError, ValueError):
+            pass
+    return font
 
 
 def _hsv_rgb(h: float, s: float, v: float) -> tuple[int, int, int]:
@@ -138,13 +161,13 @@ def make_thumbnail(slug: str, title: str, mood: str, *, kind: str = "song",
         rd.ellipse([cx - r, cy - r, cx + r, cy + r],
                    outline=(255, 255, 255, 30 - i * 7), width=max(2, int(h * 0.006)))
     img.alpha_composite(ring.filter(ImageFilter.GaussianBlur(1.5)))
-    _vignette(img, 0.52)
+    _vignette(img, 0.28)
 
     draw = ImageDraw.Draw(img)
-    title_font = _font(THAI_FONT_BOLD, int(h * 0.135))
+    title_font = _font(THAI_FONT, int(h * 0.135), bold=True)
     sub_font = _font(THAI_FONT, int(h * 0.058))
     mark_font = _font(LATIN_FONT, int(h * 0.048))
-    badge_font = _font(THAI_FONT_BOLD, int(h * 0.050))
+    badge_font = _font(THAI_FONT, int(h * 0.050), bold=True)
 
     # Artist mark, top-left, inside the safe area.
     draw.text((w * 0.055, h * 0.075), "AERIS MUSIC", font=mark_font,
@@ -235,10 +258,10 @@ def make_cover(slug: str, title: str, subtitle: str, mood: str,
                    width=max(2, int(w * 0.004)))
     img.alpha_composite(ring.filter(ImageFilter.GaussianBlur(1.2)))
 
-    _vignette(img, 0.50)
+    _vignette(img, 0.26)
 
     draw = ImageDraw.Draw(img)
-    title_font = _font(THAI_FONT_BOLD, int(w * 0.088))
+    title_font = _font(THAI_FONT, int(w * 0.088), bold=True)
     sub_font = _font(THAI_FONT, int(w * 0.030))
     tag_font = _font(LATIN_FONT, int(w * 0.022))
 
