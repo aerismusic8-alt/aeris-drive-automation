@@ -57,6 +57,32 @@ true-instrumental karaoke mix, cover art and a 1920x1080 word-synced video.
   → both now require 210s.
 - Full detail: `2026-10-29.md`, `2026-10-30.md`.
 
+### The clips render text now — two silent failures, both fixed
+
+K: "ตัวหนังสือในคลิปอ่านไม่ออก ภาษาอะไร ภาพพืนหลังไม่มี". Both were real, and both
+played fine, so nothing downstream ever failed.
+
+- **Tofu text.** Every ASS style names `Noto Sans Thai` and the image ships **no
+  Thai font** (`fc-list :charset=0e01` is empty). libass substitutes a Latin face
+  and draws one box per syllable. `covers.py` failed the same way from the other
+  side: it pointed at a `NotoSansThai-Regular.ttf` that does not exist and its
+  `except OSError` fell back to Pillow's bitmap default, which has no Thai either.
+  Fix: font bundled at `music938-1/fonts/NotoSansThai.ttf` (variable font —
+  `set_variation_by_name("Bold")`, no second file), fetched by
+  `scripts/install-thai-font.sh`. **libass needs `fontsdir=`**; naming the family
+  is not enough. Both paths now raise on a missing font. `test_thai_font` guards it.
+- **Near-black frames.** `PALETTES` was tuned on a bright monitor and then a 0.52
+  vignette stacked on top: covers measured lum 47/255, std 11.7 — hence "no
+  background". Raised the anchors, vignette 0.28, and the Shorts chain no longer
+  adds another `-0.22`. Now 98/255, std 25.5.
+- **YouTube cannot swap a file under an id.** A bad clip is upload-then-delete, in
+  that order. `scripts/replace_video.py` does the whole job: new id, playlist
+  re-add, **playlist placeholder removal** (a delete leaves a `Deleted video`), and
+  an **appended** ledger row so `uploads_today()` still sees the spent slot. A
+  DELETE must carry no body. Song 01: `oliw1meKfcQ` → `ASuxGEvJBlw`.
+- **6 uploads per Pacific day** (reset 07:00 UTC), so a broken batch waits for the
+  next day. Still-broken ids are in `work/pending-replacements.json` (un-ignored).
+
 **HOLD LIFTED 2026-10-30** — K: "อนุมัติ ดำเนินการแทน K", AR acts on K's behalf.
 Song 01's three hook Shorts are **public** on @aerismusicth (`ANwgi7J_ras`,
 `JId5J48t4a4`, `CXRH7sW6Gcw`, playlist `PLKlARHtRpKkI`). `release.py --next`
@@ -64,8 +90,9 @@ uploads **private by default** (needs `--public`) and records `public: false` ev
 after a later `videos.update` makes it public — correct the ledger by hand.
 `work/release-state.json` is tracked now: it is the only record of what is already
 up, and a clone that loses it re-uploads duplicates. Automations are at 0.
-Song 01's full release is live too (`oliw1meKfcQ` 2:59 public, karaoke
-`SWS1vJJgkow`). Probing is **all-hours now** (K freed the timing): `PROBE_SLEEP_S`
+Song 01's full release is live too (`ASuxGEvJBlw` 2:59 public, karaoke
+`SWS1vJJgkow` — the karaoke is still the tofu render). Probing is **all-hours now**
+(K freed the timing): `PROBE_SLEEP_S`
 =150s, 24h, no dead-zone gate. Of the 6 failing tests, 5 were one environment
 fact — `tts.is_speakable` needs **Piper**, which belongs to the *retired* pipeline
 and is absent, so it returns False for `ดี` and `ไป` alike; those checks now skip
