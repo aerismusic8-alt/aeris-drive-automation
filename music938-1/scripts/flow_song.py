@@ -504,14 +504,16 @@ def generate(slug: str, *, timeout: float = 480.0, force: bool = False,
             _download(page, base, raw)
             _cover(page, base, COVER_DIR / f"cover-{slug}.jpg")
 
-            # Create is clamped near 3:00 and one Extend adds about 60s, so a
-            # single extend lands under the floor. Extend again, on the newest
-            # clip, until the take clears the brief or the attempts run out.
-            parts = [raw]
+            # Create is clamped near 3:00 and one Extend adds a fixed ~60s step,
+            # so a single extend lands under the floor. Extend again, each time
+            # on the newest clip, until the running take clears the brief.
+            source = raw
+            current = _seconds(raw)
+            junk = []
             master = base
             extended = False
             for attempt in range(MAX_EXTENDS):
-                if sum(_seconds(p) for p in parts) >= MIN_SECONDS:
+                if current >= MIN_SECONDS:
                     break
                 since2 = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
                 flags["rate_limited"] = False
@@ -530,7 +532,17 @@ def generate(slug: str, *, timeout: float = 480.0, force: bool = False,
                 part = raw.with_name(f"{slug}-ext{attempt + 1}.m4a")
                 _download(page, ext, part)
                 _cover(page, ext, COVER_DIR / f"cover-{slug}.jpg")
-                parts.append(part)
+                junk.append(part)
+                pd = _seconds(part)
+                if pd > current + 5:
+                    # A full re-render, already longer: use it whole.
+                    source, current = part, pd
+                else:
+                    # Only the appended tail came back: splice it on.
+                    merged = part.with_name(part.stem + "-merged.m4a")
+                    _join(source, part, merged)
+                    junk.append(merged)
+                    source, current = merged, _seconds(merged)
                 master = ext
                 extended = True
         finally:
@@ -541,28 +553,16 @@ def generate(slug: str, *, timeout: float = 480.0, force: bool = False,
     if not raw.exists() or raw.stat().st_size == 0:
         raise RuntimeError(f"{slug}: empty download")
 
-    # Extend may return the whole song already lengthened, or only the appended
-    # tail. Tell them apart by duration: a part longer than what we have is a
-    # fresh full render, a shorter one is the tail to concat.
-    source = parts[0]
-    for part in parts[1:]:
-        if not part.exists() or part.stat().st_size == 0:
-            continue
-        if _seconds(part) > _seconds(source) + 5:
-            source = part
-        else:
-            merged = part.with_name(part.stem + "-merged.m4a")
-            _join(source, part, merged)
-            source = merged
-
+    # `source` is already the longest form the extends produced (a re-render or a
+    # spliced tail), built inside the loop above.
     subprocess.run(
         ["ffmpeg", "-y", "-loglevel", "error", "-i", str(source),
          "-codec:a", "libmp3lame", "-qscale:a", "2", str(out)],
         check=True,
     )
-    for part in parts:
+    for part in junk:
         part.unlink(missing_ok=True)
-        part.with_name(part.stem + "-merged.m4a").unlink(missing_ok=True)
+    raw.unlink(missing_ok=True)
 
     # A take below the floor is not a song for this pack. Writing it would make
     # the batch skip the slug forever (it resumes on "song-*.mp3 exists"), so a
