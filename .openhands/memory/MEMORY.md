@@ -64,6 +64,12 @@ uploads **private by default** (needs `--public`) and records `public: false` ev
 after a later `videos.update` makes it public — correct the ledger by hand.
 `work/release-state.json` is tracked now: it is the only record of what is already
 up, and a clone that loses it re-uploads duplicates. Automations are at 0.
+Song 01's full release is live too (`oliw1meKfcQ` 2:59 public, karaoke
+`SWS1vJJgkow`). Probing is **all-hours now** (K freed the timing): `PROBE_SLEEP_S`
+=150s, 24h, no dead-zone gate. Of the 6 failing tests, 5 were one environment
+fact — `tts.is_speakable` needs **Piper**, which belongs to the *retired* pipeline
+and is absent, so it returns False for `ดี` and `ไป` alike; those checks now skip
+loudly via `voice_ready()`. The 6th is real: song 01 is 178.7s vs the 210s floor.
 
 ## Environment facts that keep costing time
 
