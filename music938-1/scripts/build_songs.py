@@ -46,7 +46,7 @@ BACKOFF_STEPS = [120, 180, 240, 300, 420, 600]
 # history. Hammering the dead zone just burns the ladder without landing
 # anything, so outside these hours the batch probes rarely instead.
 LIKELY_WINDOW_HOURS = {23, 0, 1, 2, 6, 18}
-DEAD_ZONE_SLEEP = 900   # 15 min between probes when no window is expected
+DEAD_ZONE_SLEEP = 900    # cap on a dead-zone nap, so a window is never missed
 WINDOW_PROBE_SLEEP = 60  # 1 min between probes inside a likely window
 
 
@@ -56,6 +56,16 @@ def _hour_utc() -> int:
 
 def _in_likely_window() -> bool:
     return _hour_utc() in LIKELY_WINDOW_HOURS
+
+
+def _seconds_to_window() -> float:
+    """Seconds until the next likely-window hour, so a nap lands on the window."""
+    now = time.gmtime()
+    secs_now = now.tm_min * 60 + now.tm_sec
+    for ahead in range(1, 25):
+        if (now.tm_hour + ahead) % 24 in LIKELY_WINDOW_HOURS:
+            return max(0.0, ahead * 3600 - secs_now)
+    return DEAD_ZONE_SLEEP
 
 _print_lock = threading.Lock()
 LOG_FILE = ROOT / "work" / "batch.log"
@@ -158,9 +168,11 @@ def build_one(slug: str, force: bool, gap: int, results: dict, lock: threading.L
                 wait = min(BACKOFF_STEPS[min(backoff, len(BACKOFF_STEPS) - 1)],
                            WINDOW_PROBE_SLEEP)
             else:
-                wait = DEAD_ZONE_SLEEP
+                # Nap up to the next window rather than poll the dead zone, but
+                # never more than DEAD_ZONE_SLEEP so a surprise window is caught.
+                wait = min(_seconds_to_window(), DEAD_ZONE_SLEEP)
             backoff += 1
-            log(f"[429] {slug}: throttled, sleeping {wait}s "
+            log(f"[429] {slug}: throttled, sleeping {int(wait)}s "
                 f"({'window' if _in_likely_window() else 'dead-zone'} hour {_hour_utc()}Z)")
             time.sleep(wait)
             continue
