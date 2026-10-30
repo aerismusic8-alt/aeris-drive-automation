@@ -144,6 +144,12 @@ MIN_SECONDS = 210.0
 # no extend clip has ever appeared, so the fallback rarely helps. It stays as a
 # best-effort second chance when a create still lands under the floor.
 MAX_EXTENDS = 3
+# The extend has only ever been attempted seconds after its own create, i.e.
+# inside the same per-minute rate bucket, and it has 429'd every single time
+# (16 creates, 0 extends). A rest before the first extend is the cheap test for
+# that: if the bucket is per-minute, waiting steps out of it; if Extend is simply
+# not on the free tier, the rest changes nothing and costs a little window time.
+EXTEND_REST_S = 150
 
 
 def _open_compose(page):
@@ -526,6 +532,12 @@ def generate(slug: str, *, timeout: float = 480.0, force: bool = False,
             for attempt in range(MAX_EXTENDS):
                 if current >= MIN_SECONDS:
                     break
+                if attempt == 0:
+                    # Step out of the create's own rate bucket before asking for
+                    # an extend; see EXTEND_REST_S.
+                    print(f"[info] {slug}: resting {EXTEND_REST_S}s before extend",
+                          file=sys.stderr)
+                    time.sleep(EXTEND_REST_S)
                 since2 = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
                 flags["rate_limited"] = False
                 try:
