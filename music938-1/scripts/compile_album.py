@@ -1,0 +1,161 @@
+#!/usr/bin/env python3
+"""Build a long-form album compilation from the songs already on disk.
+
+Why this is the main lever for monetization. The watch-hour bar is 4,000 hours
+in 12 months. A 3-minute song watched once earns 0.05 of an hour, so clearing the
+bar on songs alone needs ~80,000 song views. One 60-minute compilation watched
+once earns a whole hour, so it needs ~4,000 views. Same songs, same generation
+cost, 20x less audience required. Music channels live on this.
+
+A compilation reuses the songs already built, so it costs no Flow Music
+generation and no extra quota beyond one upload.
+
+    python3 scripts/compile_album.py --list                 # what would go in
+    python3 scripts/compile_album.py --name "รวมเพลงไทยเพื่อชีวิต" --max 60
+    python3 scripts/compile_album.py --name ... --max 60 --render
+"""
+from __future__ import annotations
+
+import argparse
+import json
+import re
+import subprocess
+import sys
+from pathlib import Path
+
+ROOT = Path(__file__).resolve().parent.parent
+sys.path.insert(0, str(ROOT / "scripts"))
+SONGS = ROOT / "library" / "songs"
+COVERS = ROOT / "library" / "covers"
+COMPILED = ROOT / "library" / "compilations"
+LYRICS = ROOT / "lyrics"
+
+W, H, FPS = 1920, 1080, 25
+CROSSFADE = 4.0  # seconds of overlap between tracks
+
+
+def parse_lyrics(slug: str) -> dict:
+    hdr: dict[str, str] = {}
+    for line in (LYRICS / f"{slug}.txt").read_text(encoding="utf-8").splitlines():
+        m = re.match(r"#\s*(TITLE|MOOD|KEY|VOICE)\s*:\s*(.+)", line)
+        if m:
+            hdr[m.group(1)] = m.group(2).strip()
+            continue
+        if line.strip() and not line.startswith("#"):
+            break
+    return hdr
+
+
+def duration(path: Path) -> float:
+    out = subprocess.run(["ffprobe", "-v", "error", "-show_entries", "format=duration",
+                          "-of", "default=nw=1:nk=1", str(path)],
+                         capture_output=True, text=True).stdout.strip()
+    try:
+        return float(out)
+    except ValueError:
+        return 0.0
+
+
+def available_songs() -> list[str]:
+    slugs = []
+    for f in sorted(SONGS.glob("song-*.mp3")):
+        slug = f.stem[len("song-"):]
+        if (COVERS / f"cover-{slug}.jpg").exists():
+            slugs.append(slug)
+    return slugs
+
+
+def pick(max_minutes: float) -> list[str]:
+    """Fill up to max_minutes with songs, in catalogue order."""
+    chosen, total = [], 0.0
+    for slug in available_songs():
+        d = duration(SONGS / f"song-{slug}.mp3")
+        if not d:
+            continue
+        # Each added track overlaps the previous by CROSSFADE, so the real cost
+        # is d - CROSSFADE once something is already in the list.
+        cost = d if not chosen else max(0.0, d - CROSSFADE)
+        if total + cost > max_minutes * 60:
+            break
+        chosen.append(slug)
+        total += cost
+    return chosen
+
+
+def build_tracklist(slugs: list[str]) -> str:
+    lines = []
+    for i, slug in enumerate(slugs, 1):
+        h = parse_lyrics(slug)
+        lines.append(f"{i:02d}. {h.get('TITLE', slug)}")
+    return "\n".join(lines)
+
+
+def render(name: str, slugs: list[str], *, out_name: str | None = None) -> Path:
+    if not slugs:
+        raise SystemExit("no songs to compile — nothing built yet")
+    COMPILED.mkdir(parents=True, exist_ok=True)
+
+    inputs: list[str] = []
+    for slug in slugs:
+        inputs += ["-i", str(SONGS / f"song-{slug}.mp3")]
+
+    # Acrossfade the whole chain, then hold one still under all of it.
+    parts, prev = [], "[0:a]"
+    for i in range(1, len(slugs)):
+        label = f"[a{i}]"
+        parts.append(f"{prev}[{i}:a]acrossfade=d={CROSSFADE}:c1=tri:c2=tri{label}")
+        prev = label
+    # A single track needs no filter, and `-map [0:a]` would fail: brackets name
+    # a filter output, not an input stream. Map the stream directly instead.
+    audio_map = prev if parts else "0:a"
+
+    # The still is the last input, after all the audio.
+    still_idx = len(slugs)
+    cover = COVERS / f"cover-{slugs[0]}.jpg"
+    inputs += ["-loop", "1", "-i", str(cover)]
+    fc = ";".join(parts + [
+        f"[{still_idx}:v]scale={W}:{H},"
+        f"zoompan=z='min(zoom+0.00012,1.10)':d=1:x='iw/2-(iw/zoom/2)':"
+        f"y='ih/2-(ih/zoom/2)':s={W}x{H}:fps={FPS},format=yuv420p[v]"
+    ])
+
+    out = COMPILED / f"{out_name or 'compilation'}.mp4"
+    cmd = ["ffmpeg", "-y", "-loglevel", "error", *inputs,
+           "-filter_complex", fc, "-map", "[v]", "-map", audio_map,
+           "-c:v", "libx264", "-preset", "veryfast", "-crf", "21",
+           "-pix_fmt", "yuv420p", "-r", str(FPS),
+           "-c:a", "aac", "-b:a", "192k", "-shortest",
+           "-movflags", "+faststart", str(out)]
+    subprocess.run(cmd, check=True)
+
+    (COMPILED / f"{out_name or 'compilation'}.txt").write_text(
+        f"{name}\n\n{build_tracklist(slugs)}\n", encoding="utf-8")
+    return out
+
+
+def main() -> int:
+    ap = argparse.ArgumentParser(description=__doc__)
+    ap.add_argument("--name", default="รวมเพลงไทยเพื่อชีวิต")
+    ap.add_argument("--max", type=float, default=60.0, help="target minutes")
+    ap.add_argument("--list", action="store_true", help="show the tracklist, render nothing")
+    ap.add_argument("--render", action="store_true")
+    ap.add_argument("--out", default=None)
+    args = ap.parse_args()
+
+    slugs = pick(args.max)
+    if not slugs:
+        print("nothing built yet — no song-*.mp3 with a cover on disk")
+        return 0
+    total = sum(duration(SONGS / f"song-{s}.mp3") for s in slugs) - CROSSFADE * (len(slugs) - 1)
+    print(f"{args.name} — {len(slugs)} tracks, ~{total/60:.1f} min\n")
+    print(build_tracklist(slugs))
+    if args.list or not args.render:
+        print("\n(pass --render to build it)")
+        return 0
+    out = render(args.name, slugs, out_name=args.out)
+    print(f"\n{out}  ({out.stat().st_size/1e6:.1f} MB)")
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())
