@@ -143,6 +143,14 @@ def render_video(slug: str) -> None:
             capture_output=True, text=True)
         if proc.returncode != 0:
             log(f"[warn] {slug}: {mix} video failed: {(proc.stderr or '')[-200:]}")
+    # A Short is the discovery video: a zero-sub channel gets reach from Shorts
+    # and almost none from long-form, so every song also yields one.
+    if not (ROOT / "library" / "shorts" / f"short-song-{slug}.mp4").exists():
+        proc = subprocess.run(
+            [sys.executable, str(ROOT / "scripts" / "make_short.py"), slug],
+            capture_output=True, text=True)
+        if proc.returncode != 0:
+            log(f"[warn] {slug}: short failed: {(proc.stderr or '')[-200:]}")
 
 
 def run_one(slug: str, force: bool) -> tuple[str, dict | None]:

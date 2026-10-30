@@ -76,6 +76,13 @@ def has_song(slug: str) -> bool:
     return (SONGS / f"song-{slug}.mp3").exists()
 
 
+SHORTS = ROOT / "library" / "shorts"
+
+
+def has_short(slug: str, mix: str = "song") -> bool:
+    return (SHORTS / f"short-{mix}-{slug}.mp4").exists()
+
+
 def has_video(slug: str, mix: str) -> bool:
     return (KARAOKE / f"{mix}-{slug}.mp4").exists()
 
@@ -102,7 +109,16 @@ def describe(slug: str, kind: str) -> tuple[str, str, list[str]]:
     tagline = TAGLINE.get(mood, TAGLINE["calm"])
     n = slug.split("-")[0]
 
-    if kind == "karaoke":
+    if kind == "short":
+        title = f"{title_th} #{n} — เพลงไทย #Shorts | AERIS Music"
+        desc = (
+            f"🎵 {title_th} (ท่อนฮุก)\n\n"
+            f"{tagline}\n\n"
+            f"เพลงที่ {int(n)} จากชุด 20 เพลงไทย — ร้องด้วยเสียงจริง\n"
+            f"🎧 ฟังเวอร์ชันเต็มได้ในช่อง\n\n"
+            f"{HASHTAGS} #Shorts"
+        )
+    elif kind == "karaoke":
         title = f"{title_th} (คาราโอเกะ) — ร้องตามได้ | AERIS Music"
         desc = (
             f"🎤 {title_th} — เวอร์ชันคาราโอเกะ (ไม่มีเสียงร้อง)\n\n"
@@ -131,6 +147,10 @@ def describe(slug: str, kind: str) -> tuple[str, str, list[str]]:
 
 def playlist_for(kind: str) -> tuple[str, str]:
     """(title, description) of the playlist this kind of release belongs in."""
+    if kind == "short":
+        return ("ท่อนฮุก — เพลงไทยสั้น ๆ",
+                "รวมท่อนฮุกของทุกเพลงในชุด ฟังสั้น ๆ ได้ใจความ\n\n"
+                "AERIS Music · เพลงไทยที่ตั้งใจทำ")
     if kind == "karaoke":
         return ("คาราโอเกะ — ร้องตามได้ทุกเพลง",
                 "รวมทุกเพลงในชุดเป็นเวอร์ชันคาราโอเกะ ไม่มีเสียงร้อง ร้องตามได้เลย\n\n"
@@ -195,13 +215,24 @@ def add_to_playlist(playlist_id: str, video_id: str, ch: str) -> bool:
         return False
 
 
-def plan(days: int) -> list[dict]:
-    """Pair each built song with its karaoke into a dated release list."""
+def plan(days: int, shorts: bool = False) -> list[dict]:
+    """Pair each built song with its karaoke into a dated release list.
+
+    Shorts are discovery, not catalogue: a zero-subscriber channel gets no
+    long-form impressions (AERIS Music's own numbers: 382 of 449 lifetime views
+    came from Shorts, ~33 from long-form). They are planned first, so the
+    audience exists before the watch-hour videos need one.
+    """
     state = load_state()
     done = {(r["slug"], r["kind"]) for r in state["released"]}
     items: list[dict] = []
     for slug in all_slugs():
         if not has_song(slug):
+            continue
+        if has_short(slug, "song"):
+            items.append({"slug": slug, "kind": "short",
+                          "video": SHORTS / f"short-song-{slug}.mp4"})
+        if shorts:
             continue
         # The main release first, then the sing-along version.
         if has_video(slug, "song"):
@@ -220,13 +251,15 @@ def main() -> int:
     ap.add_argument("--plan", action="store_true", help="show the schedule, send nothing")
     ap.add_argument("--days", type=int, default=0, help="limit the plan to N days")
     ap.add_argument("--next", action="store_true", help="release the first item in the plan")
+    ap.add_argument("--shorts", action="store_true",
+                    help="plan Shorts only (the discovery-first queue)")
     ap.add_argument("--ch", default="ch3")
     ap.add_argument("--public", action="store_true",
                     help="publish publicly; without it the upload stays private for K")
     ap.add_argument("--dry-run", action="store_true")
     args = ap.parse_args()
 
-    todo = plan(args.days)
+    todo = plan(args.days, shorts=args.shorts)
     if args.plan or not args.next:
         if not todo:
             print("nothing to release yet — no built songs found")
@@ -235,7 +268,7 @@ def main() -> int:
         print(f"{len(todo)} releases pending, {UPLOADS_PER_DAY}/day "
               f"(YouTube API quota: 10,000 units / 1,600 per upload):\n")
         for item in todo[:24]:
-            kind = "KARAOKE" if item["kind"] == "karaoke" else "SONG   "
+            kind = {"karaoke": "KARAOKE", "short": "SHORT  "}.get(item["kind"], "SONG   ")
             print(f"  {item['when']:%Y-%m-%d}  {kind}  {item['slug']}")
         if len(todo) > 24:
             print(f"  ... and {len(todo) - 24} more")

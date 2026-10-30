@@ -293,6 +293,22 @@ def test_level_ordering() -> None:
               f"song {s} karaoke {k}")
 
 
+def test_shorts() -> None:
+    section("shorts (discovery rail)")
+    import make_short
+    # The hook must land on the chorus, not the intro. Song 01's chorus begins
+    # at ~20% of the sung lines; a wrong section model would put it at 0.
+    start_frac, len_frac = make_short.chorus_span("01-khon-di-thi-chak-pai")
+    check("hook starts past the intro", start_frac > 0.05, f"{start_frac:.3f}")
+    check("hook is a real block", len_frac > 0.05, f"{len_frac:.3f}")
+    # A Short must stay under the 60s ceiling whatever the song length is.
+    for dur in (150.0, 178.7, 300.0):
+        _, length = make_short._pick_window("01-khon-di-thi-chak-pai", dur)
+        check(f"short <= 60s at {dur:.0f}s song", length <= 60.0, f"{length:.1f}")
+    # Vertical canvas, or YouTube will not treat it as a Short.
+    check("vertical canvas", (make_short.W, make_short.H) == (1080, 1920))
+
+
 def main() -> int:
     test_lyrics()
     test_tokenizer()
@@ -304,6 +320,7 @@ def main() -> int:
     test_syllable_repair()
     test_normalize_floor()
     test_level_ordering()
+    test_shorts()
     test_outputs()
     print(f"\n{PASS} passed, {FAIL} failed")
     if FAILURES:
