@@ -84,19 +84,17 @@ played fine, so nothing downstream ever failed.
   next day. Still-broken ids are in `work/pending-replacements.json` (un-ignored).
 
 **HOLD LIFTED 2026-10-30** — K: "อนุมัติ ดำเนินการแทน K", AR acts on K's behalf.
-Song 01's three hook Shorts are **public** on @aerismusicth (`ANwgi7J_ras`,
-`JId5J48t4a4`, `CXRH7sW6Gcw`, playlist `PLKlARHtRpKkI`). `release.py --next`
-uploads **private by default** (needs `--public`) and records `public: false` even
-after a later `videos.update` makes it public — correct the ledger by hand.
-`work/release-state.json` is tracked now: it is the only record of what is already
-up, and a clone that loses it re-uploads duplicates. Automations are at 0.
-Song 01's full release is live too (`ASuxGEvJBlw` 2:59 public, karaoke
-`SWS1vJJgkow` — the karaoke is still the tofu render). Probing is **all-hours now**
-(K freed the timing): `PROBE_SLEEP_S`
-=150s, 24h, no dead-zone gate. Of the 6 failing tests, 5 were one environment
-fact — `tts.is_speakable` needs **Piper**, which belongs to the *retired* pipeline
-and is absent, so it returns False for `ดี` and `ไป` alike; those checks now skip
-loudly via `voice_ready()`. The 6th is real: song 01 is 178.7s vs the 210s floor.
+Song 01 is live on @aerismusicth: full song `ASuxGEvJBlw` (2:59 public), karaoke
+`SWS1vJJgkow`, three hook Shorts `ANwgi7J_ras`/`JId5J48t4a4`/`CXRH7sW6Gcw`
+(playlist `PLKlARHtRpKkI`). `release.py --next` uploads **private by default**
+(needs `--public`) and records `public: false` even after a later `videos.update`
+makes it public — correct the ledger by hand. `work/release-state.json` is tracked:
+it is the only record of what is already up, and a clone that loses it re-uploads
+duplicates. Probing is **all-hours** (K freed the timing): `PROBE_SLEEP_S`=150s, no
+dead-zone gate. The one red test is real: song 01 is 178.7s vs the 210s floor.
+(The five Piper-dependent checks now skip loudly via `voice_ready()`; Piper belongs
+to the *retired* pipeline and is absent, so `is_speakable` was False for `ดี` and
+`ไป` alike. When every item in a check fails, suspect the checker's dependency.)
 
 ## Environment facts that keep costing time
 
