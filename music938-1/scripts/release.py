@@ -79,8 +79,18 @@ def has_song(slug: str) -> bool:
 SHORTS = ROOT / "library" / "shorts"
 
 
+def short_files(slug: str, mix: str = "song") -> list[Path]:
+    """Every Short for a song, plain name first, then the -h1/-h2 hook cuts."""
+    out = []
+    plain = SHORTS / f"short-{mix}-{slug}.mp4"
+    if plain.exists():
+        out.append(plain)
+    out += sorted(SHORTS.glob(f"short-{mix}-h*-{slug}.mp4"))
+    return out
+
+
 def has_short(slug: str, mix: str = "song") -> bool:
-    return (SHORTS / f"short-{mix}-{slug}.mp4").exists()
+    return bool(short_files(slug, mix))
 
 
 def has_video(slug: str, mix: str) -> bool:
@@ -101,16 +111,24 @@ def save_state(state: dict) -> None:
     STATE.write_text(json.dumps(state, ensure_ascii=False, indent=1), encoding="utf-8")
 
 
-def describe(slug: str, kind: str) -> tuple[str, str, list[str]]:
-    """Return (title, description, tags) for one release."""
+def describe(slug: str, kind: str, variant: str = "") -> tuple[str, str, list[str]]:
+    """Return (title, description, tags) for one release.
+
+    `variant` distinguishes the hook cuts of one song, so three Shorts from the
+    same song are three different uploads rather than a duplicate.
+    """
     h = parse_lyrics(slug)
     title_th = h.get("TITLE", slug)
     mood = h.get("MOOD", "calm")
     tagline = TAGLINE.get(mood, TAGLINE["calm"])
     n = slug.split("-")[0]
+    hook = ""
+    m = re.search(r"-h(\d+)-", variant)
+    if m:
+        hook = f" (ท่อนที่ {m.group(1)})"
 
     if kind == "short":
-        title = f"{title_th} #{n} — เพลงไทย #Shorts | AERIS Music"
+        title = f"{title_th}{hook} #{n} — เพลงไทย #Shorts | AERIS Music"
         desc = (
             f"🎵 {title_th} (ท่อนฮุก)\n\n"
             f"{tagline}\n\n"
@@ -224,22 +242,24 @@ def plan(days: int, shorts: bool = False) -> list[dict]:
     audience exists before the watch-hour videos need one.
     """
     state = load_state()
-    done = {(r["slug"], r["kind"]) for r in state["released"]}
+    done = {(r["slug"], r["kind"], r.get("variant", "")) for r in state["released"]}
     items: list[dict] = []
     for slug in all_slugs():
         if not has_song(slug):
             continue
-        if has_short(slug, "song"):
-            items.append({"slug": slug, "kind": "short",
-                          "video": SHORTS / f"short-song-{slug}.mp4"})
+        for v in short_files(slug, "song"):
+            items.append({"slug": slug, "kind": "short", "video": v,
+                          "variant": v.stem})
         if shorts:
             continue
         # The main release first, then the sing-along version.
         if has_video(slug, "song"):
-            items.append({"slug": slug, "kind": "song", "video": KARAOKE / f"song-{slug}.mp4"})
+            items.append({"slug": slug, "kind": "song",
+                          "video": KARAOKE / f"song-{slug}.mp4", "variant": ""})
         if has_video(slug, "karaoke"):
-            items.append({"slug": slug, "kind": "karaoke", "video": KARAOKE / f"karaoke-{slug}.mp4"})
-    todo = [i for i in items if (i["slug"], i["kind"]) not in done]
+            items.append({"slug": slug, "kind": "karaoke",
+                          "video": KARAOKE / f"karaoke-{slug}.mp4", "variant": ""})
+    todo = [i for i in items if (i["slug"], i["kind"], i.get("variant", "")) not in done]
     start = datetime.now(timezone.utc)
     for i, item in enumerate(todo):
         item["when"] = start + timedelta(days=i // UPLOADS_PER_DAY)
@@ -276,7 +296,7 @@ def main() -> int:
 
     item = todo[0]
     slug, kind = item["slug"], item["kind"]
-    title, desc, tags = describe(slug, kind)
+    title, desc, tags = describe(slug, kind, item.get("variant", ""))
     video = item["video"]
     if not video or not video.exists():
         print(f"missing {kind} video for {slug}; render it with "
@@ -319,7 +339,8 @@ def main() -> int:
         if pid:
             add_to_playlist(pid, vid, args.ch)
     state["released"].append({
-        "slug": slug, "kind": kind, "video_id": vid,
+        "slug": slug, "kind": kind, "variant": item.get("variant", ""),
+        "video_id": vid,
         "at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
         "public": bool(args.public),
     })

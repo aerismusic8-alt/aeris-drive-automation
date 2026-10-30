@@ -42,14 +42,13 @@ MAX_SECONDS = 58.0        # under the 60s Shorts ceiling, with margin
 HOOK_PAD = 0.6            # a beat of lead-in so the hook does not start on frame 0
 
 
-def chorus_span(slug: str) -> tuple[float, float]:
-    """Approximate the chorus as a fraction of the song, from the lyric structure.
+def chorus_spans(slug: str) -> list[tuple[float, float]]:
+    """Every chorus block as a (start, length) share of the sung lines.
 
-    The lyric file marks sections, and the chorus is the repeated one. We take the
-    first chorus block's share of all sung lines and map it onto the audio, which
-    is the same proportional model make_karaoke uses for its sweep. It is an
-    estimate - Flow Music's compose path hands us no real timing - but it lands
-    the hook in the right third of the song rather than on the intro.
+    A song has three choruses, and they are the hook three times over. One Short
+    per chorus gives a song three chances to stop a scroll instead of one, for no
+    extra generation - which matters most on a channel with no subscribers, where
+    each Short is a fresh lottery ticket rather than a guaranteed impression.
     """
     text = (ROOT / "lyrics" / f"{slug}.txt").read_text(encoding="utf-8")
     section, counts, order = "", {}, []
@@ -65,27 +64,47 @@ def chorus_span(slug: str) -> tuple[float, float]:
         counts[section] = counts.get(section, 0) + 1
         order.append(section)
     total = sum(counts.values()) or 1
-    # First chorus block's start and length as a share of sung lines.
-    seen = 0
-    start_frac, len_frac = 0.0, 0.3
+    spans, seen, prev = [], 0, ""
     for sec in order:
-        if sec == "chorus":
-            start_frac = seen / total
-            len_frac = counts.get("chorus", 1) / total
-            break
+        # A chorus block starts where the section changes into "chorus", so the
+        # three choruses give three spans, not one span per sung line.
+        if sec == "chorus" and prev != "chorus":
+            spans.append([seen / total, 0.0])
+        if sec == "chorus" and spans:
+            spans[-1][1] += 1 / total
         seen += 1
-    return start_frac, len_frac
+        prev = sec
+    if not spans:
+        spans = [[0.35, 0.3]]
+    return [(a, b) for a, b in spans]
 
 
-def _pick_window(slug: str, duration: float) -> tuple[float, float]:
-    """The clip to show: the chorus, trimmed to MAX_SECONDS."""
-    start_frac, len_frac = chorus_span(slug)
+def chorus_span(slug: str) -> tuple[float, float]:
+    """The first chorus - kept for the single-hook callers and the tests."""
+    return chorus_spans(slug)[0]
+
+
+def _window(duration: float, start_frac: float, len_frac: float) -> tuple[float, float]:
     start = max(0.0, duration * start_frac - HOOK_PAD)
     length = min(MAX_SECONDS, duration - start)
     if length < 12:                      # a very short tail: fall back to mid-song
         start = max(0.0, duration * 0.35)
         length = min(MAX_SECONDS, duration - start)
     return start, length
+
+
+def _pick_windows(slug: str, duration: float) -> list[tuple[float, float]]:
+    """One window per chorus, de-duplicated if two land on the same spot."""
+    out: list[tuple[float, float]] = []
+    for sf, lf in chorus_spans(slug):
+        w = _window(duration, sf, lf)
+        if all(abs(w[0] - o[0]) > 5.0 for o in out):
+            out.append(w)
+    return out or [_window(duration, 0.35, 0.3)]
+
+
+def _pick_window(slug: str, duration: float) -> tuple[float, float]:
+    return _pick_windows(slug, duration)[0]
 
 
 def build_ass(slug: str, lines: list[str], meta: dict, start: float,
@@ -145,7 +164,14 @@ def _ass_escape(p: Path) -> str:
     return str(p).replace("\\", "\\\\").replace(":", "\\:")
 
 
-def render(slug: str, *, mix: str = "song", out_dir: Path | None = None) -> Path:
+def render(slug: str, *, mix: str = "song", out_dir: Path | None = None,
+           all_hooks: bool = False) -> list[Path]:
+    """Render one Short per chorus. Returns the files written.
+
+    `all_hooks=True` writes every chorus as its own Short (hook-1, hook-2, ...).
+    The default writes just the first, so a caller that wants one file per song
+    still gets exactly that.
+    """
     audio = ROOT / "library" / "songs" / f"{mix}-{slug}.mp3"
     cover = ROOT / "library" / "covers" / f"cover-{slug}.jpg"
     for p in (audio, cover):
@@ -154,17 +180,17 @@ def render(slug: str, *, mix: str = "song", out_dir: Path | None = None) -> Path
 
     meta, lines = load_lyrics(slug)
     duration = _duration(audio)
-    start, length = _pick_window(slug, duration)
+    windows = _pick_windows(slug, duration)
+    if not all_hooks:
+        windows = windows[:1]
 
     work = ROOT / "work" / slug
     work.mkdir(parents=True, exist_ok=True)
-    ass_path = work / f"short-{mix}.ass"
-    ass_path.write_text(build_ass(slug, lines, meta, start, length, duration),
-                        encoding="utf-8")
-
     out_dir = out_dir or (ROOT / "library" / "shorts")
     out_dir.mkdir(parents=True, exist_ok=True)
-    out = out_dir / f"short-{mix}-{slug}.mp4"
+    # A single hook keeps the plain name release.py looks for; multiple hooks get
+    # an -h1/-h2 suffix so they are distinct files.
+    multi = all_hooks and len(windows) > 1
 
     # Slow zoom on the cover, cropped to vertical. The cover is square, so a
     # centre crop to 9:16 is the honest fit; the zoom keeps it from looking dead.
@@ -172,17 +198,26 @@ def render(slug: str, *, mix: str = "song", out_dir: Path | None = None) -> Path
             "crop=%d:%d,zoompan=z='min(zoom+0.0006,1.22)':d=1:"
             "x='iw/2-(iw/zoom/2)':y='ih/2-(ih/zoom/2)':s=%dx%d:fps=%d"
             % (W, H, W, H, FPS))
-    args = ["-loop", "1", "-i", str(cover),
-            "-ss", f"{start:.3f}", "-i", str(audio),
-            "-filter_complex", f"[0:v]{zoom},ass={_ass_escape(ass_path)}[v]",
-            "-map", "[v]", "-map", "1:a",
-            "-t", f"{length:.3f}",
-            "-c:v", "libx264", "-preset", "veryfast", "-crf", "20",
-            "-pix_fmt", "yuv420p", "-r", str(FPS),
-            "-c:a", "aac", "-b:a", "192k", "-shortest",
-            "-movflags", "+faststart", str(out)]
-    subprocess.run(["ffmpeg", "-y", "-loglevel", "error", *args], check=True)
-    return out
+
+    written: list[Path] = []
+    for i, (start, length) in enumerate(windows, 1):
+        suffix = f"-h{i}" if multi else ""
+        ass_path = work / f"short-{mix}{suffix}.ass"
+        ass_path.write_text(build_ass(slug, lines, meta, start, length, duration),
+                            encoding="utf-8")
+        out = out_dir / f"short-{mix}{suffix}-{slug}.mp4"
+        args = ["-loop", "1", "-i", str(cover),
+                "-ss", f"{start:.3f}", "-i", str(audio),
+                "-filter_complex", f"[0:v]{zoom},ass={_ass_escape(ass_path)}[v]",
+                "-map", "[v]", "-map", "1:a",
+                "-t", f"{length:.3f}",
+                "-c:v", "libx264", "-preset", "veryfast", "-crf", "20",
+                "-pix_fmt", "yuv420p", "-r", str(FPS),
+                "-c:a", "aac", "-b:a", "192k", "-shortest",
+                "-movflags", "+faststart", str(out)]
+        subprocess.run(["ffmpeg", "-y", "-loglevel", "error", *args], check=True)
+        written.append(out)
+    return written
 
 
 def main() -> int:
@@ -190,6 +225,8 @@ def main() -> int:
     ap.add_argument("slug", nargs="?")
     ap.add_argument("--all", action="store_true", help="every song on disk")
     ap.add_argument("--mix", default="song", choices=["song", "karaoke"])
+    ap.add_argument("--hooks", action="store_true",
+                    help="one Short per chorus, not just the first")
     args = ap.parse_args()
 
     if args.all:
@@ -202,9 +239,9 @@ def main() -> int:
     rc = 0
     for slug in slugs:
         try:
-            out = render(slug, mix=args.mix)
-            print(f"{slug}: {out.relative_to(ROOT)} "
-                  f"({_duration(out):.1f}s)")
+            outs = render(slug, mix=args.mix, all_hooks=args.hooks)
+            for out in outs:
+                print(f"{slug}: {out.relative_to(ROOT)} ({_duration(out):.1f}s)")
         except Exception as exc:
             print(f"{slug}: FAILED {exc}", file=sys.stderr)
             rc = 1

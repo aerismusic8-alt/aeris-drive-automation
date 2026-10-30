@@ -296,15 +296,21 @@ def test_level_ordering() -> None:
 def test_shorts() -> None:
     section("shorts (discovery rail)")
     import make_short
-    # The hook must land on the chorus, not the intro. Song 01's chorus begins
-    # at ~20% of the sung lines; a wrong section model would put it at 0.
+    # The hook must land on the chorus, not the intro. Song 01's first chorus
+    # begins at ~20% of the sung lines; a wrong section model would put it at 0.
     start_frac, len_frac = make_short.chorus_span("01-khon-di-thi-chak-pai")
     check("hook starts past the intro", start_frac > 0.05, f"{start_frac:.3f}")
     check("hook is a real block", len_frac > 0.05, f"{len_frac:.3f}")
+    # A song has three choruses, and each is a separate hook - so three Shorts,
+    # not one per sung line and not one per song.
+    spans = make_short.chorus_spans("01-khon-di-thi-chak-pai")
+    check("three chorus hooks", len(spans) == 3, str(len(spans)))
+    check("hooks are in order", all(spans[i][0] < spans[i + 1][0]
+                                    for i in range(len(spans) - 1)))
     # A Short must stay under the 60s ceiling whatever the song length is.
     for dur in (150.0, 178.7, 300.0):
-        _, length = make_short._pick_window("01-khon-di-thi-chak-pai", dur)
-        check(f"short <= 60s at {dur:.0f}s song", length <= 60.0, f"{length:.1f}")
+        for _, length in make_short._pick_windows("01-khon-di-thi-chak-pai", dur):
+            check(f"short <= 60s at {dur:.0f}s song", length <= 60.0, f"{length:.1f}")
     # Vertical canvas, or YouTube will not treat it as a Short.
     check("vertical canvas", (make_short.W, make_short.H) == (1080, 1920))
 
