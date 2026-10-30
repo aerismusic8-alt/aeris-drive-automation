@@ -270,6 +270,22 @@ def _cover(page, clip, dest: Path):
     return False
 
 
+def _save_clip_meta(clip: dict, dest: Path) -> None:
+    """Persist the master clip's own lyrics and timing next to the audio.
+
+    The clip carries the lyrics the model actually sang plus a `lyrics_timing`
+    field. Timing is `not_requested` until a producer call fills it, and that
+    call is throttled, so it is saved as-is: when a later run requests it, the
+    karaoke can become word-accurate without regenerating the song. The sung
+    text is worth keeping regardless, since it is what the vocal really says.
+    """
+    keep = {k: clip.get(k) for k in
+            ("id", "title", "duration", "op_type", "created_at",
+             "lyrics", "lyrics_timing", "has_vocals")}
+    dest.parent.mkdir(parents=True, exist_ok=True)
+    dest.write_text(json.dumps(keep, ensure_ascii=False, indent=1), encoding="utf-8")
+
+
 def _stems(page, clip_id: str, dest: Path) -> dict | None:
     """Fetch the model's own 4-stem split for a clip.
 
@@ -527,7 +543,9 @@ def generate(slug: str, *, timeout: float = 480.0, force: bool = False,
 
     # The clip id that ends up being the master is the one to split. This is a
     # plain read, so a throttle on generation does not affect it.
-    master_id = (ext or base)["id"]
+    master = ext or base
+    master_id = master["id"]
+    _save_clip_meta(master, OUT_DIR / f"clipmeta-{slug}.json")
     stem_dir = OUT_DIR / f"stems-{slug}"
     with sync_playwright() as p2:
         br2, ctx2 = B.connect(p2)
