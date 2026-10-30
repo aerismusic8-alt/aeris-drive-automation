@@ -86,7 +86,7 @@ def load_state() -> dict:
             return json.loads(STATE.read_text(encoding="utf-8"))
         except ValueError:
             pass
-    return {"released": []}
+    return {"released": [], "playlists": {}}
 
 
 def save_state(state: dict) -> None:
@@ -127,6 +127,72 @@ def describe(slug: str, kind: str) -> tuple[str, str, list[str]]:
     tags = ["เพลงไทย", "เพลงใหม่", "ศิลปินไทย", "AERIS", "เพลงเพราะ",
             "เพลงฟังสบาย", "คาราโอเกะ", title_th, tagline, "thai music", "thai song"]
     return title[:100], desc[:4900], tags[:30]
+
+
+def playlist_for(kind: str) -> tuple[str, str]:
+    """(title, description) of the playlist this kind of release belongs in."""
+    if kind == "karaoke":
+        return ("คาราโอเกะ — ร้องตามได้ทุกเพลง",
+                "รวมทุกเพลงในชุดเป็นเวอร์ชันคาราโอเกะ ไม่มีเสียงร้อง ร้องตามได้เลย\n\n"
+                "AERIS Music · เพลงไทยที่ตั้งใจทำ")
+    return ("เพลงไทยเพื่อชีวิต — ชุด 20 เพลง",
+            "รวมทุกเพลงในชุด 20 เพลงไทยเพื่อชีวิต ร้องด้วยเสียงจริง เนื้อร้องและทำนองใหม่\n\n"
+            "AERIS Music · ฟังเพลิน ฟังได้ทุกวัน")
+
+
+def ensure_playlist(state: dict, kind: str, ch: str) -> str | None:
+    """Create the playlist once and remember its id in the state file."""
+    title, desc = playlist_for(kind)
+    key = f"{ch}:{kind}"
+    if state.get("playlists", {}).get(key):
+        return state["playlists"][key]
+
+    sys.path.insert(0, str(OPS))
+    import yt_auth  # noqa: E402
+    import urllib.request  # noqa: E402
+    import urllib.error  # noqa: E402
+    tok = yt_auth.access_token(ch)
+    body = json.dumps({
+        "snippet": {"title": title[:150], "description": desc[:5000],
+                    "defaultLanguage": "th"},
+        "status": {"privacyStatus": "public"},
+    }).encode("utf-8")
+    req = urllib.request.Request(
+        "https://www.googleapis.com/youtube/v3/playlists?part=snippet,status",
+        data=body, method="POST",
+        headers={"Authorization": f"Bearer {tok}", "Content-Type": "application/json"})
+    try:
+        with urllib.request.urlopen(req) as r:
+            pid = json.loads(r.read())["id"]
+    except urllib.error.HTTPError as e:
+        print(f"playlist create failed: HTTP {e.code} {e.read()[:200]}", file=sys.stderr)
+        return None
+    state.setdefault("playlists", {})[key] = pid
+    print(f"created playlist {pid}: {title}")
+    return pid
+
+
+def add_to_playlist(playlist_id: str, video_id: str, ch: str) -> bool:
+    sys.path.insert(0, str(OPS))
+    import yt_auth  # noqa: E402
+    import urllib.request  # noqa: E402
+    import urllib.error  # noqa: E402
+    tok = yt_auth.access_token(ch)
+    body = json.dumps({
+        "snippet": {"playlistId": playlist_id,
+                    "resourceId": {"kind": "youtube#video", "videoId": video_id}},
+    }).encode("utf-8")
+    req = urllib.request.Request(
+        "https://www.googleapis.com/youtube/v3/playlistItems?part=snippet",
+        data=body, method="POST",
+        headers={"Authorization": f"Bearer {tok}", "Content-Type": "application/json"})
+    try:
+        with urllib.request.urlopen(req) as r:
+            r.read()
+        return True
+    except urllib.error.HTTPError as e:
+        print(f"playlist insert failed: HTTP {e.code} {e.read()[:200]}", file=sys.stderr)
+        return False
 
 
 def plan(days: int) -> list[dict]:
@@ -207,9 +273,16 @@ def main() -> int:
     if proc.returncode != 0:
         return proc.returncode
     m = re.search(r"video id (\S+)", proc.stdout)
+    vid = m.group(1) if m else None
     state = load_state()
+    # A new release belongs in the right playlist, or the channel looks like a
+    # pile of loose videos rather than a catalogue. Created lazily on first use.
+    if vid:
+        pid = ensure_playlist(state, kind, args.ch)
+        if pid:
+            add_to_playlist(pid, vid, args.ch)
     state["released"].append({
-        "slug": slug, "kind": kind, "video_id": m.group(1) if m else None,
+        "slug": slug, "kind": kind, "video_id": vid,
         "at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
         "public": bool(args.public),
     })
