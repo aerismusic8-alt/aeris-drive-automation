@@ -65,6 +65,11 @@ short backoff ladder catches the open windows.
   `operation.op_type == "lyria__generate_song"` carries `operation.timing_markers`, and
   `lyrics_timing.value.markers` appears when its status is `completed`. A compose-form clip has
   neither, so the karaoke sweep is estimated by design — say so, do not call it note-accurate.
+- **The 180s create cap is not model-gated.** The bundle clamps the Length slider with
+  `Math.min(180, Math.max(0, e))` and the compose state with `t.length > 180 -> t.length = 180`,
+  independent of the selected model (Lyria 3.5 only adds a 60s *minimum*). So there is no model
+  and no `length_s` agent form that yields a 3.5-5 min song in one call — Extend is always
+  required. Do not spend time looking for a way around it.
 - **A pod recycle wipes the pip environment.** numpy/pillow/pythainlp/python-crfsuite are gone
   after a recycle (numpy is needed by the dead Piper scripts; pillow+pythainlp+crfsuite by the
   live karaoke render). Reinstall before running the tests. The batch log now mirrors to
