@@ -134,6 +134,10 @@ CREATE_LENGTH = "3:00"
 # 3.5 min, the same floor report.py enforces, so a take that passes
 # here cannot fail the brief later.
 MIN_SECONDS = 210.0
+# Create is clamped to 3:00 and one Extend adds about 60s (the panel showed a
+# fixed 2:28-3:28 range), so a single extend lands near 3:28 - still under the
+# floor. Two or three reaches the 3.5-4.5 min the pack wants.
+MAX_EXTENDS = 3
 
 
 def _open_compose(page):
@@ -459,8 +463,6 @@ def generate(slug: str, *, timeout: float = 480.0, force: bool = False,
     OUT_DIR.mkdir(parents=True, exist_ok=True)
     COVER_DIR.mkdir(parents=True, exist_ok=True)
     raw = OUT_DIR / f"song-{slug}.m4a"
-    rawext = OUT_DIR / f"song-{slug}-ext.m4a"
-    extended = False
 
     with sync_playwright() as p:
         br, ctx = B.connect(p)
@@ -502,25 +504,35 @@ def generate(slug: str, *, timeout: float = 480.0, force: bool = False,
             _download(page, base, raw)
             _cover(page, base, COVER_DIR / f"cover-{slug}.jpg")
 
-            # Only worth extending if the model came back short of the brief.
-            since2 = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
-            flags["rate_limited"] = False
-            ext = None
-            if _seconds(raw) < MIN_SECONDS:
+            # Create is clamped near 3:00 and one Extend adds about 60s, so a
+            # single extend lands under the floor. Extend again, on the newest
+            # clip, until the take clears the brief or the attempts run out.
+            parts = [raw]
+            master = base
+            extended = False
+            for attempt in range(MAX_EXTENDS):
+                if sum(_seconds(p) for p in parts) >= MIN_SECONDS:
+                    break
+                since2 = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
+                flags["rate_limited"] = False
                 try:
-                    ext = _extend(page, base["id"], clips, since2,
-                                  {base["id"]}, flags=flags)
-                except Exception as exc:  # the panel is flaky; keep the base take
-                    print(f"[warn] {slug}: extend failed: {exc}", file=sys.stderr)
-            if ext:
-                _download(page, ext, rawext)
+                    ext = _extend(page, master["id"], clips, since2,
+                                  {master["id"]}, flags=flags)
+                except Exception as exc:  # the panel is flaky; keep what we have
+                    print(f"[warn] {slug}: extend {attempt + 1} failed: {exc}",
+                          file=sys.stderr)
+                    ext = None
+                if not ext:
+                    if flags.get("rate_limited"):
+                        raise B.RateLimited(slug)
+                    page.screenshot(path=str(ROOT / "work" / f"extfail-{slug}.png"))
+                    break
+                part = raw.with_name(f"{slug}-ext{attempt + 1}.m4a")
+                _download(page, ext, part)
                 _cover(page, ext, COVER_DIR / f"cover-{slug}.jpg")
+                parts.append(part)
+                master = ext
                 extended = True
-            elif flags.get("rate_limited"):
-                raise B.RateLimited(slug)
-            else:
-                page.screenshot(path=str(ROOT / "work" / f"extfail-{slug}.png"))
-                extended = False
         finally:
             # A failed run must not leave its tab behind: a dozen orphaned tabs
             # makes the next run's CDP calls time out.
@@ -530,23 +542,27 @@ def generate(slug: str, *, timeout: float = 480.0, force: bool = False,
         raise RuntimeError(f"{slug}: empty download")
 
     # Extend may return the whole song already lengthened, or only the appended
-    # tail. Tell them apart by duration and join the tail when that is what came
-    # back.
-    source = raw
-    if extended and rawext.exists() and rawext.stat().st_size:
-        if _seconds(rawext) > _seconds(raw) + 5:
-            source = rawext
+    # tail. Tell them apart by duration: a part longer than what we have is a
+    # fresh full render, a shorter one is the tail to concat.
+    source = parts[0]
+    for part in parts[1:]:
+        if not part.exists() or part.stat().st_size == 0:
+            continue
+        if _seconds(part) > _seconds(source) + 5:
+            source = part
         else:
-            source = raw.with_name(f"{slug}-full.m4a")
-            _join(raw, rawext, source)
+            merged = part.with_name(part.stem + "-merged.m4a")
+            _join(source, part, merged)
+            source = merged
 
     subprocess.run(
         ["ffmpeg", "-y", "-loglevel", "error", "-i", str(source),
          "-codec:a", "libmp3lame", "-qscale:a", "2", str(out)],
         check=True,
     )
-    raw.unlink(missing_ok=True)
-    rawext.unlink(missing_ok=True)
+    for part in parts:
+        part.unlink(missing_ok=True)
+        part.with_name(part.stem + "-merged.m4a").unlink(missing_ok=True)
 
     # A take below the floor is not a song for this pack. Writing it would make
     # the batch skip the slug forever (it resumes on "song-*.mp3 exists"), so a
@@ -560,7 +576,6 @@ def generate(slug: str, *, timeout: float = 480.0, force: bool = False,
 
     # The clip id that ends up being the master is the one to split. This is a
     # plain read, so a throttle on generation does not affect it.
-    master = ext or base
     master_id = master["id"]
     _save_clip_meta(master, OUT_DIR / f"clipmeta-{slug}.json")
     stem_dir = OUT_DIR / f"stems-{slug}"
