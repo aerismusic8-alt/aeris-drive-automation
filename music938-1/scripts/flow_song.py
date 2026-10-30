@@ -24,6 +24,7 @@ from __future__ import annotations
 import argparse
 import base64
 import json
+import os
 import re
 import subprocess
 import sys
@@ -127,16 +128,21 @@ def meta_bpm(meta: dict) -> str | None:
     return tempo if tempo.isdigit() else None
 
 
-# Asked of the Lyria model. The create pass is clamped to 3:00 (the app forces
-# any longer request back to 180s), so this is the seed length and Extend is what
-# carries a song into the 3.5-5 min brief.
-CREATE_LENGTH = "3:00"
+# Asked of the Lyria model. Every take recorded so far came back at 160-181s
+# even with this set to "3:00", and the app folds the value into the lyrics as
+# `[End - m:ss]`, so the Length field is a *seed* the model aims at rather than a
+# hard cap. The previous note assumed a 3:00 clamp and leaned on Extend; Extend
+# has never once produced a clip (16 creates, 0 extends), so the pack's whole
+# 3.5-minute floor currently rests on a rail that does not work. Ask for the
+# floor outright and keep Extend only as the fallback. Override with
+# FLOW_CREATE_LENGTH to experiment without an edit.
+CREATE_LENGTH = os.environ.get("FLOW_CREATE_LENGTH", "4:30")
 # 3.5 min, the same floor report.py enforces, so a take that passes
 # here cannot fail the brief later.
 MIN_SECONDS = 210.0
-# Create is clamped to 3:00 and one Extend adds about 60s (the panel showed a
-# fixed 2:28-3:28 range), so a single extend lands near 3:28 - still under the
-# floor. Two or three reaches the 3.5-4.5 min the pack wants.
+# Create used to be assumed clamped to 3:00 with Extend adding ~60s a step, but
+# no extend clip has ever appeared, so the fallback rarely helps. It stays as a
+# best-effort second chance when a create still lands under the floor.
 MAX_EXTENDS = 3
 
 

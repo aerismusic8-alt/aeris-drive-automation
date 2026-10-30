@@ -256,6 +256,14 @@ def main() -> int:
         else:
             pending.append(slug)
 
+    # A generation window is scarce (six songs landed in 26 minutes on
+    # 2026-10-29, then nothing for a day), so spend it on the songs that add
+    # something. A song with no take at all grows the pack by one; a song with an
+    # under-length take already has audio to cut Shorts and karaoke from, so its
+    # rebuild is worth less and goes last. Without this, song 01's rebuild sits
+    # first in the queue and every window before it clears is spent on a song the
+    # pack already has.
+    pending.sort(key=lambda s: (SONGS / f"song-{s}.mp3").exists())
     queue = list(pending)
     qlock = threading.Lock()
 
