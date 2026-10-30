@@ -53,6 +53,15 @@ STYLE = {
                "singing in Thai",
     "fun": "Thai mor-lam pop, upbeat, khaen and drums, cheerful lead vocal "
            "singing in Thai",
+    # calm/epic/mystic are used by the pack, so they need their own sound. Without
+    # an entry each fell back to "sad" and eight of the twenty songs would have
+    # come out as the same ballad regardless of the mood in their header.
+    "calm": "Thai acoustic folk, gentle fingerpicked guitar, soft khaen, "
+            "slow and unhurried, tender lead vocal singing in Thai",
+    "epic": "Thai cinematic pop, big drums and strings, soaring build, powerful "
+            "lead vocal singing in Thai",
+    "mystic": "Thai dream-pop, reverb-drenched guitar, sparse piano, atmospheric "
+              "and nocturnal, airy lead vocal singing in Thai",
 }
 
 
@@ -82,6 +91,18 @@ def style_for(meta: dict) -> str:
     base = STYLE.get(mood, STYLE["sad"])
     key = meta.get("key")
     return f"{base}. Key of {key}." if key else base
+
+
+def _moods_in_use() -> set[str]:
+    """Every MOOD value the lyric files declare."""
+    moods = set()
+    for f in sorted(LYRICS_DIR.glob("*.txt")):
+        for line in f.read_text(encoding="utf-8").splitlines():
+            m = re.match(r"#\s*MOOD\s*:\s*(\S+)", line)
+            if m:
+                moods.add(m.group(1).lower())
+                break
+    return moods
 
 
 def meta_bpm(meta: dict) -> str | None:
@@ -528,7 +549,23 @@ def main() -> int:
     ap.add_argument("--list", action="store_true")
     ap.add_argument("--keep-tabs", action="store_true",
                     help="do not sweep other tabs; set when workers run in parallel")
+    ap.add_argument("--check", action="store_true",
+                    help="verify every lyric MOOD has a style, then exit")
     args = ap.parse_args()
+    if args.check:
+        used, missing = _moods_in_use(), set()
+        for mood in sorted(used):
+            if mood not in STYLE:
+                missing.add(mood)
+        for mood in sorted(used):
+            mark = "ok " if mood in STYLE else "MISSING"
+            print(f"  {mark:8} {mood}")
+        if missing:
+            print(f"\n{len(missing)} mood(s) would fall back to 'sad': "
+                  f"{', '.join(sorted(missing))}", file=sys.stderr)
+            return 1
+        print(f"\nall {len(used)} moods have their own style")
+        return 0
     if args.list:
         for f in sorted(LYRICS_DIR.glob("*.txt")):
             print(f.stem)
