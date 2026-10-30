@@ -451,7 +451,12 @@ def generate(slug: str, *, timeout: float = 480.0, force: bool = False,
     out = OUT_DIR / f"song-{slug}.mp3"
     kar = OUT_DIR / f"karaoke-{slug}.mp3"
     if out.exists() and kar.exists() and not force:
-        return {"status": "EXISTS", "file": str(out), "karaoke": str(kar)}
+        # Existence is not enough: a take from before the floor was enforced can
+        # be under 3.5 min and still sit on disk. Rebuild those.
+        if _seconds(out) >= MIN_SECONDS:
+            return {"status": "EXISTS", "file": str(out), "karaoke": str(kar)}
+        print(f"[warn] {slug}: existing take is {_seconds(out):.1f}s, rebuilding",
+              file=sys.stderr)
 
     song = parse_lyric(lyric_path)
     if len(song["lyrics"]) > 3000:
