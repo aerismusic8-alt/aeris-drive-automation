@@ -113,6 +113,107 @@ def _wrap(draw: ImageDraw.ImageDraw, text: str, font, max_w: int) -> list[str]:
     return out
 
 
+def make_thumbnail(slug: str, title: str, mood: str, *, kind: str = "song",
+                   size: tuple[int, int] = (1280, 720)) -> Path:
+    """A 16:9 thumbnail for a video.
+
+    YouTube renders thumbnails at 16:9, so the square cover gets pillarboxed and
+    loses the sides of the frame. This lays the title out for that frame, adds
+    the artist mark, and badges a karaoke cut so the two videos are told apart at
+    a glance in the grid.
+    """
+    mood = mood if mood in PALETTES else "calm"
+    rng = random.Random(int.from_bytes(slug.encode("utf-8")[:8].ljust(8, b"\0"), "big"))
+    (h1, s1, v1), (h2, s2, v2) = PALETTES[mood]
+
+    img = _gradient(size, _hsv_rgb(h1, s1, v1), _hsv_rgb(h2, s2, v2)).convert("RGBA")
+    _blobs(img, rng, h1)
+
+    w, h = size
+    ring = Image.new("RGBA", size, (0, 0, 0, 0))
+    rd = ImageDraw.Draw(ring)
+    cx, cy = w * rng.uniform(0.60, 0.80), h * 0.42
+    for i, rr in enumerate((0.62, 0.50, 0.38)):
+        r = h * rr
+        rd.ellipse([cx - r, cy - r, cx + r, cy + r],
+                   outline=(255, 255, 255, 30 - i * 7), width=max(2, int(h * 0.006)))
+    img.alpha_composite(ring.filter(ImageFilter.GaussianBlur(1.5)))
+    _vignette(img, 0.52)
+
+    draw = ImageDraw.Draw(img)
+    title_font = _font(THAI_FONT_BOLD, int(h * 0.135))
+    sub_font = _font(THAI_FONT, int(h * 0.058))
+    mark_font = _font(LATIN_FONT, int(h * 0.048))
+    badge_font = _font(THAI_FONT_BOLD, int(h * 0.050))
+
+    # Artist mark, top-left, inside the safe area.
+    draw.text((w * 0.055, h * 0.075), "AERIS MUSIC", font=mark_font,
+              fill=(255, 255, 255, 190))
+
+    lines = _wrap(draw, title, title_font, int(w * 0.86))
+    lh = int(h * 0.165)
+    y = int(h * 0.40)
+    for ln in lines[:3]:
+        tw = draw.textlength(ln, font=title_font)
+        x = (w - tw) / 2
+        draw.text((x + 3, y + 3), ln, font=title_font, fill=(0, 0, 0, 160))
+        draw.text((x, y), ln, font=title_font, fill=(255, 255, 255, 255))
+        y += lh
+
+    if kind == "karaoke":
+        label = "คาราโอเกะ"
+        tw = draw.textlength(label, font=badge_font)
+        pad = h * 0.030
+        bx, by = w - tw - pad * 3, h * 0.065
+        draw.rounded_rectangle([bx, by, bx + tw + pad * 2, by + h * 0.105],
+                               radius=int(h * 0.030), fill=(255, 255, 255, 220))
+        draw.text((bx + pad, by + pad * 0.45), label, font=badge_font,
+                  fill=(20, 20, 30, 255))
+
+    draw.line([(w * 0.30, h * 0.855), (w * 0.70, h * 0.855)],
+              fill=(255, 255, 255, 95), width=2)
+    out = LIBRARY / "thumbs" / f"thumb-{kind}-{slug}.png"
+    out.parent.mkdir(parents=True, exist_ok=True)
+    img.convert("RGB").save(out, "PNG", optimize=True)
+    return out
+
+
+def main() -> int:
+    """Build a cover and both thumbnails for every lyric file."""
+    import argparse
+    import re as _re
+    ap = argparse.ArgumentParser(description=__doc__)
+    ap.add_argument("--only", default="", help="comma-separated slugs")
+    args = ap.parse_args()
+    only = {s.strip() for s in args.only.split(",") if s.strip()}
+
+    lyrics = Path(__file__).resolve().parent.parent / "lyrics"
+    made = 0
+    for f in sorted(lyrics.glob("*.txt")):
+        slug = f.stem
+        if only and slug not in only:
+            continue
+        hdr = {}
+        for line in f.read_text(encoding="utf-8").splitlines():
+            m = _re.match(r"#\s*(TITLE|SUBTITLE|MOOD)\s*:\s*(.+)", line)
+            if m:
+                hdr[m.group(1)] = m.group(2).strip()
+                continue
+            if line.strip() and not line.startswith("#"):
+                break
+        title, mood = hdr.get("TITLE", slug), hdr.get("MOOD", "calm")
+        png = make_cover(slug, title, hdr.get("SUBTITLE", ""), mood)
+        Image.open(png).convert("RGB").save(png.with_suffix(".jpg"),
+                                            "JPEG", quality=92, optimize=True)
+        png.unlink()
+        make_thumbnail(slug, title, mood, kind="song")
+        make_thumbnail(slug, title, mood, kind="karaoke")
+        made += 1
+        print(f"  {slug}: {title}")
+    print(f"built covers + thumbnails for {made} song(s)")
+    return 0
+
+
 def make_cover(slug: str, title: str, subtitle: str, mood: str,
                size: tuple[int, int] = (1280, 1280)) -> Path:
     mood = mood if mood in PALETTES else "calm"
@@ -166,3 +267,7 @@ def make_cover(slug: str, title: str, subtitle: str, mood: str,
     out.parent.mkdir(parents=True, exist_ok=True)
     img.convert("RGB").save(out, "PNG", optimize=True)
     return out
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

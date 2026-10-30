@@ -254,7 +254,11 @@ def main() -> int:
     tags_file = ROOT / "work" / f"release-{slug}-{kind}.tags"
     desc_file.write_text(desc, encoding="utf-8")
     tags_file.write_text(",".join(tags), encoding="utf-8")
-    thumb = COVERS / f"cover-{slug}.jpg"
+    # A 16:9 thumbnail, not the square cover: YouTube renders at 16:9 and would
+    # pillarbox the cover.
+    thumb = ROOT / "library" / "thumbs" / f"thumb-{kind}-{slug}.png"
+    if not thumb.exists():
+        thumb = COVERS / f"cover-{slug}.jpg"
 
     cmd = [sys.executable, str(OPS / "yt_publish.py"), "--ch", args.ch,
            "--video", str(video), "--title", title,
