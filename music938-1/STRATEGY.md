@@ -85,6 +85,21 @@ python3 scripts/compile_album.py --name "รวมเพลงไทยเพื
 - **Karaoke subtitles are estimated**, not from real lyric timing. Flow Music
   does expose `lyrics_timing` on a clip; wiring it in would make the karaoke
   word-accurate. That is the next quality upgrade.
-- **Song 01 is 2:59**, under the 3.5-minute floor. The Extend step did not
-  rescue it. The floor is enforced on new takes; 01 predates it and should be
-  regenerated when a window is open.
+
+## Why only song 01 existed, and what was actually wrong
+
+Three separate faults stacked up, and only the last was visible:
+
+1. **Lyrics were too short.** Song 01 has the full form (verse 8 / chorus 8 /
+   verse 4 / chorus 8 / bridge 3 / chorus 8 = 39 lines). Songs 02-20 were written
+   at half that (22 lines). `expand_lyrics.py` gives all 20 the full form.
+2. **One Extend is not enough.** Create is clamped to 3:00 and the Extend panel
+   adds a fixed ~60s step (it showed a `2:28-3:28` range), so a single extend
+   lands near 3:28 — under the 3.5-minute floor. The generator now extends in a
+   loop until the take clears the floor.
+3. **A short take was trusted forever.** `built()` only checked that the two mp3s
+   existed, so song 01 (178.7s) was skipped on every run and could never be
+   rebuilt. It now also requires the floor.
+
+Song 01 is being regenerated. Its 178.7s take was the model's create ceiling plus
+one extend, not a finished song.
