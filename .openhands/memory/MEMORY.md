@@ -57,6 +57,30 @@ true-instrumental karaoke mix, cover art and a 1920x1080 word-synced video.
   → both now require 210s.
 - Full detail: `2026-10-29.md`, `2026-10-30.md`.
 
+### Competitor scan — what actually wins these search terms (2026-10-30)
+
+`music938-1/scripts/competitor_scan.py` scanned 8 Thai queries → **43 channels /
+1,546 videos for 885 API units** (`work/competitors.json`; queries in
+`competitor-queries.txt`). Write-up: `music938-1/COMPETITOR-ANALYSIS.md`. Five
+findings, all now implemented and pinned by tests:
+
+1. **Compilations are the watch-hour lever**: median 3,578 views vs 1,410 for a
+   song, and **1 h watched per view vs 0.05 h**. `compile_album.py` builds the
+   `<theme> <n> เพลง (เลือกเพลงฟังได้)` title + a chapter list, and refuses under
+   `MIN_TRACKS = 12` (a `N เพลง` title over 1 song is a lie).
+2. **`เลือกเพลงฟังได้` is the strongest signal**: 37 winner titles (≥100k) carry
+   it, **0** loser titles (<1k) do. It is only honest with chapter timestamps.
+3. **Winning titles are short, losers are long**: ≥100k → 47.9 chars, `|` in 8%;
+   <1k → 60.7 chars, `|` in 38.9%. Every `| AERIS Music` suffix removed.
+4. **Our art was measurably flat**: luminance std 13.4-23.9 vs **21.7-80.1** for
+   the top-12 competitor thumbnails. Brightening the palette does *not* fix this —
+   a flat frame just gets lighter. Needs `_highlight()` + deeper `_vignette()` +
+   `_text_band()`; all art now 41-58.
+5. Active channels ship **~3.89 uploads/week**; ours 1.01/wk, gated by catalogue.
+
+Method: thumbnail URL is `i.ytimg.com/vi/<id>/hqdefault.jpg` (480x360 — enough for
+a luminance-std comparison). `search.list` is 100 units, `videos.list` 1 per 50.
+
 ### The clips render text now — two silent failures, both fixed
 
 K: "ตัวหนังสือในคลิปอ่านไม่ออก ภาษาอะไร ภาพพืนหลังไม่มี". Both were real, and both
