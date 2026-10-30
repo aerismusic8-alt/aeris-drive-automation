@@ -1,10 +1,5 @@
 # MEMORY — index
 
-> Index only, and it must stay small enough that the harness injects **all** of it.
-> The cap is ~6,000 characters. Detail goes to the daily logs, not here.
-> The full pre-rewrite file is preserved in `MEMORY-ARCHIVE.md` (search it before
-> re-deriving anything).
-
 ## Roles and method (K, 2026-10-30)
 
 - **K = ผู้บริหารสูงสุด (Final Authority).** Every standing rule below is K's.
@@ -39,20 +34,36 @@ true-instrumental karaoke mix, cover art and a 1920x1080 word-synced video.
 - **Voice source is Flow Music (free, login-only)**, driven through the
   signed-in Chromium. A TTS melody is **not** singing; the Piper attempt failed.
 - **The 429 is account-wide and time-windowed, not parallelism.** A solo attempt
-  still 429s in the dead zone; the account's newest clip was created 18:53 UTC,
-  inside the predicted window. Run `--workers 1` — a second create in flight only
-  gets 429'd. Windows: UTC hours 23,0,1,2,6,18; dead zone 07-17.
-- **Create caps at ~3:00; one Extend adds a fixed ~60s** (panel range `2:28-3:28`),
-  so a take needs 2-3 extends to clear the 3.5-min floor. The generator loops.
+  still 429s in the dead zone. Run `--workers 1` — a second create in flight only
+  gets 429'd. Windows: UTC hours 23,0,1,2,6,18; dead zone 07-17. Verified 2026-10-30:
+  every probe 14Z and 15Z 429'd. **Queue a song with no take before a rebuild**
+  (`build_songs.pending.sort`), or a rare window just re-cuts a song already held.
+- **Extend has never produced a single clip.** Read the account's own history:
+  `GET /__api/clips/auth-user` (Supabase bearer captured off any `/__api/` request)
+  shows 16 `audio__create_song` clips at 160-181s and **0 extends, ever**, so the
+  3.5-min floor never rested on anything real. A live Extend Generate returned the
+  same 429 as create — Extend is throttled too, not broken. `CREATE_LENGTH` now
+  asks `4:30` (env `FLOW_CREATE_LENGTH`); whether the Length seed can exceed 3:00
+  is still unverified. Extend stays a best-effort fallback.
 - Karaoke = sum the non-vocal stems, not centre-cancel. `lyrics_timing` is
   `not_requested` on a fresh clip, so the sweep is estimated by design.
 - Run `scripts/watch.sh` for progress, `scripts/resume.sh` after a pod recycle.
 - **Why only 1 of 20 songs existed** — three stacked faults, now fixed and
   guarded: (1) lyrics 02-20 were half-length (22 vs 39 lines) so they could never
-  fill 180s → `expand_lyrics.py`; (2) one Extend left takes under the floor →
-  extend loop in `flow_song.py`; (3) `built()`/`generate()` trusted any existing
-  mp3, so the short song 01 was skipped forever → both now require 210s.
-- Full detail: `2026-10-29.md`.
+  fill 180s → `expand_lyrics.py` (all 20 now carry 39-40 sung lines, re-checked);
+  (2) one Extend left takes under the floor → extend loop in `flow_song.py`, but
+  no extend has ever succeeded, so this is still the open fault; (3) `built()`/
+  `generate()` trusted any existing mp3, so the short song 01 was skipped forever
+  → both now require 210s.
+- Full detail: `2026-10-29.md`, `2026-10-30.md`.
+
+**HOLD LIFTED 2026-10-30** — K: "อนุมัติ ดำเนินการแทน K", AR acts on K's behalf.
+Song 01's three hook Shorts are **public** on @aerismusicth (`ANwgi7J_ras`,
+`JId5J48t4a4`, `CXRH7sW6Gcw`, playlist `PLKlARHtRpKkI`). `release.py --next`
+uploads **private by default** (needs `--public`) and records `public: false` even
+after a later `videos.update` makes it public — correct the ledger by hand.
+`work/release-state.json` is tracked now: it is the only record of what is already
+up, and a clone that loses it re-uploads duplicates. Automations are at 0.
 
 ## Environment facts that keep costing time
 
