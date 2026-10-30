@@ -308,8 +308,13 @@ def main() -> int:
     desc_file.write_text(desc, encoding="utf-8")
     tags_file.write_text(",".join(tags), encoding="utf-8")
     # A 16:9 thumbnail, not the square cover: YouTube renders at 16:9 and would
-    # pillarbox the cover.
+    # pillarbox the cover. A Short's own frame is 9:16 and is used as-is, since
+    # Shorts thumbnails are vertical.
     thumb = ROOT / "library" / "thumbs" / f"thumb-{kind}-{slug}.png"
+    if item.get("variant"):
+        vt = ROOT / "library" / "thumbs" / f"thumb-{item['variant']}.png"
+        if vt.exists():
+            thumb = vt
     if not thumb.exists():
         thumb = COVERS / f"cover-{slug}.jpg"
 

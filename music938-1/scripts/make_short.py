@@ -238,7 +238,25 @@ def render(slug: str, *, mix: str = "song", out_dir: Path | None = None,
                 "-movflags", "+faststart", str(out)]
         subprocess.run(["ffmpeg", "-y", "-loglevel", "error", *args], check=True)
         written.append(out)
+        thumb_for(out, cover)
     return written
+
+
+def thumb_for(short: Path, cover: Path):
+    """Save a Short's thumbnail next to the other thumbs, in 9:16.
+
+    release.py looks for `thumb-short-<slug>.png` and, finding nothing, falls
+    back to the square cover - which YouTube then pillarboxes, so the one image
+    a scroller sees is a small box with black bars either side. The Short's own
+    first seconds already are the thumbnail: blurred art, the cover and a Thai
+    caption, composed for exactly this frame.
+    """
+    dest = ROOT / "library" / "thumbs" / f"thumb-{short.stem}.png"
+    dest.parent.mkdir(parents=True, exist_ok=True)
+    subprocess.run(
+        ["ffmpeg", "-y", "-loglevel", "error", "-ss", "1.5", "-i", str(short),
+         "-frames:v", "1", str(dest)], check=True)
+    return dest
 
 
 def main() -> int:
