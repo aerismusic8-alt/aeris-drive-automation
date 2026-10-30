@@ -120,9 +120,10 @@ YCbCr Matrix: TV.709
 
 [V4+ Styles]
 Format: Name, Fontname, Fontsize, PrimaryColour, SecondaryColour, OutlineColour, BackColour, Bold, Italic, Underline, StrikeOut, ScaleX, ScaleY, Spacing, Angle, BorderStyle, Outline, Shadow, Alignment, MarginL, MarginR, MarginV, Encoding
-Style: Hook,{FONT},96,{PRIMARY},{SECONDARY},{OUTLINE},&H80000000,1,0,0,0,100,100,0.5,0,1,6,3,2,60,60,760,1
-Style: Cap,{FONT},30,&H00FFFFFF,&H00FFFFFF,{OUTLINE},&H80000000,0,0,0,0,100,100,1,0,1,4,2,8,60,60,60,1
-Style: Brand,{FONT},40,&H00DDFFFF,&H00DDFFFF,{OUTLINE},&H80000000,1,0,0,0,100,100,1,0,1,4,2,8,60,60,170,1
+Style: Hook,{FONT},88,{PRIMARY},{SECONDARY},{OUTLINE},&H80000000,1,0,0,0,100,100,0.5,0,1,6,3,2,70,70,430,1
+Style: Cap,{FONT},38,&H00FFFFFF,&H00FFFFFF,{OUTLINE},&H80000000,1,0,0,0,100,100,1,0,1,4,2,8,70,70,310,1
+Style: Brand,{FONT},40,&H00DDFFFF,&H00DDFFFF,{OUTLINE},&H80000000,1,0,0,0,100,100,1,0,1,4,2,7,44,44,40,1
+Style: Title,{FONT},64,&H00FFFFFF,&H00FFFFFF,{OUTLINE},&H80000000,1,0,0,0,100,100,1,0,1,5,2,7,44,44,34,1
 
 [Events]
 Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
@@ -131,10 +132,10 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
     full = estimate(lines, duration)
     events: list[str] = []
 
-    # Hook title for the first beat, then it gets out of the way.
+    # The song title for the first beat, then it gets out of the way.
     title = _escape(meta.get("title", ""))
     if title:
-        events.append(f"Dialogue: 0,{_ts(0.15)},{_ts(2.2)},Brand,,0,0,0,,"
+        events.append(f"Dialogue: 0,{_ts(0.15)},{_ts(2.6)},Title,,0,0,0,,"
                       f"{{\\fad(250,300)}}{title}")
 
     for item in full:
@@ -154,8 +155,8 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
         events.append(f"Dialogue: 0,{_ts(s)},{_ts(e + 0.2)},Hook,,0,0,0,,"
                       f"{{\\fad(90,120)}}{''.join(parts)}")
 
-    # A small always-on credit so a re-upload is traceable to the channel.
-    events.append(f"Dialogue: 0,{_ts(0.15)},{_ts(length - 0.2)},Cap,,0,0,0,,"
+    # A small always-on watermark so a re-upload is traceable to the channel.
+    events.append(f"Dialogue: 0,{_ts(0.15)},{_ts(length - 0.2)},Brand,,0,0,0,,"
                   f"AERIS Music")
     return head + "\n".join(events) + "\n"
 
@@ -192,12 +193,32 @@ def render(slug: str, *, mix: str = "song", out_dir: Path | None = None,
     # an -h1/-h2 suffix so they are distinct files.
     multi = all_hooks and len(windows) > 1
 
-    # Slow zoom on the cover, cropped to vertical. The cover is square, so a
-    # centre crop to 9:16 is the honest fit; the zoom keeps it from looking dead.
-    zoom = ("scale=1440:2560:force_original_aspect_ratio=increase,"
-            "crop=%d:%d,zoompan=z='min(zoom+0.0006,1.22)':d=1:"
-            "x='iw/2-(iw/zoom/2)':y='ih/2-(ih/zoom/2)':s=%dx%d:fps=%d"
-            % (W, H, W, H, FPS))
+    # The cover is square, so a hard centre crop to 9:16 would slice the title
+    # text off the sides. Instead: a blurred, zoomed copy of the cover fills the
+    # vertical frame, the whole cover sits centred on top, and the pair zooms
+    # slowly so the frame is not dead. This is the usual Shorts treatment and it
+    # keeps the art intact on a phone. The ass filter is per-hook, so the chain is
+    # assembled inside the loop.
+    def chain(ass: Path) -> str:
+        # The cover is square, so a hard centre crop to 9:16 would slice its title
+        # text off the sides and drop the captions on top of it. Instead: a
+        # blurred, dimmed copy fills the frame, the whole cover sits in the upper
+        # half, and a scrim below it gives the captions a clean band. The whole
+        # composite zooms slowly so the frame is not dead.
+        cw = int(W * 0.86)
+        cy = int(H * 0.055)
+        scrim = int(H * 0.52)
+        return (
+            f"[0:v]scale={W}:{H}:force_original_aspect_ratio=increase,crop={W}:{H},"
+            f"gblur=sigma=32,eq=brightness=-0.22:saturation=0.8[bg];"
+            f"[0:v]scale={cw}:-1[fg];"
+            f"[bg][fg]overlay=(W-w)/2:{cy}[base];"
+            f"[base]drawbox=x=0:y={scrim}:w={W}:h={H - scrim}:"
+            f"color=black@0.45:t=fill[scrimd];"
+            f"[scrimd]zoompan=z='min(zoom+0.0005,1.12)':d=1:"
+            f"x='iw/2-(iw/zoom/2)':y='ih/2-(ih/zoom/2)':s={W}x{H}:fps={FPS}[zp];"
+            f"[zp]ass={_ass_escape(ass)}[v]"
+        )
 
     written: list[Path] = []
     for i, (start, length) in enumerate(windows, 1):
@@ -208,7 +229,7 @@ def render(slug: str, *, mix: str = "song", out_dir: Path | None = None,
         out = out_dir / f"short-{mix}{suffix}-{slug}.mp4"
         args = ["-loop", "1", "-i", str(cover),
                 "-ss", f"{start:.3f}", "-i", str(audio),
-                "-filter_complex", f"[0:v]{zoom},ass={_ass_escape(ass_path)}[v]",
+                "-filter_complex", chain(ass_path),
                 "-map", "[v]", "-map", "1:a",
                 "-t", f"{length:.3f}",
                 "-c:v", "libx264", "-preset", "veryfast", "-crf", "20",
