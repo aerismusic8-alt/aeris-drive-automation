@@ -111,6 +111,29 @@ def save_state(state: dict) -> None:
     STATE.write_text(json.dumps(state, ensure_ascii=False, indent=1), encoding="utf-8")
 
 
+# The Data API quota resets at midnight Pacific, not midnight UTC. A day that
+# starts at UTC midnight would overcount by 7 hours and refuse a legal upload.
+QUOTA_TZ_OFFSET_HOURS = -7
+
+
+def _quota_day(ts: datetime) -> str:
+    return (ts.astimezone(timezone.utc)
+            + timedelta(hours=QUOTA_TZ_OFFSET_HOURS)).strftime("%Y-%m-%d")
+
+
+def uploads_today(state: dict) -> int:
+    """Uploads already spent in the current Pacific quota day."""
+    day = _quota_day(datetime.now(timezone.utc))
+    used = 0
+    for r in state.get("released", []):
+        try:
+            if _quota_day(datetime.fromisoformat(r["at"])) == day:
+                used += 1
+        except (KeyError, ValueError):
+            continue
+    return used
+
+
 def describe(slug: str, kind: str, variant: str = "") -> tuple[str, str, list[str]]:
     """Return (title, description, tags) for one release.
 
@@ -296,6 +319,14 @@ def main() -> int:
 
     item = todo[0]
     slug, kind = item["slug"], item["kind"]
+    state = load_state()
+    used = uploads_today(state)
+    if used >= UPLOADS_PER_DAY:
+        print(f"today's quota is spent: {used}/{UPLOADS_PER_DAY} uploads already "
+              f"made this Pacific day. A videos.insert costs 1,600 of the 10,000 "
+              f"daily units, so the next one would 403. Try after 07:00 UTC.",
+              file=sys.stderr)
+        return 3
     title, desc, tags = describe(slug, kind, item.get("variant", ""))
     video = item["video"]
     if not video or not video.exists():
