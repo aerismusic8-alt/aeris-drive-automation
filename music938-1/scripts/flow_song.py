@@ -385,7 +385,8 @@ def _extend(page, clip_id: str, clips: dict, since: str, exclude: set,
     return _wait_new_clip(page, clips, since, exclude, timeout, flags=flags)
 
 
-def generate(slug: str, *, timeout: float = 480.0, force: bool = False) -> dict:
+def generate(slug: str, *, timeout: float = 480.0, force: bool = False,
+             keep_tabs: bool = False) -> dict:
     lyric_path = LYRICS_DIR / f"{slug}.txt"
     if not lyric_path.exists():
         raise SystemExit(f"no lyric file: {lyric_path}")
@@ -409,7 +410,10 @@ def generate(slug: str, *, timeout: float = 480.0, force: bool = False) -> dict:
 
     with sync_playwright() as p:
         br, ctx = B.connect(p)
-        _sweep_tabs(ctx)
+        if not keep_tabs:
+            # Only safe when this is the sole worker: sweeping would close a
+            # sibling worker's tab mid-generation.
+            _sweep_tabs(ctx)
         page = ctx.new_page()
         try:
             _attach_clips(page, clips, flags)
@@ -522,6 +526,8 @@ def main() -> int:
     ap.add_argument("slug", nargs="?")
     ap.add_argument("--force", action="store_true")
     ap.add_argument("--list", action="store_true")
+    ap.add_argument("--keep-tabs", action="store_true",
+                    help="do not sweep other tabs; set when workers run in parallel")
     args = ap.parse_args()
     if args.list:
         for f in sorted(LYRICS_DIR.glob("*.txt")):
@@ -530,7 +536,7 @@ def main() -> int:
     if not args.slug:
         ap.error("need a slug (or --list)")
     try:
-        r = generate(args.slug, force=args.force)
+        r = generate(args.slug, force=args.force, keep_tabs=args.keep_tabs)
     except B.LoginRequired as exc:
         print(str(exc), file=sys.stderr)
         return 3
