@@ -2,6 +2,16 @@
 
 Repository-specific notes for agents working in this repo.
 
+## Account playbook (read first)
+
+`.agents/skills/ax-account/` is the consolidated playbook for the whole account
+(this repo plus `ai-content-lab`, `autonomous-zero-baht`, `autonomous-zero-baht-1`).
+It holds the identity/authority model, Rule #1 (free only), the project map, the
+shared conventions, and the environment/delivery reality. Load it when a task
+mentions AKATH, AX, K, PC1, Roblox, a Thai story video, music938, karaoke, a Drive
+upload, or "free only". Install it for every conversation with
+`.agents/skills/ax-account/scripts/install-agent-skills.sh`.
+
 ## Layout
 
 | Path | Purpose |
