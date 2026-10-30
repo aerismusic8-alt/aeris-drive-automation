@@ -63,3 +63,25 @@ true-instrumental karaoke mix, cover art and a 1920x1080 word-synced video.
 - Durable knowledge vault: `$AX_VAULT_BOOTSTRAP` -> `ops/ax_vault.py`, read KV key
   `axvault:readme` first.
 - Full detail for anything above: `MEMORY-ARCHIVE.md` and the daily logs.
+
+## ch3 AERIS Music — the revenue goal (K, 2026-10-30)
+
+**K's directive:** make `@aerismusicth` a record-label channel with a real following,
+publishing only high-quality work, and **first pass YouTube's monetization threshold**.
+`aerismusic8@gmail.com` may be used for any tool AR needs.
+
+- **Measured 2026-10-30:** channel `UCm44BjAn03ruOF-WaA3ZRww`, title `AERIS Music`,
+  **0 subs, 8 videos, 442 views, 11m19s total runtime**, defaultLanguage th / country TH.
+  Existing work is Shorts-shaped (7 of 8 under a minute) around one artist `NAVIYA`.
+- **The ch3 token carries scope `.../auth/youtube` (full) — upload works.** Verified.
+- **Monetization bar (Google, read 2026-10-30): 1,000 subscribers AND 4,000 qualified
+  watch hours in 12 months**, or 1,000 subs AND 10M qualified Shorts views in 90 days.
+  At 11m19s of catalogue and 442 lifetime views the gap is ~everything. The only free
+  path is volume of real, watchable long-form; a Shorts-only strategy needs 10M views.
+- **The rail is `ops/`** (`yt_auth.py whoami|videos`, `yt_publish.py`, `yt_branding.py`,
+  `ax_channels.json` = the channel registry, `AX_CHANNELS.md` + `AX_CHANNEL_DOSSIERS.md`).
+  It was **missing from this clone** and lived only in a sibling checkout plus the vault;
+  restored and committed here (4a6457c). If it vanishes again: vault key `axvault:readme`,
+  `ops/ax_vault.py`.
+- **K's standing rules still bind:** upload only when K says so; K reviews each channel's
+  first work; never rename a channel without K's explicit approval.
