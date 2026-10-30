@@ -94,3 +94,26 @@ publishing only high-quality work, and **first pass YouTube's monetization thres
   `ops/ax_vault.py`.
 - **K's rules still bind:** K reviews a channel's first work; never rename a channel
   without K's approval.
+
+## music938-1 — why the pack had 1 song of 20 (root causes, 2026-10-30)
+Three faults stacked; each alone blocks the pack. All are fixed and guarded.
+1. **Lyrics too short.** Song 01 = 39 sung lines; 02-20 were 22. Create is clamped
+   near 180s, so a 22-line lyric can never fill the 3.5-min brief. `expand_lyrics.py`
+   took all 20 to 39-40 lines; `flow_song.py --check` fails under 30 lines.
+2. **One Extend is not enough.** Create caps at 3:00; the Extend panel adds a fixed
+   ~60s (range read `2:28-3:28`), landing ~3:28 — still under 210s. `flow_song.py`
+   now extends in a loop, splicing a returned tail or adopting a longer re-render,
+   until the take clears the floor.
+3. **A short take was trusted forever.** `built()`/`generate()` checked only that the
+   mp3s existed, so song 01 (178.7s) was skipped on every run. Both now require
+   `MIN_SECONDS` (210) and rebuild otherwise.
+- **The Flow Music 429 is account-wide and time-windowed, not parallelism.** A single
+  solo attempt 429s in the dead zone; the account's own newest clip was created
+  18:53 UTC, inside the predicted window. Default `--workers 1`: a second create in
+  flight only gets 429'd.
+- **Thumbnails must be 16:9.** The 1280x1280 covers get pillarboxed; `covers.py`
+  now also emits 1280x720 `library/thumbs/thumb-{kind}-{slug}.png`, which
+  `release.py` prefers.
+- **`lyrics_timing` is `not_requested`** on a fresh clip and needs a throttled
+  producer call, so karaoke timing is estimated. The clip's own lyrics are saved to
+  `clipmeta-<slug>.json` for a later word-accurate pass.
