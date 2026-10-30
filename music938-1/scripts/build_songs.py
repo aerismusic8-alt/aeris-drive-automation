@@ -199,8 +199,10 @@ def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument("--only", default="", help="comma list of 2-digit numbers, e.g. 01,05")
     ap.add_argument("--force", action="store_true")
-    ap.add_argument("--workers", type=int, default=2,
-                    help="songs generated concurrently (default 2)")
+    ap.add_argument("--workers", type=int, default=1,
+                    help="songs generated concurrently (default 1: the throttle "
+                         "is per account, so a second create in flight just gets "
+                         "429'd and wastes the window)")
     ap.add_argument("--gap", type=int, default=0,
                     help="seconds to rest between songs per worker (default 0)")
     args = ap.parse_args()

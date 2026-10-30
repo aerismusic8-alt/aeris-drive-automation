@@ -38,7 +38,7 @@ if pgrep -f "build_songs.py" >/dev/null 2>&1; then
   echo "  already running"
 else
   cd "$REPO"
-  nohup python3 "$ROOT/scripts/build_songs.py" --workers 2 > /tmp/batch.log 2>&1 &
+  nohup python3 "$ROOT/scripts/build_songs.py" --workers 1 > /tmp/batch.log 2>&1 &
   sleep 4
   echo "  started pid $(pgrep -f build_songs.py | head -1)"
 fi
