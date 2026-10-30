@@ -34,6 +34,10 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 SONGS = ROOT / "library" / "songs"
 
+# The pack's length floor, the same one flow_song and report.py enforce. A file
+# below this is not a finished song and must be rebuilt, not skipped.
+MIN_SECONDS = 210.0
+
 # The producer throttle is server-side ("Too Many Requests"), not our quota:
 # credits read 6000 tokens / 500 credits while every tool-call 429s. Windows of
 # availability do open (six songs rendered in 26 minutes on 2026-10-29), so the
@@ -94,8 +98,28 @@ def slugs(only: set[str]) -> list[str]:
     return out
 
 
+def _mp3_seconds(path: Path) -> float:
+    try:
+        return float(subprocess.run(
+            ["ffprobe", "-v", "error", "-show_entries", "format=duration",
+             "-of", "default=nw=1:nk=1", str(path)],
+            capture_output=True, text=True, check=True).stdout.strip())
+    except Exception:
+        return 0.0
+
+
 def built(slug: str) -> bool:
-    return (SONGS / f"song-{slug}.mp3").exists() and (SONGS / f"karaoke-{slug}.mp3").exists()
+    """True only when both mixes exist *and* the song clears the 3.5-minute floor.
+
+    Checking existence alone let song 01, a 178.7s take from before the floor was
+    enforced, count as done forever: the batch skipped it and it could never be
+    regenerated. A short file is not a song for this pack, so it is rebuilt.
+    """
+    song = SONGS / f"song-{slug}.mp3"
+    kar = SONGS / f"karaoke-{slug}.mp3"
+    if not (song.exists() and kar.exists()):
+        return False
+    return _mp3_seconds(song) >= MIN_SECONDS
 
 
 def karaoke_video(slug: str) -> bool:
