@@ -8,12 +8,15 @@ Inputs are the ones the Flow Music pipeline actually produces:
 
 The old version of this script read a `timing.json` that the retired Piper
 builder wrote: it knew every note, so the `\\kf` sweep was exact. Flow Music does
-not hand us per-syllable timing by default (`lyrics_timing` comes back
-`not_requested`), so line timing is *estimated* from the song length and each
-line's length, and the highlight sweeps proportionally inside a line. That is the
-honest description of what this renders: a lyric video with a karaoke sweep, not
-a note-accurate one. If a clip ever carries `lyrics_timing.markers`, pass them in
-with `--timing` and the sweep uses the real times instead.
+not hand us per-syllable timing on the compose path. Measured in the app bundle
+(2026-10-30): the only source of real markers is the *Lyria agent* path — a clip
+whose `operation.op_type` is `lyria__generate_song` carries `operation.timing_markers`,
+and `lyrics_timing.value.markers` appears once its status is `completed`. A clip
+made through the compose form (this pipeline) has neither, so line timing is
+*estimated* from the song length and each line's length, and the highlight sweeps
+proportionally inside a line. That is the honest description of what this renders:
+a lyric video with a karaoke sweep, not a note-accurate one. If a clip does carry
+markers, pass them in with `--timing` and the sweep uses the real times instead.
 
 Run:  python3 scripts/make_karaoke.py 01-khon-di-thi-chak-pai [--preview 20]
 """

@@ -41,11 +41,21 @@ SONGS = ROOT / "library" / "songs"
 BACKOFF_STEPS = [120, 180, 240, 300, 420, 600]
 
 _print_lock = threading.Lock()
+LOG_FILE = ROOT / "work" / "batch.log"
 
 
 def log(msg: str) -> None:
     with _print_lock:
-        print(msg, flush=True)
+        line = f"{time.strftime('%H:%M:%SZ', time.gmtime())} {msg}"
+        print(line, flush=True)
+        # Mirror to work/, which is on persistent /workspace: a pod recycle wipes
+        # /tmp, and the progress record is what a fresh session needs to resume.
+        try:
+            LOG_FILE.parent.mkdir(parents=True, exist_ok=True)
+            with LOG_FILE.open("a", encoding="utf-8") as fh:
+                fh.write(line + "\n")
+        except OSError:
+            pass
 
 
 def slugs(only: set[str]) -> list[str]:
