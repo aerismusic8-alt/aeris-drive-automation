@@ -40,6 +40,23 @@ SONGS = ROOT / "library" / "songs"
 # ladder stays short enough to land inside one.
 BACKOFF_STEPS = [120, 180, 240, 300, 420, 600]
 
+# Where the windows actually are. Mined from the account's own clip history
+# (`GET /__api/clips/auth-user`): every successful create_song landed in these
+# UTC hours, and 07:00-17:00 UTC is a dead zone — 0 successes in 4 days of
+# history. Hammering the dead zone just burns the ladder without landing
+# anything, so outside these hours the batch probes rarely instead.
+LIKELY_WINDOW_HOURS = {23, 0, 1, 2, 6, 18}
+DEAD_ZONE_SLEEP = 900   # 15 min between probes when no window is expected
+WINDOW_PROBE_SLEEP = 60  # 1 min between probes inside a likely window
+
+
+def _hour_utc() -> int:
+    return time.gmtime().tm_hour
+
+
+def _in_likely_window() -> bool:
+    return _hour_utc() in LIKELY_WINDOW_HOURS
+
 _print_lock = threading.Lock()
 LOG_FILE = ROOT / "work" / "batch.log"
 
@@ -130,9 +147,17 @@ def build_one(slug: str, force: bool, gap: int, results: dict, lock: threading.L
                 results[slug] = "OK"
             return
         if status == "RATE_LIMITED":
-            wait = BACKOFF_STEPS[min(backoff, len(BACKOFF_STEPS) - 1)]
+            # Inside a likely window, probe often — a window is short and each
+            # probe that lands is a song. In the dead zone, probe rarely: the
+            # 429 is not going to clear, so a tight loop only burns cycles.
+            if _in_likely_window():
+                wait = min(BACKOFF_STEPS[min(backoff, len(BACKOFF_STEPS) - 1)],
+                           WINDOW_PROBE_SLEEP)
+            else:
+                wait = DEAD_ZONE_SLEEP
             backoff += 1
-            log(f"[429] {slug}: throttled, sleeping {wait}s")
+            log(f"[429] {slug}: throttled, sleeping {wait}s "
+                f"({'window' if _in_likely_window() else 'dead-zone'} hour {_hour_utc()}Z)")
             time.sleep(wait)
             continue
         if status == "TOO_SHORT":
