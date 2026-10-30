@@ -36,18 +36,23 @@ already signed into.
 Thai karaoke pack: 20 songs, each with lyrics, a **real sung vocal**, a
 true-instrumental karaoke mix, cover art and a 1920x1080 word-synced video.
 
-- **Voice source is Flow Music (free, login-only), driven by its own API** —
-  `POST /__api/producer/tool-call`. A TTS melody is **not** singing; the earlier
-  Piper attempt failed and must not be revisited.
-- **Create is capped at 180s and the cap is not model-gated** (the bundle clamps
-  with `Math.min(180, …)`). Extend is therefore always required to reach 3.5–5 min.
-- **The throttle is account-wide and intermittent, not a quota.** Windows open
-  (~4.3 min/song on 2026-10-29). The window is the scarce resource, so the batch
-  runs a 2-worker pool: `scripts/build_songs.py --workers 2`.
-- Karaoke = sum the non-vocal stems, not centre-cancel. Timing markers exist only
-  on the Lyria agent path, so the sweep is estimated by design.
+- **Voice source is Flow Music (free, login-only)**, driven through the
+  signed-in Chromium. A TTS melody is **not** singing; the Piper attempt failed.
+- **The 429 is account-wide and time-windowed, not parallelism.** A solo attempt
+  still 429s in the dead zone; the account's newest clip was created 18:53 UTC,
+  inside the predicted window. Run `--workers 1` — a second create in flight only
+  gets 429'd. Windows: UTC hours 23,0,1,2,6,18; dead zone 07-17.
+- **Create caps at ~3:00; one Extend adds a fixed ~60s** (panel range `2:28-3:28`),
+  so a take needs 2-3 extends to clear the 3.5-min floor. The generator loops.
+- Karaoke = sum the non-vocal stems, not centre-cancel. `lyrics_timing` is
+  `not_requested` on a fresh clip, so the sweep is estimated by design.
 - Run `scripts/watch.sh` for progress, `scripts/resume.sh` after a pod recycle.
-- Still blocked on Flow Music's own availability. Full detail: `2026-10-29.md`.
+- **Why only 1 of 20 songs existed** — three stacked faults, now fixed and
+  guarded: (1) lyrics 02-20 were half-length (22 vs 39 lines) so they could never
+  fill 180s → `expand_lyrics.py`; (2) one Extend left takes under the floor →
+  extend loop in `flow_song.py`; (3) `built()`/`generate()` trusted any existing
+  mp3, so the short song 01 was skipped forever → both now require 210s.
+- Full detail: `2026-10-29.md`.
 
 ## Environment facts that keep costing time
 
@@ -94,26 +99,3 @@ publishing only high-quality work, and **first pass YouTube's monetization thres
   `ops/ax_vault.py`.
 - **K's rules still bind:** K reviews a channel's first work; never rename a channel
   without K's approval.
-
-## music938-1 — why the pack had 1 song of 20 (root causes, 2026-10-30)
-Three faults stacked; each alone blocks the pack. All are fixed and guarded.
-1. **Lyrics too short.** Song 01 = 39 sung lines; 02-20 were 22. Create is clamped
-   near 180s, so a 22-line lyric can never fill the 3.5-min brief. `expand_lyrics.py`
-   took all 20 to 39-40 lines; `flow_song.py --check` fails under 30 lines.
-2. **One Extend is not enough.** Create caps at 3:00; the Extend panel adds a fixed
-   ~60s (range read `2:28-3:28`), landing ~3:28 — still under 210s. `flow_song.py`
-   now extends in a loop, splicing a returned tail or adopting a longer re-render,
-   until the take clears the floor.
-3. **A short take was trusted forever.** `built()`/`generate()` checked only that the
-   mp3s existed, so song 01 (178.7s) was skipped on every run. Both now require
-   `MIN_SECONDS` (210) and rebuild otherwise.
-- **The Flow Music 429 is account-wide and time-windowed, not parallelism.** A single
-  solo attempt 429s in the dead zone; the account's own newest clip was created
-  18:53 UTC, inside the predicted window. Default `--workers 1`: a second create in
-  flight only gets 429'd.
-- **Thumbnails must be 16:9.** The 1280x1280 covers get pillarboxed; `covers.py`
-  now also emits 1280x720 `library/thumbs/thumb-{kind}-{slug}.png`, which
-  `release.py` prefers.
-- **`lyrics_timing` is `not_requested`** on a fresh clip and needs a throttled
-  producer call, so karaoke timing is estimated. The clip's own lyrics are saved to
-  `clipmeta-<slug>.json` for a later word-accurate pass.
