@@ -68,13 +68,22 @@ def channel_uploads(channel: str, limit: int = 9) -> list[dict]:
     uploads_playlist = "UU" + CHANNEL_ID[2:]
     data = api_get("https://www.googleapis.com/youtube/v3/playlistItems", token,
                    part="snippet,contentDetails", playlistId=uploads_playlist,
-                   maxResults=limit)
+                   maxResults=limit * 2)
+    ids = [it["snippet"]["resourceId"]["videoId"] for it in data.get("items", [])]
+    if not ids:
+        return []
+    # A scheduled upload is still private: its thumbnail 404s, so a card for it
+    # renders broken. Keep only what a visitor can actually open.
+    detail = api_get("https://www.googleapis.com/youtube/v3/videos", token,
+                     part="status,snippet", id=",".join(ids))
     out = []
-    for it in data.get("items", []):
-        sn = it["snippet"]
-        vid = sn["resourceId"]["videoId"]
-        out.append({"id": vid, "title": sn["title"],
-                    "published": sn.get("publishedAt", "")})
+    for v in detail.get("items", []):
+        if (v.get("status") or {}).get("privacyStatus") != "public":
+            continue
+        out.append({"id": v["id"], "title": v["snippet"]["title"],
+                    "published": v["snippet"].get("publishedAt", "")})
+        if len(out) >= limit:
+            break
     return out
 
 
@@ -209,6 +218,13 @@ def push(repo: str, html: str, token: str) -> str:
     return d["commit"]["sha"][:10]
 
 
+def gh_token() -> str:
+    v = os.environ.get("AX_GH_TOKEN") or os.environ.get("GH_TOKEN")
+    if v:
+        return v
+    return GH_TOKEN_FILE.read_text().strip()
+
+
 def main(argv=None) -> int:
     p = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     p.add_argument("--channel", default="ch3", choices=sorted(CHANNEL_ENV))
@@ -225,8 +241,7 @@ def main(argv=None) -> int:
     print(f"rendered {len(videos)} videos -> {args.out}")
     if args.dry_run:
         return 0
-    token = GH_TOKEN_FILE.read_text().strip()
-    sha = push(args.repo, html, token)
+    sha = push(args.repo, html, gh_token())
     print(f"pushed {sha} to {args.repo}")
     print(f"https://{args.repo.split('/')[0]}.github.io/{args.repo.split('/')[1]}/")
     return 0

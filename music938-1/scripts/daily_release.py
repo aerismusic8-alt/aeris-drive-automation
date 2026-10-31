@@ -92,6 +92,23 @@ def write_ledger(tok: str, content: bytes, message: str) -> bool:
     return st in (200, 201)
 
 
+def refresh_site(root: Path, tok: str) -> None:
+    """Refresh the GitHub Pages promo page from the newest uploads.
+
+    Best effort: the release already shipped, and a stale landing page is a much
+    smaller problem than a failed batch, so a failure here is only reported.
+    """
+    script = root / "ops" / "ar_promo_site.py"
+    if not script.exists():
+        return
+    env = dict(os.environ, AX_GH_TOKEN=tok)
+    try:
+        rc = subprocess.call([sys.executable, str(script)], env=env, cwd=str(root), timeout=180)
+        print(f"promo site refresh rc={rc}")
+    except Exception as exc:
+        print(f"promo site refresh failed: {exc}", file=sys.stderr)
+
+
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument("--count", type=int, default=int(os.environ.get("AX_RELEASE_COUNT", 6)))
@@ -140,10 +157,11 @@ def main() -> int:
         return 0
 
     after = ledger.read_bytes() if ledger.exists() else before
-    if after == before:
-        print("ledger unchanged")
-        return 0
-    return 0 if write_ledger(tok, after, "release: daily batch (automated)") else 1
+    if after != before:
+        if not write_ledger(tok, after, "release: daily batch (automated)"):
+            return 1
+    refresh_site(root, tok)
+    return 0
 
 
 if __name__ == "__main__":
