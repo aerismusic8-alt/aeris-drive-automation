@@ -53,6 +53,54 @@
    "at": "2026-10-30T16:57:04+00:00",
    "public": true,
    "replaces": "oliw1meKfcQ"
+  },
+  {
+   "slug": "02-rak-thi-mai-mi-wan-chop",
+   "kind": "short",
+   "variant": "short-song-h1-02-rak-thi-mai-mi-wan-chop",
+   "video_id": "l7vR7B9nYxY",
+   "at": "2026-10-31T07:01:29+00:00",
+   "public": true
+  },
+  {
+   "slug": "02-rak-thi-mai-mi-wan-chop",
+   "kind": "short",
+   "variant": "short-song-h2-02-rak-thi-mai-mi-wan-chop",
+   "video_id": "ROXXhBitMpA",
+   "at": "2026-10-31T07:01:34+00:00",
+   "public": true
+  },
+  {
+   "slug": "02-rak-thi-mai-mi-wan-chop",
+   "kind": "short",
+   "variant": "short-song-h3-02-rak-thi-mai-mi-wan-chop",
+   "video_id": "rmlCjP4wvUI",
+   "at": "2026-10-31T07:01:39+00:00",
+   "public": true
+  },
+  {
+   "slug": "02-rak-thi-mai-mi-wan-chop",
+   "kind": "song",
+   "variant": "",
+   "video_id": "SZO66B-RIIQ",
+   "at": "2026-10-31T07:01:43+00:00",
+   "public": true
+  },
+  {
+   "slug": "02-rak-thi-mai-mi-wan-chop",
+   "kind": "karaoke",
+   "variant": "",
+   "video_id": "ohmKsjI5Sq8",
+   "at": "2026-10-31T07:01:47+00:00",
+   "public": true
+  },
+  {
+   "slug": "03-khit-thueng-thoe-thuk-khuen",
+   "kind": "short",
+   "variant": "short-song-h1-03-khit-thueng-thoe-thuk-khuen",
+   "video_id": "51EuOXD3HPA",
+   "at": "2026-10-31T07:01:53+00:00",
+   "public": true
   }
  ],
  "playlists": {
