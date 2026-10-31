@@ -58,6 +58,11 @@ def main() -> int:
     if args.dry_run:
         cmd.append("--dry-run")
     rc = run(cmd)
+    if rc == 3:
+        # Quota already spent for this Pacific day (another batch ran, or the
+        # cron raced a manual run). That is a normal skip, not a failure.
+        print("quota already spent today; nothing to do")
+        return 0
     if rc != 0:
         print(f"release returned {rc}", file=sys.stderr)
         return rc
