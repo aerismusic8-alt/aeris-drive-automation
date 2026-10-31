@@ -2,17 +2,16 @@
 """Keep the AERIS Music channel active: one scheduled batch a day, unattended.
 
 The pod that builds the songs is not the pod that stays up, so this is the
-durable half. It
+durable half. The media is gitignored and a fresh pod has an empty `library/`;
+`release.py` reads the `media-938` release to see what exists and downloads each
+file only as it is about to be uploaded, so a run stays small. This script
+uploads the next batch with `release.py --next --count N --spread H`, so the
+uploads land H hours apart and the channel is active around the clock, then
+commits the release ledger — the only record of what is already on YouTube.
 
-1. restores the gitignored media from the `media-938` release assets,
-2. uploads the next batch with `release.py --next --count N --spread H`, so the
-   uploads land H hours apart and the channel is active around the clock, and
-3. commits the updated release ledger, which is the only record of what is
-   already on YouTube.
-
-Nothing here needs the browser or Flow Music; it only publishes media that
-already exists. YouTube's own `publishAt` does the timing, so no process has to
-stay up between uploads.
+YouTube's own `publishAt` does the timing, so no process has to stay up between
+uploads. Nothing here needs the browser or Flow Music; it only publishes media
+that already exists.
 
     python3 scripts/daily_release.py --dry-run
     python3 scripts/daily_release.py --count 6 --spread 4
@@ -46,13 +45,6 @@ def main() -> int:
     ap.add_argument("--dry-run", action="store_true")
     args = ap.parse_args()
 
-    # 1. media
-    rc = run([sys.executable, str(SCRIPTS / "pull_media.py")])
-    if rc != 0:
-        print("pull_media failed", file=sys.stderr)
-        return rc
-
-    # 2. release
     cmd = [sys.executable, str(SCRIPTS / "release.py"), "--next", "--public",
            "--ch", args.ch, "--count", str(args.count), "--spread", str(args.spread)]
     if args.dry_run:
@@ -69,15 +61,14 @@ def main() -> int:
     if args.dry_run:
         return 0
 
-    # 3. ledger
     ledger = "music938-1/work/release-state.json"
     git("add", ledger)
     if git("diff", "--cached", "--quiet") == 0:
         print("ledger unchanged")
         return 0
     git("commit", "-m", "release: daily batch (automated)")
-    # The sandbox may be ahead of origin; rebase rather than fail, because a
-    # dropped ledger is what makes the next run re-upload duplicates.
+    # The sandbox may be behind origin (an hourly data job pushes); rebase rather
+    # than fail, because a dropped ledger makes the next run re-upload duplicates.
     git("pull", "--rebase", "--autostash", "origin", "main")
     return git("push", "origin", "main")
 

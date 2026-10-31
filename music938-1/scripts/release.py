@@ -25,6 +25,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import re
 import sys
 from datetime import datetime, timedelta, timezone
@@ -39,6 +40,14 @@ COVERS = ROOT / "library" / "covers"
 STATE = ROOT / "work" / "release-state.json"
 
 UPLOADS_PER_DAY = 6  # 10,000 units / 1,600 units per videos.insert
+
+# Media is gitignored and a recycled pod has an empty library/, so the files a
+# batch needs are fetched from the `media-938` release on demand. Downloading
+# only the next batch's media (not the whole 500 MB) is what keeps an unattended
+# run inside its sandbox budget.
+MEDIA_REPO = "aerismusic8-alt/aeris-drive-automation"
+MEDIA_RELEASE = "media-938"
+_ASSET_CACHE: dict | None = None
 
 # A song's release blurb is written from its own header, so the 20 descriptions
 # stay consistent without being hand-copied 20 times.
@@ -72,21 +81,39 @@ def all_slugs() -> list[str]:
     return sorted(f.stem for f in LYRICS.glob("*.txt"))
 
 
+def _release_asset_names() -> set:
+    """Names of the media on the release, or empty if it cannot be read."""
+    try:
+        return set(_media_assets().keys())
+    except Exception as exc:  # offline, bad token: fall back to what is on disk
+        print(f"release listing unavailable ({type(exc).__name__}); using disk only")
+        return set()
+
+
+def _have(name: str, disk: Path) -> bool:
+    return disk.exists() or name in _release_asset_names()
+
+
 def has_song(slug: str) -> bool:
-    return (SONGS / f"song-{slug}.mp3").exists()
+    return _have(f"song-{slug}.mp3", SONGS / f"song-{slug}.mp3")
 
 
 SHORTS = ROOT / "library" / "shorts"
 
 
 def short_files(slug: str, mix: str = "song") -> list[Path]:
-    """Every Short for a song, plain name first, then the -h1/-h2 hook cuts."""
-    out = []
-    plain = SHORTS / f"short-{mix}-{slug}.mp4"
-    if plain.exists():
-        out.append(plain)
-    out += sorted(SHORTS.glob(f"short-{mix}-h*-{slug}.mp4"))
-    return out
+    """Every Short for a song, plain name first, then the -h1/-h2 hook cuts.
+
+    A name may come from the release rather than disk; the path is returned
+    either way and downloaded when it is actually uploaded.
+    """
+    names = [f"short-{mix}-{slug}.mp4"] + sorted(
+        n for n in _release_asset_names() if n.startswith(f"short-{mix}-h") and n.endswith(f"-{slug}.mp4"))
+    seen: list[str] = []
+    for n in names:
+        if n not in seen and _have(n, SHORTS / n):
+            seen.append(n)
+    return [SHORTS / n for n in seen]
 
 
 def has_short(slug: str, mix: str = "song") -> bool:
@@ -94,7 +121,7 @@ def has_short(slug: str, mix: str = "song") -> bool:
 
 
 def has_video(slug: str, mix: str) -> bool:
-    return (KARAOKE / f"{mix}-{slug}.mp4").exists()
+    return _have(f"{mix}-{slug}.mp4", KARAOKE / f"{mix}-{slug}.mp4")
 
 
 def load_state() -> dict:
@@ -305,6 +332,55 @@ def plan(days: int, shorts: bool = False, spread: float = 0) -> list[dict]:
     return todo[: days * UPLOADS_PER_DAY] if days else todo
 
 
+def _media_assets() -> dict:
+    """Name -> download URL for the media release, fetched once per process."""
+    global _ASSET_CACHE
+    if _ASSET_CACHE is not None:
+        return _ASSET_CACHE
+    import urllib.request
+    tok = os.environ.get("AX_GH_TOKEN") or ""
+    if not tok:
+        f = Path(os.environ.get("AX_GH_TOKEN_FILE", "/workspace/ax-tools/ar-identity/gh-token"))
+        if f.exists():
+            tok = f.read_text().strip()
+    hdrs = {"User-Agent": "ax-release", "Accept": "application/vnd.github+json"}
+    if tok:
+        hdrs["Authorization"] = f"token {tok}"
+    base = f"https://api.github.com/repos/{MEDIA_REPO}/releases/tags/{MEDIA_RELEASE}"
+    with urllib.request.urlopen(urllib.request.Request(base, headers=hdrs), timeout=60) as r:
+        rid = json.load(r)["id"]
+    out: dict = {}
+    page = 1
+    while True:
+        url = f"https://api.github.com/repos/{MEDIA_REPO}/releases/{rid}/assets?per_page=100&page={page}"
+        with urllib.request.urlopen(urllib.request.Request(url, headers=hdrs), timeout=60) as r:
+            batch = json.load(r)
+        for a in batch:
+            out[a["name"]] = (a["browser_download_url"], a["size"])
+        if len(batch) < 100:
+            break
+        page += 1
+    _ASSET_CACHE = out
+    return out
+
+
+def fetch_media(path: Path) -> Path:
+    """Download one media file from the release if it is not on disk yet."""
+    if path is None or path.exists():
+        return path
+    import urllib.request
+    info = _media_assets().get(path.name)
+    if not info:
+        return path
+    url, size = info
+    path.parent.mkdir(parents=True, exist_ok=True)
+    with urllib.request.urlopen(urllib.request.Request(
+            url, headers={"User-Agent": "ax-release"}), timeout=300) as r, path.open("wb") as fh:
+        fh.write(r.read())
+    print(f"  fetched {path.name} ({size / 1e6:.1f} MB)")
+    return path
+
+
 def release_one(item: dict, args) -> int:
     """Upload one planned item, schedule it if asked, and record it."""
     slug, kind = item["slug"], item["kind"]
@@ -318,6 +394,8 @@ def release_one(item: dict, args) -> int:
         return 3
     title, desc, tags = describe(slug, kind, item.get("variant", ""))
     video = item["video"]
+    if not video or not video.exists():
+        video = fetch_media(video)
     if not video or not video.exists():
         print(f"missing {kind} video for {slug}; render it with "
               f"make_karaoke.py {slug} --mix {kind}", file=sys.stderr)
@@ -337,6 +415,8 @@ def release_one(item: dict, args) -> int:
             thumb = vt
     if not thumb.exists():
         thumb = COVERS / f"cover-{slug}.jpg"
+    if not thumb.exists():
+        thumb = fetch_media(thumb)
 
     cmd = [sys.executable, str(OPS / "yt_publish.py"), "--ch", args.ch,
            "--video", str(video), "--title", title,
