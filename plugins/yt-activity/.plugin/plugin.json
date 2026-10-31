@@ -1,0 +1,28 @@
+{
+  "name": "yt-activity",
+  "version": "0.1.0",
+  "description": "Hourly YouTube channel activity check for the AX channels",
+  "automation": {
+    "schema_version": "openhands.automation.plugin.v1",
+    "entrypoint": {
+      "runner": "script",
+      "command": "python3 scripts/main.py"
+    },
+    "config_schema": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "stale_hours": {
+          "type": "number",
+          "default": 36,
+          "description": "A channel with no upload for longer than this is flagged stale."
+        }
+      }
+    },
+    "suggested_trigger": {
+      "type": "cron",
+      "schedule": "0 * * * *",
+      "timezone": "UTC"
+    }
+  }
+}
