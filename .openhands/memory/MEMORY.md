@@ -101,9 +101,12 @@ true-instrumental karaoke mix, cover art, a 1920x1080 word-synced video.
   `GITHUB_TOKEN`/`GH_TOKEN` *in the command* (they block the flow), run
   `gh auth login --hostname github.com --git-protocol https --web --skip-ssh-key`,
   give K the code + `https://github.com/login/device`; K authorizes from a phone —
-  **PC1 not needed.** Token lands in `~/.config/gh/hosts.yml` (overlay — re-auth
-  after a recycle), scope `repo`. Push via `git remote set-url origin
-  https://x-access-token:$(gh auth token)@...`, then reset the remote token-free.
+  **PC1 not needed.** Scope `repo`. **AR now persists the token** to
+  `/workspace/ax-tools/ar-identity/gh-token` (survives a recycle), so a fresh pod
+  reads it from there instead of re-running the flow. Push via
+  `git remote set-url origin https://x-access-token:$(cat .../gh-token)@...`, then
+  reset the remote token-free. AR can also create repos over the API
+  (`POST /user/repos`); `aerismusic8-alt/ar-identity` was made this way.
 - Sandbox `GITHUB_TOKEN` is a read-only App token (push/dispatch/fork 403).
   `~/.config/aeris/` (GH App key) is gone. `scripts/push-via-pc1.sh` is blocked:
   PC1's winremote MCP is now `0.4.23` and `/mcp` 401s for both `PC1_MCP_TOKEN*`
