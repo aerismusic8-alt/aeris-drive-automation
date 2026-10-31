@@ -17,19 +17,17 @@ beside this file. Past ~6 KB, fold the oldest lines into the archive.
 
 ## AR identity — AR's own mailbox and profile (K, 2026-10-31)
 
-K authorised AR to hold its own identity — a mailbox plus a persistent browser
-profile — and to open accounts with it. Kept **outside** the repo (it is public)
-at `/workspace/ax-tools/ar-identity/` (survives a recycle): `creds.json`
-(mailbox `araeris2909e0@fldubai.com`, mail.tm), `browser-profile/` (where
-sign-ins live), `secrets.json` (per-service passwords), `accounts.json` (the
-register). Tools in `ops/`: `ar_identity.py ensure|whoami|inbox|read` (the
-mailbox over the mail.tm API — AR reads its own verification mail),
-`ar_browser.py open|shot|text` (persistent profile), `ar_accounts.py add|list|status`.
+AR holds its own identity, kept **outside** the repo (it is public) at
+`/workspace/ax-tools/ar-identity/` (survives a recycle): `creds.json` (mailbox
+`araeris2909e0@fldubai.com`, mail.tm), `browser-profile/`, `secrets.json`,
+`accounts.json`. Tools in `ops/`: `ar_identity.py` (the mailbox over mail.tm —
+AR reads its own verification mail), `ar_browser.py`, `ar_accounts.py`.
 
-**Finding:** a free-mailbox signup is captcha-blocked almost everywhere (archive.org,
-OSM, Wikimedia, Codeberg, Neocities, PythonAnywhere, GitLab); sourcehut/Hugging Face
-reject a disposable domain or datacenter IP. **A captcha signup needs K signed in to
-the cloud desktop**; AR then drives that browser and never types a password.
+**Finding:** a free-mailbox signup is captcha-blocked almost everywhere
+(archive.org, OSM, Wikimedia, Codeberg, Neocities, PythonAnywhere, GitLab);
+sourcehut/Hugging Face reject a disposable domain or datacenter IP. A captcha
+signup needs K signed in to the cloud desktop; AR drives that browser and never
+types a password.
 
 ## 🔴 กฎถาวรข้อที่ 1 (K): ฟรีเท่านั้น — free only
 
@@ -55,10 +53,9 @@ a Roblox game anyone can enter and play, and real revenue from it.
   from the vault (`$AX_VAULT_BOOTSTRAP` → `ops/ax_vault.py`, KV key
   `axvault:readme`) or the archive.
 - **ch3 `@aerismusicth`** `UCm44BjAn03ruOF-WaA3ZRww` = the revenue goal: pass
-  YouTube's threshold (**1,000 subs AND 4,000 watch-hours/12 mo**, or 1,000 subs
-  AND 10M Shorts views/90 days). Measured 2026-10-30: 0 subs, 8 videos, 442 views.
-  Free lever = long-form volume (`compile_album.py`; a 60-min compilation earns
-  1 h/view vs 3 min for a song). Quota: 10,000 units/day, 1,600/upload → ~6/day.
+  YouTube's threshold (**1,000 subs AND 4,000 watch-hours/12 mo**). Free lever =
+  long-form volume (`compile_album.py`; a 60-min compilation earns 1 h/view vs
+  3 min for a song). Quota: 10,000 units/day, 1,600/upload → ~6/day.
 
 ## music938-1 — Thai karaoke pack (2026-10-30, detail in archive)
 
@@ -67,15 +64,21 @@ true-instrumental karaoke mix, cover art, a 1920x1080 word-synced video.
 
 - **429 is account-wide and time-windowed, not parallelism:** `--workers 1`;
   windows UTC 23,0,1,2,6,18; dead zone 07-17. Queue a song with no take first.
-- **An Extend renders as `audio__render_edit`, not `audio__extend_song`** — the
-  blocker on all 20 songs: `_wait_new_clip` accepted only the latter, so a completed
-  extend was invisible and every take stayed under the 210 s floor ("16 creates, 0
-  extends" was a wrong diagnosis). Fixed 2026-10-31 in `flow_song.py`, pinned by a
-  source test; song 02 = 239.3 s, `extended: true`. Keep the 150 s rest before the
-  first extend — an extend seconds after its create 429s.
+- **An Extend renders as `audio__render_edit`, not `audio__extend_song`** — waiting
+  only for the latter made every completed extend invisible, so takes stayed under
+  the 210 s floor. Fixed in `flow_song.py`, pinned by a source test. Keep the 150 s
+  rest before the first extend — an extend seconds after its create 429s.
 - Karaoke = sum non-vocal stems, not centre-cancel.
+- **Songs 01-09 built** (150 assets in the `media-938` release; `library/` is
+  gitignored, the release is the durable copy — `scripts/pull_media.py`). **10-20
+  blocked on the Flow Music login**, which is SIGNED_OUT after every pod recycle
+  (the profile survives, the cookie does not). K signs in via noVNC
+  (`work-1-<host>/vnc.html`), then the batch resumes.
+- `setup-pod.sh` used to leave dangling ffmpeg symlinks (unpacked into a deleted
+  `mktemp -d`); fixed to unpack under `/workspace/ax-tools/ffmpeg`. Run it after
+  a recycle, then `export PATH=/workspace/ax-tools/bin:$PATH`.
 - Song 01 live: `ASuxGEvJBlw`, karaoke `SWS1vJJgkow`, three Shorts, playlist
-  `PLKlARHtRpKkI`.
+  `PLKlARHtRpKkI`. ch3 = 15 videos; 34 releases pending at 6/day.
 - **Competitor scan** (43 channels/1,546 videos): compilations are the watch-hour
   lever; `เลือกเพลงฟังได้` is the strongest title signal (37 winners, 0 losers) and
   needs chapters; titles ≤60 chars, no `| AERIS Music`; our art was too flat
@@ -89,37 +92,20 @@ true-instrumental karaoke mix, cover art, a 1920x1080 word-synced video.
   `public: false` even after a later `videos.update` — fix the ledger by hand.
   `work/release-state.json` is tracked: the only record of what is up.
 
-## Keeping the channel active 24h (K, 2026-10-31)
+## Keeping the channel active 24h + promotion (K, 2026-10-31)
 
-K: "ตรวจสอบช่องเป็นระยะให้ช่องมีความเคลื่อนไหวตลอด24ชั่วโมง". Two mechanisms:
-
-- **Monitor** — OpenHands automation `AX YouTube Activity Monitor`
-  (`b4bc39db-4427-4cdc-a4c8-3ba913c2541a`, ACTIVE, hourly cron) runs
-  `plugins/yt-activity` (plugin-spec, `runner: script`, **no LLM**): each channel's
-  subs/videos/views/newest-upload age into the automation KV store, read back with
-  `GET /api/automation/v1/kv/latest?automation_id=<id>`. A rejected token records
-  `auth_error` and the run still succeeds. It refetches the plugin from `main` each
-  run, so a push changes behaviour.
-- **Activity** — `release.py --next --count N --spread H` uploads N items with
-  `publishAt` H hours apart, so one batch covers the day; YouTube flips each public
-  on its own and **nothing stays running**. 6 uploads per Pacific day.
-- **OpenHands secrets hold the YT credentials too:** `POST /api/v1/secrets`
-  `{name,value}` with the bearer key; the sandbox injects them as env vars.
-
-## Promoting the channel — what AR can and cannot create (2026-10-31)
-
-K: "สร้างโซเชียลมีเดียช่องเพื่อโปรโมท". Result:
-
-- **Fediverse signup is a dead end.** Open-registration Mastodon/Lemmy instances
-  put a **CAPTCHA on the final e-mail-confirmation step** (seen on defcon.social:
-  "Security check — Solve the CAPTCHA"). The account and the mail both arrive, the
-  last step needs a human. API and headless Chromium both fail. Some also reject
-  disposable domains or need admin approval. Do not retry without a real mailbox.
-- **What works: a GitHub Pages promo site AR owns end to end.** Repo
-  `aerismusic8-alt/site-aeris-music` → https://aerismusic8-alt.github.io/site-aeris-music/
-  `ops/ar_promo_site.py` reads the channel's newest uploads (uploads playlist
-  `UU`+channel id) and rewrites the page; `--dry-run` renders to `/tmp`. Re-runnable.
-- Registry of what exists: `/workspace/ax-tools/ar-identity/accounts.json`.
+- **Monitor** — automation `AX YouTube Activity Monitor` (`b4bc39db-...`, hourly,
+  no LLM) writes each channel's stats to the KV store
+  (`GET /api/automation/v1/kv/latest?automation_id=<id>`).
+- **Activity** — `release.py --next --count N --spread H` schedules N uploads
+  `publishAt` H hours apart; YouTube flips each public itself. 6/Pacific day.
+- **Daily driver** — automation `AX Music Daily Release` (`86b12141-...`, cron
+  `5 7 * * *` UTC, `plugins/music-release`). It **auto-pauses** after 5 consecutive
+  failures (always platform cold-start flakes here); re-enable with
+  `PATCH /api/automation/v1/<id> {"enabled": true}`.
+- **Promotion:** a GitHub Pages site `aerismusic8-alt/site-aeris-music`, refreshed by
+  `ops/ar_promo_site.py` from the channel's uploads. Fediverse signup is captcha-dead.
+- YT credentials are OpenHands secrets (`POST /api/v1/secrets`), injected as env vars.
 
 ## Environment facts that keep costing time
 
@@ -129,28 +115,20 @@ K: "สร้างโซเชียลมีเดียช่องเพื�
 - **Chromium CDP dies after a recycle** on a stale `SingletonLock`. Clear
   `Singleton*`/`DevToolsActivePort` and relaunch; keep `--remote-allow-origins=*`
   or every CDP websocket 403s.
-- **Write access (2026-10-31): `gh auth login --web` device flow.** Unset
-  `GITHUB_TOKEN`/`GH_TOKEN` *in the command* (they block the flow), run
-  `gh auth login --hostname github.com --git-protocol https --web --skip-ssh-key`,
-  give K the code + `https://github.com/login/device`; K authorizes from a phone —
-  **PC1 not needed.** Scope `repo`. **AR persists the token** to
-  `/workspace/ax-tools/ar-identity/gh-token` (survives a recycle), so a fresh pod
-  reads it from there instead of re-running the flow. Push via
-  `git remote set-url origin https://x-access-token:$(cat .../gh-token)@...`, then
-  reset the remote token-free. AR can also create repos over the API
-  (`POST /user/repos`); `aerismusic8-alt/ar-identity` was made this way.
-- **No available token carries the `workflow` scope**, so a commit touching
-  `.github/workflows/` is rejected. Use an OpenHands automation for scheduled work
-  instead of a workflow; K must `gh auth refresh -s workflow` for a CI path.
-- Sandbox `GITHUB_TOKEN` is a read-only App token (push/dispatch/fork 403).
-  `~/.config/aeris/` (GH App key) is gone. `scripts/push-via-pc1.sh` is blocked:
-  PC1's winremote MCP `/mcp` 401s for both `PC1_MCP_TOKEN*` (while `/health` is 200).
+- **Write access (2026-10-31):** the sandbox `GITHUB_TOKEN` is read-only (push/
+  dispatch/fork 403); `~/.config/aeris/` and `push-via-pc1.sh` are dead. The write
+  path is **`gh auth login --web`** (unset `GITHUB_TOKEN`/`GH_TOKEN` *in the
+  command*, then `gh auth login --hostname github.com --git-protocol https --web
+  --skip-ssh-key`; K authorizes the code from a phone — PC1 not needed). AR
+  persists the token to `/workspace/ax-tools/ar-identity/gh-token`; push with
+  `git push https://x-access-token:$(cat .../gh-token)@github.com/OWNER/REPO.git main`
+  (or the injected `AX_GH_TOKEN`), then reset the remote token-free. **No token
+  carries the `workflow` scope**, so use an OpenHands automation for scheduled work.
 - **Sandbox proxy** blocks `POST`/`PATCH` to `www.googleapis.com` (bare 404);
   `GET`/`PUT`/`DELETE` pass. DELETE must carry no body.
-- **`multiget-playability-status` reports the caller, not the game** — put a
-  control in the same call. **Roblox `BUILD_REF` lies** — the built tree always
-  comes from the `ax-arena-roblox-game` branch. Confirm a path exists in the
-  provider's own spec before blaming a credential.
+- **Roblox:** `multiget-playability-status` reports the caller, not the game (put a
+  control in the same call); `BUILD_REF` lies — the built tree is always the
+  `ax-arena-roblox-game` branch. Detail in `AGENTS.md`.
 
 ## Recovery
 
