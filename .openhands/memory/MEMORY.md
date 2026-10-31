@@ -106,6 +106,13 @@ true-instrumental karaoke mix, cover art, a 1920x1080 word-synced video.
 - **Promotion:** a GitHub Pages site `aerismusic8-alt/site-aeris-music`, refreshed by
   `ops/ar_promo_site.py` from the channel's uploads. Fediverse signup is captcha-dead.
 - YT credentials are OpenHands secrets (`POST /api/v1/secrets`), injected as env vars.
+- **A plugin automation fetches only its plugin dir** (`AUTOMATION_PLUGIN_ROOT` =
+  `plugins/<name>`), not the repo. A plugin needing repo files must fetch them
+  itself (`plugins/music-release/scripts/main.py` downloads the tarball).
+- **20 sandboxes per day.** Each dispatch *and each retry* burns one; past the cap
+  a run is `SKIPPED — "Daily sandbox limit of 20 reached"`, which looks like a bug
+  and is not. Retry a flake once or twice, then leave it to the cron. Dispatch:
+  `POST /api/automation/v1/<id>/dispatch` (`/runs` is 405; no per-run detail route).
 
 ## Environment facts that keep costing time
 
