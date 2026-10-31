@@ -82,10 +82,18 @@ true-instrumental karaoke mix, cover art, a 1920x1080 word-synced video.
   the 210 s floor. Fixed in `flow_song.py`, pinned by a source test. Keep the 150 s
   rest before the first extend — an extend seconds after its create 429s.
 - Karaoke = sum non-vocal stems, not centre-cancel.
-- **Songs 01-09 built** (150 assets in the `media-938` release; `library/` is
-  gitignored, the release is the durable copy — `scripts/pull_media.py`). **10-20
-  blocked on the Flow Music login**, which is SIGNED_OUT after every pod recycle
-  (the profile survives, the cookie does not). K signs in via noVNC
+- **One loudness contract, one place.** `flow_song._karaoke` used an inline
+  **single-pass** `loudnorm=I=-16`, which overshoots (asked -16, delivered -14.4),
+  so the karaoke sat at the song's level; song 15's quiet -15.0 master made its
+  karaoke +0.6 dB louder. Now routed through `make_song`'s **two-pass** helpers to
+  `TARGET_LUFS - KARAOKE_OFFSET_DB`. `flow_song.py <slug> --karaoke-only` rebuilds
+  a karaoke from local stems with **no Flow call**; the playwright import is lazy
+  so it runs in a bare pod. Fixed `0142f5e`, 356 pass.
+- **Songs 01-09 and 11-20 built** (19/20). **Song 10** (`10-dok-mai-rim-thang`)
+  is the only one owed: it failed 3× "no completed create clip in 480s" while
+  every song after it succeeded — a stuck tab, not content. Retry it once the Flow
+  login is back. **10-20's login is SIGNED_OUT after every pod recycle** (the
+  profile survives, the cookie does not). K signs in via noVNC
   (`work-1-<host>/vnc.html`) **as `aerismusic8@gmail.com`** (K's rule — not AR's
   registered mail), then the batch resumes.
 - `setup-pod.sh` used to leave dangling ffmpeg symlinks (unpacked into a deleted

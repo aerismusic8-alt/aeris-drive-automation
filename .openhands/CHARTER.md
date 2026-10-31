@@ -61,8 +61,9 @@ lever the competitor scan measured (actives ship 3.89/week; ours was 1.01).
 
 Ordered. Update it each session; it is the answer to "what next".
 
-1. **Finish songs 10-20.** Batch `build_songs.py` running; 12/20 built as of
-   2026-10-31 15:35Z. Resume automatically on each window.
+1. **Finish song 10.** 19/20 built as of 2026-10-31 23:55Z; only
+   `10-dok-mai-rim-thang` is owed (a stuck-tab timeout, not content). It waits on
+   the Flow Music login, which a recycle wiped again — see the one K action below.
 2. **Replace the 4 broken song-01 uploads** (karaoke + 3 Shorts, tofu text) when
    the Pacific-day upload quota allows — `work/pending-replacements.json` lists
    them; `scripts/replace_video.py` does it. 6 uploads/day shared with releases.
