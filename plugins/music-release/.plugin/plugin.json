@@ -1,0 +1,38 @@
+{
+  "name": "music-release",
+  "version": "0.1.0",
+  "description": "Daily scheduled release of music938-1 songs to AERIS Music (ch3), spread over 24h",
+  "automation": {
+    "schema_version": "openhands.automation.plugin.v1",
+    "entrypoint": {
+      "runner": "script",
+      "command": "python3 scripts/main.py"
+    },
+    "config_schema": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "count": {
+          "type": "number",
+          "default": 6,
+          "description": "How many videos to upload per run (YouTube quota allows 6/day)."
+        },
+        "spread": {
+          "type": "number",
+          "default": 4,
+          "description": "Hours between consecutive publishAt times, so one batch covers the day."
+        },
+        "channel": {
+          "type": "string",
+          "default": "ch3",
+          "description": "Which channel to publish to."
+        }
+      }
+    },
+    "suggested_trigger": {
+      "type": "cron",
+      "schedule": "5 7 * * *",
+      "timezone": "UTC"
+    }
+  }
+}
