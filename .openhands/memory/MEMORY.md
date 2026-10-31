@@ -115,6 +115,18 @@ true-instrumental karaoke mix, cover art, a 1920x1080 word-synced video.
   `PATCH /api/automation/v1/<id> {"enabled": true}`.
 - **Promotion:** a GitHub Pages site `aerismusic8-alt/site-aeris-music`, refreshed by
   `ops/ar_promo_site.py` from the channel's uploads. Fediverse signup is captcha-dead.
+- **The continuous marketing loop (2026-10-31)** — three layers, so it does not need
+  a human each time:
+  1. *Measure* `music938-1/scripts/market.py` reads every live video's stats, diffs
+     them against `work/market-snapshot.json`, writes `work/market-report.md` (Thai).
+     No LLM.
+  2. *Promote* `AX Music Marketing Daily` (`03734708-...`, plugin `plugins/market-daily`,
+     cron `0 2 * * *`) runs the measure step, refreshes the promo page, commits the
+     report + snapshot back to `main`. No LLM.
+  3. *Decide* `AX Music Marketing Strategy (weekly)` (`ca7de485-...`, cron `0 3 * * 1`)
+     reads the report + `COMPETITOR-ANALYSIS.md` and opens ONE PR. The only LLM layer.
+  The report and snapshot are `.gitignore` exceptions on purpose — they are the loop's
+  memory. The weekly prompt forbids paid options, workflow edits and merging.
 - YT credentials are OpenHands secrets (`POST /api/v1/secrets`), injected as env vars.
 - **A plugin automation fetches only its plugin dir** (`AUTOMATION_PLUGIN_ROOT` =
   `plugins/<name>`), not the repo. A plugin needing repo files must fetch them

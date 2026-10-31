@@ -119,6 +119,31 @@ window, one 26-minute span rendered 6 songs (~4.3 min/song).
 window, and outside one nap toward the next window (capped at 900s). Hammering
 the dead zone only burns the retry ladder.
 
+## The continuous marketing loop
+
+Promotion used to be a one-off — a scan here, a promo page there. It is now a
+loop that runs itself, in three layers:
+
+| Layer | What | When | Cost |
+|---|---|---|---|
+| **Measure** | `scripts/market.py` reads every live video's stats, diffs them against `work/market-snapshot.json`, writes `work/market-report.md` | daily | free, no LLM |
+| **Promote** | `plugins/market-daily` runs the measure step, refreshes the GitHub Pages promo page, commits the report and snapshot back to `main` | daily 02:00 UTC | free, no LLM |
+| **Decide** | `AX Music Marketing Strategy (weekly)` reads the report + `COMPETITOR-ANALYSIS.md` and opens one PR with the changes it decides on | Mondays 03:00 UTC | free (OpenHands), LLM |
+
+The daily layer is deterministic and cheap, so it can run every day without
+spending tokens. The weekly layer is the only one that needs judgment, so it is
+the only one that uses an LLM — and it never merges; it opens a PR for review.
+
+The report is the loop's memory: the activity monitor records a channel's totals,
+but only `market.py` diffs them and says what moved. `work/market-report.md` and
+`work/market-snapshot.json` are tracked on purpose (`.gitignore` exceptions), so a
+fresh pod and the weekly pass both read the same file.
+
+```
+python3 scripts/market.py                 # measure now, write the report
+python3 scripts/market.py --json          # the raw snapshot on stdout
+```
+
 ## Cadence
 
 - Generation runs on the windows; it cannot be forced and does not need to be.
@@ -198,6 +223,13 @@ python3 scripts/competitor_scan.py --queries-file competitor-queries.txt \
 - **`AX Music Daily Release` was re-enabled today** after the platform auto-paused
   it (5 consecutive failed runs, all cold-start flakes — `Sandbox not available` /
   `agent_server fetch_plugin timed out`, not our code).
+- **The marketing loop now runs itself** (see above): `AX Music Marketing Daily`
+  (plugin `plugins/market-daily`, `03734708-b56d-452e-838e-8045052838b8`) at 02:00
+  UTC and `AX Music Marketing Strategy (weekly)`
+  (`ca7de485-5c71-44d5-baab-2fec453e72a6`) on Mondays at 03:00 UTC. Both ACTIVE. A
+  manual dispatch today was `SKIPPED` on the platform's **20-sandbox/day cap**
+  (spent by earlier cold-start retries) — transient; the first cron run is the
+  real test.
 
 ## Why only song 01 existed, and what was actually wrong
 
