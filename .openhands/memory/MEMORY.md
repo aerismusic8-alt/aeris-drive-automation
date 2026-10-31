@@ -72,10 +72,16 @@ true-instrumental karaoke mix, cover art, a 1920x1080 word-synced video.
 
 - **429 is account-wide and time-windowed, not parallelism:** `--workers 1`;
   windows UTC 23,0,1,2,6,18; dead zone 07-17. Queue a song with no take first.
-- **Extend has never produced a clip** (16 creates, 0 extends). Karaoke = sum
-  non-vocal stems, not centre-cancel.
+- **An Extend renders as `audio__render_edit`, not `audio__extend_song`** — the
+  blocker on all 20 songs. `_wait_new_clip` only accepted `audio__extend_song`, so
+  a completed extend was invisible and every take stayed near the 3:00 create
+  ceiling, under the 210 s floor. ("16 creates, 0 extends" was a wrong diagnosis;
+  the clip was produced.) Fixed 2026-10-31 in `flow_song.py`, pinned by a source
+  test. After it: song 02 = 239.3 s, `extended: true`. Keep the 150 s rest before
+  the first extend — an extend seconds after its create 429s.
+- Karaoke = sum non-vocal stems, not centre-cancel.
 - Song 01 live: `ASuxGEvJBlw`, karaoke `SWS1vJJgkow`, three Shorts, playlist
-  `PLKlARHtRpKkI`. Known-broken: 178.7 s vs the 210 s floor.
+  `PLKlARHtRpKkI`.
 - **Competitor scan** (43 channels/1,546 videos): compilations are the watch-hour
   lever; `เลือกเพลงฟังได้` is the strongest title signal (37 winners, 0 losers) and
   needs chapters; titles ≤60 chars, no `| AERIS Music`; our art was too flat
