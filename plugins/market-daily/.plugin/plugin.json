@@ -1,0 +1,33 @@
+{
+  "name": "market-daily",
+  "version": "0.1.0",
+  "description": "Daily channel measurement, growth report and promo-site refresh for AERIS Music (ch3). No LLM.",
+  "automation": {
+    "schema_version": "openhands.automation.plugin.v1",
+    "entrypoint": {
+      "runner": "script",
+      "command": "python3 scripts/main.py"
+    },
+    "config_schema": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "channel": {
+          "type": "string",
+          "default": "ch3",
+          "description": "Which AX channel to measure."
+        },
+        "promo_repo": {
+          "type": "string",
+          "default": "aerismusic8-alt/site-aeris-music",
+          "description": "GitHub Pages repo whose index.html is refreshed."
+        }
+      }
+    },
+    "suggested_trigger": {
+      "type": "cron",
+      "schedule": "0 2 * * *",
+      "timezone": "UTC"
+    }
+  }
+}

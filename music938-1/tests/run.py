@@ -480,6 +480,50 @@ def test_flow_extend_kinds() -> None:
     check("extend waits for audio__render_edit", "audio__render_edit" in body)
 
 
+def test_market_report() -> None:
+    """The marketing brief must diff two readings and stay Thai.
+
+    `market.py` is the measurement half of the continuous marketing loop; it runs
+    daily with no LLM. These checks pin the two things that would silently break
+    it: the delta against the previous snapshot, and the report being Thai.
+    """
+    section("marketing report (market.py)")
+    import market
+    prev = {"channel_stats": {"subs": 10, "views": 100, "videos": 4},
+            "videos": {"a": {"views": 5}}}
+    cur = market.build_snapshot("ch3",
+                                {"subs": 15, "views": 130, "videos": 6},
+                                [{"video_id": "a", "slug": "01", "kind": "short",
+                                  "public": True, "title": "คนดีที่จากไป", "views": 40,
+                                  "likes": 3, "comments": 0},
+                                 {"video_id": "b", "slug": "02", "kind": "song",
+                                  "public": True, "title": "รักที่ไม่มีวันจบ", "views": 2,
+                                  "likes": 0, "comments": 0}])
+    report = market.render_report(prev, cur)
+    check("report is Thai", any("\u0e00" <= c <= "\u0e7f" for c in report))
+    check("report shows the growth (+35)", "+35" in report)
+    check("report shows the subscriber delta (+5)", "+5" in report)
+    check("report lists the moving video first", report.index("คนดีที่จากไป")
+          < report.index("รักที่ไม่มีวันจบ"))
+    check("report names the monetization target", "1,000" in report and "4,000" in report)
+
+
+def test_market_plugin_wiring() -> None:
+    """The daily plugin must run market.py and commit the report back.
+
+    A source check, because driving the real automation needs the cloud. If the
+    driver path or the commit list drifts, the loop stops recording with no
+    visible error — which is exactly the failure mode this pins.
+    """
+    section("marketing plugin wiring (market-daily)")
+    src = (ROOT.parent / "plugins" / "market-daily" / "scripts" / "main.py").read_text()
+    check("runs market.py", "market.py" in src)
+    check("passes the repo root", '"--root"' in src)
+    check("commits the report back", "market-report.md" in src)
+    check("commits the snapshot back", "market-snapshot.json" in src)
+    check("refreshes the promo site", "ar_promo_site.py" in src)
+
+
 def test_setup_pod_ffmpeg() -> None:
     """ffmpeg must be unpacked under /workspace, not into a mktemp dir.
 
@@ -511,6 +555,8 @@ def main() -> int:
     test_titles()
     test_compilation()
     test_flow_extend_kinds()
+    test_market_report()
+    test_market_plugin_wiring()
     test_setup_pod_ffmpeg()
     test_outputs()
     print(f"\n{PASS} passed, {FAIL} failed")

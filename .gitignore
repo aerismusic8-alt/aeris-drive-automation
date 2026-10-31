@@ -27,6 +27,12 @@ music938-1/work/*
 # release.py writes it under work/. If it is ignored, a fresh clone re-uploads
 # every song as a duplicate.
 !music938-1/work/release-state.json
+# market.py writes the daily channel report and its diff baseline here, and the
+# market-daily automation commits them back so the next run can diff. Tracked on
+# purpose: they are the loop's memory, not a build artifact.
+!music938-1/work/market-report.md
+!music938-1/work/market-snapshot.json
+!music938-1/work/market-weekly-automation.json
 # Same reason as the ledger: this is the list of clips that shipped broken and
 # still need replacing, and it is only useful to a session that can read it.
 !music938-1/work/pending-replacements.json

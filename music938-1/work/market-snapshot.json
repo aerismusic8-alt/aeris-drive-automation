@@ -1,0 +1,132 @@
+{
+  "at": "2026-10-31T15:26:06+00:00",
+  "channel": "ch3",
+  "channel_stats": {
+    "subs": 1,
+    "views": 527,
+    "videos": 16
+  },
+  "videos": {
+    "ANwgi7J_ras": {
+      "video_id": "ANwgi7J_ras",
+      "slug": "01-khon-di-thi-chak-pai",
+      "kind": "short",
+      "public": true,
+      "title": "คนดีที่จากไป (ท่อนที่ 1) #01 — เพลงไทย #Shorts",
+      "published": "2026-10-30T16:04:20Z",
+      "views": 22,
+      "likes": 1,
+      "comments": 0
+    },
+    "JId5J48t4a4": {
+      "video_id": "JId5J48t4a4",
+      "slug": "01-khon-di-thi-chak-pai",
+      "kind": "short",
+      "public": true,
+      "title": "คนดีที่จากไป (ท่อนที่ 2) #01 — เพลงไทย #Shorts",
+      "published": "2026-10-30T16:04:22Z",
+      "views": 4,
+      "likes": 0,
+      "comments": 0
+    },
+    "CXRH7sW6Gcw": {
+      "video_id": "CXRH7sW6Gcw",
+      "slug": "01-khon-di-thi-chak-pai",
+      "kind": "short",
+      "public": true,
+      "title": "คนดีที่จากไป (ท่อนที่ 3) #01 — เพลงไทย #Shorts",
+      "published": "2026-10-30T16:04:24Z",
+      "views": 117,
+      "likes": 0,
+      "comments": 0
+    },
+    "ASuxGEvJBlw": {
+      "video_id": "ASuxGEvJBlw",
+      "slug": "01-khon-di-thi-chak-pai",
+      "kind": "song",
+      "public": true,
+      "title": "คนดีที่จากไป — เพลงเศร้า ที่เข้าใจความเสียใจ",
+      "published": "2026-10-30T16:57:24Z",
+      "views": 8,
+      "likes": 0,
+      "comments": 0
+    },
+    "SWS1vJJgkow": {
+      "video_id": "SWS1vJJgkow",
+      "slug": "01-khon-di-thi-chak-pai",
+      "kind": "karaoke",
+      "public": true,
+      "title": "คนดีที่จากไป (คาราโอเกะ) — ร้องตามได้",
+      "published": "2026-10-30T16:12:04Z",
+      "views": 4,
+      "likes": 0,
+      "comments": 0
+    },
+    "l7vR7B9nYxY": {
+      "video_id": "l7vR7B9nYxY",
+      "slug": "02-rak-thi-mai-mi-wan-chop",
+      "kind": "short",
+      "public": true,
+      "title": "รักที่ไม่มีวันจบ (ท่อนที่ 1) #เพลงไทย #Shorts",
+      "published": "2026-10-31T07:02:00Z",
+      "views": 52,
+      "likes": 4,
+      "comments": 0
+    },
+    "ROXXhBitMpA": {
+      "video_id": "ROXXhBitMpA",
+      "slug": "02-rak-thi-mai-mi-wan-chop",
+      "kind": "short",
+      "public": true,
+      "title": "รักที่ไม่มีวันจบ (ท่อนที่ 2) #เพลงไทย #Shorts",
+      "published": "2026-10-31T11:01:41Z",
+      "views": 217,
+      "likes": 7,
+      "comments": 0
+    },
+    "rmlCjP4wvUI": {
+      "video_id": "rmlCjP4wvUI",
+      "slug": "02-rak-thi-mai-mi-wan-chop",
+      "kind": "short",
+      "public": true,
+      "title": "รักที่ไม่มีวันจบ (ท่อนที่ 3) #เพลงไทย #Shorts",
+      "published": "2026-10-31T15:01:49Z",
+      "views": 1,
+      "likes": 0,
+      "comments": 0
+    },
+    "SZO66B-RIIQ": {
+      "video_id": "SZO66B-RIIQ",
+      "slug": "02-rak-thi-mai-mi-wan-chop",
+      "kind": "song",
+      "public": true,
+      "title": "รักที่ไม่มีวันจบ — เพลงอบอุ่น ฟังแล้วใจนุ่ม",
+      "published": "2026-10-31T07:01:40Z",
+      "views": 0,
+      "likes": 0,
+      "comments": 0
+    },
+    "ohmKsjI5Sq8": {
+      "video_id": "ohmKsjI5Sq8",
+      "slug": "02-rak-thi-mai-mi-wan-chop",
+      "kind": "karaoke",
+      "public": true,
+      "title": "รักที่ไม่มีวันจบ (คาราโอเกะ) ร้องตามได้",
+      "published": "2026-10-31T07:01:43Z",
+      "views": 0,
+      "likes": 0,
+      "comments": 0
+    },
+    "51EuOXD3HPA": {
+      "video_id": "51EuOXD3HPA",
+      "slug": "03-khit-thueng-thoe-thuk-khuen",
+      "kind": "short",
+      "public": true,
+      "title": "คิดถึงเธอทุกคืน (ท่อนที่ 1) #เพลงไทย #Shorts",
+      "published": "2026-10-31T07:01:48Z",
+      "views": 0,
+      "likes": 0,
+      "comments": 0
+    }
+  }
+}
