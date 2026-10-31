@@ -1,9 +1,10 @@
 """Daily release entrypoint for the `music-release` automation. No LLM.
 
-Clones the repository (shallow), points the remote at a token-bearing URL so the
-ledger can be pushed back, and runs `music938-1/scripts/daily_release.py`. That
-script restores the media from the `media-938` release, uploads the next batch
-with a 24h publish spread, and commits the release ledger.
+The plugin root already contains this repository (the automation fetched it), so
+the driver is run in place — no git clone, because a sandbox with no git
+transport hangs on one. `daily_release.py` fetches the code tarball it needs,
+pulls each media file from the `media-938` release only as it is uploaded, and
+writes the release ledger back through the GitHub Contents API.
 
 Config comes from AUTOMATION_CONFIG_PATH: count, spread, channel. The GitHub and
 YouTube credentials are OpenHands secrets, read from the environment.
@@ -12,11 +13,9 @@ import json
 import os
 import subprocess
 import sys
-import urllib.error
 import urllib.request
 
-REPO = "aerismusic8-alt/aeris-drive-automation"
-WORK = "/tmp/ax-music-release"
+PLUGIN_ROOT = os.environ.get("AUTOMATION_PLUGIN_ROOT", os.getcwd())
 
 
 def get_secret(name: str) -> str:
@@ -64,27 +63,12 @@ def config() -> dict:
 
 def main() -> int:
     cfg = config()
-    token = get_secret("AX_GH_TOKEN")
-    url = f"https://x-access-token:{token}@github.com/{REPO}.git"
-
-    if os.path.isdir(os.path.join(WORK, ".git")):
-        subprocess.call(["git", "-C", WORK, "fetch", "--depth", "1", "origin", "main"])
-        subprocess.call(["git", "-C", WORK, "reset", "--hard", "origin/main"])
-    else:
-        subprocess.call(["git", "clone", "--depth", "1",
-                         f"https://github.com/{REPO}.git", WORK])
-    subprocess.call(["git", "-C", WORK, "remote", "set-url", "origin", url])
-    subprocess.call(["git", "-C", WORK, "config", "user.name", "ax-music-release"])
-    subprocess.call(["git", "-C", WORK, "config", "user.email",
-                     "ax-music-release@users.noreply.github.com"])
-
-    env = dict(os.environ)
-    env["AX_GH_TOKEN"] = token
-    cmd = [sys.executable, os.path.join(WORK, "music938-1", "scripts", "daily_release.py"),
-           "--count", str(int(cfg["count"])), "--spread", str(cfg["spread"]),
-           "--ch", str(cfg["channel"])]
+    os.environ["AX_GH_TOKEN"] = get_secret("AX_GH_TOKEN")
+    driver = os.path.join(PLUGIN_ROOT, "music938-1", "scripts", "daily_release.py")
+    cmd = [sys.executable, driver, "--count", str(int(cfg["count"])),
+           "--spread", str(cfg["spread"]), "--ch", str(cfg["channel"])]
     print("$", " ".join(cmd), flush=True)
-    return subprocess.call(cmd, env=env, cwd=os.path.join(WORK, "music938-1"))
+    return subprocess.call(cmd, cwd=PLUGIN_ROOT)
 
 
 if __name__ == "__main__":

@@ -332,6 +332,17 @@ def plan(days: int, shorts: bool = False, spread: float = 0) -> list[dict]:
     return todo[: days * UPLOADS_PER_DAY] if days else todo
 
 
+def progress(path: str | None, line: str) -> None:
+    """Append one progress line, so an unattended run can report where it is."""
+    if not path:
+        return
+    try:
+        with open(path, "a", encoding="utf-8") as fh:
+            fh.write(f"{datetime.now(timezone.utc).strftime('%H:%M:%S')} {line}\n")
+    except OSError:
+        pass
+
+
 def _media_assets() -> dict:
     """Name -> download URL for the media release, fetched once per process."""
     global _ASSET_CACHE
@@ -474,10 +485,13 @@ def main() -> int:
     ap.add_argument("--schedule-at", help="ISO8601 UTC to publish, e.g. 2026-10-31T15:00:00Z")
     ap.add_argument("--spread", type=float, default=0,
                     help="hours between the items of one batch (a 24h activity spread)")
+    ap.add_argument("--progress-file",
+                    help="append one line per action, so an unattended run can report progress")
     ap.add_argument("--dry-run", action="store_true")
     args = ap.parse_args()
 
     todo = plan(args.days, shorts=args.shorts, spread=args.spread)
+    progress(args.progress_file, f"plan: {len(todo)} pending")
     if args.plan or not args.next:
         if not todo:
             print("nothing to release yet — no built songs found")
@@ -499,7 +513,10 @@ def main() -> int:
     for i, item in enumerate(todo[: args.count]):
         if i:
             print(f"--- release {i + 1}/{args.count} ---")
+        progress(args.progress_file,
+                 f"release {i + 1}/{args.count} {item['kind']} {item['slug']}")
         rc = release_one(item, args)
+        progress(args.progress_file, f"  -> rc {rc}")
         if rc != 0:
             break
     return rc
