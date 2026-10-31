@@ -61,13 +61,18 @@ a Roblox game anyone can enter and play, and real revenue from it.
 - **Chromium CDP dies after a recycle** on a stale `SingletonLock`. Clear
   `Singleton*`/`DevToolsActivePort` and relaunch; keep `--remote-allow-origins=*`
   or every CDP websocket 403s.
-- **Write access:** sandbox `GITHUB_TOKEN` is read-only (push 403, dispatch 403).
-  `~/.config/aeris/` (GH App key) is gone — overlay. PC1 holds a writable classic
-  PAT and `scripts/push-via-pc1.sh` is the route, **but it is blocked (2026-10-31):
-  PC1 winremote MCP is now `version 0.4.23` and `/mcp` returns 401 for both
-  `PC1_MCP_TOKEN` and `PC1_MCP_TOKEN_2` (a *fresh* read of the secret also 401s),
-  while `/health` is 200. The remote auth key needs rotating on PC1 — only K can.
-  Until then commits stay local; GitHub's web/API UI can also upload the file.**
+- **Write access — the working route (2026-10-31): `gh auth login --web` device
+  flow.** Unset `GITHUB_TOKEN`/`GH_TOKEN` *in the command* (they block the flow),
+  run `gh auth login --hostname github.com --git-protocol https --web
+  --skip-ssh-key`, and give K the one-time code + `https://github.com/login/device`.
+  K authorizes from a phone — **PC1 is not needed.** The token lands in
+  `~/.config/gh/hosts.yml` (overlay — re-auth after a recycle) with scope `repo`.
+  Push with `git remote set-url origin https://x-access-token:$(gh auth token)@...`,
+  then reset the remote to a token-free URL.
+- Sandbox `GITHUB_TOKEN` is a read-only App installation token (push/dispatch/fork
+  all 403). `~/.config/aeris/` (GH App key) is gone. `scripts/push-via-pc1.sh` is
+  blocked: PC1's winremote MCP upgraded to `0.4.23` and `/mcp` 401s for both
+  `PC1_MCP_TOKEN*` and a fresh secret read, while `/health` is 200.
 - **Sandbox proxy** blocks `POST`/`PATCH` to `www.googleapis.com` (bare 404 with
   `Server: HTTPServer2`); `GET`/`PUT`/`DELETE` pass. DELETE must carry no body.
 - **`multiget-playability-status` reports the caller, not the game** — any probe
