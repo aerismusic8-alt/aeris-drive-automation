@@ -1,10 +1,8 @@
 # MEMORY — index
 
-**How to use.** Injected index, small on purpose — the prompt truncates a long one
-and the *oldest* text is lost first. Rules, roles and pointers only. Full detail:
-`.openhands/memory/MEMORY-ARCHIVE.md` (~200 KB) and the daily logs beside this file.
-**Maintenance:** add short lines; past ~6 KB fold the oldest into the archive and
-leave a pointer. A truncated index silently deletes the rules at the top.
+**How to use.** Injected index, small on purpose — a long one is truncated from the
+top. Rules and pointers only; full detail in `MEMORY-ARCHIVE.md` and the daily logs
+beside this file. Past ~6 KB, fold the oldest lines into the archive.
 
 ## Roles and method (K, 2026-10-31)
 
@@ -28,12 +26,10 @@ register). Tools in `ops/`: `ar_identity.py ensure|whoami|inbox|read` (the
 mailbox over the mail.tm API — AR reads its own verification mail),
 `ar_browser.py open|shot|text` (persistent profile), `ar_accounts.py add|list|status`.
 
-**Finding:** a free-mailbox signup is blocked almost everywhere by design (captcha
-at archive.org, OSM, Wikimedia, Codeberg, Neocities, PythonAnywhere, deSEC, GitLab;
-disposable domain / datacenter IP rejected at sourcehut, Hugging Face). The mailbox
-and profile are reusable, but **a captcha signup needs K signed in to the cloud
-desktop** — AR then drives that authenticated browser and never types a password.
-(mail.tm rejects a local part containing `.` — create 201s, login 401s.)
+**Finding:** a free-mailbox signup is captcha-blocked almost everywhere (archive.org,
+OSM, Wikimedia, Codeberg, Neocities, PythonAnywhere, GitLab); sourcehut/Hugging Face
+reject a disposable domain or datacenter IP. **A captcha signup needs K signed in to
+the cloud desktop**; AR then drives that browser and never types a password.
 
 ## 🔴 กฎถาวรข้อที่ 1 (K): ฟรีเท่านั้น — free only
 
