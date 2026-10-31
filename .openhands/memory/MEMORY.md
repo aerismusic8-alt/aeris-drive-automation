@@ -28,11 +28,10 @@ register). Tools in `ops/`: `ar_identity.py ensure|whoami|inbox|read` (the
 mailbox over the mail.tm API — AR reads its own verification mail),
 `ar_browser.py open|shot|text` (persistent profile), `ar_accounts.py add|list|status`.
 
-**Finding:** a free-mailbox signup is now blocked almost everywhere by design —
-archive.org, OSM, Wikimedia, Codeberg, Neocities, PythonAnywhere, deSEC and
-GitLab show a captcha; Mastodon wants a date of birth; sourcehut and Hugging
-Face reject a disposable domain / datacenter IP outright. **The mailbox and
-profile are reusable, but a captcha signup needs K signed in to the cloud
+**Finding:** a free-mailbox signup is blocked almost everywhere by design (captcha
+at archive.org, OSM, Wikimedia, Codeberg, Neocities, PythonAnywhere, deSEC, GitLab;
+disposable domain / datacenter IP rejected at sourcehut, Hugging Face). The mailbox
+and profile are reusable, but **a captcha signup needs K signed in to the cloud
 desktop** — AR then drives that authenticated browser and never types a password.
 (mail.tm rejects a local part containing `.` — create 201s, login 401s.)
 
@@ -73,12 +72,11 @@ true-instrumental karaoke mix, cover art, a 1920x1080 word-synced video.
 - **429 is account-wide and time-windowed, not parallelism:** `--workers 1`;
   windows UTC 23,0,1,2,6,18; dead zone 07-17. Queue a song with no take first.
 - **An Extend renders as `audio__render_edit`, not `audio__extend_song`** — the
-  blocker on all 20 songs. `_wait_new_clip` only accepted `audio__extend_song`, so
-  a completed extend was invisible and every take stayed near the 3:00 create
-  ceiling, under the 210 s floor. ("16 creates, 0 extends" was a wrong diagnosis;
-  the clip was produced.) Fixed 2026-10-31 in `flow_song.py`, pinned by a source
-  test. After it: song 02 = 239.3 s, `extended: true`. Keep the 150 s rest before
-  the first extend — an extend seconds after its create 429s.
+  blocker on all 20 songs: `_wait_new_clip` accepted only the latter, so a completed
+  extend was invisible and every take stayed under the 210 s floor ("16 creates, 0
+  extends" was a wrong diagnosis). Fixed 2026-10-31 in `flow_song.py`, pinned by a
+  source test; song 02 = 239.3 s, `extended: true`. Keep the 150 s rest before the
+  first extend — an extend seconds after its create 429s.
 - Karaoke = sum non-vocal stems, not centre-cancel.
 - Song 01 live: `ASuxGEvJBlw`, karaoke `SWS1vJJgkow`, three Shorts, playlist
   `PLKlARHtRpKkI`.
@@ -95,6 +93,23 @@ true-instrumental karaoke mix, cover art, a 1920x1080 word-synced video.
   `public: false` even after a later `videos.update` — fix the ledger by hand.
   `work/release-state.json` is tracked: the only record of what is up.
 
+## Keeping the channel active 24h (K, 2026-10-31)
+
+K: "ตรวจสอบช่องเป็นระยะให้ช่องมีความเคลื่อนไหวตลอด24ชั่วโมง". Two mechanisms:
+
+- **Monitor** — OpenHands automation `AX YouTube Activity Monitor`
+  (`b4bc39db-4427-4cdc-a4c8-3ba913c2541a`, ACTIVE, hourly cron) runs
+  `plugins/yt-activity` (plugin-spec, `runner: script`, **no LLM**): each channel's
+  subs/videos/views/newest-upload age into the automation KV store, read back with
+  `GET /api/automation/v1/kv/latest?automation_id=<id>`. A rejected token records
+  `auth_error` and the run still succeeds. It refetches the plugin from `main` each
+  run, so a push changes behaviour.
+- **Activity** — `release.py --next --count N --spread H` uploads N items with
+  `publishAt` H hours apart, so one batch covers the day; YouTube flips each public
+  on its own and **nothing stays running**. 6 uploads per Pacific day.
+- **OpenHands secrets hold the YT credentials too:** `POST /api/v1/secrets`
+  `{name,value}` with the bearer key; the sandbox injects them as env vars.
+
 ## Environment facts that keep costing time
 
 - **A pod recycle is the recurring failure, not quota.** It kills the cloud
@@ -107,16 +122,18 @@ true-instrumental karaoke mix, cover art, a 1920x1080 word-synced video.
   `GITHUB_TOKEN`/`GH_TOKEN` *in the command* (they block the flow), run
   `gh auth login --hostname github.com --git-protocol https --web --skip-ssh-key`,
   give K the code + `https://github.com/login/device`; K authorizes from a phone —
-  **PC1 not needed.** Scope `repo`. **AR now persists the token** to
+  **PC1 not needed.** Scope `repo`. **AR persists the token** to
   `/workspace/ax-tools/ar-identity/gh-token` (survives a recycle), so a fresh pod
   reads it from there instead of re-running the flow. Push via
   `git remote set-url origin https://x-access-token:$(cat .../gh-token)@...`, then
   reset the remote token-free. AR can also create repos over the API
   (`POST /user/repos`); `aerismusic8-alt/ar-identity` was made this way.
+- **No available token carries the `workflow` scope**, so a commit touching
+  `.github/workflows/` is rejected. Use an OpenHands automation for scheduled work
+  instead of a workflow; K must `gh auth refresh -s workflow` for a CI path.
 - Sandbox `GITHUB_TOKEN` is a read-only App token (push/dispatch/fork 403).
   `~/.config/aeris/` (GH App key) is gone. `scripts/push-via-pc1.sh` is blocked:
-  PC1's winremote MCP is now `0.4.23` and `/mcp` 401s for both `PC1_MCP_TOKEN*`
-  and a fresh secret read, while `/health` is 200.
+  PC1's winremote MCP `/mcp` 401s for both `PC1_MCP_TOKEN*` (while `/health` is 200).
 - **Sandbox proxy** blocks `POST`/`PATCH` to `www.googleapis.com` (bare 404);
   `GET`/`PUT`/`DELETE` pass. DELETE must carry no body.
 - **`multiget-playability-status` reports the caller, not the game** — put a
