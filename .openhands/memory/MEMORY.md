@@ -17,6 +17,25 @@ leave a pointer. A truncated index silently deletes the rules at the top.
 - **Method: PCSEV — P**roblem, **C**ause, **S**olution, **E**xecute, **V**erify.
   State each step. Do not skip to Execute.
 
+## AR identity — AR's own mailbox and profile (K, 2026-10-31)
+
+K authorised AR to hold its own identity — a mailbox plus a persistent browser
+profile — and to open accounts with it. Kept **outside** the repo (it is public)
+at `/workspace/ax-tools/ar-identity/` (survives a recycle): `creds.json`
+(mailbox `araeris2909e0@fldubai.com`, mail.tm), `browser-profile/` (where
+sign-ins live), `secrets.json` (per-service passwords), `accounts.json` (the
+register). Tools in `ops/`: `ar_identity.py ensure|whoami|inbox|read` (the
+mailbox over the mail.tm API — AR reads its own verification mail),
+`ar_browser.py open|shot|text` (persistent profile), `ar_accounts.py add|list|status`.
+
+**Finding:** a free-mailbox signup is now blocked almost everywhere by design —
+archive.org, OSM, Wikimedia, Codeberg, Neocities, PythonAnywhere, deSEC and
+GitLab show a captcha; Mastodon wants a date of birth; sourcehut and Hugging
+Face reject a disposable domain / datacenter IP outright. **The mailbox and
+profile are reusable, but a captcha signup needs K signed in to the cloud
+desktop** — AR then drives that authenticated browser and never types a password.
+(mail.tm rejects a local part containing `.` — create 201s, login 401s.)
+
 ## 🔴 กฎถาวรข้อที่ 1 (K): ฟรีเท่านั้น — free only
 
 Everything must be 100% free. A paid API, subscription or credit pack is out, not
