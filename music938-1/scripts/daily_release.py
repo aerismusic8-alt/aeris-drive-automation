@@ -76,7 +76,10 @@ def fetch_tree(tok: str, dest: Path) -> None:
         tmp = fh.name
     dest.mkdir(parents=True, exist_ok=True)
     with tarfile.open(tmp) as t:
-        t.extractall(dest)
+        try:
+            t.extractall(dest, filter="data")
+        except TypeError:  # Python < 3.12 has no filter argument
+            t.extractall(dest)
     os.unlink(tmp)
 
 
@@ -120,7 +123,7 @@ def main() -> int:
 
     tok = token()
     if args.root:
-        work = Path(args.root)
+        work = Path(args.root).resolve()
         root = work if (work / "music938-1").is_dir() else next(work.iterdir())
     else:
         work = Path(tempfile.mkdtemp(prefix="ax-music-"))
@@ -130,7 +133,7 @@ def main() -> int:
     ledger = music / "work" / "release-state.json"
     before = ledger.read_bytes() if ledger.exists() else b"{}"
 
-    prog = work / "progress.txt"
+    prog = Path(tempfile.mkdtemp(prefix="ax-progress-")) / "progress.txt"
     cmd = [sys.executable, str(music / "scripts" / "release.py"), "--next", "--public",
            "--ch", args.ch, "--count", str(args.count), "--spread", str(args.spread),
            "--progress-file", str(prog)]
