@@ -524,6 +524,23 @@ def test_market_plugin_wiring() -> None:
     check("refreshes the promo site", "ar_promo_site.py" in src)
 
 
+def test_karaoke_loudness_contract() -> None:
+    """flow_song._karaoke must master through make_song's two-pass loudnorm.
+
+    The inline single-pass `loudnorm=I=-16` this replaced overshot its target
+    (asked -16, delivered -14.4), so the karaoke sat at the song's level and
+    could be the louder of the two — song 15 measured karaoke +0.6 dB over its
+    song. A source check, because the real mixer needs ffmpeg and the stems.
+    """
+    section("karaoke loudness contract (WIRING: karaoke louder than song)")
+    src = (ROOT / "scripts" / "flow_song.py").read_text()
+    body = src.split("def _karaoke(", 1)[1].split("\ndef ", 1)[0]
+    check("karaoke measures with the two-pass helper", "_measure_loudnorm" in body)
+    check("karaoke applies with the two-pass helper", "_apply_loudnorm" in body)
+    check("karaoke keeps the song's offset", "KARAOKE_OFFSET_DB" in body)
+    check("no inline single-pass loudnorm left", "loudnorm=I=" not in body)
+
+
 def test_setup_pod_ffmpeg() -> None:
     """ffmpeg must be unpacked under /workspace, not into a mktemp dir.
 
@@ -557,6 +574,7 @@ def main() -> int:
     test_flow_extend_kinds()
     test_market_report()
     test_market_plugin_wiring()
+    test_karaoke_loudness_contract()
     test_setup_pod_ffmpeg()
     test_outputs()
     print(f"\n{PASS} passed, {FAIL} failed")

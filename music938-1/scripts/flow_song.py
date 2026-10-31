@@ -34,9 +34,20 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT.parent / "aeris938-1" / "scripts"))
 
-from playwright.sync_api import sync_playwright  # noqa: E402
-
-import browser as B  # noqa: E402
+try:
+    from playwright.sync_api import sync_playwright  # noqa: E402
+    import browser as B  # noqa: E402
+except ImportError:  # a bare pod (desktop down) can still rebuild karaoke
+    sync_playwright = None
+    B = None
+import common  # noqa: E402
+# The song master (make_song) owns the loudness contract. Reusing its two-pass
+# helpers keeps the karaoke on the same contract; the inline single-pass
+# `loudnorm` this used before overshot its target (asked -16, delivered -14.4),
+# so the karaoke sat at the song's level and could out-shout a quiet song.
+from make_song import (  # noqa: E402
+    KARAOKE_OFFSET_DB, TARGET_LUFS, _apply_loudnorm, _measure_loudnorm,
+)
 
 SESSION_URL = "https://www.flowmusic.app/session?t=true"
 OUT_DIR = ROOT / "library" / "songs"
@@ -361,39 +372,44 @@ def _stems(page, clip_id: str, dest: Path) -> dict | None:
 
 
 def _karaoke(src: Path, dest: Path, stems: dict | None = None):
-    """Make the karaoke mix.
+    """Make the karaoke mix, on the same loudness contract as the song.
 
     Preferred path: the model's own stems. Dropping the `vocals` stem and
     summing drums+bass+other is a clean instrumental with no vocal bleed.
     Fallback (no stems available): a channel-subtraction center-cancel. A
     centered lead vocal cancels and the sides survive, but the centered bass
-    and kick go with it, so a low-passed mono sum is mixed back in. The result
-    is normalised to a karaoke level either way.
+    and kick go with it, so a low-passed mono sum is mixed back in.
+
+    Either way the mix is mastered with make_song's two-pass loudnorm to
+    `TARGET_LUFS - KARAOKE_OFFSET_DB`. The inline single-pass `loudnorm` this
+    used before overshot its target (asked -16, delivered -14.4), so the karaoke
+    sat at the song's level and could be the louder of the two.
     """
+    slug = dest.stem.removeprefix("karaoke-")
+    work = common.WORK / slug
+    work.mkdir(parents=True, exist_ok=True)
+    raw = work / "karaoke-raw.wav"
+
     if stems and {"drums", "bass", "other"} <= stems.keys():
         ins = [str(stems[k]) for k in ("drums", "bass", "other")]
         graph = "".join(f"[{i}:a]" for i in range(len(ins)))
-        graph += (f"amix=inputs={len(ins)}:normalize=0,"
-                  "loudnorm=I=-16:TP=-1.5:LRA=11[out]")
-        subprocess.run(
-            ["ffmpeg", "-y", "-loglevel", "error",
-             *[a for p in ins for a in ("-i", p)],
-             "-filter_complex", graph, "-map", "[out]",
-             "-codec:a", "libmp3lame", "-qscale:a", "2", str(dest)],
-            check=True,
-        )
-        return
+        graph += f"amix=inputs={len(ins)}:normalize=0[out]"
+        common.ffmpeg([*[a for p in ins for a in ("-i", p)],
+                       "-filter_complex", graph, "-map", "[out]",
+                       "-ar", str(common.SR), "-ac", "2", "-c:a", "pcm_s16le", str(raw)])
+    else:
+        common.ffmpeg(["-i", str(src), "-filter_complex",
+                       "[0:a]pan=stereo|c0=0.5*c0-0.5*c1|c1=0.5*c1-0.5*c0[cc];"
+                       "[0:a]lowpass=f=160,pan=mono|c0=0.5*c0+0.5*c1,volume=1.4[bass];"
+                       "[cc][bass]amix=inputs=2:weights=1 1:normalize=0[out]",
+                       "-map", "[out]", "-ar", str(common.SR), "-ac", "2",
+                       "-c:a", "pcm_s16le", str(raw)])
 
-    subprocess.run(
-        ["ffmpeg", "-y", "-loglevel", "error", "-i", str(src),
-         "-filter_complex",
-         "[0:a]pan=stereo|c0=0.5*c0-0.5*c1|c1=0.5*c1-0.5*c0[cc];"
-         "[0:a]lowpass=f=160,pan=mono|c0=0.5*c0+0.5*c1,volume=1.4[bass];"
-         "[cc][bass]amix=inputs=2:weights=1 1:normalize=0,"
-         "loudnorm=I=-16:TP=-1.5:LRA=11[out]",
-         "-map", "[out]", "-codec:a", "libmp3lame", "-qscale:a", "2", str(dest)],
-        check=True,
-    )
+    target = TARGET_LUFS - KARAOKE_OFFSET_DB
+    measured = _measure_loudnorm(raw, target=target)
+    out_wav = work / "karaoke.wav"
+    _apply_loudnorm(raw, out_wav, measured, target=target)
+    common.ffmpeg(["-i", str(out_wav), "-c:a", "libmp3lame", "-b:a", "192k", str(dest)])
 
 
 def _open_extend(page):
@@ -616,11 +632,35 @@ def generate(slug: str, *, timeout: float = 480.0, force: bool = False,
             "clip_id": base["id"], "extended": extended}
 
 
+def _karaoke_only(slug: str) -> int:
+    """Rebuild one karaoke mp3 from what is already on disk. No Flow, no credits.
+
+    A karaoke fix (a loudness-contract change, say) should not cost a generation,
+    so this reuses the saved stems when they exist and the song mix otherwise.
+    """
+    song = OUT_DIR / f"song-{slug}.mp3"
+    if not song.exists():
+        print(f"no song on disk for {slug}", file=sys.stderr)
+        return 1
+    want = {"drums", "bass", "other"}
+    stem_dir = OUT_DIR / f"stems-{slug}"
+    found = {p.stem: p for p in stem_dir.iterdir()} if stem_dir.is_dir() else {}
+    stems = found if want <= found.keys() else None
+    dest = OUT_DIR / f"karaoke-{slug}.mp3"
+    _karaoke(song, dest, stems=stems)
+    print(json.dumps({"status": "KARAOKE_REBUILT", "slug": slug, "file": str(dest),
+                      "stems": bool(stems), "lufs": common.integrated_lufs(dest)},
+                     ensure_ascii=False))
+    return 0
+
+
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument("slug", nargs="?")
     ap.add_argument("--force", action="store_true")
     ap.add_argument("--list", action="store_true")
+    ap.add_argument("--karaoke-only", action="store_true",
+                    help="rebuild the karaoke mix from local stems/song; no Flow, no credits")
     ap.add_argument("--keep-tabs", action="store_true",
                     help="do not sweep other tabs; set when workers run in parallel")
     ap.add_argument("--check", action="store_true",
@@ -657,6 +697,8 @@ def main() -> int:
         return 0
     if not args.slug:
         ap.error("need a slug (or --list)")
+    if args.karaoke_only:
+        return _karaoke_only(args.slug)
     try:
         r = generate(args.slug, force=args.force, keep_tabs=args.keep_tabs)
     except B.LoginRequired as exc:
