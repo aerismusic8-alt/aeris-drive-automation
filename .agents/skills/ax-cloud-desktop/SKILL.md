@@ -76,6 +76,21 @@ https://work-1-<work-host>/vnc.html?autoconnect=1&resize=scale
 Then, **inside that screen**, K opens `flowmusic.app` (and `gemini.google.com`) and
 signs in. Sign into both in one sitting — they share the same Google session.
 
+**Which account: `aerismusic8@gmail.com`, K's account.** K ruled on 2026-10-31 that
+Flow Music and Gemini run on K's own account and **not on a mailbox AR registered**
+(AR's mail.tm address `araeris2909e0@fldubai.com`). A fresh signup in either app
+means the wrong account is in the profile. `check_login.py` now prints the account
+and returns `RESULT=WRONG_ACCOUNT` (exit 3) when it is not the expected one — treat
+that as a stop, sign out, and sign back in as `aerismusic8@gmail.com`.
+
+**The free allowance, measured 2026-10-31** (`GET /__api/billing/credits`, free
+tier): `tokens_remaining` 4510, `credits_remaining` 376, plus a `daily-free` grant
+of **360 tokens / 30 credits each day**. `producer/access-granted: true`. A song
+(create + extend) draws a few hundred tokens, so one account sustains only a
+couple of songs a day — the throttle window, not the balance, is usually the
+binding limit. K's standing permission if a free allowance cannot finish the job:
+create more accounts (Flow/Gemini stay on K's account).
+
 **Do not send K a session URL and expect it to help.** A link like
 `flowmusic.app/session/<uuid>` is an in-app route, not a credential. Opened without a
 login it redirects to the landing page and shows *Log in / Sign up*. The cookie has to

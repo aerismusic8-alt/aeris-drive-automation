@@ -29,6 +29,15 @@ sourcehut/Hugging Face reject a disposable domain or datacenter IP. A captcha
 signup needs K signed in to the cloud desktop; AR drives that browser and never
 types a password.
 
+**K's rule (2026-10-31): a newly-registered mailbox is NOT for Gemini or Flow.**
+Both stay on **K's account `aerismusic8@gmail.com`**; AR's mail.tm address is for
+throwaway signups only. `check_login.py` guards this: it prints the signed-in
+account and returns `RESULT=WRONG_ACCOUNT` (exit 3) on any other.
+
+**K's standing permission (2026-10-31): "ถ้าใช้ไม่พอสร้างเพิ่มอีกเลย"** — when a free
+allowance is not enough to finish, create more accounts. Flow/Gemini remain the
+exception: they run on K's account, which only K signs into.
+
 ## 🔴 กฎถาวรข้อที่ 1 (K): ฟรีเท่านั้น — free only
 
 Everything must be 100% free. A paid API, subscription or credit pack is out, not
@@ -73,7 +82,8 @@ true-instrumental karaoke mix, cover art, a 1920x1080 word-synced video.
   gitignored, the release is the durable copy — `scripts/pull_media.py`). **10-20
   blocked on the Flow Music login**, which is SIGNED_OUT after every pod recycle
   (the profile survives, the cookie does not). K signs in via noVNC
-  (`work-1-<host>/vnc.html`), then the batch resumes.
+  (`work-1-<host>/vnc.html`) **as `aerismusic8@gmail.com`** (K's rule — not AR's
+  registered mail), then the batch resumes.
 - `setup-pod.sh` used to leave dangling ffmpeg symlinks (unpacked into a deleted
   `mktemp -d`); fixed to unpack under `/workspace/ax-tools/ffmpeg`. Run it after
   a recycle, then `export PATH=/workspace/ax-tools/bin:$PATH`.

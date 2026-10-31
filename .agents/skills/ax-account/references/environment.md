@@ -96,7 +96,10 @@ it; fix the repo name instead.
 
 ## Login-only web apps (cloud desktop)
 
-- Flow Music (`flowmusic.app`) and Gemini web (`gemini.google.com`) have **no API**.
+- Flow Music (`flowmusic.app`) and Gemini web (`gemini.google.com`) have **no API**,
+  and both run on **K's Google account `aerismusic8@gmail.com`** — never on a mailbox
+  AR registered (K's rule, 2026-10-31). `check_login.py` returns
+  `RESULT=WRONG_ACCOUNT` (exit 3) if a different account is signed in.
   Drive them through the persistent cloud desktop. Read the `ax-cloud-desktop`
   skill first.
 - The operator signs in once; **the agent never types the Google password.**

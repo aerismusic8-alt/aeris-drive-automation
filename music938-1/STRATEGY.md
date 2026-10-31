@@ -168,15 +168,22 @@ python3 scripts/competitor_scan.py --queries-file competitor-queries.txt \
   is the only thing that does not survive, even though the profile dir is on
   `/workspace`. When it is signed out (`check_login.py` -> `RESULT=SIGNED_OUT`)
   the batch cannot generate, no matter how open the throttle window is. K signs
-  in once via noVNC; then the batch resumes on its own.
+  in once via noVNC **as `aerismusic8@gmail.com`**; then the batch resumes on its own.
 - **The Flow Music 429 throttle is real and account-wide**, independent of the
   login. Even signed in, generation only succeeds inside a window (UTC 23,0,1,2,6,18).
 - **Karaoke subtitles are estimated**, not from real lyric timing. Flow Music
   does expose `lyrics_timing` on a clip; wiring it in would make the karaoke
   word-accurate. That is the next quality upgrade.
 
-## Current state (2026-10-31 14:30 UTC)
+## Current state (2026-10-31 15:20 UTC)
 
+- **The Flow Music login is back.** K signed in as `aerismusic8@gmail.com` (K's
+  account, not a mailbox AR registered). `check_login.py` reports
+  `RESULT=SIGNED_IN account=aerismusic8@gmail.com`. The free allowance reads
+  `tokens_remaining 4510 / credits_remaining 376` with a `daily-free` grant of
+  360 tokens / 30 credits a day. Songs 10-20 are now generating — the resumable
+  batch probes continuously and renders whenever the producer throttle opens
+  (07:00-17:00 UTC is usually shut).
 - **Built and stored (as `media-938` release assets): songs 01-09** — song mp3 +
   karaoke mp3 + song video + karaoke video + three Shorts each, plus covers and
   thumbnails. 150 assets, 529 MB. `library/` is gitignored; the release is the

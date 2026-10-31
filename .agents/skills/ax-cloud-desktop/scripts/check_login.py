@@ -11,10 +11,16 @@ Verified 2026-10-28: signed out -> 2 cookies, signed in -> ~27 and an account em
 """
 from __future__ import annotations
 
+import os
 import re
 import sys
 
 CDP = "http://127.0.0.1:9222"
+
+# K's rule (2026-10-31): Flow Music and Gemini web run on K's own Google account,
+# never on a mailbox AR registered. A fresh signup there means the wrong account
+# is signed in, so fail loudly instead of quietly generating on it.
+EXPECTED_ACCOUNT = os.environ.get("AX_GOOGLE_ACCOUNT", "aerismusic8@gmail.com")
 
 
 def main() -> int:
@@ -48,6 +54,12 @@ def main() -> int:
                 email = m.group(0) if m else None
             if signed_in:
                 print(f"RESULT=SIGNED_IN account={email or '(not shown)'}")
+                if email and email.lower() != EXPECTED_ACCOUNT.lower():
+                    print(f"RESULT=WRONG_ACCOUNT — signed in as {email}, expected "
+                          f"{EXPECTED_ACCOUNT}. Flow Music and Gemini must run on "
+                          f"K's account, not a mailbox AR registered. Sign out and "
+                          f"back in as {EXPECTED_ACCOUNT}.")
+                    return 3
                 return 0
             print("RESULT=SIGNED_OUT — the operator must sign in via noVNC")
             return 1
