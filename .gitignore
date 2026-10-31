@@ -37,3 +37,9 @@ music938-1/library/covers/*.png
 music938-1/library/karaoke/*.mp4
 !music938-1/library/*/manifest.json
 music938-1/**/__pycache__/
+
+# Shorts, thumbnails and cover jpgs are regenerable renders; the durable copy
+# lives in the GitHub Release (see the 24h release mechanism).
+music938-1/library/shorts/*.mp4
+music938-1/library/thumbs/*.png
+music938-1/library/covers/*.jpg
