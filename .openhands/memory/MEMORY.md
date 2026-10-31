@@ -106,6 +106,21 @@ K: "ตรวจสอบช่องเป็นระยะให้ช่อ�
 - **OpenHands secrets hold the YT credentials too:** `POST /api/v1/secrets`
   `{name,value}` with the bearer key; the sandbox injects them as env vars.
 
+## Promoting the channel — what AR can and cannot create (2026-10-31)
+
+K: "สร้างโซเชียลมีเดียช่องเพื่อโปรโมท". Result:
+
+- **Fediverse signup is a dead end.** Open-registration Mastodon/Lemmy instances
+  put a **CAPTCHA on the final e-mail-confirmation step** (seen on defcon.social:
+  "Security check — Solve the CAPTCHA"). The account and the mail both arrive, the
+  last step needs a human. API and headless Chromium both fail. Some also reject
+  disposable domains or need admin approval. Do not retry without a real mailbox.
+- **What works: a GitHub Pages promo site AR owns end to end.** Repo
+  `aerismusic8-alt/site-aeris-music` → https://aerismusic8-alt.github.io/site-aeris-music/
+  `ops/ar_promo_site.py` reads the channel's newest uploads (uploads playlist
+  `UU`+channel id) and rewrites the page; `--dry-run` renders to `/tmp`. Re-runnable.
+- Registry of what exists: `/workspace/ax-tools/ar-identity/accounts.json`.
+
 ## Environment facts that keep costing time
 
 - **A pod recycle is the recurring failure, not quota.** It kills the cloud
