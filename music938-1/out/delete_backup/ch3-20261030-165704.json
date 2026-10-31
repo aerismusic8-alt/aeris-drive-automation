@@ -1,0 +1,75 @@
+[
+ {
+  "kind": "youtube#video",
+  "etag": "Q_cKZox9guZ5sL6acn-xfg_SVTM",
+  "id": "oliw1meKfcQ",
+  "snippet": {
+   "publishedAt": "2026-10-30T16:11:56Z",
+   "channelId": "UCm44BjAn03ruOF-WaA3ZRww",
+   "title": "คนดีที่จากไป — เพลงเศร้า ที่เข้าใจความเสียใจ | AERIS Music",
+   "description": "🎵 คนดีที่จากไป\n\nเพลงเศร้า ที่เข้าใจความเสียใจ\n\nเพลงที่ 1 จากชุด 20 เพลงไทย — ร้องด้วยเสียงจริง เนื้อร้องและทำนองใหม่\n\n🎧 ฟังเพลิน ฟังได้ทุกวัน\n🎤 คาราโอเกะมีให้ในช่อง (ไม่มีเสียงร้อง)\n✨ สร้างจากความตั้งใจ ไม่ใช่ความเร็ว\n\n#AERISMusic #เพลงไทย #ศิลปินไทย #เพลงใหม่ #เพลงเพื่อชีวิต #คาราโอเกะ #เพลงเพราะ",
+   "thumbnails": {
+    "default": {
+     "url": "https://i.ytimg.com/vi/oliw1meKfcQ/default.jpg",
+     "width": 120,
+     "height": 90
+    },
+    "medium": {
+     "url": "https://i.ytimg.com/vi/oliw1meKfcQ/mqdefault.jpg",
+     "width": 320,
+     "height": 180
+    },
+    "high": {
+     "url": "https://i.ytimg.com/vi/oliw1meKfcQ/hqdefault.jpg",
+     "width": 480,
+     "height": 360
+    },
+    "standard": {
+     "url": "https://i.ytimg.com/vi/oliw1meKfcQ/sddefault.jpg",
+     "width": 640,
+     "height": 480
+    },
+    "maxres": {
+     "url": "https://i.ytimg.com/vi/oliw1meKfcQ/maxresdefault.jpg",
+     "width": 1280,
+     "height": 720
+    }
+   },
+   "channelTitle": "AERIS Music",
+   "categoryId": "10",
+   "liveBroadcastContent": "none",
+   "defaultLanguage": "th",
+   "localized": {
+    "title": "คนดีที่จากไป — เพลงเศร้า ที่เข้าใจความเสียใจ | AERIS Music",
+    "description": "🎵 คนดีที่จากไป\n\nเพลงเศร้า ที่เข้าใจความเสียใจ\n\nเพลงที่ 1 จากชุด 20 เพลงไทย — ร้องด้วยเสียงจริง เนื้อร้องและทำนองใหม่\n\n🎧 ฟังเพลิน ฟังได้ทุกวัน\n🎤 คาราโอเกะมีให้ในช่อง (ไม่มีเสียงร้อง)\n✨ สร้างจากความตั้งใจ ไม่ใช่ความเร็ว\n\n#AERISMusic #เพลงไทย #ศิลปินไทย #เพลงใหม่ #เพลงเพื่อชีวิต #คาราโอเกะ #เพลงเพราะ"
+   },
+   "defaultAudioLanguage": "th"
+  },
+  "contentDetails": {
+   "duration": "PT2M59S",
+   "dimension": "2d",
+   "definition": "hd",
+   "caption": "false",
+   "licensedContent": false,
+   "contentRating": {},
+   "projection": "rectangular",
+   "hasCustomThumbnail": true
+  },
+  "status": {
+   "uploadStatus": "processed",
+   "privacyStatus": "public",
+   "license": "youtube",
+   "embeddable": true,
+   "publicStatsViewable": true,
+   "madeForKids": false,
+   "selfDeclaredMadeForKids": false
+  },
+  "statistics": {
+   "viewCount": "0",
+   "likeCount": "0",
+   "dislikeCount": "0",
+   "favoriteCount": "0",
+   "commentCount": "0"
+  }
+ }
+]

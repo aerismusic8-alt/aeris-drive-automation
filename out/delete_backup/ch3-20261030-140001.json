@@ -1,0 +1,92 @@
+[
+ {
+  "kind": "youtube#video",
+  "etag": "9P3X_Gc3KW5hiC2F1Oil2XVoo9c",
+  "id": "ZW6mscTm51w",
+  "snippet": {
+   "publishedAt": "2026-10-30T13:55:35Z",
+   "channelId": "UCm44BjAn03ruOF-WaA3ZRww",
+   "title": "คนดีที่จากไป — เพลงไทยเพื่อชีวิต | AERIS Music",
+   "description": "คนดีที่จากไป — เพลงไทยเพื่อชีวิต | AERIS Music\n\nเพลงที่ 1 จากชุด 20 เพลงไทยเพื่อชีวิต\nร้องโดยเสียงจริงจาก AI · เนื้อร้องและทำนองใหม่\n\n🎵 ฟังเพลิน ฟังได้ทุกวัน\n🎤 คาราโอเกะมีให้ในช่อง (ไม่มีเสียงร้อง)\n✨ สร้างจากความตั้งใจ ไม่ใช่ความเร็ว\n\n#AERISMusic #เพลงไทย #เพลงเพื่อชีวิต #เพลงเศร้า #คาราโอเกะ #เพลงใหม่",
+   "thumbnails": {
+    "default": {
+     "url": "https://i9.ytimg.com/vi/ZW6mscTm51w/default.jpg?sqp=CODFktcG&rs=AOn4CLDdyUI1ATcZhteUZULMLL0FQ3kIjQ",
+     "width": 120,
+     "height": 90
+    },
+    "medium": {
+     "url": "https://i9.ytimg.com/vi/ZW6mscTm51w/mqdefault.jpg?sqp=CODFktcG&rs=AOn4CLDbB8ZAlR35Q3zrhu0qnhNrrV_swg",
+     "width": 320,
+     "height": 180
+    },
+    "high": {
+     "url": "https://i9.ytimg.com/vi/ZW6mscTm51w/hqdefault.jpg?sqp=CODFktcG&rs=AOn4CLBmsuWvJaAJdEl28FiSLU70Nw3ATQ",
+     "width": 480,
+     "height": 360
+    },
+    "standard": {
+     "url": "https://i9.ytimg.com/vi/ZW6mscTm51w/sddefault.jpg?sqp=CODFktcG&rs=AOn4CLCb5DL6xb-GFvgOPleom64kKR1O0A",
+     "width": 640,
+     "height": 480
+    },
+    "maxres": {
+     "url": "https://i9.ytimg.com/vi/ZW6mscTm51w/maxresdefault.jpg?sqp=CODFktcG&rs=AOn4CLDQDI7eOVcDPPgWzxahx9JozjE-sA",
+     "width": 1280,
+     "height": 720
+    },
+    "fhd": {
+     "url": "https://i9.ytimg.com/vi/ZW6mscTm51w/fhddefault.jpg?sqp=CODFktcG&rs=AOn4CLCD1z0LLJJ02KLrS2D7ahYHguMO0w",
+     "width": 1920,
+     "height": 1080
+    }
+   },
+   "channelTitle": "AERIS Music",
+   "tags": [
+    "AERIS",
+    "thai music",
+    "thai song",
+    "คาราโอเกะ",
+    "เพลงฟังสบาย",
+    "เพลงเพราะ",
+    "เพลงเพื่อชีวิต",
+    "เพลงเศร้า",
+    "เพลงใหม่",
+    "เพลงไทย"
+   ],
+   "categoryId": "10",
+   "liveBroadcastContent": "none",
+   "defaultLanguage": "th",
+   "localized": {
+    "title": "คนดีที่จากไป — เพลงไทยเพื่อชีวิต | AERIS Music",
+    "description": "คนดีที่จากไป — เพลงไทยเพื่อชีวิต | AERIS Music\n\nเพลงที่ 1 จากชุด 20 เพลงไทยเพื่อชีวิต\nร้องโดยเสียงจริงจาก AI · เนื้อร้องและทำนองใหม่\n\n🎵 ฟังเพลิน ฟังได้ทุกวัน\n🎤 คาราโอเกะมีให้ในช่อง (ไม่มีเสียงร้อง)\n✨ สร้างจากความตั้งใจ ไม่ใช่ความเร็ว\n\n#AERISMusic #เพลงไทย #เพลงเพื่อชีวิต #เพลงเศร้า #คาราโอเกะ #เพลงใหม่"
+   },
+   "defaultAudioLanguage": "th"
+  },
+  "contentDetails": {
+   "duration": "PT2M59S",
+   "dimension": "2d",
+   "definition": "hd",
+   "caption": "false",
+   "licensedContent": false,
+   "contentRating": {},
+   "projection": "rectangular",
+   "hasCustomThumbnail": true
+  },
+  "status": {
+   "uploadStatus": "processed",
+   "privacyStatus": "private",
+   "license": "youtube",
+   "embeddable": true,
+   "publicStatsViewable": true,
+   "madeForKids": false,
+   "selfDeclaredMadeForKids": false
+  },
+  "statistics": {
+   "viewCount": "0",
+   "likeCount": "0",
+   "dislikeCount": "0",
+   "favoriteCount": "0",
+   "commentCount": "0"
+  }
+ }
+]
