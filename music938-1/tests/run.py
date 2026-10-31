@@ -466,6 +466,20 @@ def test_compilation() -> None:
           str(compile_album.MIN_TRACKS))
 
 
+def test_flow_extend_kinds() -> None:
+    """An Extend renders as `audio__render_edit`, not `audio__extend_song`.
+
+    Flow re-renders the whole take when a section is appended, so waiting only
+    for `audio__extend_song` never saw a completed extend and every song stayed
+    under the 3.5-minute floor (the old "16 creates, 0 extends" note). This is a
+    source check because driving the real panel needs the signed-in desktop.
+    """
+    section("Flow extend clip kind (WIRING: short-take bug)")
+    src = (ROOT / "scripts" / "flow_song.py").read_text()
+    body = src.split("def _extend(", 1)[1].split("\ndef ", 1)[0]
+    check("extend waits for audio__render_edit", "audio__render_edit" in body)
+
+
 def main() -> int:
     test_lyrics()
     test_tokenizer()
@@ -482,6 +496,7 @@ def main() -> int:
     test_thumb_contrast()
     test_titles()
     test_compilation()
+    test_flow_extend_kinds()
     test_outputs()
     print(f"\n{PASS} passed, {FAIL} failed")
     if FAILURES:

@@ -128,27 +128,21 @@ def meta_bpm(meta: dict) -> str | None:
     return tempo if tempo.isdigit() else None
 
 
-# Asked of the Lyria model. Every take recorded so far came back at 160-181s
+# Asked of the Lyria model. Every take recorded so far came back at 160-184s
 # even with this set to "3:00", and the app folds the value into the lyrics as
 # `[End - m:ss]`, so the Length field is a *seed* the model aims at rather than a
-# hard cap. The previous note assumed a 3:00 clamp and leaned on Extend; Extend
-# has never once produced a clip (16 creates, 0 extends), so the pack's whole
-# 3.5-minute floor currently rests on a rail that does not work. Ask for the
-# floor outright and keep Extend only as the fallback. Override with
-# FLOW_CREATE_LENGTH to experiment without an edit.
+# hard cap. Ask for the floor outright and let Extend close the rest of the gap.
+# Override with FLOW_CREATE_LENGTH to experiment without an edit.
 CREATE_LENGTH = os.environ.get("FLOW_CREATE_LENGTH", "4:30")
 # 3.5 min, the same floor report.py enforces, so a take that passes
 # here cannot fail the brief later.
 MIN_SECONDS = 210.0
-# Create used to be assumed clamped to 3:00 with Extend adding ~60s a step, but
-# no extend clip has ever appeared, so the fallback rarely helps. It stays as a
-# best-effort second chance when a create still lands under the floor.
+# A create lands near 3:00 and one Extend adds a fixed step, so a take under the
+# floor is extended until it clears the brief.
 MAX_EXTENDS = 3
-# The extend has only ever been attempted seconds after its own create, i.e.
-# inside the same per-minute rate bucket, and it has 429'd every single time
-# (16 creates, 0 extends). A rest before the first extend is the cheap test for
-# that: if the bucket is per-minute, waiting steps out of it; if Extend is simply
-# not on the free tier, the rest changes nothing and costs a little window time.
+# An extend issued seconds after its own create lands in the same per-minute rate
+# bucket and 429s. Resting first steps out of the bucket; measured 2026-10-31,
+# the extend then returns `200` and a complete clip. Keep the rest.
 EXTEND_REST_S = 150
 
 
@@ -452,7 +446,14 @@ def _extend(page, clip_id: str, clips: dict, since: str, exclude: set,
         .filter(e=>(e.innerText||'').trim()==='Generate');
       if (bs.length) bs[bs.length-1].click();
     }""")
-    return _wait_new_clip(page, clips, since, exclude, timeout, flags=flags)
+    # An extend comes back as an `audio__render_edit` clip, not
+    # `audio__extend_song`: Flow re-renders the whole take with the appended
+    # section. Waiting only for `audio__extend_song` therefore never saw it, so
+    # every extend looked like a failure (the old "16 creates, 0 extends" note)
+    # while the clip was in fact produced, complete, and over the floor.
+    return _wait_new_clip(page, clips, since, exclude, timeout,
+                          kinds=("audio__extend_song", "audio__render_edit"),
+                          flags=flags)
 
 
 def generate(slug: str, *, timeout: float = 480.0, force: bool = False,
