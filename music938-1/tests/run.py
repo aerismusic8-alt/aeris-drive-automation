@@ -480,6 +480,20 @@ def test_flow_extend_kinds() -> None:
     check("extend waits for audio__render_edit", "audio__render_edit" in body)
 
 
+def test_setup_pod_ffmpeg() -> None:
+    """ffmpeg must be unpacked under /workspace, not into a mktemp dir.
+
+    The symlinks in `setup-pod.sh` point at the extracted tree. Unpacking into a
+    `mktemp -d` that the script then deletes left dangling links, so the next run
+    saw `-x "$BIN/ffmpeg"` as true while the binary was gone, and every render
+    died on a missing ffprobe after a generation call had already been spent.
+    """
+    section("pod setup (WIRING: dangling ffmpeg symlink)")
+    src = (ROOT / "scripts" / "setup-pod.sh").read_text()
+    check("ffmpeg unpacks under /workspace", "FFDIR=/workspace/ax-tools/ffmpeg" in src)
+    check("extracts into FFDIR, not the temp dir", '"$FFDIR"' in src)
+
+
 def main() -> int:
     test_lyrics()
     test_tokenizer()
@@ -497,6 +511,7 @@ def main() -> int:
     test_titles()
     test_compilation()
     test_flow_extend_kinds()
+    test_setup_pod_ffmpeg()
     test_outputs()
     print(f"\n{PASS} passed, {FAIL} failed")
     if FAILURES:

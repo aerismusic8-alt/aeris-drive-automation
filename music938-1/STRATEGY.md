@@ -162,11 +162,35 @@ python3 scripts/competitor_scan.py --queries-file competitor-queries.txt \
 
 ## Known gaps, stated plainly
 
-- **19 of 20 songs are not generated yet.** Generation is window-gated; the
-  batch is running and will fill in as windows open.
+- **11 of 20 songs are not generated yet (09 built, 10-20 missing).** Generation
+  runs on Flow Music, which needs the operator's Google session in the cloud
+  desktop. That session **expires whenever the pod recycles** — the login cookie
+  is the only thing that does not survive, even though the profile dir is on
+  `/workspace`. When it is signed out (`check_login.py` -> `RESULT=SIGNED_OUT`)
+  the batch cannot generate, no matter how open the throttle window is. K signs
+  in once via noVNC; then the batch resumes on its own.
+- **The Flow Music 429 throttle is real and account-wide**, independent of the
+  login. Even signed in, generation only succeeds inside a window (UTC 23,0,1,2,6,18).
 - **Karaoke subtitles are estimated**, not from real lyric timing. Flow Music
   does expose `lyrics_timing` on a clip; wiring it in would make the karaoke
   word-accurate. That is the next quality upgrade.
+
+## Current state (2026-10-31 14:30 UTC)
+
+- **Built and stored (as `media-938` release assets): songs 01-09** — song mp3 +
+  karaoke mp3 + song video + karaoke video + three Shorts each, plus covers and
+  thumbnails. 150 assets, 529 MB. `library/` is gitignored; the release is the
+  durable copy, so a fresh pod restores it with `scripts/pull_media.py`.
+- **Live on ch3 (@aerismusicth): 15 videos.** Song 01 (song `ASuxGEvJBlw`,
+  karaoke `SWS1vJJgkow`, three Shorts) and song 02 (song `SZO66B-RIIQ`, karaoke
+  `ohmKsjI5Sq8`, three Shorts) are public; song 03's first Short `51EuOXD3HPA` is
+  public and the rest of song 03 is scheduled.
+- **Release queue: 34 items pending** (the rest of 03 through 09), 6/day.
+- **Today's YouTube quota (Pacific day) is spent: 6/6**, by the 07:01Z batch. The
+  next batch is the `AX Music Daily Release` automation at 07:05Z tomorrow.
+- **`AX Music Daily Release` was re-enabled today** after the platform auto-paused
+  it (5 consecutive failed runs, all cold-start flakes — `Sandbox not available` /
+  `agent_server fetch_plugin timed out`, not our code).
 
 ## Why only song 01 existed, and what was actually wrong
 

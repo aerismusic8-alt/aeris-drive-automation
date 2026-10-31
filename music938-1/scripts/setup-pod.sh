@@ -14,14 +14,19 @@ mkdir -p "$BIN"
 
 python3 -m pip install -q numpy pythainlp python-crfsuite pillow 2>&1 | tail -2
 
+# The binaries must be unpacked *under /workspace*, not into a mktemp dir: the
+# symlinks below point at the extracted tree, so a temp dir that is deleted
+# leaves dangling links and the next run sees "ffmpeg installed" while it is not.
+FFDIR=/workspace/ax-tools/ffmpeg
 if [ ! -x "$BIN/ffmpeg" ]; then
   url="https://github.com/BtbN/FFmpeg-Builds/releases/download/latest/ffmpeg-master-latest-linux64-gpl.tar.xz"
   tmp=$(mktemp -d)
   echo "fetching static ffmpeg..."
+  mkdir -p "$FFDIR"
   curl -sL -o "$tmp/ff.tar.xz" "$url" &&
     python3 -c "import tarfile,sys; tarfile.open(sys.argv[1]).extractall(sys.argv[2])" \
-      "$tmp/ff.tar.xz" "$tmp" &&
-    d=$(find "$tmp" -maxdepth 1 -type d -name 'ffmpeg-master*' | head -1) &&
+      "$tmp/ff.tar.xz" "$FFDIR" &&
+    d=$(find "$FFDIR" -maxdepth 1 -type d -name 'ffmpeg-master*' | head -1) &&
     ln -sf "$d/bin/ffmpeg" "$BIN/ffmpeg" && ln -sf "$d/bin/ffprobe" "$BIN/ffprobe"
   rm -rf "$tmp"
 fi
