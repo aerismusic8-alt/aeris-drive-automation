@@ -12,6 +12,11 @@ mentions AKATH, AX, K, PC1, Roblox, a Thai story video, music938, karaoke, a Dri
 upload, or "free only". Install it for every conversation with
 `.agents/skills/ax-account/scripts/install-agent-skills.sh`.
 
+Then read `.openhands/CHARTER.md`: K's standing mandate (2026-10-31) that AR
+administers **all** of K's work in K's place — decide, execute, verify, record, no
+per-step approval. It also carries the perpetual loop and the live priority queue,
+so it is the first place to look for "what should I do next".
+
 ## Layout
 
 | Path | Purpose |

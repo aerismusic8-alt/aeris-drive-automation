@@ -4,6 +4,10 @@
 top. Rules and pointers only; full detail in `MEMORY-ARCHIVE.md` and the daily logs
 beside this file. Past ~6 KB, fold the oldest lines into the archive.
 
+**Read `.openhands/CHARTER.md` first** — K's standing mandate (2026-10-31) that AR
+administers all of K's work in K's place, plus the perpetual loop and the live
+priority queue. It is the answer to "what next".
+
 ## Roles and method (K, 2026-10-31)
 
 - **K = ผู้มีอำนาจตัดสินใจสูงสุด (Final Authority).** Every standing rule is K's.
