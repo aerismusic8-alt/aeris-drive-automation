@@ -28,6 +28,11 @@ API = "https://www.googleapis.com/youtube/v3"
 
 
 def get_secret(name: str) -> str:
+    # OpenHands injects user secrets as environment variables, so read that
+    # first; the API path is the fallback for a sandbox that does not.
+    v = os.environ.get(name)
+    if v:
+        return v
     url = os.environ.get("AGENT_SERVER_URL", "").rstrip("/")
     key = os.environ.get("SESSION_API_KEY") or os.environ.get("OH_SESSION_API_KEYS_0", "")
     if url:
