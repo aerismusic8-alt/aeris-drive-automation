@@ -299,43 +299,14 @@ def plan(days: int, shorts: bool = False, spread: float = 0) -> list[dict]:
             # channel is active around the clock instead of bursting then going
             # quiet. YouTube publishes each on its own publishAt.
             item["when"] = start + timedelta(hours=i * spread)
+            item["schedule"] = item["when"].strftime("%Y-%m-%dT%H:%M:%SZ")
         else:
             item["when"] = start + timedelta(days=i // UPLOADS_PER_DAY)
     return todo[: days * UPLOADS_PER_DAY] if days else todo
 
 
-def main() -> int:
-    ap = argparse.ArgumentParser(description=__doc__)
-    ap.add_argument("--plan", action="store_true", help="show the schedule, send nothing")
-    ap.add_argument("--days", type=int, default=0, help="limit the plan to N days")
-    ap.add_argument("--next", action="store_true", help="release the first item in the plan")
-    ap.add_argument("--shorts", action="store_true",
-                    help="plan Shorts only (the discovery-first queue)")
-    ap.add_argument("--ch", default="ch3")
-    ap.add_argument("--public", action="store_true",
-                    help="publish publicly; without it the upload stays private for K")
-    ap.add_argument("--schedule-at", help="ISO8601 UTC to publish, e.g. 2026-10-31T15:00:00Z")
-    ap.add_argument("--spread", type=float, default=0,
-                    help="publish this many hours from now (a 24h activity spread)")
-    ap.add_argument("--dry-run", action="store_true")
-    args = ap.parse_args()
-
-    todo = plan(args.days, shorts=args.shorts, spread=args.spread)
-    if args.plan or not args.next:
-        if not todo:
-            print("nothing to release yet — no built songs found")
-            print("(generation is window-gated; see scripts/watch.sh)")
-            return 0
-        print(f"{len(todo)} releases pending, {UPLOADS_PER_DAY}/day "
-              f"(YouTube API quota: 10,000 units / 1,600 per upload):\n")
-        for item in todo[:24]:
-            kind = {"karaoke": "KARAOKE", "short": "SHORT  "}.get(item["kind"], "SONG   ")
-            print(f"  {item['when']:%Y-%m-%d %H:%M}  {kind}  {item['slug']}")
-        if len(todo) > 24:
-            print(f"  ... and {len(todo) - 24} more")
-        return 0
-
-    item = todo[0]
+def release_one(item: dict, args) -> int:
+    """Upload one planned item, schedule it if asked, and record it."""
     slug, kind = item["slug"], item["kind"]
     state = load_state()
     used = uploads_today(state)
@@ -373,10 +344,7 @@ def main() -> int:
            "--category", "10", "--privacy", "public" if args.public else "private"]
     # A scheduled publish is how the channel stays active around the clock:
     # YouTube flips it to public at the given time without anything running here.
-    when = args.schedule_at
-    if args.spread:
-        when = (datetime.now(timezone.utc) + timedelta(hours=args.spread)).strftime(
-            "%Y-%m-%dT%H:%M:%SZ")
+    when = args.schedule_at or item.get("schedule")
     if when:
         cmd += ["--schedule", when]
     if thumb.exists():
@@ -409,6 +377,52 @@ def main() -> int:
     save_state(state)
     print(f"recorded in {STATE.relative_to(ROOT)}")
     return 0
+
+
+def main() -> int:
+    ap = argparse.ArgumentParser(description=__doc__)
+    ap.add_argument("--plan", action="store_true", help="show the schedule, send nothing")
+    ap.add_argument("--days", type=int, default=0, help="limit the plan to N days")
+    ap.add_argument("--next", action="store_true", help="release the first item in the plan")
+    ap.add_argument("--count", type=int, default=1,
+                    help="release this many items in one run (each scheduled in turn)")
+    ap.add_argument("--shorts", action="store_true",
+                    help="plan Shorts only (the discovery-first queue)")
+    ap.add_argument("--ch", default="ch3")
+    ap.add_argument("--public", action="store_true",
+                    help="publish publicly; without it the upload stays private for K")
+    ap.add_argument("--schedule-at", help="ISO8601 UTC to publish, e.g. 2026-10-31T15:00:00Z")
+    ap.add_argument("--spread", type=float, default=0,
+                    help="hours between the items of one batch (a 24h activity spread)")
+    ap.add_argument("--dry-run", action="store_true")
+    args = ap.parse_args()
+
+    todo = plan(args.days, shorts=args.shorts, spread=args.spread)
+    if args.plan or not args.next:
+        if not todo:
+            print("nothing to release yet — no built songs found")
+            print("(generation is window-gated; see scripts/watch.sh)")
+            return 0
+        print(f"{len(todo)} releases pending, {UPLOADS_PER_DAY}/day "
+              f"(YouTube API quota: 10,000 units / 1,600 per upload):\n")
+        for item in todo[:24]:
+            kind = {"karaoke": "KARAOKE", "short": "SHORT  "}.get(item["kind"], "SONG   ")
+            print(f"  {item['when']:%Y-%m-%d %H:%M}  {kind}  {item['slug']}")
+        if len(todo) > 24:
+            print(f"  ... and {len(todo) - 24} more")
+        return 0
+
+    # A batch is what keeps the channel active around the clock: each item is
+    # scheduled `spread` hours after the previous, so the uploads cover the day
+    # instead of landing together. Without --spread they all go out now.
+    rc = 0
+    for i, item in enumerate(todo[: args.count]):
+        if i:
+            print(f"--- release {i + 1}/{args.count} ---")
+        rc = release_one(item, args)
+        if rc != 0:
+            break
+    return rc
 
 
 if __name__ == "__main__":
