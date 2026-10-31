@@ -265,7 +265,7 @@ def add_to_playlist(playlist_id: str, video_id: str, ch: str) -> bool:
         return False
 
 
-def plan(days: int, shorts: bool = False) -> list[dict]:
+def plan(days: int, shorts: bool = False, spread: float = 0) -> list[dict]:
     """Pair each built song with its karaoke into a dated release list.
 
     Shorts are discovery, not catalogue: a zero-subscriber channel gets no
@@ -294,7 +294,13 @@ def plan(days: int, shorts: bool = False) -> list[dict]:
     todo = [i for i in items if (i["slug"], i["kind"], i.get("variant", "")) not in done]
     start = datetime.now(timezone.utc)
     for i, item in enumerate(todo):
-        item["when"] = start + timedelta(days=i // UPLOADS_PER_DAY)
+        if spread:
+            # A 24h spread: consecutive items go out `spread` hours apart, so the
+            # channel is active around the clock instead of bursting then going
+            # quiet. YouTube publishes each on its own publishAt.
+            item["when"] = start + timedelta(hours=i * spread)
+        else:
+            item["when"] = start + timedelta(days=i // UPLOADS_PER_DAY)
     return todo[: days * UPLOADS_PER_DAY] if days else todo
 
 
@@ -308,10 +314,13 @@ def main() -> int:
     ap.add_argument("--ch", default="ch3")
     ap.add_argument("--public", action="store_true",
                     help="publish publicly; without it the upload stays private for K")
+    ap.add_argument("--schedule-at", help="ISO8601 UTC to publish, e.g. 2026-10-31T15:00:00Z")
+    ap.add_argument("--spread", type=float, default=0,
+                    help="publish this many hours from now (a 24h activity spread)")
     ap.add_argument("--dry-run", action="store_true")
     args = ap.parse_args()
 
-    todo = plan(args.days, shorts=args.shorts)
+    todo = plan(args.days, shorts=args.shorts, spread=args.spread)
     if args.plan or not args.next:
         if not todo:
             print("nothing to release yet — no built songs found")
@@ -321,7 +330,7 @@ def main() -> int:
               f"(YouTube API quota: 10,000 units / 1,600 per upload):\n")
         for item in todo[:24]:
             kind = {"karaoke": "KARAOKE", "short": "SHORT  "}.get(item["kind"], "SONG   ")
-            print(f"  {item['when']:%Y-%m-%d}  {kind}  {item['slug']}")
+            print(f"  {item['when']:%Y-%m-%d %H:%M}  {kind}  {item['slug']}")
         if len(todo) > 24:
             print(f"  ... and {len(todo) - 24} more")
         return 0
@@ -362,6 +371,14 @@ def main() -> int:
            "--video", str(video), "--title", title,
            "--desc-file", str(desc_file), "--tags-file", str(tags_file),
            "--category", "10", "--privacy", "public" if args.public else "private"]
+    # A scheduled publish is how the channel stays active around the clock:
+    # YouTube flips it to public at the given time without anything running here.
+    when = args.schedule_at
+    if args.spread:
+        when = (datetime.now(timezone.utc) + timedelta(hours=args.spread)).strftime(
+            "%Y-%m-%dT%H:%M:%SZ")
+    if when:
+        cmd += ["--schedule", when]
     if thumb.exists():
         cmd += ["--thumb", str(thumb)]
     print(" ".join(cmd))
