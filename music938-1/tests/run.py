@@ -651,6 +651,24 @@ def test_studio_web_rail() -> None:
     check("defaults to a Thai reply", "ขอบคุณ" in src)
 
 
+def test_desk_daily_orchestrator() -> None:
+    """One command must administer every surface that needs the browser."""
+    section("desk daily orchestrator")
+    src = (ROOT / "scripts" / "desk_daily.py").read_text()
+    check("brings the desktop up", "bootstrap.py" in src)
+    check("answers comments", "studio_web.py" in src)
+    check("reads analytics", "analytics" in src)
+    check("cross-posts both platforms", '"facebook", "tiktok"' in src)
+    check("writes a Thai report", "desk-report.md" in src)
+    # The footer must advertise every surface, or the audience cannot find them.
+    cfg = json.loads((ROOT / "channel" / "monetization.json").read_text(encoding="utf-8"))
+    for key in ("youtube", "facebook", "tiktok", "shopee_affiliate"):
+        check(f"monetization.json carries {key}", bool(cfg.get(key)))
+    # And crosspost must survive a fresh pod, where library/ is empty.
+    cp = (ROOT / "scripts" / "crosspost.py").read_text()
+    check("crosspost fetches media on a fresh pod", "release.fetch_media" in cp)
+
+
 def main() -> int:
     test_lyrics()
     test_tokenizer()
@@ -675,6 +693,7 @@ def main() -> int:
     test_setup_pod_ffmpeg()
     test_monetize_footer()
     test_studio_web_rail()
+    test_desk_daily_orchestrator()
     test_outputs()
     print(f"\n{PASS} passed, {FAIL} failed")
     if FAILURES:
