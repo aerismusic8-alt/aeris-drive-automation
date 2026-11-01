@@ -35,14 +35,18 @@ import release  # noqa: E402
 import yt_auth  # noqa: E402
 
 
-def _publish(slug: str, kind: str, ch: str, video: Path) -> str | None:
-    title, desc, tags = release.describe(slug, kind)
+def _publish(slug: str, kind: str, ch: str, video: Path, variant: str = "") -> str | None:
+    title, desc, tags = release.describe(slug, kind, variant)
     desc_file = ROOT / "work" / f"release-{slug}-{kind}.txt"
     tags_file = ROOT / "work" / f"release-{slug}-{kind}.tags"
     desc_file.write_text(desc, encoding="utf-8")
     tags_file.write_text(",".join(tags), encoding="utf-8")
 
     thumb = ROOT / "library" / "thumbs" / f"thumb-{kind}-{slug}.png"
+    if variant:
+        vt = ROOT / "library" / "thumbs" / f"thumb-{variant}.png"
+        if vt.exists():
+            thumb = vt
     if not thumb.exists():
         thumb = COVERS / f"cover-{slug}.jpg"
 
@@ -104,13 +108,20 @@ def _drop_from_playlists(old_id: str, ch: str) -> None:
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument("--slug", required=True)
-    ap.add_argument("--kind", required=True, choices=["song", "karaoke"])
+    ap.add_argument("--kind", required=True, choices=["song", "karaoke", "short"])
+    ap.add_argument("--variant", default="", help="the Short's file stem, for --kind short")
     ap.add_argument("--old", required=True, help="the published id to retire")
     ap.add_argument("--ch", default="ch3")
     ap.add_argument("--yes", action="store_true", help="actually upload and delete")
     args = ap.parse_args()
 
-    video = KARAOKE / f"{args.kind}-{args.slug}.mp4"
+    if args.kind == "short":
+        video = release.SHORTS / f"{args.variant}.mp4"
+    else:
+        video = KARAOKE / f"{args.kind}-{args.slug}.mp4"
+    if not video.exists():
+        # A fresh pod has an empty library/; the file is on the media release.
+        release.fetch_media(video)
     if not video.exists():
         print(f"missing {video}; render it first", file=sys.stderr)
         return 2
@@ -129,7 +140,7 @@ def main() -> int:
         print("\ndry run — pass --yes to upload, then delete the old id")
         return 0
 
-    new_id = _publish(args.slug, args.kind, args.ch, video)
+    new_id = _publish(args.slug, args.kind, args.ch, video, args.variant)
     if not new_id:
         print("upload failed; the old video is untouched", file=sys.stderr)
         return 1
@@ -160,7 +171,7 @@ def main() -> int:
         if r.get("video_id") == args.old:
             r["retired_at"] = datetime.now(timezone.utc).isoformat(timespec="seconds")
     state["released"].append({
-        "slug": args.slug, "kind": args.kind, "variant": "",
+        "slug": args.slug, "kind": args.kind, "variant": args.variant,
         "video_id": new_id,
         "at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
         "public": True, "replaces": args.old,

@@ -65,17 +65,37 @@ Ordered. Update it each session; it is the answer to "what next".
    (`song-*.mp3`, `karaoke-*.mp3`, `cover-*.jpg`, 60 Shorts). Root cause: Flow
    Music rejected the *original* lyric server-side (`tool_call_failure`, "Error
    while streaming parts") at full length; a fully-rewritten lyric of the same
-   shape is accepted. Commit `4d2c0be`, pushed. 371 tests pass.
-2. **Replace the 4 broken song-01 uploads** (karaoke + 3 Shorts, tofu text) when
+   shape is accepted. Commit `4d2c0be`, pushed. 373 tests pass.
+2. **~~Wire the Shopee affiliate link.~~** DONE 2026-11-01. K supplied
+   `https://th.shp.ee/6hv2uk89`. It is in `channel/monetization.json`, so new
+   uploads get the footer from `release.py`, and `apply_monetize.py` backfilled
+   the 20 existing uploads **and the 3 channel playlists**. The compilation is
+   now the channel trailer and sits in the song playlist.
+3. **Replace the 4 broken song-01 uploads** (karaoke + 3 Shorts, tofu text) when
    the Pacific-day upload quota allows — `work/pending-replacements.json` lists
    them; `scripts/replace_video.py` does it. 6 uploads/day shared with releases.
-3. **Release the backlog** — 34 queue items (rest of 03-09) at 6/day.
-4. **Keep the marketing loop green** — confirm the daily and weekly automations
-   ran; re-enable either if the platform auto-pauses it after failures.
-5. **Grow discovery** — Shorts are the engine (best 217 views vs 8 for a full
-   song). More Shorts from songs that lack them; reply to every comment.
-6. **Toward monetization** — 1,000 subs + 4,000 watch-hours. Report the gap each
-   week; do not chase it with anything paid.
+4. **Release the backlog** — 56 queue items (20 Shorts, 18 songs, 18 karaoke) at
+   6/day, Shorts first. Quota resets 07:00 UTC.
+5. **Keep the marketing loop green** — the four automations (Daily Release,
+   Marketing Daily, Marketing Strategy weekly, Activity Monitor) are enabled and
+   ran 2026-11-01 06:30Z. Crosspost to FB/TikTok is 120/120 done.
+6. **Grow discovery and watch-hours** — Shorts are the engine (best 242 views vs
+   8 for a full song; channel views doubled to 1,072 this week). Levers, in
+   order: more Shorts from songs that lack them, a pinned comment that sends a
+   Short viewer to the full song, the trailer, and the promo page.
+7. **Toward monetization** — 1,000 subs + 4,000 watch-hours (now 1 sub). Report
+   the gap each week; never chase it with anything paid.
+
+**Blocked, needs K (one action each):**
+- **YouTube Analytics API** is disabled on the OAuth project (`888023422403`):
+  `/v2/reports` returns 403. Without it AR cannot see retention, traffic sources
+  or the Shorts→song conversion. K enables it once at
+  `console.developers.google.com/apis/api/youtubeanalytics.googleapis.com` for
+  that project. Free.
+- **Comment replies**: the token lacks the `youtube.force-ssl` scope, so AR
+  cannot read or post comments (403). Needs a re-consent of the ch3 refresh
+  token with that scope. AR can script it, but only K can approve the Google
+  consent screen.
 
 ## How AR reports
 

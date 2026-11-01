@@ -1,10 +1,10 @@
 {
-  "at": "2026-10-31T15:26:06+00:00",
+  "at": "2026-11-01T06:30:55+00:00",
   "channel": "ch3",
   "channel_stats": {
     "subs": 1,
-    "views": 527,
-    "videos": 16
+    "views": 1072,
+    "videos": 20
   },
   "videos": {
     "ANwgi7J_ras": {
@@ -14,7 +14,7 @@
       "public": true,
       "title": "คนดีที่จากไป (ท่อนที่ 1) #01 — เพลงไทย #Shorts",
       "published": "2026-10-30T16:04:20Z",
-      "views": 22,
+      "views": 24,
       "likes": 1,
       "comments": 0
     },
@@ -36,7 +36,7 @@
       "public": true,
       "title": "คนดีที่จากไป (ท่อนที่ 3) #01 — เพลงไทย #Shorts",
       "published": "2026-10-30T16:04:24Z",
-      "views": 117,
+      "views": 114,
       "likes": 0,
       "comments": 0
     },
@@ -47,7 +47,7 @@
       "public": true,
       "title": "คนดีที่จากไป — เพลงเศร้า ที่เข้าใจความเสียใจ",
       "published": "2026-10-30T16:57:24Z",
-      "views": 8,
+      "views": 29,
       "likes": 0,
       "comments": 0
     },
@@ -69,7 +69,7 @@
       "public": true,
       "title": "รักที่ไม่มีวันจบ (ท่อนที่ 1) #เพลงไทย #Shorts",
       "published": "2026-10-31T07:02:00Z",
-      "views": 52,
+      "views": 66,
       "likes": 4,
       "comments": 0
     },
@@ -80,8 +80,8 @@
       "public": true,
       "title": "รักที่ไม่มีวันจบ (ท่อนที่ 2) #เพลงไทย #Shorts",
       "published": "2026-10-31T11:01:41Z",
-      "views": 217,
-      "likes": 7,
+      "views": 242,
+      "likes": 6,
       "comments": 0
     },
     "rmlCjP4wvUI": {
@@ -91,9 +91,9 @@
       "public": true,
       "title": "รักที่ไม่มีวันจบ (ท่อนที่ 3) #เพลงไทย #Shorts",
       "published": "2026-10-31T15:01:49Z",
-      "views": 1,
-      "likes": 0,
-      "comments": 0
+      "views": 130,
+      "likes": 3,
+      "comments": 1
     },
     "SZO66B-RIIQ": {
       "video_id": "SZO66B-RIIQ",
@@ -101,8 +101,8 @@
       "kind": "song",
       "public": true,
       "title": "รักที่ไม่มีวันจบ — เพลงอบอุ่น ฟังแล้วใจนุ่ม",
-      "published": "2026-10-31T07:01:40Z",
-      "views": 0,
+      "published": "2026-10-31T19:01:56Z",
+      "views": 8,
       "likes": 0,
       "comments": 0
     },
@@ -112,8 +112,8 @@
       "kind": "karaoke",
       "public": true,
       "title": "รักที่ไม่มีวันจบ (คาราโอเกะ) ร้องตามได้",
-      "published": "2026-10-31T07:01:43Z",
-      "views": 0,
+      "published": "2026-10-31T23:01:54Z",
+      "views": 2,
       "likes": 0,
       "comments": 0
     },
@@ -123,9 +123,9 @@
       "kind": "short",
       "public": true,
       "title": "คิดถึงเธอทุกคืน (ท่อนที่ 1) #เพลงไทย #Shorts",
-      "published": "2026-10-31T07:01:48Z",
-      "views": 0,
-      "likes": 0,
+      "published": "2026-11-01T03:01:47Z",
+      "views": 70,
+      "likes": 1,
       "comments": 0
     }
   }

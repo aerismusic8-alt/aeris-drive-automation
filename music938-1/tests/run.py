@@ -9,6 +9,7 @@ can gate every commit.
 """
 from __future__ import annotations
 
+import json
 import re
 import sys
 import unicodedata
@@ -599,6 +600,38 @@ def test_setup_pod_ffmpeg() -> None:
     check("extracts into FFDIR, not the temp dir", '"$FFDIR"' in src)
 
 
+def test_monetize_footer() -> None:
+    """The affiliate footer must reach every surface, and the backfill must run
+    before the day's releases.
+
+    Two failures this pins: a link that lands in `monetization.json` but never in
+    a live description earns nothing, and a replacement that runs *after* the
+    release never gets an upload slot — the wrong-render backlog then sits
+    forever while the log still says "0 replaced".
+    """
+    section("monetization footer")
+    cfg = json.loads((ROOT / "channel" / "monetization.json").read_text(encoding="utf-8"))
+    check("affiliate link is set", bool(cfg.get("shopee_affiliate")))
+    check("link is an https url", cfg.get("shopee_affiliate", "").startswith("https://"))
+
+    mon = (ROOT / "scripts" / "monetize.py").read_text()
+    check("footer carries the affiliate link", "shopee_affiliate" in mon)
+    check("footer degrades when a link is blank", "if c.get" in mon)
+
+    apply_src = (ROOT / "scripts" / "apply_monetize.py").read_text()
+    check("backfills video descriptions", "videos?part=snippet" in apply_src)
+    check("backfills playlists too", "patch_playlists" in apply_src)
+    check("only edits the channel's own playlists", "channelId={CHANNEL_ID}" in apply_src)
+
+    plug = (ROOT.parent / "plugins" / "music-release" / "scripts" / "main.py").read_text()
+    body = plug.split("def main", 1)[1]
+    check("replacements run before the release",
+          body.index("pending_replacements.py") < body.index("daily_release.py"))
+    rep = (ROOT / "scripts" / "replace_video.py").read_text()
+    check("replacement can fetch media on a fresh pod", "release.fetch_media" in rep)
+    check("replacement supports Shorts", '"short"' in rep)
+
+
 def main() -> int:
     test_lyrics()
     test_tokenizer()
@@ -621,6 +654,7 @@ def main() -> int:
     test_karaoke_loudness_contract()
     test_crosspost_engine()
     test_setup_pod_ffmpeg()
+    test_monetize_footer()
     test_outputs()
     print(f"\n{PASS} passed, {FAIL} failed")
     if FAILURES:

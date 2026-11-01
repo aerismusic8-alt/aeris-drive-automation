@@ -91,7 +91,18 @@ def main() -> int:
     os.environ["AX_GH_TOKEN"] = tok
     work = Path(tempfile.mkdtemp(prefix="ax-music-release-"))
     root = fetch_repo(tok, work)
-    driver = root / "music938-1" / "scripts" / "daily_release.py"
+    music = root / "music938-1"
+
+    # Fix the wrong-render backlog first: it is a defect on content that is
+    # already live, and a replacement spends the same upload slot a new release
+    # would. Running it second would mean it never gets one.
+    repl = music / "scripts" / "pending_replacements.py"
+    if repl.exists():
+        print("$", sys.executable, str(repl), "--root", str(root), flush=True)
+        subprocess.call([sys.executable, str(repl), "--root", str(root)],
+                        cwd=str(root))
+
+    driver = music / "scripts" / "daily_release.py"
     cmd = [sys.executable, str(driver), "--root", str(root),
            "--count", str(int(cfg["count"])),
            "--spread", str(cfg["spread"]), "--ch", str(cfg["channel"])]
