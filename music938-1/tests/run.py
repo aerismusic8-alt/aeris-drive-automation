@@ -524,6 +524,41 @@ def test_market_plugin_wiring() -> None:
     check("refreshes the promo site", "ar_promo_site.py" in src)
 
 
+def test_crosspost_engine() -> None:
+    """The FB/TikTok rail must queue every Short and caption it in Thai.
+
+    Offline checks only: the real post needs the signed-in desktop, so this pins
+    the queue build, the per-platform caption and the posted-once guard.
+    """
+    section("crosspost rail (Facebook Reels + TikTok)")
+    import crosspost
+
+    q = crosspost.build_queue()
+    shorts = list((ROOT / "library" / "shorts").glob("short-*.mp4"))
+    if not shorts:
+        print("  skip (no shorts rendered yet)")
+        return
+    check("every short is queued on both platforms",
+          len(q) == len(shorts) * 2, f"{len(q)} vs {len(shorts)}*2")
+    check("ids are unique", len({it["id"] for it in q}) == len(q))
+
+    t = next(it for it in q if it["platform"] == "tiktok")
+    f = next(it for it in q if it["platform"] == "facebook")
+    check("tiktok caption carries #fyp", "#fyp" in t["caption"])
+    check("facebook caption has no #fyp", "#fyp" not in f["caption"])
+    for it in (t, f):
+        check(f"{it['platform']}: caption is Thai",
+              any("\u0e00" <= ch <= "\u0e7f" for ch in it["caption"]))
+        check(f"{it['platform']}: slug resolves to a real short",
+              (ROOT / it["video"]).exists())
+
+    # A posted item must never come back as pending.
+    state = {"posted": {t["id"]: {"at": "x", "url": "y"}}}
+    left = crosspost.pending(q, state, "tiktok")
+    check("posted items are excluded", t["id"] not in {it["id"] for it in left})
+    check("facebook still pending", len(left) == len(shorts) - 1)
+
+
 def test_karaoke_loudness_contract() -> None:
     """flow_song._karaoke must master through make_song's two-pass loudnorm.
 
@@ -575,6 +610,7 @@ def main() -> int:
     test_market_report()
     test_market_plugin_wiring()
     test_karaoke_loudness_contract()
+    test_crosspost_engine()
     test_setup_pod_ffmpeg()
     test_outputs()
     print(f"\n{PASS} passed, {FAIL} failed")
