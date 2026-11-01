@@ -15,6 +15,7 @@ from pathlib import Path
 
 CDP_DEFAULT = os.environ.get("AERIS_CDP", "http://127.0.0.1:9222")
 NOVNC_PORT = os.environ.get("AERIS_NOVNC_PORT", "12000")
+STATE_DIR = Path(os.environ.get("AERIS_STATE_DIR", "/workspace/ax-tools/aeris938-state"))
 
 
 class LoginRequired(RuntimeError):
@@ -47,9 +48,16 @@ def cdp_alive(url: str | None = None) -> bool:
 
 
 def login_link() -> str:
+    """The noVNC URL for the operator, with the host taken from the environment.
+
+    The host changes every session (`work-1-<random>...`), so a hard-coded one
+    goes stale and 404s the moment the pod is replaced. The value comes from the
+    session's work_hosts block; if it is not set, say so instead of guessing.
+    """
     host = os.environ.get("AERIS_PUBLIC_HOST")
     if not host:
-        host = "work-1-jhakqeqvkcqlwmjh.prod-runtime.all-hands.dev"
+        return ("(set AERIS_PUBLIC_HOST to the session's work-1-... host; the "
+                "desktop is on local noVNC port " + NOVNC_PORT + ")")
     return f"https://{host}/vnc.html?autoconnect=1&resize=scale"
 
 
