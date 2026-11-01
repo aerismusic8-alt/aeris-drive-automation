@@ -10,6 +10,7 @@ can gate every commit.
 from __future__ import annotations
 
 import json
+import os
 import re
 import sys
 import unicodedata
@@ -621,6 +622,37 @@ def test_setup_pod_ffmpeg() -> None:
     check("extracts into FFDIR, not the temp dir", '"$FFDIR"' in src)
 
 
+def test_automation_secret_fallback() -> None:
+    """A secret must resolve in an automation sandbox, not only in a session.
+
+    An interactive session gets the user's secrets as environment variables, but
+    an automation sandbox does not — so every script that read `os.environ`
+    directly worked when a human ran it and failed under cron. That is exactly
+    how `AX Music Marketing Daily` died with "missing secret YT_CLIENT_ID" while
+    the release and market rails were "green". `ops/ax_secrets.py` adds the
+    sandbox settings-API fallback; these checks pin that every credential reader
+    goes through it instead of reading the environment alone.
+    """
+    section("automation secret fallback (WIRING: cron sees no env secrets)")
+    sys.path.insert(0, str(ROOT.parent / "ops"))
+    import ax_secrets  # noqa: E402
+    os.environ.pop("AX_TEST_SECRET", None)
+    check("get_secret returns '' when nothing provides it",
+          ax_secrets.get_secret("AX_TEST_SECRET") == "")
+    os.environ["AX_TEST_SECRET"] = "from-env"
+    check("get_secret prefers the environment", ax_secrets.get_secret("AX_TEST_SECRET") == "from-env")
+    os.environ.pop("AX_TEST_SECRET", None)
+
+    for rel, name in [("ops/yt_auth.py", "yt_auth"),
+                      ("music938-1/scripts/market.py", "market"),
+                      ("ops/ar_promo_site.py", "ar_promo_site")]:
+        src = (ROOT.parent / rel).read_text()
+        check(f"{name} uses ax_secrets", "ax_secrets" in src)
+        check(f"{name} no longer reads os.environ for YT_CLIENT_ID",
+              'os.environ["YT_CLIENT_ID"]' not in src
+              and 'environ.get("YT_CLIENT_ID")' not in src)
+
+
 def test_monetize_footer() -> None:
     """The affiliate footer must reach every surface, and the backfill must run
     before the day's releases.
@@ -745,6 +777,7 @@ def main() -> int:
     test_flow_extend_kinds()
     test_market_report()
     test_market_plugin_wiring()
+    test_automation_secret_fallback()
     test_karaoke_loudness_contract()
     test_crosspost_engine()
     test_setup_pod_ffmpeg()

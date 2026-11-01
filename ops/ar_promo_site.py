@@ -38,10 +38,12 @@ GH_TOKEN_FILE = Path(os.environ.get("AR_GH_TOKEN_FILE", "/workspace/ax-tools/ar-
 
 
 def secret(name: str) -> str:
-    v = os.environ.get(name)
-    if v:
-        return v
-    raise SystemExit(f"missing secret {name}")
+    sys.path.insert(0, str(Path(__file__).resolve().parent))
+    from ax_secrets import get_secret  # noqa: E402
+    v = get_secret(name)
+    if not v:
+        raise SystemExit(f"missing secret {name}")
+    return v
 
 
 def access_token(refresh_env: str) -> str:

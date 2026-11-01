@@ -53,7 +53,12 @@ MONETIZE_HOURS = 4000
 
 
 def secret(name: str) -> str:
-    v = os.environ.get(name)
+    # An automation sandbox does not get user secrets as env vars, so fall back
+    # to the sandbox settings API (see ops/ax_secrets.py) or the daily marketing
+    # run dies with "missing secret YT_CLIENT_ID".
+    sys.path.insert(0, str(ROOT.parent / "ops"))
+    from ax_secrets import get_secret  # noqa: E402
+    v = get_secret(name)
     if not v:
         raise SystemExit(f"missing secret {name}")
     return v

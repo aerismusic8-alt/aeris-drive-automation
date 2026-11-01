@@ -18,6 +18,10 @@ import time
 import urllib.error
 import urllib.parse
 import urllib.request
+from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from ax_secrets import get_secret  # noqa: E402
 
 TOKEN_URL = "https://oauth2.googleapis.com/token"
 API = "https://www.googleapis.com/youtube/v3"
@@ -51,12 +55,12 @@ def _request(url, data=None, headers=None, method=None, timeout=120):
 
 def access_token(ch, timeout=60):
     var = CHANNELS[ch][0]
-    rt = os.environ.get(var)
+    rt = get_secret(var)
     if not rt:
         raise SystemExit(f"{var} is not set in this session")
     data = urllib.parse.urlencode({
-        "client_id": os.environ["YT_CLIENT_ID"],
-        "client_secret": os.environ["YT_CLIENT_SECRET"],
+        "client_id": get_secret("YT_CLIENT_ID"),
+        "client_secret": get_secret("YT_CLIENT_SECRET"),
         "refresh_token": rt,
         "grant_type": "refresh_token",
     }).encode()
