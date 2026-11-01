@@ -42,11 +42,14 @@ music938-1/work/*
 !music938-1/work/crosspost-state.json
 music938-1/library/songs/*.mp3
 music938-1/library/songs/*.wav
+music938-1/library/songs/*.m4a
 music938-1/library/songs/stems-*/
 music938-1/library/covers/*.png
 music938-1/library/karaoke/*.mp4
 !music938-1/library/*/manifest.json
 music938-1/**/__pycache__/
+# clip metadata is regenerable from Flow Music; keep the tree small
+music938-1/library/songs/clipmeta-*.json
 
 # Shorts, thumbnails and cover jpgs are regenerable renders; the durable copy
 # lives in the GitHub Release (see the 24h release mechanism).
