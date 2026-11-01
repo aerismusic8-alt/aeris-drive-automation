@@ -82,7 +82,14 @@ def main() -> int:
             views = line.split(":", 1)[-1].strip().strip('",')
     lines += ["## ข้อมูลวิเคราะห์", "", views or "(อ่านไม่ได้ในรอบนี้)", ""]
 
-    # 3. cross-post -----------------------------------------------------------
+    # 3. playlists ------------------------------------------------------------
+    # Free reach: no upload quota, keeps every new video in its playlist.
+    rc, out = run([sys.executable, str(ROOT / "scripts" / "fill_playlists.py"),
+                   "--apply"], timeout=600)
+    tail = out.strip().splitlines()[-1] if out.strip() else "?"
+    lines += ["## เพลย์ลิสต์", "", tail, ""]
+
+    # 4. cross-post -----------------------------------------------------------
     if args.no_crosspost:
         lines += ["## ครอสโพสต์", "", "ข้ามในรอบนี้ (--no-crosspost)", ""]
     else:

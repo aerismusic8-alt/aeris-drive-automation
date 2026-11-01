@@ -748,6 +748,7 @@ def test_desk_daily_orchestrator() -> None:
     check("answers comments", "studio_web.py" in src)
     check("reads analytics", "analytics" in src)
     check("cross-posts both platforms", '"facebook", "tiktok"' in src)
+    check("keeps playlists full", "fill_playlists.py" in src)
     check("writes a Thai report", "desk-report.md" in src)
     # The footer must advertise every surface, or the audience cannot find them.
     cfg = json.loads((ROOT / "channel" / "monetization.json").read_text(encoding="utf-8"))
@@ -816,6 +817,32 @@ def test_login_vault() -> None:
     check("never stores passwords", "Login Data" not in src)
 
 
+def test_fill_playlists() -> None:
+    """Playlists must cover every video and stay idempotent.
+
+    A playlist is free reach (no upload quota), so every video belongs in one.
+    The classifier decides the bucket; a karaoke title also contains the song
+    name, so order matters. Pinned here because a mis-bucketed video silently
+    disappears from the playlist a viewer would look in.
+    """
+    section("playlist fill (free reach, no quota)")
+    sys.path.insert(0, str(ROOT / "scripts"))
+    import fill_playlists as fp  # noqa: E402
+
+    cases = [
+        ("คนดีที่จากไป (คาราโอเกะ) ร้องตามได้", "karaoke"),
+        ("คนดีที่จากไป (ท่อนที่ 2) #เพลงไทย #Shorts", "short"),
+        ("รวมเพลงไทยเพื่อชีวิต 15 เพลง (เลือกเพลงฟังได้)", "compilation"),
+        ("NAVIYA — FIRST LIGHT | Official Visualizer", "naviya"),
+        ("คนดีที่จากไป — เพลงเศร้า ที่เข้าใจความเสียใจ", "song"),
+    ]
+    for title, want in cases:
+        check(f"{title[:28]} -> {want}", fp.classify(title) == want)
+    # Every bucket a title can land in must have a playlist definition.
+    defined = {k for k, *_ in fp.BUCKETS} | {"naviya"}
+    check("every bucket has a playlist", {c[1] for c in cases} <= defined)
+
+
 def main() -> int:
     test_lyrics()
     test_tokenizer()
@@ -845,6 +872,7 @@ def main() -> int:
     test_desk_daily_orchestrator()
     test_profile_setup()
     test_login_vault()
+    test_fill_playlists()
     test_outputs()
     print(f"\n{PASS} passed, {FAIL} failed")
     if FAILURES:

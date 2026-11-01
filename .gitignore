@@ -40,6 +40,9 @@ music938-1/work/*
 # record of what is already on Reels/TikTok, so it must survive a recycle.
 !music938-1/work/crosspost-queue.json
 !music938-1/work/crosspost-state.json
+# The playlist id per bucket. Without it a fresh clone would create a duplicate
+# playlist on the first run instead of adding to the one that already exists.
+!music938-1/work/playlist-state.json
 music938-1/library/songs/*.mp3
 music938-1/library/songs/*.wav
 music938-1/library/songs/*.m4a
