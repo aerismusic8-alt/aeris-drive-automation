@@ -51,6 +51,49 @@ def upload_ids(token: str) -> list[str]:
             return ids
 
 
+def playlist_ids(token: str) -> list[str]:
+    """Only the channel's own playlists are editable; Liked/Uploads are not."""
+    ids, page = [], None
+    while True:
+        url = ("https://www.googleapis.com/youtube/v3/playlists?part=id"
+               f"&channelId={CHANNEL_ID}&maxResults=50")
+        if page:
+            url += f"&pageToken={page}"
+        _, r = yt_auth._request(url, headers={"Authorization": f"Bearer {token}"})
+        ids += [it["id"] for it in r["items"]]
+        page = r.get("nextPageToken")
+        if not page:
+            return ids
+
+
+def patch_playlists(token: str, link: str, block: str, apply: bool) -> int:
+    """The three channel playlists are a discovery surface with no footer."""
+    ids = playlist_ids(token)
+    _, r = yt_auth._request(
+        "https://www.googleapis.com/youtube/v3/playlists?part=snippet&id=" + ",".join(ids),
+        headers={"Authorization": f"Bearer {token}"})
+    changed = 0
+    for it in r["items"]:
+        sn = it["snippet"]
+        desc = sn.get("description", "")
+        if link and link in desc:
+            continue
+        print(f"  + playlist {it['id']}  {sn['title'][:48]}")
+        changed += 1
+        if not apply:
+            continue
+        sn["description"] = (desc.rstrip() + "\n" + block)[:4900]
+        code, resp = yt_auth._request(
+            "https://www.googleapis.com/youtube/v3/playlists?part=snippet",
+            data=json.dumps({"id": it["id"], "snippet": sn}, ensure_ascii=False).encode("utf-8"),
+            headers={"Authorization": f"Bearer {token}",
+                     "Content-Type": "application/json; charset=UTF-8"},
+            method="PUT")
+        if code != 200:
+            print(f"    FAILED {code}: {str(resp)[:160]}")
+    return changed
+
+
 def main() -> int:
     apply = "--apply" in sys.argv
     token = yt_auth.access_token(CHANNEL)
@@ -101,6 +144,10 @@ def main() -> int:
         print(f"backup -> {BACKUP} ({len(backup)} entries)")
     print(f"{changed} to update, {skipped} already carry the link"
           + ("" if apply else "  (dry run — pass --apply)"))
+
+    print("playlists:")
+    pl = patch_playlists(token, link, block, apply)
+    print(f"{pl} playlist(s) to update")
     return 0
 
 
