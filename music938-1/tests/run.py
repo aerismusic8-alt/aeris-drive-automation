@@ -669,6 +669,23 @@ def test_desk_daily_orchestrator() -> None:
     check("crosspost fetches media on a fresh pod", "release.fetch_media" in cp)
 
 
+def test_profile_setup() -> None:
+    """A bare profile reads as abandoned, so it must be fillable from the repo."""
+    section("profile setup")
+    src = (ROOT / "scripts" / "profile_setup.py").read_text()
+    check("drives the cloud desktop", "browser as B" in src)
+    check("has a TikTok path", "def tiktok(" in src)
+    check("has a Facebook path", "def facebook(" in src)
+    check("sets a Thai bio", "เพลงไทย" in src)
+    # FB shows the crop dialog's confirm as "บันทึก", not "บันทึกการเปลี่ยนแปลง".
+    check("confirms the FB crop dialog", '"บันทึก|^save$"' in src)
+    # The profile picture control only opens on hover; a plain click misses it.
+    check("hovers the FB photo control", "hover=True" in src)
+    # The cover is derived from the banner and must exist for the script to run.
+    check("ships an FB cover", (ROOT / "channel" / "cover-facebook-1640x624.png").exists())
+    check("ships an avatar", (ROOT / "channel" / "avatar-800x800.png").exists())
+
+
 def main() -> int:
     test_lyrics()
     test_tokenizer()
@@ -694,6 +711,7 @@ def main() -> int:
     test_monetize_footer()
     test_studio_web_rail()
     test_desk_daily_orchestrator()
+    test_profile_setup()
     test_outputs()
     print(f"\n{PASS} passed, {FAIL} failed")
     if FAILURES:
