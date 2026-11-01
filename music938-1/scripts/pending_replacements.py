@@ -87,8 +87,12 @@ def main() -> int:
 
     if done:
         doc["pending"] = left
-        put_file(tok, PENDING,
-                 json.dumps(doc, ensure_ascii=False, indent=1).encode(),
+        payload = json.dumps(doc, ensure_ascii=False, indent=1).encode()
+        # Update the working copy too. The Contents API write below only touches
+        # the remote; a run against a real workspace (not a temp extract) would
+        # otherwise leave a stale backlog that lists already-fixed videos.
+        path.write_bytes(payload)
+        put_file(tok, PENDING, payload,
                  f"replacements: {done} wrong-render video(s) fixed")
         ledger = music / "work" / "release-state.json"
         if ledger.exists():

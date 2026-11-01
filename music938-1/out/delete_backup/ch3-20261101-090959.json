@@ -1,0 +1,88 @@
+[
+ {
+  "kind": "youtube#video",
+  "etag": "_SfyFHjJ6CXzbyv3yHj2KmrSmX8",
+  "id": "CXRH7sW6Gcw",
+  "snippet": {
+   "publishedAt": "2026-10-30T16:04:24Z",
+   "channelId": "UCm44BjAn03ruOF-WaA3ZRww",
+   "title": "คนดีที่จากไป (ท่อนที่ 3) #01 — เพลงไทย #Shorts",
+   "description": "🎵 คนดีที่จากไป (ท่อนฮุก)\n\nเพลงเศร้า ที่เข้าใจความเสียใจ\n\nเพลงที่ 1 จากชุด 20 เพลงไทย — ร้องด้วยเสียงจริง\n🎧 ฟังเวอร์ชันเต็มได้ในช่อง\n\n#AERISMusic #เพลงไทย #ศิลปินไทย #เพลงใหม่ #เพลงเพื่อชีวิต #คาราโอเกะ #เพลงเพราะ #Shorts\n\n🛒 สนับสนุนช่องผ่าน Shopee (ลิงก์พันธมิตร):\nhttps://th.shp.ee/6hv2uk89\n\n📱 ติดตาม AERIS Music:\nYouTube: https://www.youtube.com/@aerismusicth",
+   "thumbnails": {
+    "default": {
+     "url": "https://i.ytimg.com/vi/CXRH7sW6Gcw/default.jpg",
+     "width": 120,
+     "height": 90
+    },
+    "medium": {
+     "url": "https://i.ytimg.com/vi/CXRH7sW6Gcw/mqdefault.jpg",
+     "width": 320,
+     "height": 180
+    },
+    "high": {
+     "url": "https://i.ytimg.com/vi/CXRH7sW6Gcw/hqdefault.jpg",
+     "width": 480,
+     "height": 360
+    },
+    "standard": {
+     "url": "https://i.ytimg.com/vi/CXRH7sW6Gcw/sddefault.jpg",
+     "width": 640,
+     "height": 480
+    },
+    "maxres": {
+     "url": "https://i.ytimg.com/vi/CXRH7sW6Gcw/maxresdefault.jpg",
+     "width": 1280,
+     "height": 720
+    }
+   },
+   "channelTitle": "AERIS Music",
+   "tags": [
+    "AERIS",
+    "thai music",
+    "thai song",
+    "คนดีที่จากไป",
+    "คาราโอเกะ",
+    "ศิลปินไทย",
+    "เพลงฟังสบาย",
+    "เพลงเพราะ",
+    "เพลงเศร้า ที่เข้าใจความเสียใจ",
+    "เพลงใหม่",
+    "เพลงไทย"
+   ],
+   "categoryId": "10",
+   "liveBroadcastContent": "none",
+   "defaultLanguage": "th",
+   "localized": {
+    "title": "คนดีที่จากไป (ท่อนที่ 3) #01 — เพลงไทย #Shorts",
+    "description": "🎵 คนดีที่จากไป (ท่อนฮุก)\n\nเพลงเศร้า ที่เข้าใจความเสียใจ\n\nเพลงที่ 1 จากชุด 20 เพลงไทย — ร้องด้วยเสียงจริง\n🎧 ฟังเวอร์ชันเต็มได้ในช่อง\n\n#AERISMusic #เพลงไทย #ศิลปินไทย #เพลงใหม่ #เพลงเพื่อชีวิต #คาราโอเกะ #เพลงเพราะ #Shorts\n\n🛒 สนับสนุนช่องผ่าน Shopee (ลิงก์พันธมิตร):\nhttps://th.shp.ee/6hv2uk89\n\n📱 ติดตาม AERIS Music:\nYouTube: https://www.youtube.com/@aerismusicth"
+   },
+   "defaultAudioLanguage": "en-US"
+  },
+  "contentDetails": {
+   "duration": "PT38S",
+   "dimension": "2d",
+   "definition": "hd",
+   "caption": "false",
+   "licensedContent": false,
+   "contentRating": {},
+   "projection": "rectangular",
+   "hasCustomThumbnail": true
+  },
+  "status": {
+   "uploadStatus": "processed",
+   "privacyStatus": "public",
+   "license": "youtube",
+   "embeddable": false,
+   "publicStatsViewable": false,
+   "madeForKids": false,
+   "selfDeclaredMadeForKids": false
+  },
+  "statistics": {
+   "viewCount": "114",
+   "likeCount": "0",
+   "dislikeCount": "0",
+   "favoriteCount": "0",
+   "commentCount": "0"
+  }
+ }
+]

@@ -1,0 +1,88 @@
+[
+ {
+  "kind": "youtube#video",
+  "etag": "aoaG_Z3UFZWAfgpNtoSK5bp5A7U",
+  "id": "SWS1vJJgkow",
+  "snippet": {
+   "publishedAt": "2026-10-30T16:12:04Z",
+   "channelId": "UCm44BjAn03ruOF-WaA3ZRww",
+   "title": "คนดีที่จากไป (คาราโอเกะ) — ร้องตามได้",
+   "description": "🎤 คนดีที่จากไป — เวอร์ชันคาราโอเกะ (ไม่มีเสียงร้อง)\n\nร้องตามได้เลย! เพลงเศร้า ที่เข้าใจความเสียใจ\n\n🎵 เพลงที่ 1 จากชุด 20 เพลงไทย\n🎧 ฟังเวอร์ชันเต็ม (มีเสียงร้อง) ได้ในช่อง\n✨ สร้างจากความตั้งใจ ไม่ใช่ความเร็ว\n\n#AERISMusic #เพลงไทย #ศิลปินไทย #เพลงใหม่ #เพลงเพื่อชีวิต #คาราโอเกะ #เพลงเพราะ\n\n🛒 สนับสนุนช่องผ่าน Shopee (ลิงก์พันธมิตร):\nhttps://th.shp.ee/6hv2uk89\n\n📱 ติดตาม AERIS Music:\nYouTube: https://www.youtube.com/@aerismusicth",
+   "thumbnails": {
+    "default": {
+     "url": "https://i.ytimg.com/vi/SWS1vJJgkow/default.jpg",
+     "width": 120,
+     "height": 90
+    },
+    "medium": {
+     "url": "https://i.ytimg.com/vi/SWS1vJJgkow/mqdefault.jpg",
+     "width": 320,
+     "height": 180
+    },
+    "high": {
+     "url": "https://i.ytimg.com/vi/SWS1vJJgkow/hqdefault.jpg",
+     "width": 480,
+     "height": 360
+    },
+    "standard": {
+     "url": "https://i.ytimg.com/vi/SWS1vJJgkow/sddefault.jpg",
+     "width": 640,
+     "height": 480
+    },
+    "maxres": {
+     "url": "https://i.ytimg.com/vi/SWS1vJJgkow/maxresdefault.jpg",
+     "width": 1280,
+     "height": 720
+    }
+   },
+   "channelTitle": "AERIS Music",
+   "tags": [
+    "AERIS",
+    "thai music",
+    "thai song",
+    "คนดีที่จากไป",
+    "คาราโอเกะ",
+    "ศิลปินไทย",
+    "เพลงฟังสบาย",
+    "เพลงเพราะ",
+    "เพลงเศร้า ที่เข้าใจความเสียใจ",
+    "เพลงใหม่",
+    "เพลงไทย"
+   ],
+   "categoryId": "10",
+   "liveBroadcastContent": "none",
+   "defaultLanguage": "th",
+   "localized": {
+    "title": "คนดีที่จากไป (คาราโอเกะ) — ร้องตามได้",
+    "description": "🎤 คนดีที่จากไป — เวอร์ชันคาราโอเกะ (ไม่มีเสียงร้อง)\n\nร้องตามได้เลย! เพลงเศร้า ที่เข้าใจความเสียใจ\n\n🎵 เพลงที่ 1 จากชุด 20 เพลงไทย\n🎧 ฟังเวอร์ชันเต็ม (มีเสียงร้อง) ได้ในช่อง\n✨ สร้างจากความตั้งใจ ไม่ใช่ความเร็ว\n\n#AERISMusic #เพลงไทย #ศิลปินไทย #เพลงใหม่ #เพลงเพื่อชีวิต #คาราโอเกะ #เพลงเพราะ\n\n🛒 สนับสนุนช่องผ่าน Shopee (ลิงก์พันธมิตร):\nhttps://th.shp.ee/6hv2uk89\n\n📱 ติดตาม AERIS Music:\nYouTube: https://www.youtube.com/@aerismusicth"
+   },
+   "defaultAudioLanguage": "en-US"
+  },
+  "contentDetails": {
+   "duration": "PT2M59S",
+   "dimension": "2d",
+   "definition": "hd",
+   "caption": "false",
+   "licensedContent": false,
+   "contentRating": {},
+   "projection": "rectangular",
+   "hasCustomThumbnail": true
+  },
+  "status": {
+   "uploadStatus": "processed",
+   "privacyStatus": "public",
+   "license": "youtube",
+   "embeddable": true,
+   "publicStatsViewable": true,
+   "madeForKids": false,
+   "selfDeclaredMadeForKids": false
+  },
+  "statistics": {
+   "viewCount": "4",
+   "likeCount": "0",
+   "dislikeCount": "0",
+   "favoriteCount": "0",
+   "commentCount": "0"
+  }
+ }
+]
