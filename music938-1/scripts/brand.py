@@ -129,11 +129,51 @@ def make_avatar(size: tuple[int, int] = AVATAR_SIZE) -> Path:
     return out
 
 
+def make_compilation_thumb(size: tuple[int, int] = (1280, 720)) -> Path:
+    """A 16:9 thumbnail for the long compilation.
+
+    YouTube renders the player at 16:9, so a square cover would be pillarboxed.
+    The text is the title's selling point - the number of songs and the
+    "listen to what you like" promise - set large enough to read at 168px.
+    """
+    w, h = size
+    rng = random.Random(9381)
+    img = _gradient(size, _hsv_rgb(258, 0.62, 0.46), _hsv_rgb(280, 0.58, 0.10)).convert("RGBA")
+    _blobs(img, rng, 262, n=7)
+    _highlight(img, w * 0.5, h * 0.34, w * 0.6, 0.72)
+    _vignette(img, 0.5)
+
+    draw = ImageDraw.Draw(img)
+    big = _font(THAI_FONT, 118, bold=True)
+    mid = _font(THAI_FONT, 64, bold=True)
+    small = _font(THAI_FONT, 46)
+
+    def center(text, font, y, fill, shadow=True):
+        tw = draw.textlength(text, font=font)
+        x = (w - tw) / 2
+        if shadow:
+            draw.text((x + 4, y + 4), text, font=font, fill=(0, 0, 0, 160))
+        draw.text((x, y), text, font=font, fill=fill)
+
+    center("รวมเพลงไทยเพื่อชีวิต", big, int(h * 0.20), (255, 255, 255, 255))
+    center("15 เพลง", mid, int(h * 0.50), (255, 226, 150, 245))
+    center("เลือกเพลงฟังได้ · 57 นาที", small, int(h * 0.68), (238, 235, 255, 225), shadow=False)
+    center("AERIS MUSIC", _font(LATIN_FONT, 34, bold=True), int(h * 0.85),
+           (220, 216, 255, 190), shadow=False)
+
+    out = ROOT / "library" / "thumbs" / "thumb-compilation.png"
+    out.parent.mkdir(parents=True, exist_ok=True)
+    img.convert("RGB").save(out, "PNG", optimize=True)
+    return out
+
+
 def main() -> int:
     b = make_banner()
     a = make_avatar()
+    t = make_compilation_thumb()
     print("banner:", b)
     print("avatar:", a)
+    print("compilation thumb:", t)
     return 0
 
 
