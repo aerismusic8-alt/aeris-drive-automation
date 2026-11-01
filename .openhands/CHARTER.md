@@ -71,14 +71,16 @@ Ordered. Update it each session; it is the answer to "what next".
    uploads get the footer from `release.py`, and `apply_monetize.py` backfilled
    the 20 existing uploads **and the 3 channel playlists**. The compilation is
    now the channel trailer and sits in the song playlist.
-3. **Replace the 4 broken song-01 uploads** (karaoke + 3 Shorts, tofu text) when
-   the Pacific-day upload quota allows — `work/pending-replacements.json` lists
-   them; `scripts/replace_video.py` does it. 6 uploads/day shared with releases.
-4. **Release the backlog** — 56 queue items (20 Shorts, 18 songs, 18 karaoke) at
-   6/day, Shorts first. Quota resets 07:00 UTC.
-5. **Keep the marketing loop green** — the four automations (Daily Release,
-   Marketing Daily, Marketing Strategy weekly, Activity Monitor) are enabled and
-   ran 2026-11-01 06:30Z. Crosspost to FB/TikTok is 120/120 done.
+3. **~~Replace the 4 broken song-01 uploads.~~** DONE 2026-11-01 09:10Z. All four
+   re-uploaded from the corrected media-938 renders; `work/pending-replacements.json`
+   is empty. `pending_replacements.py` now also writes the local backlog, so a run
+   cannot re-queue what it just fixed.
+4. **Release the backlog** — 32 queue items (Shorts first) at 6/day. Quota resets
+   07:00 UTC. `AX Music Daily Release` is code-correct but currently blocked by a
+   sandbox-provisioning flake (`Timed out: Sandbox not available`), not by code.
+5. **Keep the marketing loop green** — the four automations are enabled. Daily
+   Release has the infra flake above; the other three run. `market.py` was fixed
+   2026-11-01 (it had been reporting an empty channel to a green run).
 6. **Grow discovery and watch-hours** — Shorts are the engine (best 242 views vs
    8 for a full song; channel views doubled to 1,072 this week). Levers, in
    order: more Shorts from songs that lack them, a pinned comment that sends a

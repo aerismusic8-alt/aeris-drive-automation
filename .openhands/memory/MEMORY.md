@@ -142,6 +142,11 @@ true-instrumental karaoke mix, cover art, a 1920x1080 word-synced video.
   2. *Promote* `AX Music Marketing Daily` (`03734708-...`, plugin `plugins/market-daily`,
      cron `0 2 * * *`) runs the measure step, refreshes the promo page, commits the
      report + snapshot back to `main`. No LLM.
+     **`--root` means the repo root to the plugin but the tree itself to a manual
+     run** — `market.py` resolves both now (`resolve_root`). Before 2026-11-01 it
+     only accepted the tree, so the plugin's `<repo>/work/release-state.json`
+     lookup missed, the report tracked 0 videos, and the run stayed green anyway.
+     Always diff the report's numbers against a direct API read.
   3. *Decide* `AX Music Marketing Strategy (weekly)` (`ca7de485-...`, cron `0 3 * * 1`)
      reads the report + `COMPETITOR-ANALYSIS.md` and opens ONE PR. The only LLM layer.
   The report and snapshot are `.gitignore` exceptions on purpose — they are the loop's
