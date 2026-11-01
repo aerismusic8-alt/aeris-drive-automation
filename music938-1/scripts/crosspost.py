@@ -158,26 +158,69 @@ def _abort(page, name: str, why: str) -> None:
     print(f"    abort: {why}  (screenshot {shot.name})")
 
 
+def _js_click_text(page, labels) -> bool:
+    """Click the nearest button ancestor of an element whose text is in `labels`.
+
+    FB wraps its controls in div[role=button] that Playwright refuses to click
+    (an overlay intercepts pointer events), so a real click must be dispatched
+    from inside the page.
+    """
+    for label in labels:
+        hit = page.evaluate("""(label) => {
+          const els = [...document.querySelectorAll('*')]
+            .filter(e => (e.innerText || '').trim() === label);
+          for (let i = els.length - 1; i >= 0; i--) {
+            let node = els[i];
+            for (let k = 0; k < 8 && node; k++) {
+              if (node.tagName === 'BUTTON' || node.getAttribute('role') === 'button') {
+                node.click();
+                return 'ok';
+              }
+              node = node.parentElement;
+            }
+          }
+          return 'miss';
+        }""", label)
+        if hit == "ok":
+            return True
+    return False
+
+
+def _fill_caption(page, box, text: str) -> bool:
+    """Focus the editor from inside the page, clear it, then insert the caption.
+
+    Two FB/TikTok traps: a transparent overlay refuses a plain Playwright click,
+    and TikTok pre-fills the box with the file name while keyboard.type() drops
+    Thai codepoints. So focus via JS, select-all, and insert_text (atomic).
+    """
+    box.evaluate("el => { el.focus(); el.click(); }")
+    page.wait_for_timeout(300)
+    page.keyboard.press("Control+A")
+    page.keyboard.press("Delete")
+    page.wait_for_timeout(300)
+    page.keyboard.insert_text(text)
+    page.wait_for_timeout(1500)
+    return text[:20] in box.inner_text()
+
+
 def post_tiktok(page, video: Path, text: str) -> str | None:
     page.goto(PLATFORMS["tiktok"]["upload"], wait_until="domcontentloaded", timeout=60000)
     page.wait_for_timeout(4000)
     if not _signed_in(page):
         return None
-    page.set_input_files('input[type="file"]', str(video))
+    page.locator('input[type="file"]').first.set_input_files(str(video))
     # The editor appears once the file is accepted; the caption box is a
     # contenteditable draft editor.
     page.wait_for_selector('[contenteditable="true"]', timeout=180000)
     page.wait_for_timeout(3000)
     box = page.locator('[contenteditable="true"]').first
-    box.click()
-    page.keyboard.type(text)
-    page.wait_for_timeout(1500)
-    got = box.inner_text()
-    if text[:20] not in got:
+    if not _fill_caption(page, box, text):
         _abort(page, "tiktok", "caption did not land in the editor")
         return None
-    page.get_by_role("button", name=re.compile(r"^Post", re.I)).first.click()
-    page.wait_for_timeout(8000)
+    if not _js_click_text(page, ["Post", "โพสต์"]):
+        _abort(page, "tiktok", "Post button not found")
+        return None
+    page.wait_for_timeout(10000)
     return page.url
 
 
@@ -186,25 +229,26 @@ def post_facebook(page, video: Path, text: str) -> str | None:
     page.wait_for_timeout(4000)
     if not _signed_in(page):
         return None
-    page.set_input_files('input[type="file"]', str(video))
-    page.wait_for_selector('div[contenteditable="true"], div[role="textbox"]', timeout=180000)
-    page.wait_for_timeout(3000)
-    box = page.locator('div[contenteditable="true"], div[role="textbox"]').first
-    box.click()
-    page.keyboard.type(text)
-    page.wait_for_timeout(1500)
-    got = box.inner_text()
-    if text[:20] not in got:
+    page.locator('input[type="file"]').first.set_input_files(str(video))
+    # Reels walks upload -> trim -> details before it shows the caption box, and
+    # its Next control is an overlay-intercepted div, so advance by JS click.
+    page.wait_for_timeout(8000)
+    for _ in range(4):
+        if page.locator('[contenteditable="true"]').count():
+            break
+        if not _js_click_text(page, ["ถัดไป", "Next"]):
+            break
+        page.wait_for_timeout(7000)
+    page.wait_for_selector('[contenteditable="true"]', timeout=60000)
+    page.wait_for_timeout(2000)
+    box = page.locator('[contenteditable="true"]').first
+    if not _fill_caption(page, box, text):
         _abort(page, "facebook", "caption did not land in the editor")
         return None
-    # Reels advances through Next until a final Publish appears.
-    for _ in range(3):
-        nxt = page.get_by_role("button", name=re.compile(r"^(Next|Publish|Post)", re.I))
-        if not nxt.count():
-            break
-        nxt.first.click()
-        page.wait_for_timeout(5000)
-    page.wait_for_timeout(6000)
+    if not _js_click_text(page, ["โพสต์", "Post", "Publish", "เผยแพร่"]):
+        _abort(page, "facebook", "Publish button not found")
+        return None
+    page.wait_for_timeout(10000)
     return page.url
 
 
