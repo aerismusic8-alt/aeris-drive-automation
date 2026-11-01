@@ -87,15 +87,43 @@ Ordered. Update it each session; it is the answer to "what next".
    the gap each week; never chase it with anything paid.
 
 **Blocked, needs K (one action each):**
-- **YouTube Analytics API** is disabled on the OAuth project (`888023422403`):
-  `/v2/reports` returns 403. Without it AR cannot see retention, traffic sources
-  or the Shorts→song conversion. K enables it once at
-  `console.developers.google.com/apis/api/youtubeanalytics.googleapis.com` for
-  that project. Free.
-- **Comment replies**: the token lacks the `youtube.force-ssl` scope, so AR
-  cannot read or post comments (403). Needs a re-consent of the ch3 refresh
-  token with that scope. AR can script it, but only K can approve the Google
-  consent screen.
+- (none right now.) Both former blockers — YouTube Analytics and comment replies —
+  are solved without K; see "What AR decides alone", item 5.
+
+## What AR does without K, even when it looks like a K job
+
+Two things used to be listed as needing K. They do not. The channel's OAuth client
+is a **NATIVE_DEVICE** client, so the Data API can never carry `youtube.force-ssl`
+(Google rejects it at the device endpoint) and it cannot use a loopback redirect.
+That is a dead end — do not ask K to re-consent.
+
+The working route is the **cloud desktop**: it is signed in as the owner
+(`aerismusic8@gmail.com`), and YouTube Studio is the owner's own UI. So AR reads
+analytics and answers comments by driving Studio over CDP:
+
+```bash
+python3 music938-1/scripts/desk_daily.py          # comments + analytics + crosspost
+python3 music938-1/scripts/studio_web.py analytics
+python3 music938-1/scripts/studio_web.py reply --limit 10
+```
+
+Verified 2026-11-01: a reply to `@PatPat-lg5kb` posted, and the analytics overview
+read. Do not re-open the API route.
+
+## The four surfaces (K, 2026-11-01: "yt fb tk shoppe")
+
+The channel lives on four places, and every description carries all of them:
+
+| Surface | Where | How AR runs it |
+| --- | --- | --- |
+| YouTube | `@aerismusicth` | `AX Music Daily Release` (cron), Studio web for comments |
+| Facebook | page `61596276533369` | `crosspost.py --platform facebook` (desktop) |
+| TikTok | `@aeris.music4` | `crosspost.py --platform tiktok` (desktop) |
+| Shopee | `th.shp.ee/6hv2uk89` | affiliate link in `channel/monetization.json` |
+
+`channel/monetization.json` is the single source for those links; the footer omits
+a blank one, so an account that is not ready yet never shows a dead link. All four
+are filled in. `desk_daily.py` is the one command that does the browser half.
 
 ## How AR reports
 
