@@ -89,7 +89,15 @@ def main() -> int:
     tail = out.strip().splitlines()[-1] if out.strip() else "?"
     lines += ["## เพลย์ลิสต์", "", tail, ""]
 
-    # 4. cross-post -----------------------------------------------------------
+    # 4. pinned full-song links on Shorts ------------------------------------
+    # Free conversion surface: a Short earns the view, its pinned comment carries
+    # the viewer to the full song, which is what earns the watch-hours.
+    rc, out = run([sys.executable, str(ROOT / "scripts" / "studio_web.py"),
+                   "pin-shorts", "--limit", "10"], timeout=1800)
+    tail = out.strip().splitlines()[-1] if out.strip() else "?"
+    lines += ["## ปักหมุดเพลงเต็มบน Shorts", "", tail, ""]
+
+    # 5. cross-post -----------------------------------------------------------
     if args.no_crosspost:
         lines += ["## ครอสโพสต์", "", "ข้ามในรอบนี้ (--no-crosspost)", ""]
     else:

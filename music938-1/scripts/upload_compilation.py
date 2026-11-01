@@ -21,15 +21,24 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 OPS = ROOT.parent / "ops"
-MP4 = ROOT / "library" / "compilations" / "compilation.mp4"
-TXT = ROOT / "library" / "compilations" / "compilation.txt"
+COMPILED = ROOT / "library" / "compilations"
 THUMB = ROOT / "library" / "thumbs" / "thumb-compilation.png"
-TITLE_FILE = ROOT / "library" / "compilations" / "compilation.title"
 STATE = ROOT / "work" / "compilation-state.json"
 
 TITLE = "รวมเพลงไทยเพื่อชีวิต 15 เพลง (เลือกเพลงฟังได้)"
 TAGS = ("เพลงไทย,รวมเพลงไทย,เพลงเพื่อชีวิต,เพลงเศร้า,เพลงเพราะ,คาราโอเกะ,"
         "เพลงฟังสบาย,เพลงไทยเพราะๆ,เพลงไทยดัง,เพลงเก่า,AERIS Music,thai music")
+
+
+def _paths(stem: str) -> tuple[Path, Path, Path]:
+    """(mp4, chapters/description, title) for a compilation stem.
+
+    compile_album.py writes `<stem>.mp4/.txt/.title`, so a 20-song build lives
+    beside the 15-song one instead of overwriting it. The default stem keeps the
+    original single-compilation behaviour.
+    """
+    return (COMPILED / f"{stem}.mp4", COMPILED / f"{stem}.txt",
+            COMPILED / f"{stem}.title")
 
 
 def duration(path: Path) -> float:
@@ -47,7 +56,7 @@ def rendering() -> bool:
     return r.returncode == 0
 
 
-def wait_for_render(poll: int = 30, max_min: int = 90) -> bool:
+def wait_for_render(mp4: Path, poll: int = 30, max_min: int = 90) -> bool:
     deadline = time.time() + max_min * 60
     last = 0
     while rendering():
@@ -55,7 +64,7 @@ def wait_for_render(poll: int = 30, max_min: int = 90) -> bool:
             print("render did not finish in time", file=sys.stderr)
             return False
         time.sleep(poll)
-        sz = MP4.stat().st_size if MP4.exists() else 0
+        sz = mp4.stat().st_size if mp4.exists() else 0
         if sz != last:
             print(f"  {sz / 1e6:.0f} MB  {datetime.now(timezone.utc):%H:%M:%S}")
             last = sz
@@ -67,34 +76,43 @@ def main() -> int:
     ap.add_argument("--watch", action="store_true", help="wait for the render first")
     ap.add_argument("--upload", action="store_true")
     ap.add_argument("--ch", default="ch3")
+    ap.add_argument("--stem", default="compilation",
+                    help="compile_album.py output stem (e.g. compilation-20)")
     args = ap.parse_args()
 
-    if args.watch and not wait_for_render():
+    mp4, txt, title_file = _paths(args.stem)
+    state = ROOT / "work" / f"compilation-state-{args.stem}.json"
+    if args.watch and not wait_for_render(mp4):
         return 1
-    if not MP4.exists():
-        print("no compilation.mp4 yet", file=sys.stderr)
+    if not mp4.exists():
+        print(f"no {mp4.name} yet", file=sys.stderr)
         return 2
 
-    dur = duration(MP4)
-    print(f"compilation: {dur / 60:.1f} min, {MP4.stat().st_size / 1e6:.0f} MB")
+    dur = duration(mp4)
+    print(f"compilation: {dur / 60:.1f} min, {mp4.stat().st_size / 1e6:.0f} MB")
     if dur < 30 * 60:
         print("refusing to upload: under 30 minutes, the title would over-promise",
               file=sys.stderr)
         return 3
 
-    if STATE.exists():
-        prev = json.loads(STATE.read_text())
+    # The render's own title is the truth (it counts the tracks); only fall back
+    # to the constant when the file is missing.
+    title = title_file.read_text(encoding="utf-8").strip() if title_file.exists() else TITLE
+    if len(title) > 100:
+        title = title[:100]
+
+    if state.exists():
+        prev = json.loads(state.read_text())
         if prev.get("video_id"):
             print(f"already uploaded: {prev['video_id']}")
             return 0
 
     if not args.upload:
+        print(f"title: {title}")
         print("(pass --upload to send it)")
         return 0
 
-    # The title file carries the render's --name; normalise to the one shape.
-    TITLE_FILE.write_text(TITLE, encoding="utf-8")
-    desc = TXT.read_text(encoding="utf-8").rstrip()
+    desc = txt.read_text(encoding="utf-8").rstrip() if txt.exists() else ""
     sys.path.insert(0, str(ROOT / "scripts"))
     try:
         import monetize
@@ -108,7 +126,7 @@ def main() -> int:
     tags_file.write_text(TAGS, encoding="utf-8")
 
     cmd = [sys.executable, str(OPS / "yt_publish.py"), "--ch", args.ch,
-           "--video", str(MP4), "--title", TITLE,
+           "--video", str(mp4), "--title", title,
            "--desc-file", str(desc_file), "--tags-file", str(tags_file),
            "--category", "10", "--privacy", "public"]
     if THUMB.exists():
@@ -120,12 +138,14 @@ def main() -> int:
     if proc.returncode != 0:
         return proc.returncode
     m = re.search(r"video id (\S+)", proc.stdout)
-    STATE.write_text(json.dumps({
+    state.write_text(json.dumps({
         "video_id": m.group(1) if m else None,
+        "stem": args.stem,
+        "title": title,
         "at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
         "minutes": round(dur / 60, 1),
     }, ensure_ascii=False, indent=2), encoding="utf-8")
-    print("recorded", STATE.name)
+    print("recorded", state.name)
     return 0
 
 

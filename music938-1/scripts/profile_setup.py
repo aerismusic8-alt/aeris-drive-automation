@@ -117,6 +117,37 @@ def tiktok() -> int:
     return 0
 
 
+def _fb_switch_to_page(page) -> bool:
+    """Become the Page so its admin controls (cover, profile photo) exist.
+
+    A Page opened from the personal profile shows the *visitor* view — no cover
+    or photo edit control at all, which is why an aria-label lookup there times
+    out. Switching is three clicks: the profile switcher, "สลับ" in its menu,
+    then "ใช้เพจ" in the welcome dialog that greets a newly-managed Page. Already
+    being the Page is a success, so this is safe to call every time.
+    """
+    if "แก้ไขรูปภาพหน้าปก" in page.inner_text("body"):
+        return True
+    page.evaluate("""() => {
+      const b = document.querySelector('div[role=button][aria-label="สลับ"]');
+      if (b) b.click();
+    }""")
+    page.wait_for_timeout(3500)
+    page.evaluate("""() => {
+      for (const m of document.querySelectorAll('div[role=dialog]'))
+        for (const el of m.querySelectorAll('div[role=button],a,span'))
+          if ((el.innerText || '').trim() === 'สลับ') { el.click(); return; }
+    }""")
+    page.wait_for_timeout(9000)
+    page.evaluate("""() => {
+      for (const d of document.querySelectorAll('div[role=dialog]'))
+        for (const el of d.querySelectorAll('div[role=button],a,span'))
+          if ((el.innerText || '').trim() === 'ใช้เพจ') { el.click(); return; }
+    }""")
+    page.wait_for_timeout(5000)
+    return "แก้ไขรูปภาพหน้าปก" in page.inner_text("body")
+
+
 def _fb_upload(page, opener: str, item: str, image: Path, done: str,
                hover: bool = False) -> bool:
     """Open an FB photo menu, choose its upload item, hand the file to the chooser.
@@ -181,16 +212,25 @@ def facebook() -> int:
     with sync_playwright() as p:
         br, ctx = B.connect(p)
         pg = ctx.new_page()
+        pg.set_viewport_size({"width": 1440, "height": 1000})
         pg.goto(f"https://www.facebook.com/profile.php?id={FACEBOOK_ID}",
                 wait_until="domcontentloaded", timeout=60000)
         pg.wait_for_timeout(6000)
         if B.looks_signed_out(pg.inner_text("body")[:4000]):
             print("facebook: not signed in")
             return 1
+        if not _fb_switch_to_page(pg):
+            print("facebook: could not switch into the Page")
+            _shot(pg, "fb-switch-failed")
+            pg.close()
+            return 1
         cover = ROOT / "channel" / "cover-facebook-1640x624.png"
+        # The admin cover control is aria-label "แก้ไขรูปภาพหน้าปก" and its menu
+        # item is "อัพโหลดรูปภาพ"; the crop dialog's confirm is
+        # "บันทึกการเปลี่ยนแปลง", not the "บันทึก" a bio field uses.
         print("facebook cover:", "set" if _fb_upload(
-            pg, "หน้าปก|cover photo", "อัพโหลดรูปภาพ|อัปโหลดรูปภาพ|upload photo",
-            cover, "บันทึก|^save$") else "NOT set")
+            pg, "แก้ไขรูปภาพหน้าปก", "อัพโหลดรูปภาพ",
+            cover, "บันทึกการเปลี่ยนแปลง") else "NOT set")
         _shot(pg, "fb-cover")
         pg.reload(wait_until="domcontentloaded")
         pg.wait_for_timeout(5000)

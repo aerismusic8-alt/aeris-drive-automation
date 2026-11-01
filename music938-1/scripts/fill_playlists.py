@@ -48,6 +48,56 @@ BUCKETS = [
 ARTIST = ("naviya", "NAVIYA", "เพลงทั้งหมดของ NAVIYA ศิลปินคนแรกของ AERIS Music\n\n"
           "AERIS Music · สร้างศิลปินทีละคน")
 
+# Mood playlists. A song belongs to its mood *and* to the all-songs playlist, so
+# these are additive rather than one-bucket-per-video (see `moods()`). The three
+# are the ones GROWTH.md names; the mood of each song comes from the `# MOOD:`
+# header in its lyric file, keyed by the lyric's title.
+MOODS = [
+    ("mood-sad", "เพลงเศร้า — อกหัก คิดถึง คร่ำครวญ",
+     "รวมเพลงเศร้าของ AERIS Music อกหัก คิดถึง คนที่จากไป\n\n"
+     "AERIS Music · เพลงไทยที่ตั้งใจทำ", {"sad"}),
+    ("mood-warm", "เพลงอบอุ่น — ฟังแล้วใจนุ่ม",
+     "รวมเพลงอบอุ่นของ AERIS Music รัก ครอบครัว บ้าน\n\n"
+     "AERIS Music · เพลงไทยที่ตั้งใจทำ", {"warm", "calm"}),
+    ("mood-hopeful", "เพลงให้กำลังใจ — สู้ต่อไป",
+     "รวมเพลงให้กำลังใจของ AERIS Music กำลังใจ ความฝัน วันใหม่\n\n"
+     "AERIS Music · เพลงไทยที่ตั้งใจทำ", {"hopeful", "epic"}),
+]
+
+
+def song_moods() -> dict[str, str]:
+    """title -> mood, read from the `# MOOD:` header of each lyric file.
+
+    The playlist API only sees a video title, and the mood lives with the song,
+    so the two are joined on the lyric's `# TITLE:`. A song whose lyric is
+    missing is simply not in a mood playlist, which is the safe default.
+    """
+    out: dict[str, str] = {}
+    for f in sorted((ROOT / "lyrics").glob("*.txt")):
+        title = mood = None
+        for line in f.read_text(encoding="utf-8").splitlines()[:10]:
+            if line.startswith("# TITLE:"):
+                title = line.split(":", 1)[1].strip()
+            elif line.startswith("# MOOD:"):
+                mood = line.split(":", 1)[1].strip()
+        if title and mood:
+            out[title] = mood
+    return out
+
+
+def moods(title: str, by_title: dict[str, str]) -> list[str]:
+    """The mood buckets a video belongs to (may be empty, may be several).
+
+    A full-song video's title is the lyric title plus a suffix (a mood tag, or
+    nothing), so the join is by containment. Only the full song joins a mood
+    playlist: its Shorts and karaoke are separate buckets, and a 40-second hook
+    is not what "เพลงเศร้า" promises.
+    """
+    song = next((t for t in by_title if t in title), None)
+    if not song:
+        return []
+    return [key for key, _t, _d, want in MOODS if by_title[song] in want]
+
 
 def _api(method: str, path: str, tok: str, body: dict | None = None):
     req = urllib.request.Request(
@@ -141,6 +191,16 @@ def run(apply: bool, ch: str = "ch3") -> int:
 
     titles = {k: (t, d) for k, t, d, _f in BUCKETS}
     titles["naviya"] = (ARTIST[1], ARTIST[2])
+    titles.update({k: (t, d) for k, t, d, _w in MOODS})
+
+    # Mood playlists are additive: a full song joins its mood playlist *and* the
+    # all-songs one. Only the "song" bucket joins — a karaoke or a Short is a
+    # different promise than "เพลงเศร้า".
+    by_title = song_moods()
+    for v in groups.get("song", []):
+        for key in moods(v["title"], by_title):
+            groups.setdefault(key, []).append(v)
+
     changes = 0
     for key, items in sorted(groups.items()):
         title, desc = titles[key]

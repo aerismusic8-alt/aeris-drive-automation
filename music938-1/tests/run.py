@@ -738,6 +738,24 @@ def test_studio_web_rail() -> None:
     check("posts a reply", "ตอบกลับ" in src)
     check("uses the native textarea setter", "HTMLTextAreaElement.prototype" in src)
     check("defaults to a Thai reply", "ขอบคุณ" in src)
+    # A Short earns the view; the pinned comment must carry the viewer to the full
+    # song, which is what earns watch-hours. It has to be the owner's own comment
+    # and it must not be re-posted on every run.
+    check("pins the full-song link on Shorts", "pin-shorts" in src)
+    check("the pin advertises the full song", "ฟังเพลงเต็มได้ที่นี่" in src)
+    check("pinning is idempotent", "video_has_marker" in src)
+    check("already-pinned is not unpinned", "'ปักหมุดโดย'" in src)
+
+    # The Short->song join comes from the release state and must skip retired
+    # uploads: their ids 404, so a pin would fail on every run.
+    sys.path.insert(0, str(ROOT / "scripts"))
+    import studio_web as sw  # noqa: E402
+    targets = sw.short_pin_targets()
+    state = json.loads((ROOT / "work" / "release-state.json").read_text())
+    retired = {r["video_id"] for r in state["released"] if r.get("retired_at")}
+    check("a target per live Short with a live song", len(targets) >= 1)
+    check("no retired Short is a target", not ({v for v, _ in targets} & retired))
+    check("every target links to a youtu.be song", all("youtu.be/" in u for _, u in targets))
 
 
 def test_desk_daily_orchestrator() -> None:
@@ -749,6 +767,7 @@ def test_desk_daily_orchestrator() -> None:
     check("reads analytics", "analytics" in src)
     check("cross-posts both platforms", '"facebook", "tiktok"' in src)
     check("keeps playlists full", "fill_playlists.py" in src)
+    check("pins full-song links on Shorts", "pin-shorts" in src)
     check("writes a Thai report", "desk-report.md" in src)
     # The footer must advertise every surface, or the audience cannot find them.
     cfg = json.loads((ROOT / "channel" / "monetization.json").read_text(encoding="utf-8"))
@@ -767,8 +786,11 @@ def test_profile_setup() -> None:
     check("has a TikTok path", "def tiktok(" in src)
     check("has a Facebook path", "def facebook(" in src)
     check("sets a Thai bio", "เพลงไทย" in src)
-    # FB shows the crop dialog's confirm as "บันทึก", not "บันทึกการเปลี่ยนแปลง".
-    check("confirms the FB crop dialog", '"บันทึก|^save$"' in src)
+    # The Page must be entered as the Page or the cover control does not exist.
+    check("switches into the Page", "_fb_switch_to_page" in src)
+    # The cover's crop dialog confirms with "บันทึกการเปลี่ยนแปลง"; a bio field
+    # uses a plain "บันทึก". Using the wrong one silently leaves the cover unset.
+    check("confirms the FB cover crop", "บันทึกการเปลี่ยนแปลง" in src)
     # The profile picture control only opens on hover; a plain click misses it.
     check("hovers the FB photo control", "hover=True" in src)
     # The cover is derived from the banner and must exist for the script to run.
@@ -841,6 +863,19 @@ def test_fill_playlists() -> None:
     # Every bucket a title can land in must have a playlist definition.
     defined = {k for k, *_ in fp.BUCKETS} | {"naviya"}
     check("every bucket has a playlist", {c[1] for c in cases} <= defined)
+
+    # Mood playlists are additive: a full song joins its mood *and* the all-songs
+    # playlist, unlike the exclusive buckets above. The mood comes from the lyric
+    # header, so a video is matched to a mood by title containment.
+    by_title = fp.song_moods()
+    check("reads a mood per lyric", len(by_title) >= 20)
+    check("sad song -> mood-sad", fp.moods("คนดีที่จากไป — เพลงเศร้า", by_title) == ["mood-sad"])
+    check("warm song -> mood-warm", fp.moods("รักที่ไม่มีวันจบ", by_title) == ["mood-warm"])
+    check("unknown title -> no mood", fp.moods("NAVIYA — FIRST LIGHT", by_title) == [])
+    # A mood key must not collide with a bucket key, or one would overwrite the
+    # other's title in the state map and the playlist would be misnamed.
+    check("mood keys are distinct from buckets",
+          not ({k for k, *_ in fp.MOODS} & {k for k, *_ in fp.BUCKETS}))
 
 
 def main() -> int:

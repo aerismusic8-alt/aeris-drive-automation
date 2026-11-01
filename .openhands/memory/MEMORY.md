@@ -232,7 +232,22 @@ true-instrumental karaoke mix, cover art, a 1920x1080 word-synced video.
   `music938-1/scripts/studio_web.py` reads analytics and posts comment replies by
   driving YouTube Studio over CDP. Verified live (reply posted 2026-11-01).
   `scripts/desk_daily.py` = the one browser-side admin pass (comments →
-  analytics → crosspost FB/TikTok → Thai report).
+  analytics → pin full-song on Shorts → playlists → crosspost FB/TikTok → report).
+- **Pinned-comment lever works (2026-11-01).** A Short earns the view; its pinned
+  comment carries the viewer to the full song. Posting needs only a synthetic
+  `.click()` + the native textarea setter. Pinning is done on the **watch page**
+  (thread ⋮ "เมนูการทำงาน" → ปักหมุด → the confirm dialog's own ปักหมุด; each
+  button renders twice, use the **last**). Drive it as **one awaited page
+  script** or the menu portal mounts too slowly. Proof of a pin is the text
+  **"ปักหมุดโดย"** (no `pinned-comment-badge` element here). Match the pin item by
+  **exact** text `'ปักหมุด'` — a pinned menu reads "เลิกปักหมุด", so a loose match
+  would *unpin*. `pin-shorts` is idempotent and skips retired Shorts.
+- **Studio hides the channel's own comments by default** (filter "ไม่ได้ตอบกลับ"),
+  so the per-video list reads "ไม่พบความคิดเห็น" even when the comment exists.
+  Trust `videos.statistics.commentCount`, not that panel. And never post a test
+  comment to a live video — cleanup is a manual owner ⋮ → ลบ pass on the watch page.
+- **Chromium throttles a background tab.** `Desk` sends `Page.bringToFront`; without
+  it lazy lists (the comment inbox) never render and show a "ลองอีกครั้ง" retry.
 - **Four surfaces** (K: "yt fb tk shoppe"), all in `channel/monetization.json` and
   in every footer: YouTube `@aerismusicth`, Facebook **Page** `61595890900382`
   (created 2026-11-01; the personal profile `61596276533369` cannot be branded),
