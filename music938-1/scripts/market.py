@@ -237,14 +237,26 @@ def _recommendations(cur: dict, prev: dict, movers: list) -> list[str]:
     return out
 
 
+def resolve_root(base: Path) -> Path:
+    """The music938-1 dir, whether `base` is the repo root or that dir itself.
+
+    The daily plugin passes the repo root (`--root`) because its sibling scripts
+    (daily_release.py, pending_replacements.py) take the argument that way; run
+    by hand the base is this tree. Getting it wrong sends the ledger lookup to
+    `<repo>/work/release-state.json`, which does not exist, and the run reports
+    zero videos while still exiting 0.
+    """
+    return base / "music938-1" if (base / "music938-1").is_dir() else base
+
+
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__)
-    ap.add_argument("--root", help="repo root; defaults to this tree")
+    ap.add_argument("--root", help="repo root or this tree; both accepted")
     ap.add_argument("--channel", default="ch3", choices=sorted(CHANNEL_ENV))
     ap.add_argument("--json", action="store_true", help="print the snapshot, do not write files")
     args = ap.parse_args()
 
-    root = Path(args.root).resolve() if args.root else ROOT
+    root = resolve_root(Path(args.root).resolve() if args.root else ROOT)
     token = access_token(args.channel)
 
     rel = released_ids(root)

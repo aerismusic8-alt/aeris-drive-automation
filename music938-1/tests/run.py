@@ -535,6 +535,23 @@ def test_market_plugin_wiring() -> None:
     check("refreshes the promo site", "ar_promo_site.py" in src)
 
 
+def test_market_root_resolution() -> None:
+    """`market.py` must find the ledger whether --root is the repo or the tree.
+
+    The daily plugin passes the repo root; run by hand the base is music938-1.
+    Resolving the wrong one reads <repo>/work/release-state.json, which does not
+    exist, so the report silently tracks zero videos and still exits 0 — the
+    marketing loop then reports an empty channel every day.
+    """
+    section("marketing root resolution (market.py)")
+    import market
+    repo = ROOT.parent
+    check("repo root -> music938-1", market.resolve_root(repo) == repo / "music938-1")
+    check("tree itself -> unchanged", market.resolve_root(ROOT) == ROOT)
+    check("ledger exists under the resolved root",
+          (market.resolve_root(repo) / "work" / "release-state.json").exists())
+
+
 def test_crosspost_engine() -> None:
     """The FB/TikTok rail must queue every Short and caption it in Thai.
 
@@ -777,6 +794,7 @@ def main() -> int:
     test_flow_extend_kinds()
     test_market_report()
     test_market_plugin_wiring()
+    test_market_root_resolution()
     test_automation_secret_fallback()
     test_karaoke_loudness_contract()
     test_crosspost_engine()

@@ -1,45 +1,12 @@
 {
-  "at": "2026-11-01T09:05:53+00:00",
+  "at": "2026-11-01T12:12:58+00:00",
   "channel": "ch3",
   "channel_stats": {
-    "subs": 1,
+    "subs": 3,
     "views": 1072,
-    "videos": 20
+    "videos": 21
   },
   "videos": {
-    "ANwgi7J_ras": {
-      "video_id": "ANwgi7J_ras",
-      "slug": "01-khon-di-thi-chak-pai",
-      "kind": "short",
-      "public": true,
-      "title": "คนดีที่จากไป (ท่อนที่ 1) #01 — เพลงไทย #Shorts",
-      "published": "2026-10-30T16:04:20Z",
-      "views": 24,
-      "likes": 1,
-      "comments": 0
-    },
-    "JId5J48t4a4": {
-      "video_id": "JId5J48t4a4",
-      "slug": "01-khon-di-thi-chak-pai",
-      "kind": "short",
-      "public": true,
-      "title": "คนดีที่จากไป (ท่อนที่ 2) #01 — เพลงไทย #Shorts",
-      "published": "2026-10-30T16:04:22Z",
-      "views": 4,
-      "likes": 0,
-      "comments": 0
-    },
-    "CXRH7sW6Gcw": {
-      "video_id": "CXRH7sW6Gcw",
-      "slug": "01-khon-di-thi-chak-pai",
-      "kind": "short",
-      "public": true,
-      "title": "คนดีที่จากไป (ท่อนที่ 3) #01 — เพลงไทย #Shorts",
-      "published": "2026-10-30T16:04:24Z",
-      "views": 114,
-      "likes": 0,
-      "comments": 0
-    },
     "ASuxGEvJBlw": {
       "video_id": "ASuxGEvJBlw",
       "slug": "01-khon-di-thi-chak-pai",
@@ -48,17 +15,6 @@
       "title": "คนดีที่จากไป — เพลงเศร้า ที่เข้าใจความเสียใจ",
       "published": "2026-10-30T16:57:24Z",
       "views": 34,
-      "likes": 0,
-      "comments": 0
-    },
-    "SWS1vJJgkow": {
-      "video_id": "SWS1vJJgkow",
-      "slug": "01-khon-di-thi-chak-pai",
-      "kind": "karaoke",
-      "public": true,
-      "title": "คนดีที่จากไป (คาราโอเกะ) — ร้องตามได้",
-      "published": "2026-10-30T16:12:04Z",
-      "views": 4,
       "likes": 0,
       "comments": 0
     },
@@ -91,7 +47,7 @@
       "public": true,
       "title": "รักที่ไม่มีวันจบ (ท่อนที่ 3) #เพลงไทย #Shorts",
       "published": "2026-10-31T15:01:49Z",
-      "views": 130,
+      "views": 137,
       "likes": 3,
       "comments": 2
     },
@@ -102,7 +58,7 @@
       "public": true,
       "title": "รักที่ไม่มีวันจบ — เพลงอบอุ่น ฟังแล้วใจนุ่ม",
       "published": "2026-10-31T19:01:56Z",
-      "views": 8,
+      "views": 12,
       "likes": 0,
       "comments": 0
     },
@@ -113,7 +69,7 @@
       "public": true,
       "title": "รักที่ไม่มีวันจบ (คาราโอเกะ) ร้องตามได้",
       "published": "2026-10-31T23:01:54Z",
-      "views": 2,
+      "views": 3,
       "likes": 0,
       "comments": 0
     },
@@ -124,8 +80,74 @@
       "public": true,
       "title": "คิดถึงเธอทุกคืน (ท่อนที่ 1) #เพลงไทย #Shorts",
       "published": "2026-11-01T03:01:47Z",
-      "views": 165,
+      "views": 217,
       "likes": 6,
+      "comments": 0
+    },
+    "4xcbYYhFP3A": {
+      "video_id": "4xcbYYhFP3A",
+      "slug": "01-khon-di-thi-chak-pai",
+      "kind": "karaoke",
+      "public": true,
+      "title": "คนดีที่จากไป (คาราโอเกะ) ร้องตามได้",
+      "published": "2026-11-01T09:09:53Z",
+      "views": 0,
+      "likes": 0,
+      "comments": 0
+    },
+    "TISzvF9AQig": {
+      "video_id": "TISzvF9AQig",
+      "slug": "01-khon-di-thi-chak-pai",
+      "kind": "short",
+      "public": true,
+      "title": "คนดีที่จากไป (ท่อนที่ 1) #เพลงไทย #Shorts",
+      "published": "2026-11-01T09:09:57Z",
+      "views": 80,
+      "likes": 0,
+      "comments": 0
+    },
+    "hy_0sr-uHGI": {
+      "video_id": "hy_0sr-uHGI",
+      "slug": "01-khon-di-thi-chak-pai",
+      "kind": "short",
+      "public": true,
+      "title": "คนดีที่จากไป (ท่อนที่ 2) #เพลงไทย #Shorts",
+      "published": "2026-11-01T09:10:25Z",
+      "views": 76,
+      "likes": 2,
+      "comments": 0
+    },
+    "zkESEHVZ7A4": {
+      "video_id": "zkESEHVZ7A4",
+      "slug": "01-khon-di-thi-chak-pai",
+      "kind": "short",
+      "public": true,
+      "title": "คนดีที่จากไป (ท่อนที่ 3) #เพลงไทย #Shorts",
+      "published": "2026-11-01T09:10:29Z",
+      "views": 0,
+      "likes": 0,
+      "comments": 0
+    },
+    "-6RdLKwxykk": {
+      "video_id": "-6RdLKwxykk",
+      "slug": "03-khit-thueng-thoe-thuk-khuen",
+      "kind": "short",
+      "public": true,
+      "title": "คิดถึงเธอทุกคืน (ท่อนที่ 2) #เพลงไทย #Shorts",
+      "published": "2026-11-01T09:10:49Z",
+      "views": 45,
+      "likes": 4,
+      "comments": 0
+    },
+    "iLwzR8A_1uw": {
+      "video_id": "iLwzR8A_1uw",
+      "slug": "03-khit-thueng-thoe-thuk-khuen",
+      "kind": "short",
+      "public": true,
+      "title": "คิดถึงเธอทุกคืน (ท่อนที่ 3) #เพลงไทย #Shorts",
+      "published": "2026-11-01T09:10:20Z",
+      "views": 0,
+      "likes": 0,
       "comments": 0
     }
   }
