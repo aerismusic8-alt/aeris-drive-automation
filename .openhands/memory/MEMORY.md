@@ -146,7 +146,16 @@ true-instrumental karaoke mix, cover art, a 1920x1080 word-synced video.
      reads the report + `COMPETITOR-ANALYSIS.md` and opens ONE PR. The only LLM layer.
   The report and snapshot are `.gitignore` exceptions on purpose — they are the loop's
   memory. The weekly prompt forbids paid options, workflow edits and merging.
-- YT credentials are OpenHands secrets (`POST /api/v1/secrets`), injected as env vars.
+- YT credentials are OpenHands secrets (`POST /api/v1/secrets`), injected as env vars
+  **into an interactive session only**. An **automation sandbox gets no user secrets as
+  env vars** — a script that reads `os.environ` alone works when a human runs it and
+  fails under cron with `missing secret YT_CLIENT_ID`. That is what silently kept
+  `AX Music Marketing Daily` and `AX Music Daily Release` red while the release itself
+  was fine. Read them through **`ops/ax_secrets.get_secret`** (env first, else
+  `GET {AGENT_SERVER_URL}/api/settings/secrets/{name}` with `X-Session-API-Key`; cloud
+  fallback `/api/v1/sandboxes/{SANDBOX_ID}/settings/secrets/{name}`). This is the same
+  route `plugins/yt-activity` always used, which is why it alone stayed green. Fixed
+  `0245f45`; pinned by `test_automation_secret_fallback`.
 - **A plugin automation fetches only its plugin dir** (`AUTOMATION_PLUGIN_ROOT` =
   `plugins/<name>`), not the repo. A plugin needing repo files must fetch them
   itself (`plugins/music-release/scripts/main.py` downloads the tarball).
