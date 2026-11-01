@@ -31,6 +31,8 @@ import sys
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
+import monetize
+
 ROOT = Path(__file__).resolve().parent.parent
 OPS = ROOT.parent / "ops"
 LYRICS = ROOT / "lyrics"
@@ -219,6 +221,8 @@ def describe(slug: str, kind: str, variant: str = "") -> tuple[str, str, list[st
         )
     tags = ["เพลงไทย", "เพลงใหม่", "ศิลปินไทย", "AERIS", "เพลงเพราะ",
             "เพลงฟังสบาย", "คาราโอเกะ", title_th, tagline, "thai music", "thai song"]
+    # Every description carries the outbound links from channel/monetization.json.
+    desc = desc.rstrip() + "\n" + monetize.block(kind)
     return title[:100], desc[:4900], tags[:30]
 
 

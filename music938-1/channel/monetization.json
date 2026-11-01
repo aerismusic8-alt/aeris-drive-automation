@@ -1,0 +1,9 @@
+{
+  "_comment": "Single place for every outbound link AERIS Music uses. A link that is empty is omitted from the video descriptions, so the block degrades cleanly until K fills the affiliate id in.",
+  "youtube": "https://www.youtube.com/@aerismusicth",
+  "shopee_affiliate": "",
+  "shopee_shop": "",
+  "facebook": "",
+  "tiktok": "",
+  "playlist_all": "https://www.youtube.com/@aerismusicth/playlists"
+}
