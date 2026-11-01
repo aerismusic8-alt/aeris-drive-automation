@@ -632,6 +632,25 @@ def test_monetize_footer() -> None:
     check("replacement supports Shorts", '"short"' in rep)
 
 
+def test_studio_web_rail() -> None:
+    """Analytics and comments go through the signed-in Studio, not the Data API.
+
+    The channel's OAuth client is NATIVE_DEVICE, so Google refuses
+    `youtube.force-ssl` at the device endpoint and the client cannot use a
+    loopback redirect — the API rail can never read comments or analytics. Studio
+    is the owner's own UI and the desktop is already signed in as the owner, so
+    this is the working path and it must stay wired to the real CDP port.
+    """
+    section("studio web rail (analytics + comments)")
+    src = (ROOT / "scripts" / "studio_web.py").read_text()
+    check("drives CDP on 9222", "127.0.0.1:9222" in src)
+    check("reads the channel analytics", "analytics/tab-overview" in src)
+    check("reads the comment inbox", "/comments/inbox" in src)
+    check("posts a reply", "ตอบกลับ" in src)
+    check("uses the native textarea setter", "HTMLTextAreaElement.prototype" in src)
+    check("defaults to a Thai reply", "ขอบคุณ" in src)
+
+
 def main() -> int:
     test_lyrics()
     test_tokenizer()
@@ -655,6 +674,7 @@ def main() -> int:
     test_crosspost_engine()
     test_setup_pod_ffmpeg()
     test_monetize_footer()
+    test_studio_web_rail()
     test_outputs()
     print(f"\n{PASS} passed, {FAIL} failed")
     if FAILURES:
