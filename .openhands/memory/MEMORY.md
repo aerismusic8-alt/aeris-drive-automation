@@ -155,11 +155,46 @@ true-instrumental karaoke mix, cover art, a 1920x1080 word-synced video.
   and is not. Retry a flake once or twice, then leave it to the cron. Dispatch:
   `POST /api/automation/v1/<id>/dispatch` (`/runs` is 405; no per-run detail route).
 
+## Channel build-out: profile, Stories, compilation, Shopee (2026-11-01)
+
+- **Profile**: `scripts/brand.py` → banner 2560×1440 (text inside the 1546×423
+  safe strip) + avatar 800×800; `scripts/apply_brand.py` uploads the banner via
+  the API. **The avatar has no API** — set it in the signed-in Studio profile
+  editor. Verified live; avatar URL changed.
+- **Stories**: `scripts/make_stories.py` → 21 cards (1080×1920);
+  `scripts/post_stories.py` posts to Facebook Stories (21/21). YouTube has no
+  Story, so `scripts/post_community.py` posts to the Posts tab — entry point is
+  the **create menu** ("สร้าง" → "สร้างโพสต์"), not the `?show_create_dialog=1`
+  URL, which opens the dialog only intermittently.
+- **The watch-hour lever is the long compilation with chapters**, not the
+  singles: a 60-minute watch earns a whole watch-hour, a 3-minute song 0.05 of
+  one. `compile_album.py` builds it (15 tracks ≈ 57 min, title
+  `...(เลือกเพลงฟังได้)`). **Live: `3Yz2jxZnKmM`.**
+- **Bug fixed**: `compile_album.render()` overwrote `compilation.txt` with a
+  bare tracklist after `main()` wrote the chaptered description, so the upload
+  lost every timestamp — the exact signal the title promises. Re-uploading the
+  description (no duplicate) restored 15 chapters. Pinned by a test.
+- **`upload_compilation.py --watch --upload`** waits for the render then uploads,
+  so a recycle during the ~14-minute ffmpeg run cannot lose it.
+- **Shopee rail**: `channel/monetization.json` is the single source for outbound
+  links; `scripts/monetize.py` builds the block and `release.py` appends it to
+  every description. Blank id = skipped, so it is safe pre-signup. Rates:
+  **2.00% direct / 0.60% indirect**, cap 225 THB/order, payout 15th & 30th,
+  min 100 THB. K must register (OTP + ID + bank). See `channel/SHOPEE.md`.
+- **Plan + rules**: `channel/GROWTH.md` (calendar, the scan's constraints:
+  titles ≤60 chars, no `| AERIS Music`, cover luminance std ≥22, chapters on
+  every compilation).
+
 ## Environment facts that keep costing time
 
 - **A pod recycle is the recurring failure, not quota.** It kills the cloud
   desktop, running jobs, `$HOME`, `/tmp` and pip packages. **Only `/workspace`
   survives.** Never keep state in `$HOME` or `/tmp`.
+- **Python deps must live under /workspace.** A recycle wipes the `$HOME`
+  site-packages and playwright/Pillow/numpy/pythainlp vanish. Install with
+  `pip install --target=/workspace/ax-tools/pylibs ...` and add a `.pth`
+  (`echo /workspace/ax-tools/pylibs > <site>/ax-pylibs.pth`) so a plain
+  `python3` finds them. `music938-1/scripts/setup-pod.sh` does this now.
 - **Chromium CDP dies after a recycle** on a stale `SingletonLock`. Clear
   `Singleton*`/`DevToolsActivePort` and relaunch; keep `--remote-allow-origins=*`
   or every CDP websocket 403s.
