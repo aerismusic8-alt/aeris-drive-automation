@@ -119,7 +119,7 @@ The channel lives on four places, and every description carries all of them:
 | Surface | Where | How AR runs it |
 | --- | --- | --- |
 | YouTube | `@aerismusicth` | `AX Music Daily Release` (cron), Studio web for comments |
-| Facebook | page `61596276533369` | `crosspost.py --platform facebook` (desktop) |
+| Facebook | page `61595890900382` | `crosspost.py --platform facebook` (desktop) |
 | TikTok | `@aeris.music4` | `crosspost.py --platform tiktok` (desktop) |
 | Shopee | `th.shp.ee/6hv2uk89` | affiliate link in `channel/monetization.json` |
 

@@ -26,7 +26,11 @@ AVATAR = ROOT / "channel" / "avatar-800x800.png"
 TIKTOK_URL = "https://www.tiktok.com/@aeris.music4"
 TIKTOK_BIO = ("🎵 เพลงไทยเพราะๆ ใหม่ทุกวัน · ฟังเต็มที่ YouTube\n"
               "AERIS Music 🎧 เพลงใหม่ทุกวัน")
-FACEBOOK_ID = "61596276533369"
+FACEBOOK_ID = "61595890900382"
+# The AERIS Music *Page* (resolves to /people/AERIS-Music/61595890900382/), the
+# same Page crosspost.py posts Reels to. Do not point this at 61596276533369 —
+# that is K's personal profile ("Aeris-Ak Akath"), which cannot be branded and is
+# the wrong surface; branding it is what the Page was created to replace.
 
 
 def _shot(page, name: str) -> None:

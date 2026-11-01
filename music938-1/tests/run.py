@@ -773,6 +773,11 @@ def test_profile_setup() -> None:
     # The cover is derived from the banner and must exist for the script to run.
     check("ships an FB cover", (ROOT / "channel" / "cover-facebook-1640x624.png").exists())
     check("ships an avatar", (ROOT / "channel" / "avatar-800x800.png").exists())
+    # The branded surface is the Page, not K's personal profile. Both the footer
+    # and crosspost.py use the Page; a profile_setup that drifts back to the
+    # personal id would brand the wrong account.
+    import profile_setup
+    check("brands the AERIS Music Page", profile_setup.FACEBOOK_ID == "61595890900382")
 
 
 def main() -> int:
