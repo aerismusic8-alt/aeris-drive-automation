@@ -141,6 +141,22 @@
    "at": "2026-11-01T09:10:03+00:00",
    "public": true,
    "replaces": "CXRH7sW6Gcw"
+  },
+  {
+   "slug": "03-khit-thueng-thoe-thuk-khuen",
+   "kind": "short",
+   "variant": "short-song-h2-03-khit-thueng-thoe-thuk-khuen",
+   "video_id": "-6RdLKwxykk",
+   "at": "2026-11-01T09:10:19+00:00",
+   "public": true
+  },
+  {
+   "slug": "03-khit-thueng-thoe-thuk-khuen",
+   "kind": "short",
+   "variant": "short-song-h3-03-khit-thueng-thoe-thuk-khuen",
+   "video_id": "iLwzR8A_1uw",
+   "at": "2026-11-01T09:10:27+00:00",
+   "public": true
   }
  ],
  "playlists": {
