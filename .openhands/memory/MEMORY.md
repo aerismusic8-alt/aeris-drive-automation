@@ -99,10 +99,15 @@ true-instrumental karaoke mix, cover art, a 1920x1080 word-synced video.
   `/__api/messages/<job_id>/stream`, not the clips map.** Deterministic (2/2), so
   content not network. A fully-rewritten lyric of the same shape is accepted;
   rewrite the text, do not retry. Fixed `4d2c0be`, 371 pass.
-- **10-20's login is SIGNED_OUT after every pod recycle** (the profile survives,
-  the cookie does not). K signs in via noVNC (`work-1-<host>/vnc.html`) **as
-  `aerismusic8@gmail.com`** (K's rule — not AR's registered mail), then the batch
-  resumes.
+- **The login no longer needs redoing after a fresh sandbox.** It used to: a new
+  sandbox gets an empty `/workspace` (a container *recycle* keeps it, a replaced
+  sandbox does not), so the chrome profile and every session were gone. `ops/
+  login_vault.py save` snapshots the live session cookies over CDP into the
+  automation KV store; `restore` puts them back, and `bootstrap.py` calls it after
+  it starts the browser. K signs in **once**; after that the desktop comes up
+  signed in. Verified live for google + facebook + tiktok. Cookies only, never
+  passwords. K signs in via noVNC (`work-1-<host>/vnc.html`) as
+  **`aerismusic8@gmail.com`** (K's rule — not AR's registered mail).
 - `setup-pod.sh` used to leave dangling ffmpeg symlinks (unpacked into a deleted
   `mktemp -d`); fixed to unpack under `/workspace/ax-tools/ffmpeg`. Run it after
   a recycle, then `export PATH=/workspace/ax-tools/bin:$PATH`.
