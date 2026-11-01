@@ -780,6 +780,42 @@ def test_profile_setup() -> None:
     check("brands the AERIS Music Page", profile_setup.FACEBOOK_ID == "61595890900382")
 
 
+def test_login_vault() -> None:
+    """The browser session must survive a fresh sandbox, so it round-trips.
+
+    K has had to sign in to Google/Facebook/TikTok more than once because a new
+    sandbox gets an empty /workspace. ops/login_vault.py snapshots the session
+    cookies to durable storage. These checks pin the encode/decode, including the
+    multi-chunk split that the KV value cap forces.
+    """
+    section("login vault (sign in once, not every pod)")
+    sys.path.insert(0, str(ROOT.parent / "ops"))
+    import login_vault  # noqa: E402
+
+    cookies = [
+        {"name": "c_user", "value": "1", "domain": ".facebook.com", "path": "/"},
+        {"name": "SID", "value": "abc", "domain": ".google.com", "path": "/"},
+        {"name": "sessionid", "value": "xyz", "domain": ".tiktok.com", "path": "/"},
+    ]
+    index, chunks = login_vault.pack(cookies, "aerismusic8@gmail.com")
+    check("round-trips the cookie set", login_vault.unpack(index, chunks) == cookies)
+    check("records the account", index["account"] == "aerismusic8@gmail.com")
+    check("reports the signed-in surfaces",
+          set(index["surfaces"]) == {".google.com", ".facebook.com", ".tiktok.com"})
+
+    # Incompressible data so gzip cannot collapse it below the chunk cap.
+    import base64 as _b64
+    import os as _os
+    big = [{"name": f"c{i}", "value": _b64.b64encode(_os.urandom(400)).decode(),
+            "domain": ".facebook.com", "path": "/"} for i in range(300)]
+    idx2, ch2 = login_vault.pack(big)
+    check("splits a large session into chunks", len(ch2) > 1)
+    check("reassembles every chunk", login_vault.unpack(idx2, ch2) == big)
+    # A snapshot must not carry the password store.
+    src = (ROOT.parent / "ops" / "login_vault.py").read_text()
+    check("never stores passwords", "Login Data" not in src)
+
+
 def main() -> int:
     test_lyrics()
     test_tokenizer()
@@ -808,6 +844,7 @@ def main() -> int:
     test_studio_web_rail()
     test_desk_daily_orchestrator()
     test_profile_setup()
+    test_login_vault()
     test_outputs()
     print(f"\n{PASS} passed, {FAIL} failed")
     if FAILURES:

@@ -222,6 +222,11 @@ Three facts that cost real time and will bite again:
   `/workspace` survives a pod recycle. State (the chrome profile, hence the Google
   login) lives in `/workspace/ax-tools/aeris938-state/`. A profile under `$HOME` loses
   the login on every recycle and the operator has to sign in again.
+- **A *new sandbox* still loses the login.** `/workspace` survives a recycle, but a
+  replaced sandbox gets a fresh, empty volume, so the profile is gone. That is what
+  forced K to sign in more than once. The fix is `ops/login_vault.py`: after K signs
+  in, `save` snapshots the session cookies to the durable KV store; on a fresh pod,
+  `restore` puts them back before the browser is used. Sign in once, not per pod.
 - **Chrome needs `--remote-allow-origins=*`** or every CDP websocket is refused with
   403 and Playwright cannot attach, even though the browser is running.
 - **`vnc.html` returns 200 even when the VNC backend is dead** — it is a static page.

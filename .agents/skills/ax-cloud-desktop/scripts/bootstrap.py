@@ -136,6 +136,30 @@ def status() -> int:
     return 0 if ok else 1
 
 
+def restore_login() -> None:
+    """Put the saved session back, so K does not sign in again after a fresh pod.
+
+    Best-effort: a brand-new account with no snapshot, or a CDP hiccup, must not
+    stop the desktop from coming up. It only ever adds cookies that were saved
+    from this same account.
+    """
+    vault = Path(__file__).resolve().parents[4] / "ops" / "login_vault.py"
+    if not vault.exists():
+        return
+    try:
+        r = sh([sys.executable, str(vault), "restore"], timeout=120)
+    except Exception as exc:  # noqa: BLE001
+        print("[=] login restore skipped:", exc)
+        return
+    out = (r.stdout or "").strip().splitlines()
+    if r.returncode == 0 and out:
+        print("[+] login restored:", out[0])
+    elif "no saved session" in (r.stderr or ""):
+        print("[=] no saved login yet (sign in once, then: login_vault.py save)")
+    else:
+        print("[=] login restore skipped:", (r.stderr or "").strip()[:120])
+
+
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument("--status", action="store_true", help="report only")
@@ -145,6 +169,7 @@ def main() -> int:
         return status()
     install()
     start()
+    restore_login()
     print()
     rc = status()
     print("\noperator URL (sign in here, inside the desktop):")
