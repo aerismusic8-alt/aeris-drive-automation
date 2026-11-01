@@ -176,11 +176,27 @@ true-instrumental karaoke mix, cover art, a 1920x1080 word-synced video.
   description (no duplicate) restored 15 chapters. Pinned by a test.
 - **`upload_compilation.py --watch --upload`** waits for the render then uploads,
   so a recycle during the ~14-minute ffmpeg run cannot lose it.
-- **Shopee rail**: `channel/monetization.json` is the single source for outbound
-  links; `scripts/monetize.py` builds the block and `release.py` appends it to
-  every description. Blank id = skipped, so it is safe pre-signup. Rates:
-  **2.00% direct / 0.60% indirect**, cap 225 THB/order, payout 15th & 30th,
-  min 100 THB. K must register (OTP + ID + bank). See `channel/SHOPEE.md`.
+- **Shopee rail — LIVE 2026-11-01**: `channel/monetization.json` is the single
+  source for outbound links; `scripts/monetize.py` builds the block and
+  `release.py` appends it to every description. `shopee_affiliate` =
+  `https://th.shp.ee/6hv2uk89` (a Shopee **Video** share link, resolves to
+  `sv.shopee.co.th/me/1469892103`). `scripts/apply_monetize.py` backfills the
+  footer into existing **uploads and the 3 channel playlists** (playlists must be
+  listed by `channelId` — Liked/Uploads return 400 "playlist type not supported").
+  K's Shopee identity is private and lives outside this public repo in
+  `/workspace/ax-tools/ar-identity/accounts.json`. Rates: **2.00% direct / 0.60%
+  indirect**, cap 225 THB/order. See `channel/SHOPEE.md`.
+- **Channel conversion surfaces** (all free, all done 2026-11-01): trailer =
+  the 57-min compilation `3Yz2jxZnKmM`; home sections "ยอดนิยม" + a playlist row
+  (`channelSections` — there were none); compilation in the song playlist.
+- **Wrong-render backlog self-heals**: `scripts/pending_replacements.py` runs
+  **before** `daily_release.py` inside the `music-release` plugin, because a
+  replacement spends the same upload slot a release does. `replace_video.py`
+  fetches media from the `media-938` release and handles Shorts.
+- **Blocked on K (free, one action each)**: (1) enable the **YouTube Analytics
+  API** on OAuth project `888023422403` — `/v2/reports` 403s without it, so AR is
+  blind to retention/traffic; (2) re-consent the ch3 token with
+  **`youtube.force-ssl`** to read/reply to comments (currently 403).
 - **Plan + rules**: `channel/GROWTH.md` (calendar, the scan's constraints:
   titles ≤60 chars, no `| AERIS Music`, cover luminance std ≥22, chapters on
   every compilation).
