@@ -568,6 +568,27 @@ def test_crosspost_engine() -> None:
     check("posted items are excluded", t["id"] not in {it["id"] for it in left})
     check("facebook still pending", len(left) == len(shorts) - 1)
 
+    # Facebook must post to the Page, not the personal profile. The plain
+    # `facebook.com/reels/create/` composer posts as the person, and the 60 Reels
+    # sent before the Page existed landed there — so the Page rail needs both a
+    # Page-scoped composer and a state key that does not count those old posts.
+    fb = crosspost.PLATFORMS["facebook"]
+    check("facebook posts through the Business Suite Page composer",
+          "business.facebook.com" in fb["upload"] and "asset_id=" in fb["upload"])
+    check("facebook composer is not the personal reels route",
+          "facebook.com/reels/create/" not in fb["upload"])
+    check("facebook state key differs from the platform name",
+          fb["state_key"] != "facebook" and fb["state_key"].startswith("facebook"))
+    check("facebook ids carry the distinct state key",
+          all(it["id"].startswith("facebook-page:") for it in q if it["platform"] == "facebook"))
+
+    src = (ROOT / "scripts" / "crosspost.py").read_text()
+    body = src.split("def post_facebook(", 1)[1].split("\ndef ", 1)[0]
+    check("composer advances two steps", body.count('"ถัดไป"') >= 2)
+    check("publish is the footer แชร์, force-clicked", "force=True" in body)
+    check("publish is confirmed by the processing dialog",
+          "กำลังประมวลผลคลิป Reels" in body)
+
 
 def test_karaoke_loudness_contract() -> None:
     """flow_song._karaoke must master through make_song's two-pass loudnorm.

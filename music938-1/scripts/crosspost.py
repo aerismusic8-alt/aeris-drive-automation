@@ -46,16 +46,27 @@ QUEUE = WORK / "crosspost-queue.json"
 STATE = WORK / "crosspost-state.json"
 
 # The upload entry points. Kept here so a UI change is a one-line fix.
+#
+# Facebook posts through the Page-scoped Reels composer in Meta Business Suite.
+# The plain `facebook.com/reels/create/` composer posts as the personal profile,
+# which is not the brand surface, so it is deliberately not used.
+FACEBOOK_PAGE_ID = "1349201551618019"
+
 PLATFORMS = {
     "tiktok": {
         "label": "TikTok",
         "upload": "https://www.tiktok.com/tiktokstudio/upload?from=upload",
         "login_marker": "tiktok.com/login",
+        "state_key": "tiktok",
     },
     "facebook": {
-        "label": "Facebook Reels",
-        "upload": "https://www.facebook.com/reels/create/",
+        "label": "Facebook Reels (Page)",
+        "upload": ("https://business.facebook.com/latest/reels_composer/"
+                   f"?ref=biz_web_home_create_reel&asset_id={FACEBOOK_PAGE_ID}"),
         "login_marker": "/login",
+        # A distinct state key: the 60 Reels posted before the Page existed went
+        # to the personal profile, so they must not count as Page posts.
+        "state_key": "facebook-page",
     },
 }
 
@@ -88,9 +99,9 @@ def build_queue() -> list[dict]:
     for short in sorted(SHORTS.glob("short-*.mp4")):
         slug = _slug_of(short)
         rel = str(short.relative_to(ROOT))
-        for platform in PLATFORMS:
+        for platform, cfg in PLATFORMS.items():
             items.append({
-                "id": f"{platform}:{short.stem}",
+                "id": f"{cfg['state_key']}:{short.stem}",
                 "platform": platform,
                 "slug": slug,
                 "video": rel,
@@ -225,30 +236,66 @@ def post_tiktok(page, video: Path, text: str) -> str | None:
 
 
 def post_facebook(page, video: Path, text: str) -> str | None:
+    """Post one Reel to the AERIS Music Page through the Business Suite composer.
+
+    Four facts this encodes, each verified live:
+      * The composer's upload control opens a **native file chooser**, so the file
+        must be handed to `filechooser`, not to `input.set_input_files`.
+      * The composer is **three steps**: caption -> edit/trim -> publish. Two
+        "ถัดไป" (Next) clicks reach the publish screen, where the real button is
+        "แชร์เลย" (Share now); the header "แชร์" is only a stage label.
+      * An onboarding banner ("เรากำลังทำให้วิธีการสร้างของคุณง่ายขึ้น") covers the
+        page and must be dismissed first, or the upload control is unclickable.
+      * Buttons repeat across the header/footer, so click the *last* match.
+    """
     page.goto(PLATFORMS["facebook"]["upload"], wait_until="domcontentloaded", timeout=60000)
-    page.wait_for_timeout(4000)
+    page.wait_for_timeout(7000)
     if not _signed_in(page):
         return None
-    page.locator('input[type="file"]').first.set_input_files(str(video))
-    # Reels walks upload -> trim -> details before it shows the caption box, and
-    # its Next control is an overlay-intercepted div, so advance by JS click.
-    page.wait_for_timeout(8000)
-    for _ in range(4):
-        if page.locator('[contenteditable="true"]').count():
+    _js_click_text(page, ["ปิด", "Close"])
+    page.wait_for_timeout(1500)
+
+    chosen: dict = {}
+    page.once("filechooser", lambda fc: (fc.set_files(str(video)), chosen.update(ok=1)))
+    if not _js_click_text(page, ["เพิ่มวิดีโอ", "Add video"]):
+        _abort(page, "facebook", "upload control not found")
+        return None
+    for _ in range(40):
+        page.wait_for_timeout(500)
+        if chosen.get("ok"):
             break
-        if not _js_click_text(page, ["ถัดไป", "Next"]):
-            break
-        page.wait_for_timeout(7000)
-    page.wait_for_selector('[contenteditable="true"]', timeout=60000)
-    page.wait_for_timeout(2000)
+    if not chosen.get("ok"):
+        _abort(page, "facebook", "file chooser never opened")
+        return None
+
+    page.wait_for_selector('[contenteditable="true"]', timeout=120000)
+    page.wait_for_timeout(2500)
     box = page.locator('[contenteditable="true"]').first
     if not _fill_caption(page, box, text):
         _abort(page, "facebook", "caption did not land in the editor")
         return None
-    if not _js_click_text(page, ["โพสต์", "Post", "Publish", "เผยแพร่"]):
-        _abort(page, "facebook", "Publish button not found")
+
+    for step in ("ถัดไป", "ถัดไป"):
+        if not _js_click_text(page, [step, "Next"]):
+            _abort(page, "facebook", f"{step} not found")
+            return None
+        page.wait_for_timeout(7000)
+
+    # Publish is the *footer* "แชร์"; the header "แชร์" is only the stage label and
+    # the header "แชร์เลย" sits off-screen. A JS click lands on the header button
+    # and silently does nothing, so force a real click on the last match.
+    try:
+        page.get_by_role("button", name="แชร์", exact=True).last.click(timeout=8000, force=True)
+    except Exception:  # noqa: BLE001
+        _abort(page, "facebook", "publish button not found")
         return None
-    page.wait_for_timeout(10000)
+    # Success is the "กำลังประมวลผลคลิป Reels" dialog, not a URL change.
+    try:
+        page.wait_for_selector("text=กำลังประมวลผลคลิป Reels", timeout=30000)
+    except Exception:  # noqa: BLE001
+        _abort(page, "facebook", "publish not confirmed")
+        return None
+    page.wait_for_timeout(6000)
     return page.url
 
 
