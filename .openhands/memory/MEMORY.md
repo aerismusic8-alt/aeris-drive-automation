@@ -179,13 +179,25 @@ true-instrumental karaoke mix, cover art, a 1920x1080 word-synced video.
 - **Shopee rail — LIVE 2026-11-01**: `channel/monetization.json` is the single
   source for outbound links; `scripts/monetize.py` builds the block and
   `release.py` appends it to every description. `shopee_affiliate` =
-  `https://th.shp.ee/6hv2uk89` (a Shopee **Video** share link, resolves to
-  `sv.shopee.co.th/me/1469892103`). `scripts/apply_monetize.py` backfills the
-  footer into existing **uploads and the 3 channel playlists** (playlists must be
-  listed by `channelId` — Liked/Uploads return 400 "playlist type not supported").
-  K's Shopee identity is private and lives outside this public repo in
-  `/workspace/ax-tools/ar-identity/accounts.json`. Rates: **2.00% direct / 0.60%
-  indirect**, cap 225 THB/order. See `channel/SHOPEE.md`.
+  `https://th.shp.ee/6hv2uk89` — a Shopee **share-marker link, not an affiliate
+  link** (302s to `sv.shopee.co.th/me/1469892103?fromShareLink=share-marker`).
+  `scripts/apply_monetize.py` backfills the footer into existing **uploads and the
+  3 channel playlists** (playlists must be listed by `channelId` — Liked/Uploads
+  return 400 "playlist type not supported"). K's Shopee identity is private and
+  lives outside this public repo in `/workspace/ax-tools/ar-identity/accounts.json`.
+  Rates: **2.00% direct / 0.60% indirect**, cap 225 THB/order. See `channel/SHOPEE.md`.
+- **Shopee attribution ("โฆษณาอะไรไปที่ไหน")**: a `th.shp.ee` short link **strips
+  `sub_id`** (verified live), so one link cannot say which surface earned. Mint
+  `s.shopee.co.th/...?sub_id=<label>` links in the affiliate dashboard and put them
+  in `shopee_links`; `monetize.link(surface)` prefers those and falls back to the
+  plain link. K reads results at **affiliate.shopee.co.th → Report**, filtered by
+  Sub ID (or the app → ฉัน → โปรแกรม Affiliate → คำสั่งซื้อ). Read orders/commission,
+  not clicks.
+- **Shopee login is a K-only action**: K's account is `navintas` /
+  `kongkeat.p3@gmail.com`; the cloud desktop's Google account is
+  `aerismusic8@gmail.com` — **different account**, and Shopee's Google button is an
+  `oauth2/authorize` **redirect** (not a popup) that drops the `next=` target. Use a
+  one-time **QR login from K's phone**.
 - **Channel conversion surfaces** (all free, all done 2026-11-01): trailer =
   the 57-min compilation `3Yz2jxZnKmM`; home sections "ยอดนิยม" + a playlist row
   (`channelSections` — there were none); compilation in the song playlist.
@@ -203,7 +215,8 @@ true-instrumental karaoke mix, cover art, a 1920x1080 word-synced video.
   `scripts/desk_daily.py` = the one browser-side admin pass (comments →
   analytics → crosspost FB/TikTok → Thai report).
 - **Four surfaces** (K: "yt fb tk shoppe"), all in `channel/monetization.json` and
-  in every footer: YouTube `@aerismusicth`, Facebook page `61596276533369`,
+  in every footer: YouTube `@aerismusicth`, Facebook **Page** `61595890900382`
+  (created 2026-11-01; the personal profile `61596276533369` cannot be branded),
   TikTok `@aeris.music4`, Shopee `th.shp.ee/6hv2uk89`. Crosspost = 120/120.
 - **Plan + rules**: `channel/GROWTH.md` (calendar, the scan's constraints:
   titles ≤60 chars, no `| AERIS Music`, cover luminance std ≥22, chapters on
