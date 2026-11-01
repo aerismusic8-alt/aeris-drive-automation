@@ -78,7 +78,10 @@ def skip(name: str) -> None:
 def test_lyrics() -> None:
     section("lyrics")
     files = sorted(common.LYRICS.glob("*.txt"))
-    check("20 lyric files exist", len(files) == 20, f"found {len(files)}")
+    # K, 2026-11-01: the catalogue is no longer capped at 20 songs. The floor
+    # stays (the first pack), but there is no ceiling, so a new batch never
+    # breaks the suite.
+    check("at least 20 lyric files", len(files) >= 20, f"found {len(files)}")
     slugs = set()
     for p in files:
         meta = make_song.parse_lyrics(p)
@@ -393,6 +396,37 @@ def test_shorts() -> None:
             check(f"short <= 60s at {dur:.0f}s song", length <= 60.0, f"{length:.1f}")
     # Vertical canvas, or YouTube will not treat it as a Short.
     check("vertical canvas", (make_short.W, make_short.H) == (1080, 1920))
+
+
+def test_provenance() -> None:
+    section("provenance (WIRING: retired Piper engine must not ship)")
+    import provenance
+    # The gate is the left/right channel difference: make_song.py copies one mono
+    # signal into both channels, so its files are bit-identical, while a real
+    # Flow Music mix never is. Pin the threshold, not an audio file.
+    check("mono epsilon is exact", provenance.MONO_EPSILON == 1e-6)
+    # A file whose channels are identical must read as retired; a real stereo
+    # pair must not. This is the whole decision, so test it directly.
+    identical = np.stack([np.linspace(-0.5, 0.5, 4096)] * 2, axis=1).astype(np.float32)
+    differing = np.stack([np.linspace(-0.5, 0.5, 4096),
+                          np.linspace(-0.5, 0.5, 4096) * 0.5], axis=1).astype(np.float32)
+    check("identical channels are retired",
+          float(np.abs(identical[:, 0] - identical[:, 1]).max()) <= provenance.MONO_EPSILON)
+    check("real stereo is not retired",
+          float(np.abs(differing[:, 0] - differing[:, 1]).max()) > provenance.MONO_EPSILON)
+    # The retired engine is fenced off: neither entry point may run it by default.
+    for script in ("make_song.py", "build_all.py"):
+        text = (ROOT / "scripts" / script).read_text(encoding="utf-8")
+        check(f"{script}: refuses the retired engine by default",
+              "--retired-engine" in text and "return 2" in text)
+    # One manifest schema, or the index page breaks. Readers (pack_index,
+    # build_all, provenance) all use "entries"; the writer must match.
+    writer = (ROOT / "scripts" / "manifest.py").read_text(encoding="utf-8")
+    check("manifest writer uses the entries key", '"entries": entries' in writer)
+    if (ROOT / "library" / "songs" / "manifest.json").exists():
+        data = json.loads((ROOT / "library" / "songs" / "manifest.json").read_text(encoding="utf-8"))
+        check("manifest on disk is readable by the readers",
+              "entries" in data and all("id" in e for e in data["entries"]))
 
 
 def test_thumb_contrast() -> None:
@@ -891,6 +925,7 @@ def main() -> int:
     test_normalize_floor()
     test_level_ordering()
     test_shorts()
+    test_provenance()
     test_thumb_contrast()
     test_titles()
     test_compilation()

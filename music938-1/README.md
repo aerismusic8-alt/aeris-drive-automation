@@ -112,3 +112,19 @@ which is an operator action.
 `setup-env.sh` are the retired Piper synthesis pipeline. They are kept only as a
 record of what was rejected; nothing in the Flow Music path calls them.
 
+**They came back once, so the gate is now enforced, not documented.** On
+2026-11-01 songs 10-20 were rebuilt by `make_song.py` while Flow Music sat behind
+a login; the pack looked complete and the manifest called them `offline-engine`.
+`scripts/provenance.py` decides from the audio: `make_song.py` copies one mono
+signal into both channels, so its files have *bit-identical* left and right,
+which a real Flow mix never does.
+
+    python3 scripts/provenance.py --check        # exit 1 if a song is retired
+    python3 scripts/provenance.py --quarantine   # move retired media out of library/
+    python3 scripts/provenance.py --manifest     # rebuild manifest.json through the gate
+
+`make_song.py` and `build_all.py` now refuse to run without `--retired-engine`,
+`release.py` will not plan a retired song for upload, and `manifest.py` excludes
+one from the pack. A quarantined file is not deleted: it moves to
+`library/quarantine/<UTC stamp>/` with a `MOVED.json` recording why.
+

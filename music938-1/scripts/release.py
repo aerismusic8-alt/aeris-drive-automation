@@ -100,6 +100,27 @@ def has_song(slug: str) -> bool:
     return _have(f"song-{slug}.mp3", SONGS / f"song-{slug}.mp3")
 
 
+def is_retired(slug: str) -> bool:
+    """True when the on-disk song came from the rejected Piper engine.
+
+    A song rebuilt by `make_song.py` is a TTS voice reshaped to a melody, which
+    K ordered destroyed; it must never reach an upload. The signature is checked
+    on the local file only — a song whose audio is not on disk is judged by the
+    release asset list, where it can only be a Flow render (the Piper engine
+    never published there).
+    """
+    song = SONGS / f"song-{slug}.mp3"
+    if not song.exists():
+        return False
+    try:
+        import provenance
+        return provenance.verdict(song) == "retired"
+    except Exception as exc:  # ffmpeg missing: fail closed, not open
+        print(f"provenance check unavailable for {slug} ({type(exc).__name__}); "
+              f"skipping the song rather than risk the retired engine", file=sys.stderr)
+        return True
+
+
 SHORTS = ROOT / "library" / "shorts"
 
 
@@ -193,7 +214,7 @@ def describe(slug: str, kind: str, variant: str = "") -> tuple[str, str, list[st
         desc = (
             f"🎵 {title_th} (ท่อนฮุก)\n\n"
             f"{tagline}\n\n"
-            f"เพลงที่ {int(n)} จากชุด 20 เพลงไทย — ร้องด้วยเสียงจริง\n"
+            f"เพลงที่ {int(n)} ในชุดเพลงไทยของ AERIS Music — ร้องด้วยเสียงจริง\n"
             f"🎧 ฟังเวอร์ชันเต็มได้ในช่อง\n\n"
             f"{HASHTAGS} #Shorts"
         )
@@ -202,7 +223,7 @@ def describe(slug: str, kind: str, variant: str = "") -> tuple[str, str, list[st
         desc = (
             f"🎤 {title_th} — เวอร์ชันคาราโอเกะ (ไม่มีเสียงร้อง)\n\n"
             f"ร้องตามได้เลย! {tagline}\n\n"
-            f"🎵 เพลงที่ {int(n)} จากชุด 20 เพลงไทย\n"
+            f"🎵 เพลงที่ {int(n)} ในชุดเพลงไทยของ AERIS Music\n"
             f"🎧 ฟังเวอร์ชันเต็ม (มีเสียงร้อง) ได้ในช่อง\n"
             f"✨ สร้างจากความตั้งใจ ไม่ใช่ความเร็ว\n\n"
             f"{HASHTAGS}"
@@ -212,7 +233,7 @@ def describe(slug: str, kind: str, variant: str = "") -> tuple[str, str, list[st
         desc = (
             f"🎵 {title_th}\n\n"
             f"{tagline}\n\n"
-            f"เพลงที่ {int(n)} จากชุด 20 เพลงไทย — ร้องด้วยเสียงจริง "
+            f"เพลงที่ {int(n)} ในชุดเพลงไทยของ AERIS Music — ร้องด้วยเสียงจริง "
             f"เนื้อร้องและทำนองใหม่\n\n"
             f"🎧 ฟังเพลิน ฟังได้ทุกวัน\n"
             f"🎤 คาราโอเกะมีให้ในช่อง (ไม่มีเสียงร้อง)\n"
@@ -236,8 +257,8 @@ def playlist_for(kind: str) -> tuple[str, str]:
         return ("คาราโอเกะ — ร้องตามได้ทุกเพลง",
                 "รวมทุกเพลงในชุดเป็นเวอร์ชันคาราโอเกะ ไม่มีเสียงร้อง ร้องตามได้เลย\n\n"
                 "AERIS Music · เพลงไทยที่ตั้งใจทำ")
-    return ("เพลงไทยเพื่อชีวิต — ชุด 20 เพลง",
-            "รวมทุกเพลงในชุด 20 เพลงไทยเพื่อชีวิต ร้องด้วยเสียงจริง เนื้อร้องและทำนองใหม่\n\n"
+    return ("เพลงไทยเพื่อชีวิต — รวมทุกเพลง",
+            "รวมทุกเพลงไทยเพื่อชีวิตของ AERIS Music ร้องด้วยเสียงจริง เนื้อร้องและทำนองใหม่\n\n"
             "AERIS Music · ฟังเพลิน ฟังได้ทุกวัน")
 
 
@@ -309,6 +330,11 @@ def plan(days: int, shorts: bool = False, spread: float = 0) -> list[dict]:
     items: list[dict] = []
     for slug in all_slugs():
         if not has_song(slug):
+            continue
+        if is_retired(slug):
+            # A rebuilt song is the rejected engine; it must not be uploaded.
+            print(f"skip {slug}: rebuilt by the retired Piper engine "
+                  f"(see scripts/provenance.py)", file=sys.stderr)
             continue
         for v in short_files(slug, "song"):
             items.append({"slug": slug, "kind": "short", "video": v,

@@ -425,7 +425,21 @@ def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("slug")
     ap.add_argument("--force", action="store_true")
+    ap.add_argument("--retired-engine", action="store_true",
+                    help="run the Piper synthesis pipeline K rejected; see README")
     args = ap.parse_args()
+    if not args.retired_engine:
+        # The voice here is a Piper TTS voice pitch-shifted onto a melody, which
+        # K ordered destroyed: a TTS melody is not singing. It silently rebuilt
+        # songs 10-20 on 2026-11-01, so the default is now to refuse. Flow Music
+        # (scripts/flow_song.py, driven by build_songs.py) is the only allowed
+        # voice source.
+        print("make_song.py is the RETIRED Piper synthesis pipeline. Its output is\n"
+              "a TTS voice reshaped to a melody, which K rejected\n"
+              "(\"งานเพลงแบบนี้คือล้มเหลวมากๆ\"). Use scripts/build_songs.py (Flow\n"
+              "Music). To run it anyway for a diagnostic, pass --retired-engine.",
+              file=sys.stderr)
+        return 2
     path = common.LYRICS / f"{args.slug}.txt"
     if not path.exists():
         print(f"no lyric file {path}", file=sys.stderr)

@@ -38,7 +38,18 @@ def main() -> int:
     ap.add_argument("--only", default="", help="comma-separated slug prefixes")
     ap.add_argument("--skip-karaoke", action="store_true")
     ap.add_argument("--force", action="store_true")
+    ap.add_argument("--retired-engine", action="store_true",
+                    help="run the Piper synthesis pipeline K rejected; see README")
     args = ap.parse_args()
+    if not args.retired_engine:
+        # This is the pipeline K ordered destroyed: a TTS voice is not a singer.
+        # It came back once already (2026-11-01, songs 10-20) because it was the
+        # runnable thing while Flow Music sat behind a login. Refuse by default.
+        print("build_all.py drives the RETIRED Piper synthesis pipeline.\n"
+              "K rejected its output (\"งานเพลงแบบนี้คือล้มเหลวมากๆ\") and it must not\n"
+              "ship. Use scripts/build_songs.py (Flow Music) instead. To run it\n"
+              "anyway for a diagnostic, pass --retired-engine.", file=sys.stderr)
+        return 2
 
     only = [s.strip() for s in args.only.split(",") if s.strip()]
     lyrics = sorted(common.LYRICS.glob("*.txt"))

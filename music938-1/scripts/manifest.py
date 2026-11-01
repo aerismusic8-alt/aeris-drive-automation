@@ -70,6 +70,17 @@ def main() -> int:
     entries, problems = [], []
     for song in sorted(SONGS.glob("song-*.mp3")):
         slug = song.stem.removeprefix("song-")
+        # A song rebuilt by make_song.py is the Piper engine K rejected; it must
+        # not enter the pack. provenance decides from the audio itself.
+        try:
+            import provenance
+            if provenance.verdict(song) == "retired":
+                problems.append(f"{slug}: retired Piper engine, excluded")
+                print(f"  skip {slug}: rebuilt by the retired Piper engine")
+                continue
+        except Exception as exc:
+            problems.append(f"{slug}: provenance unavailable ({type(exc).__name__})")
+            continue
         kar = SONGS / f"karaoke-{slug}.mp3"
         cover = COVERS / f"cover-{slug}.jpg"
         m = meta(slug)
@@ -98,7 +109,7 @@ def main() -> int:
 
     SONGS.mkdir(parents=True, exist_ok=True)
     (SONGS / "manifest.json").write_text(
-        json.dumps({"songs": entries}, ensure_ascii=False, indent=1), encoding="utf-8")
+        json.dumps({"entries": entries}, ensure_ascii=False, indent=1), encoding="utf-8")
 
     rows = []
     for e in entries:
