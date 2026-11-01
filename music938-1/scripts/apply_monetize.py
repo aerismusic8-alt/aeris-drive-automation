@@ -104,7 +104,7 @@ def main() -> int:
     if BACKUP.exists():
         backup = json.loads(BACKUP.read_text(encoding="utf-8"))
 
-    link = monetize.config().get("shopee_affiliate") or ""
+    link = monetize.link("youtube")
     block = monetize.block("song")
     if not block.strip():
         raise SystemExit("no monetization links configured — nothing to add")

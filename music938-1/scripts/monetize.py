@@ -33,6 +33,22 @@ def _link(label: str, url: str) -> str:
     return f"{label}: {url}" if url else ""
 
 
+def link(surface: str = "") -> str:
+    """The Shopee affiliate link for a surface, falling back to the default.
+
+    A short link (`th.shp.ee/...`) drops a `sub_id` query parameter — verified
+    against the live redirect — so attribution only works with the longer
+    `s.shopee.co.th/...?sub_id=<surface>` links minted in the affiliate
+    dashboard. Those live under `shopee_links`; until they exist, every surface
+    falls back to the plain `shopee_affiliate` link.
+    """
+    c = config()
+    per = c.get("shopee_links") or {}
+    if surface and per.get(surface):
+        return per[surface]
+    return c.get("shopee_affiliate") or c.get("shopee_shop") or ""
+
+
 def block(kind: str = "song") -> str:
     """The monetization footer appended to a video description.
 
@@ -41,11 +57,11 @@ def block(kind: str = "song") -> str:
     c = config()
     lines: list[str] = []
 
-    if c.get("shopee_affiliate") or c.get("shopee_shop"):
-        url = c.get("shopee_affiliate") or c.get("shopee_shop")
+    shopee = link("youtube")
+    if shopee:
         lines.append("")
         lines.append("🛒 สนับสนุนช่องผ่าน Shopee (ลิงก์พันธมิตร):")
-        lines.append(url)
+        lines.append(shopee)
 
     socials = [x for x in (_link("Facebook", c.get("facebook", "")),
                            _link("TikTok", c.get("tiktok", "")),

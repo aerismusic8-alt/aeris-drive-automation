@@ -616,7 +616,26 @@ def test_monetize_footer() -> None:
 
     mon = (ROOT / "scripts" / "monetize.py").read_text()
     check("footer carries the affiliate link", "shopee_affiliate" in mon)
-    check("footer degrades when a link is blank", "if c.get" in mon)
+    check("footer degrades when a link is blank", "if shopee:" in mon)
+
+    # A th.shp.ee short link strips sub_id (verified against the live redirect),
+    # so per-surface attribution needs the dashboard links; until they exist the
+    # footer must fall back to the plain affiliate link rather than go blank.
+    import monetize
+    monetize.CACHE = None
+    check("link() falls back to the plain affiliate link",
+          monetize.link("youtube") == cfg.get("shopee_affiliate"))
+    saved = dict(monetize.config())
+    try:
+        monetize.CACHE = {**saved, "shopee_links": {"youtube": "https://s.shopee.co.th/x?sub_id=youtube"}}
+        check("link() prefers a per-surface sub_id link",
+              monetize.link("youtube").endswith("sub_id=youtube"))
+        check("an unknown surface still falls back",
+              monetize.link("facebook") == cfg.get("shopee_affiliate"))
+        check("the footer uses the youtube surface link",
+              "sub_id=youtube" in monetize.block("song"))
+    finally:
+        monetize.CACHE = None
 
     apply_src = (ROOT / "scripts" / "apply_monetize.py").read_text()
     check("backfills video descriptions", "videos?part=snippet" in apply_src)
