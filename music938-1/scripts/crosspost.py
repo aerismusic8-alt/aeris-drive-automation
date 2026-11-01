@@ -267,6 +267,10 @@ def post(platform: str, limit: int) -> int:
         br, ctx = B.connect(p)
         for it in todo:
             video = ROOT / it["video"]
+            # A fresh pod has no library/, so pull the Short from the media
+            # release on demand rather than skipping the post.
+            if not video.exists():
+                video = release.fetch_media(video)
             if not video.exists():
                 print(f"  skip {it['id']}: {video} missing")
                 continue
