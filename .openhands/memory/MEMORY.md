@@ -89,13 +89,20 @@ true-instrumental karaoke mix, cover art, a 1920x1080 word-synced video.
   `TARGET_LUFS - KARAOKE_OFFSET_DB`. `flow_song.py <slug> --karaoke-only` rebuilds
   a karaoke from local stems with **no Flow call**; the playwright import is lazy
   so it runs in a bare pod. Fixed `0142f5e`, 356 pass.
-- **Songs 01-09 and 11-20 built** (19/20). **Song 10** (`10-dok-mai-rim-thang`)
-  is the only one owed: it failed 3× "no completed create clip in 480s" while
-  every song after it succeeded — a stuck tab, not content. Retry it once the Flow
-  login is back. **10-20's login is SIGNED_OUT after every pod recycle** (the
-  profile survives, the cookie does not). K signs in via noVNC
-  (`work-1-<host>/vnc.html`) **as `aerismusic8@gmail.com`** (K's rule — not AR's
-  registered mail), then the batch resumes.
+- **All 20 songs built** (2026-11-01). **Song 10** (`10-dok-mai-rim-thang`) was
+  the last one; the earlier "stuck tab, not content" call was **wrong**. Flow
+  rejects song 10's *original lyric text* server-side. The click succeeds —
+  `POST /__api/producer/tool-call` → 200 with a `job_id` — and the rejection is
+  only in the producer stream: `message {tool_name: audio__create_song}` then
+  `error {type: tool_call_failure, message: "Error while streaming parts"}`, no
+  clip. **When a Flow create silently yields nothing, read
+  `/__api/messages/<job_id>/stream`, not the clips map.** Deterministic (2/2), so
+  content not network. A fully-rewritten lyric of the same shape is accepted;
+  rewrite the text, do not retry. Fixed `4d2c0be`, 371 pass.
+- **10-20's login is SIGNED_OUT after every pod recycle** (the profile survives,
+  the cookie does not). K signs in via noVNC (`work-1-<host>/vnc.html`) **as
+  `aerismusic8@gmail.com`** (K's rule — not AR's registered mail), then the batch
+  resumes.
 - `setup-pod.sh` used to leave dangling ffmpeg symlinks (unpacked into a deleted
   `mktemp -d`); fixed to unpack under `/workspace/ax-tools/ffmpeg`. Run it after
   a recycle, then `export PATH=/workspace/ax-tools/bin:$PATH`.

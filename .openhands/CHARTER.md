@@ -61,9 +61,11 @@ lever the competitor scan measured (actives ship 3.89/week; ours was 1.01).
 
 Ordered. Update it each session; it is the answer to "what next".
 
-1. **Finish song 10.** 19/20 built as of 2026-10-31 23:55Z; only
-   `10-dok-mai-rim-thang` is owed (a stuck-tab timeout, not content). It waits on
-   the Flow Music login, which a recycle wiped again — see the one K action below.
+1. **~~Finish song 10.~~** DONE 2026-11-01 02:00Z. All 20 songs built
+   (`song-*.mp3`, `karaoke-*.mp3`, `cover-*.jpg`, 60 Shorts). Root cause: Flow
+   Music rejected the *original* lyric server-side (`tool_call_failure`, "Error
+   while streaming parts") at full length; a fully-rewritten lyric of the same
+   shape is accepted. Commit `4d2c0be`, pushed. 371 tests pass.
 2. **Replace the 4 broken song-01 uploads** (karaoke + 3 Shorts, tofu text) when
    the Pacific-day upload quota allows — `work/pending-replacements.json` lists
    them; `scripts/replace_video.py` does it. 6 uploads/day shared with releases.
