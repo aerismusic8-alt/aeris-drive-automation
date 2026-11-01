@@ -464,6 +464,15 @@ def test_compilation() -> None:
     check("title fits 60 chars", len(title) <= 60, f"{len(title)}")
     check("a 12-song floor is enforced", compile_album.MIN_TRACKS >= 12,
           str(compile_album.MIN_TRACKS))
+    desc = compile_album.compilation_description(
+        "รวมเพลงไทยเพื่อชีวิต", ["01-khon-di-thi-chak-pai"])
+    check("description carries a 00:00 chapter", "\n00:00 " in desc, desc[:50])
+    # render() used to rewrite the description as a bare tracklist, which
+    # silently dropped the timestamps the title promises. It must keep chapters.
+    render_body = (ROOT / "scripts" / "compile_album.py").read_text().split(
+        "def render(", 1)[1].split("\ndef ", 1)[0]
+    check("render keeps the chaptered description",
+          "compilation_description" in render_body)
 
 
 def test_flow_extend_kinds() -> None:

@@ -173,8 +173,11 @@ def render(name: str, slugs: list[str], *, out_name: str | None = None) -> Path:
            "-movflags", "+faststart", str(out)]
     subprocess.run(cmd, check=True)
 
+    # Write the chaptered description, not the bare tracklist: `main()` writes it
+    # first and this used to overwrite it, which silently dropped the timestamps
+    # that the `(เลือกเพลงฟังได้)` title promises. Chapters are the point.
     (COMPILED / f"{out_name or 'compilation'}.txt").write_text(
-        f"{name}\n\n{build_tracklist(slugs)}\n", encoding="utf-8")
+        compilation_description(name, slugs), encoding="utf-8")
     return out
 
 
