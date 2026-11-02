@@ -81,11 +81,32 @@ def fire_callback(status="COMPLETED", error=None):
 
 _KV_TOKEN = os.environ.get("AUTOMATION_KV_TOKEN", "")
 _KV_BASE = os.environ.get("AUTOMATION_API_URL", "").rstrip("/")
+# The KV store exists only inside an automation run. A GitHub Actions run has no
+# AUTOMATION_KV_TOKEN, so fall back to a file there: without it the alert cooldown
+# forgets itself and a broken rail pages every hour.
+_STATE_FILE = os.environ.get("AX_WATCHDOG_STATE", "")
+
+
+def _file_state(key: str, value=None):
+    if not _STATE_FILE:
+        return None
+    try:
+        data = json.load(open(_STATE_FILE))
+    except Exception:  # noqa: BLE001
+        data = {}
+    if value is None:
+        return data.get(key)
+    data[key] = value
+    try:
+        json.dump(data, open(_STATE_FILE, "w"))
+    except Exception:  # noqa: BLE001
+        pass
+    return value
 
 
 def kv_get(key: str):
     if not (_KV_TOKEN and _KV_BASE):
-        return None
+        return _file_state(key)
     req = urllib.request.Request(f"{_KV_BASE}/v1/kv/{key}",
                                  headers={"Authorization": f"Bearer {_KV_TOKEN}"})
     try:
@@ -99,6 +120,7 @@ def kv_get(key: str):
 
 def kv_set(key: str, value) -> None:
     if not (_KV_TOKEN and _KV_BASE):
+        _file_state(key, value)
         print(f"[kv off] {key} = {json.dumps(value)[:200]}")
         return
     req = urllib.request.Request(
@@ -130,11 +152,16 @@ def _http(url, data=None, headers=None, method=None, tries=3):
 
 
 def _api_token() -> str:
-    return os.environ.get("OPENHANDS_API_KEY") or get_secret("OPENHANDS_API_KEY")
+    return os.environ.get("OPENHANDS_API_KEY") or ""
 
 
 def list_automations() -> list[dict]:
     tok = _api_token()
+    if not tok:
+        # GitHub Actions has no automation API key. Skip the audit rather than
+        # fail the whole run: the channel check and the alert still work there.
+        print("[=] no OPENHANDS_API_KEY: skipping the automation audit")
+        return []
     code, body = _http(f"{API}", headers={"Authorization": f"Bearer {tok}",
                                           "Accept": "application/json"})
     if code != 200:
