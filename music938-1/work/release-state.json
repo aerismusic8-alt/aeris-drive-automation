@@ -157,6 +157,54 @@
    "video_id": "iLwzR8A_1uw",
    "at": "2026-11-01T09:10:27+00:00",
    "public": true
+  },
+  {
+   "slug": "03-khit-thueng-thoe-thuk-khuen",
+   "kind": "song",
+   "variant": "",
+   "video_id": "448XiIvWgRA",
+   "at": "2026-11-02T07:06:16+00:00",
+   "public": true
+  },
+  {
+   "slug": "03-khit-thueng-thoe-thuk-khuen",
+   "kind": "karaoke",
+   "variant": "",
+   "video_id": "MEwzH-g07kA",
+   "at": "2026-11-02T07:06:22+00:00",
+   "public": true
+  },
+  {
+   "slug": "04-saeng-chao-wan-mai",
+   "kind": "short",
+   "variant": "short-song-h1-04-saeng-chao-wan-mai",
+   "video_id": "FsO5qmneeEQ",
+   "at": "2026-11-02T07:06:28+00:00",
+   "public": true
+  },
+  {
+   "slug": "04-saeng-chao-wan-mai",
+   "kind": "short",
+   "variant": "short-song-h2-04-saeng-chao-wan-mai",
+   "video_id": "STQsMvhb0yk",
+   "at": "2026-11-02T07:06:35+00:00",
+   "public": true
+  },
+  {
+   "slug": "04-saeng-chao-wan-mai",
+   "kind": "short",
+   "variant": "short-song-h3-04-saeng-chao-wan-mai",
+   "video_id": "snpnSF5Y_U0",
+   "at": "2026-11-02T07:06:41+00:00",
+   "public": true
+  },
+  {
+   "slug": "04-saeng-chao-wan-mai",
+   "kind": "song",
+   "variant": "",
+   "video_id": "vSLWJYCihTI",
+   "at": "2026-11-02T07:06:48+00:00",
+   "public": true
   }
  ],
  "playlists": {
