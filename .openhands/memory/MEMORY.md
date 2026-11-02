@@ -122,6 +122,15 @@ true-instrumental karaoke mix, cover art, a 1920x1080 word-synced video.
   a recycle, then `export PATH=/workspace/ax-tools/bin:$PATH`.
 - Song 01 live: `ASuxGEvJBlw`, karaoke `SWS1vJJgkow`, three Shorts, playlist
   `PLKlARHtRpKkI`. ch3 = 15 videos; 34 releases pending at 6/day.
+- **Catalogue is open (2026-11-01, K: "unlimited songs, any genre, AR plans
+  it")**. `channel/genres.json` is the plan *and* the single source of a genre's
+  sound; a song joins one with `# GENRE: <id>` in its lyrics header.
+  `scripts/genres.py` resolves it for all three description points:
+  `flow_song.style_for` (sound), `release.describe` (tagline + tags),
+  `covers.make_cover`/`make_thumbnail` (palette via `genres.PALETTE_FOR`). **No
+  header = old mood behaviour**, so songs 1-20 are untouched — that rule is the
+  safety property and a test pins it. Every genre id must map to a real
+  `covers.PALETTES` key or the cover test fails. 12 genres planned, 496 tests.
 - **Competitor scan** (43 channels/1,546 videos): compilations are the watch-hour
   lever; `เลือกเพลงฟังได้` is the strongest title signal (37 winners, 0 losers) and
   needs chapters; titles ≤60 chars, no `| AERIS Music`; our art was too flat
@@ -242,6 +251,16 @@ true-instrumental karaoke mix, cover art, a 1920x1080 word-synced video.
   driving YouTube Studio over CDP. Verified live (reply posted 2026-11-01).
   `scripts/desk_daily.py` = the one browser-side admin pass (comments →
   analytics → pin full-song on Shorts → playlists → crosspost FB/TikTok → report).
+- **Analytics without any login (2026-11-01)**: the **public** channel page is
+  enough for subs/views/per-video (`/@aerismusicth/about`, `/videos`, `/shorts`
+  — tile text is `duration ~ title ~ views ~ age`). The desktop's Google session
+  **expires often**; when `studio.youtube.com` says "Signed out", watch hours,
+  CTR, traffic and audience are **UNKNOWN** — say so, never guess. Fix = K logs
+  into Google on the desktop over VNC. **FB** = click the Thai nav on
+  `facebook.com/professional_dashboard/insights/` (the `business.facebook.com/
+  latest/insights/...` deep link 404s). **TikTok** =
+  `tiktok.com/tiktokstudio/analytics/{overview,followers,content}`. **Shopee** =
+  always UNKNOWN (QR-only, K's own account). Report shape: `channel/ANALYTICS-REPORT.md`.
 - **Pinned-comment lever works (2026-11-01).** A Short earns the view; its pinned
   comment carries the viewer to the full song. Posting needs only a synthetic
   `.click()` + the native textarea setter. Pinning is done on the **watch page**
