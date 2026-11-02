@@ -47,6 +47,18 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Fix the wrong-render backlog first
+        env:
+          YT_CLIENT_ID: ${{ secrets.YT_CLIENT_ID }}
+          YT_CLIENT_SECRET: ${{ secrets.YT_CLIENT_SECRET }}
+          YT_CH3_REFRESH_TOKEN: ${{ secrets.YT_CH3_REFRESH_TOKEN }}
+          AX_GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          # A replacement spends the same upload slot a new release would, and it
+          # is a defect on content that is already live, so it goes first.
+          python3 music938-1/scripts/pending_replacements.py --root "$GITHUB_WORKSPACE"
+
       - name: Release the day's batch
         env:
           YT_CLIENT_ID: ${{ secrets.YT_CLIENT_ID }}
