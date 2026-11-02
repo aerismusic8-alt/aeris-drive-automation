@@ -30,25 +30,58 @@ YT = surfaces.OPS / "yt_auth.py"
 
 
 def youtube_stats() -> dict:
-    """Subs, videos and views for the one channel this project grows."""
+    """Subs, videos and views for the one channel this project grows.
+
+    The Data API is authoritative but its daily quota (10,000 units) is spent by
+    the 07:00 UTC release, so a later read answers 403 `quotaExceeded`. In that
+    case fall back to the last market snapshot rather than reporting UNKNOWN —
+    the snapshot is real, just older.
+    """
     token = surfaces.config()["youtube"].get("token", "ch3")
     sys.path.insert(0, str(surfaces.OPS))
     import yt_auth  # noqa: E402  (path is set just above)
 
-    tok = yt_auth.access_token(token)
-    url = f"{yt_auth.API}/channels?" + urllib.parse.urlencode(
-        {"part": "statistics,snippet", "mine": "true"})
-    req = urllib.request.Request(url, headers={"Authorization": f"Bearer {tok}"})
-    with urllib.request.urlopen(req, timeout=60) as r:
-        item = json.load(r)["items"][0]
-    st = item["statistics"]
+    try:
+        tok = yt_auth.access_token(token)
+        url = f"{yt_auth.API}/channels?" + urllib.parse.urlencode(
+            {"part": "statistics,snippet", "mine": "true"})
+        req = urllib.request.Request(url, headers={"Authorization": f"Bearer {tok}"})
+        with urllib.request.urlopen(req, timeout=60) as r:
+            item = json.load(r)["items"][0]
+        st = item["statistics"]
+        return {
+            "reachable": True,
+            "handle": surfaces.config()["youtube"]["handle"],
+            "title": item["snippet"]["title"],
+            "subs": int(st.get("subscriberCount", 0)),
+            "videos": int(st.get("videoCount", 0)),
+            "views": int(st.get("viewCount", 0)),
+        }
+    except Exception as exc:  # noqa: BLE001
+        snap = snapshot_stats()
+        if snap:
+            snap["note"] = f"Data API unavailable ({str(exc)[:120]}); snapshot"
+            return snap
+        raise
+
+
+def snapshot_stats() -> dict | None:
+    """The last `market.py` reading, used when the Data API is out of quota."""
+    path = surfaces.MUSIC / "work" / "market-snapshot.json"
+    try:
+        snap = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return None
+    cs = snap.get("channel_stats") or {}
+    if not cs:
+        return None
     return {
         "reachable": True,
         "handle": surfaces.config()["youtube"]["handle"],
-        "title": item["snippet"]["title"],
-        "subs": int(st.get("subscriberCount", 0)),
-        "videos": int(st.get("videoCount", 0)),
-        "views": int(st.get("viewCount", 0)),
+        "subs": cs.get("subs", "UNKNOWN"),
+        "videos": cs.get("videos", "UNKNOWN"),
+        "views": cs.get("views", "UNKNOWN"),
+        "as_of": snap.get("at"),
     }
 
 
@@ -89,6 +122,8 @@ def render(yt: dict, dash: dict) -> str:
     if err:
         lines += [f"> หมายเหตุ: อ่าน FB/TikTok/Shopee ไม่ได้ ({err}) — "
                   "YouTube ยังอ่านได้ตามปกติ", ""]
+    if yt.get("note"):
+        lines += [f"> YouTube: {yt['note']}", ""]
     lines += [
         "| # | ช่องทาง | ตัวชี้วัด | ค่า |", "| ---: | --- | --- | ---: |",
         f"| 3 | YouTube {yt.get('handle', '')} | ผู้ติดตาม | "

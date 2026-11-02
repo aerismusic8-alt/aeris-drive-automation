@@ -102,6 +102,21 @@ def _first_int(text: str, needles: list[str], lookahead: int = 3):
     return "UNKNOWN"
 
 
+def _followers(text: str):
+    """The Page's follower total, from the "ผู้ติดตาม N คน" profile line.
+
+    The insights page also contains "ผู้ติดตาม" — as a chart legend beside a
+    share like "94.4%", and inside "ไม่ใช่ผู้ติดตาม" (non-followers) — so a plain
+    "first number after the word" scan reports the percentage. Only the profile
+    states a count with a unit.
+    """
+    import re
+    m = re.search(r"ผู้ติดตาม\s*([\d,]+)\s*คน", text)
+    if m:
+        return int(m.group(1).replace(",", ""))
+    return "UNKNOWN"
+
+
 def _fb_signed_out(text: str) -> bool:
     """A signed-out Facebook shows the login form and no Page content.
 
@@ -114,30 +129,34 @@ def _fb_signed_out(text: str) -> bool:
 
 
 def measure_facebook(desk: Desk) -> dict:
-    """The Page numbers, from the insights dashboard with a profile fallback."""
+    """The Page numbers, from the insights dashboard with a profile fallback.
+
+    Followers are always read from the Page profile line ("ผู้ติดตาม N คน"),
+    because the insights page only states followers as a percentage of views.
+    Views (28 days) come from insights.
+    """
     # Land on the Page first: the insights route is reached from inside the Page
     # and answers "Not Found" when it is the first URL of a fresh tab.
-    desk.goto(FB_PAGE, settle=12)
+    desk.goto(FB_PAGE, settle=14)
+    profile = desk.text()
+    if _fb_signed_out(profile):
+        return {"reachable": False, "note": "not signed in"}
+    followers = _followers(profile)
+
     desk.goto(FB_INSIGHTS, settle=16)
     t = desk.text()
-    if "Not Found" in t[:200] or _fb_signed_out(t):
-        # Fall back to the Page profile: it always loads and still reports the
-        # follower count, so at least one real number survives.
-        desk.goto(FB_PAGE, settle=14)
-        t = desk.text()
-        if _fb_signed_out(t):
-            return {"reachable": False, "note": "not signed in"}
+    if "Not Found" in t[:200]:
         return {
             "reachable": True,
             "views_28d": "UNKNOWN",
-            "followers": _first_int(t, ["ผู้ติดตาม", "followers"]),
+            "followers": followers,
             "note": "insights route unavailable; followers read from the Page",
             "raw": t[:600],
         }
     return {
         "reachable": True,
         "views_28d": _first_int(t, ["ยอดดู", "views"]),
-        "followers": _first_int(t, ["ผู้ติดตาม", "followers"]),
+        "followers": followers,
         "raw": t[:600],
     }
 
