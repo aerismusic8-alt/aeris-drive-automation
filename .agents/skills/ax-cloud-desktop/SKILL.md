@@ -71,7 +71,19 @@ https://work-1-<work-host>/vnc.html?autoconnect=1&resize=scale
 ```
 
 `<work-host>` is the **`work-1-...` host from the session's work_hosts block**, not
-`hostname` (that returns the k8s pod name and answers 404).
+`hostname` (that returns the k8s pod name and answers 404). `bootstrap.py` now
+builds the whole URL from `RUNTIME_ID` and prints it — use that instead of
+pasting the host by hand:
+
+```
+python3 .agents/skills/ax-cloud-desktop/scripts/bootstrap.py --url
+```
+
+**Sessions die on their own, and a saved cookie set can be dead.** `restore()`
+verifies each surface by loading it, because Facebook served the logged-out page
+while still holding `c_user`/`xs` — a restore that only checks cookie presence
+reports `ok` for a dead session. When it prints `SESSION REJECTED`, K must sign
+in again through the noVNC URL, then run `ops/login_vault.py save`.
 
 Then, **inside that screen**, K opens `flowmusic.app` (and `gemini.google.com`) and
 signs in. Sign into both in one sitting — they share the same Google session.

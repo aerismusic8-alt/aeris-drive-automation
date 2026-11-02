@@ -160,10 +160,31 @@ def restore_login() -> None:
         print("[=] login restore skipped:", (r.stderr or "").strip()[:120])
 
 
+def operator_url() -> str | None:
+    """The noVNC URL for this sandbox, built from the environment.
+
+    The host is `work-1-<RUNTIME_ID>...`; `RUNTIME_ID` is the same string that
+    appears in the session's work_hosts block, so it can be built here instead of
+    being copied by hand (which is how it was missed before). Returns None when
+    the variable is absent, and the caller falls back to the placeholder.
+    """
+    rid = os.environ.get("RUNTIME_ID")
+    if not rid:
+        return None
+    return f"https://work-1-{rid}.prod-runtime.all-hands.dev/vnc.html?autoconnect=1&resize=scale"
+
+
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument("--status", action="store_true", help="report only")
+    ap.add_argument("--url", action="store_true", help="print the operator URL and exit")
     args = ap.parse_args()
+    if args.url:
+        url = operator_url()
+        print(url or "RUNTIME_ID is not set; use https://work-1-<work-host>/vnc.html")
+        if (STATE / "vnc.pass.txt").exists():
+            print("VNC password:", (STATE / "vnc.pass.txt").read_text().strip())
+        return 0
     STATE.mkdir(parents=True, exist_ok=True)
     if args.status:
         return status()
@@ -173,7 +194,8 @@ def main() -> int:
     print()
     rc = status()
     print("\noperator URL (sign in here, inside the desktop):")
-    print("  https://work-1-<work-host>/vnc.html?autoconnect=1&resize=scale")
+    url = operator_url()
+    print("  " + (url or "https://work-1-<work-host>/vnc.html?autoconnect=1&resize=scale"))
     if (STATE / "vnc.pass.txt").exists():
         print("  VNC password:", (STATE / "vnc.pass.txt").read_text().strip())
     else:

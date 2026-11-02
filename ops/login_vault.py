@@ -52,6 +52,20 @@ CHUNK_KEY = "axlogin:d:{i}"
 CHUNK_CHARS = ax_vault.CHUNK_CHARS
 # Surfaces worth reporting on, so `status` says something useful.
 WATCH = (".google.com", "accounts.google.com", ".facebook.com", ".tiktok.com")
+# The cookie that actually proves a session on each surface. A restored cookie is
+# not a restored session: the site can still reject it, and reporting "ok" on
+# mere presence is how a dead session looked healthy for a whole session.
+AUTH = {
+    ".google.com": "SID",
+    ".facebook.com": "c_user",
+    ".tiktok.com": "sessionid",
+}
+# Where to look, and what a signed-in page shows instead of a login form.
+PROBE = {
+    ".google.com": ("https://myaccount.google.com/", "บัญชี", "Account"),
+    ".facebook.com": ("https://www.facebook.com/", "ค้นหา", "Search"),
+    ".tiktok.com": ("https://www.tiktok.com/foryou", "ค้นหา", "Search"),
+}
 
 
 def pack(cookies: list[dict], account: str = "") -> tuple[dict, list[str]]:
@@ -120,7 +134,32 @@ def save() -> int:
     return 0
 
 
-def restore() -> int:
+def _signed_in(ctx, domain: str) -> bool:
+    """True only if the surface actually answers as a signed-in user.
+
+    Presence of the auth cookie is necessary but not sufficient — Facebook kept
+    `c_user`/`xs` while serving the logged-out page. So this loads the surface
+    and looks for content that only appears when signed in.
+    """
+    probe = PROBE.get(domain)
+    if not probe:
+        return False
+    url, *markers = probe
+    pg = ctx.new_page()
+    try:
+        pg.goto(url, wait_until="domcontentloaded", timeout=60000)
+        pg.wait_for_timeout(9000)
+        body = pg.inner_text("body")
+        if "เข้าสู่ระบบ" in body[:200] and "รหัสผ่าน" in body:
+            return False
+        return any(m in body for m in markers)
+    except Exception:  # noqa: BLE001
+        return False
+    finally:
+        pg.close()
+
+
+def restore(verify: bool = True) -> int:
     index = ax_vault.kv_get(ax_vault.ensure_anchor(), INDEX_KEY)
     if not index:
         raise SystemExit("no saved session; run `login_vault.py save` after signing in")
@@ -130,14 +169,25 @@ def restore() -> int:
     pw, br, ctx = _context()
     try:
         ctx.add_cookies(cookies)
-        got = {c["domain"] for c in ctx.cookies()}
+        present = {c["domain"] for c in ctx.cookies()}
+        auth = {
+            d: any(c["domain"] == d and c["name"] == AUTH[d] for c in ctx.cookies())
+            for d in WATCH if d in AUTH
+        }
+        live = {d: _signed_in(ctx, d) for d in WATCH if d in PROBE} if verify else {}
     finally:
         pw.stop()
-    want = set(index.get("surfaces", {}))
     print(f"restored {len(cookies)} cookies (saved {index['saved_at']})")
-    for d in sorted(want):
-        print(f"  {d}: {'ok' if d in got else 'MISSING'}")
-    print("reload the tabs (or reopen them) to pick up the session")
+    for d in sorted(set(index.get("surfaces", {})) | set(WATCH)):
+        if d not in present:
+            print(f"  {d}: MISSING (cookie not accepted)")
+            continue
+        bits = ["cookie ok" if auth.get(d) else "auth cookie absent"]
+        if d in live:
+            bits.append("SIGNED IN" if live[d] else "**SESSION REJECTED — sign in again**")
+        print(f"  {d}: {', '.join(bits)}")
+    if live and not any(live.values()):
+        print("\n[!] cookies restored but no surface accepted them; the saved session is dead.")
     return 0
 
 

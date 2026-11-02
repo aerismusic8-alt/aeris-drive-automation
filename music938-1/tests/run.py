@@ -1023,6 +1023,43 @@ def test_login_vault() -> None:
     # A snapshot must not carry the password store.
     src = (ROOT.parent / "ops" / "login_vault.py").read_text()
     check("never stores passwords", "Login Data" not in src)
+    # Presence of a cookie is not proof of a session: Facebook kept c_user/xs
+    # while serving the logged-out page, and restore reported "ok" the whole time.
+    check("names the auth cookie per surface",
+          login_vault.AUTH[".facebook.com"] == "c_user"
+          and login_vault.AUTH[".google.com"] == "SID")
+    check("probes a page per surface",
+          all(d in login_vault.PROBE for d in (".facebook.com", ".google.com", ".tiktok.com")))
+    check("restore verifies instead of trusting cookie presence",
+          "def _signed_in" in src and "SESSION REJECTED" in src)
+
+
+def test_operator_url() -> None:
+    """The noVNC link must be built, not hand-copied, so it cannot be missed.
+
+    The operator signs in through this URL; it was previously printed as a
+    placeholder (`work-1-<work-host>`) and the real host had to be pasted from the
+    session block by hand. RUNTIME_ID is the same string that appears there.
+    """
+    section("cloud desktop operator URL")
+    sys.path.insert(0, str(ROOT.parent / ".agents/skills/ax-cloud-desktop/scripts"))
+    import bootstrap  # noqa: E402
+
+    old = os.environ.get("RUNTIME_ID")
+    try:
+        os.environ["RUNTIME_ID"] = "givjlzdksjoviogw"
+        url = bootstrap.operator_url()
+        check("builds the work-1 host from RUNTIME_ID",
+              url == "https://work-1-givjlzdksjoviogw.prod-runtime.all-hands.dev"
+                     "/vnc.html?autoconnect=1&resize=scale")
+        check("asks for autoconnect and scaling", "autoconnect=1" in url and "resize=scale" in url)
+        os.environ.pop("RUNTIME_ID")
+        check("falls back to None without RUNTIME_ID", bootstrap.operator_url() is None)
+    finally:
+        if old is None:
+            os.environ.pop("RUNTIME_ID", None)
+        else:
+            os.environ["RUNTIME_ID"] = old
 
 
 def test_fill_playlists() -> None:
@@ -1097,6 +1134,7 @@ def main() -> int:
     test_desk_daily_orchestrator()
     test_profile_setup()
     test_login_vault()
+    test_operator_url()
     test_fill_playlists()
     test_outputs()
     print(f"\n{PASS} passed, {FAIL} failed")
