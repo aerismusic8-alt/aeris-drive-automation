@@ -98,6 +98,15 @@ and the sweep uses the real times.
   splitting in the sweep)
 - Thai font `Noto Sans Thai` for the karaoke render
 
+## The other three surfaces (Facebook, TikTok, Shopee)
+
+YouTube is one of four surfaces. `channel/SOCIAL.md` is the measured record of
+the other three — the numbers Facebook, TikTok and Shopee actually report, what
+`crosspost.py` has posted, and the two problems found on 2026-11-01 (duplicate
+TikTok posts, and state that stores a page URL instead of a post URL, which is
+why these surfaces were never measurable). `channel/GROWTH.md` is the YouTube
+plan; `channel/SHOPEE.md` is the affiliate detail.
+
 ## Genres — an open catalogue
 
 K, 2026-11-01: unlimited songs, any genre, and AR plans the catalogue. The first
