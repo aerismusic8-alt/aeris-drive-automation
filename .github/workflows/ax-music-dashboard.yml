@@ -16,8 +16,10 @@ name: AX Music Daily Dashboard
 
 on:
   schedule:
-    # 07:20 UTC, just after the release job has uploaded and the quota reset.
-    - cron: '20 7 * * *'
+    # 08:30 UTC: the release job spends most of the day's 10,000 Data API units
+    # at 07:00, and the quota resets at 08:00 Pacific-midnight (07:00 UTC in
+    # winter). Running before that reset made channels.list return quotaExceeded.
+    - cron: '30 8 * * *'
   workflow_dispatch:
 
 permissions:
@@ -41,7 +43,10 @@ jobs:
           YT_CH3_REFRESH_TOKEN: ${{ secrets.YT_CH3_REFRESH_TOKEN }}
         run: |
           set -euo pipefail
-          python3 music938-1/scripts/market.py --root "$GITHUB_WORKSPACE" --channel ch3
+          # A spent Data API quota must not fail the job: PROGRESS.md still has
+          # the last known numbers, and the ntfy push below is the point.
+          python3 music938-1/scripts/market.py --root "$GITHUB_WORKSPACE" --channel ch3 \
+            || echo "market.py skipped (quota or transient API error)"
           python3 music938-1/scripts/progress.py --root "$GITHUB_WORKSPACE"
 
       - name: Commit the dashboard
