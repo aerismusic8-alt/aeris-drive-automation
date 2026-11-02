@@ -1,0 +1,43 @@
+{
+  "name": "ax-watchdog",
+  "version": "0.1.0",
+  "description": "Watch the AX automations and channels, heal what it can, and push an alert",
+  "automation": {
+    "schema_version": "openhands.automation.plugin.v1",
+    "entrypoint": {
+      "runner": "script",
+      "command": "python3 scripts/main.py"
+    },
+    "config_schema": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "stale_hours": {
+          "type": "number",
+          "default": 30,
+          "description": "A channel with no upload for longer than this is reported stale."
+        },
+        "cooldown_hours": {
+          "type": "number",
+          "default": 6,
+          "description": "Do not repeat the same alert within this many hours."
+        },
+        "ntfy_topic": {
+          "type": "string",
+          "default": "",
+          "description": "ntfy.sh topic to push alerts to. Empty disables push."
+        },
+        "heal": {
+          "type": "boolean",
+          "default": true,
+          "description": "Re-enable automations the platform auto-paused after repeated failures."
+        }
+      }
+    },
+    "suggested_trigger": {
+      "type": "cron",
+      "schedule": "15 * * * *",
+      "timezone": "UTC"
+    }
+  }
+}

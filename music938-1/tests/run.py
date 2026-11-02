@@ -1062,6 +1062,51 @@ def test_operator_url() -> None:
             os.environ["RUNTIME_ID"] = old
 
 
+def test_watchdog() -> None:
+    """The watchdog must heal an auto-paused automation and alert a person.
+
+    The rail had no watcher, so when the platform auto-paused the daily release
+    after five `Sandbox not available` failures, nothing said so. These pin the
+    decision logic: auto-pause is healed, a manual pause is left alone, and the
+    alert cooldown suppresses a repeat of the same signature.
+    """
+    section("ax watchdog (notice a stopped automation)")
+    sys.path.insert(0, str(ROOT.parent / "plugins/ax-watchdog/scripts"))
+    import main as wd  # noqa: E402
+
+    auto = {"id": "a", "name": "AX Music Daily Release", "enabled": False,
+            "disabled_reason": "Paused automatically: the last 5 runs all failed",
+            "disabled_detail": {"source": "consecutive_failures"}}
+    manual = {"id": "b", "name": "Content Lab", "enabled": False,
+              "disabled_reason": "manual", "disabled_detail": {"source": "user"}}
+    live = {"id": "c", "name": "Activity Monitor", "enabled": True}
+
+    wd.list_automations = lambda: [auto, manual, live]
+    wd.recent_runs = lambda aid: [{"status": "FAILED", "error_detail": "Timed out: Sandbox not available"}]
+    healed = []
+    wd.re_enable = lambda aid: (healed.append(aid), True)[1]
+
+    problems, actions = wd.audit_automations(heal=True)
+    check("heals an auto-paused automation", actions == ["re-enabled AX Music Daily Release"])
+    check("re-enables the right one", healed == ["a"])
+    check("leaves a manual pause alone", not any("Content Lab" in p for p in problems))
+    check("does not touch a running automation", not any("Activity Monitor" in p for p in problems))
+    check("reports the failure that caused it", any("Sandbox not available" in p for p in problems))
+
+    # With heal off, the same finding must be reported but nothing changed.
+    healed.clear()
+    problems2, actions2 = wd.audit_automations(heal=False)
+    check("heal=false changes nothing", actions2 == [] and healed == [])
+    check("heal=false still reports it", any("auto-paused" in p for p in problems2))
+
+    # The alert cooldown: same signature inside the window is held, a new one fires.
+    check("alert has a cooldown", "cooldown_hours" in json.dumps(
+        json.load(open(ROOT.parent / "plugins/ax-watchdog/.plugin/plugin.json"))))
+    src = (ROOT.parent / "plugins/ax-watchdog/scripts/main.py").read_text()
+    check("runs outside the sandbox (no dependency on it)", "AUTOMATION_KV_TOKEN" in src)
+    check("pushes through ntfy", "ntfy.sh" in src)
+
+
 def test_fill_playlists() -> None:
     """Playlists must cover every video and stay idempotent.
 
@@ -1135,6 +1180,7 @@ def main() -> int:
     test_profile_setup()
     test_login_vault()
     test_operator_url()
+    test_watchdog()
     test_fill_playlists()
     test_outputs()
     print(f"\n{PASS} passed, {FAIL} failed")
