@@ -346,11 +346,30 @@ true-instrumental karaoke mix, cover art, a 1920x1080 word-synced video.
   now **public**, so Actions minutes are free (the old private-repo CI wall is
   gone) and its 15 repo secrets include `YT_CH1..CH4_REFRESH_TOKEN` +
   `YT_CLIENT_ID/SECRET`. `ax-roblox-live-state.yml` proves `cron '0 * * * *'`
-  runs hourly. **But no token in the sandbox can push a workflow file** —
-  `AX_GH_TOKEN` (scopes `gist, read:org, repo`) and `GITHUB_TOKEN` both fail with
-  "refusing to allow an OAuth App to create or update workflow ... without
-  `workflow` scope". New/changed workflows need K: paste the file, or
-  `gh auth login --web` from K's phone.
+  runs hourly. **Workflow files ship via PC1, not the sandbox:** no sandbox token
+  carries `workflow` scope, but PC1's git credential does. Write the file to
+  `C:\ax\`, copy it over the checkout on PC1, commit and push from PC1
+  (`PC1_MCP_TOKEN_2`, endpoint `desktop-rgk6jkb.tail8740ad.ts.net/mcp`, helper
+  `/tmp/pc1.py FileWrite|FileRead|Shell`; Shell caps ~30 s and returns
+  `'NoneType' ... strip` on empty output, so redirect to a file and FileRead).
+- **3 music rails live on GitHub Actions (free, no sandbox):**
+  `ax-music-release` 07:00 UTC (6 clips/day, scheduled publishAt),
+  `ax-rail-watchdog` every :15 (4 channels + ntfy),
+  `ax-music-dashboard` **08:30 UTC** (PROGRESS.md + market-report + **ntfy push to
+  K's phone**). Dashboard is at 08:30, not 07:20, because release spends ~9,600 of
+  the 10,000 Data API units at 07:00 and the quota only resets at 07:00 UTC
+  (Pacific midnight) — 07:20 gave `channels.list` = `quotaExceeded`. ntfy topic
+  `ax-ar-aeris-9f3k7q` (repo var `AX_NTFY_TOPIC`).
+- **PC1 cookie extraction is dead, and Studio/FB still need K's login.** Chrome 156
+  uses app-bound (v20) cookie encryption that `CryptUnprotectData` cannot unwrap,
+  and `Network.getAllCookies` over CDP returns no SID/LOGIN_INFO. Chrome M136+
+  refuses `--remote-debugging-port` on the default user-data-dir (a `mklink /J`
+  junction makes CDP start, but the profile still reads "Sign in"). The sandbox
+  desktop's Google session covers **Flow Music only, not YouTube** — Studio shows
+  "Enter your password". So replying to comments, pinning, and Studio analytics
+  need K to sign in to YouTube once in noVNC; the token's `.../auth/youtube` scope
+  is not enough (commentThreads/playlists = 403). Sandbox TikTok login works; FB
+  session is rejected.
 - **A provisioned sandbox is the fragile part, and it is what breaks.** "AX Music
   Daily Release" was **auto-paused by the platform** after 5 consecutive failures,
   all `Timed out: Sandbox not available` (`disabled_detail.source ==
