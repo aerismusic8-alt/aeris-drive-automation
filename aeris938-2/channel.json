@@ -1,0 +1,24 @@
+{
+  "_comment": "aeris938-2 — the four surfaces only. This is the single source of truth for which accounts AR grows. Anything not listed here is out of scope.",
+  "youtube": {
+    "handle": "@aerismusicth",
+    "url": "https://www.youtube.com/@aerismusicth",
+    "token": "ch3",
+    "only_channel": true,
+    "_only_channel_comment": "K, 2026-11-02: build ONE YouTube channel only. Do not grow ch1/ch2/ch4 here."
+  },
+  "facebook": {
+    "name": "AERIS Music",
+    "page_id": "61595890900382",
+    "url": "https://www.facebook.com/profile.php?id=61595890900382"
+  },
+  "tiktok": {
+    "handle": "@aeris.music4",
+    "url": "https://www.tiktok.com/@aeris.music4"
+  },
+  "shopee_affiliate": {
+    "short": "https://th.shp.ee/6hv2uk89",
+    "dashboard": "https://affiliate.shopee.co.th/",
+    "_sub_id_comment": "th.shp.ee strips sub_id, so per-surface attribution needs the long s.shopee.co.th links from the affiliate dashboard. Keys: youtube, tiktok, facebook."
+  }
+}
