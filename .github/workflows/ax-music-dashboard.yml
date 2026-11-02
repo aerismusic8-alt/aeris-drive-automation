@@ -58,3 +58,19 @@ jobs:
           git commit -m "data(music): daily dashboard $(date -u +%Y-%m-%dT%H:%MZ)"
           git pull --rebase --autostash origin "${GITHUB_REF_NAME}"
           git push
+
+      # Push the headline numbers to K's phone so progress is seen without
+      # opening the repo. ntfy is free and needs no account; the topic is the
+      # same AX_NTFY_TOPIC the watchdog already uses.
+      - name: Notify K on ntfy
+        if: always()
+        env:
+          TOPIC: ${{ vars.AX_NTFY_TOPIC }}
+        run: |
+          set -euo pipefail
+          [ -n "${TOPIC:-}" ] || { echo "no AX_NTFY_TOPIC set"; exit 0; }
+          line=$(grep -m1 'ผู้ติดตาม' music938-1/channel/PROGRESS.md || true)
+          views=$(grep -m1 'ยอดดูรวม' music938-1/channel/PROGRESS.md || true)
+          body="AERIS Music | ${line} | ${views}"
+          curl -sS --max-time 20 -H "Title: AERIS Music" -H "Tags: musical_note" \
+            -d "$body" "https://ntfy.sh/${TOPIC}" || echo "ntfy push failed (non-fatal)"
