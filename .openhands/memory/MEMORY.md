@@ -224,6 +224,16 @@ true-instrumental karaoke mix, cover art, a 1920x1080 word-synced video.
   caption — now h2/h3 are tagged `(ท่อน N)`. **`--rebuild-queue` rebuilds from
   the Shorts on disk and a recycled pod holds only a subset (27 of 54) → it
   truncates the tracked 120-item queue. Patch the JSON in place instead.**
+- **A 4th crosspost defect (2026-11-02): the cadence guard was blind to Page
+  posts.** `_posted_times(state, "facebook")` matched keys by the raw platform
+  name, but a Reel posted to the Page is stored under the **`facebook-page`**
+  state key (the 60 pre-Page posts used `facebook`). So the 20-min gap and daily
+  cap never applied to the Page — two Reels went out **45 s apart** before it was
+  caught. Fix: read `PLATFORMS[platform]["state_key"]`. Regression tests in
+  `music938-1/tests/run.py`. The composer URL
+  `business.facebook.com/latest/reels_composer/` is flaky ("เนื้อหานี้ไม่พร้อมใช้งาน")
+  and FB Page views are intermittent — retry a load before believing an error.
+  Platform rules to avoid a ban: **`aeris938-2/COMPLIANCE.md`**.
 - **The 3 non-YouTube surfaces are now measured** (`00221355`):
   `scripts/social_stats.py` drives the desktop to the FB/TikTok/Shopee
   dashboards → `work/social-report.md` (whitelisted), run by `desk_daily.py`
