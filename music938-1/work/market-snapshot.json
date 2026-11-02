@@ -1,10 +1,10 @@
 {
-  "at": "2026-11-02T06:49:01+00:00",
+  "at": "2026-11-02T07:43:56+00:00",
   "channel": "ch3",
   "channel_stats": {
     "subs": 5,
     "views": 2182,
-    "videos": 22
+    "videos": 26
   },
   "videos": {
     "ASuxGEvJBlw": {
@@ -148,6 +148,72 @@
       "published": "2026-11-01T13:10:49Z",
       "views": 146,
       "likes": 1,
+      "comments": 0
+    },
+    "448XiIvWgRA": {
+      "video_id": "448XiIvWgRA",
+      "slug": "03-khit-thueng-thoe-thuk-khuen",
+      "kind": "song",
+      "public": true,
+      "title": "คิดถึงเธอทุกคืน — เพลงเศร้า ที่เข้าใจความเสียใจ",
+      "published": "2026-11-02T07:06:38Z",
+      "views": 0,
+      "likes": 0,
+      "comments": 0
+    },
+    "MEwzH-g07kA": {
+      "video_id": "MEwzH-g07kA",
+      "slug": "03-khit-thueng-thoe-thuk-khuen",
+      "kind": "karaoke",
+      "public": true,
+      "title": "คิดถึงเธอทุกคืน (คาราโอเกะ) ร้องตามได้",
+      "published": "2026-11-02T07:06:17Z",
+      "views": 0,
+      "likes": 0,
+      "comments": 0
+    },
+    "FsO5qmneeEQ": {
+      "video_id": "FsO5qmneeEQ",
+      "slug": "04-saeng-chao-wan-mai",
+      "kind": "short",
+      "public": true,
+      "title": "แสงเช้าวันใหม่ (ท่อนที่ 1) #เพลงไทย #Shorts",
+      "published": "2026-11-02T07:06:24Z",
+      "views": 0,
+      "likes": 0,
+      "comments": 0
+    },
+    "STQsMvhb0yk": {
+      "video_id": "STQsMvhb0yk",
+      "slug": "04-saeng-chao-wan-mai",
+      "kind": "short",
+      "public": true,
+      "title": "แสงเช้าวันใหม่ (ท่อนที่ 2) #เพลงไทย #Shorts",
+      "published": "2026-11-02T07:06:30Z",
+      "views": 0,
+      "likes": 0,
+      "comments": 0
+    },
+    "snpnSF5Y_U0": {
+      "video_id": "snpnSF5Y_U0",
+      "slug": "04-saeng-chao-wan-mai",
+      "kind": "short",
+      "public": true,
+      "title": "แสงเช้าวันใหม่ (ท่อนที่ 3) #เพลงไทย #Shorts",
+      "published": "2026-11-02T07:06:36Z",
+      "views": 0,
+      "likes": 0,
+      "comments": 0
+    },
+    "vSLWJYCihTI": {
+      "video_id": "vSLWJYCihTI",
+      "slug": "04-saeng-chao-wan-mai",
+      "kind": "song",
+      "public": true,
+      "title": "แสงเช้าวันใหม่ — เพลงให้กำลังใจ เริ่มวันใหม่อีกครั้ง",
+      "published": "2026-11-02T07:06:42Z",
+      "views": 0,
+      "likes": 0,
       "comments": 0
     }
   }
