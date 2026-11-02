@@ -733,6 +733,17 @@ def test_crosspost_pace_and_captions() -> None:
     check("the cap is counted per platform",
           crosspost.pace_ok(burst, "facebook", now)[0])
 
+    # A Page post is stored under the `facebook-page` state key, not `facebook`.
+    # The guard must read that key, or it goes blind to Page posts — which is how
+    # a second Reel slipped out 45 s after the first on 2026-11-02.
+    page = {"posted": {"facebook-page:x": {"at": at(60)}}}
+    check("a Page post 1 minute old holds Facebook back",
+          not crosspost.pace_ok(page, "facebook", now)[0])
+    page_burst = {"posted": {f"facebook-page:s{i}": {"at": at(1800 + i * 90)}
+                             for i in range(5)}}
+    check("5 Page posts in a day hit the daily cap",
+          not crosspost.pace_ok(page_burst, "facebook", now)[0])
+
     # The post URL must come from the platform's own list, never `page.url`.
     src = (ROOT / "scripts" / "crosspost.py").read_text()
     check("a post-list reader exists", "def newest_post_url(" in src)
@@ -875,23 +886,19 @@ def test_monetize_footer() -> None:
     check("footer degrades when a link is blank", "if shopee:" in mon)
 
     # A th.shp.ee short link strips sub_id (verified against the live redirect),
-    # so per-surface attribution needs the dashboard links; until they exist the
-    # footer must fall back to the plain affiliate link rather than go blank.
+    # so per-surface attribution needs the dashboard links. They now exist
+    # (minted 2026-11-02), so each surface gets its own tagged link and only an
+    # unknown surface falls back to the plain affiliate link.
     import monetize
     monetize.CACHE = None
-    check("link() falls back to the plain affiliate link",
-          monetize.link("youtube") == cfg.get("shopee_affiliate"))
-    saved = dict(monetize.config())
-    try:
-        monetize.CACHE = {**saved, "shopee_links": {"youtube": "https://s.shopee.co.th/x?sub_id=youtube"}}
-        check("link() prefers a per-surface sub_id link",
-              monetize.link("youtube").endswith("sub_id=youtube"))
-        check("an unknown surface still falls back",
-              monetize.link("facebook") == cfg.get("shopee_affiliate"))
-        check("the footer uses the youtube surface link",
-              "sub_id=youtube" in monetize.block("song"))
-    finally:
-        monetize.CACHE = None
+    per = cfg.get("shopee_links") or {}
+    check("link() prefers the surface's own sub_id link",
+          monetize.link("youtube") == per.get("youtube", cfg.get("shopee_affiliate")))
+    check("an unknown surface falls back to the plain affiliate link",
+          monetize.link("nope") == cfg.get("shopee_affiliate"))
+    check("the footer uses the youtube surface link",
+          per.get("youtube", "") and per["youtube"] in monetize.block("song"))
+    monetize.CACHE = None
 
     apply_src = (ROOT / "scripts" / "apply_monetize.py").read_text()
     check("backfills video descriptions", "videos?part=snippet" in apply_src)

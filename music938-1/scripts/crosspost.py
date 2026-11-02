@@ -159,10 +159,19 @@ DAILY_CAP = 4
 
 
 def _posted_times(state: dict, platform: str) -> list[float]:
-    """Epoch seconds of every successful post on `platform`, from the state file."""
+    """Epoch seconds of every successful post on `platform`, from the state file.
+
+    Posts are keyed by the platform's *state key*, which is not always the
+    platform name: Facebook Page posts live under `facebook-page`, not
+    `facebook` (the 60 pre-Page posts). Keying off the raw platform name made
+    the cadence guard blind to every Page post — it compared against the legacy
+    personal-profile posts and let a second Reel out 45 s later.
+    """
+    sk = PLATFORMS.get(platform, {}).get("state_key", platform)
+    prefix = f"{sk}:"
     out = []
     for key, rec in state.get("posted", {}).items():
-        if not key.startswith(f"{platform}:"):
+        if not key.startswith(prefix):
             continue
         try:
             out.append(_parse_ts(rec.get("at", "")))
