@@ -42,6 +42,12 @@ def _read_json(path: Path, default):
         return default
 
 
+# Which crosspost state key holds the posts for each surface. Facebook is
+# "facebook-page", not "facebook": the 60 pre-Page posts went to the personal
+# profile and must not count as Page posts.
+STATE_KEY = {"tiktok": "tiktok", "facebook": "facebook-page"}
+
+
 def _posted_counts() -> Counter:
     state = _read_json(MUSIC / "work" / "crosspost-state.json", {})
     return Counter(k.split(":", 1)[0] for k in state.get("posted", {}))
@@ -68,9 +74,10 @@ def cmd_status(args) -> int:
     ]
     for key, acct in rows:
         # crosspost is FB/TikTok only; YouTube/Shopee have no queue file.
+        # `posted` is keyed by state key (facebook-page), `pending` by platform.
         fb = key in ("facebook", "tiktok")
         print(f"{key:16} {acct:28} "
-              f"{(str(posted.get(key, 0)) if fb else '-'):>7} "
+              f"{(str(posted.get(STATE_KEY.get(key, key), 0)) if fb else '-'):>7} "
               f"{(str(pending.get(key, 0)) if fb else '-'):>7}")
 
     yt = _read_json(MUSIC / "work" / "market-snapshot.json", {})
@@ -81,8 +88,9 @@ def cmd_status(args) -> int:
               f"{cs.get('views', 'UNKNOWN')} views")
     else:
         print("\nYouTube @aerismusicth: UNKNOWN (no market-snapshot.json yet)")
-    print("\nงานค้าง: facebook/tiktok queue ด้านบน; shopee ต้อง K สแกน QR "
-          "(onboard) ครั้งเดียว — ดู `grow.py shopee --check`")
+    print("\nงานค้าง: Facebook/TikTok มี Shorts ใหม่ (เพลง 10-20) รอโพสต์ — "
+          "`grow.py facebook --post` / `grow.py tiktok --post`; "
+          "Shopee onboarded แล้ว (ดู report)")
     return 0
 
 

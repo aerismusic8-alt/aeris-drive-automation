@@ -39,6 +39,7 @@ sys.path.insert(0, str(ROOT / "scripts"))
 sys.path.insert(0, str(ROOT.parent / "aeris938-1" / "scripts"))
 
 import browser as B  # noqa: E402
+import monetize  # noqa: E402
 import release  # noqa: E402
 
 WORK = ROOT / "work"
@@ -84,11 +85,17 @@ def caption(slug: str, platform: str, hook: int = 0) -> str:
     tag = f" (ท่อน {hook})" if hook > 1 else ""
     if platform == "facebook":
         # Reels leans on fewer hashtags than TikTok; spend the words on the hook.
+        # The caption carries the Page's own Shopee tracking link (Sub_id
+        # "facebook") so a Reel's sale is attributed to Facebook.
+        shopee = monetize.link("facebook")
         return (f"{title} 🎵\n{tagline}{tag}\n\n"
                 f"ฟังเพลงไทยเพราะ ๆ ได้ที่ช่อง AERIS Music 🎧\n"
-                f"#เพลงไทย #เพลงใหม่ #เพลงเพราะ #AERISMusic")
+                f"#เพลงไทย #เพลงใหม่ #เพลงเพราะ #AERISMusic\n\n"
+                f"🛒 สนับสนุนช่องผ่าน Shopee: {shopee}")
+    shopee = monetize.link("tiktok")
     return (f"{title} 🎵 {tagline}{tag}\n"
-            f"#fyp #เพลงไทย #เพลงใหม่ #เพลงเพราะ #TikTokเพลงไทย")
+            f"#fyp #เพลงไทย #เพลงใหม่ #เพลงเพราะ #TikTokเพลงไทย\n\n"
+            f"🛒 สนับสนุนช่องผ่าน Shopee: {shopee}")
 
 
 # --- queue ------------------------------------------------------------------
