@@ -82,8 +82,10 @@ def fire_callback(status="COMPLETED", error=None):
 _KV_TOKEN = os.environ.get("AUTOMATION_KV_TOKEN", "")
 _KV_BASE = os.environ.get("AUTOMATION_API_URL", "").rstrip("/")
 # The KV store exists only inside an automation run. A GitHub Actions run has no
-# AUTOMATION_KV_TOKEN, so fall back to a file there: without it the alert cooldown
-# forgets itself and a broken rail pages every hour.
+# AUTOMATION_KV_TOKEN, so the alert cooldown falls back to a file there. Only the
+# cooldown is written in that mode: it is the one thing that must outlive the run,
+# and the job commits it, so writing the per-run reading too would commit hourly
+# noise for no benefit.
 _STATE_FILE = os.environ.get("AX_WATCHDOG_STATE", "")
 
 
@@ -120,7 +122,8 @@ def kv_get(key: str):
 
 def kv_set(key: str, value) -> None:
     if not (_KV_TOKEN and _KV_BASE):
-        _file_state(key, value)
+        if key == "last_alert":
+            _file_state(key, value)
         print(f"[kv off] {key} = {json.dumps(value)[:200]}")
         return
     req = urllib.request.Request(
