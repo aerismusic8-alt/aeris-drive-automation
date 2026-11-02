@@ -16,6 +16,7 @@ number is worse than an absent one, because the strategy pass would act on it.
     python3 scripts/social_stats.py --json     # machine-readable to stdout
 """
 from __future__ import annotations
+import os
 
 import argparse
 import json
@@ -26,7 +27,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 REPORT = ROOT / "work" / "social-report.md"
-CDP = "http://127.0.0.1:9222/json"
+CDP = os.environ.get("AERIS_CDP", "http://127.0.0.1:9222").rstrip("/") + "/json"
 
 # The signed-in dashboards. Each is the page the owner sees, not a public page,
 # so the numbers match what the platform reports to K.

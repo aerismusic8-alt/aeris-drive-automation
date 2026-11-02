@@ -15,6 +15,7 @@ instead. Nothing here needs a new credential or an operator action.
 Requires the desktop (`ax-cloud-desktop` skill) to be up and signed in.
 """
 from __future__ import annotations
+import os
 
 import argparse
 import json
@@ -24,7 +25,7 @@ import urllib.request
 import websocket
 
 CHANNEL = "UCm44BjAn03ruOF-WaA3ZRww"
-CDP = "http://127.0.0.1:9222/json"
+CDP = os.environ.get("AERIS_CDP", "http://127.0.0.1:9222").rstrip("/") + "/json"
 STUDIO = "https://studio.youtube.com/channel/" + CHANNEL
 
 # A reply that thanks the listener and points at the catalogue. Kept short and

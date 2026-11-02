@@ -13,6 +13,7 @@ Run:
     python3 scripts/post_community.py --post --limit 2
 """
 from __future__ import annotations
+import os
 
 import argparse
 import json
@@ -113,7 +114,7 @@ def main() -> int:
     from playwright.sync_api import sync_playwright
 
     with sync_playwright() as p:
-        b = p.chromium.connect_over_cdp("http://127.0.0.1:9222")
+        b = p.chromium.connect_over_cdp(os.environ.get("AERIS_CDP", "http://127.0.0.1:9222"))
         page = b.contexts[0].new_page()
         n = 0
         for card in todo[:args.limit]:
