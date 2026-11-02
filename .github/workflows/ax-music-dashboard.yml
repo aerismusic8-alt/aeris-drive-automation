@@ -1,0 +1,58 @@
+name: AX Music Daily Dashboard
+
+# Writes the AERIS Music dashboard once a day and commits it, so progress is
+# visible without a sandbox and without a signed-in browser.
+#
+# Why here and not the OpenHands "AX Music Marketing Daily" automation: that one
+# needs a provisioned sandbox, and provisioning is its failure mode (see
+# ax-music-release.yml). This job needs only the YouTube Data API and a git push,
+# so it runs forever for free.
+#
+# Scope note: the YouTube refresh token carries only `.../auth/youtube`, which
+# covers channel + video statistics (subs, views, likes, comments). It does NOT
+# cover the YouTube Analytics API, so watch-hours and per-video retention are not
+# here — those need Studio or an Analytics-scope token. This is the statistics
+# dashboard; the promo brief it writes is what the weekly strategy pass reads.
+
+on:
+  schedule:
+    # 07:20 UTC, just after the release job has uploaded and the quota reset.
+    - cron: '20 7 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: ax-music-dashboard
+  cancel-in-progress: false
+
+jobs:
+  dashboard:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Write the dashboard
+        env:
+          YT_CLIENT_ID: ${{ secrets.YT_CLIENT_ID }}
+          YT_CLIENT_SECRET: ${{ secrets.YT_CLIENT_SECRET }}
+          YT_CH3_REFRESH_TOKEN: ${{ secrets.YT_CH3_REFRESH_TOKEN }}
+        run: |
+          set -euo pipefail
+          python3 music938-1/scripts/market.py --root "$GITHUB_WORKSPACE" --channel ch3
+
+      - name: Commit the dashboard
+        run: |
+          set -euo pipefail
+          git config user.name  "ax-music-dashboard"
+          git config user.email "ax-music-dashboard@users.noreply.github.com"
+          git add music938-1/work/market-report.md music938-1/work/market-snapshot.json
+          if git diff --cached --quiet; then
+            echo "no change to record"
+            exit 0
+          fi
+          git commit -m "data(music): daily dashboard $(date -u +%Y-%m-%dT%H:%MZ)"
+          git pull --rebase --autostash origin "${GITHUB_REF_NAME}"
+          git push
