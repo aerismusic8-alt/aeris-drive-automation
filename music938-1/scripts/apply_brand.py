@@ -69,12 +69,17 @@ def upload_banner(token: str, image: Path) -> str:
 def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--dry-run", action="store_true")
+    ap.add_argument("--banner", default=str(BANNER),
+                    help="banner PNG to upload (default: the classic one)")
+    ap.add_argument("--description", default="",
+                    help="set the channel description too (empty = leave it)")
     args = ap.parse_args()
+    banner = Path(args.banner)
 
-    for p in (BANNER, AVATAR):
+    for p in (banner, AVATAR):
         if not p.exists():
             raise SystemExit(f"missing {p}; run scripts/brand.py first")
-    print(f"banner {BANNER.stat().st_size // 1024} KB, avatar {AVATAR.stat().st_size // 1024} KB")
+    print(f"banner {banner.stat().st_size // 1024} KB, avatar {AVATAR.stat().st_size // 1024} KB")
 
     if args.dry_run:
         print("dry-run: would upload the banner and merge brandingSettings")
@@ -85,10 +90,13 @@ def main() -> int:
     bs = ch["items"][0]["brandingSettings"]
     print("current description head:", repr(bs["channel"]["description"][:60]))
 
-    url = upload_banner(token, BANNER)
+    url = upload_banner(token, banner)
     print("banner uploaded ->", url[:80], "...")
 
     bs.setdefault("image", {})["bannerExternalUrl"] = url
+    if args.description:
+        bs.setdefault("channel", {})["description"] = args.description
+        print("description set:", repr(args.description[:60]))
     res = _put(token, "channels?part=brandingSettings",
                {"id": CHANNEL_ID, "brandingSettings": bs})
     got = res["brandingSettings"]["image"].get("bannerExternalUrl", "")

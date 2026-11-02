@@ -22,11 +22,17 @@ sys.path.insert(0, str(ROOT.parent / "aeris938-1" / "scripts"))
 
 import browser as B  # noqa: E402
 
-AVATAR = ROOT / "channel" / "avatar-800x800.png"
+AVATAR = ROOT / "channel" / "avatar-pro-800x800.png"
+COVER = ROOT / "channel" / "cover-pro-1640x624.png"
 TIKTOK_URL = "https://www.tiktok.com/@aeris.music4"
-TIKTOK_BIO = ("🎵 เพลงไทยเพราะๆ ใหม่ทุกวัน · ฟังเต็มที่ YouTube\n"
-              "AERIS Music 🎧 เพลงใหม่ทุกวัน")
+TIKTOK_BIO = ("🎵 เพลงไทยเพราะๆ ใหม่ทุกวัน · ร้องตามได้ 🎤\n"
+              "▶️ ฟังเต็ม YouTube: @aerismusicth")
 FACEBOOK_ID = "61595890900382"
+# The Page's own intro. Short, viewer-focused, one CTA — the same voice as the
+# YouTube description so the brand reads as one thing across surfaces.
+FACEBOOK_BIO = ("🎵 เพลงไทยเพื่อชีวิต · เพลงเศร้า · คาราโอเกะ\n"
+                "เพลงใหม่ทุกวัน ร้องตามได้ 🎤\n"
+                "▶️ ฟังเต็มที่ YouTube: @aerismusicth")
 # The AERIS Music *Page* (resolves to /people/AERIS-Music/61595890900382/), the
 # same Page crosspost.py posts Reels to. Do not point this at 61596276533369 —
 # that is K's personal profile ("Aeris-Ak Akath"), which cannot be branded and is
@@ -224,7 +230,7 @@ def facebook() -> int:
             _shot(pg, "fb-switch-failed")
             pg.close()
             return 1
-        cover = ROOT / "channel" / "cover-facebook-1640x624.png"
+        cover = COVER
         # The admin cover control is aria-label "แก้ไขรูปภาพหน้าปก" and its menu
         # item is "อัพโหลดรูปภาพ"; the crop dialog's confirm is
         # "บันทึกการเปลี่ยนแปลง", not the "บันทึก" a bio field uses.
@@ -238,6 +244,23 @@ def facebook() -> int:
             pg, "การดำเนินการกับรูปโปรไฟล์", "เลือกรูปโปรไฟล์|choose profile picture",
             AVATAR, "บันทึก|^save$", hover=True) else "NOT set")
         _shot(pg, "fb-photo")
+        # The intro lives on the About tab, reached by sk=about. Same native
+        # setter path as the personal bio, so it is set after the images settle.
+        pg.goto(f"https://www.facebook.com/profile.php?id={FACEBOOK_ID}&sk=about",
+                wait_until="domcontentloaded", timeout=60000)
+        pg.wait_for_timeout(6000)
+        pg.evaluate("""() => {
+          const b=[...document.querySelectorAll('[aria-label],[role=button]')]
+            .find(e=>/แก้ไขคำอธิบายตัวเอง|แก้ไขรายละเอียด|edit.*intro|edit details/i
+                    .test(e.getAttribute('aria-label')||''));
+          if(b) b.click();
+        }""")
+        pg.wait_for_timeout(3500)
+        print("facebook intro:", "set" if _set_bio(pg, FACEBOOK_BIO) else "NOT found")
+        pg.wait_for_timeout(800)
+        _js_click(pg, "^บันทึก$|^save$")
+        pg.wait_for_timeout(4000)
+        _shot(pg, "fb-bio")
         pg.close()
     return 0
 
