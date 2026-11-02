@@ -1,0 +1,63 @@
+name: AX Music Daily Release (Actions fallback)
+
+# Uploads the day's batch of music938-1 songs to AERIS Music (ch3) and schedules
+# them across the day with YouTube's own publishAt.
+#
+# Why this exists next to the OpenHands "AX Music Daily Release" automation: that
+# automation runs on a provisioned sandbox, and provisioning is its failure mode.
+# Five consecutive runs died with "Timed out: Sandbox not available" and the
+# platform auto-paused it. GitHub Actions needs no sandbox, and this repository is
+# public so the minutes are free. This is the durable half of the rail.
+#
+# The driver fetches the media release itself and only pulls each file as it is
+# about to upload, so a run downloads tens of MB, not the whole 500 MB.
+#
+# Secrets: the YouTube refresh tokens already live in this repo's Actions secrets
+# (YT_CLIENT_ID, YT_CLIENT_SECRET, YT_CH3_REFRESH_TOKEN) for the watchdog. The
+# ledger write uses the job's own GITHUB_TOKEN with contents:write — no personal
+# token is stored, so nothing here can be blocked by an expired PAT.
+
+on:
+  schedule:
+    # 07:00 UTC is when the YouTube Data API quota resets for the Pacific day, so
+    # the 6 daily uploads fit. GitHub may delay a scheduled run under load; the
+    # driver returns cleanly ("quota already spent") if it runs late, so a delay
+    # is a skipped day, never a failed or duplicated one.
+    - cron: '0 7 * * *'
+  workflow_dispatch:
+    inputs:
+      count:
+        description: "Videos to upload this run (YouTube allows 6/day)"
+        default: "6"
+      spread:
+        description: "Hours between publishAt times"
+        default: "4"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: ax-music-release
+  cancel-in-progress: false
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Release the day's batch
+        env:
+          YT_CLIENT_ID: ${{ secrets.YT_CLIENT_ID }}
+          YT_CLIENT_SECRET: ${{ secrets.YT_CLIENT_SECRET }}
+          YT_CH3_REFRESH_TOKEN: ${{ secrets.YT_CH3_REFRESH_TOKEN }}
+          # The driver reads AX_GH_TOKEN for the ledger write and the media
+          # release; the job token can do both in this repo.
+          AX_GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          AX_RELEASE_COUNT: ${{ github.event.inputs.count || '6' }}
+          AX_RELEASE_SPREAD: ${{ github.event.inputs.spread || '4' }}
+          AX_RELEASE_CH: ch3
+        run: |
+          set -euo pipefail
+          python3 music938-1/scripts/daily_release.py --root "$GITHUB_WORKSPACE"
