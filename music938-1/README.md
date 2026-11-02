@@ -98,6 +98,26 @@ and the sweep uses the real times.
   splitting in the sweep)
 - Thai font `Noto Sans Thai` for the karaoke render
 
+## Genres — an open catalogue
+
+K, 2026-11-01: unlimited songs, any genre, and AR plans the catalogue. The first
+20 songs carry only a `# MOOD:` header, which is enough for one lane and not for
+many, so `channel/genres.json` holds the plan: for each genre its Flow Music
+style prompt, its Thai tagline, its hashtags and how many songs it should hold.
+A new song joins a genre by declaring it:
+
+    # TITLE: ...
+    # GENRE: synthpop
+
+Nothing else changes. `genres.py` resolves that header for the three places a
+song is described — the Flow Music sound (`flow_song.style_for`), the tagline and
+tags in the video copy (`release.describe`), and the cover palette
+(`covers.make_cover`). A song without a `# GENRE:` header keeps its mood, so the
+original 20 are untouched.
+
+    python3 scripts/genres.py --list     # the plan and what is built
+    python3 scripts/genres.py --check    # exit 1 on a genre with no sound
+
 ## Delivery
 
 **Google Drive.** `scripts/gdrive-upload-browser.py` uploads through the

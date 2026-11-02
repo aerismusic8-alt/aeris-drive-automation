@@ -1,0 +1,113 @@
+{
+  "_comment": "The catalogue plan. K, 2026-11-01: unlimited songs, any genre, AR plans the catalogue. Each genre carries its own Flow Music style prompt and its own Thai tagline, so a new song needs only a lyric file with `# GENRE: <id>` in its header. `mood` stays the fallback for the original 20 Thai songs.",
+  "genres": [
+    {
+      "id": "lukthung",
+      "name_th": "ลูกทุ่ง",
+      "name_en": "Thai luk-thung",
+      "tagline": "เพลงลูกทุ่งไทย อารมณ์ดี ฟังแล้วได้ใจ",
+      "style": "Thai luk-thung, phin and khaen, rhythmic sway, storytelling lead vocal singing in Thai, live band feel",
+      "hashtags": ["เพลงลูกทุ่ง", "ลูกทุ่งไทย", "หมอลำ"],
+      "planned": 6
+    },
+    {
+      "id": "morlam",
+      "name_th": "หมอลำ",
+      "name_en": "Mor lam",
+      "tagline": "หมอลำสนุก ๆ จังหวะมันส์ ฟังแล้วอยากเต้น",
+      "style": "Thai mor-lam, driving khaen and long drum, upbeat dance groove, energetic call-and-response lead vocal singing in Thai",
+      "hashtags": ["หมอลำ", "เพลงหมอลำ", "หมอลำสนุก"],
+      "planned": 5
+    },
+    {
+      "id": "citypop",
+      "name_th": "ซิตี้ป็อป",
+      "name_en": "City pop",
+      "tagline": "ซิตี้ป็อป ฟังสบาย ๆ ยามค่ำคืน",
+      "style": "city pop, warm electric piano, groovy bass and clean guitar, soft chorus, smooth lead vocal singing in Thai",
+      "hashtags": ["citypop", "เพลงฟังสบาย", "เพลงชิล"],
+      "planned": 4
+    },
+    {
+      "id": "synthpop",
+      "name_th": "ซินธ์ป็อป",
+      "name_en": "Synth pop",
+      "tagline": "ซินธ์ป็อป จังหวะสดใส ฟังแล้วมีพลัง",
+      "style": "synth-pop, bright analog synth arpeggios, punchy drum machine, catchy hook, clear lead vocal singing in Thai",
+      "hashtags": ["synthpop", "เพลงป็อป", "เพลงใหม่"],
+      "planned": 4
+    },
+    {
+      "id": "rnb",
+      "name_th": "อาร์แอนด์บี",
+      "name_en": "R&B",
+      "tagline": "อาร์แอนด์บี นุ่ม ๆ ฟังแล้วใจละลาย",
+      "style": "contemporary R&B, lush chords, finger-snap groove, layered harmonies, soulful lead vocal singing in Thai",
+      "hashtags": ["rnb", "เพลงนุ่ม", "เพลงเพราะ"],
+      "planned": 4
+    },
+    {
+      "id": "lofi",
+      "name_th": "โลไฟ",
+      "name_en": "Lo-fi",
+      "tagline": "โลไฟ ฟังเพลิน ๆ เหมาะกับการทำงาน",
+      "style": "lo-fi hip hop, dusty piano, soft vinyl crackle, laid-back beat, mellow vocal humming in Thai",
+      "hashtags": ["lofi", "เพลงทำงาน", "เพลงผ่อนคลาย"],
+      "planned": 4
+    },
+    {
+      "id": "rock",
+      "name_th": "ร็อก",
+      "name_en": "Rock",
+      "tagline": "ร็อกไทย กระแทกใจ ปลุกพลังในตัวคุณ",
+      "style": "Thai rock, distorted electric guitars, driving live drums, anthemic chorus, gritty lead vocal singing in Thai",
+      "hashtags": ["เพลงร็อก", "ร็อกไทย", "เพลงมันส์"],
+      "planned": 4
+    },
+    {
+      "id": "indie",
+      "name_th": "อินดี้",
+      "name_en": "Indie",
+      "tagline": "อินดี้ อบอุ่น จริงใจ ฟังได้ทุกวัน",
+      "style": "Thai indie folk, fingerpicked guitar, brush drums, intimate close-mic lead vocal singing in Thai",
+      "hashtags": ["indie", "เพลงอินดี้", "เพลงฟังสบาย"],
+      "planned": 4
+    },
+    {
+      "id": "edm",
+      "name_th": "อีดีเอ็ม",
+      "name_en": "EDM",
+      "tagline": "อีดีเอ็ม จังหวะมันส์ ปลุกทุกงานปาร์ตี้",
+      "style": "EDM dance pop, four-on-the-floor kick, big synth lead, euphoric drop, bright lead vocal singing in Thai",
+      "hashtags": ["edm", "เพลงแดนซ์", "เพลงมันส์"],
+      "planned": 3
+    },
+    {
+      "id": "jazz",
+      "name_th": "แจ๊ส",
+      "name_en": "Jazz",
+      "tagline": "แจ๊สอุ่น ๆ เหมาะกับค่ำคืนสบาย ๆ",
+      "style": "jazz pop, upright bass, brushed drums, warm electric piano, smooth crooning lead vocal singing in Thai",
+      "hashtags": ["jazz", "เพลงแจ๊ส", "เพลงฟังสบาย"],
+      "planned": 3
+    },
+    {
+      "id": "acoustic",
+      "name_th": "อะคูสติก",
+      "name_en": "Acoustic",
+      "tagline": "อะคูสติก เรียบง่าย จริงใจ ฟังแล้วอบอุ่น",
+      "style": "acoustic pop, single guitar and light percussion, unadorned arrangement, honest lead vocal singing in Thai",
+      "hashtags": ["acoustic", "เพลงอะคูสติก", "เพลงจริงใจ"],
+      "planned": 3
+    },
+    {
+      "id": "country",
+      "name_th": "คันทรี",
+      "name_en": "Country",
+      "tagline": "คันทรีไทย เล่าเรื่องราว ฟังแล้วใจดี",
+      "style": "country folk, acoustic guitar and slide, walking bass, warm harmonized lead vocal singing in Thai",
+      "hashtags": ["country", "เพลงคันทรี", "เพลงเล่าเรื่อง"],
+      "planned": 3
+    }
+  ]
+}

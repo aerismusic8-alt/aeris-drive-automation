@@ -41,6 +41,7 @@ except ImportError:  # a bare pod (desktop down) can still rebuild karaoke
     sync_playwright = None
     B = None
 import common  # noqa: E402
+import genres  # noqa: E402
 # The song master (make_song) owns the loudness contract. Reusing its two-pass
 # helpers keeps the karaoke on the same contract; the inline single-pass
 # `loudnorm` this used before overshot its target (asked -16, delivered -14.4),
@@ -98,9 +99,15 @@ def parse_lyric(path: Path) -> dict:
     return {"meta": meta, "lyrics": body}
 
 
-def style_for(meta: dict) -> str:
+def style_for(meta: dict, slug: str = "") -> str:
+    """The Flow Music style prompt for a song.
+
+    A `# GENRE:` header wins, so the catalogue can grow past the original Thai
+    moods without adding a branch here; a song without one uses its mood, which
+    keeps the first 20 unchanged.
+    """
     mood = (meta.get("mood") or "").lower()
-    base = STYLE.get(mood, STYLE["sad"])
+    base = genres.style_for(slug, mood, STYLE.get(mood, STYLE["sad"]))
     key = meta.get("key")
     return f"{base}. Key of {key}." if key else base
 
@@ -522,7 +529,7 @@ def generate(slug: str, *, timeout: float = 480.0, force: bool = False,
             _open_compose(page)
             _expand(page, "Lyrics")
             _expand(page, "Sound")
-            page.fill('textarea[aria-label="Sound description"]', style_for(song["meta"]))
+            page.fill('textarea[aria-label="Sound description"]', style_for(song["meta"], slug))
             page.fill('textarea[aria-label="Lyrics"]', song["lyrics"])
             _set_advanced(page, length=CREATE_LENGTH, bpm=meta_bpm(song["meta"]))
             page.wait_for_timeout(800)

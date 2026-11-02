@@ -429,6 +429,40 @@ def test_provenance() -> None:
               "entries" in data and all("id" in e for e in data["entries"]))
 
 
+def test_genres() -> None:
+    section("genres (WIRING: catalogue is open, any genre)")
+    import genres
+    # K, 2026-11-01: unlimited songs, any genre. Every genre in the plan needs a
+    # Flow Music style and a Thai tagline, or a new song in it ships with the
+    # wrong sound or an empty tagline.
+    for g in genres.genres():
+        check(f"{g['id']}: has a style", bool(g.get("style", "").strip()))
+        check(f"{g['id']}: has a tagline", bool(g.get("tagline", "").strip()))
+        check(f"{g['id']}: has hashtags", bool(g.get("hashtags")))
+        check(f"{g['id']}: plans at least one song", int(g.get("planned", 0)) >= 1)
+    # A genre must not borrow the retired Piper engine's sound; the style is a
+    # Flow Music prompt and must stay free of the offline engine's markers.
+    for g in genres.genres():
+        check(f"{g['id']}: style is not a Piper prompt",
+              "piper" not in g["style"].lower() and "tts" not in g["style"].lower())
+    # The first 20 songs have no GENRE header and must keep working off MOOD.
+    check("genre_of on a header-less song is None",
+          genres.genre_of("01-khon-di-thi-chak-pai") is None)
+    # An unknown genre id must not crash; it falls back to the caller's default.
+    check("unknown genre returns None", genres.genre_of("does-not-exist") is None)
+    # The plan is internally consistent: unique ids, a name in both languages.
+    ids = [g["id"] for g in genres.genres()]
+    check("genre ids are unique", len(ids) == len(set(ids)))
+    for g in genres.genres():
+        check(f"{g['id']}: has Thai and English names",
+              bool(g.get("name_th")) and bool(g.get("name_en")))
+    # Every genre maps to a real cover palette, so a new genre needs no new art.
+    from covers import PALETTES
+    for g in genres.genres():
+        check(f"{g['id']}: maps to a known palette",
+              genres.PALETTE_FOR.get(g["id"]) in PALETTES)
+
+
 def test_thumb_contrast() -> None:
     """A thumbnail must not be flat.
 
@@ -926,6 +960,7 @@ def main() -> int:
     test_level_ordering()
     test_shorts()
     test_provenance()
+    test_genres()
     test_thumb_contrast()
     test_titles()
     test_compilation()

@@ -31,6 +31,7 @@ import sys
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
+import genres
 import monetize
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -202,7 +203,10 @@ def describe(slug: str, kind: str, variant: str = "") -> tuple[str, str, list[st
     h = parse_lyrics(slug)
     title_th = h.get("TITLE", slug)
     mood = h.get("MOOD", "calm")
-    tagline = TAGLINE.get(mood, TAGLINE["calm"])
+    # A genre owns the tagline when the lyric declares one; a song without a
+    # `# GENRE:` header keeps the mood tagline, so the first 20 are unchanged.
+    tagline = genres.tagline_for(slug, mood, TAGLINE) or TAGLINE["calm"]
+    extra_tags = genres.hashtags_for(slug)
     n = slug.split("-")[0]
     hook = ""
     m = re.search(r"-h(\d+)-", variant)
@@ -242,6 +246,7 @@ def describe(slug: str, kind: str, variant: str = "") -> tuple[str, str, list[st
         )
     tags = ["เพลงไทย", "เพลงใหม่", "ศิลปินไทย", "AERIS", "เพลงเพราะ",
             "เพลงฟังสบาย", "คาราโอเกะ", title_th, tagline, "thai music", "thai song"]
+    tags += [t for t in extra_tags if t not in tags]
     # Every description carries the outbound links from channel/monetization.json.
     desc = desc.rstrip() + "\n" + monetize.block(kind)
     return title[:100], desc[:4900], tags[:30]

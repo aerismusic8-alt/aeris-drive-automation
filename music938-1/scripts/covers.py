@@ -14,6 +14,7 @@ from pathlib import Path
 from PIL import Image, ImageDraw, ImageFilter, ImageFont
 
 from common import LIBRARY
+import genres
 
 # The sandbox ships no Thai font, and the path these constants used to point at
 # does not exist on it: covers.py fell through to Pillow's bitmap default, which
@@ -176,6 +177,7 @@ def make_thumbnail(slug: str, title: str, mood: str, *, kind: str = "song",
     the artist mark, and badges a karaoke cut so the two videos are told apart at
     a glance in the grid.
     """
+    mood = genres.palette_key(slug, mood)
     mood = mood if mood in PALETTES else "calm"
     rng = random.Random(int.from_bytes(slug.encode("utf-8")[:8].ljust(8, b"\0"), "big"))
     (h1, s1, v1), (h2, s2, v2) = PALETTES[mood]
@@ -275,6 +277,8 @@ def main() -> int:
 
 def make_cover(slug: str, title: str, subtitle: str, mood: str,
                size: tuple[int, int] = (1280, 1280)) -> Path:
+    # A genre picks the closest mood palette, so a new genre needs no new art.
+    mood = genres.palette_key(slug, mood)
     mood = mood if mood in PALETTES else "calm"
     rng = random.Random(int.from_bytes(slug.encode("utf-8")[:8].ljust(8, b"\0"), "big"))
     (h1, s1, v1), (h2, s2, v2) = PALETTES[mood]
