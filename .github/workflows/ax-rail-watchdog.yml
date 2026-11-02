@@ -1,0 +1,83 @@
+name: AX Rail Watchdog
+
+# Watches the AX rail from outside every sandbox, once an hour.
+#
+# Why this exists next to the OpenHands "AX Rail Watchdog" automation: that one
+# runs on a provisioned sandbox, and provisioning is the failure it is meant to
+# report. It was observed stuck at "Starting automation" for over 25 minutes, and
+# the same "Timed out: Sandbox not available" killed five consecutive runs of
+# "AX Music Daily Release" until the platform auto-paused it. A watcher that
+# shares its failure mode with the thing it watches is not a watcher.
+#
+# This job needs no sandbox and no OpenHands API key. It reads the four channels
+# with the YouTube refresh tokens and pushes an alert to ntfy. The automation
+# audit (which needs the OpenHands API) is skipped here by design; the plugin
+# prints that it skipped, so a missing section is never mistaken for "all clear".
+#
+# Why it is safe to leave the tokens here: they already live in this repo's
+# Actions secrets (YT_CH1..CH4_REFRESH_TOKEN, YT_CLIENT_ID, YT_CLIENT_SECRET).
+# The job only reads public channel statistics.
+
+on:
+  schedule:
+    # Minute 15 so it does not collide with the activity monitor on the hour.
+    # GitHub may delay a scheduled run under load; the script records its own
+    # capture time, so a late run is still honest.
+    - cron: '15 * * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: ax-rail-watchdog
+  cancel-in-progress: false
+
+jobs:
+  watch:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Watch the rail
+        env:
+          YT_CLIENT_ID: ${{ secrets.YT_CLIENT_ID }}
+          YT_CLIENT_SECRET: ${{ secrets.YT_CLIENT_SECRET }}
+          YT_CH1_REFRESH_TOKEN: ${{ secrets.YT_CH1_REFRESH_TOKEN }}
+          YT_CH2_REFRESH_TOKEN: ${{ secrets.YT_CH2_REFRESH_TOKEN }}
+          YT_CH3_REFRESH_TOKEN: ${{ secrets.YT_CH3_REFRESH_TOKEN }}
+          YT_CH4_REFRESH_TOKEN: ${{ secrets.YT_CH4_REFRESH_TOKEN }}
+          NTFY_TOPIC: ${{ vars.AX_NTFY_TOPIC }}
+          AX_WATCHDOG_STATE: ${{ github.workspace }}/data/ax-watchdog-state.json
+          AUTOMATION_CONFIG_PATH: ${{ github.workspace }}/.watchdog-config.json
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import json, os
+          topic = os.environ.get("NTFY_TOPIC") or ""
+          json.dump({"stale_hours": 30, "cooldown_hours": 6,
+                     "ntfy_topic": topic, "heal": False},
+                    open(os.environ["AUTOMATION_CONFIG_PATH"], "w"))
+          if not topic:
+              print("::warning::AX_NTFY_TOPIC repo variable is not set; alerts will not be pushed")
+          PY
+          python3 plugins/ax-watchdog/scripts/main.py
+
+      # The cooldown has to outlive the runner, or a long outage pages every hour.
+      # A committed file is used rather than actions/cache because the repo's other
+      # hourly job already commits its state and a cache entry can be evicted.
+      - name: Record the alert cooldown
+        if: always()
+        run: |
+          set -euo pipefail
+          if git diff --quiet -- data/ax-watchdog-state.json; then
+            echo "no change to record"
+            exit 0
+          fi
+          git config user.name  "ax-watchdog"
+          git config user.email "ax-watchdog@users.noreply.github.com"
+          git add data/ax-watchdog-state.json
+          git commit -m "data(watchdog): alert cooldown $(date -u +%Y-%m-%dT%H:%MZ)"
+          git pull --rebase --autostash origin "${GITHUB_REF_NAME}"
+          git push
