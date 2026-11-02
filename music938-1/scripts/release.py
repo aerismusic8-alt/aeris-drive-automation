@@ -24,10 +24,12 @@ songs:
 from __future__ import annotations
 
 import argparse
+import base64
 import json
 import os
 import re
 import sys
+import urllib.request
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
@@ -155,6 +157,60 @@ def load_state() -> dict:
         except ValueError:
             pass
     return {"released": [], "playlists": {}}
+
+
+def _live_ledger() -> dict | None:
+    """The ledger on `main`, which is the only record of what is on YouTube.
+
+    The scheduled release runs in a different sandbox and writes its ledger back
+    to `main` through the Contents API. A build pod's local `work/` copy can be
+    hours stale, and planning from it re-uploads videos that are already live.
+    Union against this before planning; `None` (offline) falls back to local.
+    """
+    tok = os.environ.get("AX_GH_TOKEN")
+    if not tok:
+        f = Path(os.environ.get("AX_GH_TOKEN_FILE",
+                                "/workspace/ax-tools/ar-identity/gh-token"))
+        if f.exists():
+            tok = f.read_text().strip()
+    if not tok:
+        return None
+    url = (f"https://api.github.com/repos/{MEDIA_REPO}/contents/"
+           f"music938-1/work/release-state.json?ref=main")
+    try:
+        req = urllib.request.Request(url, headers={
+            "Authorization": f"token {tok}", "User-Agent": "ax-release",
+            "Accept": "application/vnd.github+json"})
+        with urllib.request.urlopen(req, timeout=30) as r:
+            return json.loads(base64.b64decode(json.load(r)["content"]))
+    except Exception as exc:  # noqa: BLE001 - offline must not stop a release
+        print(f"[warn] could not read the live ledger ({exc}); using local only",
+              file=sys.stderr)
+        return None
+
+
+def merge_ledger(state: dict) -> dict:
+    """Fold the live ledger into the local one, keyed by (slug, kind, variant).
+
+    A local record wins on ties because it carries the `at`/`video_id` the local
+    run just wrote; the live ledger adds anything another sandbox released.
+    """
+    live = _live_ledger()
+    if not live:
+        return state
+    key = lambda r: (r.get("slug"), r.get("kind"), r.get("variant", ""))
+    seen = {key(r) for r in state.get("released", [])}
+    added = 0
+    for r in live.get("released", []):
+        if key(r) not in seen:
+            state.setdefault("released", []).append(r)
+            seen.add(key(r))
+            added += 1
+    if added:
+        print(f"[i] merged {added} release(s) from the live ledger on main")
+    for k, v in (live.get("playlists") or {}).items():
+        state.setdefault("playlists", {}).setdefault(k, v)
+    return state
 
 
 def save_state(state: dict) -> None:
@@ -330,7 +386,7 @@ def plan(days: int, shorts: bool = False, spread: float = 0) -> list[dict]:
     came from Shorts, ~33 from long-form). They are planned first, so the
     audience exists before the watch-hour videos need one.
     """
-    state = load_state()
+    state = merge_ledger(load_state())
     done = {(r["slug"], r["kind"], r.get("variant", "")) for r in state["released"]}
     items: list[dict] = []
     for slug in all_slugs():

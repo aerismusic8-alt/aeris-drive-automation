@@ -102,6 +102,9 @@ def start() -> None:
         time.sleep(2)
         print("[+] websockify", NOVNC_PORT)
     if not up(f"remote-debugging-port={CDP_PORT}"):
+        # Bookmarks must be in place before Chrome reads the profile; it rewrites
+        # `Bookmarks` on exit, so writing to a running browser is clobbered.
+        restore_bookmarks()
         env = {**os.environ, "DISPLAY": DISPLAY}
         spawn(["chromium", "--no-sandbox", "--disable-dev-shm-usage",
                "--no-first-run", "--no-default-browser-check",
@@ -136,6 +139,25 @@ def status() -> int:
     return 0 if ok else 1
 
 
+def _vault_path() -> Path:
+    return Path(__file__).resolve().parents[4] / "ops" / "login_vault.py"
+
+
+def restore_bookmarks() -> None:
+    """Put K's bookmark bar back before Chrome starts. Best-effort, like restore_login."""
+    vault = _vault_path()
+    if not vault.exists():
+        return
+    try:
+        r = sh([sys.executable, str(vault), "restore-bookmarks"], timeout=60)
+    except Exception as exc:  # noqa: BLE001
+        print("[=] bookmark restore skipped:", exc)
+        return
+    line = (r.stdout or "").strip().splitlines()
+    if line and not line[0].startswith("no saved"):
+        print("[+] bookmark restore:", line[0])
+
+
 def restore_login() -> None:
     """Put the saved session back, so K does not sign in again after a fresh pod.
 
@@ -143,7 +165,7 @@ def restore_login() -> None:
     stop the desktop from coming up. It only ever adds cookies that were saved
     from this same account.
     """
-    vault = Path(__file__).resolve().parents[4] / "ops" / "login_vault.py"
+    vault = _vault_path()
     if not vault.exists():
         return
     try:

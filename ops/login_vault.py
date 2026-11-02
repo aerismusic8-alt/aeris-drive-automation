@@ -48,6 +48,13 @@ import ax_vault  # noqa: E402
 CDP = os.environ.get("AERIS_CDP", "http://127.0.0.1:9222")
 INDEX_KEY = "axlogin:index"
 CHUNK_KEY = "axlogin:d:{i}"
+# The bookmark bar lives in the chrome profile on /workspace, so it survives a
+# recycle — but a *new* sandbox gets an empty volume and the bar is gone with it.
+# K keeps the five work surfaces pinned there, so snapshot it beside the cookies.
+BOOKMARKS_KEY = "axlogin:bookmarks"
+PROFILE = Path(os.environ.get(
+    "AERIS_CHROME_PROFILE",
+    "/workspace/ax-tools/aeris938-state/chrome-profile/Default"))
 # Leave room for the JSON envelope under the 65536-byte KV value cap.
 CHUNK_CHARS = ax_vault.CHUNK_CHARS
 # Surfaces worth reporting on, so `status` says something useful.
@@ -92,6 +99,80 @@ def unpack(index: dict, chunks: list[str]) -> list[dict]:
     return json.loads(gzip.decompress(base64.b64decode(b64)))["cookies"]
 
 
+def read_bookmarks() -> list[dict]:
+    """The bookmark-bar url entries, flattened. [] when the profile has no file."""
+    path = PROFILE / "Bookmarks"
+    if not path.exists():
+        return []
+    data = json.loads(path.read_text(encoding="utf-8"))
+    out: list[dict] = []
+
+    def walk(node: dict) -> None:
+        for child in node.get("children", []):
+            if child.get("type") == "folder":
+                walk(child)
+            elif child.get("type") == "url" and child.get("url"):
+                out.append({"name": child.get("name", ""), "url": child["url"]})
+
+    walk(data.get("roots", {}).get("bookmark_bar", {}))
+    return out
+
+
+def write_bookmarks(entries: list[dict]) -> int:
+    """Put the entries on the bookmark bar, skipping urls already present.
+
+    Must run while Chromium is *down*: Chrome reads `Bookmarks` at profile load
+    and rewrites it on exit, so a write to a running browser is clobbered.
+    """
+    if not entries:
+        return 0
+    path = PROFILE / "Bookmarks"
+    if path.exists():
+        data = json.loads(path.read_text(encoding="utf-8"))
+    else:
+        data = {"roots": {
+            "bookmark_bar": {"type": "folder", "name": "Bookmarks bar", "children": []},
+            "other": {"type": "folder", "name": "Other bookmarks", "children": []},
+            "synced": {"type": "folder", "name": "Mobile bookmarks", "children": []},
+        }}
+    bar = data["roots"].setdefault(
+        "bookmark_bar", {"type": "folder", "name": "Bookmarks bar", "children": []})
+    bar.setdefault("children", [])
+    have = {c.get("url") for c in bar["children"] if c.get("type") == "url"}
+    added = 0
+    for e in entries:
+        if e["url"] in have:
+            continue
+        bar["children"].append({"type": "url", "name": e.get("name", ""), "url": e["url"]})
+        have.add(e["url"])
+        added += 1
+    if added:
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(json.dumps(data, ensure_ascii=False, indent=3), encoding="utf-8")
+    return added
+
+
+def save_bookmarks() -> int:
+    entries = read_bookmarks()
+    ax_vault.kv_put(ax_vault.ensure_anchor(), BOOKMARKS_KEY,
+                    {"saved_at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
+                     "entries": entries})
+    print(f"saved {len(entries)} bookmark(s)")
+    for e in entries:
+        print(f"  - {e['name']} -> {e['url']}")
+    return 0
+
+
+def restore_bookmarks() -> int:
+    blob = ax_vault.kv_get(ax_vault.ensure_anchor(), BOOKMARKS_KEY)
+    if not blob:
+        print("no saved bookmarks (login_vault.py save has never run)")
+        return 0
+    added = write_bookmarks(blob.get("entries", []))
+    print(f"restored {added} bookmark(s) (saved {blob.get('saved_at')})")
+    return 0
+
+
 def _context():
     """Attach to the running cloud-desktop browser, or explain how to start it."""
     from playwright.sync_api import sync_playwright
@@ -131,6 +212,7 @@ def save() -> int:
     print(f"  account : {account or '(unknown)'}")
     print(f"  surfaces: {index['surfaces']}")
     print(f"  at      : {index['saved_at']}")
+    save_bookmarks()
     return 0
 
 
@@ -195,19 +277,25 @@ def status() -> int:
     index = ax_vault.kv_get(ax_vault.ensure_anchor(), INDEX_KEY)
     if not index:
         print("no saved session (login_vault.py save has never run)")
-        return 0
-    print(f"saved {index['n_cookies']} cookies at {index['saved_at']}")
-    print(f"  account : {index.get('account') or '(unknown)'}")
-    print(f"  surfaces: {index.get('surfaces')}")
+    else:
+        print(f"saved {index['n_cookies']} cookies at {index['saved_at']}")
+        print(f"  account : {index.get('account') or '(unknown)'}")
+        print(f"  surfaces: {index.get('surfaces')}")
+    blob = ax_vault.kv_get(ax_vault.ensure_anchor(), BOOKMARKS_KEY)
+    if blob:
+        print(f"saved {len(blob.get('entries', []))} bookmark(s) at {blob.get('saved_at')}")
     return 0
 
 
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__,
                                  formatter_class=argparse.RawDescriptionHelpFormatter)
-    ap.add_argument("command", choices=["save", "restore", "status"])
+    ap.add_argument("command", choices=["save", "restore", "status",
+                                        "save-bookmarks", "restore-bookmarks"])
     a = ap.parse_args()
-    return {"save": save, "restore": restore, "status": status}[a.command]()
+    return {"save": save, "restore": restore, "status": status,
+            "save-bookmarks": save_bookmarks,
+            "restore-bookmarks": restore_bookmarks}[a.command]()
 
 
 if __name__ == "__main__":
