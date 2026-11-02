@@ -253,16 +253,23 @@ true-instrumental karaoke mix, cover art, a 1920x1080 word-synced video.
   Rates: **2.00% direct / 0.60% indirect**, cap 225 THB/order. See `channel/SHOPEE.md`.
 - **Shopee attribution ("โฆษณาอะไรไปที่ไหน")**: a `th.shp.ee` short link **strips
   `sub_id`** (verified live), so one link cannot say which surface earned. Mint
-  `s.shopee.co.th/...?sub_id=<label>` links in the affiliate dashboard and put them
-  in `shopee_links`; `monetize.link(surface)` prefers those and falls back to the
+  `s.shopee.co.th/...` links in the affiliate dashboard and put them in
+  `shopee_links`; `monetize.link(surface)` prefers those and falls back to the
   plain link. K reads results at **affiliate.shopee.co.th → Report**, filtered by
   Sub ID (or the app → ฉัน → โปรแกรม Affiliate → คำสั่งซื้อ). Read orders/commission,
   not clicks.
-- **Shopee login is a K-only action**: K's account is `navintas` /
-  `kongkeat.p3@gmail.com`; the cloud desktop's Google account is
-  `aerismusic8@gmail.com` — **different account**, and Shopee's Google button is an
-  `oauth2/authorize` **redirect** (not a popup) that drops the `next=` target. Use a
-  one-time **QR login from K's phone**.
+- **Shopee is already onboarded — no QR needed (2026-11-02).** Earlier notes said
+  login was a K-only QR action; that is wrong now. The cloud desktop is signed in
+  to `affiliate.shopee.co.th/dashboard` as **`navintas`** (orders 0, commission 0).
+  AR minted one tracking link per surface via the dashboard **Custom Link** tool
+  (`/offer/custom_link`: destination textarea = `https://shopee.co.th/`, set
+  `#customLink_sub_id1`, click the `เอา ลิงก์` button, read the `s.shopee.co.th/...`
+  from the "ลิงก์โปรโมต" panel) and wrote them to `channel/monetization.json` →
+  `shopee_links`: youtube `3g4vw3cev0`, tiktok `6fiXVb7Fbi`, facebook `7KyEIqRt6A`.
+  `social_stats.measure_shopee` used to false-negative on the captcha interstitial;
+  it now hits `/dashboard` and matches `/login`. Drive the React form with the
+  native value setter + input/change events; a first `shopee.co.th` hit shows a
+  captcha, a second goto lands it.
 - **Channel conversion surfaces** (all free, all done 2026-11-01): trailer =
   the 57-min compilation `3Yz2jxZnKmM`; home sections "ยอดนิยม" + a playlist row
   (`channelSections` — there were none); compilation in the song playlist.
