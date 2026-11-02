@@ -27,6 +27,7 @@ Usage:
 from __future__ import annotations
 
 import argparse
+import calendar
 import json
 import re
 import sys
@@ -73,16 +74,20 @@ PLATFORMS = {
 
 # --- captions ---------------------------------------------------------------
 
-def caption(slug: str, platform: str) -> str:
+def caption(slug: str, platform: str, hook: int = 0) -> str:
     h = release.parse_lyrics(slug)
     title = h.get("TITLE", slug)
     tagline = release.TAGLINE.get(h.get("MOOD", "calm"), release.TAGLINE["calm"])
+    # A song yields three Shorts, one per chorus. They are different files but
+    # the same title and mood, so without this they would carry a byte-identical
+    # caption and read as the same post three times on the profile.
+    tag = f" (ท่อน {hook})" if hook > 1 else ""
     if platform == "facebook":
         # Reels leans on fewer hashtags than TikTok; spend the words on the hook.
-        return (f"{title} 🎵\n{tagline}\n\n"
+        return (f"{title} 🎵\n{tagline}{tag}\n\n"
                 f"ฟังเพลงไทยเพราะ ๆ ได้ที่ช่อง AERIS Music 🎧\n"
                 f"#เพลงไทย #เพลงใหม่ #เพลงเพราะ #AERISMusic")
-    return (f"{title} 🎵 {tagline}\n"
+    return (f"{title} 🎵 {tagline}{tag}\n"
             f"#fyp #เพลงไทย #เพลงใหม่ #เพลงเพราะ #TikTokเพลงไทย")
 
 
@@ -94,18 +99,26 @@ def _slug_of(short: Path) -> str:
     return re.sub(r"^h\d+-", "", s)
 
 
+def _hook_of(stem: str) -> int:
+    """short-song-h2-01-... -> 2. The chorus index a Short was cut from."""
+    m = re.match(r"short-song-h(\d+)-", stem)
+    return int(m.group(1)) if m else 0
+
+
 def build_queue() -> list[dict]:
     items = []
     for short in sorted(SHORTS.glob("short-*.mp4")):
         slug = _slug_of(short)
         rel = str(short.relative_to(ROOT))
+        hook = _hook_of(short.stem)
         for platform, cfg in PLATFORMS.items():
             items.append({
                 "id": f"{cfg['state_key']}:{short.stem}",
                 "platform": platform,
                 "slug": slug,
+                "hook": hook,
                 "video": rel,
-                "caption": caption(slug, platform),
+                "caption": caption(slug, platform, hook),
             })
     return items
 
@@ -125,6 +138,54 @@ def pending(queue: list[dict], state: dict, platform: str | None) -> list[dict]:
     done = state.get("posted", {})
     return [it for it in queue
             if it["id"] not in done and (platform is None or it["platform"] == platform)]
+
+
+# --- cadence ----------------------------------------------------------------
+
+# A brand-new account that fires 60 clips in 98 minutes (the 2026-11-01 run,
+# median gap 26 s) is the most plausible cause of the flat 0 views, so the rail
+# now paces itself. The numbers are deliberately conservative and cheap to
+# relax: one post per platform per interval, and a daily ceiling well under what
+# a spam filter would notice.
+MIN_GAP_SECONDS = 20 * 60
+DAILY_CAP = 4
+
+
+def _posted_times(state: dict, platform: str) -> list[float]:
+    """Epoch seconds of every successful post on `platform`, from the state file."""
+    out = []
+    for key, rec in state.get("posted", {}).items():
+        if not key.startswith(f"{platform}:"):
+            continue
+        try:
+            out.append(_parse_ts(rec.get("at", "")))
+        except ValueError:
+            continue
+    return sorted(out)
+
+
+def _parse_ts(s: str) -> float:
+    return calendar.timegm(time.strptime(s, "%Y-%m-%dT%H:%M:%SZ"))
+
+
+def pace_ok(state: dict, platform: str, now: float | None = None) -> tuple[bool, str]:
+    """May one more post go out on `platform` right now?
+
+    Returns (allowed, reason). Two rules, both from the observed burst:
+    at least MIN_GAP_SECONDS since the last post, and at most DAILY_CAP in the
+    trailing 24 h.
+    """
+    now = time.time() if now is None else now
+    times = _posted_times(state, platform)
+    if times:
+        since = now - times[-1]
+        if since < MIN_GAP_SECONDS:
+            wait = int(MIN_GAP_SECONDS - since)
+            return False, f"last post {int(since)}s ago; wait {wait}s"
+    day = [t for t in times if now - t < 86400]
+    if len(day) >= DAILY_CAP:
+        return False, f"{len(day)} posts in the last 24h (cap {DAILY_CAP})"
+    return True, "ok"
 
 
 # --- desktop -----------------------------------------------------------------
@@ -301,6 +362,42 @@ def post_facebook(page, video: Path, text: str) -> str | None:
 
 POSTERS = {"tiktok": post_tiktok, "facebook": post_facebook}
 
+# Where each platform lists its own posts, newest first. `post_*` used to return
+# `page.url`, which after publishing is the studio/composer page - so 114 of the
+# first 122 records stored a URL that identifies nothing and the surface could
+# not be checked afterwards. Reading the list gives the real post.
+CONTENT_LIST = {
+    "tiktok": "https://www.tiktok.com/tiktokstudio/content",
+    "facebook": f"https://www.facebook.com/profile.php?id={FACEBOOK_PAGE_ID}&sk=reels",
+}
+
+
+def newest_post_url(page, platform: str) -> str:
+    """The URL of the most recent post on `platform`, or "" if it cannot be read.
+
+    Best effort and never fatal: a URL that cannot be read is recorded as empty
+    rather than as a page URL, so the state never again claims a post exists
+    where it does not.
+    """
+    try:
+        if platform == "tiktok":
+            page.goto(CONTENT_LIST["tiktok"], wait_until="domcontentloaded", timeout=60000)
+            page.wait_for_timeout(6000)
+            for a in page.locator('a[href*="/video/"]').all():
+                href = a.get_attribute("href") or ""
+                if "/video/" in href:
+                    return href if href.startswith("http") else f"https://www.tiktok.com{href}"
+        elif platform == "facebook":
+            page.goto(CONTENT_LIST["facebook"], wait_until="domcontentloaded", timeout=60000)
+            page.wait_for_timeout(6000)
+            for a in page.locator('a[href*="/reel/"]').all():
+                href = a.get_attribute("href") or ""
+                if re.search(r"/reel/\d+", href):
+                    return href if href.startswith("http") else f"https://www.facebook.com{href}"
+    except Exception:  # noqa: BLE001
+        return ""
+    return ""
+
 
 def post(platform: str, limit: int) -> int:
     state = load_state()
@@ -309,10 +406,19 @@ def post(platform: str, limit: int) -> int:
     if not todo:
         print("nothing pending")
         return 0
+    allowed, why = pace_ok(state, platform)
+    if not allowed:
+        print(f"held back by cadence: {why}")
+        return 1
     posted = 0
     with _connect() as p:
         br, ctx = B.connect(p)
         for it in todo:
+            # Re-check before each item: one run must not be able to burst.
+            allowed, why = pace_ok(load_state(), platform)
+            if not allowed:
+                print(f"stopping: {why}")
+                break
             video = ROOT / it["video"]
             # A fresh pod has no library/, so pull the Short from the media
             # release on demand rather than skipping the post.
@@ -328,13 +434,16 @@ def post(platform: str, limit: int) -> int:
                 if url is None:
                     print(f"  {it['id']}: not signed in — left pending")
                     continue
+                real = newest_post_url(pg, it["platform"])
+                if not real:
+                    print(f"  {it['id']}: posted, but the post URL could not be read")
                 state.setdefault("posted", {})[it["id"]] = {
                     "at": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
-                    "url": url,
+                    "url": real,
                 }
                 save_state(state)
                 posted += 1
-                print(f"  {it['id']}: posted -> {url}")
+                print(f"  {it['id']}: posted -> {real or '(url unknown)'}")
             except Exception as exc:  # noqa: BLE001
                 _abort(pg, it["platform"], str(exc))
                 print(f"  {it['id']}: FAILED {exc}")
@@ -374,11 +483,16 @@ def main() -> int:
             total = sum(1 for it in queue if it["platform"] == plat)
             done = sum(1 for it in queue if it["platform"] == plat
                        and it["id"] in state.get("posted", {}))
-            print(f"{plat:9} {done}/{total} posted")
+            ok, why = pace_ok(state, plat)
+            print(f"{plat:9} {done}/{total} posted   cadence: "
+                  f"{'ready' if ok else 'hold - ' + why}")
         return 0
     if args.plan:
         todo = pending(queue, state, args.platform)
         print(f"{len(todo)} pending" + (f" for {args.platform}" if args.platform else ""))
+        for plat in (PLATFORMS if not args.platform else [args.platform]):
+            ok, why = pace_ok(state, plat)
+            print(f"  cadence {plat:9}: {'ready' if ok else 'hold - ' + why}")
         for it in todo[:args.limit if args.limit else 20]:
             print(f"  {it['id']}\n    {it['caption'].splitlines()[0]}")
         return 0

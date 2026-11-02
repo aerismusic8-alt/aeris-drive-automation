@@ -676,6 +676,70 @@ def test_crosspost_engine() -> None:
           "กำลังประมวลผลคลิป Reels" in body)
 
 
+def test_crosspost_pace_and_captions() -> None:
+    """The two defects found on 2026-11-01 must not come back.
+
+    The first run posted 60 clips in 98 minutes (median gap 26 s) and gave the
+    three chorus hooks of one song a byte-identical caption. Both are pinned
+    here; the real posting path needs the signed-in desktop, so these are the
+    offline halves of the contract.
+    """
+    section("crosspost cadence + hook captions (2026-11-01 burst)")
+    import crosspost
+    import time
+
+    # Captions: every queued caption on a platform is distinct, and a hook
+    # beyond the first is marked. Before the fix the three hooks of a song
+    # shared one caption exactly.
+    q = crosspost.build_queue()
+    if not q:
+        print("  skip (no shorts rendered yet)")
+        return
+    for plat in ("tiktok", "facebook"):
+        caps = [it["caption"] for it in q if it["platform"] == plat]
+        check(f"{plat}: captions are all distinct",
+              len(set(caps)) == len(caps), f"{len(set(caps))} of {len(caps)}")
+    h2 = next((it for it in q if it["hook"] == 2), None)
+    check("hook 2 is tagged in the caption", h2 is not None and "ท่อน 2" in h2["caption"])
+    h1 = next((it for it in q if it["hook"] == 1), None)
+    check("hook 1 stays untagged", h1 is not None and "ท่อน" not in h1["caption"])
+    check("hook number is carried on the queue item",
+          all("hook" in it for it in q))
+
+    # Cadence: the shape of the 2026-11-01 run must now be refused. Sixty
+    # posts inside the last 24 h is over the daily cap; a post 5 minutes old
+    # is inside the minimum gap; a post an hour old on an empty day is fine.
+    now = time.time()
+    def at(secs_ago: float) -> str:
+        return time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime(now - secs_ago))
+
+    # Newest post 30 min old, so the minimum-gap rule passes and the daily cap
+    # is what refuses the run.
+    burst = {"posted": {f"tiktok:s{i}": {"at": at(1800 + i * 90)} for i in range(60)}}
+    ok, why = crosspost.pace_ok(burst, "tiktok", now)
+    check("a 60-post burst is held back", not ok, why)
+    check("the daily cap is named in the reason", "cap" in why)
+
+    recent = {"posted": {"tiktok:x": {"at": at(300)}}}
+    ok, why = crosspost.pace_ok(recent, "tiktok", now)
+    check("a post 5 minutes old is inside the minimum gap", not ok, why)
+
+    spaced = {"posted": {"tiktok:x": {"at": at(3600)}}}
+    check("a post an hour old is allowed", crosspost.pace_ok(spaced, "tiktok", now)[0])
+
+    check("an empty state is allowed", crosspost.pace_ok({"posted": {}}, "tiktok", now)[0])
+
+    # Cadence is per platform: a busy TikTok must not hold Facebook back.
+    check("the cap is counted per platform",
+          crosspost.pace_ok(burst, "facebook", now)[0])
+
+    # The post URL must come from the platform's own list, never `page.url`.
+    src = (ROOT / "scripts" / "crosspost.py").read_text()
+    check("a post-list reader exists", "def newest_post_url(" in src)
+    check("the studio/composer page is not stored as the post URL",
+          "real = newest_post_url(" in src)
+
+
 def test_karaoke_loudness_contract() -> None:
     """flow_song._karaoke must master through make_song's two-pass loudnorm.
 
@@ -971,6 +1035,7 @@ def main() -> int:
     test_automation_secret_fallback()
     test_karaoke_loudness_contract()
     test_crosspost_engine()
+    test_crosspost_pace_and_captions()
     test_setup_pod_ffmpeg()
     test_monetize_footer()
     test_studio_web_rail()

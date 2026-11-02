@@ -102,10 +102,11 @@ and the sweep uses the real times.
 
 YouTube is one of four surfaces. `channel/SOCIAL.md` is the measured record of
 the other three — the numbers Facebook, TikTok and Shopee actually report, what
-`crosspost.py` has posted, and the two problems found on 2026-11-01 (duplicate
-TikTok posts, and state that stores a page URL instead of a post URL, which is
-why these surfaces were never measurable). `channel/GROWTH.md` is the YouTube
-plan; `channel/SHOPEE.md` is the affiliate detail.
+`crosspost.py` has posted, and the three problems found on 2026-11-01 (posts
+fired 26 s apart, the three chorus hooks of one song sharing a byte-identical
+caption, and state that stores a page URL instead of a post URL, which is why
+these surfaces were never measurable). `channel/GROWTH.md` is the YouTube plan;
+`channel/SHOPEE.md` is the affiliate detail.
 
 ## Genres — an open catalogue
 
