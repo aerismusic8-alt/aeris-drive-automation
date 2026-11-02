@@ -42,13 +42,15 @@ jobs:
         run: |
           set -euo pipefail
           python3 music938-1/scripts/market.py --root "$GITHUB_WORKSPACE" --channel ch3
+          python3 music938-1/scripts/progress.py --root "$GITHUB_WORKSPACE"
 
       - name: Commit the dashboard
         run: |
           set -euo pipefail
           git config user.name  "ax-music-dashboard"
           git config user.email "ax-music-dashboard@users.noreply.github.com"
-          git add music938-1/work/market-report.md music938-1/work/market-snapshot.json
+          git add music938-1/work/market-report.md music938-1/work/market-snapshot.json \
+                  music938-1/channel/PROGRESS.md
           if git diff --cached --quiet; then
             echo "no change to record"
             exit 0
