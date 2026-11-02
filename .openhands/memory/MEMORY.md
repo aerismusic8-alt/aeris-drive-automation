@@ -361,6 +361,20 @@ true-instrumental karaoke mix, cover art, a 1920x1080 word-synced video.
   `git push https://x-access-token:$(cat .../gh-token)@github.com/OWNER/REPO.git main`
   (or the injected `AX_GH_TOKEN`), then reset the remote token-free. **No token
   carries the `workflow` scope**, so use an OpenHands automation for scheduled work.
+- **`AX_GH_TOKEN` writes (2026-11-02).** In a *build* pod, `AX_GH_TOKEN` (env
+  secret) authenticates as `aerismusic8-alt` and can push to
+  `aeris-drive-automation` and the site repo, and call the Contents API. So the
+  old "no token can write" rule is pod-dependent: the *sandbox* `GITHUB_TOKEN` is
+  still read-only, but `AX_GH_TOKEN` is not. Push pattern:
+  `git remote set-url origin https://x-access-token:$AX_GH_TOKEN@github.com/...`,
+  push, then reset the remote token-free. Still no `workflow` scope.
+- **Two release paths must share one ledger (2026-11-02).** `AX Music Daily
+  Release` runs in a *different sandbox* and writes `music938-1/work/release-state.json`
+  back to `main` via the Contents API. A build pod's local ledger is stale, so a
+  manual `release.py --next` re-uploads what the automation already published —
+  it happened (6 duplicates on 2026-11-02, deleted). `release.py` now unions the
+  local ledger with the live one on `main` (`merge_ledger`) before planning. Any
+  new release path must do the same; never trust a pod-local ledger alone.
 - **Sandbox proxy** blocks `POST`/`PATCH` to `www.googleapis.com` (bare 404);
   `GET`/`PUT`/`DELETE` pass. DELETE must carry no body.
 - **Roblox:** `multiget-playability-status` reports the caller, not the game (put a
