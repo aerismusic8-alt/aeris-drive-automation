@@ -97,12 +97,28 @@
 
 ## 6. เฟสการทำ (ลำดับ)
 
-- **เฟส 1 (ตอนนี้):** คุมโควต้า (ลดมอนิเตอร์แล้ว) + รัน Desk/Engage pass ทุก session
-  ด้วยสคริปต์ที่มี. เพิ่ม `engage.py` ให้รวมเม้น FB/TikTok + แลกติดตามแบบจำกัด.
-- **เฟส 2 (แรงสุด):** ย้ายเดสก์ท็อป + ล็อกอินของ K ไป **PC1** → งานเม้น/โปรไฟล์/แลกติดตาม
-  รัน 24 ชม. **โดยไม่กินโควต้า** และไม่หายเมื่อ pod รีไซเคิล. (K ล็อกอิน PC1 ครั้งเดียว.)
-- **เฟส 3:** คอมไพล์ยาว + chapters เป็นประจำ (คันโยกชั่วโมงรับชม) + คลังคอนเทนต์อัตโนมัติ.
-- **เฟส 4:** ขอเพิ่มโควต้า (30/วัน) ถ้าจำเป็นจริง — ต้อง K ให้ชื่อจริง + work email.
+- **เฟส 1 (ทำแล้ว 2026-11-02):** คุมโควต้า (ลดมอนิเตอร์เป็นทุก 6 ชม.) **และย้าย
+  Daily Release + Rail Watchdog ไป GitHub Actions** (`ubuntu-latest`, ฟรี, ไม่กิน
+  sandbox) — ปล่อยผ่าน PC1 (token PC1 มี `workflow` scope; sandbox ไม่มี).
+  → sandbox automation เหลือ ~4/วัน (จาก 20). ดูข้อ 8.
+- **เฟส 2:** รัน Desk/Engage pass ทุก session + สร้าง `engage.py` (เม้น/ข้อความ
+  FB+TikTok + แลกติดตามแบบจำกัด). งานที่ต้องล็อกอินต้องมี session ของ K.
+- **เฟส 3:** ย้ายงานเบราว์เซอร์ที่ต้องล็อกอินไป **PC1** (24 ชม.) — K ล็อกอิน Chrome
+  บน PC1 ครั้งเดียว แล้วงานเม้น/โปรไฟล์/แลกติดตามรันได้เองไม่หายเมื่อ pod รีไซเคิล.
+- **เฟส 4:** คอมไพล์ยาว + chapters เป็นประจำ (คันโยกชั่วโมงรับชม) + คลังคอนเทนต์อัตโนมัติ.
+
+## 8. Durable rails บน GitHub Actions (ทำแล้ว 2026-11-02)
+
+| Workflow | รัน | ทำอะไร | sandbox |
+| --- | --- | --- | --- |
+| `ax-music-release.yml` | 07:00 UTC ทุกวัน | ปล่อย 6 คลิป (publishAt กระจาย) | **0** |
+| `ax-rail-watchdog.yml` | ทุกชั่วโมง :15 | อ่าน 4 ช่อง + เตือน ntfy | **0** |
+
+- secrets ที่ใช้ (`YT_CLIENT_ID/SECRET`, `YT_CH1..CH4_REFRESH_TOKEN`) เป็น repo secrets อยู่แล้ว.
+- ปล่อย workflow จาก **PC1** (`C:\ax\aeris-drive-automation`) เพราะ git credential บน PC1
+  มี `workflow` scope — sandbox token ไม่มี (ได้ 404/refused).
+- ยังเหลือ OpenHands automation: Marketing Daily 02:00 + Marketing Strategy จ. 03:00
+  = ~1.15/วัน. Watchdog/YT-Activity automation ฝั่ง sandbox ปิดได้หลัง GH watchdog นิ่ง.
 
 ---
 
