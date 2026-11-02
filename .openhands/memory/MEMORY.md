@@ -314,6 +314,33 @@ true-instrumental karaoke mix, cover art, a 1920x1080 word-synced video.
 
 ## Environment facts that keep costing time
 
+- **The 24/7 layer is GitHub Actions, not a sandbox.** `aeris-drive-automation` is
+  now **public**, so Actions minutes are free (the old private-repo CI wall is
+  gone) and its 15 repo secrets include `YT_CH1..CH4_REFRESH_TOKEN` +
+  `YT_CLIENT_ID/SECRET`. `ax-roblox-live-state.yml` proves `cron '0 * * * *'`
+  runs hourly. **But no token in the sandbox can push a workflow file** —
+  `AX_GH_TOKEN` (scopes `gist, read:org, repo`) and `GITHUB_TOKEN` both fail with
+  "refusing to allow an OAuth App to create or update workflow ... without
+  `workflow` scope". New/changed workflows need K: paste the file, or
+  `gh auth login --web` from K's phone.
+- **A provisioned sandbox is the fragile part, and it is what breaks.** "AX Music
+  Daily Release" was **auto-paused by the platform** after 5 consecutive failures,
+  all `Timed out: Sandbox not available` (`disabled_detail.source ==
+  consecutive_failures`). Re-enable with `PATCH /api/automation/v1/{id}
+  {"enabled":true}`. Even a plugin-spec `script` runner needs provisioning — a
+  dispatch sat at phase `Starting automation` for 25+ minutes. So an automation
+  cannot reliably watch automations; only GitHub Actions runs outside this.
+- **`plugins/ax-watchdog`** is the rail's watcher (hourly at :15, no LLM): heals
+  auto-paused automations (never a manual pause), flags a stale channel, pushes to
+  **ntfy.sh** (free, no auth, no key — K subscribes on a phone). It runs in both
+  callers: the OpenHands automation (KV store + automation audit) and GitHub
+  Actions (file-based cooldown, audit skipped, no `OPENHANDS_API_KEY`).
+  `ntfy_topic` / `AX_NTFY_TOPIC` must be set or alerts are silently not pushed.
+- **YouTube does not need the desktop at all.** `YT_CH3_REFRESH_TOKEN` →
+  `oauth2.googleapis.com/token` → `youtube/v3` works with no sandbox, browser or
+  login (scope `.../auth/youtube`, upload included). Channel read verified:
+  AERIS Music, 5 subs, 22 videos. Use this path for anything programmatic; the
+  cloud desktop is only for surfaces with no API (Studio UI, FB, TikTok, Shopee).
 - **A pod recycle is the recurring failure, not quota.** It kills the cloud
   desktop, running jobs, `$HOME`, `/tmp` and pip packages. **Only `/workspace`
   survives.** Never keep state in `$HOME` or `/tmp`.
