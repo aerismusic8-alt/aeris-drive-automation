@@ -37,7 +37,7 @@ CDP = "http://127.0.0.1:9222/json"
 FB_PAGE = "https://www.facebook.com/profile.php?id=61595890900382"
 FB_INSIGHTS = "https://www.facebook.com/professional_dashboard/insights/"
 TIKTOK_ANALYTICS = "https://www.tiktok.com/tiktokstudio/analytics"
-SHOPEE_AFFILIATE = "https://affiliate.shopee.co.th/"
+SHOPEE_AFFILIATE = "https://affiliate.shopee.co.th/dashboard"
 
 
 class Desk:
@@ -172,10 +172,12 @@ def measure_shopee(desk: Desk) -> dict:
     desk.goto(SHOPEE_AFFILIATE, settle=14)
     t = desk.text()
     url = (desk.js("location.href") or "").lower()
-    # The public landing page (with "เข้าร่วมเลย" / Join now) is what an
-    # un-onboarded visitor sees; the dashboard only appears once signed in.
-    if "login" in url or "เข้าร่วมเลย" in t or "ลงทะเบียนและเป็น Shopee Affiliate" in t:
-        return {"reachable": False, "note": "not onboarded (K-only QR login)"}
+    # `affiliate.shopee.co.th/dashboard` redirects to the public join page only
+    # when nobody is signed in; the captcha interstitial is not that, so a
+    # signed-in account reads its real numbers. The old check treated the
+    # interstitial as "not onboarded" — a false negative.
+    if "/login" in url or "เข้าร่วมเลย" in t or "ลงทะเบียนและเป็น Shopee Affiliate" in t:
+        return {"reachable": False, "note": "not signed in / not onboarded"}
     return {
         "reachable": True,
         "orders": _first_int(t, ["คำสั่งซื้อ", "orders"]),

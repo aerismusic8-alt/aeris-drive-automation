@@ -105,7 +105,7 @@ def render(yt: dict, dash: dict) -> str:
     ]
     if sp and not sp.get("reachable"):
         lines += [f"**Shopee:** {sp.get('note', 'อ่านไม่ได้')} "
-                  "(K สแกน QR ครั้งเดียว)", ""]
+                  "(ต้อง sign in บนเดสก์ท็อป)", ""]
     elif sp.get("reachable"):
         cfg = surfaces.config()["shopee_affiliate"]
         links = cfg.get("links") or {}
