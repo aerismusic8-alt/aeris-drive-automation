@@ -19,6 +19,13 @@
   "shopee_affiliate": {
     "short": "https://th.shp.ee/6hv2uk89",
     "dashboard": "https://affiliate.shopee.co.th/",
-    "_sub_id_comment": "th.shp.ee strips sub_id, so per-surface attribution needs the long s.shopee.co.th links from the affiliate dashboard. Keys: youtube, tiktok, facebook."
+    "account": "navintas",
+    "onboarded": true,
+    "links": {
+      "youtube": "https://s.shopee.co.th/3g4vw3cev0",
+      "tiktok": "https://s.shopee.co.th/6fiXVb7Fbi",
+      "facebook": "https://s.shopee.co.th/7KyEIqRt6A"
+    },
+    "_comment": "Onboarded 2026-11-02 (AR read the live dashboard; account navintas). Per-surface s.shopee.co.th links minted via the Custom Link tool with Sub_id youtube/tiktok/facebook. th.shp.ee strips sub_id, so use these for attribution. Source of truth for the description footer is music938-1/channel/monetization.json."
   }
 }

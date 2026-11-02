@@ -106,6 +106,19 @@ def render(yt: dict, dash: dict) -> str:
     if sp and not sp.get("reachable"):
         lines += [f"**Shopee:** {sp.get('note', 'อ่านไม่ได้')} "
                   "(K สแกน QR ครั้งเดียว)", ""]
+    elif sp.get("reachable"):
+        cfg = surfaces.config()["shopee_affiliate"]
+        links = cfg.get("links") or {}
+        lines += [
+            "## Shopee Affiliate (onboarded)",
+            "",
+            f"บัญชี: `{cfg.get('account', 'UNKNOWN')}` — "
+            "ลิงก์ติดตามต่อผิว (Sub_id) ใช้งานได้:",
+            "",
+        ]
+        for surf, url in links.items():
+            lines.append(f"- {surf}: {url}")
+        lines.append("")
     lines += [
         "## เป้าหมาย (GOAL.md)", "",
         "- YouTube: 1,000 ซับ + 4,000 ชม. → เปิด monetization",

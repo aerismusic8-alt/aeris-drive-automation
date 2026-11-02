@@ -41,6 +41,15 @@ def test_every_surface_has_a_target():
     assert cfg["shopee_affiliate"]["short"].startswith("https://th.shp.ee/")
 
 
+def test_shopee_is_onboarded_with_per_surface_links():
+    sp = surfaces.config()["shopee_affiliate"]
+    assert sp["onboarded"] is True
+    links = sp["links"]
+    assert set(links) == {"youtube", "tiktok", "facebook"}
+    for url in links.values():
+        assert url.startswith("https://s.shopee.co.th/")
+
+
 def test_tools_that_grow_exists():
     for name in ("crosspost.py", "profile_setup.py", "social_stats.py",
                  "apply_brand.py", "post_community.py"):

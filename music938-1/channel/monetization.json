@@ -3,8 +3,12 @@
   "youtube": "https://www.youtube.com/@aerismusicth",
   "shopee_affiliate": "https://th.shp.ee/6hv2uk89",
   "shopee_shop": "",
-  "shopee_links": {},
-  "_shopee_links_comment": "Per-surface s.shopee.co.th links minted in the affiliate dashboard with a sub_id. A th.shp.ee short link strips sub_id, so only these give per-surface attribution. Keys: youtube, tiktok, facebook. Empty falls back to shopee_affiliate.",
+  "shopee_links": {
+    "youtube": "https://s.shopee.co.th/3g4vw3cev0",
+    "tiktok": "https://s.shopee.co.th/6fiXVb7Fbi",
+    "facebook": "https://s.shopee.co.th/7KyEIqRt6A"
+  },
+  "_shopee_links_comment": "Per-surface s.shopee.co.th links minted 2026-11-02 from the affiliate dashboard (account navintas) via the Custom Link tool, each tagged with its Sub_id. A th.shp.ee short link strips sub_id, so only these give per-surface attribution. Empty falls back to shopee_affiliate.",
   "facebook": "https://www.facebook.com/profile.php?id=61595890900382",
   "tiktok": "https://www.tiktok.com/@aeris.music4",
   "playlist_all": "https://www.youtube.com/@aerismusicth/playlists"

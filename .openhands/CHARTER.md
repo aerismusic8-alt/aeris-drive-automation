@@ -113,18 +113,19 @@ four jobs above — nothing else appears here.
 2. **Grow Facebook (page `61595890900382`).** Profile is filled; post Reels from
    the Shorts queue. `grow.py facebook --profile|--post`.
 3. **Grow TikTok (`@aeris.music4`).** Profile + Shorts. `grow.py tiktok`.
-4. **Shopee Affiliate revenue.** Link is wired into every description; the
-   per-surface `sub_id` links and the affiliate dashboard read need the account
-   onboarded — **K-only, one QR scan** (`grow.py shopee --check`).
+4. **Shopee Affiliate revenue.** Onboarded 2026-11-02 (account `navintas`) —
+   AR read the live dashboard and minted per-surface tracking links
+   (Sub_id youtube/tiktok/facebook) in `music938-1/channel/monetization.json`.
+   Every description footer now carries the right surface's link. Waiting on the
+   first order; commission is 0 until then.
 5. **Measure the four.** `aeris938-2/scripts/report.py` → `growth-report.md`.
    YouTube via API; FB/TikTok/Shopee via the desktop dashboards.
 
 **Blocked, needs K (one action each):**
-- **Shopee Affiliate onboarding** — the dashboard still shows the public join
-  page (`grow.py shopee --check` → "not onboarded"). K scans a QR once; then AR
-  reads orders/commission and mints per-surface links.
 - A fresh cloud-desktop sign-in if a saved session is ever rejected.
 - Anything that costs money (never).
+- **Shopee Affiliate onboarding** — DONE 2026-11-02, no QR needed; the account
+  was already onboarded (`navintas`).
 
 ## What AR does without K, even when it looks like a K job
 
