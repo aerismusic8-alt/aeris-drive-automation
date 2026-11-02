@@ -82,6 +82,14 @@ def main() -> int:
             views = line.split(":", 1)[-1].strip().strip('",')
     lines += ["## ข้อมูลวิเคราะห์", "", views or "(อ่านไม่ได้ในรอบนี้)", ""]
 
+    # 2b. the other three surfaces -------------------------------------------
+    # market.py measures YouTube only, so without this the strategy pass cannot
+    # see Facebook, TikTok or Shopee at all. Writes work/social-report.md.
+    rc, out = run([sys.executable, str(ROOT / "scripts" / "social_stats.py")],
+                  timeout=900)
+    lines += ["## ผิวอื่น (FB / TikTok / Shopee)", "",
+              "ดู `work/social-report.md`", ""]
+
     # 3. playlists ------------------------------------------------------------
     # Free reach: no upload quota, keeps every new video in its playlist.
     rc, out = run([sys.executable, str(ROOT / "scripts" / "fill_playlists.py"),

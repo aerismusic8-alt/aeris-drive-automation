@@ -43,6 +43,10 @@ music938-1/work/*
 # The playlist id per bucket. Without it a fresh clone would create a duplicate
 # playlist on the first run instead of adding to the one that already exists.
 !music938-1/work/playlist-state.json
+# social_stats.py writes the FB/TikTok/Shopee numbers here. market.py covers
+# YouTube only, so this is the loop's only view of the other three surfaces and
+# must survive a recycle.
+!music938-1/work/social-report.md
 music938-1/library/songs/*.mp3
 music938-1/library/songs/*.wav
 music938-1/library/songs/*.m4a

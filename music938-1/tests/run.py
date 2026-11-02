@@ -740,6 +740,60 @@ def test_crosspost_pace_and_captions() -> None:
           "real = newest_post_url(" in src)
 
 
+def test_social_stats_parser() -> None:
+    """The dashboard reader must never invent a number.
+
+    The whole point of this rail is to be trustworthy enough for the strategy
+    pass to act on, so the parser is tested against the exact shapes the two
+    dashboards were seen to produce, including the ones that must yield
+    UNKNOWN.
+    """
+    section("social stats reader (FB / TikTok / Shopee)")
+    import social_stats
+
+    # TikTok puts the value on the line after the label, not on it.
+    tiktok = "Video views\n--\n0\n(--)\nProfile views\n--\n0\n(--)\nEst. rewards\n$0.00"
+    check("value on the next line is found",
+          social_stats._first_int(tiktok, ["Video views"]) == 0)
+    check("a different metric is not mistaken for the first",
+          social_stats._first_int(tiktok, ["Est. rewards"]) == 0)
+    # Commission and rewards are decimals, so a whole-number-only parser would
+    # silently report UNKNOWN for the one number that matters commercially.
+    check("a decimal is read, not dropped",
+          social_stats._first_int("ค่าคอมมิชชั่น\n฿12.50\n", ["ค่าคอมมิชชั่น"]) == 12.5)
+
+    # Facebook writes the follower count into one line.
+    fb = "AERIS Music\u00a0\nผู้ติดตาม 0 คน • กำลังติดตาม 0 คน"
+    check("Thai follower count is read",
+          social_stats._first_int(fb, ["ผู้ติดตาม"]) == 0)
+
+    # Nothing matching must be UNKNOWN, not 0 and not a neighbouring number.
+    check("a missing metric is UNKNOWN, not 0",
+          social_stats._first_int("no metrics here\n7\n", ["ยอดดู", "views"]) == "UNKNOWN")
+
+    # Sign-out detection: the login word is in the chrome even when signed in,
+    # so the test must key on the Page's own content.
+    check("a signed-in Page is not called signed out",
+          not social_stats._fb_signed_out("AERIS Music\nผู้ติดตาม 0 คน\nเข้าสู่ระบบ"))
+    check("a real login wall is caught",
+          social_stats._fb_signed_out("เข้าสู่ระบบ\nลืมบัญชีใช่ไหม\nสมัคร"))
+
+    # The report must render UNKNOWN for an unreadable surface, never a blank.
+    md = social_stats.render({
+        "facebook": {"reachable": False, "note": "not signed in"},
+        "tiktok": {"reachable": True, "views_7d": 0, "followers_total": 1,
+                   "followers_change_7d": 0, "detail_locked_under_100": True},
+        "shopee": {"reachable": False, "note": "not onboarded"},
+    })
+    check("unreadable surfaces render UNKNOWN", md.count("UNKNOWN") >= 4)
+    check("the 100-follower lock is called out", "100 ผู้ติดตาม" in md)
+    check("no metric is left blank", "|  |" not in md)
+
+    # The daily pass must run it, or the strategy loop still cannot see these.
+    desk = (ROOT / "scripts" / "desk_daily.py").read_text()
+    check("desk_daily runs the social reader", "social_stats.py" in desk)
+
+
 def test_karaoke_loudness_contract() -> None:
     """flow_song._karaoke must master through make_song's two-pass loudnorm.
 
@@ -1036,6 +1090,7 @@ def main() -> int:
     test_karaoke_loudness_contract()
     test_crosspost_engine()
     test_crosspost_pace_and_captions()
+    test_social_stats_parser()
     test_setup_pod_ffmpeg()
     test_monetize_footer()
     test_studio_web_rail()

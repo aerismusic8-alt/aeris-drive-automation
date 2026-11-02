@@ -167,14 +167,31 @@ Meta แนะนำชัด → เรนเดอร์เวอร์ชั�
 
 ---
 
-## 6. งานที่ต้องแก้โค้ด (บันทึกไว้ ยังไม่แก้)
+## 6. งานที่ต้องแก้โค้ด
+
+### แก้แล้ว 2026-11-01 (commit `dc1d3255`)
+
+| ไฟล์ | ปัญหา | สถานะ |
+| --- | --- | --- |
+| `scripts/crosspost.py` | `post_*` คืน `page.url` (หน้าสตูดิโอ) ไม่ใช่ URL โพสต์ | ✅ `newest_post_url()` อ่านจากรายการโพสต์จริง |
+| `scripts/crosspost.py` | ไม่มีเพดานจังหวะ — โพสต์ห่างกัน ~26 วินาที | ✅ `pace_ok()` เว้น ≥20 นาที, ≤4 โพสต์/วัน/ผิว |
+| `scripts/crosspost.py` | `caption()` ไม่สนใจ hook → แคปชันซ้ำ | ✅ ติดป้าย "(ท่อน N)" ให้ h2/h3 |
+
+### วัดผลอัตโนมัติ (ใหม่)
+
+| ไฟล์ | ทำอะไร |
+| --- | --- |
+| `scripts/social_stats.py` | ขับเดสก์ท็อปอ่าน FB/TikTok/Shopee → `work/social-report.md` |
+| `scripts/desk_daily.py` | เรียก `social_stats.py` ในรอบ admin รายวัน |
+
+`market.py` วัด YouTube เท่านั้น → `social_stats.py` คือทางเดียวที่ loop จะเห็น 3 ผิวนี้
+อ่านไม่ได้ = เขียน UNKNOWN ไม่เดา
+
+### ยังไม่แก้
 
 | ไฟล์ | ปัญหา | ผล |
 | --- | --- | --- |
-| `scripts/crosspost.py` | `post_tiktok`/`post_facebook` คืน `page.url` ซึ่งเป็นหน้าเพจ ไม่ใช่ URL โพสต์ | ตรวจสอบย้อนหลังไม่ได้ (§3.4) |
-| `scripts/crosspost.py` | ไม่มีเพดานจังหวะ — โพสต์ติดกันทุก ~26 วินาทีได้ | โพสต์รัว เสี่ยงถูกมองเป็นสแปม (§3.1) |
-| `scripts/crosspost.py` | `caption()` ไม่สนใจ hook → h1/h2/h3 แคปชันเหมือนกัน | สัญญาณซ้ำบนโปรไฟล์ (§3.2) |
-| `scripts/market.py` | วัด YouTube เท่านั้น | loop ตัดสินใจโดยไม่เห็น FB/TikTok/Shopee |
+| — | ลายน้ำ TikTok ยังอยู่บนคลิปที่ส่ง FB/TikTok | Meta แนะนำให้เลี่ยง (§4) |
 
 ---
 
