@@ -68,6 +68,47 @@ def test_report_never_guesses():
     assert "1,000 ซับ" in text  # goal line present
 
 
+def test_report_shows_change():
+    """A reading against the previous one must state the movement, and show a
+    dash — not a blank — when a number is unchanged."""
+    yt = {"handle": "@aerismusicth", "subs": 6, "videos": 28, "views": 150}
+    dash = {"facebook": {"reachable": True, "followers": 2, "views_28d": 5},
+            "tiktok": {"reachable": True, "followers_total": 1, "views_7d": 0},
+            "shopee": {"reachable": True, "orders": 1, "commission": 2.5}}
+    prev = {"yt_subs": 5, "yt_views": 100, "fb_followers": 2, "sp_orders": 0}
+    text = report.render(yt, dash, prev)
+    assert "| 6 | +1 |" in text      # subs rose by 1
+    assert "| 150 | +50 |" in text   # views rose by 50
+    assert "| 2 | — |" in text       # followers unchanged
+    assert "| 1 | +1 |" in text      # first Shopee order
+
+
+def test_flatten_and_delta():
+    yt = {"subs": 6, "views": 150, "videos": 28}
+    dash = {"facebook": {"reachable": True, "followers": 2, "views_28d": 5},
+            "tiktok": {"reachable": True, "followers_total": 1, "views_7d": 0},
+            "shopee": {"reachable": True, "orders": 0, "commission": 0}}
+    flat = report.flatten(yt, dash)
+    assert flat["yt_subs"] == 6 and flat["fb_followers"] == 2
+    assert report._delta(6, 5) == "+1"
+    assert report._delta(5, 5) == "—"
+    assert report._delta(None, 5) == ""
+
+
+def test_history_roundtrip():
+    import tempfile
+    old = report.HISTORY
+    try:
+        with tempfile.TemporaryDirectory() as d:
+            report.HISTORY = Path(d) / "history.jsonl"
+            report.append_history({"at": "t1", "yt_subs": 1})
+            report.append_history({"at": "t2", "yt_subs": 2})
+            hist = report.load_history()
+            assert len(hist) == 2 and hist[-1]["yt_subs"] == 2
+    finally:
+        report.HISTORY = old
+
+
 if __name__ == "__main__":
     fns = [v for k, v in sorted(globals().items()) if k.startswith("test_")]
     for fn in fns:

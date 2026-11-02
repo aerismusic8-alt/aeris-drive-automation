@@ -142,6 +142,23 @@ def load_state() -> dict:
     return {"posted": {}}
 
 
+def load_queue() -> list[dict]:
+    """The queue to act on: the committed file if present, else a fresh build.
+
+    `build_queue()` enumerates `library/shorts/`, which is gitignored and empty
+    on a fresh pod — so rebuilding there yields only the handful of Shorts that
+    happen to be on disk and silently drops the real backlog. The committed
+    queue file is the backlog; prefer it and fall back to a build only when it
+    is missing (first run, or after `--rebuild-queue`).
+    """
+    if QUEUE.exists():
+        try:
+            return json.loads(QUEUE.read_text(encoding="utf-8"))
+        except ValueError:
+            pass
+    return build_queue()
+
+
 def save_state(state: dict) -> None:
     STATE.parent.mkdir(parents=True, exist_ok=True)
     STATE.write_text(json.dumps(state, ensure_ascii=False, indent=2), encoding="utf-8")
@@ -423,7 +440,7 @@ def newest_post_url(page, platform: str) -> str:
 
 def post(platform: str, limit: int) -> int:
     state = load_state()
-    queue = build_queue()
+    queue = load_queue()
     todo = pending(queue, state, platform)[:limit]
     if not todo:
         print("nothing pending")

@@ -88,9 +88,8 @@ def cmd_status(args) -> int:
               f"{cs.get('views', 'UNKNOWN')} views")
     else:
         print("\nYouTube @aerismusicth: UNKNOWN (no market-snapshot.json yet)")
-    print("\nงานค้าง: Facebook/TikTok มี Shorts ใหม่ (เพลง 10-20) รอโพสต์ — "
-          "`grow.py facebook --post` / `grow.py tiktok --post`; "
-          "Shopee onboarded แล้ว (ดู report)")
+    print("\nงานค้าง: Facebook มี Reels ค้าง (TikTok ไม่มี) — "
+          "`grow.py facebook --post`; Shopee onboarded แล้ว (ดู report)")
     return 0
 
 

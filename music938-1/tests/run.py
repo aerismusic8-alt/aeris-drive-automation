@@ -676,6 +676,38 @@ def test_crosspost_engine() -> None:
           "กำลังประมวลผลคลิป Reels" in body)
 
 
+def test_crosspost_uses_committed_queue() -> None:
+    """`post` must act on the committed queue, not a fresh disk build.
+
+    `library/shorts/` is gitignored, so on a fresh pod `build_queue()` returns
+    only the Shorts that happen to be on disk and the real backlog is silently
+    dropped — the 32 pending Reels for songs 13-20 became unreachable this way.
+    """
+    section("crosspost reads the committed queue (fresh-pod fix)")
+    import crosspost
+
+    src = (ROOT / "scripts" / "crosspost.py").read_text()
+    body = src.split("def post(", 1)[1].split("\ndef ", 1)[0]
+    check("post() loads the queue via load_queue", "load_queue()" in body)
+    check("post() does not rebuild the queue from disk", "build_queue()" not in body)
+    check("load_queue prefers the committed file", "QUEUE.exists()" in
+          src.split("def load_queue(", 1)[1].split("\ndef ", 1)[0])
+
+    # Behaviour: a queue file on disk wins over whatever library/ holds.
+    real = crosspost.QUEUE
+    import tempfile
+    try:
+        with tempfile.TemporaryDirectory() as d:
+            crosspost.QUEUE = Path(d) / "q.json"
+            sample = [{"id": "facebook-page:x", "platform": "facebook",
+                       "video": "v.mp4", "caption": "c"}]
+            crosspost.QUEUE.write_text(json.dumps(sample), encoding="utf-8")
+            check("load_queue returns the file contents",
+                  crosspost.load_queue() == sample)
+    finally:
+        crosspost.QUEUE = real
+
+
 def test_crosspost_pace_and_captions() -> None:
     """The two defects found on 2026-11-01 must not come back.
 
@@ -786,6 +818,18 @@ def test_social_stats_parser() -> None:
     fb = "AERIS Music\u00a0\nผู้ติดตาม 0 คน • กำลังติดตาม 0 คน"
     check("Thai follower count is read",
           social_stats._first_int(fb, ["ผู้ติดตาม"]) == 0)
+
+    # The insights page states followers only as a share ("ผู้ติดตาม 94.4%",
+    # beside "ไม่ใช่ผู้ติดตาม"), so a first-number scan reported 94.4 as the
+    # follower total. `_followers` reads the count from the profile line only.
+    insights = ("การดูโดยผู้ติดตามเทียบกับคนที่ไม่ใช่ผู้ติดตาม\n100%\n"
+                "ไม่ใช่ผู้ติดตาม\n0%\nผู้ติดตาม\n94.4%\nคลิป Reels")
+    check("the insights share is not read as a follower count",
+          social_stats._followers(insights) == "UNKNOWN")
+    check("the profile count is read",
+          social_stats._followers("AERIS Music\nผู้ติดตาม 1 คน • กำลังติดตาม 0 คน") == 1)
+    check("a thousands-separated count is read",
+          social_stats._followers("ผู้ติดตาม 1,234 คน") == 1234)
 
     # Nothing matching must be UNKNOWN, not 0 and not a neighbouring number.
     check("a missing metric is UNKNOWN, not 0",
@@ -1187,6 +1231,7 @@ def main() -> int:
     test_automation_secret_fallback()
     test_karaoke_loudness_contract()
     test_crosspost_engine()
+    test_crosspost_uses_committed_queue()
     test_crosspost_pace_and_captions()
     test_social_stats_parser()
     test_setup_pod_ffmpeg()

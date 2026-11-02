@@ -26,6 +26,7 @@ from pathlib import Path
 import surfaces
 
 REPORT = surfaces.WORK / "growth-report.md"
+HISTORY = surfaces.WORK / "history.jsonl"
 YT = surfaces.OPS / "yt_auth.py"
 
 
@@ -109,11 +110,61 @@ def _cell(d: dict | None, key: str) -> str:
     return "UNKNOWN" if v is None else str(v)
 
 
-def render(yt: dict, dash: dict) -> str:
+def flatten(yt: dict, dash: dict) -> dict:
+    """The six tracked numbers as a flat {name: value-or-None} map."""
+    fb = dash.get("facebook") or {}
+    tk = dash.get("tiktok") or {}
+    sp = dash.get("shopee") or {}
+
+    def num(d, key):
+        v = d.get(key)
+        return v if isinstance(v, (int, float)) else None
+
+    return {
+        "yt_subs": num(yt, "subs"),
+        "yt_views": num(yt, "views"),
+        "yt_videos": num(yt, "videos"),
+        "fb_followers": num(fb, "followers"),
+        "fb_views_28d": num(fb, "views_28d"),
+        "tk_followers": num(tk, "followers_total"),
+        "tk_views_7d": num(tk, "views_7d"),
+        "sp_orders": num(sp, "orders"),
+        "sp_commission": num(sp, "commission"),
+    }
+
+
+def load_history() -> list[dict]:
+    if not HISTORY.exists():
+        return []
+    out = []
+    for line in HISTORY.read_text(encoding="utf-8").splitlines():
+        try:
+            out.append(json.loads(line))
+        except ValueError:
+            continue
+    return out
+
+
+def append_history(row: dict) -> None:
+    HISTORY.parent.mkdir(parents=True, exist_ok=True)
+    with HISTORY.open("a", encoding="utf-8") as fh:
+        fh.write(json.dumps(row, ensure_ascii=False) + "\n")
+
+
+def _delta(cur, prev) -> str:
+    """Signed change between two readings, or '' when either is unknown."""
+    if not isinstance(cur, (int, float)) or not isinstance(prev, (int, float)):
+        return ""
+    d = cur - prev
+    return "—" if d == 0 else f"{d:+g}"
+
+
+def render(yt: dict, dash: dict, prev: dict | None = None) -> str:
     fb = dash.get("facebook") or {}
     tk = dash.get("tiktok") or {}
     sp = dash.get("shopee") or {}
     err = dash.get("_error")
+    prev = prev or {}
     lines = [
         "# รายงานการปั้น 4 ช่องทาง — AERIS Music (aeris938-2)", "",
         f"วัดเมื่อ: {time.strftime('%Y-%m-%d %H:%M UTC', time.gmtime())}", "",
@@ -124,18 +175,28 @@ def render(yt: dict, dash: dict) -> str:
                   "YouTube ยังอ่านได้ตามปกติ", ""]
     if yt.get("note"):
         lines += [f"> YouTube: {yt['note']}", ""]
+
     lines += [
-        "| # | ช่องทาง | ตัวชี้วัด | ค่า |", "| ---: | --- | --- | ---: |",
+        "| # | ช่องทาง | ตัวชี้วัด | ค่า | เปลี่ยน |",
+        "| ---: | --- | --- | ---: | ---: |",
         f"| 3 | YouTube {yt.get('handle', '')} | ผู้ติดตาม | "
-        f"{yt.get('subs', 'UNKNOWN')} |",
-        f"| | | วิดีโอ | {yt.get('videos', 'UNKNOWN')} |",
-        f"| | | ยอดดูรวม | {yt.get('views', 'UNKNOWN')} |",
-        f"| 1 | Facebook | ผู้ติดตาม | {_cell(fb, 'followers')} |",
-        f"| | | ยอดดู 28 วัน | {_cell(fb, 'views_28d')} |",
-        f"| 2 | TikTok | ผู้ติดตาม | {_cell(tk, 'followers_total')} |",
-        f"| | | ยอดดู 7 วัน | {_cell(tk, 'views_7d')} |",
-        f"| 4 | Shopee | คำสั่งซื้อ | {_cell(sp, 'orders')} |",
-        f"| | | ค่าคอมมิชชั่น | {_cell(sp, 'commission')} |",
+        f"{yt.get('subs', 'UNKNOWN')} | {_delta(yt.get('subs'), prev.get('yt_subs'))} |",
+        f"| | | วิดีโอ | {yt.get('videos', 'UNKNOWN')} | "
+        f"{_delta(yt.get('videos'), prev.get('yt_videos'))} |",
+        f"| | | ยอดดูรวม | {yt.get('views', 'UNKNOWN')} | "
+        f"{_delta(yt.get('views'), prev.get('yt_views'))} |",
+        f"| 1 | Facebook | ผู้ติดตาม | {_cell(fb, 'followers')} | "
+        f"{_delta(fb.get('followers'), prev.get('fb_followers'))} |",
+        f"| | | ยอดดู 28 วัน | {_cell(fb, 'views_28d')} | "
+        f"{_delta(fb.get('views_28d'), prev.get('fb_views_28d'))} |",
+        f"| 2 | TikTok | ผู้ติดตาม | {_cell(tk, 'followers_total')} | "
+        f"{_delta(tk.get('followers_total'), prev.get('tk_followers'))} |",
+        f"| | | ยอดดู 7 วัน | {_cell(tk, 'views_7d')} | "
+        f"{_delta(tk.get('views_7d'), prev.get('tk_views_7d'))} |",
+        f"| 4 | Shopee | คำสั่งซื้อ | {_cell(sp, 'orders')} | "
+        f"{_delta(sp.get('orders'), prev.get('sp_orders'))} |",
+        f"| | | ค่าคอมมิชชั่น | {_cell(sp, 'commission')} | "
+        f"{_delta(sp.get('commission'), prev.get('sp_commission'))} |",
         "",
     ]
     if sp and not sp.get("reachable"):
@@ -179,8 +240,13 @@ def main(argv=None) -> int:
         print(json.dumps({"youtube": yt, "dashboards": dash},
                          ensure_ascii=False, indent=1))
         return 0
+    hist = load_history()
+    prev = hist[-1] if hist else None
     REPORT.parent.mkdir(parents=True, exist_ok=True)
-    REPORT.write_text(render(yt, dash), encoding="utf-8")
+    REPORT.write_text(render(yt, dash, prev), encoding="utf-8")
+    row = flatten(yt, dash)
+    row["at"] = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
+    append_history(row)
     print(f"wrote {REPORT.relative_to(surfaces.REPO)}")
     print(f"YouTube {yt.get('handle','')}: {yt.get('subs','UNKNOWN')} subs, "
           f"{yt.get('views','UNKNOWN')} views")
