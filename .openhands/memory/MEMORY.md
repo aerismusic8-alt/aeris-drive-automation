@@ -213,6 +213,34 @@ true-instrumental karaoke mix, cover art, a 1920x1080 word-synced video.
   description (no duplicate) restored 15 chapters. Pinned by a test.
 - **`upload_compilation.py --watch --upload`** waits for the render then uploads,
   so a recycle during the ~14-minute ffmpeg run cannot lose it.
+- **Crosspost rail (FB Reels + TikTok)** — `scripts/crosspost.py`, queue
+  `work/crosspost-queue.json`, ledger `work/crosspost-state.json`. Three defects
+  fixed 2026-11-01 (`dc1d3255`): it stored `page.url` (the studio page) instead
+  of the post URL — now `newest_post_url()` reads the platform's own list, and
+  an unreadable URL is left empty, never a page URL; there was no cadence — now
+  `pace_ok()` enforces **20 min min-gap and 4 posts/platform/day** (the first run
+  fired **60 TikTok posts in 98 min, median gap 26 s**, the likely cause of 0
+  views); and `caption()` ignored the hook, so a song's 3 hooks shared one
+  caption — now h2/h3 are tagged `(ท่อน N)`. **`--rebuild-queue` rebuilds from
+  the Shorts on disk and a recycled pod holds only a subset (27 of 54) → it
+  truncates the tracked 120-item queue. Patch the JSON in place instead.**
+- **The 3 non-YouTube surfaces are now measured** (`00221355`):
+  `scripts/social_stats.py` drives the desktop to the FB/TikTok/Shopee
+  dashboards → `work/social-report.md` (whitelisted), run by `desk_daily.py`
+  step 2b. `market.py` is YouTube-only, so this is the loop's only view of them.
+  Unreadable = **UNKNOWN, never a guess**. Parsing traps: TikTok's analytics
+  "Followers" is the *change over the period*, not the total (read the profile
+  for the total); TikTok puts the value on the **next line** (needs look-ahead);
+  "เข้าสู่ระบบ" is in FB chrome even when signed in (detect sign-out by the
+  *absence* of "ผู้ติดตาม N คน"); FB `professional_dashboard/insights/` answers
+  "Not Found" cold — land on the Page first and fall back to the Page profile.
+- **Measured 2026-11-02**: FB followers 0; TikTok 1 follower, 0 views/7d;
+  Shopee not onboarded. **Earlier claim of "duplicate TikTok posts" was WRONG**
+  and is retracted — the profile has 64 distinct videos (the "16" was a
+  virtualization artifact; scroll until the element set is stable before
+  counting) and all 60 ledger ids are unique. The paired Studio rows were the 3
+  chorus hooks of one song (different files, same caption). Full record:
+  `channel/SOCIAL.md`.
 - **Shopee rail — LIVE 2026-11-01**: `channel/monetization.json` is the single
   source for outbound links; `scripts/monetize.py` builds the block and
   `release.py` appends it to every description. `shopee_affiliate` =
