@@ -95,32 +95,94 @@ def tiktok() -> int:
             print("tiktok: not signed in")
             return 1
         # open the edit-profile dialog
-        try:
-            pg.get_by_test_id("edit-profile-entrance").click(timeout=15000)
-        except Exception:
-            if not _js_click(pg, "edit profile|แก้ไขโปรไฟล์"):
-                _shot(pg, "tiktok-no-edit")
-                print("tiktok: edit-profile button not found")
-                return 1
+        if not _open_tiktok_edit(pg):
+            _shot(pg, "tiktok-no-edit")
+            print("tiktok: edit-profile button not found")
+            return 1
         pg.wait_for_timeout(4000)
         _shot(pg, "tiktok-edit")
-        # The dialog's single image input is the avatar.
+        # The bio first: uploading the avatar replaces the edit dialog with a crop
+        # flow, so the bio field is gone by the time the image is handed over.
+        # TikTok's React state ignores the native-setter trick — the field shows
+        # the text but the save posts the old value — so type with real key events
+        # and click Save with a real mouse press. Verified against the
+        # POST /api/update/profile/ response, which carries the new signature.
+        landed = _tiktok_set_bio(pg, TIKTOK_BIO)
+        print("tiktok: bio field", "set" if landed else "NOT found")
+        pg.wait_for_timeout(800)
+        if landed:
+            _real_click_text(pg, "^save$|^บันทึก$|^confirm$")
+            pg.wait_for_timeout(5000)
+            _shot(pg, "tiktok-bio-saved")
+        # Now the avatar, in a fresh dialog. Reload first: the save above leaves the
+        # page on the profile view where the edit entrance is not yet re-mounted.
         try:
-            pg.locator('input[type="file"]').first.set_input_files(str(AVATAR))
+            pg.reload(wait_until="domcontentloaded")
+            pg.wait_for_timeout(7000)
+            _open_tiktok_edit(pg)
+            pg.wait_for_timeout(4000)
+            pg.locator('[role=dialog] input[type="file"], input[type="file"]').first.set_input_files(str(AVATAR))
             pg.wait_for_timeout(6000)
             print("tiktok: avatar uploaded")
             _shot(pg, "tiktok-avatar")
+            _real_click_text(pg, "^save$|^บันทึก$|^confirm$|^apply$|^done$")
+            pg.wait_for_timeout(4000)
         except Exception as exc:  # noqa: BLE001
             print(f"tiktok: avatar upload failed: {exc}")
-        landed = _set_bio(pg, TIKTOK_BIO)
-        print("tiktok: bio field", "set" if landed else "NOT found")
-        pg.wait_for_timeout(1000)
-        if landed:
-            _js_click(pg, "^save$|^บันทึก$|^confirm$")
-            pg.wait_for_timeout(4000)
-            _shot(pg, "tiktok-after-save")
         pg.close()
     return 0
+
+
+def _open_tiktok_edit(page) -> bool:
+    """Open TikTok's edit-profile dialog. Its test id is a data-e2e attribute, so
+    Playwright's get_by_test_id (which looks for data-testid) never matches."""
+    sel = '[data-e2e="edit-profile-entrance"]'
+    try:
+        if page.locator(sel).count():
+            page.locator(sel).first.click(timeout=15000)
+        elif not _js_click(page, "edit profile|แก้ไขโปรไฟล์"):
+            return False
+    except Exception:
+        return False
+    page.wait_for_timeout(4000)
+    return bool(page.locator("[role=dialog]").count())
+
+
+def _tiktok_set_bio(page, text: str) -> bool:
+    """Clear and retype the bio inside the open edit dialog, then confirm it took."""
+    try:
+        ta = page.locator("[role=dialog] textarea").first
+        ta.click()
+    except Exception:
+        return False
+    page.wait_for_timeout(400)
+    page.keyboard.press("Control+A")
+    page.keyboard.press("Delete")
+    page.wait_for_timeout(300)
+    ta.type(text, delay=25)
+    page.wait_for_timeout(1200)
+    return ta.input_value() == text
+
+
+def _real_click_text(page, pattern: str) -> bool:
+    """Click a button by its text with a trusted mouse press."""
+    box = page.evaluate("""(pat) => {
+      const rx = new RegExp(pat, 'i');
+      const d = [...document.querySelectorAll('[role=dialog]')].find(x => x.offsetParent !== null);
+      if (!d) return null;
+      const b = [...d.querySelectorAll('button')].find(x => rx.test((x.innerText||'').trim()));
+      if (!b) return null;
+      const r = b.getBoundingClientRect();
+      return {x: r.x + r.width/2, y: r.y + r.height/2};
+    }""", pattern)
+    if not box:
+        return False
+    page.mouse.move(box["x"], box["y"])
+    page.wait_for_timeout(250)
+    page.mouse.down()
+    page.wait_for_timeout(120)
+    page.mouse.up()
+    return True
 
 
 def _fb_switch_to_page(page) -> bool:

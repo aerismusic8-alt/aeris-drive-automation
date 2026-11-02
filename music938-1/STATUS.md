@@ -27,10 +27,23 @@ Shorts คือเครื่องยนต์เดียวที่ได�
 | --- | --- | --- |
 | YouTube แบนเนอร์ | ✅ อัพเดทแล้ว (API) | banner-pro ขึ้นจริง |
 | YouTube คำอธิบายช่อง | ✅ อัพเดทแล้ว (API) | viewer-focused + ลิงก์ 4 surface |
-| YouTube avatar | ⛔ ต้องล็อกอิน Google | ไม่มี API; desktop ต้องรหัสผ่าน K |
+| YouTube avatar | ✅ อัพเดทแล้ว (desktop) | K ล็อกอิน 2026-11-02; ยืนยันสี live ตรงกับ asset (50,35,58 ≈ 49,36,58) |
 | Facebook Page avatar+cover+bio | ✅ อัพเดทแล้ว (desktop) | ใช้ avatar-pro + cover-pro + bio ใหม่ |
 | Facebook Page username | ✅ มีอยู่แล้ว `@aerismusicth` | URL ยาว resolve ไม่ได้ (เพจใหม่) — ใช้ id ไปก่อน |
-| TikTok avatar+bio | ⛔ ต้องล็อกอิน TikTok | cookie ที่บันทึกไว้หมดอายุ |
+| TikTok avatar+bio | ✅ อัพเดทแล้ว (desktop) | K ล็อกอิน 2026-11-02; bio ยืนยันจาก POST /api/update/profile/ (signature ใหม่) |
+
+### TikTok — บทเรียนที่ต้องจำ
+- ปุ่ม Save ของ TikTok ไม่ตอบสนองต่อ `element.click()` (JS) — ต้องใช้ **mouse press จริง**
+  (`page.mouse.move/down/up` ที่พิกัดปุ่ม)
+- ช่อง bio เป็น React-controlled: native-setter + dispatchEvent ไม่บันทึก (ค่าเดิมถูกส่ง)
+  ต้อง **พิมพ์ด้วยคีย์จริง** (`locator.type`) แล้วยืนยันด้วย `input_value()`
+- ต้องเซ็ต **bio ก่อน avatar**: อัพโหลดรูปจะแทนที่ dialog ด้วยหน้าครอป ทำให้ช่อง bio หาย
+- test id ของ TikTok เป็น `data-e2e` ไม่ใช่ `data-testid` → `get_by_test_id()` ไม่ match
+  ใช้ `[data-e2e="edit-profile-entrance"]`
+- หน้าโปรไฟล์สาธารณะมี CDN cache — ค่า bio ที่เพิ่งเซฟอาจโชว์ค่าเก่าชั่วครู่
+  ยืนยันที่ response ของ `POST /api/update/profile/` แทน (ฟิลด์ `user.signature`)
+- ทั้งหมดอยู่ใน `scripts/profile_setup.py` แล้ว (`_tiktok_set_bio`, `_real_click_text`,
+  `_open_tiktok_edit`)
 
 ## 4. Rails อัตโนมัติ
 - **AX Music Daily Release** (cron 07:05 UTC): ล้มทุกครั้งเพราะ
