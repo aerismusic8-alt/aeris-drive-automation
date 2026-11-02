@@ -706,6 +706,15 @@ def test_crosspost_pace_and_captions() -> None:
     check("hook number is carried on the queue item",
           all("hook" in it for it in q))
 
+    # The caption's last job is the ask: a follow so the next song reaches them,
+    # and a question because a comment is the cheapest engagement a small Page
+    # can earn. Both must survive a caption rewrite.
+    fb_cap = crosspost.caption("01-khon-di-thi-chak-pai", "facebook", 1)
+    check("facebook caption asks for a follow", "กดติดตาม" in fb_cap)
+    check("facebook caption asks a question", "คอมเมนต์" in fb_cap)
+    tt_cap = crosspost.caption("01-khon-di-thi-chak-pai", "tiktok", 1)
+    check("tiktok caption asks for a follow", "กดติดตาม" in tt_cap)
+
     # Cadence: the shape of the 2026-11-01 run must now be refused. Sixty
     # posts inside the last 24 h is over the daily cap; a post 5 minutes old
     # is inside the minimum gap; a post an hour old on an empty day is fine.
