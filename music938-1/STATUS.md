@@ -46,15 +46,42 @@ Shorts คือเครื่องยนต์เดียวที่ได�
   `_open_tiktok_edit`)
 
 ## 4. Rails อัตโนมัติ
-- **AX Music Daily Release** (cron 07:05 UTC): ล้มทุกครั้งเพราะ
-  `Timed out: Sandbox not available` (platform provisioning) — ไม่ใช่ bug ในโค้ด.
+### ต้นเหตุจริง (แก้แล้ว 2026-11-02)
+`Timed out: Sandbox not available` **ไม่ใช่** platform ล่มชั่วคราว แต่คือ
+**โควต้า sandbox วันละ 20 ใบเต็ม** — `status_detail.kind = daily_sandbox_limit`
+ข้อความคือ "Daily sandbox limit of 20 reached". สองตัวที่รันทุกชั่วโมง
+(WATCHDOG + YouTube Activity Monitor) กิน 24+24 = 48 ใบ/วัน จึงดูดโควต้าหมด
+ก่อน 07:05 ที่ Daily Release จะได้รัน → FAILED ทุกวัน และ Watchdog เองก็ SKIPPED
+(heal ตัวเองไม่ได้เพราะถูก skip ก่อนถึงโค้ด).
+
+**แก้:** ลดรอบตัวมอนิเตอร์จากทุกชั่วโมง → ทุก 6 ชม.
+- `AX Rail Watchdog` : `15 * * * *` → `0 */6 * * *`
+- `AX YouTube Activity Monitor` : `0 * * * *` → `30 */6 * * *`
+
+งบใหม่ ≈ 10/วัน (จาก 48) เหลือที่ให้ release + marketing. ยัง**ไม่**ยืนยันว่าโควต้า
+20/วันเป็น hard limit ของแพ็กเกจหรือปรับได้ — ถ้าปรับได้ ควรขอเพิ่มที่ /settings/quota.
+
+### สถานะแต่ละ rail
+- **AX Music Daily Release** (cron 07:05 UTC): ล้มเพราะโควต้าข้างบน. ยืนยันแล้วว่า
+  6 uploads ของวันนี้ (2026-11-02) ขึ้น YouTube จริง (ตั้งเวลา public ไว้ 15/19/23:06Z
+  + พรุ่งนี้) — คือ rail ทำงานได้ แต่ run ถูก mark FAILED.
   รันมือบน pod ได้ปกติ (`daily_release.py`) แต่ติด YouTube quota วันละ 6 uploads.
-- **AX Rail Watchdog** (ทุกชั่วโมง): ส่วนใหญ่ SKIPPED, ไม่มี failure.
-- **Crosspost**: TikTok 39/39 ✅ · Facebook Page 5/39 (เหลือ 34, cap 4/วัน).
+- **AX Rail Watchdog**: ถูก throttle แล้ว (ดูข้างบน).
+- **Crosspost**: TikTok 60/60 ✅ หมดคิวแล้ว · Facebook Page 6/60 (เหลือ 54, cap 4/วัน).
+  คิว TikTok จะหมดเพราะทุกเพลง (20 เพลง × 3 hook) ลงครบแล้ว — **ต้องมีเพลงใหม่**
+  เพื่อให้ TikTok มีของลงต่อ.
+- **Shopee affiliate**: 0 ออเดอร์/0 ค่าคอม (แดชบอร์ดติด CAPTCHA "Verify to Continue"
+  เมื่อ AR อ่าน — ต้องให้ K ปลดล็อกเอง).
 
 ## 5. ค้าง — ต้อง K
-1. **ล็อกอิน desktop ครั้งเดียว** (Google + TikTok) ที่
-   `https://work-1-<work-host>/vnc.html?autoconnect=1&resize=scale`
-   → แล้ว AR อัพเดท avatar YouTube + TikTok ให้เอง
-2. ยืนยันว่าต้องการกรอก **ที่อยู่/เบอร์/อีเมลจริง** ลงเพจหรือไม่ (สำหรับเช็คลิสต์ FB)
+1. **Shopee affiliate**: แดชบอร์ดติด CAPTCHA "Verify to Continue" (ลากชิ้นส่วนปริศนา)
+   — AR อ่านยอดออเดอร์/ค่าคอมไม่ได้จนกว่าจะปลดล็อก. K ปลดล็อกที่เบราว์เซอร์ desktop
+   (`https://work-1-<work-host>/vnc.html?autoconnect=1&resize=scale`) แล้วแจ้ง AR.
+2. **เพิ่มโควต้า sandbox ต่อวัน** (ถ้าปรับได้) ที่ /settings/quota — ตอนนี้ 20/วัน
+   จำกัดจำนวน automation ที่รันได้จริง. ถ้าขอเพิ่มได้ จะคืนรอบมอนิเตอร์ให้ถี่ขึ้น.
+3. **เพลงใหม่** เพื่อให้ TikTok มีของลงต่อ (คิว 20 เพลงหมดแล้ว). ถ้า K มีเพลง/เนื้อร้องใหม่
+   AR render short + release ต่อได้.
+4. **ล็อกอิน Google บน desktop** ถ้าจะใช้ path ที่ไม่ใช่ API (Studio UI) — ตอนนี้
+   cookie ใน vault ยังไม่พอ (Studio เด้ง signin). YouTube publish ใช้ API rail ไม่ต้องพึ่ง.
+5. ยืนยันว่าต้องการกรอก **ที่อยู่/เบอร์/อีเมลจริง** ลงเพจหรือไม่ (สำหรับเช็คลิสต์ FB)
    — ยังไม่กรอกเพื่อเลี่ยงการใส่ข้อมูลเท็จ (เสี่ยงโดนระงับ)

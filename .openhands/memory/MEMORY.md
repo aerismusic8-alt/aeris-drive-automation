@@ -358,6 +358,20 @@ true-instrumental karaoke mix, cover art, a 1920x1080 word-synced video.
   {"enabled":true}`. Even a plugin-spec `script` runner needs provisioning — a
   dispatch sat at phase `Starting automation` for 25+ minutes. So an automation
   cannot reliably watch automations; only GitHub Actions runs outside this.
+- **`Timed out: Sandbox not available` is usually the DAILY SANDBOX QUOTA (20/day),
+  not a platform outage.** Read `run.status_detail`: `kind == daily_sandbox_limit`,
+  detail "Daily sandbox limit of 20 reached". Found 2026-11-02: two hourly
+  automations (Watchdog `15 * * * *`, YouTube Activity Monitor `0 * * * *`) asked
+  for 24+24 = 48 provisions/day, drained the quota by morning, and made the 07:05Z
+  Daily Release FAIL every day (and Watchdog SKIP before its heal code, so it could
+  not self-heal). Fix = thin the hourly ones: `PATCH /api/automation/v1/{id}
+  {"trigger":{"type":"cron","schedule":"0 */6 * * *","timezone":"UTC"}}` (watchdog
+  accepts a partial `trigger`). Budget now ~10/day. A SKIPPED run means the sandbox
+  never started, so the script inside did nothing.
+- **A FAILED automation run can still have done its work.** The music-release plugin
+  fires its COMPLETED/FAILED callback *after* the uploads; the platform then failed
+  verification with `environment_unavailable`. Cross-check the real result (YouTube
+  upload list, git) before treating a run's status as the outcome.
 - **`plugins/ax-watchdog`** is the rail's watcher (hourly at :15, no LLM): heals
   auto-paused automations (never a manual pause), flags a stale channel, pushes to
   **ntfy.sh** (free, no auth, no key — K subscribes on a phone). It runs in both
