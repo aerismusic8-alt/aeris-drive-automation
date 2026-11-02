@@ -233,6 +233,13 @@ true-instrumental karaoke mix, cover art, a 1920x1080 word-synced video.
   `music938-1/tests/run.py`. The composer URL
   `business.facebook.com/latest/reels_composer/` is flaky ("เนื้อหานี้ไม่พร้อมใช้งาน")
   and FB Page views are intermittent — retry a load before believing an error.
+- **A 5th crosspost defect (2026-11-02): `post()` rebuilt the queue from disk.**
+  Same root as the `--rebuild-queue` note above, but in the posting path: `post()`
+  called `build_queue()`, so a fresh pod saw **6** pending instead of **78** and
+  the 32 Facebook Reels for songs 13-20 were unreachable (`--plan` printed
+  "nothing pending" while 34 sat in the committed queue). Fix: `load_queue()`
+  prefers `work/crosspost-queue.json`, builds only when the file is missing.
+  Any code path that needs the backlog must read the committed file, not the disk.
   Platform rules to avoid a ban: **`aeris938-2/COMPLIANCE.md`**.
 - **Editing the FB Page profile (done once, reusable):** the Page's own "⋯ profile
   settings" menu only appears in **admin mode** — click "สลับเลย" first. To change the
