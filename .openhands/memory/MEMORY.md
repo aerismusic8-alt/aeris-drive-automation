@@ -234,6 +234,17 @@ true-instrumental karaoke mix, cover art, a 1920x1080 word-synced video.
   `business.facebook.com/latest/reels_composer/` is flaky ("เนื้อหานี้ไม่พร้อมใช้งาน")
   and FB Page views are intermittent — retry a load before believing an error.
   Platform rules to avoid a ban: **`aeris938-2/COMPLIANCE.md`**.
+- **Editing the FB Page profile (done once, reusable):** the Page's own "⋯ profile
+  settings" menu only appears in **admin mode** — click "สลับเลย" first. To change the
+  bio: `/profile.php?id=<page>&sk=about` → click `aria-label="แก้ไขคำอธิบายตัวเอง"`
+  → a **`<textarea>`** appears (not contenteditable) → set it with the native setter
+  `HTMLTextAreaElement.prototype.value.set` + dispatch `input` → click `บันทึก`. The
+  FB Page tab is heavy: a 40 s websocket times out, and some FB tabs are permanently
+  wedged — pick a tab that answers, use a 90 s timeout (`work/fb_publish.py`). Page
+  composer text lands only via CDP **`Input.insertText`** (execCommand insertText
+  does not take). **Pinning is not verifiable by the agent** — the pin click works but
+  neither www, mbasic nor m.facebook render a `ปักหมุดโดย`/`is_pinned` marker for an
+  automated client, so a human must confirm a pin.
 - **The 3 non-YouTube surfaces are now measured** (`00221355`):
   `scripts/social_stats.py` drives the desktop to the FB/TikTok/Shopee
   dashboards → `work/social-report.md` (whitelisted), run by `desk_daily.py`
