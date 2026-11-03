@@ -48,6 +48,10 @@ Everything must be 100% free. A paid API, subscription or credit pack is out, no
 a trade-off. Free routes only: login-only web apps driven through headful
 Chromium (Gemini web, Flow Music), open APIs, self-hosted tooling.
 **The agent must never type a password** — drive the browser K has signed into.
+**Planner agents (2026-11-03):** ChatGPT (Free) and Gemini (Free) are both signed
+in on the desktop. Ask them over CDP — `ops/chatgpt_ask.py "..."`,
+`ops/gemini_ask.py "..."`, or `ops/ask_agents.py "..."` to compare both at once.
+No API key, no cost. (Claude/Copilot/Perplexity/DeepSeek are NOT signed in.)
 K's related rules: **AUDIO FIRST** (retention is the sound, not the picture);
 delete the duplicate and the worthless, never archive; K reviews a channel's first
 work; never rename a channel without K's approval.
