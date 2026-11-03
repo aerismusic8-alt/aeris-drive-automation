@@ -245,6 +245,19 @@ true-instrumental karaoke mix, cover art, a 1920x1080 word-synced video.
   prefers `work/crosspost-queue.json`, builds only when the file is missing.
   Any code path that needs the backlog must read the committed file, not the disk.
   Platform rules to avoid a ban: **`aeris938-2/COMPLIANCE.md`**.
+- **Growing the FB Page (K's rule, 2026-11-03): a Page needs no friend list.**
+  Follow suggested pages (they often follow back) — `aeris938-2/scripts/outreach.py`,
+  wired as `grow.py facebook --follow`. The invite tool
+  (`facebook.com/<PAGE_ID>/follower_invite/`) is *friends-of-the-personal-profile
+  only*, so it is empty on a fresh account; it also needs the **personal** profile
+  as the acting identity. **The trap:** a follow lands on the Page only when the
+  Page is the acting identity *before* the follow grid loads — the grid has no
+  "สลับเลย" switch, so switching after navigating is a silent no-op (personal
+  0→6, Page unchanged). Switch on the Page profile first, prove it via the
+  "จัดการเพจ" header, then navigate. Verified: Page "กำลังติดตาม" 1→30 in a
+  session. Scheduled twice daily by the `plugins/ax-growth` automation
+  (`c2cdcfd7-fb4f-44a9-96b1-40ab35534ce8`); it could not be a GitHub workflow
+  because no token here carries `workflow` scope.
 - **Editing the FB Page profile (done once, reusable):** the Page's own "⋯ profile
   settings" menu only appears in **admin mode** — click "สลับเลย" first. To change the
   bio: `/profile.php?id=<page>&sk=about` → click `aria-label="แก้ไขคำอธิบายตัวเอง"`
