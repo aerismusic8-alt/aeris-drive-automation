@@ -168,6 +168,14 @@ def restore_login() -> None:
     vault = _vault_path()
     if not vault.exists():
         return
+    # The KV store that holds the snapshot is authenticated with OPENHANDS_API_KEY.
+    # Without it the restore fails with a bare 401 that reads like "no saved
+    # session", so a lost login looked like a fresh account. Say which it is.
+    if not os.environ.get("OPENHANDS_API_KEY"):
+        print("[=] login restore skipped: OPENHANDS_API_KEY is not set, so the "
+              "saved session cannot be read (the cookies are in the KV store, "
+              "not on disk).")
+        return
     try:
         r = sh([sys.executable, str(vault), "restore"], timeout=120)
     except Exception as exc:  # noqa: BLE001
@@ -179,7 +187,7 @@ def restore_login() -> None:
     elif "no saved session" in (r.stderr or ""):
         print("[=] no saved login yet (sign in once, then: login_vault.py save)")
     else:
-        print("[=] login restore skipped:", (r.stderr or "").strip()[:120])
+        print("[=] login restore FAILED:", (r.stderr or r.stdout or "").strip()[:300])
 
 
 def operator_url() -> str | None:
