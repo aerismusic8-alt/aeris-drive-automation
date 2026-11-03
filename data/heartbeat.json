@@ -1,0 +1,45 @@
+{
+  "checked_at": "2026-11-03T10:03:43.668135+00:00",
+  "rails": {
+    "AX Rail Watchdog": {
+      "last_at": "2026-11-03T06:48:32Z",
+      "last_conclusion": "success",
+      "fresh": true,
+      "max_age_h": 14,
+      "last_scheduled_at": "2026-11-03T06:48:32Z"
+    },
+    "AX Music Crosspost (FB Reels + TikTok)": {
+      "last_at": "2026-11-03T08:55:13Z",
+      "last_conclusion": "success",
+      "fresh": true,
+      "max_age_h": 16,
+      "last_scheduled_at": "2026-11-03T08:55:13Z"
+    },
+    "AX Roblox Live State": {
+      "last_at": "2026-11-03T02:01:44Z",
+      "last_conclusion": "success",
+      "fresh": true,
+      "max_age_h": 16,
+      "last_scheduled_at": "2026-11-03T02:01:44Z"
+    },
+    "AX Music Daily Release (Actions fallback)": {
+      "last_at": "2026-11-03T09:57:32Z",
+      "last_conclusion": "success",
+      "fresh": true,
+      "max_age_h": 40,
+      "last_scheduled_at": null
+    },
+    "AX Music Daily Dashboard": {
+      "last_at": "2026-11-03T02:18:27Z",
+      "last_conclusion": "success",
+      "fresh": true,
+      "max_age_h": 40,
+      "last_scheduled_at": null
+    }
+  },
+  "red_last_24h": [
+    "AX Music Daily Dashboard @ 2026-11-02T17:15:38Z"
+  ],
+  "alerts": [],
+  "ok": true
+}
