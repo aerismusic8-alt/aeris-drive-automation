@@ -19,7 +19,11 @@ on:
     # 08:30 UTC: the release job spends most of the day's 10,000 Data API units
     # at 07:00, and the quota resets at 08:00 Pacific-midnight (07:00 UTC in
     # winter). Running before that reset made channels.list return quotaExceeded.
-    - cron: '30 8 * * *'
+    #
+    # Three ticks so a single dropped GitHub tick does not lose the day. The job
+    # is idempotent: it commits only when a number changed and re-pushes the same
+    # headline, so a repeat run costs one API read and nothing else.
+    - cron: '30 8,14,20 * * *'
   workflow_dispatch:
 
 permissions:

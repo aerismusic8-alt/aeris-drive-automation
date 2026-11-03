@@ -20,10 +20,14 @@ name: AX Music Daily Release (Actions fallback)
 on:
   schedule:
     # 07:00 UTC is when the YouTube Data API quota resets for the Pacific day, so
-    # the 6 daily uploads fit. GitHub may delay a scheduled run under load; the
-    # driver returns cleanly ("quota already spent") if it runs late, so a delay
-    # is a skipped day, never a failed or duplicated one.
-    - cron: '0 7 * * *'
+    # the 6 daily uploads fit.
+    #
+    # Three ticks, not one. GitHub drops a scheduled run when the queue is busy
+    # and a once-a-day cron gets a single chance, so one dropped tick lost the
+    # whole day — the 07:00 run did not fire for the first two days of this job's
+    # life. Later ticks are free: `release.py --next` returns 3 ("quota already
+    # spent") once the batch is up, so a retry can never double-upload.
+    - cron: '0 7,13,19 * * *'
   workflow_dispatch:
     inputs:
       count:
