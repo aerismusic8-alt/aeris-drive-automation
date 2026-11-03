@@ -409,13 +409,13 @@ def plan(days: int, shorts: bool = False, spread: float = 0) -> list[dict]:
                           "variant": v.stem})
         if shorts:
             continue
-        # The main release first, then the sing-along version.
+        # The main release only. The sing-along (karaoke) variant is retired
+        # (K, 2026-11-03): its lyric sweep was estimated, not measured, and
+        # drifted off the sung line, so it was ordered dropped. Already-live
+        # karaoke videos stay up; nothing new is planned.
         if has_video(slug, "song"):
             items.append({"slug": slug, "kind": "song",
                           "video": KARAOKE / f"song-{slug}.mp4", "variant": ""})
-        if has_video(slug, "karaoke"):
-            items.append({"slug": slug, "kind": "karaoke",
-                          "video": KARAOKE / f"karaoke-{slug}.mp4", "variant": ""})
     todo = [i for i in items if (i["slug"], i["kind"], i.get("variant", "")) not in done]
     start = datetime.now(timezone.utc)
     for i, item in enumerate(todo):

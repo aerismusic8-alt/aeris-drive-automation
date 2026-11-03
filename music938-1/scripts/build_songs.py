@@ -119,22 +119,23 @@ def karaoke_video(slug: str) -> bool:
 
 
 def render_video(slug: str) -> None:
-    """Burn the karaoke and song videos after the audio exists.
+    """Burn the release video (full mix) after the audio exists.
 
-    Two videos per song, from one generation: the karaoke mix is the sing-along
-    version, the song mix is the main release. A failure here is not fatal to
-    the song: the mp3s are the deliverable and a video can be re-rendered later
-    from what is already on disk.
+    One video per song. The karaoke variant and the lyric sweep are retired (K,
+    2026-11-03): Flow Music's compose path carries no timing markers, so the
+    per-line sweep was estimated and drifted off the sung line. The video now
+    carries the cover art, the title card and the watermark only.
+
+    A failure here is not fatal to the song: the mp3s are the deliverable and a
+    video can be re-rendered later from what is already on disk.
     """
-    mixes = [m for m in ("karaoke", "song")
-             if not (ROOT / "library" / "karaoke" / f"{m}-{slug}.mp4").exists()]
-    for mix in mixes:
+    if not (ROOT / "library" / "karaoke" / f"song-{slug}.mp4").exists():
         proc = subprocess.run(
             [sys.executable, str(ROOT / "scripts" / "make_karaoke.py"), slug,
-             "--mix", mix],
+             "--mix", "song"],
             capture_output=True, text=True)
         if proc.returncode != 0:
-            log(f"[warn] {slug}: {mix} video failed: {(proc.stderr or '')[-200:]}")
+            log(f"[warn] {slug}: song video failed: {(proc.stderr or '')[-200:]}")
     # A Short is the discovery video: a zero-sub channel gets reach from Shorts
     # and almost none from long-form. Each song yields one Short per chorus.
     if not list((ROOT / "library" / "shorts").glob(f"short-song*-{slug}.mp4")):

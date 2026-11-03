@@ -108,8 +108,15 @@ def _pick_window(slug: str, duration: float) -> tuple[float, float]:
 
 
 def build_ass(slug: str, lines: list[str], meta: dict, start: float,
-              length: float, duration: float) -> str:
-    """Vertical captions: one big line at a time, karaoke sweep, Thai-safe."""
+              length: float, duration: float, captions: bool = False) -> str:
+    """Vertical overlay: the title card and a watermark, and optionally the
+    per-line lyric sweep.
+
+    `captions=False` (default) draws no lyric text. The sweep timing is
+    *estimated* from the song length, not measured, so it drifts off the sung
+    line; K ordered it dropped (2026-11-03). Pass `captions=True` for the old
+    behaviour.
+    """
     head = f"""[Script Info]
 ScriptType: v4.00+
 PlayResX: {W}
@@ -138,7 +145,7 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
         events.append(f"Dialogue: 0,{_ts(0.15)},{_ts(2.6)},Title,,0,0,0,,"
                       f"{{\\fad(250,300)}}{title}")
 
-    for item in full:
+    for item in (full if captions else []):
         if item["end"] <= start or item["start"] >= start + length:
             continue
         s = max(item["start"], start) - start
@@ -166,12 +173,15 @@ def _ass_escape(p: Path) -> str:
 
 
 def render(slug: str, *, mix: str = "song", out_dir: Path | None = None,
-           all_hooks: bool = False) -> list[Path]:
+           all_hooks: bool = False, captions: bool = False) -> list[Path]:
     """Render one Short per chorus. Returns the files written.
 
     `all_hooks=True` writes every chorus as its own Short (hook-1, hook-2, ...).
     The default writes just the first, so a caller that wants one file per song
     still gets exactly that.
+
+    `captions=False` (default) draws no lyric sweep; the estimated timing drifts
+    off the sung line and K ordered it dropped (2026-11-03).
     """
     audio = ROOT / "library" / "songs" / f"{mix}-{slug}.mp3"
     cover = ROOT / "library" / "covers" / f"cover-{slug}.jpg"
@@ -224,7 +234,8 @@ def render(slug: str, *, mix: str = "song", out_dir: Path | None = None,
     for i, (start, length) in enumerate(windows, 1):
         suffix = f"-h{i}" if multi else ""
         ass_path = work / f"short-{mix}{suffix}.ass"
-        ass_path.write_text(build_ass(slug, lines, meta, start, length, duration),
+        ass_path.write_text(build_ass(slug, lines, meta, start, length, duration,
+                                      captions=captions),
                             encoding="utf-8")
         out = out_dir / f"short-{mix}{suffix}-{slug}.mp4"
         args = ["-loop", "1", "-i", str(cover),
@@ -266,6 +277,8 @@ def main() -> int:
     ap.add_argument("--mix", default="song", choices=["song", "karaoke"])
     ap.add_argument("--hooks", action="store_true",
                     help="one Short per chorus, not just the first")
+    ap.add_argument("--captions", action="store_true",
+                    help="burn the estimated lyric sweep (retired: it drifts)")
     args = ap.parse_args()
 
     if args.all:
@@ -278,7 +291,8 @@ def main() -> int:
     rc = 0
     for slug in slugs:
         try:
-            outs = render(slug, mix=args.mix, all_hooks=args.hooks)
+            outs = render(slug, mix=args.mix, all_hooks=args.hooks,
+                          captions=args.captions)
             for out in outs:
                 print(f"{slug}: {out.relative_to(ROOT)} ({_duration(out):.1f}s)")
         except Exception as exc:

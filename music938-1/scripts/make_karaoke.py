@@ -198,13 +198,19 @@ def ass_filter(ass_path: Path) -> str:
 
 
 def render(slug: str, *, preview: float | None = None,
-           timing: Path | None = None, mix: str = "karaoke") -> Path:
+           timing: Path | None = None, mix: str = "song",
+           captions: bool = False) -> Path:
     """Render one video for a song.
 
-    `mix="karaoke"` uses the backing-only instrumental (the sing-along version).
-    `mix="song"` uses the full mix with the vocal (the main release). Both share
-    the same subtitles, cover and motion, so a song yields two catalogue videos
-    for one generation.
+    `mix="song"` uses the full mix with the vocal (the release). `mix="karaoke"`
+    uses the backing-only instrumental; the karaoke variant is retired (K,
+    2026-11-03) and is kept only so an old call cannot crash.
+
+    `captions=False` (default) burns no lyric text. The per-line sweep is
+    *estimated*, not measured — Flow Music hands the compose path no timing
+    markers — so it drifted out of sync with the sung line and K ordered the
+    captions and the karaoke dropped. Only the title card and the watermark are
+    drawn. Pass `captions=True` to restore the old behaviour.
     """
     audio = ROOT / "library" / "songs" / f"{mix}-{slug}.mp3"
     cover = ROOT / "library" / "covers" / f"cover-{slug}.jpg"
@@ -214,7 +220,9 @@ def render(slug: str, *, preview: float | None = None,
 
     meta, lines = load_lyrics(slug)
     duration = _duration(audio)
-    if timing and timing.exists():
+    if not captions:
+        timed: list[dict] = []
+    elif timing and timing.exists():
         markers = json.loads(timing.read_text(encoding="utf-8")).get("markers") or []
         timed = _from_markers(lines, markers) if markers else estimate(lines, duration)
     else:
@@ -250,12 +258,15 @@ def main() -> int:
                     help="render only the first N seconds")
     ap.add_argument("--timing", type=Path, default=None,
                     help="JSON with real markers from the clip's lyrics_timing")
-    ap.add_argument("--mix", choices=("karaoke", "song", "both"), default="karaoke",
-                    help="which mix to burn; 'both' renders the karaoke and the song")
+    ap.add_argument("--mix", choices=("karaoke", "song", "both"), default="song",
+                    help="which mix to burn; the karaoke variant is retired")
+    ap.add_argument("--captions", action="store_true",
+                    help="burn the estimated lyric sweep (retired: it drifts)")
     args = ap.parse_args()
     mixes = ("karaoke", "song") if args.mix == "both" else (args.mix,)
     for mix in mixes:
-        print(render(args.slug, preview=args.preview, timing=args.timing, mix=mix))
+        print(render(args.slug, preview=args.preview, timing=args.timing, mix=mix,
+                     captions=args.captions))
     return 0
 
 
