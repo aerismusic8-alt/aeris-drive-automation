@@ -676,6 +676,23 @@ def test_crosspost_engine() -> None:
           "กำลังประมวลผลคลิป Reels" in body)
 
 
+def test_browser_ci_storage_state() -> None:
+    """`browser.connect` must offer a CI mode that needs no cloud desktop.
+
+    Facebook/TikTok posting used to require a build pod because the only signed-in
+    browser was the cloud desktop. The Actions rail restores a saved session, so
+    `connect` has to launch its own Chromium when `AERIS_STORAGE_STATE_B64` is
+    set — otherwise the cron has nothing to attach to.
+    """
+    section("browser: CI storage-state mode")
+    src = (ROOT.parent / "aeris938-1" / "scripts" / "browser.py").read_text()
+    connect = src.split("def connect(", 1)[1].split("\ndef ", 1)[0]
+    check("reads AERIS_STORAGE_STATE_B64", "AERIS_STORAGE_STATE_B64" in connect)
+    check("launches its own Chromium for CI", "chromium.launch(" in connect)
+    check("still falls back to the cloud desktop over CDP",
+          "connect_over_cdp" in connect)
+
+
 def test_crosspost_uses_committed_queue() -> None:
     """`post` must act on the committed queue, not a fresh disk build.
 
@@ -1231,6 +1248,7 @@ def main() -> int:
     test_automation_secret_fallback()
     test_karaoke_loudness_contract()
     test_crosspost_engine()
+    test_browser_ci_storage_state()
     test_crosspost_uses_committed_queue()
     test_crosspost_pace_and_captions()
     test_social_stats_parser()

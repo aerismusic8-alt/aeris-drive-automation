@@ -1,0 +1,110 @@
+name: AX Music Crosspost (FB Reels + TikTok)
+
+# The one rail that used to need a person: posting Shorts to the Facebook Page
+# and TikTok needs a signed-in browser, and the cloud desktop that holds that
+# login only exists inside a build pod. So the backlog only moved when a pod
+# happened to be up (34 Reels sat unposted). This runs the same rail on GitHub
+# Actions — always on, free for a public repo, no sandbox quota — restoring a
+# saved session from a secret.
+#
+# The session is a credential: `AERIS_STORAGE_STATE_B64` (see
+# `ops/save_storage_state.py`). Refresh it when it dies by signing in on the
+# cloud desktop and re-running the exporter; a dead session makes the run fail
+# loudly and push a phone alert, so it never fails silently.
+#
+# Pacing lives in `crosspost.py` (20-min gap, 4 posts/platform/day). A run posts
+# at most one per platform because the second is inside the gap; run every 2
+# hours and the daily cap is what limits throughput, not the schedule.
+
+on:
+  schedule:
+    - cron: '0 */2 * * *'
+  workflow_dispatch:
+    inputs:
+      platform:
+        description: facebook | tiktok | all
+        default: all
+      limit:
+        description: max posts per platform this run
+        default: '1'
+
+permissions:
+  contents: write
+
+concurrency:
+  group: ax-music-crosspost
+  cancel-in-progress: false
+
+jobs:
+  crosspost:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install Playwright + Chromium
+        run: |
+          set -euo pipefail
+          pip install --quiet playwright
+          python3 -m playwright install --with-deps chromium
+
+      - name: Is the saved session still signed in?
+        env:
+          AERIS_STORAGE_STATE_B64: ${{ secrets.AERIS_STORAGE_STATE_B64 }}
+        run: |
+          set -euo pipefail
+          if [ -z "${AERIS_STORAGE_STATE_B64:-}" ]; then
+            echo "::error::AERIS_STORAGE_STATE_B64 is not set; run ops/save_storage_state.py and gh secret set"
+            exit 1
+          fi
+          python3 music938-1/scripts/crosspost.py --probe
+
+      - name: Post the pending Shorts
+        env:
+          AERIS_STORAGE_STATE_B64: ${{ secrets.AERIS_STORAGE_STATE_B64 }}
+          # The job token, as in ax-music-release.yml: fetch_media reads the
+          # public media release with it. No personal PAT is stored.
+          AX_GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          PLAT="${{ github.event.inputs.platform || 'all' }}"
+          LIMIT="${{ github.event.inputs.limit || '1' }}"
+          python3 music938-1/scripts/crosspost.py --status
+          for p in facebook tiktok; do
+            if [ "$PLAT" = "all" ] || [ "$PLAT" = "$p" ]; then
+              echo "--- $p ---"
+              python3 music938-1/scripts/crosspost.py --post --platform "$p" --limit "$LIMIT" \
+                || echo "$p: nothing posted this run (cadence hold or signed out)"
+            fi
+          done
+
+      - name: Commit the crosspost state
+        run: |
+          set -euo pipefail
+          git config user.name  "ax-music-crosspost"
+          git config user.email "ax-music-crosspost@users.noreply.github.com"
+          git add music938-1/work/crosspost-state.json
+          if git diff --cached --quiet; then
+            echo "no change to record"
+            exit 0
+          fi
+          git commit -m "data(music): crosspost state $(date -u +%Y-%m-%dT%H:%MZ)"
+          git pull --rebase --autostash origin "${GITHUB_REF_NAME}"
+          git push
+
+      - name: Notify K on ntfy
+        if: failure()
+        env:
+          TOPIC: ${{ vars.AX_NTFY_TOPIC }}
+        run: |
+          set -euo pipefail
+          [ -n "${TOPIC:-}" ] || { echo "no AX_NTFY_TOPIC set"; exit 0; }
+          curl -sS --max-time 20 -H "Title: AERIS crosspost needs attention" \
+            -H "Tags: warning" -H "Priority: high" \
+            -d "Facebook/TikTok posting failed — the saved session may be dead. Sign in on the cloud desktop and re-run ops/save_storage_state.py." \
+            "https://ntfy.sh/${TOPIC}" || echo "ntfy push failed (non-fatal)"

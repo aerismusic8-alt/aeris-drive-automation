@@ -71,7 +71,41 @@ def login_instructions(app: str) -> str:
 
 
 def connect(playwright):
-    """Attach to the running cloud-desktop Chromium, or fail with a clear reason."""
+    """Attach to a browser: the cloud desktop over CDP, or a fresh one in CI.
+
+    Two modes, chosen by the environment:
+
+    * **Cloud desktop (default).** Attach to the running Chromium over CDP. This
+      is the interactive route; the operator has signed in once via noVNC.
+    * **CI (`AERIS_STORAGE_STATE_B64` or `AERIS_STORAGE_STATE`).** GitHub Actions
+      has no desktop and no pod, so it launches its own headless Chromium and
+      loads a saved session (see `ops/save_storage_state.py`). This is what makes
+      Facebook/TikTok posting runnable on a schedule without a build pod.
+    """
+    import base64
+    import tempfile
+    from pathlib import Path
+
+    b64 = os.environ.get("AERIS_STORAGE_STATE_B64")
+    path = os.environ.get("AERIS_STORAGE_STATE")
+    if b64 and not path:
+        path = str(Path(tempfile.gettempdir()) / "aeris-storage-state.json")
+    if b64 or (path and os.path.exists(path)):
+        if b64 and not os.path.exists(path):
+            Path(path).parent.mkdir(parents=True, exist_ok=True)
+            Path(path).write_bytes(base64.b64decode(b64))
+        launch_kwargs = dict(
+            headless=True, args=["--no-sandbox", "--disable-dev-shm-usage"])
+        # CI installs Playwright's own Chromium; a pod without it can point at
+        # the system build so the same path is testable outside Actions.
+        exe = os.environ.get("AERIS_CHROMIUM")
+        if exe:
+            launch_kwargs["executable_path"] = exe
+        browser = playwright.chromium.launch(**launch_kwargs)
+        context = browser.new_context(
+            storage_state=path, locale="th-TH",
+            viewport={"width": 1280, "height": 900})
+        return browser, context
     if not cdp_alive():
         raise RuntimeError(
             "no cloud desktop found on " + CDP_DEFAULT +
