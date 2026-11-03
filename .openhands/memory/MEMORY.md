@@ -598,3 +598,20 @@ true-instrumental karaoke mix, cover art, a 1920x1080 word-synced video.
   longer plans the sing-along upload; one video per song. `--captions` restores.
 - **Rendering new songs needs K to sign into Flow Music** on the cloud desktop
   (session expires); then `build_songs.py --only <slugs> --force`.
+
+## Flow Music render limits (2026-11-03)
+- **Free tier runs out of credits.** After ~7 songs in a session the compose page
+  shows "You're out of credits. Upgrade to continue using Flow Music." and the
+  Generate button becomes **disabled** → `flow_song.py` dies with
+  `Locator.click: Timeout ... element is not enabled`. That is a quota, not a bug.
+  Rule #1 = never pay → render 3-4 per window and wait for the free reset.
+- **The desktop Chromium dies on its own; the X server does not.** `bootstrap.py
+  --status` then shows `DOWN chromium` / CDP refused. `bootstrap.py` (no flags)
+  restarts it and re-restores cookies. A dead Chromium also surfaces as
+  `BrowserContext.new_page: Protocol error (Target.createTarget)`.
+- **Flow can lose its login while Google still has cookies.** The landing page
+  ("Log in / Sign up") returns instead of the studio; the Google account chooser
+  then shows the accounts as *Signed out*. Only the operator can sign back in
+  (the agent must not type a password). Probe with
+  `music938-1/scripts/render_remaining.py --check` → exit 0 ok / 2 out of credits
+  / 3 logged out.
