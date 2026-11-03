@@ -868,6 +868,32 @@ def test_social_stats_parser() -> None:
     })
     check("unreadable surfaces render UNKNOWN", md.count("UNKNOWN") >= 4)
     check("the 100-follower lock is called out", "100 ผู้ติดตาม" in md)
+
+    # Shopee's dashboard answers a fresh automated browser with an anti-bot
+    # captcha, which is neither the login page nor the dashboard. It must read
+    # as unreachable so the caller falls back to a real dated number, instead
+    # of a "reachable" page whose every metric is UNKNOWN.
+    class _FakeDesk:
+        def __init__(self, url, text):
+            self._url, self._text = url, text
+        def goto(self, *_a, **_k):
+            pass
+        def js(self, _expr):
+            return self._url
+        def text(self):
+            return self._text
+
+    cap = social_stats.measure_shopee(_FakeDesk(
+        "https://shopee.co.th/verify/captcha?x=1",
+        "Skip to main content\nNeed Help?\nVerify to Continue\n"
+        "Drag the missing piece to restore the puzzle\nVerify"))
+    check("a captcha page is not read as the dashboard",
+          cap["reachable"] is False)
+    real = social_stats.measure_shopee(_FakeDesk(
+        "https://affiliate.shopee.co.th/dashboard",
+        "Dashboard\nKey Metrics\nClicks\n7\n0%\nOrders\n1\n0%\nEst. Commission(฿)\n2.5"))
+    check("a real dashboard is read, including clicks",
+          real["reachable"] and real["clicks"] == 7 and real["orders"] == 1)
     check("no metric is left blank", "|  |" not in md)
 
     # The daily pass must run it, or the strategy loop still cannot see these.

@@ -251,6 +251,13 @@ def measure_shopee(desk: Desk) -> dict:
     # interstitial as "not onboarded" — a false negative.
     if "/login" in url or "เข้าร่วมเลย" in t or "ลงทะเบียนและเป็น Shopee Affiliate" in t:
         return {"reachable": False, "note": "not signed in / not onboarded"}
+    # A fresh automated browser is served an anti-bot captcha ("Verify to
+    # Continue" / "Drag the missing piece"), not the dashboard. It is not the
+    # login page, so without this check it read as reachable with every metric
+    # UNKNOWN — which then defeated the last-known fallback. Treat it as
+    # unreachable so the caller can fall back to a real, dated reading.
+    if "/verify/" in url or "Verify to Continue" in t or "ยืนยันเพื่อดำเนินการต่อ" in t:
+        return {"reachable": False, "note": "anti-bot captcha (use the desktop)"}
     # Clicks lead orders by days-to-weeks (someone clicks a link long before they
     # buy), so on a channel with no orders yet the click count is the only number
     # that can move. Orders and commission are kept too — they are the goal — but
