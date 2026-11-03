@@ -96,3 +96,23 @@ python3 scripts/build_songs.py --only 01,04,07,14 --force
 
 K ล็อกอินครั้งเดียวที่ `https://work-1-<host>/vnc.html` แล้วรัน
 `python3 ops/login_vault.py save` เพื่อเก็บ session ไว้ข้าม pod
+
+## ทางออกฟรี: Turntable ให้เครดิต (พิสูจน์แล้ว)
+
+เมื่อโควต้าหมด Google เอกสารระบุทางเติมเครดิตฟรีทางเดียวคือ **Turntable** ใน Flow Music:
+ฟัง 2 ตัวอย่าง (SIDE A / SIDE B) แล้วเลือกอันที่ตรง prompt → ได้เครดิต AI
+
+**พิสูจน์ 2026-11-03:** โหวตจน 13/20 → `render_remaining.py --check` เปลี่ยนจาก
+`OUT OF CREDITS` เป็น `credits available` → เรนเดอร์ต่อได้ **ไม่เสียเงิน**
+
+กลไกที่ต้องรู้ (เสียเวลาหา):
+- เสียงเป็น **Web Audio** ไม่มี `<audio>` element — ต้องกดปุ่มลัดของวิดเจ็ต
+- ปุ่มลัด: `Space` เล่น/หยุด, `←` `→` เลือกฝั่ง, `Enter` โหวต, `X` ข้าม, `Z` ย้อน
+- **โหวตได้ต่อเมื่อฟังทั้งสองฝั่งครบเกต** (ฝั่งละ ~10 วิ) ป้ายจะบอก
+  "LISTEN TO X MORE SECONDS TO VOTE" แล้วเป็น "LISTEN TO B TO VOTE"
+- ต้อง **หยุดก่อนสลับฝั่ง**: `Space`(เล่น A) → รอ 13 วิ → `Space`(หยุด) → `→` → `Space`(เล่น B)
+  → รอ 13 วิ → `Space`(หยุด) → `Enter`(โหวต) ถ้าไม่หยุด ป้ายจะไม่ไปถึงเกต
+- ต้องคลิกในหน้าให้ widget มีโฟกัสก่อนกดคีย์
+
+สคริปต์: `scripts/turntable_vote.py --rounds N --listen 13`
+ลูปครบวงจร (เรนเดอร์+เติมเครดิตเอง): `scripts/render_loop.sh [per_round] [votes]`
