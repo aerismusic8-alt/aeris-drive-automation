@@ -424,6 +424,18 @@ true-instrumental karaoke mix, cover art, a 1920x1080 word-synced video.
   need K to sign in to YouTube once in noVNC; the token's `.../auth/youtube` scope
   is not enough (commentThreads/playlists = 403). Sandbox TikTok login works; FB
   session is rejected.
+- **After a pod recycle, run `ops/login_vault.py restore` BY HAND (2026-11-03).**
+  `bootstrap.py` prints `login restore skipped: cannot list automations: 401`
+  (that 401 is `ax_vault.ensure_anchor()`'s automation-list path, *not* a dead
+  vault) and the desktop comes up signed out. Running `restore` directly worked
+  and got **Google/YouTube + TikTok SIGNED IN**; FB still rejected, Flow Music
+  still logged out, YouTube Studio re-asks the password. So one desktop sign-in
+  (Google + `flowmusic.app`) unlocks the factory. `login_vault.py` now **watches
+  `.flowmusic.app`** (the song engine — it was not watched, so a fresh sign-in
+  would not have been restored) with a negative-marker probe, and
+  `save_storage_state.py` exports YouTube/Google/Flow too, so one export covers
+  every rail. After K signs in: `login_vault.py save` + `save_storage_state.py`
+  → `gh secret set AERIS_STORAGE_STATE_B64`.
 - **A provisioned sandbox is the fragile part, and it is what breaks.** "AX Music
   Daily Release" was **auto-paused by the platform** after 5 consecutive failures,
   all `Timed out: Sandbox not available` (`disabled_detail.source ==
