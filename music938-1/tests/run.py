@@ -1028,6 +1028,12 @@ def test_monetize_footer() -> None:
     check("backfills video descriptions", "videos?part=snippet" in apply_src)
     check("backfills playlists too", "patch_playlists" in apply_src)
     check("only edits the channel's own playlists", "channelId={CHANNEL_ID}" in apply_src)
+    check("backfill is quota-bounded", "--write-budget" in apply_src)
+    # The backfill must actually run on the rail, or the old videos never get
+    # the new link. It is invoked from daily_release.py (a plain .py file), not
+    # from the workflow — the write token has no `workflow` scope.
+    dl = (ROOT / "scripts" / "daily_release.py").read_text()
+    check("daily release runs the backfill", "apply_monetize.py" in dl)
 
     plug = (ROOT.parent / "plugins" / "music-release" / "scripts" / "main.py").read_text()
     body = plug.split("def main", 1)[1]

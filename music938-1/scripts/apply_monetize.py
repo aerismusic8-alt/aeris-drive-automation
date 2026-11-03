@@ -97,8 +97,25 @@ def patch_playlists(token: str, link: str, block: str, apply: bool) -> int:
     return changed
 
 
+def _arg_int(name: str, default: int = 0) -> int:
+    if name in sys.argv:
+        i = sys.argv.index(name)
+        if i + 1 < len(sys.argv):
+            try:
+                return int(sys.argv[i + 1])
+            except ValueError:
+                pass
+    return default
+
+
 def main() -> int:
     apply = "--apply" in sys.argv
+    # Cap how many videos this run rewrites. A write costs ~50 quota units, so
+    # on a day the release already spent the 10,000 the backfill must stop rather
+    # than turn every remaining PUT into a 403. `--limit` bounds the work,
+    # `--write-budget` bounds the writes (0 = no explicit bound).
+    limit = _arg_int("--limit", 0)
+    write_budget = _arg_int("--write-budget", 5)
     token = yt_auth.access_token(CHANNEL)
     ids = upload_ids(token)
     print(f"{len(ids)} uploads on the channel")
@@ -112,13 +129,17 @@ def main() -> int:
     if not block.strip():
         raise SystemExit("no monetization links configured — nothing to add")
 
-    changed = skipped = 0
+    changed = skipped = writes = 0
     for i in range(0, len(ids), 50):
+        if limit and changed >= limit:
+            break
         batch = ids[i:i + 50]
         _, v = yt_auth._request(
             "https://www.googleapis.com/youtube/v3/videos?part=snippet&id=" + ",".join(batch),
             headers={"Authorization": f"Bearer {token}"})
         for it in v["items"]:
+            if limit and changed >= limit:
+                break
             sn = it["snippet"]
             desc = sn.get("description", "")
             # `refresh` re-points an old homepage link at the current product
@@ -137,6 +158,9 @@ def main() -> int:
             changed += 1
             if not apply:
                 continue
+            if write_budget and writes >= write_budget:
+                print("    (write budget reached — re-run for the rest)")
+                continue
             backup.setdefault(it["id"], {"description": desc})
             sn["description"] = new
             code, resp = yt_auth._request(
@@ -148,6 +172,11 @@ def main() -> int:
                 method="PUT")
             if code != 200:
                 print(f"    FAILED {code}: {str(resp)[:160]}")
+                if code == 403:
+                    print("    quota exhausted — stopping")
+                    break
+            else:
+                writes += 1
 
     if apply:
         BACKUP.parent.mkdir(parents=True, exist_ok=True)

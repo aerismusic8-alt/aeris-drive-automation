@@ -164,6 +164,19 @@ def main() -> int:
         if not write_ledger(tok, after, "release: daily batch (automated)"):
             return 1
     refresh_site(root, tok)
+
+    # Upgrade the videos that went live before the per-surface product link
+    # existed: they carry the old homepage link at the bottom of the
+    # description, so their taps earn nothing. The release has usually spent
+    # most of the day's quota, so this is capped and best-effort — it stops on
+    # the first 403 and the rest wait for tomorrow. Never fails the run.
+    try:
+        subprocess.call(
+            [sys.executable, str(music / "scripts" / "apply_monetize.py"),
+             "--apply", "--limit", "4", "--write-budget", "4"],
+            env=env, cwd=music, timeout=300)
+    except Exception as exc:  # noqa: BLE001
+        print(f"backfill skipped: {exc}", file=sys.stderr)
     return 0
 
 
