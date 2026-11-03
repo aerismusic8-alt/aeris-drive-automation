@@ -615,3 +615,11 @@ true-instrumental karaoke mix, cover art, a 1920x1080 word-synced video.
   (the agent must not type a password). Probe with
   `music938-1/scripts/render_remaining.py --check` → exit 0 ok / 2 out of credits
   / 3 logged out.
+- **Flow Music free credits have a DAILY CAP (~70 earned via Turntable).** Voting
+  took the Turntable counter 13 -> 81/100 (~68 credits) and then stopped counting
+  (samples read "No lyrics", manual votes did nothing) even though the counter was
+  below 100. So plan for ~2 render windows/day, not unlimited. Verified
+  2026-11-03: 7 -> 15/20 songs in one day before the cap.
+- **The real minimum song length is 210s (`MIN_SECONDS` in flow_song.py).** A
+  create pass that lands at ~180s is rejected as `TOO_SHORT` and re-rolled on the
+  next run — it is not a failure to fix, just a retry.
