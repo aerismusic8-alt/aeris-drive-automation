@@ -115,10 +115,12 @@ four jobs above — nothing else appears here.
    (songs 13-20); the cap is 4/24h, so it drains over ~9 days. Fixed 2026-11-02:
    `post()` now reads the committed queue (`load_queue()`), so a fresh pod sees
    all 34 — before, it rebuilt from the empty gitignored `library/shorts/` and
-   saw none.
+   saw none. **Now posts itself:** the `AX Music Crosspost` Actions rail (below)
+   drains the backlog with no pod.
 3. **Grow TikTok (`@aeris.music4`).** Profile + Shorts. `grow.py tiktok`. Queue is
    **empty** (songs 01-20 all posted 2026-11-01); new content must be released
-   before there is anything to post again.
+   before there is anything to post again. The `AX Music Crosspost` rail picks it
+   up automatically once the release rail adds Shorts.
 4. **Shopee Affiliate revenue.** Onboarded 2026-11-02 (account `navintas`) —
    AR read the live dashboard and minted per-surface tracking links
    (Sub_id youtube/tiktok/facebook) in `music938-1/channel/monetization.json`.
@@ -167,6 +169,25 @@ The channel lives on four places, and every description carries all of them:
 `channel/monetization.json` is the single source for those links; the footer omits
 a blank one, so an account that is not ready yet never shows a dead link. All four
 are filled in. `desk_daily.py` is the one command that does the browser half.
+
+## The scheduled rails (what runs with no pod, no K)
+
+The 24/7 loop needs runners that do not depend on a build pod being alive. These
+run on GitHub Actions (always on, free for this public repo, no sandbox quota):
+
+| Workflow | Cadence | What it does |
+| --- | --- | --- |
+| `AX Music Daily Release` | daily 08:30 UTC | uploads the next song to YouTube |
+| `AX Music Crosspost` | every 2h | posts pending Shorts to FB Reels + TikTok |
+| `AX Music Daily Dashboard` | daily | reads the four surfaces, pushes numbers to K |
+| `AX Rail Watchdog` | 6-hourly | heals auto-paused automations, alerts on ntfy |
+| `AX Roblox Live State` | hourly | maturity label for the game |
+
+The crosspost rail is the one that closed the last manual gap. It restores a saved
+browser session from the `AERIS_STORAGE_STATE_B64` secret (exported with
+`ops/save_storage_state.py`) and posts without a desktop. If the session is ever
+rejected the run fails and pushes a phone alert; the fix is a fresh desktop
+sign-in plus re-export — that is the one thing that can need K.
 
 ## How AR reports
 
