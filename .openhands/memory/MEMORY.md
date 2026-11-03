@@ -569,3 +569,19 @@ true-instrumental karaoke mix, cover art, a 1920x1080 word-synced video.
 - **`bootstrap.py` restore needs `OPENHANDS_API_KEY`.** Without it the KV read
   401s and the message looked like "no saved login yet"; the fix now names the
   cause. Cookies ARE saved (255) and restore works once the key is exported.
+- **`workflow`-scope PAT obtained (2026-11-03).** K supplied the sudo email OTP;
+  the working sequence is: open `/settings/tokens/new?scopes=repo,workflow`, click
+  **Verify via email** exactly once (reveals `#sudo_email_otp`; a resend kills the
+  code), fill it, click the real **Verify** button — a JS `form.submit()` fails
+  ("Sudo authentication failed") because it drops `credential_type`. Token is
+  `repo, workflow` + admin. Copies: `/workspace/ax-tools/ar-identity/gh-workflow-token`
+  and KV `axsecrets:gh-workflow-token`. AR can now push `.github/workflows/*`.
+- **A once-a-day GitHub cron is unreliable; give it ≥3 ticks.** GitHub drops a
+  scheduled run under load and a single daily slot has one chance — the 07:00
+  release and 08:30 dashboard never fired. Fixed to `0 7,13,19` and `30 8,14,20`;
+  safe because both jobs are idempotent.
+- **The watchdog self-heal needed `actions: write` + an exported `GITHUB_TOKEN`.**
+  It had neither, so `heartbeat.py` could not read runs and dispatch would 403.
+- **Shopee revenue IS readable programmatically** via `social_stats.py` (JSON API
+  + session cookies); only the *dashboard page* is CAPTCHA-gated. Latest: 0 clicks,
+  0 orders, 0 commission.
