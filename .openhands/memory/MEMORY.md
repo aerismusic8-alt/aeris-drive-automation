@@ -544,3 +544,14 @@ true-instrumental karaoke mix, cover art, a 1920x1080 word-synced video.
 - Durable vault: `$AX_VAULT_BOOTSTRAP` → `ops/ax_vault.py`, KV key `axvault:readme`.
 - Missing `ops/` or a daily log? `MEMORY-ARCHIVE.md` + the vault are the sources.
 - Full detail: `MEMORY-ARCHIVE.md`, then the daily logs `2026-10-27.md` … `2026-10-31.md`.
+- **Workflow files are read/run-only (2026-11-03).** `AX_GH_TOKEN` (classic PAT,
+  `repo` scope) can `workflow_dispatch` and read runs, but **cannot create or
+  edit `.github/workflows/*`** — git push 403, Contents API 403/404 (a PUT of the
+  identical blob returns 200 but writes nothing). Ship reliability logic as plain
+  Python under `ops/`/`plugins/`; only K/PC1 can change a workflow. CI self-heal
+  also needs `actions: write`, which the workflows do not set.
+- **GitHub cron delivery is best-effort (2026-11-03).** Hourly crons here were
+  delivered ~17h apart; two daily crons (Daily Release, Daily Dashboard) **never
+  fired at all** (manual dispatch only) and looked green. Green ≠ schedule alive.
+  `ops/heartbeat.py`, folded into the hourly `ax-watchdog` plugin, now checks
+  recency + "cron never fired" and re-dispatches stale rails from the pod.
