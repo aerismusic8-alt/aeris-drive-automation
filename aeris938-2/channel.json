@@ -22,10 +22,10 @@
     "account": "navintas",
     "onboarded": true,
     "links": {
-      "youtube": "https://s.shopee.co.th/3g4vw3cev0",
-      "tiktok": "https://s.shopee.co.th/6fiXVb7Fbi",
-      "facebook": "https://s.shopee.co.th/7KyEIqRt6A"
+      "youtube": "https://s.shopee.co.th/8pn3G4alfI",
+      "tiktok": "https://s.shopee.co.th/60SrsstoP6",
+      "facebook": "https://s.shopee.co.th/2qVq75ACtW"
     },
-    "_comment": "Onboarded 2026-11-02 (AR read the live dashboard; account navintas). Per-surface s.shopee.co.th links minted via the Custom Link tool with Sub_id youtube/tiktok/facebook. th.shp.ee strips sub_id, so use these for attribution. Source of truth for the description footer is music938-1/channel/monetization.json."
+    "_comment": "Onboarded 2026-11-02 (AR read the live dashboard; account navintas). Per-surface s.shopee.co.th links re-minted 2026-11-03 via the Custom Link tool with Sub_id youtube/tiktok/facebook, targeting a music-lifestyle product search (หูฟังบลูทูธ) so a tap lands on something buyable rather than the homepage that gave 0 clicks. th.shp.ee strips sub_id, so use these for attribution. Source of truth for the description footer is music938-1/channel/monetization.json."
   }
 }
