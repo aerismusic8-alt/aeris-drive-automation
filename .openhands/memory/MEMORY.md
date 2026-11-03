@@ -585,3 +585,16 @@ true-instrumental karaoke mix, cover art, a 1920x1080 word-synced video.
 - **Shopee revenue IS readable programmatically** via `social_stats.py` (JSON API
   + session cookies); only the *dashboard page* is CAPTCHA-gated. Latest: 0 clicks,
   0 orders, 0 commission.
+- **Music lyrics are the bottleneck, not the music (K, 2026-11-03).** Flow Music
+  sings the exact line breaks it is handed, so hand-written lyrics with uneven
+  syllable counts make the melody fight the vocal. `music938-1/scripts/ai_lyrics.py`
+  writes lyrics with **Gemini web, signed out** (free, no login) under a strict
+  8-syllable/one-breath/A-B-A-B/repeating-hook brief. Gemini driving quirks:
+  `keyboard.insert_text` (not `type` — a multi-line prompt submits on line 1);
+  slice the answer after "Gemini said" (the prompt echoes the `[verse]` tags).
+- **Karaoke + lyric captions are RETIRED (K, 2026-11-03).** The sweep timing was
+  *estimated* (Flow's compose path has no `timing_markers`) and drifted off the
+  sung line. `make_karaoke`/`make_short` default to no captions; `release.py` no
+  longer plans the sing-along upload; one video per song. `--captions` restores.
+- **Rendering new songs needs K to sign into Flow Music** on the cloud desktop
+  (session expires); then `build_songs.py --only <slugs> --force`.
