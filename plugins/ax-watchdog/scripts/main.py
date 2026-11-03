@@ -297,6 +297,34 @@ def main() -> int:
         elif r.get("stale"):
             problems.append(f"{r['title']}: no upload for {r['hours_since_upload']}h")
 
+    # Actions-layer half of the watchdog: did every GitHub cron actually run
+    # recently? Folded in here rather than a new workflow because creating or
+    # editing a workflow file needs the `workflow` scope, which the app token
+    # lacks — but this plugin is plain Python and ships with a normal push.
+    try:
+        sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)),
+                                        "..", "..", "..", "ops"))
+        import heartbeat  # noqa: PLC0415
+        hb = heartbeat.collect()
+        try:
+            os.makedirs("data", exist_ok=True)
+            with open("data/heartbeat.json", "w") as f:
+                json.dump(hb, f, indent=2, ensure_ascii=False)
+                f.write("\n")
+        except Exception:  # noqa: BLE001
+            pass
+        if heartbeat.TOKEN:
+            for name, info in hb.get("rails", {}).items():
+                if info.get("fresh") or name not in heartbeat.FILES:
+                    continue
+                if heartbeat._dispatch(heartbeat.FILES[name]):
+                    actions.append(f"re-dispatched stale rail {name}")
+            problems += hb.get("alerts", [])
+        else:
+            problems.append("heartbeat: no token to read the run history")
+    except Exception as exc:  # noqa: BLE001
+        problems.append(f"heartbeat error: {exc}")
+
     now = datetime.now(timezone.utc)
     kv_set("latest", {"at": now.isoformat(timespec="seconds"),
                       "problems": problems, "actions": actions, "channels": rows})

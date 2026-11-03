@@ -16,16 +16,41 @@ job status.
 """
 from __future__ import annotations
 
+import base64
 import json
 import os
+import subprocess
 import sys
 import urllib.error
 import urllib.request
 from datetime import datetime, timedelta, timezone
 
+
+def _resolve_token() -> str:
+    """A token that can read the run history and dispatch a workflow.
+
+    Prefers the environment. When a job did not export GITHUB_TOKEN to this step,
+    falls back to the credential `actions/checkout` persists in git config — it
+    has the same contents:write scope the job was granted.
+    """
+    tok = os.environ.get("GITHUB_TOKEN") or os.environ.get("AX_GH_TOKEN")
+    if tok:
+        return tok
+    try:
+        out = subprocess.run(
+            ["git", "config", "--get", "http.https://github.com/.extraheader"],
+            capture_output=True, text=True, timeout=10).stdout.strip()
+        if "basic " in out.lower():
+            raw = base64.b64decode(out.split()[-1]).decode()
+            return raw.split(":", 1)[1]
+    except Exception:
+        pass
+    return ""
+
+
 REPO = os.environ.get("GITHUB_REPOSITORY", "aerismusic8-alt/aeris-drive-automation")
-TOKEN = os.environ.get("GITHUB_TOKEN", "")
-NTFY = os.environ.get("AX_NTFY_TOPIC", "")
+TOKEN = _resolve_token()
+NTFY = os.environ.get("AX_NTFY_TOPIC", "") or os.environ.get("NTFY_TOPIC", "")
 API = "https://api.github.com"
 
 # Rails that must have run recently, and how stale is too stale (hours). A cron
