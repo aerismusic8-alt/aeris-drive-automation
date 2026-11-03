@@ -25,12 +25,12 @@ import json
 import sys
 
 CDP = "http://127.0.0.1:9222"
-# Every login-only surface a CI rail has to drive, so one sign-in and one export
-# cover them all: Facebook + TikTok for posting, Shopee for the affiliate read,
-# YouTube/Google for Studio (comments, analytics) and Flow Music for song
-# generation. A surface missing here cannot be driven from Actions.
-WANT = ("facebook.com", "tiktok.com", "shopee.co.th", "youtube.com",
-        "google.com", "flowmusic.app")
+# The dashboards the CI rails drive: Facebook + TikTok for posting, Shopee for the
+# affiliate read. All login-only, so their cookies must be in the saved state.
+# YouTube/Google/Flow Music are intentionally NOT here: no Actions rail uses them
+# (song generation and Studio stay on the desktop), and adding them pushes the
+# base64 blob past GitHub's 48 KB secret limit.
+WANT = ("facebook.com", "tiktok.com", "shopee.co.th")
 
 
 def main() -> int:

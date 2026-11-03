@@ -101,7 +101,12 @@ def cmd_facebook(args) -> int:
     if args.post:
         return _run("crosspost.py", "--post", "--platform", "facebook",
                     "--limit", str(args.limit))
-    print("nothing to do: pass --queue, --profile or --post", file=sys.stderr)
+    if args.follow:
+        return _run("outreach.py", "--follow", "--limit", str(args.limit))
+    if args.invite:
+        return _run("outreach.py", "--invite")
+    print("nothing to do: pass --queue, --profile, --post, --follow or --invite",
+          file=sys.stderr)
     return 2
 
 
@@ -142,7 +147,7 @@ def main(argv=None) -> int:
     sub = ap.add_subparsers(dest="surface", required=True)
 
     def add(name, profile=False, post=False, queue=False, brand=False,
-            community=False, check=False):
+            community=False, check=False, follow=False, invite=False):
         p = sub.add_parser(name)
         if queue:
             p.add_argument("--queue", action="store_true",
@@ -151,7 +156,14 @@ def main(argv=None) -> int:
             p.add_argument("--profile", action="store_true", help="fill the profile")
         if post:
             p.add_argument("--post", action="store_true", help="post pending items")
-            p.add_argument("--limit", type=int, default=3)
+        if follow:
+            p.add_argument("--follow", action="store_true",
+                           help="follow suggested pages (grow the Page)")
+        if post or follow:
+            p.add_argument("--limit", type=int, default=5)
+        if invite:
+            p.add_argument("--invite", action="store_true",
+                           help="invite friends to like the Page")
         if brand:
             p.add_argument("--brand", action="store_true", help="banner + description")
         if community:
@@ -162,7 +174,7 @@ def main(argv=None) -> int:
         return p
 
     sub.add_parser("status")
-    add("facebook", profile=True, post=True, queue=True)
+    add("facebook", profile=True, post=True, queue=True, follow=True, invite=True)
     add("tiktok", profile=True, post=True, queue=True)
     add("youtube", brand=True, community=True)
     add("shopee", check=True)

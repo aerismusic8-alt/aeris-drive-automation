@@ -1362,6 +1362,66 @@ def test_fill_playlists() -> None:
           not ({k for k, *_ in fp.MOODS} & {k for k, *_ in fp.BUCKETS}))
 
 
+def test_outreach() -> None:
+    """The Facebook growth loop (follow + invite) must be safe and paced.
+
+    K's rule (2026-11-03): a Page grows by following suggested pages and
+    inviting friends, not by waiting for real friendships. The dangerous part is
+    *where* a follow lands: without switching to the Page identity first, every
+    follow goes to the personal profile and the Page stays at 0. These checks
+    pin the identity gate, the daily cap and the pace, without a browser.
+    """
+    section("outreach (follow suggested pages, invite friends)")
+    sys.path.insert(0, str(ROOT.parent / "aeris938-2" / "scripts"))
+    import outreach  # noqa: E402
+
+    src = (ROOT.parent / "aeris938-2" / "scripts" / "outreach.py").read_text()
+
+    # Identity: the switch must happen before the grid navigation, because the
+    # grid does not offer the switch and switching after it is a silent no-op.
+    check("switches to the Page identity before following",
+          "_switch_to_page(page)" in src and
+          src.index("_switch_to_page(page)") < src.index("page.goto(SUGGEST"))
+    check("proves the switch stuck (จัดการเพจ marker)",
+          "จัดการเพจ" in src and "_acting_as_page" in src)
+    check("aborts rather than following as the personal profile",
+          "would land on the personal profile" in src)
+    check("verifies the Page follow count rose",
+          "_page_following_count" in src and "did not rise" in src)
+
+    # Pace: a burst gets the Page rate-limited, so a cap and a gap are enforced.
+    check("has a daily cap", "DAILY_CAP" in src and outreach.DAILY_CAP <= 100)
+    check("has a minimum gap between actions", outreach.MIN_GAP_SECONDS >= 3)
+
+    # State: a page is never followed twice, and a re-run resumes.
+    import tempfile
+    from pathlib import Path as _P
+    with tempfile.TemporaryDirectory() as d:
+        outreach.STATE = _P(d) / "outreach-state.json"
+        st = {"followed": {}, "invited": {}}
+        outreach.save_state(st)
+        check("state round-trips", outreach.load_state() == st)
+        today = outreach._today()
+        st["followed"]["X"] = {"at": today + "T00:00:00Z"}
+        outreach.save_state(st)
+        check("counts today's follows", outreach._follows_today(outreach.load_state()) == 1)
+        st["followed"]["Y"] = {"at": "2000-01-01T00:00:00Z"}
+        check("ignores older follows in the daily count",
+              outreach._follows_today(st) == 1)
+
+    # The identity probe is a real predicate, not a constant.
+    class _FakePage:
+        def __init__(self, text):
+            self._t = text
+        def inner_text(self, _sel):
+            return self._t
+
+    check("acting-as-Page is true on the manage shell",
+          outreach._acting_as_page(_FakePage("จัดการเพจ AERIS Music")))
+    check("acting-as-Page is false on the personal shell",
+          not outreach._acting_as_page(_FakePage("Aeris-Ak Akath ผู้ติดตาม 0 คน")))
+
+
 def main() -> int:
     test_lyrics()
     test_tokenizer()
@@ -1397,6 +1457,7 @@ def main() -> int:
     test_desk_daily_orchestrator()
     test_profile_setup()
     test_login_vault()
+    test_outreach()
     test_operator_url()
     test_watchdog()
     test_fill_playlists()
