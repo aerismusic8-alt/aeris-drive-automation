@@ -57,8 +57,11 @@ PROFILE = Path(os.environ.get(
     "/workspace/ax-tools/aeris938-state/chrome-profile/Default"))
 # Leave room for the JSON envelope under the 65536-byte KV value cap.
 CHUNK_CHARS = ax_vault.CHUNK_CHARS
-# Surfaces worth reporting on, so `status` says something useful.
-WATCH = (".google.com", "accounts.google.com", ".facebook.com", ".tiktok.com")
+# Surfaces worth reporting on, so `status` says something useful. Flow Music is
+# the song engine: if its login is lost, no new song can be generated, so it is
+# watched and restored like the rest.
+WATCH = (".google.com", "accounts.google.com", ".facebook.com", ".tiktok.com",
+         ".flowmusic.app")
 # The cookie that actually proves a session on each surface. A restored cookie is
 # not a restored session: the site can still reject it, and reporting "ok" on
 # mere presence is how a dead session looked healthy for a whole session.
@@ -66,12 +69,17 @@ AUTH = {
     ".google.com": "SID",
     ".facebook.com": "c_user",
     ".tiktok.com": "sessionid",
+    ".flowmusic.app": "sb-sb-auth-token.0",
 }
-# Where to look, and what a signed-in page shows instead of a login form.
+# Where to look, and what a signed-in page shows instead of a login form. A
+# marker prefixed with "!" must be *absent* — Flow Music's landing page keeps a
+# "Log in" link, so "signed in" is proved by it being gone, not by a marker
+# appearing.
 PROBE = {
     ".google.com": ("https://myaccount.google.com/", "บัญชี", "Account"),
     ".facebook.com": ("https://www.facebook.com/", "ค้นหา", "Search"),
     ".tiktok.com": ("https://www.tiktok.com/foryou", "ค้นหา", "Search"),
+    ".flowmusic.app": ("https://www.flowmusic.app/", "!Log in"),
 }
 
 
@@ -234,7 +242,13 @@ def _signed_in(ctx, domain: str) -> bool:
         body = pg.inner_text("body")
         if "เข้าสู่ระบบ" in body[:200] and "รหัสผ่าน" in body:
             return False
-        return any(m in body for m in markers)
+        # "!marker" means the page is signed in only when the marker is gone
+        # (Flow Music keeps a "Log in" link on its landing page).
+        want = [m for m in markers if not m.startswith("!")]
+        gone = [m[1:] for m in markers if m.startswith("!")]
+        if any(m in body for m in gone):
+            return False
+        return any(m in body for m in want)
     except Exception:  # noqa: BLE001
         return False
     finally:

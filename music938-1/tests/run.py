@@ -1239,6 +1239,15 @@ def test_login_vault() -> None:
           all(d in login_vault.PROBE for d in (".facebook.com", ".google.com", ".tiktok.com")))
     check("restore verifies instead of trusting cookie presence",
           "def _signed_in" in src and "SESSION REJECTED" in src)
+    # Flow Music is the song engine — losing its login stops new songs, so it is
+    # watched and restored with the rest. Its landing page keeps a "Log in" link
+    # even when signed in, so the probe is a negative marker.
+    check("watches Flow Music", ".flowmusic.app" in login_vault.WATCH)
+    check("Flow Music auth cookie is named",
+          login_vault.AUTH.get(".flowmusic.app") == "sb-sb-auth-token.0")
+    check("a '!' marker means signed-in-only-when-absent",
+          login_vault.PROBE[".flowmusic.app"][1].startswith("!") and
+          "startswith(\"!\")" in src)
 
 
 def test_operator_url() -> None:
