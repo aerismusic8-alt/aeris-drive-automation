@@ -359,14 +359,25 @@ true-instrumental karaoke mix, cover art, a 1920x1080 word-synced video.
   (`PC1_MCP_TOKEN_2`, endpoint `desktop-rgk6jkb.tail8740ad.ts.net/mcp`, helper
   `/tmp/pc1.py FileWrite|FileRead|Shell`; Shell caps ~30 s and returns
   `'NoneType' ... strip` on empty output, so redirect to a file and FileRead).
-- **3 music rails live on GitHub Actions (free, no sandbox):**
+- **4 music rails live on GitHub Actions (free, no sandbox):**
   `ax-music-release` 07:00 UTC (6 clips/day, scheduled publishAt),
+  `ax-music-crosspost` every 2h (FB Reels + TikTok from the committed queue),
   `ax-rail-watchdog` every :15 (4 channels + ntfy),
   `ax-music-dashboard` **08:30 UTC** (PROGRESS.md + market-report + **ntfy push to
   K's phone**). Dashboard is at 08:30, not 07:20, because release spends ~9,600 of
   the 10,000 Data API units at 07:00 and the quota only resets at 07:00 UTC
   (Pacific midnight) — 07:20 gave `channels.list` = `quotaExceeded`. ntfy topic
   `ax-ar-aeris-9f3k7q` (repo var `AX_NTFY_TOPIC`).
+- **Posting to FB/TikTok no longer needs a pod (2026-11-03).** `ax-music-crosspost`
+  runs on Actions and restores a saved browser session from the
+  `AERIS_STORAGE_STATE_B64` secret; `browser.connect()` launches its own headless
+  Chromium when that var is set (fallback stays CDP). Export the state with
+  `ops/save_storage_state.py` from the cloud desktop (it reads CDP :9222 and keeps
+  only facebook.com/tiktok.com cookies); refresh it after a fresh desktop sign-in
+  with `gh secret set AERIS_STORAGE_STATE_B64`. `gh` here has `repo` scope, so
+  secret writes work. Verified run 41554234889: probe OK, FB 5/39, TikTok 39/39.
+  **Setting the secret is fine, but the workflow file itself still needs PC1** — a
+  plain `git push` of `.github/workflows/` is rejected for lack of `workflow` scope.
 - **PC1 cookie extraction is dead, and Studio/FB still need K's login.** Chrome 156
   uses app-bound (v20) cookie encryption that `CryptUnprotectData` cannot unwrap,
   and `Network.getAllCookies` over CDP returns no SID/LOGIN_INFO. Chrome M136+
