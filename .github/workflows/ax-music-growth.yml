@@ -1,0 +1,91 @@
+name: AX Music Growth (follow suggested pages)
+
+# Grow the Facebook Page's own following by following suggested pages, the free
+# loop K asked for (2026-11-03). It needs the signed-in Page, which lives in the
+# saved session secret, so it runs here on Actions rather than in a build pod:
+# always on, no sandbox quota, free for a public repo.
+#
+# Pacing lives in `aeris938-2/scripts/outreach.py` (daily cap 40, min gap 8s).
+# The schedule follows a small batch twice a day so a burst never gets the Page
+# rate-limited. State is committed so a page is never followed twice.
+
+on:
+  schedule:
+    - cron: '0 3 * * *'
+    - cron: '0 9 * * *'
+  workflow_dispatch:
+    inputs:
+      limit:
+        description: max pages to follow this run
+        default: '15'
+      plan:
+        description: 'plan only (true) or actually follow (false)'
+        default: 'false'
+
+permissions:
+  contents: write
+
+concurrency:
+  group: ax-music-growth
+  cancel-in-progress: false
+
+jobs:
+  grow:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install Playwright + Chromium
+        run: |
+          set -euo pipefail
+          pip install --quiet playwright
+          python3 -m playwright install --with-deps chromium
+
+      - name: Follow suggested pages
+        env:
+          AERIS_STORAGE_STATE_B64: ${{ secrets.AERIS_STORAGE_STATE_B64 }}
+          AX_GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          if [ -z "${AERIS_STORAGE_STATE_B64:-}" ]; then
+            echo "::error::AERIS_STORAGE_STATE_B64 is not set"
+            exit 1
+          fi
+          LIMIT="${{ github.event.inputs.limit || '15' }}"
+          PLAN="${{ github.event.inputs.plan || 'false' }}"
+          ARGS="--follow --limit ${LIMIT}"
+          if [ "$PLAN" = "true" ]; then ARGS="$ARGS --plan"; fi
+          python3 aeris938-2/scripts/outreach.py $ARGS
+          python3 aeris938-2/scripts/outreach.py --status
+
+      - name: Commit the outreach state
+        run: |
+          set -euo pipefail
+          git config user.name  "ax-music-growth"
+          git config user.email "ax-music-growth@users.noreply.github.com"
+          git add aeris938-2/work/outreach-state.json
+          if git diff --cached --quiet; then
+            echo "no change to record"
+            exit 0
+          fi
+          git commit -m "data(aeris938-2): outreach state $(date -u +%Y-%m-%dT%H:%MZ)"
+          git pull --rebase --autostash origin "${GITHUB_REF_NAME}"
+          git push
+
+      - name: Notify K on ntfy
+        if: failure()
+        env:
+          TOPIC: ${{ vars.AX_NTFY_TOPIC }}
+        run: |
+          set -euo pipefail
+          [ -n "${TOPIC:-}" ] || { echo "no AX_NTFY_TOPIC set"; exit 0; }
+          curl -sS --max-time 20 -H "Title: AERIS growth needs attention" \
+            -H "Tags: warning" -H "Priority: high" \
+            -d "Following suggested pages failed — the saved session may be dead. Sign in on the cloud desktop and re-run ops/save_storage_state.py." \
+            "https://ntfy.sh/${TOPIC}" || echo "ntfy push failed (non-fatal)"

@@ -253,6 +253,14 @@ def cmd_follow(limit: int, min_gap: int, plan: bool) -> int:
 
 
 def cmd_invite(plan: bool) -> int:
+    """Invite the personal profile's friends to like the Page.
+
+    Low yield on a new account: the tool sources from the personal profile's
+    friend list, and a fresh profile has almost none. It is still wired because
+    it is free and it resumes once the friend list grows. The tool also only
+    renders its Send button while the *personal* profile is the acting identity,
+    so that state is detected and reported rather than crashed on.
+    """
     state = load_state()
     with _connect() as p:
         br, ctx = B.connect(p)
@@ -262,8 +270,16 @@ def cmd_invite(plan: bool) -> int:
             page.wait_for_timeout(9000)
             body = page.inner_text("body")
             if INVITE_NONE in body:
-                print("no friends available to invite (personal profile has none "
-                      "to suggest)")
+                print("no friends available to invite (the personal profile has "
+                      "none to suggest yet)")
+                return 0
+            if "เปลี่ยนไปใช้โปรไฟล์" in body or "สลับไปใช้" in body:
+                print("the invite tool needs the personal profile as the acting "
+                      "identity; switch to Aeris-Ak Akath on the desktop, then "
+                      "re-run --invite")
+                return 0
+            if page.get_by_role("button", name=INVITE_SEND).count() == 0:
+                print("no Send-invites button on the tool; nothing to invite")
                 return 0
             if plan:
                 print("would invite the friends listed on the invite tool")
