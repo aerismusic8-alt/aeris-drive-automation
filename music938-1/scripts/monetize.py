@@ -10,6 +10,7 @@ The block is short on purpose: YouTube shows roughly the first two lines before
 from __future__ import annotations
 
 import json
+import re
 from pathlib import Path
 
 from common import ROOT
@@ -47,6 +48,43 @@ def link(surface: str = "") -> str:
     if surface and per.get(surface):
         return per[surface]
     return c.get("shopee_affiliate") or c.get("shopee_shop") or ""
+
+
+def cta(surface: str = "youtube") -> str:
+    """A one-line call to action that survives YouTube's "Show more" fold.
+
+    YouTube shows roughly the first two lines of a description before truncating,
+    so the affiliate link has to sit *above* the longer footer, not at its end.
+    Returns "" when no link is configured, so the description degrades cleanly.
+    """
+    shopee = link(surface)
+    if not shopee:
+        return ""
+    return f"🎧 ฟังเพลิน ๆ แล้วกดติดตามช่องนะครับ · ของน่าซื้อ 👉 {shopee}"
+
+
+_S_SHOPEE = re.compile(r"https://s\.shopee\.co\.th/\w+")
+
+
+def refresh_description(desc: str, surface: str = "youtube") -> str:
+    """Upgrade a live description in place: new link, and the CTA up top.
+
+    `release.describe` only shapes *new* uploads; the videos already live carry
+    the old homepage link at the very bottom. This rewrites one of those: every
+    `s.shopee.co.th` link becomes this surface's current product link, and the
+    CTA is inserted after the first paragraph (before the fold) if it is missing.
+    Idempotent — a description already carrying both changes comes back equal.
+    """
+    shopee = link(surface)
+    line = cta(surface)
+    if shopee:
+        desc = _S_SHOPEE.sub(shopee, desc)
+    if not line or line in desc:
+        return desc
+    parts = desc.split("\n\n", 1)
+    if len(parts) == 2:
+        return f"{parts[0]}\n{line}\n\n{parts[1]}"
+    return f"{desc}\n{line}"
 
 
 def block(kind: str = "song") -> str:

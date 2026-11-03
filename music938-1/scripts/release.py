@@ -269,11 +269,16 @@ def describe(slug: str, kind: str, variant: str = "") -> tuple[str, str, list[st
     if m:
         hook = f" (ท่อนที่ {m.group(1)})"
 
+    # The affiliate line sits near the top of the description, before YouTube's
+    # "Show more" fold, so it is actually seen. See monetize.cta().
+    CTA = monetize.cta("youtube")
+
     if kind == "short":
         title = f"{title_th}{hook} #เพลงไทย #Shorts"
         desc = (
             f"🎵 {title_th} (ท่อนฮุก)\n\n"
-            f"{tagline}\n\n"
+            f"{tagline}\n"
+            f"{CTA}\n\n"
             f"เพลงที่ {int(n)} ในชุดเพลงไทยของ AERIS Music — ร้องด้วยเสียงจริง\n"
             f"🎧 ฟังเวอร์ชันเต็มได้ในช่อง\n\n"
             f"{HASHTAGS} #Shorts"
@@ -282,7 +287,8 @@ def describe(slug: str, kind: str, variant: str = "") -> tuple[str, str, list[st
         title = f"{title_th} (คาราโอเกะ) ร้องตามได้"
         desc = (
             f"🎤 {title_th} — เวอร์ชันคาราโอเกะ (ไม่มีเสียงร้อง)\n\n"
-            f"ร้องตามได้เลย! {tagline}\n\n"
+            f"ร้องตามได้เลย! {tagline}\n"
+            f"{CTA}\n\n"
             f"🎵 เพลงที่ {int(n)} ในชุดเพลงไทยของ AERIS Music\n"
             f"🎧 ฟังเวอร์ชันเต็ม (มีเสียงร้อง) ได้ในช่อง\n"
             f"✨ สร้างจากความตั้งใจ ไม่ใช่ความเร็ว\n\n"
@@ -292,7 +298,8 @@ def describe(slug: str, kind: str, variant: str = "") -> tuple[str, str, list[st
         title = f"{title_th} — {tagline}"
         desc = (
             f"🎵 {title_th}\n\n"
-            f"{tagline}\n\n"
+            f"{tagline}\n"
+            f"{CTA}\n\n"
             f"เพลงที่ {int(n)} ในชุดเพลงไทยของ AERIS Music — ร้องด้วยเสียงจริง "
             f"เนื้อร้องและทำนองใหม่\n\n"
             f"🎧 ฟังเพลิน ฟังได้ทุกวัน\n"

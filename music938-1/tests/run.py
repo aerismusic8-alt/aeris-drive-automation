@@ -1037,6 +1037,38 @@ def test_monetize_footer() -> None:
     check("replacement can fetch media on a fresh pod", "release.fetch_media" in rep)
     check("replacement supports Shorts", '"short"' in rep)
 
+    # The 0-click report on 2026-11-03 traced to two shapes: the per-surface
+    # links pointed at Shopee's homepage (nothing to buy), and the affiliate
+    # line sat at the very bottom of the description, past YouTube's "Show
+    # more" fold. A description CTA must lead with the link, and the link must
+    # be a product/search page, not the storefront root.
+    import release
+    monetize.CACHE = None
+    cta = monetize.cta("youtube")
+    check("cta carries the youtube surface link",
+          per.get("youtube", "") and per["youtube"] in cta)
+    check("cta asks for a follow", "กดติดตาม" in cta)
+    _t, desc, _tg = release.describe("01-khon-di-thi-chak-pai", "song", "")
+    check("cta survives the description fold (within the first 200 chars)",
+          per.get("youtube", "") and desc.index(per["youtube"]) < 200,
+          f"link at {desc.index(per['youtube'])}")
+    mint_src = (ROOT.parent / "ops" / "shopee_mint.py").read_text()
+    check("mint tool exists for re-pointing the links",
+          "custom_link" in mint_src)
+
+    # The 20 videos already live carry the old homepage link at the bottom.
+    # `refresh_description` must re-point it and lift the CTA, and be idempotent.
+    old = ("🎵 เพลงเก่า\n\nเพลงผ่อนคลาย\n\n🎧 ฟังเพลิน\n\n"
+           "🛒 สนับสนุนช่องผ่าน Shopee:\nhttps://s.shopee.co.th/OLDHOME")
+    fixed = monetize.refresh_description(old, "youtube")
+    check("refresh re-points the old homepage link",
+          "OLDHOME" not in fixed and per["youtube"] in fixed)
+    check("refresh lifts the cta above the fold",
+          fixed.index(per["youtube"]) < 120, f"{fixed.index(per['youtube'])}")
+    check("refresh is idempotent",
+          monetize.refresh_description(fixed, "youtube") == fixed)
+    monetize.CACHE = None
+
 
 def test_studio_web_rail() -> None:
     """Analytics and comments go through the signed-in Studio, not the Data API.

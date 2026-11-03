@@ -76,13 +76,16 @@ def patch_playlists(token: str, link: str, block: str, apply: bool) -> int:
     for it in r["items"]:
         sn = it["snippet"]
         desc = sn.get("description", "")
-        if link and link in desc:
+        new = monetize.refresh_description(desc, "youtube")
+        if new == desc:
+            new = (desc.rstrip() + "\n" + block)[:4900]
+        if new == desc or (link and link in desc and new == desc):
             continue
         print(f"  + playlist {it['id']}  {sn['title'][:48]}")
         changed += 1
         if not apply:
             continue
-        sn["description"] = (desc.rstrip() + "\n" + block)[:4900]
+        sn["description"] = new[:4900]
         code, resp = yt_auth._request(
             "https://www.googleapis.com/youtube/v3/playlists?part=snippet",
             data=json.dumps({"id": it["id"], "snippet": sn}, ensure_ascii=False).encode("utf-8"),
@@ -118,10 +121,18 @@ def main() -> int:
         for it in v["items"]:
             sn = it["snippet"]
             desc = sn.get("description", "")
-            if link and link in desc:
+            # `refresh` re-points an old homepage link at the current product
+            # link and lifts the CTA above the fold; `link in desc` alone would
+            # skip those videos even though they carry the wrong link.
+            new = monetize.refresh_description(desc, "youtube")
+            if link in desc and new == desc:
                 skipped += 1
                 continue
-            new = (desc.rstrip() + "\n" + block)[:MAX_DESC]
+            if new == desc:
+                new = (desc.rstrip() + "\n" + block)[:MAX_DESC]
+            if new == desc:
+                skipped += 1
+                continue
             print(f"  + {it['id']}  {sn['title'][:48]}")
             changed += 1
             if not apply:

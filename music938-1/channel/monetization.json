@@ -1,14 +1,14 @@
 {
   "_comment": "Single place for every outbound link AERIS Music uses. A link that is empty is omitted from the video descriptions, so the block degrades cleanly until K fills the affiliate id in.",
   "youtube": "https://www.youtube.com/@aerismusicth",
-  "shopee_affiliate": "https://th.shp.ee/6hv2uk89",
+  "shopee_affiliate": "https://s.shopee.co.th/6AmI5S81dn",
   "shopee_shop": "",
   "shopee_links": {
-    "youtube": "https://s.shopee.co.th/3g4vw3cev0",
-    "tiktok": "https://s.shopee.co.th/6fiXVb7Fbi",
-    "facebook": "https://s.shopee.co.th/7KyEIqRt6A"
+    "youtube": "https://s.shopee.co.th/8pn3G4alfI",
+    "tiktok": "https://s.shopee.co.th/60SrsstoP6",
+    "facebook": "https://s.shopee.co.th/2qVq75ACtW"
   },
-  "_shopee_links_comment": "Per-surface s.shopee.co.th links minted 2026-11-02 from the affiliate dashboard (account navintas) via the Custom Link tool, each tagged with its Sub_id. A th.shp.ee short link strips sub_id, so only these give per-surface attribution. Empty falls back to shopee_affiliate.",
+  "_shopee_links_comment": "Per-surface Custom Links minted 2026-11-03 from the affiliate dashboard (account navintas) with ops/shopee_mint.py. Target: a music-lifestyle product search (หูฟังบลูทูธ / Bluetooth headphones) so a viewer who taps lands on something buyable, not the generic homepage that gave 0 clicks. Each carries its surface in Sub_id1 (utm_content=youtube|tiktok|facebook, verified on the 301). Re-mint with `python3 ops/shopee_mint.py --target <url> --write`.",
   "facebook": "https://www.facebook.com/profile.php?id=61595890900382",
   "tiktok": "https://www.tiktok.com/@aeris.music4",
   "playlist_all": "https://www.youtube.com/@aerismusicth/playlists"

@@ -86,22 +86,20 @@ def caption(slug: str, platform: str, hook: int = 0) -> str:
     if platform == "facebook":
         # Reels leans on fewer hashtags than TikTok; spend the words on the hook.
         # The caption carries the Page's own Shopee tracking link (Sub_id
-        # "facebook") so a Reel's sale is attributed to Facebook. The last two
-        # lines are the ask: a follow (so the next song reaches them) and a
-        # question (a comment is the cheapest engagement a small Page can earn).
+        # "facebook") so a Reel's sale is attributed to Facebook. Both surfaces
+        # truncate the caption, so the product link and the follow ask sit in the
+        # first two lines and the hashtags go last.
         shopee = monetize.link("facebook")
-        return (f"{title} 🎵\n{tagline}{tag}\n\n"
-                f"🎧 ฟังเพลงไทยเพราะ ๆ ใหม่ทุกวันได้ที่ช่อง AERIS Music\n"
-                f"❤️ ชอบเพลงนี้ กดติดตามเพจไว้เลย จะได้ไม่พลาดเพลงใหม่\n"
+        return (f"{title} 🎵 {tagline}{tag}\n"
+                f"❤️ กดติดตามเพจ · ของน่าซื้อ 👉 {shopee}\n"
                 f"💬 เพลงนี้เตือนถึงใคร คอมเมนต์บอกกันได้เลย\n"
-                f"#เพลงไทย #เพลงใหม่ #เพลงเพราะ #AERISMusic\n\n"
-                f"🛒 สนับสนุนช่องผ่าน Shopee: {shopee}")
+                f"🎧 ฟังเพลงไทยเพราะ ๆ ใหม่ทุกวันได้ที่ช่อง AERIS Music\n"
+                f"#เพลงไทย #เพลงใหม่ #เพลงเพราะ #AERISMusic")
     shopee = monetize.link("tiktok")
     return (f"{title} 🎵 {tagline}{tag}\n"
-            f"🎧 กดติดตามไว้ฟังเพลงไทยเพราะ ๆ ใหม่ทุกวัน\n"
+            f"🎧 กดติดตาม · ของน่าซื้อ 👉 {shopee}\n"
             f"💬 เพลงนี้เตือนถึงใคร พิมพ์ชื่อไว้ได้เลย\n"
-            f"#fyp #เพลงไทย #เพลงใหม่ #เพลงเพราะ #TikTokเพลงไทย\n\n"
-            f"🛒 สนับสนุนช่องผ่าน Shopee: {shopee}")
+            f"#fyp #เพลงไทย #เพลงใหม่ #เพลงเพราะ #TikTokเพลงไทย")
 
 
 # --- queue ------------------------------------------------------------------
