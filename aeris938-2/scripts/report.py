@@ -5,8 +5,10 @@
 surfaces move?" — the question K's scope is about.
 
   * YouTube (@aerismusicth) reads from the Data API, so it always works.
-  * Facebook / TikTok / Shopee report only inside their own dashboards, behind
-    the signed-in desktop, so those are read through `social_stats.py` (CDP). If
+  * Shopee reads from its affiliate JSON API with the exported session cookies,
+    so it also works from a scheduled runner with no browser.
+  * Facebook / TikTok report only inside their own dashboards, behind the
+    signed-in desktop, so those are read through `social_stats.py` (CDP). If
     the desktop is down, the surface is written `UNKNOWN` — never guessed.
 
     python3 report.py            # measure and write work/growth-report.md

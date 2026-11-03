@@ -12,6 +12,12 @@ each dashboard, reads what the dashboard shows, and writes a Thai report. A
 number that cannot be read is written UNKNOWN. Nothing here guesses — a wrong
 number is worse than an absent one, because the strategy pass would act on it.
 
+Shopee is the exception. Its dashboard serves a `/verify/traffic/error`
+interstitial to any fresh automated browser (headless or headed), but the JSON
+report API behind it answers a plain HTTP request carrying the exported session
+cookies. So Shopee is read from the API when a storage state is present, and only
+falls back to the dashboard scrape otherwise.
+
     python3 scripts/social_stats.py            # measure and write the report
     python3 scripts/social_stats.py --json     # machine-readable to stdout
 """
@@ -39,6 +45,7 @@ FB_PAGE = "https://www.facebook.com/profile.php?id=61595890900382"
 FB_INSIGHTS = "https://www.facebook.com/professional_dashboard/insights/"
 TIKTOK_ANALYTICS = "https://www.tiktok.com/tiktokstudio/analytics"
 SHOPEE_AFFILIATE = "https://affiliate.shopee.co.th/dashboard"
+SHOPEE_AFFILIATE_API = "https://affiliate.shopee.co.th"
 
 
 class Desk:
@@ -241,7 +248,112 @@ def measure_tiktok(desk: Desk) -> dict:
     return stats
 
 
+def _shopee_cookie_header() -> str | None:
+    """The affiliate cookies out of the exported storage state, or None.
+
+    Shopee's anti-fraud only guards the *browser*: a plain HTTP request to the
+    affiliate report API with these cookies answers normally. That is what makes
+    a scheduled read possible at all — the dashboard page itself serves a
+    `/verify/traffic/error` interstitial to any fresh automated browser, headless
+    or headed, but the JSON endpoints behind it do not.
+    """
+    import base64
+    b64 = os.environ.get("AERIS_STORAGE_STATE_B64")
+    path = os.environ.get("AERIS_STORAGE_STATE")
+    raw = None
+    if b64:
+        try:
+            raw = base64.b64decode(b64)
+        except (ValueError, TypeError):
+            return None
+    elif path and os.path.exists(path):
+        raw = Path(path).read_bytes()
+    if not raw:
+        return None
+    try:
+        state = json.loads(raw)
+    except ValueError:
+        return None
+    pairs = [f"{c['name']}={c['value']}" for c in state.get("cookies", [])
+             if "shopee" in c.get("domain", "") and c.get("name")]
+    return "; ".join(pairs) if pairs else None
+
+
+def _shopee_api(path: str, cookie: str) -> dict:
+    req = urllib.request.Request(SHOPEE_AFFILIATE_API + path, headers={
+        "Cookie": cookie,
+        "Accept": "application/json, text/plain, */*",
+        "Affiliate-Program-Type": "1",
+        "Referer": SHOPEE_AFFILIATE + "/dashboard",
+        "User-Agent": ("Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 "
+                       "(KHTML, like Gecko) Chrome/155.0.0.0 Safari/537.36"),
+    })
+    with urllib.request.urlopen(req, timeout=30) as r:
+        return json.load(r)
+
+
+def measure_shopee_api(days: int = 30) -> dict | None:
+    """Shopee clicks/orders/commission straight from the affiliate JSON API.
+
+    Returns None when no session is available or the API refuses, so the caller
+    can fall back to the (desktop-only) scrape. This path needs no browser, so it
+    is the one that works inside the scheduled CI rail.
+    """
+    cookie = _shopee_cookie_header()
+    if not cookie:
+        return None
+    now = int(time.time())
+    start = now - days * 86400
+    try:
+        clicks = _shopee_api(
+            f"/api/v1/click_report/list?click_time_s={start}&click_time_e={now}"
+            "&page_num=1&page_size=1", cookie)
+        conv = _shopee_api(
+            f"/api/v3/report/list?page_size=20&page_num=1"
+            f"&purchase_time_s={start}&purchase_time_e={now}&version=1", cookie)
+        bill = _shopee_api(
+            f"/api/v3/payment/billing_list?order_completed_start_time={start}"
+            f"&order_completed_end_time={now}&settlement_cycle=4", cookie)
+    except Exception:  # noqa: BLE001  (network/JSON — fall back to the desk)
+        return None
+    if clicks.get("code") != 0 or conv.get("code") != 0:
+        return None
+    click_n = (clicks.get("data") or {}).get("total_count")
+    conv_data = conv.get("data") or {}
+    orders = conv_data.get("total_count")
+    items = conv_data.get("list") or []
+    comm = 0.0
+    for it in items:
+        for key in ("commission", "total_commission", "est_commission"):
+            v = it.get(key)
+            if isinstance(v, (int, float)):
+                comm += float(v)
+                break
+    if not items:  # no orders yet — read settled commission from the bill
+        for bucket in ("social_medias", "shopee_live"):
+            grp = ((bill.get("data") or {}).get("income_breakdown") or {}).get(bucket) or {}
+            for sec in ("seller_commission", "shopee_commission", "bonus_commission"):
+                d = grp.get(sec) or {}
+                for k, v in d.items():
+                    if k.endswith("_comm") and isinstance(v, (int, float)):
+                        comm += float(v)
+    comm = int(comm) if float(comm).is_integer() else round(comm, 2)
+    return {
+        "reachable": True,
+        "source": "api",
+        "window_days": days,
+        "clicks": click_n if click_n is not None else "UNKNOWN",
+        "orders": orders if orders is not None else "UNKNOWN",
+        "commission": comm,
+    }
+
+
 def measure_shopee(desk: Desk) -> dict:
+    # The API path first: it works headlessly, so a scheduled read gets a real
+    # number instead of the captcha page. The desk scrape is the fallback.
+    api = measure_shopee_api()
+    if api is not None:
+        return api
     desk.goto(SHOPEE_AFFILIATE, settle=14)
     t = desk.text()
     url = (desk.js("location.href") or "").lower()
@@ -315,19 +427,25 @@ def main() -> int:
     ap.add_argument("--json", action="store_true", help="print the numbers, write nothing")
     args = ap.parse_args()
 
+    # Shopee first, straight from the API: it needs no browser, so a pod without
+    # chromium still reports it. The desk is then best-effort for FB/TikTok.
+    shopee = measure_shopee_api()
+    stats = {"facebook": {"reachable": False, "note": "desktop unavailable"},
+             "tiktok": {"reachable": False, "note": "desktop unavailable"},
+             "shopee": shopee or {"reachable": False, "note": "no session"}}
     try:
         desk = open_desk()
     except Exception as exc:  # noqa: BLE001
         print(f"desktop/CDP unavailable: {exc}", file=sys.stderr)
-        return 1
-    try:
-        stats = {
-            "facebook": measure_facebook(desk),
-            "tiktok": measure_tiktok(desk),
-            "shopee": measure_shopee(desk),
-        }
-    finally:
-        desk.close()
+        desk = None
+    if desk is not None:
+        try:
+            stats["facebook"] = measure_facebook(desk)
+            stats["tiktok"] = measure_tiktok(desk)
+            if shopee is None:
+                stats["shopee"] = measure_shopee(desk)
+        finally:
+            desk.close()
 
     if args.json:
         print(json.dumps(stats, ensure_ascii=False, indent=1))

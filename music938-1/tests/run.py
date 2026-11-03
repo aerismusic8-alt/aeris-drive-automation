@@ -894,6 +894,34 @@ def test_social_stats_parser() -> None:
         "Dashboard\nKey Metrics\nClicks\n7\n0%\nOrders\n1\n0%\nEst. Commission(฿)\n2.5"))
     check("a real dashboard is read, including clicks",
           real["reachable"] and real["clicks"] == 7 and real["orders"] == 1)
+
+    # The API path: the affiliate JSON endpoints answer a plain HTTP request
+    # carrying the exported cookies, so a scheduled read needs no browser. Stub
+    # the HTTP calls and check the response is parsed, and that a missing
+    # session degrades to None (so the caller can fall back to the desk).
+    orig_hdr, orig_api = social_stats._shopee_cookie_header, social_stats._shopee_api
+    try:
+        social_stats._shopee_cookie_header = lambda: None
+        check("no session means no API read",
+              social_stats.measure_shopee_api() is None)
+        social_stats._shopee_cookie_header = lambda: "SPC_F=x; SPC_U=1"
+        social_stats._shopee_api = lambda path, cookie: (
+            {"code": 0, "data": {"total_count": 12}} if "click_report" in path
+            else {"code": 0, "data": {"total_count": 3,
+                  "list": [{"commission": 1.5}, {"commission": 2}]}}
+            if "report/list" in path else
+            {"code": 0, "data": {"income_breakdown": {}}})
+        api = social_stats.measure_shopee_api()
+        check("the API read carries clicks and orders",
+              api["clicks"] == 12 and api["orders"] == 3)
+        check("commission is summed across orders",
+              api["commission"] == 3.5 and api["source"] == "api")
+        social_stats._shopee_api = lambda path, cookie: {"code": 401}
+        check("a refused API call falls back (None)",
+              social_stats.measure_shopee_api() is None)
+    finally:
+        social_stats._shopee_cookie_header = orig_hdr
+        social_stats._shopee_api = orig_api
     check("no metric is left blank", "|  |" not in md)
 
     # The daily pass must run it, or the strategy loop still cannot see these.
