@@ -25,9 +25,12 @@ import json
 import sys
 
 CDP = "http://127.0.0.1:9222"
-# The dashboards the CI rail measures: Facebook, TikTok, and Shopee Affiliate.
-# All three are login-only, so their cookies must be in the saved state.
-WANT = ("facebook.com", "tiktok.com", "shopee.co.th")
+# Every login-only surface a CI rail has to drive, so one sign-in and one export
+# cover them all: Facebook + TikTok for posting, Shopee for the affiliate read,
+# YouTube/Google for Studio (comments, analytics) and Flow Music for song
+# generation. A surface missing here cannot be driven from Actions.
+WANT = ("facebook.com", "tiktok.com", "shopee.co.th", "youtube.com",
+        "google.com", "flowmusic.app")
 
 
 def main() -> int:

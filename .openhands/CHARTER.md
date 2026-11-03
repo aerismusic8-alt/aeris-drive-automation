@@ -134,7 +134,13 @@ four jobs above — nothing else appears here.
    YouTube via API; FB/TikTok/Shopee via the desktop dashboards.
 
 **Blocked, needs K (one action each):**
-- A fresh cloud-desktop sign-in if a saved session is ever rejected.
+- **One cloud-desktop sign-in (2026-11-03).** After a pod recycle the desktop lost
+  its logins. AR restored the saved vault by hand and got Google/YouTube and
+  TikTok **SIGNED IN**, but Facebook is rejected, YouTube's service re-asks the
+  password, and **Flow Music (the song engine) is logged out**. So one sign-in —
+  Google `aerismusic8@gmail.com` + `flowmusic.app` — unlocks the whole factory:
+  after it AR runs `ops/login_vault.py save` and `ops/save_storage_state.py`
+  (both now cover Flow Music and YouTube) and every rail runs unattended again.
 - Anything that costs money (never).
 - **Shopee Affiliate onboarding** — DONE 2026-11-02, no QR needed; the account
   was already onboarded (`navintas`).
