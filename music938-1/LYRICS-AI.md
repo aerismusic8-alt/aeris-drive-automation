@@ -81,3 +81,18 @@ python3 scripts/build_songs.py --only 01,04,07,14 --force
 ทำทีละ 3-4 เพลงต่อรอบ กันชนโควต้า
 
 เหลือเรนเดอร์: 06,08,09,10,11,12,13,15,16,17,18,19,20 (13 เพลง)
+
+## หลังโควต้า: Google session หมดอายุ (ต้องให้ K ล็อกอิน)
+
+2026-11-03 ระหว่างรอโควต้าฟรี Chromium ของเดสก์ท็อปตาย (`bootstrap.py --status`
+ขึ้น DOWN chromium) พอสตาร์ทใหม่ ปรากฏว่า **Google session หมดอายุ** — หน้าเลือก
+บัญชีขึ้น "Signed out" ทั้ง `aerismusic8@gmail.com` และบัญชีสำรอง จึงเข้า Flow Music
+ไม่ได้ (เด้งไปหน้า landing) การจะล็อกอินกลับต้องพิมพ์รหัส Google ซึ่ง agent ห้ามทำ
+
+ตรวจสถานะได้ด้วย: `python3 scripts/render_remaining.py --check`
+- exit 0 = มีเครดิต
+- exit 2 = โควต้าหมด (รอรีเซ็ต)
+- exit 3 = หลุดล็อกอิน (ต้องให้ K ล็อกอินในเดสก์ท็อป)
+
+K ล็อกอินครั้งเดียวที่ `https://work-1-<host>/vnc.html` แล้วรัน
+`python3 ops/login_vault.py save` เพื่อเก็บ session ไว้ข้าม pod
