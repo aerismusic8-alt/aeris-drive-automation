@@ -23,6 +23,10 @@ aeris938-1/dist/
 # Ignore the contents, not the directory: git cannot re-include a file inside an
 # ignored directory, and the release ledger below must survive a clone.
 music938-1/work/*
+# The AI-written lyric candidates are the reviewable artifact for a re-render:
+# keep them so K can read what will replace the current lyrics before it ships.
+!music938-1/work/lyric-candidates/
+!music938-1/work/lyric-candidates/**
 # The release ledger is the only record of what is already on YouTube, and
 # release.py writes it under work/. If it is ignored, a fresh clone re-uploads
 # every song as a duplicate.
