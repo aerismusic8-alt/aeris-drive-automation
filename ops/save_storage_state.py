@@ -25,7 +25,9 @@ import json
 import sys
 
 CDP = "http://127.0.0.1:9222"
-WANT = ("facebook.com", "tiktok.com")
+# The dashboards the CI rail measures: Facebook, TikTok, and Shopee Affiliate.
+# All three are login-only, so their cookies must be in the saved state.
+WANT = ("facebook.com", "tiktok.com", "shopee.co.th")
 
 
 def main() -> int:

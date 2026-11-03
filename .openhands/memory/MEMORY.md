@@ -378,6 +378,15 @@ true-instrumental karaoke mix, cover art, a 1920x1080 word-synced video.
   secret writes work. Verified run 41554234889: probe OK, FB 5/39, TikTok 39/39.
   **Setting the secret is fine, but the workflow file itself still needs PC1** — a
   plain `git push` of `.github/workflows/` is rejected for lack of `workflow` scope.
+- **Shopee Affiliate reports only through the warmed desktop (2026-11-03).** The
+  affiliate dashboard answers *any* fresh automated browser with a
+  `/verify/captcha` puzzle + `is_logged_in=false`, headless **and** headed/Xvfb,
+  even with all 33 `SPC_*` cookies present; `affiliate.shopee.co.th/open_api`
+  says "you currently do not have access". So the live read works only over CDP
+  :9222 on the desktop profile. `report.py` carries Shopee clicks/orders/
+  commission and falls back to the last real reading (labelled with its date)
+  when the live read fails; the dashboard rail pushes the click count to ntfy.
+  `ops/save_storage_state.py` now also keeps `shopee.co.th` cookies.
 - **PC1 cookie extraction is dead, and Studio/FB still need K's login.** Chrome 156
   uses app-bound (v20) cookie encryption that `CryptUnprotectData` cannot unwrap,
   and `Network.getAllCookies` over CDP returns no SID/LOGIN_INFO. Chrome M136+

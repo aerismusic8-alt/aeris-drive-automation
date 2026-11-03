@@ -78,6 +78,59 @@ class Desk:
         self.ws.close()
 
 
+class PlaywrightDesk:
+    """The same read interface as `Desk`, but on a browser this process owns.
+
+    GitHub Actions has no cloud desktop to attach to, so the scheduled report
+    launches its own headless Chromium and loads the saved session (the same
+    `AERIS_STORAGE_STATE_B64` the crosspost rail uses). Every `measure_*`
+    function takes a `desk`, so it does not care which one it is handed.
+    """
+
+    def __init__(self) -> None:
+        import base64  # noqa: PLC0415
+        import tempfile  # noqa: PLC0415
+        from pathlib import Path  # noqa: PLC0415
+        from playwright.sync_api import sync_playwright  # noqa: PLC0415
+        b64 = os.environ.get("AERIS_STORAGE_STATE_B64")
+        path = os.environ.get("AERIS_STORAGE_STATE")
+        if b64 and not path:
+            path = str(Path(tempfile.gettempdir()) / "aeris-storage-state.json")
+        if b64 and not os.path.exists(path):
+            Path(path).write_bytes(base64.b64decode(b64))
+        self._pw = sync_playwright().start()
+        kwargs = dict(headless=True, args=["--no-sandbox", "--disable-dev-shm-usage"])
+        exe = os.environ.get("AERIS_CHROMIUM")
+        if exe:
+            kwargs["executable_path"] = exe
+        self.browser = self._pw.chromium.launch(**kwargs)
+        ctx = self.browser.new_context(
+            storage_state=path, locale="th-TH",
+            viewport={"width": 1280, "height": 900})
+        self.page = ctx.new_page()
+
+    def js(self, expr: str):
+        return self.page.evaluate(expr)
+
+    def goto(self, url: str, settle: float = 12.0) -> None:
+        self.page.goto(url, wait_until="domcontentloaded", timeout=60_000)
+        self.page.wait_for_timeout(int(settle * 1000))
+
+    def text(self) -> str:
+        return self.page.inner_text("body")
+
+    def close(self) -> None:
+        self.browser.close()
+        self._pw.stop()
+
+
+def open_desk():
+    """A live cloud-desktop CDP client, or a headless one when running in CI."""
+    if os.environ.get("AERIS_STORAGE_STATE_B64") or os.environ.get("AERIS_STORAGE_STATE"):
+        return PlaywrightDesk()
+    return Desk()
+
+
 def _first_int(text: str, needles: list[str], lookahead: int = 3):
     """The first number near a line carrying one of `needles`, else UNKNOWN.
 
@@ -198,10 +251,18 @@ def measure_shopee(desk: Desk) -> dict:
     # interstitial as "not onboarded" — a false negative.
     if "/login" in url or "เข้าร่วมเลย" in t or "ลงทะเบียนและเป็น Shopee Affiliate" in t:
         return {"reachable": False, "note": "not signed in / not onboarded"}
+    # Clicks lead orders by days-to-weeks (someone clicks a link long before they
+    # buy), so on a channel with no orders yet the click count is the only number
+    # that can move. Orders and commission are kept too — they are the goal — but
+    # without clicks the report looks frozen even while the links are working.
     return {
         "reachable": True,
-        "orders": _first_int(t, ["คำสั่งซื้อ", "orders"]),
-        "commission": _first_int(t, ["ค่าคอมมิชชั่น", "commission"]),
+        "clicks": _first_int(t, ["Clicks", "คลิก"]),
+        "orders": _first_int(t, ["คำสั่งซื้อ", "Orders"]),
+        "commission": _first_int(t, ["ค่าคอมมิชชั่น", "Est. Commission", "commission"]),
+        "items_sold": _first_int(t, ["Items Sold", "สินค้าที่ขายได้"]),
+        "order_amount": _first_int(t, ["Order Amount", "ยอดคำสั่งซื้อ"]),
+        "new_buyers": _first_int(t, ["New Buyers", "ผู้ซื้อใหม่"]),
         "raw": t[:600],
     }
 
@@ -226,7 +287,8 @@ def render(stats: dict) -> str:
         f"| TikTok | | ผู้ติดตาม (รวม) | {cell(tk, 'followers_total')} |",
         f"| TikTok | | ผู้ติดตามเปลี่ยน 7 วัน | {cell(tk, 'followers_change_7d')} |",
         f"| Shopee | {'อ่านได้' if sp['reachable'] else 'อ่านไม่ได้'} "
-        f"| คำสั่งซื้อ | {cell(sp, 'orders')} |",
+        f"| คลิก | {cell(sp, 'clicks')} |",
+        f"| Shopee | | คำสั่งซื้อ | {cell(sp, 'orders')} |",
         f"| Shopee | | ค่าคอมมิชชั่น | {cell(sp, 'commission')} |",
         "",
     ]
@@ -247,7 +309,7 @@ def main() -> int:
     args = ap.parse_args()
 
     try:
-        desk = Desk()
+        desk = open_desk()
     except Exception as exc:  # noqa: BLE001
         print(f"desktop/CDP unavailable: {exc}", file=sys.stderr)
         return 1

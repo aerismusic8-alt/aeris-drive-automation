@@ -125,7 +125,11 @@ four jobs above — nothing else appears here.
    AR read the live dashboard and minted per-surface tracking links
    (Sub_id youtube/tiktok/facebook) in `music938-1/channel/monetization.json`.
    Every description footer now carries the right surface's link. Waiting on the
-   first order; commission is 0 until then.
+   first order; commission is 0 until then. **Now reported daily:** the four-surface
+   report (`report.py`) carries Shopee clicks/orders/commission, and the dashboard
+   rail pushes the click count to K's phone. Shopee's dashboard blocks a fresh
+   automated browser with a captcha, so a scheduled read falls back to the last
+   desktop reading (labelled with its date) — the desktop path is the only live one.
 5. **Measure the four.** `aeris938-2/scripts/report.py` → `growth-report.md`.
    YouTube via API; FB/TikTok/Shopee via the desktop dashboards.
 

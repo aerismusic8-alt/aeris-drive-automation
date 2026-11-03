@@ -36,11 +36,21 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Install Playwright + Chromium
+        # The four-surface report reads Facebook/TikTok/Shopee through a browser
+        # (social_stats.py). Best effort: a failure here must not stop the
+        # YouTube numbers, which are the rail's main job.
+        run: |
+          set -euo pipefail
+          pip install --quiet playwright
+          python3 -m playwright install --with-deps chromium || true
+
       - name: Write the dashboard
         env:
           YT_CLIENT_ID: ${{ secrets.YT_CLIENT_ID }}
           YT_CLIENT_SECRET: ${{ secrets.YT_CLIENT_SECRET }}
           YT_CH3_REFRESH_TOKEN: ${{ secrets.YT_CH3_REFRESH_TOKEN }}
+          AERIS_STORAGE_STATE_B64: ${{ secrets.AERIS_STORAGE_STATE_B64 }}
         run: |
           set -euo pipefail
           # A spent Data API quota must not fail the job: PROGRESS.md still has
@@ -48,6 +58,11 @@ jobs:
           python3 music938-1/scripts/market.py --root "$GITHUB_WORKSPACE" --channel ch3 \
             || echo "market.py skipped (quota or transient API error)"
           python3 music938-1/scripts/progress.py --root "$GITHUB_WORKSPACE"
+          # The four-surface report (YouTube + FB + TikTok + Shopee). Shopee's
+          # dashboard answers a fresh browser with a captcha, so it usually falls
+          # back to the last reading the desktop captured — labelled, not blank.
+          python3 aeris938-2/scripts/report.py \
+            || echo "report.py skipped (desktop/CDP unavailable)"
 
       - name: Commit the dashboard
         run: |
@@ -55,7 +70,8 @@ jobs:
           git config user.name  "ax-music-dashboard"
           git config user.email "ax-music-dashboard@users.noreply.github.com"
           git add music938-1/work/market-report.md music938-1/work/market-snapshot.json \
-                  music938-1/channel/PROGRESS.md
+                  music938-1/channel/PROGRESS.md \
+                  aeris938-2/work/growth-report.md aeris938-2/work/history.jsonl
           if git diff --cached --quiet; then
             echo "no change to record"
             exit 0
@@ -76,6 +92,10 @@ jobs:
           [ -n "${TOPIC:-}" ] || { echo "no AX_NTFY_TOPIC set"; exit 0; }
           line=$(grep -m1 'ผู้ติดตาม' music938-1/channel/PROGRESS.md || true)
           views=$(grep -m1 'ยอดดูรวม' music938-1/channel/PROGRESS.md || true)
-          body="AERIS Music | ${line} | ${views}"
+          # The four-surface report carries Shopee, which the YouTube-only
+          # dashboard never showed. Pull the Shopee row so K sees it too.
+          sp=$(grep -m1 'Shopee | คลิก' aeris938-2/work/growth-report.md 2>/dev/null || true)
+          sp=${sp#*| คลิก | }; sp=${sp%% |*}
+          body="AERIS Music | ${line} | ${views} | Shopee คลิก ${sp:-UNKNOWN}"
           curl -sS --max-time 20 -H "Title: AERIS Music" -H "Tags: musical_note" \
             -d "$body" "https://ntfy.sh/${TOPIC}" || echo "ntfy push failed (non-fatal)"

@@ -109,6 +109,25 @@ def test_history_roundtrip():
         report.HISTORY = old
 
 
+def test_shopee_clicks_and_fallback():
+    """Shopee must report clicks (the leading indicator) and, when the live read
+    fails, fall back to the last real reading rather than print UNKNOWN."""
+    yt = {"handle": "@aerismusicth", "subs": 5, "videos": 28, "views": 100}
+    live = {"facebook": {"reachable": True, "followers": 1, "views_28d": 1},
+            "tiktok": {"reachable": True, "followers_total": 1, "views_7d": 0},
+            "shopee": {"reachable": True, "clicks": 7, "orders": 1, "commission": 2.5}}
+    text = report.render(yt, live)
+    assert "| 4 | Shopee | คลิก | 7 |" in text
+
+    # Live read blocked (captcha) → last real reading, labelled with its date.
+    blocked = dict(live, shopee={"reachable": False, "note": "captcha"})
+    hist = [{"at": "2026-11-03T01:00:00Z", "sp_clicks": 7, "sp_orders": 1,
+             "sp_commission": 2.5}]
+    text2 = report.render(yt, blocked, None, hist)
+    assert "| 4 | Shopee | คลิก | 7 |" in text2
+    assert "2026-11-03T01:00:00Z" in text2  # labelled, not silently stale
+
+
 if __name__ == "__main__":
     fns = [v for k, v in sorted(globals().items()) if k.startswith("test_")]
     for fn in fns:

@@ -128,6 +128,7 @@ def flatten(yt: dict, dash: dict) -> dict:
         "fb_views_28d": num(fb, "views_28d"),
         "tk_followers": num(tk, "followers_total"),
         "tk_views_7d": num(tk, "views_7d"),
+        "sp_clicks": num(sp, "clicks"),
         "sp_orders": num(sp, "orders"),
         "sp_commission": num(sp, "commission"),
     }
@@ -159,12 +160,40 @@ def _delta(cur, prev) -> str:
     return "—" if d == 0 else f"{d:+g}"
 
 
-def render(yt: dict, dash: dict, prev: dict | None = None) -> str:
+def last_known_shopee(hist: list[dict]) -> dict | None:
+    """The most recent Shopee reading that had real numbers.
+
+    Shopee's affiliate dashboard answers a fresh automated browser with a
+    captcha, so a scheduled runner usually cannot read it. Rather than print
+    UNKNOWN every day, fall back to the last reading a warmed desktop captured
+    and label it with its date. A labelled older number is honest; a blank one
+    hides that the link was ever checked.
+    """
+    for row in reversed(hist):
+        if row.get("sp_clicks") is not None or row.get("sp_orders") is not None:
+            return row
+    return None
+
+
+def render(yt: dict, dash: dict, prev: dict | None = None,
+           hist: list[dict] | None = None) -> str:
     fb = dash.get("facebook") or {}
     tk = dash.get("tiktok") or {}
     sp = dash.get("shopee") or {}
     err = dash.get("_error")
     prev = prev or {}
+    # Shopee is often unreadable from a scheduled runner; fall back to the last
+    # real reading and say so, rather than print UNKNOWN every day.
+    sp_stale = None
+    if not sp.get("reachable"):
+        last = last_known_shopee(hist or [])
+        if last:
+            sp = {
+                "reachable": True, "stale": True,
+                "clicks": last.get("sp_clicks"), "orders": last.get("sp_orders"),
+                "commission": last.get("sp_commission"), "as_of": last.get("at"),
+            }
+            sp_stale = last.get("at")
     lines = [
         "# รายงานการปั้น 4 ช่องทาง — AERIS Music (aeris938-2)", "",
         f"วัดเมื่อ: {time.strftime('%Y-%m-%d %H:%M UTC', time.gmtime())}", "",
@@ -193,12 +222,17 @@ def render(yt: dict, dash: dict, prev: dict | None = None) -> str:
         f"{_delta(tk.get('followers_total'), prev.get('tk_followers'))} |",
         f"| | | ยอดดู 7 วัน | {_cell(tk, 'views_7d')} | "
         f"{_delta(tk.get('views_7d'), prev.get('tk_views_7d'))} |",
-        f"| 4 | Shopee | คำสั่งซื้อ | {_cell(sp, 'orders')} | "
+        f"| 4 | Shopee | คลิก | {_cell(sp, 'clicks')} | "
+        f"{_delta(sp.get('clicks'), prev.get('sp_clicks'))} |",
+        f"| | | คำสั่งซื้อ | {_cell(sp, 'orders')} | "
         f"{_delta(sp.get('orders'), prev.get('sp_orders'))} |",
         f"| | | ค่าคอมมิชชั่น | {_cell(sp, 'commission')} | "
         f"{_delta(sp.get('commission'), prev.get('sp_commission'))} |",
         "",
     ]
+    if sp_stale:
+        lines += [f"> Shopee: อ่านสดไม่ได้จากรอบนี้ (แคปต์ชา) — แสดงค่าล่าสุด "
+                  f"เมื่อ {sp_stale}", ""]
     if sp and not sp.get("reachable"):
         lines += [f"**Shopee:** {sp.get('note', 'อ่านไม่ได้')} "
                   "(ต้อง sign in บนเดสก์ท็อป)", ""]
@@ -243,7 +277,7 @@ def main(argv=None) -> int:
     hist = load_history()
     prev = hist[-1] if hist else None
     REPORT.parent.mkdir(parents=True, exist_ok=True)
-    REPORT.write_text(render(yt, dash, prev), encoding="utf-8")
+    REPORT.write_text(render(yt, dash, prev, hist), encoding="utf-8")
     row = flatten(yt, dash)
     row["at"] = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
     append_history(row)
