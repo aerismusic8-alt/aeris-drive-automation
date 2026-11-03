@@ -75,6 +75,13 @@ PLATFORMS = {
 
 # --- captions ---------------------------------------------------------------
 
+# Cross-promotion: the four surfaces are one audience split across apps, so a
+# viewer who found us on one is told where the others are. Handles, not links —
+# a raw URL in a caption reads as spam and Facebook suppresses it.
+YOUTUBE_HANDLE = "@aerismusicth"
+TIKTOK_HANDLE = "@aeris.music4"
+
+
 def caption(slug: str, platform: str, hook: int = 0) -> str:
     h = release.parse_lyrics(slug)
     title = h.get("TITLE", slug)
@@ -92,14 +99,42 @@ def caption(slug: str, platform: str, hook: int = 0) -> str:
         shopee = monetize.link("facebook")
         return (f"{title} 🎵 {tagline}{tag}\n"
                 f"❤️ กดติดตามเพจ · ของน่าซื้อ 👉 {shopee}\n"
+                f"🎬 ดูใหม่ทุกวัน: YouTube {YOUTUBE_HANDLE} · TikTok {TIKTOK_HANDLE}\n"
                 f"💬 เพลงนี้เตือนถึงใคร คอมเมนต์บอกกันได้เลย\n"
-                f"🎧 ฟังเพลงไทยเพราะ ๆ ใหม่ทุกวันได้ที่ช่อง AERIS Music\n"
                 f"#เพลงไทย #เพลงใหม่ #เพลงเพราะ #AERISMusic")
     shopee = monetize.link("tiktok")
     return (f"{title} 🎵 {tagline}{tag}\n"
             f"🎧 กดติดตาม · ของน่าซื้อ 👉 {shopee}\n"
+            f"🎬 ฟังเต็ม ๆ ได้ที่ YouTube {YOUTUBE_HANDLE} · เพจ FB AERIS Music\n"
             f"💬 เพลงนี้เตือนถึงใคร พิมพ์ชื่อไว้ได้เลย\n"
             f"#fyp #เพลงไทย #เพลงใหม่ #เพลงเพราะ #TikTokเพลงไทย")
+
+
+def refresh_captions() -> int:
+    """Rewrite the pending captions in the committed queue, leave posted ones.
+
+    The queue is a committed artifact, so a caption change has to be applied to
+    it in place — `--rebuild-queue` would enumerate `library/shorts/`, which is
+    gitignored and empty on a fresh pod, and silently drop the backlog. Only
+    items not yet posted are touched, so a past post keeps the caption it went
+    out with. Returns the number of captions changed.
+    """
+    if not QUEUE.exists():
+        return 0
+    queue = json.loads(QUEUE.read_text(encoding="utf-8"))
+    posted = load_state().get("posted", {})
+    changed = 0
+    for item in queue:
+        if item["id"] in posted:
+            continue
+        want = caption(item["slug"], item["platform"], item.get("hook", 0))
+        if item.get("caption") != want:
+            item["caption"] = want
+            changed += 1
+    if changed:
+        QUEUE.write_text(json.dumps(queue, ensure_ascii=False, indent=2) + "\n",
+                         encoding="utf-8")
+    return changed
 
 
 # --- queue ------------------------------------------------------------------
@@ -502,10 +537,16 @@ def main() -> int:
     ap.add_argument("--platform", choices=sorted(PLATFORMS), default=None)
     ap.add_argument("--limit", type=int, default=1)
     ap.add_argument("--rebuild-queue", action="store_true")
+    ap.add_argument("--refresh-captions", action="store_true",
+                    help="rewrite pending captions in the committed queue")
     args = ap.parse_args()
 
     if args.probe:
         return probe()
+    if args.refresh_captions:
+        n = refresh_captions()
+        print(f"refreshed {n} pending caption(s)")
+        return 0
     if args.rebuild_queue or not QUEUE.exists():
         q = build_queue()
         QUEUE.parent.mkdir(parents=True, exist_ok=True)

@@ -764,6 +764,44 @@ def test_crosspost_pace_and_captions() -> None:
     tt_cap = crosspost.caption("01-khon-di-thi-chak-pai", "tiktok", 1)
     check("tiktok caption asks for a follow", "กดติดตาม" in tt_cap)
 
+    # Cross-promotion: the four surfaces are one audience split across apps, so
+    # each caption names the other two by handle. A URL would read as spam.
+    check("facebook caption cross-promotes YouTube + TikTok",
+          "@aerismusicth" in fb_cap and "@aeris.music4" in fb_cap)
+    check("tiktok caption cross-promotes YouTube + Facebook",
+          "@aerismusicth" in tt_cap and "AERIS Music" in tt_cap)
+
+    # `refresh_captions` must rewrite only what has not gone out, and leave a
+    # posted item's caption alone — the queue is a committed artifact and a
+    # rebuild would drop the gitignored backlog.
+    import tempfile
+    real_q = crosspost.QUEUE
+    real_load = crosspost.load_state
+    try:
+        with tempfile.TemporaryDirectory() as d:
+            crosspost.QUEUE = Path(d) / "q.json"
+            crosspost.QUEUE.write_text(json.dumps([
+                {"id": "facebook-page:pending", "platform": "facebook",
+                 "slug": "01-khon-di-thi-chak-pai", "hook": 1, "video": "v.mp4",
+                 "caption": "stale"},
+                {"id": "facebook-page:posted", "platform": "facebook",
+                 "slug": "01-khon-di-thi-chak-pai", "hook": 1, "video": "v.mp4",
+                 "caption": "already out"},
+            ], ensure_ascii=False), encoding="utf-8")
+            crosspost.load_state = lambda: {"posted": {"facebook-page:posted": {}}}
+            n = crosspost.refresh_captions()
+            q = json.loads(crosspost.QUEUE.read_text(encoding="utf-8"))
+            by_id = {it["id"]: it for it in q}
+            check("refresh rewrites the pending caption", n == 1)
+            check("refresh keeps the posted caption",
+                  by_id["facebook-page:posted"]["caption"] == "already out")
+            check("refresh adds the cross-promo to the pending one",
+                  "@aerismusicth" in by_id["facebook-page:pending"]["caption"])
+            check("refresh is idempotent", crosspost.refresh_captions() == 0)
+    finally:
+        crosspost.QUEUE = real_q
+        crosspost.load_state = real_load
+
     # Cadence: the shape of the 2026-11-01 run must now be refused. Sixty
     # posts inside the last 24 h is over the daily cap; a post 5 minutes old
     # is inside the minimum gap; a post an hour old on an empty day is fine.

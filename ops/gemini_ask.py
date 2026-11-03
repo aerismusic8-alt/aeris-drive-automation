@@ -16,6 +16,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import re
 import sys
 import time
 import urllib.request
@@ -35,6 +36,19 @@ _SET_TEXT = """(() => {
   document.execCommand('insertText', false, %s);
   return c.innerText.length;
 })()"""
+
+
+def _flatten(prompt: str) -> str:
+    """Collapse a multi-line prompt into one line.
+
+    Gemini's composer is Quill, and `execCommand('insertText')` inserts only the
+    first line of a multi-line string — the rest is silently dropped, so a
+    structured prompt arrived as a single line and Gemini answered a greeting
+    instead of the question. Every newline becomes a space; the meaning survives
+    because the prompt's own separators (numbers, dashes) do the structuring.
+    """
+    return re.sub(r"\s*\n\s*", " ", prompt).strip()
+
 
 _CLEAR = """(() => {
   const c = document.querySelector('.ql-editor');
@@ -111,9 +125,24 @@ def ask(prompt: str, *, new_chat: bool = False, timeout: float = 420.0) -> str:
             time.sleep(2.5)
         _wait_composer(d)
         before = d.js(_LAST_ANSWER) or ""
-        typed = d.js(_SET_TEXT % json.dumps(prompt))
+        flat = _flatten(prompt)
+        typed = d.js(_SET_TEXT % json.dumps(flat))
         if typed in ("no-composer", 0, None):
             raise RuntimeError("could not type into the Gemini composer")
+        # `insertText` can still land short (Quill re-renders mid-insert). Verify
+        # the composer holds the prompt and retry once before sending, or Gemini
+        # answers a truncated question.
+        time.sleep(1.2)
+        got = d.js("document.querySelector('.ql-editor')?.innerText||''") or ""
+        if len(got) < len(flat) * 0.9:
+            d.js(_CLEAR)
+            time.sleep(0.6)
+            typed = d.js(_SET_TEXT % json.dumps(flat))
+            time.sleep(1.2)
+            got = d.js("document.querySelector('.ql-editor')?.innerText||''") or ""
+            if len(got) < len(flat) * 0.9:
+                raise RuntimeError(
+                    f"composer holds {len(got)} of {len(flat)} chars after retry")
         time.sleep(0.8)
         if not d.js(_SEND):
             raise RuntimeError("could not find Gemini's send button")
