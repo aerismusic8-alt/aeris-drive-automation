@@ -77,7 +77,11 @@ AUTH = {
 # appearing.
 PROBE = {
     ".google.com": ("https://myaccount.google.com/", "บัญชี", "Account"),
-    ".facebook.com": ("https://www.facebook.com/", "ค้นหา", "Search"),
+    # The signed-in shell renders "ค้นหาเพื่อน" / the owner's name; the
+    # logged-out page renders neither. The marker set is deliberately generous
+    # because Facebook's first paint varies, and a false "rejected" would send K
+    # to re-sign a session that actually works (posting proves it does).
+    ".facebook.com": ("https://www.facebook.com/", "ค้นหาเพื่อน", "เพื่อน"),
     ".tiktok.com": ("https://www.tiktok.com/foryou", "ค้นหา", "Search"),
     ".flowmusic.app": ("https://www.flowmusic.app/", "!Log in"),
 }
