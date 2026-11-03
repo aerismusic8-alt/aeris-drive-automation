@@ -555,3 +555,17 @@ true-instrumental karaoke mix, cover art, a 1920x1080 word-synced video.
   fired at all** (manual dispatch only) and looked green. Green ≠ schedule alive.
   `ops/heartbeat.py`, folded into the hourly `ax-watchdog` plugin, now checks
   recency + "cron never fired" and re-dispatches stale rails from the pod.
+- **Email is the master key (2026-11-03).** GitHub "sudo mode" ("Confirm access →
+  Verify via email") guards BOTH creating a token at `/settings/tokens/new` AND
+  the `gh auth login --web` device flow's final Authorize. The code goes to
+  `aerismusic8@gmail.com`, which is **signed out** on the desktop — so no
+  workflow-scope token can be minted and no revenue mail can be read until that
+  mailbox is signed in. K's approval is not the blocker; the mail code is.
+  Restoring cookies puts a `.google.com` SID back but Gmail still shows the
+  account chooser, so the Google session does not survive as a usable mailbox.
+- **Shopee affiliate is behind an anti-bot CAPTCHA.** `affiliate.shopee.co.th`
+  redirects to `shopee.co.th/verify/captcha` (slide puzzle) even with the
+  affiliate cookies present, so revenue cannot be read programmatically.
+- **`bootstrap.py` restore needs `OPENHANDS_API_KEY`.** Without it the KV read
+  401s and the message looked like "no saved login yet"; the fix now names the
+  cause. Cookies ARE saved (255) and restore works once the key is exported.
