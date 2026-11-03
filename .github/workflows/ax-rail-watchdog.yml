@@ -28,6 +28,10 @@ on:
 
 permissions:
   contents: write
+  # The heartbeat half re-dispatches a stale rail through the workflow-dispatch
+  # API. That needs actions:write on the job token; without it the self-heal was
+  # coded but every dispatch returned 403 and the rail stayed down.
+  actions: write
 
 concurrency:
   group: ax-rail-watchdog
@@ -49,6 +53,9 @@ jobs:
           YT_CH3_REFRESH_TOKEN: ${{ secrets.YT_CH3_REFRESH_TOKEN }}
           YT_CH4_REFRESH_TOKEN: ${{ secrets.YT_CH4_REFRESH_TOKEN }}
           NTFY_TOPIC: ${{ vars.AX_NTFY_TOPIC }}
+          # Not exported to a step by default; heartbeat.py reads it to query the
+          # run history and to re-dispatch a stale rail (needs actions:write).
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           AX_WATCHDOG_STATE: ${{ github.workspace }}/data/ax-watchdog-state.json
           AUTOMATION_CONFIG_PATH: ${{ github.workspace }}/.watchdog-config.json
         run: |
