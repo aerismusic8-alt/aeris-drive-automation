@@ -1,0 +1,33 @@
+{
+  "name": "ax-growth",
+  "version": "0.1.0",
+  "description": "Grow the AERIS Music Facebook Page by following suggested pages, twice a day. Free-only: drives a headless browser with the saved session.",
+  "automation": {
+    "schema_version": "openhands.automation.plugin.v1",
+    "entrypoint": {
+      "runner": "script",
+      "command": "python3 scripts/main.py"
+    },
+    "config_schema": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "limit": {
+          "type": "integer",
+          "default": 12,
+          "description": "Max pages to follow this run."
+        },
+        "min_gap": {
+          "type": "integer",
+          "default": 8,
+          "description": "Seconds between follows."
+        }
+      }
+    },
+    "suggested_trigger": {
+      "type": "cron",
+      "schedule": "0 3,9 * * *",
+      "timezone": "UTC"
+    }
+  }
+}
