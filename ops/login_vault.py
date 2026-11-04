@@ -131,10 +131,14 @@ def read_bookmarks() -> list[dict]:
 
 
 def write_bookmarks(entries: list[dict]) -> int:
-    """Put the entries on the bookmark bar, skipping urls already present.
+    """Put the entries on the bookmark bar by editing `Bookmarks` on disk.
 
-    Must run while Chromium is *down*: Chrome reads `Bookmarks` at profile load
-    and rewrites it on exit, so a write to a running browser is clobbered.
+    This is only the *fallback*; prefer `restore_bookmarks_via_cdp`, which lets
+    Chrome own the write. A hand-written file is unreliable: Chrome verifies the
+    `checksum` field and silently discards a file whose checksum it cannot
+    reproduce (a 9-entry file written here was dropped on the next start, losing
+    K's whole bar). Must run while Chromium is down anyway — Chrome reads
+    `Bookmarks` at profile load and rewrites it on exit.
     """
     if not entries:
         return 0
@@ -164,6 +168,42 @@ def write_bookmarks(entries: list[dict]) -> int:
     return added
 
 
+# Chrome's bookmark bar folder id is "1" in every profile.
+_ADD_SCRIPT = """(entries) => new Promise((resolve) => {
+    chrome.bookmarks.getChildren('1', (kids) => {
+        const have = new Set(kids.map(k => k.url).filter(Boolean));
+        const todo = entries.filter(e => !have.has(e.url));
+        if (todo.length === 0) return resolve({added: 0, total: kids.length});
+        let done = 0;
+        todo.forEach((e) => chrome.bookmarks.create(
+            {parentId: '1', title: e.name, url: e.url}, () => {
+                done++;
+                if (done === todo.length) resolve({added: done, total: kids.length + done});
+            }));
+    });
+})"""
+
+
+def restore_bookmarks_via_cdp(entries: list[dict]) -> int:
+    """Add the entries through Chrome's own bookmark API.
+
+    Chrome verifies a `checksum` in `Bookmarks` and drops a file whose checksum
+    it cannot reproduce, so writing the file is not enough on its own. Going
+    through `chrome.bookmarks.create` makes Chrome own the write and the bar
+    survives the next start. The browser must already be running.
+    """
+    pw, br, ctx = _context()
+    pg = ctx.new_page()
+    try:
+        pg.goto("chrome://bookmarks/", wait_until="domcontentloaded", timeout=60000)
+        pg.wait_for_timeout(2000)
+        res = pg.evaluate(_ADD_SCRIPT, entries)
+        return int(res.get("added", 0))
+    finally:
+        pg.close()
+        pw.stop()
+
+
 def save_bookmarks() -> int:
     entries = read_bookmarks()
     ax_vault.kv_put(ax_vault.ensure_anchor(), BOOKMARKS_KEY,
@@ -180,8 +220,18 @@ def restore_bookmarks() -> int:
     if not blob:
         print("no saved bookmarks (login_vault.py save has never run)")
         return 0
-    added = write_bookmarks(blob.get("entries", []))
-    print(f"restored {added} bookmark(s) (saved {blob.get('saved_at')})")
+    entries = blob.get("entries", [])
+    # Prefer Chrome's own API when the browser is up: a hand-written file is
+    # dropped because Chrome cannot reproduce the checksum (that is what lost the
+    # bar). Fall back to the file only when there is no browser to talk to.
+    try:
+        added = restore_bookmarks_via_cdp(entries)
+        how = "via CDP"
+    except Exception as exc:  # noqa: BLE001
+        print(f"[=] CDP bookmark restore unavailable ({exc}); writing the file")
+        added = write_bookmarks(entries)
+        how = "to file (unverified)"
+    print(f"restored {added} bookmark(s) {how} (saved {blob.get('saved_at')})")
     return 0
 
 

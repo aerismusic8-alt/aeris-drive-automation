@@ -14,6 +14,7 @@ Verified 2026-10-28 on this sandbox: all five come up, CDP answers, noVNC connec
 from __future__ import annotations
 
 import argparse
+import json
 import os
 import shutil
 import subprocess
@@ -102,9 +103,6 @@ def start() -> None:
         time.sleep(2)
         print("[+] websockify", NOVNC_PORT)
     if not up(f"remote-debugging-port={CDP_PORT}"):
-        # Bookmarks must be in place before Chrome reads the profile; it rewrites
-        # `Bookmarks` on exit, so writing to a running browser is clobbered.
-        restore_bookmarks()
         env = {**os.environ, "DISPLAY": DISPLAY}
         spawn(["chromium", "--no-sandbox", "--disable-dev-shm-usage",
                "--no-first-run", "--no-default-browser-check",
@@ -144,9 +142,20 @@ def _vault_path() -> Path:
 
 
 def restore_bookmarks() -> None:
-    """Put K's bookmark bar back before Chrome starts. Best-effort, like restore_login."""
+    """Put K's bookmark bar back after Chrome starts. Best-effort, like restore_login.
+
+    Runs *after* Chromium is up on purpose: the restore goes through Chrome's own
+    bookmark API over CDP. A hand-written `Bookmarks` file is dropped because
+    Chrome verifies a checksum it cannot reproduce from that file, which is what
+    silently lost the bar once.
+    """
     vault = _vault_path()
     if not vault.exists():
+        return
+    # The snapshot lives in the KV store, which is authenticated with
+    # OPENHANDS_API_KEY; without it the read 401s (same reason as restore_login).
+    if not os.environ.get("OPENHANDS_API_KEY"):
+        print("[=] bookmark restore skipped: OPENHANDS_API_KEY is not set")
         return
     try:
         r = sh([sys.executable, str(vault), "restore-bookmarks"], timeout=60)
@@ -156,6 +165,30 @@ def restore_bookmarks() -> None:
     line = (r.stdout or "").strip().splitlines()
     if line and not line[0].startswith("no saved"):
         print("[+] bookmark restore:", line[0])
+
+
+def show_bookmark_bar() -> None:
+    """Make Chrome show the bookmark bar on every tab.
+
+    Chrome's default is to hide the bar on the new-tab page and show it only on
+    the bookmarks manager, so K sees an empty bar and reads it as "the bookmarks
+    are gone". Best-effort.
+    """
+    profile = Path(os.environ.get(
+        "AERIS_CHROME_PROFILE",
+        "/workspace/ax-tools/aeris938-state/chrome-profile/Default"))
+    prefs = profile / "Preferences"
+    if not prefs.exists():
+        return
+    try:
+        data = json.loads(prefs.read_text(encoding="utf-8"))
+        if data.get("bookmark_bar", {}).get("show_on_all_tabs") is True:
+            return
+        data["bookmark_bar"] = {"show_on_all_tabs": True}
+        prefs.write_text(json.dumps(data, ensure_ascii=False), encoding="utf-8")
+        print("[+] bookmark bar set to always show")
+    except Exception as exc:  # noqa: BLE001
+        print("[=] bookmark-bar preference skipped:", exc)
 
 
 def restore_login() -> None:
@@ -219,8 +252,12 @@ def main() -> int:
     if args.status:
         return status()
     install()
+    # The bar preference must be in place before Chrome reads the profile; it
+    # rewrites Preferences on exit, so setting it against a running browser is lost.
+    show_bookmark_bar()
     start()
     restore_login()
+    restore_bookmarks()
     print()
     rc = status()
     print("\noperator URL (sign in here, inside the desktop):")

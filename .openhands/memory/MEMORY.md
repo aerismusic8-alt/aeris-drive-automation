@@ -647,3 +647,13 @@ true-instrumental karaoke mix, cover art, a 1920x1080 word-synced video.
   recycle it fails with "profile appears to be in use by another Chromium process".
   `pkill -9 -f /usr/lib/chromium`, delete `chrome-profile/Singleton*` and
   `DevToolsActivePort`, then relaunch with `--remote-allow-origins=*`.
+- **Restore Chrome bookmarks through Chrome's own API, never by writing the
+  `Bookmarks` file.** A hand-written file is silently dropped — Chrome verifies a
+  top-level `checksum` (MD5 over the tree) it cannot reproduce, and it also
+  rewrites the file on exit, so a write to a running browser is clobbered. Use
+  `chrome.bookmarks.create` over CDP on `chrome://bookmarks/` (`login_vault.py
+  restore-bookmarks` now does this and is called *after* Chromium is up).
+  Chrome also hides the bar on the new-tab page by default; set
+  `bookmark_bar.show_on_all_tabs=true` in `Default/Preferences` *before* Chrome
+  starts or K sees an empty bar. `bootstrap.py` handles both. This is what lost
+  K's 9 bookmarks once (2026-11-04).
