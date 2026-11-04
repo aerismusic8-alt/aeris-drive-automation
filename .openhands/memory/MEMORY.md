@@ -419,9 +419,16 @@ true-instrumental karaoke mix, cover art, a 1920x1080 word-synced video.
   `AERIS_STORAGE_STATE_B64` secret; `browser.connect()` launches its own headless
   Chromium when that var is set (fallback stays CDP). Export the state with
   `ops/save_storage_state.py` from the cloud desktop (it reads CDP :9222 and keeps
-  only facebook.com/tiktok.com cookies); refresh it after a fresh desktop sign-in
-  with `gh secret set AERIS_STORAGE_STATE_B64`. `gh` here has `repo` scope, so
-  secret writes work. Verified run 41554234889: probe OK, FB 5/39, TikTok 39/39.
+  only facebook.com/tiktok.com cookies); refresh it after a fresh desktop sign-in.
+  Verified run 41554234889: probe OK, FB 5/39, TikTok 39/39.
+  **A dead session is the rail's most common failure**: a schedule run stops at
+  "Is the saved session still signed in?" and every later step is skipped, so the
+  queue silently stalls. Refresh = `python3 ops/save_storage_state.py > blob` then
+  set the secret. Two routes: `gh secret set AERIS_STORAGE_STATE_B64` (needs `gh`
+  authed), or, when only `AX_GH_TOKEN` is set, the secrets API —
+  `GET /actions/secrets/public-key`, seal with `pynacl`
+  (`pip install --target=/workspace/ax-tools/pylibs pynacl`), `PUT
+  /actions/secrets/AERIS_STORAGE_STATE_B64` → 204 (done 2026-11-04).
   **Setting the secret is fine, but the workflow file itself still needs PC1** — a
   plain `git push` of `.github/workflows/` is rejected for lack of `workflow` scope.
 - **Shopee Affiliate reports only through the warmed desktop (2026-11-03).** The
