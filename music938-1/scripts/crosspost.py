@@ -531,28 +531,62 @@ CONTENT_LIST = {
 }
 
 
-def newest_post_url(page, platform: str) -> str:
-    """The URL of the most recent post on `platform`, or "" if it cannot be read.
+def _posted_urls(state: dict) -> set:
+    """Every post URL already recorded, so the readback can skip them.
+
+    A stored URL carries tracking params (`?notif_id=...&ref=notif`), so compare
+    on the stable `/reel/<id>` or `/video/<id>` part — otherwise the same post
+    looks new each time and the "skip seen" test never fires.
+    """
+    out = set()
+    for rec in state.get("posted", {}).values():
+        url = rec.get("url") or ""
+        m = re.search(r"/(reel|video)/\d+", url)
+        if m:
+            out.add(m.group(0))
+    return out
+
+
+def newest_post_url(page, platform: str, seen: set | None = None) -> str:
+    """The URL of the post that was just published, or "" if it cannot be read.
 
     Best effort and never fatal: a URL that cannot be read is recorded as empty
     rather than as a page URL, so the state never again claims a post exists
     where it does not.
+
+    The list is *not* strictly newest-first, so taking the first link returned a
+    reel that had already been posted (run 13 recorded run 12's URL). `seen`
+    holds the URLs already in the state; the first link that is not in it is the
+    new post.
     """
+    seen = seen or set()
+
+    def pick(locator, pattern, base):
+        fallback = ""
+        for a in locator.all():
+            href = a.get_attribute("href") or ""
+            m = re.search(pattern, href)
+            if not m:
+                continue
+            url = href if href.startswith("http") else base + href
+            # Compare the stable id, not the full URL: a stored URL carries
+            # tracking params that a fresh one will not have.
+            if m.group(0) not in seen:
+                return url
+            fallback = fallback or url
+        return fallback
+
     try:
         if platform == "tiktok":
             page.goto(CONTENT_LIST["tiktok"], wait_until="domcontentloaded", timeout=60000)
             page.wait_for_timeout(6000)
-            for a in page.locator('a[href*="/video/"]').all():
-                href = a.get_attribute("href") or ""
-                if "/video/" in href:
-                    return href if href.startswith("http") else f"https://www.tiktok.com{href}"
+            return pick(page.locator('a[href*="/video/"]'), r"/video/\d+",
+                        "https://www.tiktok.com")
         elif platform == "facebook":
             page.goto(CONTENT_LIST["facebook"], wait_until="domcontentloaded", timeout=60000)
             page.wait_for_timeout(6000)
-            for a in page.locator('a[href*="/reel/"]').all():
-                href = a.get_attribute("href") or ""
-                if re.search(r"/reel/\d+", href):
-                    return href if href.startswith("http") else f"https://www.facebook.com{href}"
+            return pick(page.locator('a[href*="/reel/"]'), r"/reel/\d+",
+                        "https://www.facebook.com")
     except Exception:  # noqa: BLE001
         return ""
     return ""
@@ -594,7 +628,7 @@ def post(platform: str, limit: int) -> int:
                     print(f"  {it['id']}: not published — left pending "
                           f"(reason in the abort line above)")
                     continue
-                real = newest_post_url(pg, it["platform"])
+                real = newest_post_url(pg, it["platform"], seen=_posted_urls(state))
                 if not real:
                     print(f"  {it['id']}: posted, but the post URL could not be read")
                 state.setdefault("posted", {})[it["id"]] = {

@@ -750,6 +750,18 @@ def test_crosspost_engine() -> None:
         check("interleaving keeps every item exactly once",
               len({it["id"] for it in q}) == len(q))
 
+    # A stored post URL carries tracking params, so the readback must compare on
+    # the stable /reel/<id> part or it returns the previous post every run.
+    seen = crosspost._posted_urls({
+        "posted": {
+            "a": {"url": "https://www.facebook.com/reel/111/?notif_id=9&ref=notif"},
+            "b": {"url": "https://www.tiktok.com/@x/video/222?lang=th"},
+            "c": {"url": ""},
+        }
+    })
+    check("posted urls are reduced to stable ids",
+          seen == {"/reel/111", "/video/222"}, str(sorted(seen)))
+
     # Facebook must post to the Page, not the personal profile. The plain
     # `facebook.com/reels/create/` composer posts as the person, and the 60 Reels
     # sent before the Page existed landed there — so the Page rail needs both a
