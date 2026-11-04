@@ -26,13 +26,11 @@ ROOT = Path(__file__).resolve().parent.parent
 OPS = ROOT.parent / "ops"
 STATE = ROOT / "work" / "playlist-state.json"
 
-# Each bucket: (key, title, description, title-test). Order matters — a karaoke
-# title also contains the song name, so karaoke is tested before song.
+# Each bucket: (key, title, description, title-test). Order matters — a Short
+# title also contains the song name, so it is tested before song. Karaoke and
+# the NAVIYA artist set are gone: K (2026-11-04) ordered the channel to be songs
+# only, so neither is a bucket a new upload can land in.
 BUCKETS = [
-    ("karaoke", "คาราโอเกะ — ร้องตามได้ทุกเพลง",
-     "รวมทุกเพลงเป็นเวอร์ชันคาราโอเกะ ไม่มีเสียงร้อง ร้องตามได้เลย\n\n"
-     "AERIS Music · เพลงไทยที่ตั้งใจทำ",
-     lambda t: "คาราโอเกะ" in t),
     ("short", "ท่อนฮุก — เพลงไทยสั้น ๆ",
      "รวมท่อนฮุกของทุกเพลง ฟังสั้น ๆ ได้ใจความ\n\nAERIS Music · ค่ายเพลง AI",
      lambda t: "#Shorts" in t or "ท่อนที่" in t),
@@ -55,13 +53,13 @@ ARTIST = ("naviya", "NAVIYA", "เพลงทั้งหมดของ NAVIYA
 MOODS = [
     ("mood-sad", "เพลงเศร้า — อกหัก คิดถึง คร่ำครวญ",
      "รวมเพลงเศร้าของ AERIS Music อกหัก คิดถึง คนที่จากไป\n\n"
-     "AERIS Music · เพลงไทยที่ตั้งใจทำ", {"sad"}),
+     "AERIS Music · ค่ายเพลง AI", {"sad"}),
     ("mood-warm", "เพลงอบอุ่น — ฟังแล้วใจนุ่ม",
      "รวมเพลงอบอุ่นของ AERIS Music รัก ครอบครัว บ้าน\n\n"
-     "AERIS Music · เพลงไทยที่ตั้งใจทำ", {"warm", "calm"}),
+     "AERIS Music · ค่ายเพลง AI", {"warm", "calm"}),
     ("mood-hopeful", "เพลงให้กำลังใจ — สู้ต่อไป",
      "รวมเพลงให้กำลังใจของ AERIS Music กำลังใจ ความฝัน วันใหม่\n\n"
-     "AERIS Music · เพลงไทยที่ตั้งใจทำ", {"hopeful", "epic"}),
+     "AERIS Music · ค่ายเพลง AI", {"hopeful", "epic"}),
 ]
 
 
@@ -116,8 +114,6 @@ def _tok(ch: str) -> str:
 
 def classify(title: str) -> str:
     """Which bucket a video belongs to. First match wins (see BUCKETS order)."""
-    if "NAVIYA" in title.upper():
-        return "naviya"
     for key, _t, _d, test in BUCKETS:
         if test(title):
             return key

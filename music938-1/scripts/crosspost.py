@@ -98,16 +98,18 @@ def caption(slug: str, platform: str, hook: int = 0) -> str:
         # first two lines and the hashtags go last.
         shopee = monetize.link("facebook")
         return (f"{title} 🎵 {tagline}{tag}\n"
+                f"{release.LABEL}\n"
                 f"❤️ กดติดตามเพจ · ของน่าซื้อ 👉 {shopee}\n"
                 f"🎬 ดูใหม่ทุกวัน: YouTube {YOUTUBE_HANDLE} · TikTok {TIKTOK_HANDLE}\n"
                 f"💬 เพลงนี้เตือนถึงใคร คอมเมนต์บอกกันได้เลย\n"
-                f"#เพลงไทย #เพลงใหม่ #เพลงเพราะ #AERISMusic")
+                f"#เพลงไทย #เพลงใหม่ #เพลงเพราะ #AERISMusic #ค่ายเพลงAI")
     shopee = monetize.link("tiktok")
     return (f"{title} 🎵 {tagline}{tag}\n"
+            f"{release.LABEL}\n"
             f"🎧 กดติดตาม · ของน่าซื้อ 👉 {shopee}\n"
             f"🎬 ฟังเต็ม ๆ ได้ที่ YouTube {YOUTUBE_HANDLE} · เพจ FB AERIS Music\n"
             f"💬 เพลงนี้เตือนถึงใคร พิมพ์ชื่อไว้ได้เลย\n"
-            f"#fyp #เพลงไทย #เพลงใหม่ #เพลงเพราะ #TikTokเพลงไทย")
+            f"#fyp #เพลงไทย #เพลงใหม่ #เพลงเพราะ #TikTokเพลงไทย #ค่ายเพลงAI")
 
 
 def refresh_captions() -> int:

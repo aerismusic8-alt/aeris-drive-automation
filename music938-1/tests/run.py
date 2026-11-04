@@ -1342,16 +1342,19 @@ def test_fill_playlists() -> None:
     import fill_playlists as fp  # noqa: E402
 
     cases = [
-        ("คนดีที่จากไป (คาราโอเกะ) ร้องตามได้", "karaoke"),
         ("คนดีที่จากไป (ท่อนที่ 2) #เพลงไทย #Shorts", "short"),
         ("รวมเพลงไทยเพื่อชีวิต 15 เพลง (เลือกเพลงฟังได้)", "compilation"),
-        ("NAVIYA — FIRST LIGHT | Official Visualizer", "naviya"),
         ("คนดีที่จากไป — เพลงเศร้า ที่เข้าใจความเสียใจ", "song"),
     ]
     for title, want in cases:
         check(f"{title[:28]} -> {want}", fp.classify(title) == want)
+    # Karaoke and the NAVIYA artist set are retired (K, 2026-11-04: songs only),
+    # so no title can classify into them and no playlist definition remains.
+    check("karaoke is not a bucket", fp.classify("คนดีที่จากไป (คาราโอเกะ)") == "song")
+    check("naviya is not a bucket",
+          fp.classify("NAVIYA — FIRST LIGHT | Official Visualizer") == "song")
     # Every bucket a title can land in must have a playlist definition.
-    defined = {k for k, *_ in fp.BUCKETS} | {"naviya"}
+    defined = {k for k, *_ in fp.BUCKETS}
     check("every bucket has a playlist", {c[1] for c in cases} <= defined)
 
     # Mood playlists are additive: a full song joins its mood *and* the all-songs

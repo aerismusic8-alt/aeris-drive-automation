@@ -134,13 +134,21 @@ SHORTS = ROOT / "library" / "shorts"
 
 
 def short_files(slug: str, mix: str = "song") -> list[Path]:
-    """Every Short for a song, plain name first, then the -h1/-h2 hook cuts.
+    """Every Short for a song: the -h1/-h2 hook cuts, or the plain name alone.
+
+    The plain `short-<mix>-<slug>.mp4` is the single-hook render. A song with
+    hook cuts also has that file from an older single-hook run, and it is the
+    same first chorus under a different name — so it is dropped whenever a hook
+    cut exists, or the rail uploads the first chorus twice.
 
     A name may come from the release rather than disk; the path is returned
     either way and downloaded when it is actually uploaded.
     """
-    names = [f"short-{mix}-{slug}.mp4"] + sorted(
-        n for n in _release_asset_names() if n.startswith(f"short-{mix}-h") and n.endswith(f"-{slug}.mp4"))
+    hooks = sorted(
+        n for n in _release_asset_names()
+        if n.startswith(f"short-{mix}-h") and n.endswith(f"-{slug}.mp4"))
+    plain = f"short-{mix}-{slug}.mp4"
+    names = hooks if hooks else [plain]
     seen: list[str] = []
     for n in names:
         if n not in seen and _have(n, SHORTS / n):
