@@ -623,3 +623,14 @@ true-instrumental karaoke mix, cover art, a 1920x1080 word-synced video.
 - **The real minimum song length is 210s (`MIN_SECONDS` in flow_song.py).** A
   create pass that lands at ~180s is rejected as `TOO_SHORT` and re-rolled on the
   next run — it is not a failure to fix, just a retry.
+- **Flow Music accepts an uploaded audio *reference* (<=40 MB).** The composer has
+  "Add audio or image" -> "Upload audio file"; the clip appears as a chip and the
+  "Remix my music" flow will sing/generate from it. So a new singer voice from K
+  goes in as an upload, not through a local TTS. A pod-side upload page
+  (`music938-1/scripts/voice_inbox_server.py`, port 12001, public work-2 host)
+  lets K hand over a file from a phone; files land in `music938-1/voice-inbox/`
+  (gitignored — a voice recording is personal data).
+- **The cloud desktop's Chromium dies on a stale `SingletonLock`.** After a pod
+  recycle it fails with "profile appears to be in use by another Chromium process".
+  `pkill -9 -f /usr/lib/chromium`, delete `chrome-profile/Singleton*` and
+  `DevToolsActivePort`, then relaunch with `--remote-allow-origins=*`.
