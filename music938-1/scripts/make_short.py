@@ -139,12 +139,10 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
     full = estimate(lines, duration)
     events: list[str] = []
 
-    # The song title for the first beat, then it gets out of the way.
-    title = _escape(meta.get("title", ""))
-    if title:
-        events.append(f"Dialogue: 0,{_ts(0.15)},{_ts(2.6)},Title,,0,0,0,,"
-                      f"{{\\fad(250,300)}}{title}")
-
+    # No overlay text at all. K (2026-11-04): the drifting lyric sweep did not
+    # match the sung line, so every song looked like it was lying to the viewer,
+    # and the channel is now "just songs" — album art and audio. The song title
+    # still appears on the cover art itself, which is normal for a release.
     for item in (full if captions else []):
         if item["end"] <= start or item["start"] >= start + length:
             continue
@@ -161,10 +159,6 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
             parts.append(f"{{\\kf{cs}}}{_escape(w)}")
         events.append(f"Dialogue: 0,{_ts(s)},{_ts(e + 0.2)},Hook,,0,0,0,,"
                       f"{{\\fad(90,120)}}{''.join(parts)}")
-
-    # A small always-on watermark so a re-upload is traceable to the channel.
-    events.append(f"Dialogue: 0,{_ts(0.15)},{_ts(length - 0.2)},Brand,,0,0,0,,"
-                  f"AERIS Music")
     return head + "\n".join(events) + "\n"
 
 

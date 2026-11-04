@@ -65,7 +65,13 @@ TAGLINE = {
     "epic": "เพลงทรงพลัง ปลุกใจให้ลุกขึ้นสู้อีกครั้ง",
 }
 HASHTAGS = ("#AERISMusic #เพลงไทย #ศิลปินไทย #เพลงใหม่ #เพลงเพื่อชีวิต "
-            "#คาราโอเกะ #เพลงเพราะ")
+            "#เพลงเพราะ #ค่ายเพลงAI #AIMusic")
+
+# The one honest sentence every description carries. K (2026-11-04): the channel
+# is an AI music label and must say so plainly. The old copy claimed the songs
+# were "ร้องด้วยเสียงจริง" (sung by a real voice), which is false — the vocals are
+# generated — and a viewer who noticed would be right to feel misled.
+LABEL = "🤖 AERIS Music — ค่ายเพลง AI สร้างเพลงและเสียงร้องด้วย AI"
 
 
 def parse_lyrics(slug: str) -> dict:
@@ -278,8 +284,9 @@ def describe(slug: str, kind: str, variant: str = "") -> tuple[str, str, list[st
         desc = (
             f"🎵 {title_th} (ท่อนฮุก)\n\n"
             f"{tagline}\n"
+            f"{LABEL}\n"
             f"{CTA}\n\n"
-            f"เพลงที่ {int(n)} ในชุดเพลงไทยของ AERIS Music — ร้องด้วยเสียงจริง\n"
+            f"เพลงที่ {int(n)} ในชุดเพลงไทยของ AERIS Music\n"
             f"🎧 ฟังเวอร์ชันเต็มได้ในช่อง\n\n"
             f"{HASHTAGS} #Shorts"
         )
@@ -288,10 +295,10 @@ def describe(slug: str, kind: str, variant: str = "") -> tuple[str, str, list[st
         desc = (
             f"🎤 {title_th} — เวอร์ชันคาราโอเกะ (ไม่มีเสียงร้อง)\n\n"
             f"ร้องตามได้เลย! {tagline}\n"
+            f"{LABEL}\n"
             f"{CTA}\n\n"
             f"🎵 เพลงที่ {int(n)} ในชุดเพลงไทยของ AERIS Music\n"
-            f"🎧 ฟังเวอร์ชันเต็ม (มีเสียงร้อง) ได้ในช่อง\n"
-            f"✨ สร้างจากความตั้งใจ ไม่ใช่ความเร็ว\n\n"
+            f"🎧 ฟังเวอร์ชันเต็ม (มีเสียงร้อง) ได้ในช่อง\n\n"
             f"{HASHTAGS}"
         )
     else:
@@ -299,16 +306,15 @@ def describe(slug: str, kind: str, variant: str = "") -> tuple[str, str, list[st
         desc = (
             f"🎵 {title_th}\n\n"
             f"{tagline}\n"
+            f"{LABEL}\n"
             f"{CTA}\n\n"
-            f"เพลงที่ {int(n)} ในชุดเพลงไทยของ AERIS Music — ร้องด้วยเสียงจริง "
-            f"เนื้อร้องและทำนองใหม่\n\n"
-            f"🎧 ฟังเพลิน ฟังได้ทุกวัน\n"
-            f"🎤 คาราโอเกะมีให้ในช่อง (ไม่มีเสียงร้อง)\n"
-            f"✨ สร้างจากความตั้งใจ ไม่ใช่ความเร็ว\n\n"
+            f"เพลงที่ {int(n)} ในชุดเพลงไทยของ AERIS Music — เนื้อร้องและทำนองใหม่\n\n"
+            f"🎧 ฟังเพลิน ฟังได้ทุกวัน\n\n"
             f"{HASHTAGS}"
         )
     tags = ["เพลงไทย", "เพลงใหม่", "ศิลปินไทย", "AERIS", "เพลงเพราะ",
-            "เพลงฟังสบาย", "คาราโอเกะ", title_th, tagline, "thai music", "thai song"]
+            "เพลงฟังสบาย", "ค่ายเพลง AI", "AI music", title_th, tagline,
+            "thai music", "thai song"]
     tags += [t for t in extra_tags if t not in tags]
     # Every description carries the outbound links from channel/monetization.json.
     desc = desc.rstrip() + "\n" + monetize.block(kind)
@@ -320,14 +326,14 @@ def playlist_for(kind: str) -> tuple[str, str]:
     if kind == "short":
         return ("ท่อนฮุก — เพลงไทยสั้น ๆ",
                 "รวมท่อนฮุกของทุกเพลงในชุด ฟังสั้น ๆ ได้ใจความ\n\n"
-                "AERIS Music · เพลงไทยที่ตั้งใจทำ")
+                "AERIS Music · ค่ายเพลง AI")
     if kind == "karaoke":
         return ("คาราโอเกะ — ร้องตามได้ทุกเพลง",
                 "รวมทุกเพลงในชุดเป็นเวอร์ชันคาราโอเกะ ไม่มีเสียงร้อง ร้องตามได้เลย\n\n"
-                "AERIS Music · เพลงไทยที่ตั้งใจทำ")
+                "AERIS Music · ค่ายเพลง AI")
     return ("เพลงไทยเพื่อชีวิต — รวมทุกเพลง",
-            "รวมทุกเพลงไทยเพื่อชีวิตของ AERIS Music ร้องด้วยเสียงจริง เนื้อร้องและทำนองใหม่\n\n"
-            "AERIS Music · ฟังเพลิน ฟังได้ทุกวัน")
+            "รวมทุกเพลงไทยเพื่อชีวิตของ AERIS Music เนื้อร้องและทำนองใหม่\n\n"
+            "AERIS Music · ค่ายเพลง AI")
 
 
 def ensure_playlist(state: dict, kind: str, ch: str) -> str | None:

@@ -34,19 +34,19 @@ BUCKETS = [
      "AERIS Music · เพลงไทยที่ตั้งใจทำ",
      lambda t: "คาราโอเกะ" in t),
     ("short", "ท่อนฮุก — เพลงไทยสั้น ๆ",
-     "รวมท่อนฮุกของทุกเพลง ฟังสั้น ๆ ได้ใจความ\n\nAERIS Music · เพลงไทยที่ตั้งใจทำ",
+     "รวมท่อนฮุกของทุกเพลง ฟังสั้น ๆ ได้ใจความ\n\nAERIS Music · ค่ายเพลง AI",
      lambda t: "#Shorts" in t or "ท่อนที่" in t),
     ("compilation", "รวมเพลงยาว — ฟังเพลินเป็นชั่วโมง",
-     "คอมไพล์เพลงไทยเพื่อชีวิตแบบยาว เลือกเพลงฟังได้ มีบทนำทุกเพลง\n\n"
-     "AERIS Music · เพลงไทยที่ตั้งใจทำ",
+     "คอมไพล์เพลงไทยแบบยาว เลือกเพลงฟังได้ มีบทนำทุกเพลง\n\n"
+     "AERIS Music · ค่ายเพลง AI",
      lambda t: "รวมเพลง" in t),
-    ("song", "เพลงไทยเพื่อชีวิต — รวมทุกเพลง",
-     "รวมทุกเพลงไทยเพื่อชีวิตของ AERIS Music ร้องด้วยเสียงจริง เนื้อร้องและทำนองใหม่\n\n"
-     "AERIS Music · ฟังเพลิน ฟังได้ทุกวัน",
+    ("song", "เพลงไทย — รวมทุกเพลง",
+     "รวมทุกเพลงไทยของ AERIS Music เนื้อร้องและทำนองใหม่\n\n"
+     "AERIS Music · ค่ายเพลง AI",
      lambda t: True),
 ]
 ARTIST = ("naviya", "NAVIYA", "เพลงทั้งหมดของ NAVIYA ศิลปินคนแรกของ AERIS Music\n\n"
-          "AERIS Music · สร้างศิลปินทีละคน")
+          "AERIS Music · ค่ายเพลง AI")
 
 # Mood playlists. A song belongs to its mood *and* to the all-songs playlist, so
 # these are additive rather than one-bucket-per-video (see `moods()`). The three

@@ -124,14 +124,14 @@ def compilation_title(name: str, n_tracks: int) -> str:
 def compilation_description(name: str, slugs: list[str]) -> str:
     """Description with the chapter list, which is what enables song skipping."""
     return (
-        f"🎵 {name} — รวม {len(slugs)} เพลงไทย ร้องด้วยเสียงจริง\n\n"
+        f"🎵 {name} — รวม {len(slugs)} เพลงไทย\n\n"
+        f"🤖 AERIS Music — ค่ายเพลง AI สร้างเพลงและเสียงร้องด้วย AI\n\n"
         f"👉 กดเลือกเพลงที่อยากฟังได้จากรายการด้านล่าง\n\n"
         f"⏱️ รายการเพลง\n{build_chapters(slugs)}\n\n"
         f"🎧 ฟังเพลิน ๆ ได้ทั้งวัน ไม่ต้องกดเปลี่ยน\n"
-        f"🎤 ทุกเพลงมีเวอร์ชันคาราโอเกะในช่อง\n"
-        f"✨ AERIS Music — เพลงไทยที่ตั้งใจทำ\n\n"
+        f"✨ AERIS Music — ค่ายเพลง AI\n\n"
         f"#เพลงไทย #รวมเพลงไทย #เพลงเพื่อชีวิต #เพลงเศร้า #เพลงเพราะ "
-        f"#คาราโอเกะ #AERISMusic #เพลงฟังสบาย\n"
+        f"#ค่ายเพลงAI #AIMusic #AERISMusic #เพลงฟังสบาย\n"
     )
 
 

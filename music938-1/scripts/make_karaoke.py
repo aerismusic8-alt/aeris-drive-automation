@@ -130,7 +130,16 @@ def _from_markers(lines: list[str], markers: list[dict]) -> list[dict]:
     return out
 
 
-def build_ass(timed: list[dict], meta: dict, duration: float) -> str:
+def build_ass(timed: list[dict], meta: dict, duration: float,
+              captions: bool = False) -> str:
+    """Overlay for a song video.
+
+    `captions=False` (default) burns no text at all: no lyric sweep, no title
+    card, no closing card. K (2026-11-04) ordered the channel to be songs only —
+    the drifting sweep did not match the sung line and the cards were the same
+    "text on the song" the viewer had complained about. The song title still
+    appears on the cover art, which is the video's background.
+    """
     head = f"""[Script Info]
 ScriptType: v4.00+
 PlayResX: {W}
@@ -149,17 +158,7 @@ Style: Tag,{FONT},34,&H00DDFFFF,&H00DDFFFF,{OUTLINE},&H80000000,0,0,0,0,100,100,
 Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
 """
     events: list[str] = []
-    first = timed[0]["start"] if timed else LEAD
-    title = _escape(meta.get("title", ""))
-    sub = _escape(meta.get("subtitle", ""))
-    end_card = _ts(max(0.5, first - 0.3))
-    events.append(f"Dialogue: 0,{_ts(0.4)},{end_card},Title,,0,0,0,,"
-                  f"{{\\fad(500,600)}}{title}")
-    if sub:
-        events.append(f"Dialogue: 0,{_ts(0.4)},{end_card},Tag,,0,0,0,,"
-                      f"{{\\fad(500,600)}}{sub}")
-
-    for item in timed:
+    for item in (timed if captions else []):
         start, end, line = item["start"], item["end"], item["text"]
         words = _words(line)
         weights = [max(1, len(w.replace(" ", ""))) for w in words]
@@ -170,12 +169,6 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
             parts.append(f"{{\\kf{cs}}}{_escape(w)}")
         events.append(f"Dialogue: 0,{_ts(start)},{_ts(end + 0.25)},Lyric,,0,0,0,,"
                       f"{{\\fad(120,160)}}{''.join(parts)}")
-
-    # Closing card so the video does not just stop on the last lyric.
-    if duration > TAIL + 2:
-        events.append(f"Dialogue: 0,{_ts(duration - TAIL + 1)},{_ts(duration - 0.5)},"
-                      f"Tag,,0,0,0,,{{\\fad(400,600)}}ขอบคุณที่รับฟัง")
-
     return head + "\n".join(events) + "\n"
 
 
@@ -231,7 +224,8 @@ def render(slug: str, *, preview: float | None = None,
     work = ROOT / "work" / slug
     work.mkdir(parents=True, exist_ok=True)
     ass_path = work / f"{mix}.ass"
-    ass_path.write_text(build_ass(timed, meta, duration), encoding="utf-8")
+    ass_path.write_text(build_ass(timed, meta, duration, captions=captions),
+                        encoding="utf-8")
 
     out = ROOT / "library" / "karaoke" / f"{mix}-{slug}.mp4"
     out.parent.mkdir(parents=True, exist_ok=True)

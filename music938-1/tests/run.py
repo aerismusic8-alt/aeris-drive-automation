@@ -210,24 +210,30 @@ def test_thai_font() -> None:
 
 
 def test_ass() -> None:
-    section("ASS karaoke")
+    section("ASS overlay")
     timed = [
         {"text": "สวัสดี โลก", "start": 1.0, "end": 3.0},
     ]
     meta = {"title": "ทดสอบ", "subtitle": "ทดสอบ"}
+    # Default: songs only, no burned text at all (K, 2026-11-04).
     ass = make_karaoke.build_ass(timed, meta, 200.0)
     check("has Script Info", "[Script Info]" in ass)
     check("has Events", "[Events]" in ass)
-    check("uses karaoke tag", "\\kf" in ass)
-    check("title present", "ทดสอบ" in ass)
-    check("lyric present", "สวัสดี" in ass and "โลก" in ass)
-    # Two words over 2.0s, weighted by length: the sweep must total 200cs.
-    total = sum(int(m) for m in re.findall(r"\\kf(\d+)", ass))
-    check("sweep covers the line", total == 200, f"{total}cs")
     check("PlayResX 1920", "PlayResX: 1920" in ass)
+    check("no dialogue by default", "Dialogue:" not in ass)
+    check("no lyric text by default", "สวัสดี" not in ass)
+    check("no title card by default", "ทดสอบ" not in ass)
+
+    # The old behaviour stays behind captions=True for a deliberate re-render.
+    cap = make_karaoke.build_ass(timed, meta, 200.0, captions=True)
+    check("uses karaoke tag when asked", "\\kf" in cap)
+    check("lyric present when asked", "สวัสดี" in cap and "โลก" in cap)
+    # Two words over 2.0s, weighted by length: the sweep must total 200cs.
+    total = sum(int(m) for m in re.findall(r"\\kf(\d+)", cap))
+    check("sweep covers the line", total == 200, f"{total}cs")
     # Braces and backslashes in lyric text must be escaped or libass eats them.
     esc = make_karaoke.build_ass([{"text": "a{b}\\c", "start": 0.0, "end": 1.0}],
-                                 {"title": "t"}, 100.0)
+                                 {"title": "t"}, 100.0, captions=True)
     check("braces escaped", "\\{b\\}" in esc and "\\\\c" in esc)
 
 

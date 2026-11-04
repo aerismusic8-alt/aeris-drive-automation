@@ -1,7 +1,121 @@
 {
- "_why": "Song 01's first render shipped with tofu text and a near-black background. The main song video was replaced on 2026-10-30; these four are still the broken render on @aerismusicth. A replacement spends an upload slot, and the Data API allows 6 per Pacific day, so they wait for the quota to reset (07:00 UTC). Each new file is already rendered correctly in library/.",
+ "_why": "K (2026-11-04): the channel must hold only quality work and the burned text must go. Every upload made before the 2026-11-03 14:22 fix carries a drifting lyric sweep (estimated, not measured) that did not match the sung line, plus a title card and a closing card. The renderers no longer burn any text, so the corrected files in library/ (and on the media-938 release) are the replacement. Each replacement costs one upload slot, so they drain at the leftover quota of the Pacific day (07:00 UTC reset) before new releases.",
  "channel": "ch3",
- "slug": "01-khon-di-thi-chak-pai",
- "pending": [],
- "_run": "python3 scripts/replace_video.py --slug 01-khon-di-thi-chak-pai --kind karaoke --old SWS1vJJgkow --yes   (one per free upload slot; the song video was oliw1meKfcQ -> ASuxGEvJBlw)"
+ "pending": [
+  {
+   "slug": "01-khon-di-thi-chak-pai",
+   "kind": "song",
+   "old": "ASuxGEvJBlw"
+  },
+  {
+   "slug": "02-rak-thi-mai-mi-wan-chop",
+   "kind": "song",
+   "old": "SZO66B-RIIQ"
+  },
+  {
+   "slug": "03-khit-thueng-thoe-thuk-khuen",
+   "kind": "song",
+   "old": "448XiIvWgRA"
+  },
+  {
+   "slug": "04-saeng-chao-wan-mai",
+   "kind": "song",
+   "old": "vSLWJYCihTI"
+  },
+  {
+   "slug": "05-fon-tok-nai-chai",
+   "kind": "song",
+   "old": "koYPpT4PnCc"
+  },
+  {
+   "slug": "01-khon-di-thi-chak-pai",
+   "kind": "short",
+   "variant": "short-song-h1-01-khon-di-thi-chak-pai",
+   "old": "TISzvF9AQig"
+  },
+  {
+   "slug": "01-khon-di-thi-chak-pai",
+   "kind": "short",
+   "variant": "short-song-h2-01-khon-di-thi-chak-pai",
+   "old": "hy_0sr-uHGI"
+  },
+  {
+   "slug": "01-khon-di-thi-chak-pai",
+   "kind": "short",
+   "variant": "short-song-h3-01-khon-di-thi-chak-pai",
+   "old": "zkESEHVZ7A4"
+  },
+  {
+   "slug": "02-rak-thi-mai-mi-wan-chop",
+   "kind": "short",
+   "variant": "short-song-h1-02-rak-thi-mai-mi-wan-chop",
+   "old": "l7vR7B9nYxY"
+  },
+  {
+   "slug": "02-rak-thi-mai-mi-wan-chop",
+   "kind": "short",
+   "variant": "short-song-h2-02-rak-thi-mai-mi-wan-chop",
+   "old": "ROXXhBitMpA"
+  },
+  {
+   "slug": "02-rak-thi-mai-mi-wan-chop",
+   "kind": "short",
+   "variant": "short-song-h3-02-rak-thi-mai-mi-wan-chop",
+   "old": "rmlCjP4wvUI"
+  },
+  {
+   "slug": "03-khit-thueng-thoe-thuk-khuen",
+   "kind": "short",
+   "variant": "short-song-h1-03-khit-thueng-thoe-thuk-khuen",
+   "old": "51EuOXD3HPA"
+  },
+  {
+   "slug": "03-khit-thueng-thoe-thuk-khuen",
+   "kind": "short",
+   "variant": "short-song-h2-03-khit-thueng-thoe-thuk-khuen",
+   "old": "-6RdLKwxykk"
+  },
+  {
+   "slug": "03-khit-thueng-thoe-thuk-khuen",
+   "kind": "short",
+   "variant": "short-song-h3-03-khit-thueng-thoe-thuk-khuen",
+   "old": "iLwzR8A_1uw"
+  },
+  {
+   "slug": "04-saeng-chao-wan-mai",
+   "kind": "short",
+   "variant": "short-song-h1-04-saeng-chao-wan-mai",
+   "old": "FsO5qmneeEQ"
+  },
+  {
+   "slug": "04-saeng-chao-wan-mai",
+   "kind": "short",
+   "variant": "short-song-h2-04-saeng-chao-wan-mai",
+   "old": "STQsMvhb0yk"
+  },
+  {
+   "slug": "04-saeng-chao-wan-mai",
+   "kind": "short",
+   "variant": "short-song-h3-04-saeng-chao-wan-mai",
+   "old": "snpnSF5Y_U0"
+  },
+  {
+   "slug": "05-fon-tok-nai-chai",
+   "kind": "short",
+   "variant": "short-song-h1-05-fon-tok-nai-chai",
+   "old": "FTKnHZGW6dI"
+  },
+  {
+   "slug": "05-fon-tok-nai-chai",
+   "kind": "short",
+   "variant": "short-song-h2-05-fon-tok-nai-chai",
+   "old": "Dmmvl07DkVw"
+  },
+  {
+   "slug": "05-fon-tok-nai-chai",
+   "kind": "short",
+   "variant": "short-song-h3-05-fon-tok-nai-chai",
+   "old": "4lsmpLtFxzc"
+  }
+ ]
 }

@@ -73,7 +73,10 @@ def main() -> int:
     tok = daily_release.token()
     done, left = 0, list(entries)
     for e in entries:
-        rc = run_replace(music, tok, doc["slug"], e["kind"], e["old"],
+        # Each entry carries its own slug; the document-level `slug` is a
+        # fallback for the single-song backlog this started as.
+        slug = e.get("slug") or doc.get("slug")
+        rc = run_replace(music, tok, slug, e["kind"], e["old"],
                          e.get("variant", ""))
         if rc == 3:
             print("quota spent; the rest waits for tomorrow")

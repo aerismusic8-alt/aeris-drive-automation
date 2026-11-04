@@ -128,12 +128,32 @@ def main() -> int:
     have = existing_assets(rid, tok)
     print(f"release {args.release} id={rid}, {len(have)} assets already there")
 
+    # name -> asset id, so a re-render can replace the asset in place. GitHub
+    # answers 422 `already_exists` on a second upload of the same name, so the
+    # old asset has to be deleted first or the fix never reaches a fresh pod.
+    ids: dict[str, int] = {}
+    page = 1
+    while True:
+        st, assets = api(f"/repos/{REPO}/releases/{rid}/assets?per_page=100&page={page}", tok)
+        if st != 200 or not assets:
+            break
+        for a in assets:
+            ids[a["name"]] = a["id"]
+        if len(assets) < 100:
+            break
+        page += 1
+
     up = skip = 0
     for f in files:
         size = f.stat().st_size
         if have.get(f.name) == size:
             skip += 1
             continue
+        if f.name in ids:
+            st, _ = api(f"/repos/{REPO}/releases/assets/{ids[f.name]}", tok, "DELETE")
+            if st not in (204, 200):
+                print(f"  cannot drop old {f.name}: {st}", file=sys.stderr)
+                continue
         st, res = api(
             f"https://uploads.github.com/repos/{REPO}/releases/{rid}/assets?name={f.name}",
             tok, "POST", raw=f.read_bytes(), ctype="application/octet-stream")
