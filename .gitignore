@@ -65,6 +65,7 @@ music938-1/library/songs/clipmeta-*.json
 # Shorts, thumbnails and cover jpgs are regenerable renders; the durable copy
 # lives in the GitHub Release (see the 24h release mechanism).
 music938-1/library/shorts/*.mp4
+music938-1/library/affiliate/*.mp4
 music938-1/library/thumbs/*.png
 music938-1/library/covers/*.jpg
 # The compilation render is a 200 MB+ artifact; keep the .txt/.title (chapters) but not the video.

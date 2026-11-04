@@ -266,6 +266,66 @@ def test_lyrics_parse() -> None:
 
 # --- rendered output -------------------------------------------------------
 
+def test_affiliate_short() -> None:
+    """The affiliate card must be honest, attributable, and positioned.
+
+    Three failures this pins, each of which costs money or a channel:
+      * a card that makes a claim we cannot back ("รวยแน่นอน", "ทดลองใช้แล้ว")
+        breaches Shopee's affiliate terms and Thai ad law;
+      * a card whose link is not the *surface's* tracking link loses the
+        attribution, so the click is invisible and looks like "no interest";
+      * a card whose five text lines all land on the same anchor overprints
+        into an unreadable smear — the exact bug the first render had.
+    """
+    section("affiliate short")
+    import make_affiliate_short as aff
+
+    products = aff.load_products()
+    check("product cards exist", len(products) >= 5, f"{len(products)}")
+    for p in products:
+        check(f"{p['id']}: no banned claim", aff.claim_problem(p) is None,
+              str(aff.claim_problem(p)))
+        check(f"{p['id']}: has a song", bool(p.get("song")))
+        check(f"{p['id']}: has bullets", len(p.get("bullets", [])) >= 2)
+
+    # The link is resolved per surface, not stored on the card: a card that
+    # stored one link would tag every sale to the same surface.
+    check("cards do not hard-code a url", all("url" not in p for p in products))
+    import monetize
+    monetize.CACHE = None
+    tk = aff.caption(products[0], "tiktok")
+    fb = aff.caption(products[0], "facebook")
+    yt = aff.caption(products[0], "youtube")
+    check("tiktok caption carries the tiktok link",
+          monetize.link("tiktok") in tk)
+    check("facebook caption carries the facebook link",
+          monetize.link("facebook") in fb)
+    check("youtube caption carries the youtube link",
+          monetize.link("youtube") in yt)
+    for name, cap in (("tiktok", tk), ("facebook", fb), ("youtube", yt)):
+        check(f"{name} caption discloses the affiliate link",
+              "ลิงก์พันธมิตร" in cap)
+        check(f"{name} caption has Thai", has_thai(cap))
+        check(f"{name} caption is not over-long",
+              len(cap) <= 400, f"{len(cap)}")
+
+    # The card's text must be positioned, or libass overprints every line.
+    ass = aff.build_ass(products[0], 58.0)
+    dialogue = [ln for ln in ass.splitlines() if ln.startswith("Dialogue:")]
+    check("card draws hook + 3 bullets + cta + disclosure",
+          len(dialogue) >= 5, f"{len(dialogue)}")
+    check("every card line is positioned",
+          all("\\pos(" in ln for ln in dialogue))
+    ys = [int(re.search(r"\\pos\(\d+,(\d+)\)", ln).group(1)) for ln in dialogue]
+    check("card lines do not share a y", len(set(ys)) == len(ys), f"{ys}")
+    check("card lines are inside the frame", all(0 < y < aff.H for y in ys))
+    check("disclosure is drawn on the card",
+          "ลิงก์พันธมิตร" in ass)
+    check("no emoji in the burned text",
+          not any(0x1F300 <= ord(c) <= 0x1FAFF for c in ass))
+    monetize.CACHE = None
+
+
 def test_outputs() -> None:
     section("rendered output")
     songs = sorted((common.LIBRARY / "songs").glob("song-*.mp3"))
@@ -1470,6 +1530,7 @@ def main() -> int:
     test_operator_url()
     test_watchdog()
     test_fill_playlists()
+    test_affiliate_short()
     test_outputs()
     print(f"\n{PASS} passed, {FAIL} failed")
     if FAILURES:
