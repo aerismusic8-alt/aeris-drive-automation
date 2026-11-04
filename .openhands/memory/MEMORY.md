@@ -76,6 +76,17 @@ a Roblox game anyone can enter and play, and real revenue from it.
 
 ## music938-1 — Thai karaoke pack (2026-10-30, detail in archive)
 
+**Voice swap = stem + kNN-VC, never Flow (2026-11-04).** Flow **cannot clone a
+voice**: it rejects an uploaded clip that contains vocals ("remove the vocals"),
+and its "Create a similar original track" discards the reference. The free route
+is: pull the clip's vocal stem (`GET /__api/stems/clip/<id>`), convert it with
+**kNN-VC** (`voice-clone/vc-venv`, WavLM+HiFi-GAN, CPU, zero-shot), mix over
+drums+bass+other. `music938-1/scripts/voice_convert.py` does one slug. Gotchas:
+pass `device="cpu"` to `torch.hub.load`; monkey-patch `torchaudio.load/save` to
+`soundfile` (2.11 wants torchcodec); **encode in ~15 s chunks or WavLM OOMs the
+pod**; keep the reference ≤60 s. Detail in `2026-11-04.md`. K's sample = 112 Hz
+male; result 118 Hz. The vendored ffmpeg was broken → replaced with a static build.
+
 20 songs: lyrics, a **real sung vocal** (Flow Music, free/login-only), a
 true-instrumental karaoke mix, cover art, a 1920x1080 word-synced video.
 
