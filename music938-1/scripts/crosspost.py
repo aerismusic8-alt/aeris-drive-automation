@@ -274,12 +274,20 @@ def _signed_in(page) -> bool:
     return "/login" not in url and "login" not in url.split("?")[0]
 
 
-def probe() -> int:
-    """Report, per platform, whether the desktop reaches the upload page signed in."""
+def probe(platform: str | None = None) -> int:
+    """Report, per platform, whether the desktop reaches the upload page signed in.
+
+    Pass `platform` to ask about one surface. A rail that gates the whole run on
+    "all surfaces signed in" stops posting to the healthy surface the moment one
+    other login expires — the sessions are independent, so the caller can probe
+    each and post to the ones that answer.
+    """
     rc = 0
+    names = [platform] if platform else list(PLATFORMS)
     with _connect() as p:
         br, ctx = B.connect(p)
-        for name, cfg in PLATFORMS.items():
+        for name in names:
+            cfg = PLATFORMS[name]
             pg = ctx.new_page()
             try:
                 pg.goto(cfg["upload"], wait_until="domcontentloaded", timeout=60000)
@@ -544,7 +552,7 @@ def main() -> int:
     args = ap.parse_args()
 
     if args.probe:
-        return probe()
+        return probe(args.platform)
     if args.refresh_captions:
         n = refresh_captions()
         print(f"refreshed {n} pending caption(s)")

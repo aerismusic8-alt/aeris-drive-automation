@@ -54,15 +54,29 @@ jobs:
           python3 -m playwright install --with-deps chromium
 
       - name: Is the saved session still signed in?
+        # Report per surface and never fail here. Facebook and TikTok are
+        # independent logins, and gating the whole run on "all signed in" meant
+        # one expired login stopped the other surface posting for days — run 7
+        # (2026-11-04) failed at this step and skipped 44 pending TikTok Shorts
+        # because Facebook's cookie had died. The next step posts to whichever
+        # surfaces answer; this step only says which.
+        id: probe
         env:
           AERIS_STORAGE_STATE_B64: ${{ secrets.AERIS_STORAGE_STATE_B64 }}
         run: |
-          set -euo pipefail
+          set -uo pipefail
           if [ -z "${AERIS_STORAGE_STATE_B64:-}" ]; then
             echo "::error::AERIS_STORAGE_STATE_B64 is not set; run ops/save_storage_state.py and gh secret set"
             exit 1
           fi
-          python3 music938-1/scripts/crosspost.py --probe
+          for p in facebook tiktok; do
+            if python3 music938-1/scripts/crosspost.py --probe --platform "$p"; then
+              echo "$p=SIGNED_IN" >> "$GITHUB_OUTPUT"
+            else
+              echo "$p=SIGNED_OUT" >> "$GITHUB_OUTPUT"
+              echo "::warning::$p session is dead — posting will skip it"
+            fi
+          done
 
       - name: Post the pending Shorts
         env:
@@ -70,17 +84,28 @@ jobs:
           # The job token, as in ax-music-release.yml: fetch_media reads the
           # public media release with it. No personal PAT is stored.
           AX_GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          FB_STATE: ${{ steps.probe.outputs.facebook }}
+          TK_STATE: ${{ steps.probe.outputs.tiktok }}
         run: |
-          set -euo pipefail
+          set -uo pipefail
           PLAT="${{ github.event.inputs.platform || 'all' }}"
           LIMIT="${{ github.event.inputs.limit || '1' }}"
           python3 music938-1/scripts/crosspost.py --status
+          # Post only to the surfaces whose session answered the probe. A manual
+          # dispatch naming one platform still forces it.
           for p in facebook tiktok; do
-            if [ "$PLAT" = "all" ] || [ "$PLAT" = "$p" ]; then
-              echo "--- $p ---"
-              python3 music938-1/scripts/crosspost.py --post --platform "$p" --limit "$LIMIT" \
-                || echo "$p: nothing posted this run (cadence hold or signed out)"
+            if [ "$PLAT" != "all" ] && [ "$PLAT" != "$p" ]; then continue; fi
+            case "$p" in
+              facebook) state="${FB_STATE:-}" ;;
+              tiktok)   state="${TK_STATE:-}" ;;
+            esac
+            if [ "$PLAT" = "all" ] && [ "$state" != "SIGNED_IN" ]; then
+              echo "--- $p: skipped (session not signed in) ---"
+              continue
             fi
+            echo "--- $p ---"
+            python3 music938-1/scripts/crosspost.py --post --platform "$p" --limit "$LIMIT" \
+              || echo "$p: nothing posted this run (cadence hold or signed out)"
           done
 
       - name: Commit the crosspost state
@@ -106,5 +131,5 @@ jobs:
           [ -n "${TOPIC:-}" ] || { echo "no AX_NTFY_TOPIC set"; exit 0; }
           curl -sS --max-time 20 -H "Title: AERIS crosspost needs attention" \
             -H "Tags: warning" -H "Priority: high" \
-            -d "Facebook/TikTok posting failed — the saved session may be dead. Sign in on the cloud desktop and re-run ops/save_storage_state.py." \
+            -d "Facebook/TikTok posting failed — the saved session may be dead, or the media release could not be fetched. Sign in on the cloud desktop and re-run ops/save_storage_state.py." \
             "https://ntfy.sh/${TOPIC}" || echo "ntfy push failed (non-fatal)"
