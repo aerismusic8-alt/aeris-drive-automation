@@ -196,10 +196,10 @@ def build_queue() -> list[dict]:
                 "video": rel,
                 "caption": caption(slug, platform, hook),
             })
-    # One product card pair (both surfaces) after every 4 queue items — 2 song
-    # clips — so the first affiliate post lands on day one rather than after the
-    # whole song backlog.
-    return interleave(items, affiliate_items(), every=4, chunk=2)
+    # One product card pair (both surfaces) after every 6 queue items — 3 song
+    # clips — which is the 25% product share PLAN-30D-AI asks for, and still
+    # puts the first affiliate post on day one rather than after the backlog.
+    return interleave(items, affiliate_items(), every=6, chunk=2)
 
 
 def affiliate_items() -> list[dict]:
