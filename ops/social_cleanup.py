@@ -31,6 +31,34 @@ import browser as B  # noqa: E402
 
 STATE = ROOT / "music938-1" / "work" / "crosspost-state.json"
 TIKTOK_CONTENT = "https://www.tiktok.com/tiktokstudio/content"
+# The Page's published-post table. asset_id is the Page's Business asset id,
+# which is not the public profile id (61595890900382) — Business Suite rejects
+# that one. See channel.json.
+FB_POSTS = ("https://business.facebook.com/latest/posts/published_posts"
+            "?asset_id=1349201551618019")
+
+# Each row's checkbox aria-label carries the post id. A Reel row's text holds
+# "คลิป Reels"; profile-picture and text rows do not, so they are left alone.
+REEL_ROW_IDS = """
+() => {
+  const out = [];
+  for (const cb of document.querySelectorAll(
+      "input[type='checkbox'],div[role='checkbox']")) {
+    const lab = cb.getAttribute('aria-label') || '';
+    if (!lab.startsWith('เลือกรายการ')) continue;
+    let n = cb, txt = '';
+    for (let k = 0; k < 10 && n; k++) {
+      n = n.parentElement;
+      if (n && n.innerText && n.innerText.length > 60) {
+        txt = n.innerText;
+        break;
+      }
+    }
+    if (txt.includes('คลิป Reels')) out.push(lab);
+  }
+  return out;
+}
+"""
 
 
 def _connect():
@@ -128,16 +156,58 @@ def delete_tiktok(apply: bool, limit: int) -> int:
     return deleted
 
 
+def delete_facebook(apply: bool, limit: int) -> int:
+    """Move the Page's old text-burned Reels to the trash.
+
+    Selecting a Reel row's checkbox reveals a "ลบ" button whose dialog offers
+    "ย้ายไปที่ถังขยะ" (move to trash) — reversible, unlike a hard delete. One
+    row per pass, re-reading the table each time, because the ids shift as rows
+    leave the list.
+    """
+    deleted = 0
+    with _connect() as p:
+        br, ctx = B.connect(p)
+        pg = ctx.new_page()
+        pg.set_viewport_size({"width": 1440, "height": 900})
+        while limit <= 0 or deleted < limit:
+            pg.goto(FB_POSTS, wait_until="networkidle", timeout=90000)
+            pg.wait_for_timeout(12000)
+            labels = pg.evaluate(REEL_ROW_IDS)
+            if not labels:
+                print("no old Reels on this page")
+                break
+            print(f"{len(labels)} Reel row(s) on this page")
+            if not apply:
+                deleted += len(labels)
+                break
+            cb = pg.locator(
+                f"[aria-label={json.dumps(labels[0], ensure_ascii=False)}]").first
+            cb.click(force=True)
+            pg.wait_for_timeout(1500)
+            pg.locator("div[role='button']:has-text('ลบ')").first.click(force=True)
+            pg.wait_for_timeout(2000)
+            dlg = pg.locator("[role='dialog']")
+            dlg.get_by_text("ย้ายไปที่ถังขยะ", exact=True).click()
+            pg.wait_for_timeout(3500)
+            deleted += 1
+            print(f"deleted {deleted}")
+        pg.close()
+    return deleted
+
+
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__)
-    ap.add_argument("--platform", choices=("tiktok",), default="tiktok")
+    ap.add_argument("--platform", choices=("tiktok", "facebook"), default="tiktok")
     ap.add_argument("--plan", action="store_true")
     ap.add_argument("--apply", action="store_true")
     ap.add_argument("--limit", type=int, default=0, help="0 = all")
     args = ap.parse_args()
     if not (args.plan or args.apply):
         ap.error("pass --plan or --apply")
-    n = delete_tiktok(args.apply, args.limit)
+    if args.platform == "facebook":
+        n = delete_facebook(args.apply, args.limit)
+    else:
+        n = delete_tiktok(args.apply, args.limit)
     print(f"{'would delete' if args.plan else 'deleted'} {n}")
     return 0
 
