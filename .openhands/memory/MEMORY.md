@@ -657,3 +657,18 @@ true-instrumental karaoke mix, cover art, a 1920x1080 word-synced video.
   `bookmark_bar.show_on_all_tabs=true` in `Default/Preferences` *before* Chrome
   starts or K sees an empty bar. `bootstrap.py` handles both. This is what lost
   K's 9 bookmarks once (2026-11-04).
+
+## music938-2 (revenue) — durable facts
+- **The affiliate funnel had no content type.** Every Short was a song, so the
+  Shopee link sat where nobody buys → 0 clicks. `music938-1/scripts/make_affiliate_short.py`
+  renders a 9:16 product *card* (hook / buying points / CTA / mandatory disclosure)
+  bedded on an AERIS song. Cards are in `work/affiliate-products.json` and resolve
+  their link per surface via `monetize.link()`; `claim_problem()` refuses over-claims
+  and the brief forbids a first-hand-tested claim. Not yet wired into `crosspost.py`.
+- **libass overprints lines that share a style alignment/margin.** A multi-line card
+  must place every line with an explicit `{\an5\pos(x,y)}` or they all draw on one line.
+- **The bundled Noto Sans Thai has no emoji glyph.** A burned caption with 🛒 renders
+  tofu; use `•` / `»` (plain Thai + ASCII) in ASS text. Emoji in *captions* is fine.
+- **`crosspost.py` probe is per-surface now** (2026-11-04). Before, one dead login
+  failed the whole run and blocked the other surface (44 TikTok posts lost). The
+  workflow skips only the surface that did not answer.
