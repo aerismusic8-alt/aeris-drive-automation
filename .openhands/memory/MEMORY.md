@@ -672,3 +672,19 @@ true-instrumental karaoke mix, cover art, a 1920x1080 word-synced video.
 - **`crosspost.py` probe is per-surface now** (2026-11-04). Before, one dead login
   failed the whole run and blocked the other surface (44 TikTok posts lost). The
   workflow skips only the surface that did not answer.
+- **Facebook publish is the "แชร์เลย" (Share now) button, not "แชร์".** "แชร์" is
+  the tab that reveals the share options; clicking it leaves the Reel unpublished
+  and `post_facebook` then fails its "processing" check. Verified 2026-11-04.
+- **Facebook Page id is `61595890900382`; `1349201551618019` is the Business Suite
+  *asset* id** (composer URL only). Building the Reels list from the asset id
+  answers "page not available", so `newest_post_url` never reads a post back.
+- **A `return None` from a poster prints "not signed in" for every failure**, which
+  hid three Facebook bugs at once. Put the real reason in the abort line and keep
+  the caller message generic ("not published — left pending").
+- **`short-aff-*.mp4` also matches `short-*.mp4`.** Order the `short-aff-` rule
+  before the plain `short-` rule in `pull_media.group_of`, or affiliate cards land
+  in `shorts/` and the rail treats them as song Shorts.
+- **A pod recycle drops `ax-pylibs.pth`** (it lives in site-packages on the
+  overlay) and `websocket-client` was missing from `setup-pod.sh`. Re-run the pth
+  snippet from `setup-pod.sh`; system site-packages is root-owned so it falls back
+  to the user site dir.
