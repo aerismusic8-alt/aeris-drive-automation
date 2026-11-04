@@ -1,23 +1,12 @@
 {
-  "at": "2026-11-04T02:01:09+00:00",
+  "at": "2026-11-04T16:29:55+00:00",
   "channel": "ch3",
   "channel_stats": {
     "subs": 7,
-    "views": 2570,
-    "videos": 33
+    "views": 2647,
+    "videos": 21
   },
   "videos": {
-    "ASuxGEvJBlw": {
-      "video_id": "ASuxGEvJBlw",
-      "slug": "01-khon-di-thi-chak-pai",
-      "kind": "song",
-      "public": true,
-      "title": "คนดีที่จากไป — เพลงเศร้า ที่เข้าใจความเสียใจ",
-      "published": "2026-10-30T16:57:24Z",
-      "views": 72,
-      "likes": 0,
-      "comments": 0
-    },
     "l7vR7B9nYxY": {
       "video_id": "l7vR7B9nYxY",
       "slug": "02-rak-thi-mai-mi-wan-chop",
@@ -51,28 +40,6 @@
       "likes": 3,
       "comments": 3
     },
-    "SZO66B-RIIQ": {
-      "video_id": "SZO66B-RIIQ",
-      "slug": "02-rak-thi-mai-mi-wan-chop",
-      "kind": "song",
-      "public": true,
-      "title": "รักที่ไม่มีวันจบ — เพลงอบอุ่น ฟังแล้วใจนุ่ม",
-      "published": "2026-10-31T19:01:56Z",
-      "views": 55,
-      "likes": 0,
-      "comments": 0
-    },
-    "ohmKsjI5Sq8": {
-      "video_id": "ohmKsjI5Sq8",
-      "slug": "02-rak-thi-mai-mi-wan-chop",
-      "kind": "karaoke",
-      "public": true,
-      "title": "รักที่ไม่มีวันจบ (คาราโอเกะ) ร้องตามได้",
-      "published": "2026-10-31T23:01:54Z",
-      "views": 24,
-      "likes": 0,
-      "comments": 0
-    },
     "51EuOXD3HPA": {
       "video_id": "51EuOXD3HPA",
       "slug": "03-khit-thueng-thoe-thuk-khuen",
@@ -82,17 +49,6 @@
       "published": "2026-11-01T03:01:47Z",
       "views": 229,
       "likes": 7,
-      "comments": 0
-    },
-    "4xcbYYhFP3A": {
-      "video_id": "4xcbYYhFP3A",
-      "slug": "01-khon-di-thi-chak-pai",
-      "kind": "karaoke",
-      "public": true,
-      "title": "คนดีที่จากไป (คาราโอเกะ) ร้องตามได้",
-      "published": "2026-11-01T09:09:53Z",
-      "views": 9,
-      "likes": 0,
       "comments": 0
     },
     "TISzvF9AQig": {
@@ -150,28 +106,6 @@
       "likes": 1,
       "comments": 0
     },
-    "448XiIvWgRA": {
-      "video_id": "448XiIvWgRA",
-      "slug": "03-khit-thueng-thoe-thuk-khuen",
-      "kind": "song",
-      "public": true,
-      "title": "คิดถึงเธอทุกคืน — เพลงเศร้า ที่เข้าใจความเสียใจ",
-      "published": "2026-11-02T07:06:38Z",
-      "views": 48,
-      "likes": 1,
-      "comments": 0
-    },
-    "MEwzH-g07kA": {
-      "video_id": "MEwzH-g07kA",
-      "slug": "03-khit-thueng-thoe-thuk-khuen",
-      "kind": "karaoke",
-      "public": true,
-      "title": "คิดถึงเธอทุกคืน (คาราโอเกะ) ร้องตามได้",
-      "published": "2026-11-02T11:06:32Z",
-      "views": 5,
-      "likes": 0,
-      "comments": 1
-    },
     "FsO5qmneeEQ": {
       "video_id": "FsO5qmneeEQ",
       "slug": "04-saeng-chao-wan-mai",
@@ -179,7 +113,7 @@
       "public": true,
       "title": "แสงเช้าวันใหม่ (ท่อนที่ 1) #เพลงไทย #Shorts",
       "published": "2026-11-02T15:06:11Z",
-      "views": 4,
+      "views": 9,
       "likes": 0,
       "comments": 0
     },
@@ -190,7 +124,7 @@
       "public": true,
       "title": "แสงเช้าวันใหม่ (ท่อนที่ 2) #เพลงไทย #Shorts",
       "published": "2026-11-02T19:06:11Z",
-      "views": 29,
+      "views": 30,
       "likes": 0,
       "comments": 0
     },
@@ -205,28 +139,6 @@
       "likes": 0,
       "comments": 0
     },
-    "vSLWJYCihTI": {
-      "video_id": "vSLWJYCihTI",
-      "slug": "04-saeng-chao-wan-mai",
-      "kind": "song",
-      "public": true,
-      "title": "แสงเช้าวันใหม่ — เพลงให้กำลังใจ เริ่มวันใหม่อีกครั้ง",
-      "published": "2026-11-03T03:06:23Z",
-      "views": 13,
-      "likes": 0,
-      "comments": 0
-    },
-    "jgBTOGWyBp8": {
-      "video_id": "jgBTOGWyBp8",
-      "slug": "04-saeng-chao-wan-mai",
-      "kind": "karaoke",
-      "public": true,
-      "title": "แสงเช้าวันใหม่ (คาราโอเกะ) ร้องตามได้",
-      "published": "2026-11-03T09:58:13Z",
-      "views": 12,
-      "likes": 0,
-      "comments": 0
-    },
     "FTKnHZGW6dI": {
       "video_id": "FTKnHZGW6dI",
       "slug": "05-fon-tok-nai-chai",
@@ -234,7 +146,7 @@
       "public": true,
       "title": "ฝนตกในใจ (ท่อนที่ 1) #เพลงไทย #Shorts",
       "published": "2026-11-03T13:57:57Z",
-      "views": 19,
+      "views": 21,
       "likes": 0,
       "comments": 0
     },
@@ -245,7 +157,7 @@
       "public": true,
       "title": "ฝนตกในใจ (ท่อนที่ 2) #เพลงไทย #Shorts",
       "published": "2026-11-03T17:58:08Z",
-      "views": 23,
+      "views": 25,
       "likes": 0,
       "comments": 0
     },
@@ -256,29 +168,73 @@
       "public": true,
       "title": "ฝนตกในใจ (ท่อนที่ 3) #เพลงไทย #Shorts",
       "published": "2026-11-03T21:57:46Z",
-      "views": 19,
+      "views": 26,
       "likes": 1,
       "comments": 0
     },
-    "koYPpT4PnCc": {
-      "video_id": "koYPpT4PnCc",
-      "slug": "05-fon-tok-nai-chai",
+    "QFFLoNnm7LE": {
+      "video_id": "QFFLoNnm7LE",
+      "slug": "01-khon-di-thi-chak-pai",
       "kind": "song",
       "public": true,
-      "title": "ฝนตกในใจ — เพลงผ่อนคลาย ฟังสบายทุกเวลา",
-      "published": "2026-11-04T01:58:17Z",
+      "title": "คนดีที่จากไป — เพลงเศร้า ที่เข้าใจความเสียใจ",
+      "published": "2026-11-04T07:54:44Z",
       "views": 1,
       "likes": 0,
       "comments": 0
     },
-    "t6NIvNjJtEQ": {
-      "video_id": "t6NIvNjJtEQ",
-      "slug": "05-fon-tok-nai-chai",
-      "kind": "karaoke",
+    "msgz1QSlw6s": {
+      "video_id": "msgz1QSlw6s",
+      "slug": "02-rak-thi-mai-mi-wan-chop",
+      "kind": "song",
       "public": true,
-      "title": "ฝนตกในใจ (คาราโอเกะ) ร้องตามได้",
-      "published": "2026-11-03T09:58:09Z",
-      "views": 0,
+      "title": "รักที่ไม่มีวันจบ — เพลงอบอุ่น ฟังแล้วใจนุ่ม",
+      "published": "2026-11-04T07:54:50Z",
+      "views": 4,
+      "likes": 0,
+      "comments": 0
+    },
+    "ONrVg9HbeKo": {
+      "video_id": "ONrVg9HbeKo",
+      "slug": "03-khit-thueng-thoe-thuk-khuen",
+      "kind": "song",
+      "public": true,
+      "title": "คิดถึงเธอทุกคืน — เพลงเศร้า ที่เข้าใจความเสียใจ",
+      "published": "2026-11-04T07:55:07Z",
+      "views": 7,
+      "likes": 0,
+      "comments": 0
+    },
+    "5jkqF21D5i4": {
+      "video_id": "5jkqF21D5i4",
+      "slug": "04-saeng-chao-wan-mai",
+      "kind": "song",
+      "public": true,
+      "title": "แสงเช้าวันใหม่ — เพลงให้กำลังใจ เริ่มวันใหม่อีกครั้ง",
+      "published": "2026-11-04T07:55:11Z",
+      "views": 5,
+      "likes": 0,
+      "comments": 0
+    },
+    "QDe4sBEGjwU": {
+      "video_id": "QDe4sBEGjwU",
+      "slug": "05-fon-tok-nai-chai",
+      "kind": "song",
+      "public": true,
+      "title": "ฝนตกในใจ — เพลงผ่อนคลาย ฟังสบายทุกเวลา",
+      "published": "2026-11-04T07:55:25Z",
+      "views": 3,
+      "likes": 0,
+      "comments": 0
+    },
+    "zNqUTtCaYxY": {
+      "video_id": "zNqUTtCaYxY",
+      "slug": "01-khon-di-thi-chak-pai",
+      "kind": "short",
+      "public": true,
+      "title": "คนดีที่จากไป (ท่อนที่ 1) #เพลงไทย #Shorts",
+      "published": "2026-11-04T07:55:26Z",
+      "views": 18,
       "likes": 0,
       "comments": 0
     }
