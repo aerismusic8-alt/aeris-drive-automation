@@ -30,6 +30,10 @@ def group_of(name: str) -> str | None:
         return "songs"
     if name.startswith("karaoke-") and name.endswith(".mp4"):
         return "karaoke"
+    # Affiliate product cards are also `short-*`, so they must be tested before
+    # the plain Shorts rule or they land in shorts/ and the rail never posts them.
+    if name.startswith("short-aff-") and name.endswith(".mp4"):
+        return "affiliate"
     if name.startswith("short-") and name.endswith(".mp4"):
         return "shorts"
     if name.startswith("cover-") and name.endswith(".jpg"):

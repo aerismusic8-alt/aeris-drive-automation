@@ -44,6 +44,7 @@ import release  # noqa: E402
 
 WORK = ROOT / "work"
 SHORTS = ROOT / "library" / "shorts"
+AFF_SHORTS = ROOT / "library" / "affiliate"
 QUEUE = WORK / "crosspost-queue.json"
 STATE = WORK / "crosspost-state.json"
 
@@ -52,7 +53,13 @@ STATE = WORK / "crosspost-state.json"
 # Facebook posts through the Page-scoped Reels composer in Meta Business Suite.
 # The plain `facebook.com/reels/create/` composer posts as the personal profile,
 # which is not the brand surface, so it is deliberately not used.
-FACEBOOK_PAGE_ID = "1349201551618019"
+# The Page id is the public one (61595890900382), the same one profile_setup.py
+# and social_stats.py use. It is NOT the Business Suite asset id
+# (1349201551618019) that appears in the composer URL: building the Reels list
+# from the asset id yields "page not available" and the post URL can never be
+# read back. Verified 2026-11-04.
+FACEBOOK_PAGE_ID = "61595890900382"
+FACEBOOK_ASSET_ID = "1349201551618019"
 
 PLATFORMS = {
     "tiktok": {
@@ -64,7 +71,7 @@ PLATFORMS = {
     "facebook": {
         "label": "Facebook Reels (Page)",
         "upload": ("https://business.facebook.com/latest/reels_composer/"
-                   f"?ref=biz_web_home_create_reel&asset_id={FACEBOOK_PAGE_ID}"),
+                   f"?ref=biz_web_home_create_reel&asset_id={FACEBOOK_ASSET_ID}"),
         "login_marker": "/login",
         # A distinct state key: the 60 Reels posted before the Page existed went
         # to the personal profile, so they must not count as Page posts.
@@ -167,6 +174,41 @@ def build_queue() -> list[dict]:
                 "hook": hook,
                 "video": rel,
                 "caption": caption(slug, platform, hook),
+            })
+    items.extend(affiliate_items())
+    return items
+
+
+def affiliate_items() -> list[dict]:
+    """Product-card Shorts as queue items, captioned by the affiliate module.
+
+    A product clip is a different kind of post from a song clip, so it carries
+    its own caption (the product card's, with the per-surface link) rather than
+    a song caption that happens to sit under a product video. The id is stable
+    (`<state_key>:aff-<product-id>`), so once posted it never re-enters.
+    """
+    try:
+        import make_affiliate_short as aff
+    except ImportError:
+        return []
+    if not AFF_SHORTS.exists():
+        return []
+    by_id = {p["id"]: p for p in aff.load_products()}
+    items = []
+    for clip in sorted(AFF_SHORTS.glob("short-aff-*.mp4")):
+        pid = clip.stem[len("short-aff-"):]
+        product = by_id.get(pid)
+        if not product:
+            continue
+        for platform, cfg in PLATFORMS.items():
+            items.append({
+                "id": f"{cfg['state_key']}:{clip.stem}",
+                "platform": platform,
+                "slug": pid,
+                "hook": 0,
+                "kind": "affiliate",
+                "video": str(clip.relative_to(ROOT)),
+                "caption": aff.caption(product, platform),
             })
     return items
 
@@ -424,20 +466,29 @@ def post_facebook(page, video: Path, text: str) -> str | None:
             return None
         page.wait_for_timeout(7000)
 
-    # Publish is the *footer* "แชร์"; the header "แชร์" is only the stage label and
-    # the header "แชร์เลย" sits off-screen. A JS click lands on the header button
-    # and silently does nothing, so force a real click on the last match.
+    # Publish is the footer "แชร์เลย" (Share now). "แชร์" is NOT the publish
+    # button — it is the tab that reveals the share options, and clicking it
+    # leaves the Reel unpublished. The old code clicked "แชร์" and then failed to
+    # find the processing dialog, so every Facebook post was abandoned at the
+    # last step while the log blamed the login. Verified live 2026-11-04: after
+    # "แชร์เลย" the composer navigates to the content planner.
+    _js_click_text(page, ["แชร์"])
+    page.wait_for_timeout(2500)
     try:
-        page.get_by_role("button", name="แชร์", exact=True).last.click(timeout=8000, force=True)
+        page.get_by_role("button", name="แชร์เลย", exact=True).last.click(timeout=8000, force=True)
     except Exception:  # noqa: BLE001
-        _abort(page, "facebook", "publish button not found")
+        _abort(page, "facebook", "publish button (แชร์เลย) not found")
         return None
-    # Success is the "กำลังประมวลผลคลิป Reels" dialog, not a URL change.
+    # Success is either the "กำลังประมวลผลคลิป Reels" dialog or a navigation away
+    # from the composer (Meta now sends a published Reel to the content planner,
+    # so the dialog is not guaranteed). Accepting both stops a real publish from
+    # being reported as a failure — and, worse, retried into a duplicate.
     try:
         page.wait_for_selector("text=กำลังประมวลผลคลิป Reels", timeout=30000)
     except Exception:  # noqa: BLE001
-        _abort(page, "facebook", "publish not confirmed")
-        return None
+        if "reels_composer" in page.url:
+            _abort(page, "facebook", "publish not confirmed")
+            return None
     page.wait_for_timeout(6000)
     return page.url
 
@@ -450,7 +501,10 @@ POSTERS = {"tiktok": post_tiktok, "facebook": post_facebook}
 # not be checked afterwards. Reading the list gives the real post.
 CONTENT_LIST = {
     "tiktok": "https://www.tiktok.com/tiktokstudio/content",
-    "facebook": f"https://www.facebook.com/profile.php?id={FACEBOOK_PAGE_ID}&sk=reels",
+    # `/61595890900382/reels/` is the Page's Reels tab (verified 2026-11-04).
+    # The old `profile.php?id=...&sk=reels` form returns "page not available"
+    # with the asset id and never yielded a post URL.
+    "facebook": f"https://www.facebook.com/{FACEBOOK_PAGE_ID}/reels/",
 }
 
 
@@ -514,7 +568,8 @@ def post(platform: str, limit: int) -> int:
                 print(f"  posting {it['id']} ...", flush=True)
                 url = POSTERS[it["platform"]](pg, video, it["caption"])
                 if url is None:
-                    print(f"  {it['id']}: not signed in — left pending")
+                    print(f"  {it['id']}: not published — left pending "
+                          f"(reason in the abort line above)")
                     continue
                 real = newest_post_url(pg, it["platform"])
                 if not real:

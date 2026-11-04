@@ -17,7 +17,7 @@ mkdir -p "$BIN"
 # script that needs numpy/Pillow/pythainlp/playwright dies until it is redone.
 PYLIBS=/workspace/ax-tools/pylibs
 python3 -m pip install -q --target="$PYLIBS" \
-  numpy pythainlp python-crfsuite pillow playwright 2>&1 | tail -2
+  numpy pythainlp python-crfsuite pillow playwright websocket-client 2>&1 | tail -2
 # A .pth in site-packages makes every `python3` find the durable libs without a
 # PYTHONPATH export, so an unattended cron script cannot miss them. The system
 # site-packages is root-owned in this image, so fall back to the user site dir

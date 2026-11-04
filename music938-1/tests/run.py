@@ -697,11 +697,16 @@ def test_crosspost_engine() -> None:
 
     q = crosspost.build_queue()
     shorts = list((ROOT / "library" / "shorts").glob("short-*.mp4"))
+    aff = list((ROOT / "library" / "affiliate").glob("short-aff-*.mp4"))
     if not shorts:
         print("  skip (no shorts rendered yet)")
         return
+    # Both content types are queued: the song Shorts and the affiliate product
+    # cards, each on both platforms. A product card that never reaches the queue
+    # is a clip nobody ever sees.
     check("every short is queued on both platforms",
-          len(q) == len(shorts) * 2, f"{len(q)} vs {len(shorts)}*2")
+          len(q) == (len(shorts) + len(aff)) * 2,
+          f"{len(q)} vs ({len(shorts)}+{len(aff)})*2")
     check("ids are unique", len({it["id"] for it in q}) == len(q))
 
     t = next(it for it in q if it["platform"] == "tiktok")
@@ -714,11 +719,25 @@ def test_crosspost_engine() -> None:
         check(f"{it['platform']}: slug resolves to a real short",
               (ROOT / it["video"]).exists())
 
+    # An affiliate card is captioned by the affiliate module, not the song
+    # caption: it must carry the affiliate link and the disclosure, and be
+    # marked as an affiliate item so it can be told apart in the queue.
+    aff_items = [it for it in q if it.get("kind") == "affiliate"]
+    if aff:
+        check("affiliate cards are queued on both platforms",
+              len(aff_items) == len(aff) * 2, f"{len(aff_items)}")
+        check("affiliate caption carries the surface link",
+              all("s.shopee.co.th" in it["caption"] for it in aff_items))
+        check("affiliate caption discloses the link",
+              all("ลิงก์พันธมิตร" in it["caption"] for it in aff_items))
+
     # A posted item must never come back as pending.
     state = {"posted": {t["id"]: {"at": "x", "url": "y"}}}
     left = crosspost.pending(q, state, "tiktok")
     check("posted items are excluded", t["id"] not in {it["id"] for it in left})
-    check("facebook still pending", len(left) == len(shorts) - 1)
+    check("facebook still pending",
+          len(left) == len(shorts) + len(aff) - 1,
+          f"{len(left)}")
 
     # Facebook must post to the Page, not the personal profile. The plain
     # `facebook.com/reels/create/` composer posts as the person, and the 60 Reels
@@ -737,9 +756,15 @@ def test_crosspost_engine() -> None:
     src = (ROOT / "scripts" / "crosspost.py").read_text()
     body = src.split("def post_facebook(", 1)[1].split("\ndef ", 1)[0]
     check("composer advances two steps", body.count('"ถัดไป"') >= 2)
-    check("publish is the footer แชร์, force-clicked", "force=True" in body)
-    check("publish is confirmed by the processing dialog",
-          "กำลังประมวลผลคลิป Reels" in body)
+    # Publish is "แชร์เลย" (Share now), not "แชร์". "แชร์" is the tab that reveals
+    # the share options; clicking it left the Reel unpublished and the run blamed
+    # the login. A regression here silently stops every Facebook post.
+    check("publish is แชร์เลย, force-clicked",
+          'name="แชร์เลย"' in body and "force=True" in body)
+    check("publish does not treat the แชร์ tab as publish",
+          'name="แชร์", exact=True' not in body)
+    check("publish is confirmed by the dialog or a navigation",
+          "กำลังประมวลผลคลิป Reels" in body and "reels_composer" in body)
 
 
 def test_browser_ci_storage_state() -> None:
