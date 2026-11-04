@@ -739,6 +739,17 @@ def test_crosspost_engine() -> None:
           len(left) == len(shorts) + len(aff) - 1,
           f"{len(left)}")
 
+    # A product card must not sit behind the whole song backlog: at DAILY_CAP a
+    # surface would not reach one for ~11 days. The build folds a card pair in
+    # after every 4 items, so the first affiliate item is early in the queue.
+    if aff_items:
+        first_aff = min(i for i, it in enumerate(q) if it.get("kind") == "affiliate")
+        check("the first affiliate card is near the front of the queue",
+              first_aff <= 8, f"index {first_aff}")
+        # Interleaving must not drop or duplicate anything.
+        check("interleaving keeps every item exactly once",
+              len({it["id"] for it in q}) == len(q))
+
     # Facebook must post to the Page, not the personal profile. The plain
     # `facebook.com/reels/create/` composer posts as the person, and the 60 Reels
     # sent before the Page existed landed there — so the Page rail needs both a

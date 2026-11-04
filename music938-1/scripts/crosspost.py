@@ -160,6 +160,27 @@ def _hook_of(stem: str) -> int:
     return int(m.group(1)) if m else 0
 
 
+def interleave(primary: list[dict], secondary: list[dict], every: int,
+               chunk: int = 1) -> list[dict]:
+    """Fold `secondary` into `primary` so it is reached in days, not weeks.
+
+    Appending the product cards put them behind every song Short, and at
+    `DAILY_CAP` per surface that is an ~11-day wait before the first
+    revenue-bearing post — the opposite of the goal. One card pair is inserted
+    after every `every` items of `primary`.
+    """
+    if every < 1:
+        raise ValueError("every must be >= 1")
+    out, si = [], 0
+    for i, item in enumerate(primary):
+        out.append(item)
+        if (i + 1) % every == 0 and si < len(secondary):
+            out.extend(secondary[si:si + chunk])
+            si += chunk
+    out.extend(secondary[si:])
+    return out
+
+
 def build_queue() -> list[dict]:
     items = []
     for short in sorted(SHORTS.glob("short-*.mp4")):
@@ -175,8 +196,10 @@ def build_queue() -> list[dict]:
                 "video": rel,
                 "caption": caption(slug, platform, hook),
             })
-    items.extend(affiliate_items())
-    return items
+    # One product card pair (both surfaces) after every 4 queue items — 2 song
+    # clips — so the first affiliate post lands on day one rather than after the
+    # whole song backlog.
+    return interleave(items, affiliate_items(), every=4, chunk=2)
 
 
 def affiliate_items() -> list[dict]:
