@@ -73,3 +73,6 @@ music938-1/library/compilations/*.mp4
 # Quarantined media is the rejected Piper engine, kept only for audit. Never
 # publish it and never commit it (see scripts/provenance.py).
 music938-1/library/quarantine/
+
+# Uploaded voice samples are personal data — never commit them.
+music938-1/voice-inbox/
