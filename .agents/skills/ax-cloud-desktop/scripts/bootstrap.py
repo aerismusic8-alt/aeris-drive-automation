@@ -73,11 +73,79 @@ def install() -> None:
         sh([sys.executable, "-m", "pip", "install", "-q", *need_pip])
 
 
+def ensure_x11_socket() -> None:
+    """Create /tmp/.X11-unix, which a fresh pod leaves missing.
+
+    `/tmp` is on the container overlay, so every recycle wipes it and Xvfb dies
+    with "_XSERVTransmkdir: ERROR: euid != 0" and then reports DOWN forever. The
+    dir is owned by root, so this needs sudo; it is the one thing that has to be
+    root-owned, and it is what stopped the desktop from starting at all.
+    """
+    d = Path("/tmp/.X11-unix")
+    if d.is_dir():
+        return
+    sh(["sudo", "mkdir", "-p", str(d)], check=False)
+    sh(["sudo", "chmod", "1777", str(d)], check=False)
+    if not d.is_dir():
+        d.mkdir(parents=True, exist_ok=True)
+    print("[+] /tmp/.X11-unix")
+
+
+def ensure_pylibs() -> None:
+    """Re-point Python at the libraries that live on /workspace.
+
+    The wheels (numpy, playwright, websocket-client) are installed under
+    /workspace/ax-tools/pylibs so they survive a recycle, but the `.pth` that puts
+    them on `sys.path` lives in site-packages on the container overlay, which does
+    not. After a recycle every script dies with `ModuleNotFoundError: numpy`, which
+    reads as "the code is broken". Re-create the pointer instead.
+    """
+    libs = Path("/workspace/ax-tools/pylibs")
+    if not libs.is_dir():
+        return
+    try:
+        import subprocess
+        site = subprocess.run(
+            [sys.executable, "-c", "import site; print(site.getusersitepackages())"],
+            capture_output=True, text=True).stdout.strip()
+        if not site:
+            return
+        d = Path(site)
+        d.mkdir(parents=True, exist_ok=True)
+        pth = d / "ax-pylibs.pth"
+        if not pth.exists() or pth.read_text().strip() != str(libs):
+            pth.write_text(str(libs))
+            print(f"[+] ax-pylibs.pth -> {libs}")
+    except Exception as exc:  # noqa: BLE001
+        print(f"[=] could not restore the pylibs path: {exc}")
+
+
+def clear_stale_lock(profile: Path) -> None:
+    """Remove a SingletonLock left by the pod that owned this volume before.
+
+    The chrome profile lives on /workspace, which survives a recycle, but the
+    lock records the *hostname and pid* of the old pod. A new pod sees a foreign
+    lock and refuses to start Chrome ("profile appears to be in use ... on
+    another computer"), so CDP never comes up. Deleting the lock is safe: it only
+    names a process that no longer exists on this machine.
+    """
+    if not up(f"remote-debugging-port={CDP_PORT}"):
+        for name in ("SingletonLock", "SingletonCookie", "SingletonSocket"):
+            p = profile / name
+            if p.is_symlink() or p.exists():
+                p.unlink(missing_ok=True)
+                print(f"[+] cleared stale {name}")
+        (profile / "Default" / "DevToolsActivePort").unlink(missing_ok=True)
+
+
 def start() -> None:
     log = STATE / "logs"
     profile = STATE / "chrome-profile"
     profile.mkdir(parents=True, exist_ok=True)
     (STATE / "run").mkdir(parents=True, exist_ok=True)
+    ensure_x11_socket()
+    ensure_pylibs()
+    clear_stale_lock(profile)
 
     if not up(f"Xvfb {DISPLAY}"):
         spawn(["Xvfb", DISPLAY, "-screen", "0", SCREEN, "-ac", "-nolisten", "tcp"],
@@ -93,7 +161,12 @@ def start() -> None:
         passfile = STATE / "vnc.pass"
         auth = ["-rfbauth", str(passfile)] if passfile.exists() else ["-nopw"]
         spawn(["x11vnc", "-display", DISPLAY, *auth, "-rfbport", str(VNC_PORT),
-               "-forever", "-shared", "-repeat", "-noxdamage", "-xkb"],
+               "-forever", "-shared", "-repeat", "-noxdamage", "-xkb",
+               # Lets noVNC's `resize=remote` actually resize the framebuffer to
+               # the client. Without it a 1600x900 desktop is shrunk onto a phone
+               # and the text is unreadable; with it the desktop becomes the
+               # phone's shape and the text is native size.
+               "-xrandr"],
               log / "x11vnc.log")
         time.sleep(2)
         print("[+] x11vnc", VNC_PORT)
@@ -234,7 +307,10 @@ def operator_url() -> str | None:
     rid = os.environ.get("RUNTIME_ID")
     if not rid:
         return None
-    return f"https://work-1-{rid}.prod-runtime.all-hands.dev/vnc.html?autoconnect=1&resize=scale"
+    # `resize=remote` (not `scale`) so the desktop takes the phone's shape and the
+    # text is native size instead of shrunk to fit. This needs x11vnc -xrandr,
+    # which start() passes.
+    return f"https://work-1-{rid}.prod-runtime.all-hands.dev/vnc.html?autoconnect=1&resize=remote"
 
 
 def main() -> int:

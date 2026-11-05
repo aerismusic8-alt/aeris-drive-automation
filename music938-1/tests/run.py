@@ -1407,15 +1407,56 @@ def test_operator_url() -> None:
         url = bootstrap.operator_url()
         check("builds the work-1 host from RUNTIME_ID",
               url == "https://work-1-givjlzdksjoviogw.prod-runtime.all-hands.dev"
-                     "/vnc.html?autoconnect=1&resize=scale")
-        check("asks for autoconnect and scaling", "autoconnect=1" in url and "resize=scale" in url)
+                     "/vnc.html?autoconnect=1&resize=remote")
+        # resize=remote makes the desktop take the phone's shape so the text is
+        # native size; resize=scale shrinks a 1600x900 screen onto the phone and
+        # that is exactly what made signing in from a phone painful.
+        check("fits the phone instead of shrinking",
+              "autoconnect=1" in url and "resize=remote" in url)
         os.environ.pop("RUNTIME_ID")
         check("falls back to None without RUNTIME_ID", bootstrap.operator_url() is None)
+        # A fresh pod wipes /tmp, so Xvfb dies on the missing X11 socket dir; and
+        # the profile on /workspace keeps a SingletonLock naming the old pod, so
+        # Chrome refuses to start. Both must self-heal or the desktop is DOWN.
+        src = (ROOT.parent / ".agents/skills/ax-cloud-desktop/scripts"
+               / "bootstrap.py").read_text()
+        check("self-heals the missing X11 socket dir", "def ensure_x11_socket" in src)
+        check("self-heals a stale SingletonLock", "def clear_stale_lock" in src)
+        # The wheels live on /workspace but the .pth pointing at them does not, so
+        # after a recycle every script dies with "ModuleNotFoundError: numpy".
+        check("re-points Python at the /workspace libs", "def ensure_pylibs" in src)
     finally:
         if old is None:
             os.environ.pop("RUNTIME_ID", None)
         else:
             os.environ["RUNTIME_ID"] = old
+
+
+def test_phone_login() -> None:
+    """Signing in from a phone must not mean typing a URL on a phone.
+
+    noVNC is the only phone route to the desktop, and its address bar is a few
+    pixels tall on a small screen. ops/phone_login.py serves one page of large
+    buttons: a tap opens that surface in the desktop browser and drops the phone
+    into noVNC already showing it.
+    """
+    section("phone sign-in page")
+    src = (ROOT.parent / "ops" / "phone_login.py").read_text()
+    sys.path.insert(0, str(ROOT.parent / "ops"))
+    import phone_login  # noqa: E402
+
+    check("serves a phone page", "ThreadingHTTPServer" in src)
+    check("has a big-button surface per service",
+          {"google", "flow", "gemini", "facebook", "tiktok", "youtube", "shopee"}
+          <= set(phone_login.SURFACES))
+    check("names the account to use", phone_login.EXPECTED_ACCOUNT == "aerismusic8@gmail.com")
+    check("opens the surface in the desktop over CDP", "/json/new?" in src)
+    check("hands the phone to noVNC after a tap", "novnc_url()" in src)
+    check("asks for remote resize", "resize=remote" in src)
+    # The page must not carry a password field — the operator's password manager
+    # fills it inside noVNC; the agent never handles a credential.
+    check("never collects a password", "type=\"password\"" not in src
+          and "<input" not in src)
 
 
 def test_watchdog() -> None:
@@ -1602,6 +1643,7 @@ def main() -> int:
     test_login_vault()
     test_outreach()
     test_operator_url()
+    test_phone_login()
     test_watchdog()
     test_fill_playlists()
     test_affiliate_short()
