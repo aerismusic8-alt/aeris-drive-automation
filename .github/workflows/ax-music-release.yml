@@ -60,7 +60,11 @@ jobs:
         run: |
           set -euo pipefail
           # A replacement spends the same upload slot a new release would, and it
-          # is a defect on content that is already live, so it goes first.
+          # is a defect on content that is already live, so it goes first — but
+          # only up to `AFFILIATE_RESERVE` (2) slots, which `replace_video.py`
+          # holds for the product clips. The backlog is a quality fix and can
+          # wait; the product clips are the only content that can produce a
+          # Shopee click, so they must reach the channel every day.
           python3 music938-1/scripts/pending_replacements.py --root "$GITHUB_WORKSPACE"
 
       - name: Release the day's batch
