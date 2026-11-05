@@ -3,42 +3,6 @@
  "channel": "ch3",
  "pending": [
   {
-   "slug": "01-khon-di-thi-chak-pai",
-   "kind": "short",
-   "variant": "short-song-h2-01-khon-di-thi-chak-pai",
-   "old": "hy_0sr-uHGI"
-  },
-  {
-   "slug": "01-khon-di-thi-chak-pai",
-   "kind": "short",
-   "variant": "short-song-h3-01-khon-di-thi-chak-pai",
-   "old": "zkESEHVZ7A4"
-  },
-  {
-   "slug": "02-rak-thi-mai-mi-wan-chop",
-   "kind": "short",
-   "variant": "short-song-h1-02-rak-thi-mai-mi-wan-chop",
-   "old": "l7vR7B9nYxY"
-  },
-  {
-   "slug": "02-rak-thi-mai-mi-wan-chop",
-   "kind": "short",
-   "variant": "short-song-h2-02-rak-thi-mai-mi-wan-chop",
-   "old": "ROXXhBitMpA"
-  },
-  {
-   "slug": "02-rak-thi-mai-mi-wan-chop",
-   "kind": "short",
-   "variant": "short-song-h3-02-rak-thi-mai-mi-wan-chop",
-   "old": "rmlCjP4wvUI"
-  },
-  {
-   "slug": "03-khit-thueng-thoe-thuk-khuen",
-   "kind": "short",
-   "variant": "short-song-h1-03-khit-thueng-thoe-thuk-khuen",
-   "old": "51EuOXD3HPA"
-  },
-  {
    "slug": "03-khit-thueng-thoe-thuk-khuen",
    "kind": "short",
    "variant": "short-song-h2-03-khit-thueng-thoe-thuk-khuen",
