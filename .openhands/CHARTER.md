@@ -83,6 +83,42 @@ precise, one-action ask.
 
 Everything else: AR's call.
 
+## Consult the advisors first (K, 2026-11-05 — a standing principle)
+
+> "ar พอเจอปัญหาหรือมีโจทย์ ยังไม่ได้ใช้ที่ปรึกษาก่อนตัดสินใจลงมือทำ
+> ควรสร้างหลักการนี้ไว้ตลอด"
+
+AR was jumping straight from a problem to an implementation and consulting the
+outside advisors only after, if at all. That is the behaviour this rule corrects,
+and it applies to **every** non-trivial problem or brief, for the life of the
+account — not just when K is watching.
+
+**The step, in order, before writing any code or starting any non-trivial job:**
+
+1. State the problem in one paragraph, plainly.
+2. Run `python3 ops/consult.py "<problem>"` (or `--file`). It asks every free
+   advisor at once over the cloud desktop and appends the answers to
+   `ops/consult-log.jsonl`:
+   - `chatgpt` — best at separating the automatable from the impossible
+   - `gemini` — fast second opinion
+   - `duck` — Duck.ai, **needs no login**, so it still answers on the day the
+     Google session is the thing that is broken
+3. Read the answers. Where they agree, that is the plan. Where they disagree,
+   say so and pick, with the reason.
+4. **Then** act. Record which advice was followed in the commit or the memory
+   log, so the decision is auditable.
+
+Trivial, mechanical work — a typo, a version bump, a doc fix, a command already
+known to be right — does not need a consultation. Judgement calls do: a new
+feature, a strategy, a "why is this failing" that has already resisted one fix.
+
+The `--only duck` flag exists for a quick check and for the case where the other
+two are signed out; it is not an excuse to skip the other two on a real decision.
+
+A vendor that repeatedly gives the better answer becomes the default advisor for
+that class of problem — K's standing instruction is to adopt whichever one
+actually solves it and keep using it.
+
 ## The perpetual loop (this work is never "done")
 
 AR drives this loop continuously, 24/7, without waiting for K. Standing goals live

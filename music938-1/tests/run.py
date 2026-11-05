@@ -1469,6 +1469,54 @@ def test_phone_login() -> None:
           and "<input" not in src)
 
 
+def test_consult_gate() -> None:
+    """K's standing rule: consult the advisors BEFORE acting.
+
+    A written rule gets skipped under time pressure, so the rule is also a gate:
+    `require()` raises unless a recent, actually-answered consultation for the
+    same brief is on disk. This test pins the gate's behaviour, not just its
+    existence.
+    """
+    section("consult-before-acting gate")
+    sys.path.insert(0, str(ROOT.parent / "ops"))
+    import consult  # noqa: E402
+    import tempfile
+
+    src = (ROOT.parent / "ops" / "consult.py").read_text()
+    check("asks every vendor", all(v in src for v in ("chatgpt", "gemini", "duck")))
+    check("duck needs no login", "duck" in consult.VENDORS)
+    check("records the problem and answers", "consult-log.jsonl" in src)
+
+    with tempfile.TemporaryDirectory() as tmp:
+        consult.LOG = Path(tmp) / "consult-log.jsonl"
+        brief = "how do we get the first Shopee order"
+        # Nothing recorded yet -> the gate must refuse.
+        try:
+            consult.require(brief)
+            check("gate refuses an unconsulted brief", False)
+        except consult.NotConsulted:
+            check("gate refuses an unconsulted brief", True)
+        check("gate reports not consulted", consult.consulted(brief) is None)
+
+        # A consultation where nobody answered is not a consultation.
+        consult.record(brief, {"chatgpt": {"ok": False, "error": "timeout"}})
+        check("an unanswered consultation does not satisfy the gate",
+              consult.consulted(brief) is None)
+
+        # A real answer satisfies it.
+        consult.record(brief, {"chatgpt": {"ok": True, "answer": "x"},
+                               "duck": {"ok": True, "answer": "y"}})
+        row = consult.require(brief)
+        check("gate passes after a real answer", row is not None)
+        check("the digest is stable across whitespace",
+              consult.digest(brief) == consult.digest("  " + brief + "  "))
+        check("a different brief is a different gate",
+              consult.consulted("some other brief") is None)
+        # Staleness: an old consultation must not authorise today's action.
+        check("gate rejects a stale consultation",
+              consult.consulted(brief, max_age_hours=-1) is None)
+
+
 def test_watchdog() -> None:
     """The watchdog must heal an auto-paused automation and alert a person.
 
@@ -1654,6 +1702,7 @@ def main() -> int:
     test_outreach()
     test_operator_url()
     test_phone_login()
+    test_consult_gate()
     test_watchdog()
     test_fill_playlists()
     test_affiliate_short()

@@ -720,3 +720,13 @@ true-instrumental karaoke mix, cover art, a 1920x1080 word-synced video.
 - **Google's device-code login is not a substitute for the browser session** — it
   mints an OAuth token, not a cookie session, and needs a device-flow OAuth client.
   Flow Music / TikTok / Shopee need the browser session, so noVNC stays the route.
+- **Consult the advisors BEFORE acting — it is a gate, not a note (K, 2026-11-05).**
+  `ops/consult.py` asks ChatGPT + Gemini + Duck.ai in one command and appends to
+  `ops/consult-log.jsonl`; `consult.require(brief)` (or `consult.py --check`) fails
+  closed unless a *recent, actually-answered* consultation for that exact brief is
+  on record. All three vendors said the same thing when asked how to make the habit
+  stick: a rule in a document gets skipped — put it in a runner the worker cannot
+  bypass. A consultation nobody answered does NOT satisfy the gate.
+- **`duck.ai` needs its tab opened first** or `duck_ask` raises "no duck.ai tab";
+  open it with `curl -X PUT 'http://127.0.0.1:9222/json/new?https://duck.ai/'`.
+  Duck took ~300 s on a long Thai prompt while ChatGPT/Gemini took ~25 s.
