@@ -1,0 +1,71 @@
+{
+  "_why": "Product cards for the Shopee affiliate funnel. Each card is a general buying-guidance video bedded on an AERIS song; it points at the per-surface affiliate link (s.shopee.co.th, Sub_id = surface) so a sale is attributed to the app it came from. The links are NOT stored here — make_affiliate_short.py resolves them per surface via monetize.link(). Each card carries a `hookline`: the first-3-seconds scroll-stopper, distinct from `title` (the topic). Shorts are decided in the first 3 seconds, so the opening line is the benefit or the question, not the topic name.",
+  "_rules": [
+    "No first-hand claim: we have not tested these products, so the card gives buying guidance, not a review.",
+    "No over-claim (รวย/กำไร/100%/ดีที่สุด) — make_affiliate_short.py refuses a card that carries one.",
+    "Every caption carries the affiliate disclosure line (COMPLIANCE.md).",
+    "Target category matches the minted links: Bluetooth headphones / listening gear (หูฟังบลูทูธ)."
+  ],
+  "products": [
+    {
+      "id": "hp-budget-01",
+      "title": "3 จุดที่ควรดู ก่อนซื้อหูฟังบลูทูธ",
+      "bullets": [
+        "แบตอึดกี่ชั่วโมง",
+        "ตัดเสียงรบกวนจริงไหม",
+        "ใส่สบายนานแค่ไหน"
+      ],
+      "song": "01-khon-di-thi-chak-pai",
+      "hook": 1,
+      "hookline": "หูฟัง 300 กับ 3,000 ต่างกันตรงไหน"
+    },
+    {
+      "id": "hp-anc-02",
+      "title": "หูฟังตัดเสียงรบกวน คุ้มกับเงินที่จ่ายไหม",
+      "bullets": [
+        "ช่วยตอนนั่งรถ/เครื่องบิน",
+        "ฟังเพลงเบา ๆ ได้ชัดขึ้น",
+        "ดูรุ่นก่อนตัดสินใจ"
+      ],
+      "song": "02-rak-thi-mai-mi-wan-chop",
+      "hook": 1,
+      "hookline": "ตัดเสียงรบกวน จ่ายแพงกว่า คุ้มไหม"
+    },
+    {
+      "id": "spk-bedroom-03",
+      "title": "เลือกลำโพงบลูทูธให้เหมาะกับห้องนอน",
+      "bullets": [
+        "ห้องเล็กใช้ 10-20 วัตต์พอ",
+        "ดูการเชื่อมต่อ/แบต",
+        "วางใกล้นอนเลือกเสียงนุ่ม"
+      ],
+      "song": "04-saeng-chao-wan-mai",
+      "hook": 1,
+      "hookline": "ลำโพงห้องนอน ไม่ต้องแพงก็ฟังดีได้"
+    },
+    {
+      "id": "desk-setup-04",
+      "title": "จัดโต๊ะฟังเพลงด้วยงบหลักร้อย",
+      "bullets": [
+        "ขาตั้ง/แผ่นรองช่วยลดเสียงสั่น",
+        "จัดสายให้เป็นระเบียบ",
+        "เพิ่มไฟนุ่ม ๆ ให้บรรยากาศดี"
+      ],
+      "song": "05-fon-tok-nai-chai",
+      "hook": 1,
+      "hookline": "งบหลักร้อย จัดมุมฟังเพลงให้ดูดี"
+    },
+    {
+      "id": "sleep-listen-05",
+      "title": "เพลงก่อนนอน ควรฟังกับหูฟังแบบไหน",
+      "bullets": [
+        "เลือกแบบใส่สบายนอนได้",
+        "เสียงไม่ต้องดังมาก",
+        "เปิดเพลงเบา ๆ ช่วยผ่อนคลาย"
+      ],
+      "song": "03-khit-thueng-thoe-thuk-khuen",
+      "hook": 1,
+      "hookline": "หูฟังใส่นอนได้ ต้องดู 3 อย่างนี้"
+    }
+  ]
+}

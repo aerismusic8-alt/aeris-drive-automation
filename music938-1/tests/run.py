@@ -334,6 +334,42 @@ def test_affiliate_short() -> None:
     monetize.CACHE = None
 
 
+def test_affiliate_release() -> None:
+    """The affiliate lane must exist on the YouTube rail, not only the card renderer.
+
+    The card renderer (`make_affiliate_short`) could already build a clip, but
+    nothing put one on the channel: `release.plan` knew only `song`, `short` and
+    `karaoke`. So every Short stayed a song and the purchase-intent funnel had no
+    content of its own — the exact gap the 2026-11-05 advisor gate named. This
+    pins the lane: the cards are read from the tracked work file (they went
+    missing once because that file was gitignored), the description carries the
+    surface's link above the fold with the mandatory disclosure, and the title
+    fits YouTube's shape.
+    """
+    section("affiliate release lane")
+    import release
+    import monetize
+
+    cards = release.affiliate_cards()
+    check("product cards are readable from the tracked file", len(cards) >= 5,
+          f"{len(cards)}")
+    title, _desc = release.playlist_for("affiliate")
+    check("affiliate playlist is named", "ของน่าซื้อ" in title, title)
+
+    if not cards:
+        return
+    monetize.CACHE = None
+    t, d, tags = release.describe_affiliate(cards[0])
+    check("affiliate title fits 60 chars", len(t) <= 60, f"{len(t)}: {t}")
+    check("affiliate title is a Short", "#Shorts" in t, t)
+    check("affiliate description carries the youtube link",
+          monetize.link("youtube") in d)
+    check("affiliate description discloses the affiliate link",
+          "ลิงก์พันธมิตร" in d)
+    check("affiliate description is Thai", has_thai(d))
+    check("affiliate tags are present", bool(tags))
+
+
 def test_outputs() -> None:
     section("rendered output")
     songs = sorted((common.LIBRARY / "songs").glob("song-*.mp3"))
@@ -1729,6 +1765,7 @@ def main() -> int:
     test_watchdog()
     test_fill_playlists()
     test_affiliate_short()
+    test_affiliate_release()
     test_outputs()
     print(f"\n{PASS} passed, {FAIL} failed")
     if FAILURES:

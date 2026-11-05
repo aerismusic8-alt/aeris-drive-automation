@@ -42,7 +42,12 @@ LYRICS = ROOT / "lyrics"
 SONGS = ROOT / "library" / "songs"
 KARAOKE = ROOT / "library" / "karaoke"
 COVERS = ROOT / "library" / "covers"
+AFF_DIR = ROOT / "library" / "affiliate"
+AFF_PRODUCTS = ROOT / "work" / "affiliate-products.json"
 STATE = ROOT / "work" / "release-state.json"
+
+# The affiliate disclosure is mandatory on every card (COMPLIANCE.md).
+AFF_DISCLOSURE = "ลิงก์พันธมิตร Shopee — เราอาจได้ค่าคอมมิชชัน"
 
 UPLOADS_PER_DAY = 6  # 10,000 units / 1,600 units per videos.insert
 
@@ -255,6 +260,46 @@ def uploads_today(state: dict) -> int:
     return used
 
 
+def affiliate_cards() -> list[dict]:
+    """The product cards, read from the tracked work file (may be empty)."""
+    if not AFF_PRODUCTS.exists():
+        return []
+    try:
+        return json.loads(AFF_PRODUCTS.read_text(encoding="utf-8")).get("products", [])
+    except ValueError:
+        return []
+
+
+def affiliate_file(card: dict) -> Path:
+    """The rendered card clip. A fresh pod has no library/, so the path is
+    returned even when absent and `fetch_media` pulls it from the release."""
+    return AFF_DIR / f"short-aff-{card['id']}.mp4"
+
+
+def describe_affiliate(card: dict) -> tuple[str, str, list[str]]:
+    """Title, description and tags for one product card on YouTube.
+
+    The affiliate link sits directly under the opening line — above YouTube's
+    "Show more" fold — and the disclosure is on the same block, so a viewer sees
+    both the link and the fact that it is an affiliate link without expanding.
+    """
+    hookline = card.get("hookline") or card["title"]
+    bullets = "\n".join(f"• {b}" for b in card.get("bullets", [])[:3])
+    link = monetize.link("youtube")
+    title = f"{card['title']} #ของน่าซื้อ #Shorts"
+    desc = (
+        f"{hookline}\n\n"
+        f"{bullets}\n"
+        f"🛒 ลิงก์สินค้า 👉 {link}\n"
+        f"⚠️ {AFF_DISCLOSURE}\n"
+        f"🎵 เพลงจาก AERIS Music — ค่ายเพลง AI\n\n"
+        f"#ของน่าซื้อ #หูฟัง #Shopee #AERISMusic #Shorts"
+    )
+    tags = ["ของน่าซื้อ", "หูฟัง", "ลำโพงบลูทูธ", "Shopee", "รีวิวสินค้า",
+            "AERISMusic", "เพลงไทย", "shorts"]
+    return title[:100], desc[:4900], tags[:30]
+
+
 def describe(slug: str, kind: str, variant: str = "") -> tuple[str, str, list[str]]:
     """Return (title, description, tags) for one release.
 
@@ -339,6 +384,10 @@ def playlist_for(kind: str) -> tuple[str, str]:
         return ("คาราโอเกะ — ร้องตามได้ทุกเพลง",
                 "รวมทุกเพลงในชุดเป็นเวอร์ชันคาราโอเกะ ไม่มีเสียงร้อง ร้องตามได้เลย\n\n"
                 "AERIS Music · ค่ายเพลง AI")
+    if kind == "affiliate":
+        return ("ของน่าซื้อ — คลิปสินค้าพร้อมลิงก์",
+                "รวมคลิปสินค้าพร้อมลิงก์พันธมิตร Shopee — ดูราคา/สั่งซื้อได้จากลิงก์ในคำอธิบาย\n\n"
+                "AERIS Music · ค่ายเพลง AI")
     return ("เพลงไทยเพื่อชีวิต — รวมทุกเพลง",
             "รวมทุกเพลงไทยเพื่อชีวิตของ AERIS Music เนื้อร้องและทำนองใหม่\n\n"
             "AERIS Music · ค่ายเพลง AI")
@@ -410,6 +459,17 @@ def plan(days: int, shorts: bool = False, spread: float = 0) -> list[dict]:
     state = merge_ledger(load_state())
     done = {(r["slug"], r["kind"], r.get("variant", "")) for r in state["released"]}
     items: list[dict] = []
+    # Product cards lead the queue. Every Short on the channel so far is a song,
+    # and a song gives nobody a reason to buy, so the affiliate funnel had no
+    # content of its own. One card per product goes out first, before the song
+    # Shorts, so the purchase-intent clips are not buried behind the catalogue.
+    for card in affiliate_cards():
+        variant = f"short-aff-{card['id']}"
+        if (card["id"], "affiliate", variant) in done:
+            continue
+        items.append({"slug": card["id"], "kind": "affiliate",
+                      "video": affiliate_file(card), "variant": variant,
+                      "card": card})
     for slug in all_slugs():
         if not has_song(slug):
             continue
@@ -515,7 +575,10 @@ def release_one(item: dict, args) -> int:
               f"daily units, so the next one would 403. Try after 07:00 UTC.",
               file=sys.stderr)
         return 3
-    title, desc, tags = describe(slug, kind, item.get("variant", ""))
+    if kind == "affiliate":
+        title, desc, tags = describe_affiliate(item["card"])
+    else:
+        title, desc, tags = describe(slug, kind, item.get("variant", ""))
     video = item["video"]
     if not video or not video.exists():
         video = fetch_media(video)
@@ -531,20 +594,27 @@ def release_one(item: dict, args) -> int:
     # A 16:9 thumbnail, not the square cover: YouTube renders at 16:9 and would
     # pillarbox the cover. A Short's own frame is 9:16 and is used as-is, since
     # Shorts thumbnails are vertical.
+    release_names = _release_asset_names()
     thumb = ROOT / "library" / "thumbs" / f"thumb-{kind}-{slug}.png"
     if item.get("variant"):
         vt = ROOT / "library" / "thumbs" / f"thumb-{item['variant']}.png"
-        if vt.exists():
+        # The variant thumb may exist only on the release (a fresh pod has an
+        # empty library/), so check the release list too before falling back to
+        # the square cover, which is the wrong shape for a Short.
+        if vt.exists() or vt.name in release_names:
             thumb = vt
     if not thumb.exists():
-        thumb = COVERS / f"cover-{slug}.jpg"
-    if not thumb.exists():
         thumb = fetch_media(thumb)
+    if not thumb.exists():
+        thumb = COVERS / f"cover-{slug}.jpg"
+        if not thumb.exists():
+            thumb = fetch_media(thumb)
 
     cmd = [sys.executable, str(OPS / "yt_publish.py"), "--ch", args.ch,
            "--video", str(video), "--title", title,
            "--desc-file", str(desc_file), "--tags-file", str(tags_file),
-           "--category", "10", "--privacy", "public" if args.public else "private"]
+           "--category", "22" if kind == "affiliate" else "10",
+           "--privacy", "public" if args.public else "private"]
     # A scheduled publish is how the channel stays active around the clock:
     # YouTube flips it to public at the given time without anything running here.
     when = args.schedule_at or item.get("schedule")
@@ -612,7 +682,8 @@ def main() -> int:
         print(f"{len(todo)} releases pending, {UPLOADS_PER_DAY}/day "
               f"(YouTube API quota: 10,000 units / 1,600 per upload):\n")
         for item in todo[:24]:
-            kind = {"karaoke": "KARAOKE", "short": "SHORT  "}.get(item["kind"], "SONG   ")
+            kind = {"karaoke": "KARAOKE", "short": "SHORT  ",
+                    "affiliate": "AFF    "}.get(item["kind"], "SONG   ")
             print(f"  {item['when']:%Y-%m-%d %H:%M}  {kind}  {item['slug']}")
         if len(todo) > 24:
             print(f"  ... and {len(todo) - 24} more")
