@@ -659,6 +659,25 @@ true-instrumental karaoke mix, cover art, a 1920x1080 word-synced video.
   K's 9 bookmarks once (2026-11-04).
 
 ## music938-2 (revenue) — durable facts
+- **The affiliate lane now exists on the YouTube rail (2026-11-05, PR #53).**
+  `release.plan()` leads with one clip per product card (`kind="affiliate"`),
+  before the song Shorts, so purchase-intent clips are not buried behind the
+  catalogue. `describe_affiliate()` puts the surface link + disclosure above the
+  fold; clips land in the `ของน่าซื้อ` playlist. The card renderer existed but
+  nothing put a card on a channel — that was the whole gap. Detail in
+  `.openhands/memory/2026-11-05.md`.
+- **`main` is ruleset-protected: direct pushes are rejected.** Push a branch, then
+  create + merge a PR via the REST API with `AX_GH_TOKEN` (the classic PAT). The
+  GitHub App key is gone in a fresh pod; `gh-app-token.mjs` fails. `GITHUB_TOKEN`
+  is read-only (403).
+- **A lost `music938-1/work/*.json` is recoverable from the conversation event
+  log** (`/workspace/conversations/<id>/events/event-*.json`): the `file_editor`
+  `create` action carries the full `file_text`. `work/affiliate-products.json`
+  was gitignored and uncommitted, so every fresh pod had 0 cards and the suite
+  died with `IndexError` — now tracked.
+- **`ffmpeg`/`ffprobe` live at `/workspace/ax-tools/bin`** (not on PATH). Without
+  them several tests fail as `FileNotFoundError: ffprobe` — a missing binary, not
+  a code bug.
 - **The affiliate funnel had no content type.** Every Short was a song, so the
   Shopee link sat where nobody buys → 0 clicks. `music938-1/scripts/make_affiliate_short.py`
   renders a 9:16 product *card* (hook / buying points / CTA / mandatory disclosure)
