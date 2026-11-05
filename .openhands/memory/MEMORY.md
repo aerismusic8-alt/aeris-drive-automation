@@ -705,3 +705,18 @@ true-instrumental karaoke mix, cover art, a 1920x1080 word-synced video.
   fix.** The pin-badge test pinned `'ปักหมุดโดย'`; making the check locale-tolerant
   broke it. Update the test to pin the *behaviour* (both locales present), not one
   literal.
+- **Signing in from a phone: use `resize=remote`, not `resize=scale`.** `scale`
+  shrinks the 1600x900 desktop onto the phone, so the address bar is a few pixels
+  and text is unreadable — that is the real cause of "ตัวเล็ก กดยาก". `x11vnc` needs
+  `-xrandr` for it to work. `ops/phone_login.py` (port 12001, work-2 host) serves
+  tap-first buttons: a tap opens the surface in the desktop over CDP and 302s the
+  phone into noVNC showing it, so no URL is typed on the phone.
+- **After every recycle the desktop was DOWN for three reasons, now self-healed in
+  `bootstrap.py`:** `/tmp/.X11-unix` is wiped with the overlay so Xvfb dies
+  (`euid != 0`; needs `sudo mkdir -p /tmp/.X11-unix && sudo chmod 1777`); the
+  profile on `/workspace` keeps a `SingletonLock` naming the *previous* pod so
+  Chrome refuses to start; and `ax-pylibs.pth` is lost so scripts die with
+  `ModuleNotFoundError: numpy`. Do not treat any of these as "the code is broken".
+- **Google's device-code login is not a substitute for the browser session** — it
+  mints an OAuth token, not a cookie session, and needs a device-flow OAuth client.
+  Flow Music / TikTok / Shopee need the browser session, so noVNC stays the route.

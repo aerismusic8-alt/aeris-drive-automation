@@ -67,7 +67,7 @@ Packages are **not in the repo** and vanish on recycle:
 Give K this, with the VNC password from `.../aeris938-state/vnc.pass.txt`:
 
 ```
-https://work-1-<work-host>/vnc.html?autoconnect=1&resize=scale
+https://work-1-<work-host>/vnc.html?autoconnect=1&resize=remote
 ```
 
 `<work-host>` is the **`work-1-...` host from the session's work_hosts block**, not
@@ -78,6 +78,36 @@ pasting the host by hand:
 ```
 python3 .agents/skills/ax-cloud-desktop/scripts/bootstrap.py --url
 ```
+
+### Signing in from a phone (the easy way)
+
+noVNC on a phone used to mean a 1600x900 desktop shrunk to fit: the address bar
+was a few pixels tall and the URL had to be typed by hand. Two things fix it.
+
+- **`resize=remote`, not `resize=scale`.** `start()` runs x11vnc with `-xrandr`
+  and `operator_url()` asks for `resize=remote`, so the desktop takes the phone's
+  shape and the text is native size. Do not switch it back to `scale`.
+- **`ops/phone_login.py` removes the typing.** It serves one page of large
+  buttons on port 12001; open it from the phone at
+  `https://work-2-<work-host>/`. A tap opens that surface in the desktop over CDP
+  and drops the phone into noVNC already showing it, so the only thing left to do
+  is sign in (the password manager fills it). `--status`-style health at
+  `/health`. The page never collects a password.
+
+Google's **device-code** login is *not* a substitute: it mints an OAuth token,
+not the browser cookie session Flow Music / TikTok / Shopee need.
+
+### Self-heals to expect after a recycle
+
+`start()` now repairs the three things that made the desktop read DOWN:
+
+- `/tmp/.X11-unix` is wiped with the overlay, so Xvfb died with
+  `_XSERVTransmkdir: ERROR: euid != 0` (needs root: `sudo mkdir -p
+  /tmp/.X11-unix && sudo chmod 1777`).
+- the profile on `/workspace` keeps a `SingletonLock` naming the **previous**
+  pod, so Chrome refused to start ("in use on another computer").
+- `ax-pylibs.pth` is lost, so every script dies with `ModuleNotFoundError:
+  numpy` even though the wheels are still on `/workspace/ax-tools/pylibs`.
 
 **Sessions die on their own, and a saved cookie set can be dead.** `restore()`
 verifies each surface by loading it, because Facebook served the logged-out page
