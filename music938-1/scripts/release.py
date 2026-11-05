@@ -51,6 +51,15 @@ AFF_DISCLOSURE = "ลิงก์พันธมิตร Shopee — เรา�
 
 UPLOADS_PER_DAY = 6  # 10,000 units / 1,600 units per videos.insert
 
+# The wrong-render backlog must not eat the whole day. Product clips are the only
+# content with a reason to buy, and nothing else on the channel produces a click
+# on the Shopee link, so at least this many slots a day are held for them. The
+# 2026-11-05 advisor panel (all five agreed) and Duck's caveat — a Short's
+# description link may not be tappable — both say: publish the product clips
+# first, and never let the replacement queue consume their slots. The backlog is
+# a quality fix; it can wait one more day. The product test cannot.
+AFFILIATE_RESERVE = 2
+
 # Media is gitignored and a recycled pod has an empty library/, so the files a
 # batch needs are fetched from the `media-938` release on demand. Downloading
 # only the next batch's media (not the whole 500 MB) is what keeps an unattended
@@ -274,6 +283,15 @@ def affiliate_file(card: dict) -> Path:
     """The rendered card clip. A fresh pod has no library/, so the path is
     returned even when absent and `fetch_media` pulls it from the release."""
     return AFF_DIR / f"short-aff-{card['id']}.mp4"
+
+
+def affiliate_pending(state: dict | None = None) -> int:
+    """Product cards still to publish. Zero once every card is live, so the
+    reserve stops holding slots for work that is already done."""
+    done = {(r.get("slug"), r.get("kind"))
+            for r in (state or load_state()).get("released", [])}
+    return sum(1 for c in affiliate_cards()
+               if (c["id"], "affiliate") not in done)
 
 
 def describe_affiliate(card: dict) -> tuple[str, str, list[str]]:

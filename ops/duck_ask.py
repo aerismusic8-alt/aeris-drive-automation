@@ -86,6 +86,35 @@ _BUSY = """(() => !!document.querySelector('button[aria-label*="Stop"], button[a
 _COUNT = """(() => ((document.querySelector('main')||document.body).innerText
   .match(/Duck\\.ai said/g) || []).length)()"""
 
+# Duck.ai routes to several vendors behind one page, and each is a distinct
+# opinion — free. K wants five advisors per decision, so three of the five are
+# Duck.ai models (the other two are the ChatGPT and Gemini web apps). "Switch
+# model" opens a menu of these; picking one changes who answers next.
+_MODELS = ("GPT-5.4 mini", "Claude Haiku 5.5", "gpt-oss 120B")
+
+_OPEN_MODEL_MENU = """(() => {
+  const b = [...document.querySelectorAll('button')]
+    .find(e => /Switch model/i.test(e.getAttribute('aria-label') || e.innerText || ''));
+  if (!b) return false; b.click(); return true;
+})()"""
+
+
+def _pick_model(d: "Cdp", model: str) -> bool:
+    """Select `model` in Duck.ai's model menu. False if the control moved."""
+    if not d.js(_OPEN_MODEL_MENU):
+        return False
+    time.sleep(1.2)
+    ok = d.js("""(() => {
+      const want = %s.toLowerCase();
+      const els = [...document.querySelectorAll('[role=menuitem],[role=option],[role=radio],li,button')];
+      const norm = e => (e.getAttribute('aria-label') || e.innerText || '').trim().replace(/\\s+/g, ' ');
+      const hit = els.find(e => norm(e).toLowerCase() === want)
+               || els.find(e => norm(e).toLowerCase().includes(want));
+      if (!hit) return false; hit.click(); return true;
+    })()""" % json.dumps(model))
+    time.sleep(0.8)
+    return bool(ok)
+
 # The chrome that follows the last answer in the conversation column.
 _TAIL_MARKERS = ("Jump to latest response", "All chats are private",
                  "Duck.ai, by DuckDuckGo")
@@ -117,10 +146,12 @@ def _wait_composer(d: Cdp, timeout: float = 20.0) -> None:
     raise RuntimeError("Duck.ai composer never appeared")
 
 
-def ask(prompt: str, *, timeout: float = 180.0) -> str:
+def ask(prompt: str, *, timeout: float = 180.0, model: str = "") -> str:
     d = Cdp()
     try:
         _wait_composer(d)
+        if model:
+            _pick_model(d, model)
         before_count = d.js(_COUNT) or 0
         typed = d.js(_SET_TEXT % json.dumps(prompt))
         if typed in ("no-composer", 0, None):

@@ -96,13 +96,20 @@ account — not just when K is watching.
 **The step, in order, before writing any code or starting any non-trivial job:**
 
 1. State the problem in one paragraph, plainly.
-2. Run `python3 ops/consult.py "<problem>"` (or `--file`). It asks every free
-   advisor at once over the cloud desktop and appends the answers to
+2. Run `python3 ops/consult.py "<problem>"` (or `--file`). It asks **five**
+   advisors at once over the cloud desktop and appends the answers to
    `ops/consult-log.jsonl`:
    - `chatgpt` — best at separating the automatable from the impossible
    - `gemini` — fast second opinion
-   - `duck` — Duck.ai, **needs no login**, so it still answers on the day the
-     Google session is the thing that is broken
+   - `duck` — Duck.ai's default model
+   - `duck-claude` — Duck.ai on Claude
+   - `duck-oss` — Duck.ai on gpt-oss
+
+   Duck.ai needs **no login**, so its three seats keep the panel alive on the day
+   the Google session is the thing that is broken. K raised the panel from three
+   to five on 2026-11-05: "เพิ่มเป็น 5 ที่ปรึกษาเลยในทุกงาน". The gate requires at
+   least **three** of the five to have actually answered, so one signed-out web
+   app does not block the rail, but a single reply can never pass for a panel.
 3. Read the answers. Where they agree, that is the plan. Where they disagree,
    say so and pick, with the reason.
 4. **Then** act. Record which advice was followed in the commit or the memory
@@ -113,7 +120,7 @@ known to be right — does not need a consultation. Judgement calls do: a new
 feature, a strategy, a "why is this failing" that has already resisted one fix.
 
 The `--only duck` flag exists for a quick check and for the case where the other
-two are signed out; it is not an excuse to skip the other two on a real decision.
+two are signed out; it is not an excuse to skip the panel on a real decision.
 
 A vendor that repeatedly gives the better answer becomes the default advisor for
 that class of problem — K's standing instruction is to adopt whichever one

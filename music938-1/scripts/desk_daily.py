@@ -97,13 +97,15 @@ def main() -> int:
     tail = out.strip().splitlines()[-1] if out.strip() else "?"
     lines += ["## เพลย์ลิสต์", "", tail, ""]
 
-    # 4. pinned full-song links on Shorts ------------------------------------
+    # 4. pinned links on Shorts (full song + product) -------------------------
     # Free conversion surface: a Short earns the view, its pinned comment carries
-    # the viewer to the full song, which is what earns the watch-hours.
+    # the viewer to the full song (watch-hours) or, on a product clip, to the
+    # Shopee page (the click). A Short's description link may not be tappable,
+    # so the pin is the click path.
     rc, out = run([sys.executable, str(ROOT / "scripts" / "studio_web.py"),
                    "pin-shorts", "--limit", "10"], timeout=1800)
     tail = out.strip().splitlines()[-1] if out.strip() else "?"
-    lines += ["## ปักหมุดเพลงเต็มบน Shorts", "", tail, ""]
+    lines += ["## ปักหมุดบน Shorts (เพลงเต็ม + ลิงก์สินค้า)", "", tail, ""]
 
     # 5. cross-post -----------------------------------------------------------
     if args.no_crosspost:

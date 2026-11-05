@@ -21,6 +21,7 @@ import argparse
 import json
 import time
 import urllib.request
+from pathlib import Path
 
 import websocket
 
@@ -178,6 +179,18 @@ def reply_all(desk: Desk, text: str, limit: int = 10) -> int:
 SHORT_PIN = ("🎵 ฟังเพลงเต็มได้ที่นี่เลยครับ 👉 {url}\n"
              "ขอบคุณที่ฟังนะครับ 🙏 ฝากติดตามเพลงใหม่ๆ ด้วยครับ")
 
+# A product Short has a different job: it exists to produce a Shopee click. Its
+# description link may not be tappable in the Shorts player, but a pinned
+# comment's link is, so the pin is the click path — the one free way to carry a
+# viewer from the clip to the product page. The disclosure is repeated here
+# because a link with no disclosure is a compliance problem, not a conversion.
+AFF_PIN = ("🛒 ลิงก์สินค้าในคลิป 👉 {url}\n"
+           "⚠️ ลิงก์พันธมิตร Shopee — เราอาจได้ค่าคอมมิชชัน")
+
+# The text that marks a pin as already posted, per kind, so re-running is a
+# no-op instead of stacking a second comment.
+_PIN_MARKERS = {"song": "ฟังเพลงเต็มได้ที่นี่", "affiliate": "ลิงก์สินค้าในคลิป"}
+
 
 def comment_video(desk: Desk, video_id: str, text: str) -> bool:
     """Post `text` as a top-level comment on `video_id`.
@@ -282,16 +295,22 @@ def pin_comment(desk: Desk, video_id: str) -> bool:
     """) == "pinned"
 
 
-def short_pin_targets() -> list[tuple[str, str]]:
-    """(short_video_id, full_song_url) for every Short whose song is released.
+def short_pin_targets(state: dict | None = None) -> list[tuple[str, str, str]]:
+    """(video_id, text, marker) for every Short that should carry a pin.
+
+    Two kinds share this path. A *song* Short gets a link to its full song, once
+    the song is live — a pin that links to a 404 is worse than no pin. A
+    *product* Short gets its affiliate link, which is the only tappable route to
+    the Shopee page; the description link may not be clickable in the player.
 
     The release state is the join: a Short and its full song share the slug, so a
-    Short only gets a pin once its song is live — a pin that links to a 404 is
-    worse than no pin.
+    song Short only gets a pin once its song is live. `state` is injectable so the
+    shape can be tested without a live ledger.
     """
-    from pathlib import Path
-    state = Path(__file__).resolve().parent.parent / "work" / "release-state.json"
-    rel = json.loads(state.read_text())["released"]
+    if state is None:
+        p = Path(__file__).resolve().parent.parent / "work" / "release-state.json"
+        state = json.loads(p.read_text())
+    rel = state["released"]
     # A retired entry is a deleted/replaced upload: its id now 404s, so pinning it
     # would only fail. Skip those.
     live = [r for r in rel if not r.get("retired_at")]
@@ -299,33 +318,44 @@ def short_pin_targets() -> list[tuple[str, str]]:
     out = []
     for r in live:
         if r["kind"] == "short" and r["slug"] in songs:
-            out.append((r["video_id"],
-                        f"https://youtu.be/{songs[r['slug']]}"))
+            out.append((r["video_id"], SHORT_PIN.format(url=f"https://youtu.be/{songs[r['slug']]}"),
+                        _PIN_MARKERS["song"]))
+        elif r["kind"] == "affiliate":
+            out.append((r["video_id"], AFF_PIN.format(url=_affiliate_link()),
+                        _PIN_MARKERS["affiliate"]))
     return out
 
 
-def video_has_marker(desk: Desk, video_id: str) -> bool:
-    """Whether the video already carries our full-song comment.
+def _affiliate_link() -> str:
+    """The tracked Shopee link, so a pin click is attributed to YouTube."""
+    import sys
+    sys.path.insert(0, str(Path(__file__).resolve().parent))
+    import monetize
+    return monetize.link("youtube")
+
+
+def video_has_marker(desk: Desk, video_id: str, marker: str = _PIN_MARKERS["song"]) -> bool:
+    """Whether the video already carries our pin comment.
 
     Re-running must not stack duplicate comments, so the Short is checked first
-    and only commented when the marker text is absent.
+    and only commented when the marker text is absent. The marker differs by kind:
+    a song Short carries the full-song line, a product Short the affiliate line.
     """
     desk.goto(f"https://www.youtube.com/watch?v={video_id}", settle=8)
     desk.js("document.querySelector('ytd-comments')?.scrollIntoView()")
     time.sleep(4)
-    return desk.js("(document.body.innerText||'').includes('ฟังเพลงเต็มได้ที่นี่')") is True
+    return desk.js("(document.body.innerText||'').includes(%s)" % json.dumps(marker)) is True
 
 
 def pin_shorts(desk: Desk, limit: int = 10) -> int:
-    """Post and pin the full-song link on each Short that lacks a pin yet."""
+    """Post and pin the right link on each Short that lacks a pin yet."""
     done = 0
-    for vid, url in short_pin_targets()[:limit]:
-        text = SHORT_PIN.format(url=url)
-        if not video_has_marker(desk, vid) and not comment_video(desk, vid, text):
+    for vid, text, marker in short_pin_targets()[:limit]:
+        if not video_has_marker(desk, vid, marker) and not comment_video(desk, vid, text):
             continue
         if pin_comment(desk, vid):
             done += 1
-            print(f"pinned {vid} -> {url}")
+            print(f"pinned {vid}")
     return done
 
 
