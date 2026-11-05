@@ -370,6 +370,35 @@ def test_affiliate_release() -> None:
     check("affiliate tags are present", bool(tags))
 
 
+def test_affiliate_reserve() -> None:
+    """The replacement queue must not eat the product clips' slots.
+
+    `pending_replacements.py` runs before `release.py` in the daily workflow and
+    the two share one 6-upload ledger, so without a floor the 8-video backlog
+    spends the whole day and no product clip is ever published — the funnel test
+    never starts, which reads as "product clips don't work". The reserve holds
+    AFFILIATE_RESERVE slots while any card is pending and releases them once
+    every card is live, so a finished backlog is not starved either.
+    """
+    section("affiliate slot reserve")
+    import release
+
+    check("the reserve is set", release.AFFILIATE_RESERVE >= 2,
+          f"{release.AFFILIATE_RESERVE}")
+    check("every card is pending on an empty ledger",
+          release.affiliate_pending({"released": []}) >= 5)
+    live = {"released": [{"slug": c["id"], "kind": "affiliate"}
+                         for c in release.affiliate_cards()]}
+    check("the reserve releases once every card is live",
+          release.affiliate_pending(live) == 0)
+    # The replacement guard is what actually holds the slots; it must read the
+    # reserve and the pending count, not just UPLOADS_PER_DAY.
+    rv = (ROOT / "scripts" / "replace_video.py").read_text()
+    check("replacements stop at the reserve", "AFFILIATE_RESERVE" in rv)
+    check("the reserve is dynamic, not a fixed wall",
+          "affiliate_pending" in rv)
+
+
 def test_outputs() -> None:
     section("rendered output")
     songs = sorted((common.LIBRARY / "songs").glob("song-*.mp3"))
@@ -1543,6 +1572,12 @@ def test_consult_gate() -> None:
 
     src = (ROOT.parent / "ops" / "consult.py").read_text()
     check("asks every vendor", all(v in src for v in ("chatgpt", "gemini", "duck")))
+    check("the panel is five advisors (K, 2026-11-05)",
+          len(consult.VENDORS) >= 5, f"{len(consult.VENDORS)}")
+    check("three of them are Duck.ai models, which need no login",
+          sum(1 for k in consult.VENDORS if k.startswith("duck")) >= 3)
+    check("the gate needs a quorum, not one answer", consult.MIN_ADVISORS >= 3,
+          f"{consult.MIN_ADVISORS}")
     check("duck needs no login", "duck" in consult.VENDORS)
     check("records the problem and answers", "consult-log.jsonl" in src)
 
@@ -1562,11 +1597,17 @@ def test_consult_gate() -> None:
         check("an unanswered consultation does not satisfy the gate",
               consult.consulted(brief) is None)
 
-        # A real answer satisfies it.
+        # Nor is a single answer: K asked for a panel of five.
+        consult.record(brief, {"chatgpt": {"ok": True, "answer": "x"}})
+        check("one answer does not satisfy the gate",
+              consult.consulted(brief) is None)
+
+        # A quorum of real answers satisfies it.
         consult.record(brief, {"chatgpt": {"ok": True, "answer": "x"},
-                               "duck": {"ok": True, "answer": "y"}})
+                               "duck": {"ok": True, "answer": "y"},
+                               "duck-oss": {"ok": True, "answer": "z"}})
         row = consult.require(brief)
-        check("gate passes after a real answer", row is not None)
+        check("gate passes after a quorum of answers", row is not None)
         check("the digest is stable across whitespace",
               consult.digest(brief) == consult.digest("  " + brief + "  "))
         check("a different brief is a different gate",
@@ -1766,6 +1807,7 @@ def main() -> int:
     test_fill_playlists()
     test_affiliate_short()
     test_affiliate_release()
+    test_affiliate_reserve()
     test_outputs()
     print(f"\n{PASS} passed, {FAIL} failed")
     if FAILURES:

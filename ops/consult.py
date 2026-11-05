@@ -24,11 +24,20 @@ Vendors, all free (Rule #1), driven over the cloud desktop's CDP:
   - chatgpt  : strongest at separating what is automatable from what is not
   - gemini   : fast, terse, good second opinion
   - duck     : Duck.ai, needs NO login, so it still works when the Google
-               session is the thing that is broken
+               session is the thing that is broken. Duck.ai routes to several
+               vendors behind one page, and each is a distinct opinion, so it
+               supplies three of the five: its default model, Claude, and
+               gpt-oss.
+
+K's rule is **five advisors on every non-trivial task** (2026-11-05). The gate
+below asks all five and requires at least `MIN_ADVISORS` (three) to have actually
+answered — a floor that survives one web app being signed out, without letting a
+single answer pass for a consultation.
 """
 from __future__ import annotations
 
 import argparse
+import functools
 import hashlib
 import json
 import sys
@@ -44,13 +53,20 @@ import duck_ask  # noqa: E402
 
 LOG = HERE / "consult-log.jsonl"
 
-# Every vendor the desktop can reach. Ordered so the most reliable-to-drive runs
-# first; a failure in one does not stop the rest.
+# Five advisors. Two are the ChatGPT and Gemini web apps; three are Duck.ai
+# models, which need no login and so keep the panel alive when Google is signed
+# out. Ordered most-reliable-to-drive first; one failure does not stop the rest.
 VENDORS = {
     "chatgpt": ask_agents.AGENTS["chatgpt"],
     "gemini": ask_agents.AGENTS["gemini"],
     "duck": duck_ask.ask,
+    "duck-claude": functools.partial(duck_ask.ask, model="Claude Haiku 5.5"),
+    "duck-oss": functools.partial(duck_ask.ask, model="gpt-oss 120B"),
 }
+
+# The gate floor. Five are asked; three must answer, so a single signed-out web
+# app does not block the whole rail, but one answer can never pass for a panel.
+MIN_ADVISORS = 3
 
 
 def consult(problem: str, which: list[str], timeout: float) -> dict:
@@ -100,8 +116,11 @@ def consulted(problem: str, max_age_hours: float = 48.0) -> dict | None:
             continue
         if row.get("digest") != want:
             continue
-        if not any(v.get("ok") for v in row.get("answers", {}).values()):
-            continue  # a consultation nobody answered is not a consultation
+        # A quorum of advisors must have actually answered. One reply is not a
+        # consultation of the panel K asked for, and a row where every vendor
+        # failed is not a consultation at all.
+        if sum(1 for v in row.get("answers", {}).values() if v.get("ok")) < MIN_ADVISORS:
+            continue
         newest = row
     if newest is None:
         return None
@@ -190,6 +209,10 @@ def main(argv=None) -> int:
             print(r["answer"] if r["ok"] else f"[unavailable] {r['error']}")
         ok = [k for k, v in answers.items() if v["ok"]]
         print(f"\n[{len(ok)}/{len(answers)} advisors answered: {', '.join(ok) or 'none'}]")
+        if len(ok) < MIN_ADVISORS and len(answers) >= MIN_ADVISORS:
+            print(f"[!] below the {MIN_ADVISORS}-advisor quorum — the gate will "
+                  f"NOT accept this consultation; retry the failed vendors",
+                  file=sys.stderr)
         print(f"[recorded to {LOG.name}]")
     return 0 if any(v["ok"] for v in answers.values()) else 1
 

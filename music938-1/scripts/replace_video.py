@@ -132,6 +132,17 @@ def main() -> int:
         print(f"quota spent: {used}/{release.UPLOADS_PER_DAY} today. "
               f"A replace needs a free upload slot.", file=sys.stderr)
         return 3
+    # Hold slots for the product clips, but only while some are still waiting.
+    # The replacement backlog is a quality fix and can wait; the product clips
+    # are the only content that can produce a Shopee click, so the queue stops
+    # before it eats their reserved slots. Once every card is live the reserve
+    # releases and the backlog gets the whole day.
+    reserve = min(release.AFFILIATE_RESERVE, release.affiliate_pending(state))
+    if used >= release.UPLOADS_PER_DAY - reserve:
+        print(f"holding {reserve} slot(s) for product clips: "
+              f"{used}/{release.UPLOADS_PER_DAY} used; the backlog waits for "
+              f"tomorrow", file=sys.stderr)
+        return 3
 
     print(f"replace {args.kind} {args.slug}\n  old id  {args.old}\n"
           f"  new file {video} ({video.stat().st_size // 1024} KiB)\n"
