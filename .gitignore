@@ -51,6 +51,10 @@ music938-1/work/*
 # YouTube only, so this is the loop's only view of the other three surfaces and
 # must survive a recycle.
 !music938-1/work/social-report.md
+# The affiliate product cards. The rendered clips ship in the media release, but
+# the source of truth for a *re-render* is this file — without it a fresh pod has
+# no cards, make_affiliate_short cannot run, and its test fails on an empty list.
+!music938-1/work/affiliate-products.json
 music938-1/library/songs/*.mp3
 music938-1/library/songs/*.wav
 music938-1/library/songs/*.m4a
