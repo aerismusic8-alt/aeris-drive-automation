@@ -1350,8 +1350,24 @@ def test_studio_web_rail() -> None:
     state = json.loads((ROOT / "work" / "release-state.json").read_text())
     retired = {r["video_id"] for r in state["released"] if r.get("retired_at")}
     check("a target per live Short with a live song", len(targets) >= 1)
-    check("no retired Short is a target", not ({v for v, _ in targets} & retired))
-    check("every target links to a youtu.be song", all("youtu.be/" in u for _, u in targets))
+    check("no retired Short is a target", not ({v for v, _, _ in targets} & retired))
+    check("a song target links to its youtu.be song",
+          all("youtu.be/" in t for _, t, m in targets if m == sw._PIN_MARKERS["song"]))
+    # The product clip's description link may not be tappable, so its pin is the
+    # click path and must carry the tracked Shopee link plus the disclosure.
+    aff_state = {"released": [
+        {"slug": "hp-budget-01", "kind": "affiliate", "video_id": "AFF0000001"}]}
+    aff = [(v, t, m) for v, t, m in sw.short_pin_targets(aff_state)
+           if m == sw._PIN_MARKERS["affiliate"]]
+    check("a product Short is a pin target too", bool(aff))
+    check("the product pin carries the affiliate link",
+          all("s.shopee.co.th" in t for _, t, _ in aff))
+    check("the product pin discloses the affiliate link",
+          all("ลิงก์พันธมิตร" in t for _, t, _ in aff))
+    check("a retired product Short is not pinned",
+          sw.short_pin_targets({"released": [
+              {"slug": "hp-budget-01", "kind": "affiliate", "video_id": "AFF0000001",
+               "retired_at": "2026-11-05T00:00:00+00:00"}]}) == [])
 
 
 def test_desk_daily_orchestrator() -> None:
