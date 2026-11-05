@@ -266,6 +266,25 @@ def test_lyrics_parse() -> None:
 
 # --- rendered output -------------------------------------------------------
 
+def test_playlist_patch_is_idempotent() -> None:
+    """`apply_monetize.patch_playlists` must not stack its footer on every run.
+
+    A playlist already carries our CTA (added by `refresh_description`) but not
+    the full footer block, so `new == desc` was true and the code appended the
+    footer unconditionally — each run grew the description by another copy. The
+    dry run reported "6 to update" forever, and an apply run would have grown the
+    live descriptions without bound. The append is now gated on the affiliate
+    link being absent.
+    """
+    section("playlist patch is idempotent (no footer stacking)")
+    src = (ROOT / "scripts" / "apply_monetize.py").read_text()
+    body = src.split("def patch_playlists(", 1)[1].split("\ndef ", 1)[0]
+    check("append is gated on the affiliate link being absent",
+          "link and link in desc" in body and "continue" in body)
+    check("the unconditional append is gone",
+          'if new == desc:\n            new = (desc.rstrip()' not in body)
+
+
 def test_affiliate_short() -> None:
     """The affiliate card must be honest, attributable, and positioned.
 
@@ -1859,6 +1878,7 @@ def main() -> int:
     test_consult_gate()
     test_watchdog()
     test_fill_playlists()
+    test_playlist_patch_is_idempotent()
     test_affiliate_short()
     test_affiliate_release()
     test_affiliate_reserve()

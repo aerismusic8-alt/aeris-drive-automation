@@ -78,6 +78,11 @@ def patch_playlists(token: str, link: str, block: str, apply: bool) -> int:
         desc = sn.get("description", "")
         new = monetize.refresh_description(desc, "youtube")
         if new == desc:
+            # The playlist already carries our CTA but not the full footer block.
+            # Append it only when the affiliate link is absent, or every run
+            # appends another copy of the footer (the "6 to update" loop).
+            if link and link in desc:
+                continue
             new = (desc.rstrip() + "\n" + block)[:4900]
         if new == desc or (link and link in desc and new == desc):
             continue
