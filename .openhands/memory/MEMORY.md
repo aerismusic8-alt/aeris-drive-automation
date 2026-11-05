@@ -745,3 +745,20 @@ true-instrumental karaoke mix, cover art, a 1920x1080 word-synced video.
   185 s and fails the 210 s floor. Slow songs are unaffected (298 s cap governs).
 - **Listen page: `ops/serve_songs.py` (port 12001, work-2 host)**, serves only
   `library/songs/*.mp3`. Pod-local — dies on recycle.
+
+## Song style = groove + vocal phrasing (2026-11-04)
+- **When a Flow song sounds wrong, fix the STYLE prompt, not the syllable count.**
+  Both advisors put a "vocal clashes with the backing" complaint in the prompt's
+  groove/phrasing. Name the groove (`steady 4/4 two-step drum groove`), lock the
+  vocal to it (`vocals tightly locked to the instrumental beat`, `syllabic Thai
+  vocal delivery with even note spacing`, `short balanced vocal phrases`, `smooth
+  legato transitions`), and forbid drift (`constant tempo`, `no tempo changes`).
+  For "make it faster": `fast-paced` + `driving straight eighth-note drums` +
+  `double-time feel` + `urgent fast vocal phrasing`, and raise the BPM (rock
+  140 -> 160). Styles live in `channel/genres.json`; tempo in the lyric header.
+- **A song's lyric file is already 8 syllables/line.** `pythainlp.syllable_tokenize`
+  confirms it, so a timing complaint is never a syllable-count bug.
+- **`flow_song.py --force` closes every other Chromium tab** (`_sweep_tabs`). It
+  killed a running `turntable_vote.py` twice. Never run the two concurrently.
+- **The Turntable tops out well below 100/100 in a day** (83 -> 86 and stopped).
+  It is not a route to an unlimited credit top-up; plan ~2 render windows/day.
