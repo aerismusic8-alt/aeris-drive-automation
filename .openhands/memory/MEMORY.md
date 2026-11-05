@@ -797,3 +797,21 @@ true-instrumental karaoke mix, cover art, a 1920x1080 word-synced video.
   killed a running `turntable_vote.py` twice. Never run the two concurrently.
 - **The Turntable tops out well below 100/100 in a day** (83 -> 86 and stopped).
   It is not a route to an unlimited credit top-up; plan ~2 render windows/day.
+
+## Crosspost rail + session reality (2026-11-05)
+- **A green crosspost run can post nothing.** The rail skipped every signed-out
+  surface and still ended `success`; ntfy fires only on `failure()`, so a dead
+  FB/TikTok session was invisible for weeks. `crosspost.py --pending-count` + a
+  workflow step now fail the run when a blocked surface has pending posts; an
+  empty queue stays green.
+- **When the desktop is signed out, it is signed out of Google too.** Studio
+  redirects to `accountchooser` with "Signed out", so `studio_web.py` (pin-shorts,
+  reply, analytics) is dead. Only the **YouTube Data API OAuth** still works —
+  that is the one revenue surface an agent can drive without a browser session.
+- **A dead login is not the growth bottleneck.** 2,022 views → 0 Shopee clicks
+  is a conversion-path problem. The 5 product cards all resolve
+  `monetize.link("youtube")` = the generic `shopee_affiliate` link, so every card
+  lands on the Shopee home, not a product page (the 5 custom short links are
+  per-*surface*, not per-*product*).
+- **`apply_monetize.py` is the live-description backfill** (Data API, idempotent
+  for videos; the playlist branch used to stack its footer every run — fixed).
