@@ -137,7 +137,9 @@ def build_ass(product: dict, seconds: float) -> str:
     hook, price, bullets down the middle, CTA and the disclosure band at the
     foot, where the video is dimmed to hold them.
     """
-    title = _esc(product["title"])
+    # The opening line is the scroll-stopper, not the topic: Shorts are decided
+    # in the first 3 seconds, so lead with the benefit or the question.
+    hookline = _esc(product.get("hookline") or product["title"])
     bullets = [_esc(b) for b in product.get("bullets", [])[:3]]
     price = _esc(product.get("price", ""))
 
@@ -175,7 +177,7 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
 
     ev: list[str] = []
     ev.append(f"Dialogue: 0,{ts(0)},{ts(seconds)},Hook,,0,0,0,,"
-              f"{pos(540, y_hook)}{{\\fad(150,150)}}{title}")
+              f"{pos(540, y_hook)}{{\\fad(150,150)}}{hookline}")
     if price:
         ev.append(f"Dialogue: 0,{ts(0.5)},{ts(seconds)},Price,,0,0,0,,"
                   f"{pos(540, y_price)}{{\\fad(150,150)}}{price}")

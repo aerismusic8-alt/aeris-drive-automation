@@ -225,16 +225,25 @@ def pin_comment(desk: Desk, video_id: str) -> bool:
     desk.goto(f"https://www.youtube.com/watch?v={video_id}", settle=8)
     desk.js("document.querySelector('ytd-comments')?.scrollIntoView()")
     # The comments render lazily and slowly; wait for the thread before touching
-    # the menu, or the click lands on nothing.
+    # the menu, or the click lands on nothing. The same wait has to cover the
+    # badge check below — a check straight after `goto` sees an empty DOM and
+    # reports an already-pinned video as unpinned.
     for _ in range(12):
         if desk.js("!!document.querySelector('ytd-comment-thread-renderer')"):
             break
         time.sleep(2)
     # Already pinned is a success, and re-running must not unpin: the menu item
     # for a pinned comment reads "เลิกปักหมุด", which a loose /ปักหมุด/ matches.
-    if desk.js("(document.querySelector('ytd-comment-thread-renderer')||{innerText:''})"
-               ".innerText.includes('ปักหมุดโดย')") is True:
-        return True
+    # The badge is locale-dependent — this account's UI renders English
+    # ("Pinned by"), so a Thai-only check reported a false negative and made
+    # `pin-shorts` look like it had pinned nothing when the pins were there.
+    # The thread element mounts before its text, so the badge is polled: a
+    # single check right after the element appears reads an empty innerText.
+    for _ in range(8):
+        if desk.js("(document.querySelector('ytd-comment-thread-renderer')||{innerText:''})"
+                   ".innerText.match(/ปักหมุดโดย|Pinned by/)") is not None:
+            return True
+        time.sleep(1)
     # Driven as one awaited script: the menu and its items mount asynchronously
     # in a portal, so separate round-trips race the render and click nothing.
     return desk.js("""
@@ -246,27 +255,28 @@ def pin_comment(desk: Desk, video_id: str) -> bool:
       };
       const t = await waitFor(() => document.querySelector('ytd-comment-thread-renderer'));
       if (!t) return 'no thread';
-      const menu = await waitFor(() => t.querySelector("button[aria-label*='เมนู'], ytd-menu-renderer button"));
+      const menu = await waitFor(() => t.querySelector("button[aria-label*='เมนู'], button[aria-label*='ction menu'], button[aria-label*='More actions'], ytd-menu-renderer button"));
       if (!menu) return 'no menu';
       menu.click();
-      // A pinned comment's menu offers "เลิกปักหมุด"; the exact-match below only
-      // takes the pin action, so it never unpins what is already pinned.
+      // A pinned comment's menu offers "เลิกปักหมุด" / "Unpin"; the exact-match
+      // below only takes the pin action, so it never unpins what is already
+      // pinned. The label is locale-dependent, so both languages are accepted.
       const item = await waitFor(() => [...document.querySelectorAll('ytd-menu-service-item-renderer, tp-yt-paper-item')]
-        .find(i => (i.innerText||'').trim() === 'ปักหมุด'));
+        .find(i => /^(ปักหมุด|Pin)$/.test((i.innerText||'').trim())));
       if (!item) return 'no pin item';
       item.click();
       const dlg = await waitFor(() => document.querySelector('yt-confirm-dialog-renderer, tp-yt-paper-dialog'));
       if (dlg) {
         const ok = await waitFor(() => {
           const bs = [...dlg.querySelectorAll('button, tp-yt-paper-button')]
-            .filter(b => (b.innerText||'').trim() === 'ปักหมุด');
+            .filter(b => /^(ปักหมุด|Pin)$/.test((b.innerText||'').trim()));
           return bs.length ? bs[bs.length-1] : null;
         });
         if (ok) ok.click();
       }
-      // The pin is applied asynchronously; "ปักหมุดโดย" in the thread is the proof.
+      // The pin is applied asynchronously; the badge in the thread is the proof.
       const badge = await waitFor(() => (document.querySelector('ytd-comment-thread-renderer')||{innerText:''})
-        .innerText.includes('ปักหมุดโดย'), 12000);
+        .innerText.match(/ปักหมุดโดย|Pinned by/), 12000);
       return badge ? 'pinned' : 'not pinned';
     })()
     """) == "pinned"

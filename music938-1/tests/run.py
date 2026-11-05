@@ -287,6 +287,12 @@ def test_affiliate_short() -> None:
               str(aff.claim_problem(p)))
         check(f"{p['id']}: has a song", bool(p.get("song")))
         check(f"{p['id']}: has bullets", len(p.get("bullets", [])) >= 2)
+        # Shorts are decided in the first 3 seconds, so the burned opening line
+        # is a scroll-stopper, distinct from the topic title.
+        check(f"{p['id']}: has a hookline", bool(p.get("hookline")))
+        check(f"{p['id']}: hookline is Thai", has_thai(p.get("hookline", "")))
+        check(f"{p['id']}: hookline differs from the title",
+              p.get("hookline") != p.get("title"))
 
     # The link is resolved per surface, not stored on the card: a card that
     # stored one link would tag every sale to the same surface.
@@ -321,6 +327,8 @@ def test_affiliate_short() -> None:
     check("card lines are inside the frame", all(0 < y < aff.H for y in ys))
     check("disclosure is drawn on the card",
           "ลิงก์พันธมิตร" in ass)
+    check("the opening line drawn is the hookline",
+          products[0]["hookline"] in ass)
     check("no emoji in the burned text",
           not any(0x1F300 <= ord(c) <= 0x1FAFF for c in ass))
     monetize.CACHE = None
@@ -1251,7 +1259,11 @@ def test_studio_web_rail() -> None:
     check("pins the full-song link on Shorts", "pin-shorts" in src)
     check("the pin advertises the full song", "ฟังเพลงเต็มได้ที่นี่" in src)
     check("pinning is idempotent", "video_has_marker" in src)
-    check("already-pinned is not unpinned", "'ปักหมุดโดย'" in src)
+    # The pinned badge is locale-dependent: this account's UI renders "Pinned
+    # by", so a Thai-only check reported an already-pinned video as unpinned and
+    # made pin-shorts look like it had done nothing.
+    check("already-pinned is not unpinned",
+          "ปักหมุดโดย" in src and "Pinned by" in src)
 
     # The Short->song join comes from the release state and must skip retired
     # uploads: their ids 404, so a pin would fail on every run.
@@ -1362,6 +1374,20 @@ def test_login_vault() -> None:
     check("a '!' marker means signed-in-only-when-absent",
           login_vault.PROBE[".flowmusic.app"][1].startswith("!") and
           "startswith(\"!\")" in src)
+    # Cookies are not the whole session: Google keeps its device-trust token in
+    # localStorage, so a cookie-only restore still makes Google ask for the
+    # device. The snapshot must also carry per-origin storage.
+    check("snapshots per-origin storage, not just cookies",
+          "def save_storage" in src and "def restore_storage" in src)
+    check("save() captures storage too",
+          "save_storage()" in src and "restore_storage()" in src)
+    check("storage is dumped and re-applied through the page",
+          "_dump_storage" in src and "_restore_storage" in src)
+    check("keeps the Google device-trust origins",
+          "https://accounts.google.com" in login_vault.STORAGE_ORIGINS)
+    # Inactivity is a re-auth cause a snapshot cannot fix, so a heartbeat loads
+    # each surface to reset the timer.
+    check("has a session heartbeat", "def heartbeat" in src and '"heartbeat"' in src)
 
 
 def test_operator_url() -> None:

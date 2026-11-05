@@ -52,6 +52,17 @@ CHUNK_KEY = "axlogin:d:{i}"
 # recycle — but a *new* sandbox gets an empty volume and the bar is gone with it.
 # K keeps the five work surfaces pinned there, so snapshot it beside the cookies.
 BOOKMARKS_KEY = "axlogin:bookmarks"
+# localStorage/sessionStorage per origin, stored beside the cookies. Cookies
+# alone are not the whole session: Google keeps its device-trust token in
+# localStorage, so a cookie-only restore still makes Google ask for the device.
+LS_INDEX_KEY = "axlogin:ls:index"
+LS_CHUNK_KEY = "axlogin:ls:d:{i}"
+# Origins whose storage carries session state worth keeping. Reading a foreign
+# origin's storage is impossible from another page, so each is visited in turn.
+STORAGE_ORIGINS = ("https://accounts.google.com", "https://myaccount.google.com",
+                   "https://gemini.google.com", "https://www.google.com",
+                   "https://www.facebook.com", "https://www.tiktok.com",
+                   "https://www.flowmusic.app")
 PROFILE = Path(os.environ.get(
     "AERIS_CHROME_PROFILE",
     "/workspace/ax-tools/aeris938-state/chrome-profile/Default"))
@@ -109,6 +120,104 @@ def unpack(index: dict, chunks: list[str]) -> list[dict]:
     """Inverse of pack. Pure, so it can be tested."""
     b64 = "".join(chunks)
     return json.loads(gzip.decompress(base64.b64decode(b64)))["cookies"]
+
+
+def _dump_storage(pg) -> dict:
+    """localStorage + sessionStorage of the page currently loaded in `pg`."""
+    return pg.evaluate("""() => {
+      const out = {local: {}, session: {}};
+      try { for (let i = 0; i < localStorage.length; i++) {
+        const k = localStorage.key(i); out.local[k] = localStorage.getItem(k);
+      } } catch (e) {}
+      try { for (let i = 0; i < sessionStorage.length; i++) {
+        const k = sessionStorage.key(i); out.session[k] = sessionStorage.getItem(k);
+      } } catch (e) {}
+      return out;
+    }""")
+
+
+def _restore_storage(pg, dump: dict) -> int:
+    """Write a dump back into the current origin. Returns the key count."""
+    return pg.evaluate("""(dump) => {
+      let n = 0;
+      try { for (const [k, v] of Object.entries(dump.local || {})) { localStorage.setItem(k, v); n++; } } catch (e) {}
+      try { for (const [k, v] of Object.entries(dump.session || {})) { sessionStorage.setItem(k, v); n++; } } catch (e) {}
+      return n;
+    }""", dump)
+
+
+def save_storage() -> int:
+    """Capture localStorage/sessionStorage for each watched origin.
+
+    A cookie-only snapshot is not a full session — Google stores its device-trust
+    token in localStorage, so restoring cookies alone still triggers a device
+    check. This walks each origin in the open browser and stores its storage.
+    """
+    pw, br, ctx = _context()
+    collected: dict = {}
+    try:
+        pg = ctx.new_page()
+        try:
+            for origin in STORAGE_ORIGINS:
+                try:
+                    pg.goto(origin, wait_until="domcontentloaded", timeout=45000)
+                    pg.wait_for_timeout(2500)
+                    dump = _dump_storage(pg)
+                    if dump["local"] or dump["session"]:
+                        collected[origin] = dump
+                except Exception as exc:  # noqa: BLE001
+                    print(f"  {origin}: skipped ({str(exc)[:50]})")
+        finally:
+            pg.close()
+    finally:
+        pw.stop()
+    blob = json.dumps(collected).encode()
+    b64 = base64.b64encode(gzip.compress(blob)).decode()
+    chunks = [b64[i:i + CHUNK_CHARS] for i in range(0, len(b64), CHUNK_CHARS)] or [""]
+    aid = ax_vault.ensure_anchor()
+    for i, c in enumerate(chunks):
+        ax_vault.kv_put(aid, LS_CHUNK_KEY.format(i=i), c)
+    ax_vault.kv_put(aid, LS_INDEX_KEY, {
+        "count": len(chunks),
+        "origins": {o: len(v["local"]) + len(v["session"]) for o, v in collected.items()},
+        "saved_at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
+    })
+    n = sum(len(v["local"]) + len(v["session"]) for v in collected.values())
+    print(f"saved {n} storage key(s) across {len(collected)} origin(s)")
+    for o, c in sorted(collected.items()):
+        print(f"  {o}: {len(c['local'])} local, {len(c['session'])} session")
+    return 0
+
+
+def restore_storage() -> int:
+    """Put the saved storage back into each origin, before the pages are used."""
+    aid = ax_vault.ensure_anchor()
+    index = ax_vault.kv_get(aid, LS_INDEX_KEY)
+    if not index:
+        print("no saved storage (login_vault.py save has never run)")
+        return 0
+    chunks = [ax_vault.kv_get(aid, LS_CHUNK_KEY.format(i=i)) or ""
+              for i in range(index["count"])]
+    collected = json.loads(gzip.decompress(
+        base64.b64decode("".join(chunks))).decode())
+    pw, br, ctx = _context()
+    total = 0
+    try:
+        pg = ctx.new_page()
+        try:
+            for origin, dump in collected.items():
+                try:
+                    pg.goto(origin, wait_until="domcontentloaded", timeout=45000)
+                    pg.wait_for_timeout(1500)
+                    total += _restore_storage(pg, dump)
+                except Exception as exc:  # noqa: BLE001
+                    print(f"  {origin}: skipped ({str(exc)[:50]})")
+        finally:
+            pg.close()
+    finally:
+        pw.stop()
+    print(f"restored {total} storage key(s) (saved {index['saved_at']})")
+    return 0
 
 
 def read_bookmarks() -> list[dict]:
@@ -275,6 +384,7 @@ def save() -> int:
     print(f"  surfaces: {index['surfaces']}")
     print(f"  at      : {index['saved_at']}")
     save_bookmarks()
+    save_storage()
     return 0
 
 
@@ -338,6 +448,29 @@ def restore(verify: bool = True) -> int:
         print(f"  {d}: {', '.join(bits)}")
     if live and not any(live.values()):
         print("\n[!] cookies restored but no surface accepted them; the saved session is dead.")
+    # Storage is restored after the cookies so the device-trust token is in place
+    # before any surface is loaded for real.
+    restore_storage()
+    return 0
+
+
+def heartbeat() -> int:
+    """Load each surface in the open browser so its session stays warm.
+
+    Server-side inactivity timeouts are a cause of re-authentication that a
+    cookie snapshot cannot fix (all three advisors said this). A low-frequency
+    authenticated page load resets that timer. Kept to the surfaces that have a
+    PROBE and a minimum gap between runs, so it does not look like scraping.
+    """
+    pw, br, ctx = _context()
+    try:
+        for d in WATCH:
+            if d not in PROBE:
+                continue
+            ok = _signed_in(ctx, d)
+            print(f"  {d}: {'alive' if ok else 'EXPIRED'}")
+    finally:
+        pw.stop()
     return 0
 
 
@@ -358,10 +491,11 @@ def status() -> int:
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__,
                                  formatter_class=argparse.RawDescriptionHelpFormatter)
-    ap.add_argument("command", choices=["save", "restore", "status",
+    ap.add_argument("command", choices=["save", "restore", "status", "heartbeat",
                                         "save-bookmarks", "restore-bookmarks"])
     a = ap.parse_args()
     return {"save": save, "restore": restore, "status": status,
+            "heartbeat": heartbeat,
             "save-bookmarks": save_bookmarks,
             "restore-bookmarks": restore_bookmarks}[a.command]()
 
