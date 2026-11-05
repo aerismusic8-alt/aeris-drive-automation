@@ -924,6 +924,43 @@ def test_crosspost_uses_committed_queue() -> None:
         crosspost.QUEUE = real
 
 
+def test_crosspost_blocked_vs_empty() -> None:
+    """A dead session with work waiting must fail; an empty queue must not.
+
+    For weeks the crosspost rail ended `success` while posting nothing, because
+    both Facebook and TikTok sessions had died and the post step just skipped
+    them. That is indistinguishable to K from a healthy no-op run, so the outage
+    was silent. The rail now counts the pending posts of a blocked surface and
+    fails only when that count is above zero.
+    """
+    section("crosspost: blocked vs empty (false-green fix)")
+    import crosspost
+
+    src = (ROOT / "scripts" / "crosspost.py").read_text()
+    check("crosspost exposes --pending-count", '"--pending-count"' in src)
+    check("pending-count is handled", "args.pending_count" in src)
+
+    wf = (ROOT.parent / ".github" / "workflows" / "ax-music-crosspost.yml").read_text()
+    check("workflow records the blocked surface's pending count",
+          "--pending-count" in wf and "blocked-pending" in wf)
+    check("workflow fails the run when work is pending", "exit 1" in wf)
+    check("failure step is keyed off a pending total", "total" in wf and "-gt 0" in wf)
+    # The healthy no-op path must not fail: no blocked file means exit 0.
+    check("empty/healthy run exits clean",
+          "no blocked surface with pending work" in wf)
+
+    # Behaviour: the count the rail reads is real, and zero once posted.
+    q = crosspost.build_queue()
+    empty_state = {"posted": {}}
+    full_state = {"posted": {it["id"]: {"at": "2026-11-05T00:00:00Z", "url": ""}
+                             for it in q}}
+    if q:
+        check("pending count is positive with an empty state",
+              len(crosspost.pending(q, empty_state, "tiktok")) > 0)
+        check("pending count is zero once everything is posted",
+              len(crosspost.pending(q, full_state, "tiktok")) == 0)
+
+
 def test_crosspost_pace_and_captions() -> None:
     """The two defects found on 2026-11-01 must not come back.
 
@@ -1807,6 +1844,7 @@ def main() -> int:
     test_crosspost_engine()
     test_browser_ci_storage_state()
     test_crosspost_uses_committed_queue()
+    test_crosspost_blocked_vs_empty()
     test_crosspost_pace_and_captions()
     test_social_stats_parser()
     test_setup_pod_ffmpeg()

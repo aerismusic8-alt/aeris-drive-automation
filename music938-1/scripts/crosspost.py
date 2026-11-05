@@ -656,6 +656,10 @@ def main() -> int:
     ap.add_argument("--probe", action="store_true", help="is the desktop signed in?")
     ap.add_argument("--post", action="store_true", help="actually post")
     ap.add_argument("--status", action="store_true", help="counts by platform")
+    ap.add_argument("--pending-count", action="store_true",
+                    help="print the number of pending posts for --platform "
+                         "(or every platform); used by the rail to tell an "
+                         "empty queue from a blocked one")
     ap.add_argument("--platform", choices=sorted(PLATFORMS), default=None)
     ap.add_argument("--limit", type=int, default=1)
     ap.add_argument("--rebuild-queue", action="store_true")
@@ -674,10 +678,15 @@ def main() -> int:
         QUEUE.parent.mkdir(parents=True, exist_ok=True)
         QUEUE.write_text(json.dumps(q, ensure_ascii=False, indent=2), encoding="utf-8")
         print(f"queue: {len(q)} items -> {QUEUE.name}")
-        if not (args.plan or args.post or args.status):
+        if not (args.plan or args.post or args.status or args.pending_count):
             return 0
     queue = json.loads(QUEUE.read_text(encoding="utf-8"))
     state = load_state()
+    if args.pending_count:
+        plats = [args.platform] if args.platform else list(PLATFORMS)
+        for plat in plats:
+            print(len(pending(queue, state, plat)))
+        return 0
     if args.status:
         for plat in PLATFORMS:
             total = sum(1 for it in queue if it["platform"] == plat)

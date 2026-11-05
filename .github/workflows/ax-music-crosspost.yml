@@ -100,13 +100,36 @@ jobs:
               tiktok)   state="${TK_STATE:-}" ;;
             esac
             if [ "$PLAT" = "all" ] && [ "$state" != "SIGNED_IN" ]; then
-              echo "--- $p: skipped (session not signed in) ---"
+              # Blocked, not empty: there is work waiting and the session cannot
+              # carry it. Record the count so the final gate can fail the run.
+              n=$(python3 music938-1/scripts/crosspost.py --pending-count --platform "$p" | tail -1)
+              echo "--- $p: skipped (session not signed in; $n pending) ---"
+              echo "$n" >> /tmp/blocked-pending.txt
               continue
             fi
             echo "--- $p ---"
             python3 music938-1/scripts/crosspost.py --post --platform "$p" --limit "$LIMIT" \
               || echo "$p: nothing posted this run (cadence hold or signed out)"
           done
+
+      - name: Fail if a surface was blocked with work waiting
+        # A run that posts nothing because the queue is empty is a normal no-op
+        # and must stay green. A run that posts nothing because the session is
+        # dead, while posts are pending, is a real outage — and for weeks it
+        # looked identical (green) to the healthy case, so K was never told.
+        # This turns that outage red so the ntfy step below fires.
+        run: |
+          set -uo pipefail
+          if [ ! -f /tmp/blocked-pending.txt ]; then
+            echo "no blocked surface with pending work"
+            exit 0
+          fi
+          total=$(awk '{s+=$1} END{print s+0}' /tmp/blocked-pending.txt)
+          if [ "${total:-0}" -gt 0 ]; then
+            echo "::error::$total post(s) pending but the session is signed out; nothing was posted"
+            exit 1
+          fi
+          echo "blocked surfaces had no pending work; nothing lost"
 
       - name: Commit the crosspost state
         run: |
@@ -131,5 +154,5 @@ jobs:
           [ -n "${TOPIC:-}" ] || { echo "no AX_NTFY_TOPIC set"; exit 0; }
           curl -sS --max-time 20 -H "Title: AERIS crosspost needs attention" \
             -H "Tags: warning" -H "Priority: high" \
-            -d "Facebook/TikTok posting failed — the saved session may be dead, or the media release could not be fetched. Sign in on the cloud desktop and re-run ops/save_storage_state.py." \
+            -d "Facebook/TikTok posting failed — the saved session is likely dead (Facebook and TikTok both reject a restored cookie once the server session expires). Posts are waiting. Sign in on the cloud desktop, then re-run ops/login_vault.py save and ops/save_storage_state.py to refresh AERIS_STORAGE_STATE_B64." \
             "https://ntfy.sh/${TOPIC}" || echo "ntfy push failed (non-fatal)"
