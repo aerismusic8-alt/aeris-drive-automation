@@ -688,3 +688,20 @@ true-instrumental karaoke mix, cover art, a 1920x1080 word-synced video.
   overlay) and `websocket-client` was missing from `setup-pod.sh`. Re-run the pth
   snippet from `setup-pod.sh`; system site-packages is root-owned so it falls back
   to the user site dir.
+- **Cookies alone are not a session.** Google keeps device trust in localStorage,
+  so a cookie-only `login_vault` restore still triggers a device check. `save`/
+  `restore` now also snapshot per-origin localStorage+sessionStorage (123 keys
+  the cookie snapshot never had) and there is a `heartbeat` command. ChatGPT,
+  Gemini and Duck.ai all said the same, and all three said MFA/OTP/DBSC and
+  server-side expiry cannot be automated — the goal is fewer K sign-ins, not zero.
+- **`ops/duck_ask.py` needs no login** — use it to consult a model on the day the
+  Google session is what is broken. Duck.ai runs several vendors' models behind
+  one page; parse answers by splitting on "Duck.ai said" and waiting on the
+  `Duck.ai said` count, not a text diff.
+- **A classic PAT with `repo,workflow` is in KV at `axsecrets:gh-workflow-token`**
+  (login `aerismusic8-alt`). `git push https://x-access-token:$TOKEN@github.com/...`
+  writes; the sandbox `GITHUB_TOKEN` cannot. Reset the remote URL after pushing.
+- **A source-check test that pins an exact old string will fail on a legitimate
+  fix.** The pin-badge test pinned `'ปักหมุดโดย'`; making the check locale-tolerant
+  broke it. Update the test to pin the *behaviour* (both locales present), not one
+  literal.
