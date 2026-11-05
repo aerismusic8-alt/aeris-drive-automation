@@ -1,10 +1,10 @@
 # AERIS Music — ความคืบหน้า (อัตโนมัติ)
 
-อัพเดท: 2026-11-04 16:29 UTC
+อัพเดท: 2026-11-05 00:59 UTC
 
 ## เป้าหมาย monetize
 - ผู้ติดตาม: 7 / 1,000   [.................... 0%]
-- ยอดดูรวม: 2647
+- ยอดดูรวม: 2022
 - วิดีโอทั้งหมด: 21
 
 ## ระบบที่รันอัตโนมัติ (GitHub Actions, ไม่ใช้ sandbox)
@@ -17,8 +17,8 @@
 - เพลย์ลิสต์: karaoke=PLYqvExU9-SLE, song=PLeA2Vf8N8O5c, short=PLKlARHtRpKkI, compilation=PLQyOtKueeTgs, naviya=PLA2A_jek56jw, mood-sad=PLEAzEDjP3vgk, mood-warm=PLUQemmr8-kPw
 
 ## ครอสโพสต์
-- โพสต์แล้ว: facebook=60, facebook-page=1, tiktok=3
-- คิวคงเหลือ: facebook=45, tiktok=45
+- โพสต์แล้ว: facebook=60, facebook-page=4, tiktok=4
+- คิวคงเหลือ: facebook=50, tiktok=50
 
 ## หมายเหตุ
 - ตัวเลขจาก YouTube Data API (subs/views/likes/comments).
