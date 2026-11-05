@@ -740,15 +740,31 @@ true-instrumental karaoke mix, cover art, a 1920x1080 word-synced video.
   mints an OAuth token, not a cookie session, and needs a device-flow OAuth client.
   Flow Music / TikTok / Shopee need the browser session, so noVNC stays the route.
 - **Consult the advisors BEFORE acting — it is a gate, not a note (K, 2026-11-05).**
-  `ops/consult.py` asks ChatGPT + Gemini + Duck.ai in one command and appends to
+  `ops/consult.py` asks **five** advisors in one command and appends to
   `ops/consult-log.jsonl`; `consult.require(brief)` (or `consult.py --check`) fails
-  closed unless a *recent, actually-answered* consultation for that exact brief is
-  on record. All three vendors said the same thing when asked how to make the habit
-  stick: a rule in a document gets skipped — put it in a runner the worker cannot
-  bypass. A consultation nobody answered does NOT satisfy the gate.
+  closed unless a *recent* consultation for that exact brief with **≥3 answered**
+  is on record. K raised the panel from 3 to 5 ("เพิ่มเป็น 5 ที่ปรึกษาเลยในทุกงาน"):
+  `chatgpt`, `gemini`, and three Duck.ai models (`duck`, `duck-claude`, `duck-oss`)
+  — Duck.ai's "Switch model" picker is what supplies three seats from one no-login
+  page. `MIN_ADVISORS = 3` is the quorum; all five vendors said the same thing about
+  making the habit stick: a rule in a document gets skipped — put it in a runner the
+  worker cannot bypass. A consultation below quorum does NOT satisfy the gate.
 - **`duck.ai` needs its tab opened first** or `duck_ask` raises "no duck.ai tab";
   open it with `curl -X PUT 'http://127.0.0.1:9222/json/new?https://duck.ai/'`.
-  Duck took ~300 s on a long Thai prompt while ChatGPT/Gemini took ~25 s.
+  Duck took ~300 s on a long Thai prompt while ChatGPT/Gemini took ~25 s. The full
+  5-seat panel takes ~15 min (each Duck model streams serially), so run it in the
+  background and poll rather than blocking on it.
+- **A Short's description link may not be tappable — pin a comment instead.** Every
+  member of the 2026-11-05 panel raised it. `studio_web.py` `short_pin_targets()`
+  returns `(video_id, text, marker)` for both a song Short (youtu.be link) and a
+  product Short (tracked Shopee link + affiliate disclosure); `pin-shorts` is step 4
+  of `desk_daily.py`. `brandingSettings.channel.description` is API-writable via
+  `channels.update part=brandingSettings` (the About page), but the profile *links*
+  section is not in the API at all.
+- **The wrong-render backlog must not eat the product clips' slots.** `release.AFFILIATE_RESERVE`
+  (2) is enforced in `replace_video.py` as `reserve = min(2, affiliate_pending())`:
+  it holds slots while a card is pending and releases them once all are live. Without
+  it the 8-video backlog spends all 6 daily slots and no product clip ever publishes.
 
 ## The songwriting formula (music938, 2026-11-04)
 - **`music938-1/scripts/forge_song.py` is the formula.** ChatGPT drafts 2 angles
