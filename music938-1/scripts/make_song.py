@@ -317,8 +317,10 @@ def _auto_line_beats(n_lines: int, spb: float) -> float:
     target = 250.0
     best, best_err = 6.0, None
     # Multiples of two beats, so a line can also start on the half-bar. Candidates
-    # that push the song past 5 minutes are rejected outright.
-    for beats in range(2, 18, 2):
+    # that push the song past 5 minutes are rejected outright. The ceiling is 32,
+    # not 16: a fast song (rock at 140 BPM) needs more beats per line than a slow
+    # one to reach the same 3.5-minute floor, and a 16 cap left it stuck at 185 s.
+    for beats in range(2, 34, 2):
         total = n_lines * beats * spb + 34.0  # + intro/outro
         if total > 298.0:
             continue

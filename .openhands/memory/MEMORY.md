@@ -730,3 +730,18 @@ true-instrumental karaoke mix, cover art, a 1920x1080 word-synced video.
 - **`duck.ai` needs its tab opened first** or `duck_ask` raises "no duck.ai tab";
   open it with `curl -X PUT 'http://127.0.0.1:9222/json/new?https://duck.ai/'`.
   Duck took ~300 s on a long Thai prompt while ChatGPT/Gemini took ~25 s.
+
+## The songwriting formula (music938, 2026-11-04)
+- **`music938-1/scripts/forge_song.py` is the formula.** ChatGPT drafts 2 angles
+  -> `ai_lyrics.lint_sections` filter -> Duck.ai critiques -> Duck.ai judges A/B
+  (`pick()` parses "เลือก: A|B") -> winner written -> Flow renders. Rule: the
+  filter runs entirely off Flow credits, so a bad candidate never costs a render.
+- **Draft with ChatGPT, not signed-out Gemini.** The desktop's Gemini is signed
+  out and its Flash-Lite refuses the lyric brief outright. `A.draft(meta, angle,
+  drafter=...)` switches; Gemini works again once signed in.
+- **`parse_body` slices from the LAST "… said" marker.** Both web UIs echo the
+  prompt (tags included); parsing the prompt's own example lyric yields 0 sections.
+- **`_auto_line_beats` needs the 32-beat ceiling**, or a 140 BPM song stays at
+  185 s and fails the 210 s floor. Slow songs are unaffected (298 s cap governs).
+- **Listen page: `ops/serve_songs.py` (port 12001, work-2 host)**, serves only
+  `library/songs/*.mp3`. Pod-local — dies on recycle.

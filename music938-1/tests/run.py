@@ -535,6 +535,18 @@ def test_genres() -> None:
     for g in genres.genres():
         check(f"{g['id']}: maps to a known palette",
               genres.PALETTE_FOR.get(g["id"]) in PALETTES)
+    # A `# GENRE:` id alone is not a writing brief — Gemini returns the same
+    # generic เพื่อชีวิต lyric. A genre with a brief must actually reach the
+    # prompt, and a genre without one must not gain a stray line.
+    import ai_lyrics
+    lt = ai_lyrics.build_prompt({"TITLE": "t", "GENRE": "lukthung"})
+    check("lukthung brief reaches the prompt",
+          "แนวนำทาง" in lt and "ลูกทุ่งไทย" in lt)
+    rock = ai_lyrics.build_prompt({"TITLE": "t", "GENRE": "rock"})
+    check("rock brief reaches the prompt",
+          "แนวนำทาง" in rock and "ร็อกไทย" in rock)
+    plain = ai_lyrics.build_prompt({"TITLE": "t", "MOOD": "sad"})
+    check("a mood-only song gets no genre brief", "แนวนำทาง" not in plain)
 
 
 def test_thumb_contrast() -> None:
