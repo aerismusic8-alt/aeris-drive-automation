@@ -1320,6 +1320,17 @@ def test_profile_setup() -> None:
     # personal id would brand the wrong account.
     import profile_setup
     check("brands the AERIS Music Page", profile_setup.FACEBOOK_ID == "61595890900382")
+    # A bio is where a view can still become a click after the caption scrolls
+    # away, so each surface's bio must carry *that surface's* affiliate link and
+    # the disclosure. The first affiliate Reels went out with no link in the bio.
+    cfg = json.loads((ROOT / "channel" / "monetization.json").read_text(encoding="utf-8"))
+    check("TikTok bio carries its own affiliate link",
+          cfg["shopee_links"]["tiktok"] in profile_setup.TIKTOK_BIO)
+    check("Facebook bio carries its own affiliate link",
+          cfg["shopee_links"]["facebook"] in profile_setup.FACEBOOK_BIO)
+    for name, bio in (("TikTok", profile_setup.TIKTOK_BIO),
+                      ("Facebook", profile_setup.FACEBOOK_BIO)):
+        check(f"{name} bio discloses the affiliate link", "ลิงก์พันธมิตร" in bio)
 
 
 def test_login_vault() -> None:

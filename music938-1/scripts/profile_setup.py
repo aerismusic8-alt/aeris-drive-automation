@@ -25,14 +25,19 @@ import browser as B  # noqa: E402
 AVATAR = ROOT / "channel" / "avatar-pro-800x800.png"
 COVER = ROOT / "channel" / "cover-pro-1640x624.png"
 TIKTOK_URL = "https://www.tiktok.com/@aeris.music4"
-TIKTOK_BIO = ("🎵 เพลงไทยเพราะๆ ใหม่ทุกวัน · ร้องตามได้ 🎤\n"
-              "▶️ ฟังเต็ม YouTube: @aerismusicth")
+# Each bio carries that surface's own affiliate link (Sub_id = tiktok / facebook)
+# plus the disclosure COMPLIANCE.md requires. A Short earns the view; the bio is
+# where the view can still turn into a click after the caption has scrolled away,
+# and the first affiliate Reels went out with no link in the bio at all.
+TIKTOK_BIO = ("🎵 เพลงไทยเพราะๆ ใหม่ทุกวัน\n"
+              "🛒 ลิงก์พันธมิตร: https://s.shopee.co.th/60SrsstoP6")
 FACEBOOK_ID = "61595890900382"
 # The Page's own intro. Short, viewer-focused, one CTA — the same voice as the
 # YouTube description so the brand reads as one thing across surfaces.
 FACEBOOK_BIO = ("🎵 เพลงไทยเพื่อชีวิต · เพลงเศร้า · คาราโอเกะ\n"
                 "เพลงใหม่ทุกวัน ร้องตามได้ 🎤\n"
-                "▶️ ฟังเต็มที่ YouTube: @aerismusicth")
+                "▶️ ฟังเต็มที่ YouTube: @aerismusicth\n"
+                "🛒 ของน่าซื้อ (ลิงก์พันธมิตร): https://s.shopee.co.th/2qVq75ACtW")
 # The AERIS Music *Page* (resolves to /people/AERIS-Music/61595890900382/), the
 # same Page crosspost.py posts Reels to. Do not point this at 61596276533369 —
 # that is K's personal profile ("Aeris-Ak Akath"), which cannot be branded and is
