@@ -1450,6 +1450,16 @@ def test_phone_login() -> None:
           {"google", "flow", "gemini", "facebook", "tiktok", "youtube", "shopee"}
           <= set(phone_login.SURFACES))
     check("names the account to use", phone_login.EXPECTED_ACCOUNT == "aerismusic8@gmail.com")
+    # Each button must carry K's own experience of what the sign-in takes, or the
+    # page sends them into a slide puzzle they did not expect.
+    hints = {k: v[2] for k, v in phone_login.SURFACES.items()}
+    check("Shopee warns about the slide puzzle", "สไลด์" in hints["shopee"])
+    check("Facebook mentions the saved password", "รหัสที่บันทึก" in hints["facebook"])
+    check("the easy surfaces say so", "กดปุ๊บ" in hints["flow"])
+    # Tapping a surface must reuse the open tab (as the bookmark bar does), not
+    # stack a duplicate — otherwise a signed-in surface reloads and loses nothing
+    # but the operator gets a pile of tabs.
+    check("reuses the open tab", "/json/activate/" in src)
     check("opens the surface in the desktop over CDP", "/json/new?" in src)
     check("hands the phone to noVNC after a tap", "novnc_url()" in src)
     check("asks for remote resize", "resize=remote" in src)

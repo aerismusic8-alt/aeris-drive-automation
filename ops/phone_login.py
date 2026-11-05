@@ -31,17 +31,26 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 
 CDP = "http://127.0.0.1:9222"
-# The surfaces that need a human sign-in, and the page to open for each. Flow
-# Music and Gemini share the Google session, so signing into Google first covers
-# three of them.
+# The surfaces that need a human sign-in. Each is (label, url, hint). The hint is
+# K's own experience of what the sign-in actually takes: most surfaces are already
+# signed in and open on a tap, Facebook offers the saved password after one tap in
+# the field, and only Shopee needs the slide puzzle. Ordered easiest-first so the
+# surfaces that "just open" are at the top.
 SURFACES = {
-    "google": ("Google (ปุ่มเดียวใช้ได้หลายที่)", "https://accounts.google.com/"),
-    "flow": ("Flow Music (เครื่องทำเพลง)", "https://www.flowmusic.app/"),
-    "gemini": ("Gemini web (ภาพประกอบตอน)", "https://gemini.google.com/app"),
-    "facebook": ("Facebook Page", "https://www.facebook.com/"),
-    "tiktok": ("TikTok @aeris.music4", "https://www.tiktok.com/@aeris.music4"),
-    "youtube": ("YouTube Studio", "https://studio.youtube.com/"),
-    "shopee": ("Shopee Affiliate", "https://affiliate.shopee.co.th/dashboard"),
+    "flow": ("Flow Music — เครื่องทำเพลง", "https://www.flowmusic.app/",
+             "กดปุ๊บเข้าได้เลย"),
+    "gemini": ("Gemini web — ภาพประกอบตอน", "https://gemini.google.com/app",
+               "กดปุ๊บเข้าได้เลย"),
+    "youtube": ("YouTube Studio", "https://studio.youtube.com/",
+                "กดปุ๊บเข้าได้เลย"),
+    "tiktok": ("TikTok @aeris.music4", "https://www.tiktok.com/@aeris.music4",
+               "กดปุ๊บเข้าได้เลย"),
+    "facebook": ("Facebook Page", "https://www.facebook.com/",
+                 "แตะช่องรหัสผ่าน 1 ครั้ง แล้วเลือกรหัสที่บันทึกไว้"),
+    "shopee": ("Shopee Affiliate", "https://affiliate.shopee.co.th/dashboard",
+               "ต้องสไลด์รูปภาพให้ตรงก่อน"),
+    "google": ("Google (ใช้เมื่อข้างบนหลุด)", "https://accounts.google.com/",
+               "แตะช่องรหัสผ่าน 1 ครั้ง แล้วเลือกรหัสที่บันทึกไว้"),
 }
 EXPECTED_ACCOUNT = "aerismusic8@gmail.com"
 STATE = Path(os.environ.get("AERIS_STATE_DIR", "/workspace/ax-tools/aeris938-state"))
@@ -64,7 +73,25 @@ def cdp_alive() -> bool:
 
 
 def open_surface(url: str) -> bool:
-    """Open `url` as a new tab in the desktop browser over CDP."""
+    """Focus the tab for `url` if it is already open, else open a new one.
+
+    The operator works from the bookmark bar, which switches to the existing tab
+    rather than stacking a new one. Mirroring that keeps the desktop clean when a
+    button is tapped twice, and — more useful — a surface that is *already*
+    signed in is brought forward with its session, so nothing has to reload.
+    """
+    try:
+        tabs = json.load(urllib.request.urlopen(f"{CDP}/json", timeout=6))
+    except Exception:  # noqa: BLE001
+        tabs = []
+    base = url.split("?")[0].rstrip("/")
+    for t in tabs:
+        if t.get("type") == "page" and t.get("url", "").split("?")[0].rstrip("/") == base:
+            try:
+                urllib.request.urlopen(f"{CDP}/json/activate/{t['id']}", timeout=6).read()
+                return True
+            except Exception:  # noqa: BLE001
+                break
     try:
         req = urllib.request.Request(f"{CDP}/json/new?{urllib.parse.quote(url, safe='')}",
                                      method="PUT")
@@ -92,10 +119,12 @@ PAGE = """<!doctype html><html lang="th"><head>
            font-size:15px; }}
   .acct b {{ color:#ffd479; }}
   .grid {{ display:grid; grid-template-columns:1fr; gap:12px; padding:8px 18px 26px; }}
-  a.btn {{ display:block; padding:20px 18px; background:#2c2440; color:#fff;
+  a.btn {{ display:block; padding:18px; background:#2c2440; color:#fff;
            text-decoration:none; border-radius:16px; font-size:19px; font-weight:600;
            border:1px solid #453a5f; }}
-  a.btn small {{ display:block; font-weight:400; color:#c8bcdd; font-size:13px; margin-top:4px; }}
+  a.btn small {{ display:block; font-weight:500; color:#ffd479; font-size:14px; margin-top:6px; }}
+  a.btn em {{ display:block; font-style:normal; font-weight:400; color:#8f85a3;
+              font-size:12px; margin-top:3px; word-break:break-all; }}
   a.btn:active {{ background:#3a2f55; }}
   .vnc {{ display:block; text-align:center; margin:0 18px 26px; padding:18px;
           background:#0f6b4f; color:#fff; border-radius:16px; text-decoration:none;
@@ -147,8 +176,9 @@ class Handler(BaseHTTPRequestHandler):
         if parsed.path not in ("/", "/index.html"):
             return self._send(404, b"not found", "text/plain")
         buttons = "".join(
-            f'<a class="btn" href="/goto?u={k}">{label}<small>{url}</small></a>'
-            for k, (label, url) in SURFACES.items())
+            f'<a class="btn" href="/goto?u={k}">{label}<small>{hint}</small>'
+            f'<em>{url}</em></a>'
+            for k, (label, url, hint) in SURFACES.items())
         html = PAGE.format(account=EXPECTED_ACCOUNT, buttons=buttons,
                            vnc=novnc_url(), vncpass=vnc_password() or "(ไม่มีรหัส)",
                            desktop="up" if cdp_alive() else "down",
