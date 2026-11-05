@@ -66,7 +66,8 @@
    "variant": "short-song-h1-02-rak-thi-mai-mi-wan-chop",
    "video_id": "l7vR7B9nYxY",
    "at": "2026-10-31T07:01:29+00:00",
-   "public": true
+   "public": true,
+   "retired_at": "2026-11-05T15:05:00+00:00"
   },
   {
    "slug": "02-rak-thi-mai-mi-wan-chop",
@@ -74,7 +75,8 @@
    "variant": "short-song-h2-02-rak-thi-mai-mi-wan-chop",
    "video_id": "ROXXhBitMpA",
    "at": "2026-10-31T07:01:34+00:00",
-   "public": true
+   "public": true,
+   "retired_at": "2026-11-05T15:05:17+00:00"
   },
   {
    "slug": "02-rak-thi-mai-mi-wan-chop",
@@ -82,7 +84,8 @@
    "variant": "short-song-h3-02-rak-thi-mai-mi-wan-chop",
    "video_id": "rmlCjP4wvUI",
    "at": "2026-10-31T07:01:39+00:00",
-   "public": true
+   "public": true,
+   "retired_at": "2026-11-05T15:05:36+00:00"
   },
   {
    "slug": "02-rak-thi-mai-mi-wan-chop",
@@ -107,7 +110,8 @@
    "variant": "short-song-h1-03-khit-thueng-thoe-thuk-khuen",
    "video_id": "51EuOXD3HPA",
    "at": "2026-10-31T07:01:53+00:00",
-   "public": true
+   "public": true,
+   "retired_at": "2026-11-05T15:05:57+00:00"
   },
   {
    "slug": "01-khon-di-thi-chak-pai",
@@ -135,7 +139,8 @@
    "video_id": "hy_0sr-uHGI",
    "at": "2026-11-01T09:09:56+00:00",
    "public": true,
-   "replaces": "JId5J48t4a4"
+   "replaces": "JId5J48t4a4",
+   "retired_at": "2026-11-05T15:04:34+00:00"
   },
   {
    "slug": "01-khon-di-thi-chak-pai",
@@ -144,7 +149,8 @@
    "video_id": "zkESEHVZ7A4",
    "at": "2026-11-01T09:10:03+00:00",
    "public": true,
-   "replaces": "CXRH7sW6Gcw"
+   "replaces": "CXRH7sW6Gcw",
+   "retired_at": "2026-11-05T15:04:47+00:00"
   },
   {
    "slug": "03-khit-thueng-thoe-thuk-khuen",
@@ -314,6 +320,60 @@
    "at": "2026-11-04T07:55:12+00:00",
    "public": true,
    "replaces": "TISzvF9AQig"
+  },
+  {
+   "slug": "01-khon-di-thi-chak-pai",
+   "kind": "short",
+   "variant": "short-song-h2-01-khon-di-thi-chak-pai",
+   "video_id": "du1CFiAiffo",
+   "at": "2026-11-05T15:04:34+00:00",
+   "public": true,
+   "replaces": "hy_0sr-uHGI"
+  },
+  {
+   "slug": "01-khon-di-thi-chak-pai",
+   "kind": "short",
+   "variant": "short-song-h3-01-khon-di-thi-chak-pai",
+   "video_id": "EjFdcfvt57Y",
+   "at": "2026-11-05T15:04:47+00:00",
+   "public": true,
+   "replaces": "zkESEHVZ7A4"
+  },
+  {
+   "slug": "02-rak-thi-mai-mi-wan-chop",
+   "kind": "short",
+   "variant": "short-song-h1-02-rak-thi-mai-mi-wan-chop",
+   "video_id": "arA6VVKXIes",
+   "at": "2026-11-05T15:05:00+00:00",
+   "public": true,
+   "replaces": "l7vR7B9nYxY"
+  },
+  {
+   "slug": "02-rak-thi-mai-mi-wan-chop",
+   "kind": "short",
+   "variant": "short-song-h2-02-rak-thi-mai-mi-wan-chop",
+   "video_id": "PEds64ntVlQ",
+   "at": "2026-11-05T15:05:17+00:00",
+   "public": true,
+   "replaces": "ROXXhBitMpA"
+  },
+  {
+   "slug": "02-rak-thi-mai-mi-wan-chop",
+   "kind": "short",
+   "variant": "short-song-h3-02-rak-thi-mai-mi-wan-chop",
+   "video_id": "EVJhOaQHfmc",
+   "at": "2026-11-05T15:05:36+00:00",
+   "public": true,
+   "replaces": "rmlCjP4wvUI"
+  },
+  {
+   "slug": "03-khit-thueng-thoe-thuk-khuen",
+   "kind": "short",
+   "variant": "short-song-h1-03-khit-thueng-thoe-thuk-khuen",
+   "video_id": "jIOB8FWExlA",
+   "at": "2026-11-05T15:05:57+00:00",
+   "public": true,
+   "replaces": "51EuOXD3HPA"
   }
  ],
  "playlists": {
