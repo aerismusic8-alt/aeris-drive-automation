@@ -385,8 +385,41 @@ def test_affiliate_release() -> None:
           monetize.link("youtube") in d)
     check("affiliate description discloses the affiliate link",
           "ลิงก์พันธมิตร" in d)
+    # A Short's description URL is not tappable (2026-11-05 advisor panel, 3/3),
+    # so the above-the-fold block must carry the *disclosure* and a CTA pointing
+    # at the profile link; the tracked URL stays as a copyable fallback.
+    head = "\n".join(d.splitlines()[:2])
+    check("affiliate disclosure is above the fold", "ลิงก์พันธมิตร" in head,
+          repr(head))
+    check("affiliate CTA points at the profile link",
+          "โปรไฟล์" in head, repr(head))
+    check("affiliate link is above the fold", monetize.link("youtube") in head,
+          repr(head))
     check("affiliate description is Thai", has_thai(d))
     check("affiliate tags are present", bool(tags))
+
+def test_plan_rotates_songs() -> None:
+    """Consecutive Shorts must come from *different* songs.
+
+    The 2026-11-05 advisor panel (3/3) on the growth stall: three numbered
+    choruses of one song uploaded back to back read as the same clip three times
+    and give a viewer no reason to follow. The plan interleaves one chorus per
+    song per round, so a day's song Shorts are distinct songs. This pins that,
+    because the old plan appended every hook of one song before moving on.
+    """
+    section("release plan rotation")
+    import release
+
+    plan = release.plan(2)
+    song_shorts = [i["slug"] for i in plan if i["kind"] == "short"]
+    if len(song_shorts) < 2:
+        print("  skip (fewer than two Shorts planned)")
+        return
+    consecutive = [a for a, b in zip(song_shorts, song_shorts[1:]) if a == b]
+    check("no two consecutive Shorts are the same song", not consecutive,
+          f"repeats: {sorted(set(consecutive))}")
+
+
 
 
 def test_affiliate_reserve() -> None:
@@ -990,6 +1023,7 @@ def test_crosspost_pace_and_captions() -> None:
     """
     section("crosspost cadence + hook captions (2026-11-01 burst)")
     import crosspost
+    import release
     import time
 
     # Captions: every queued caption on a platform is distinct, and a hook
@@ -1003,10 +1037,22 @@ def test_crosspost_pace_and_captions() -> None:
         caps = [it["caption"] for it in q if it["platform"] == plat]
         check(f"{plat}: captions are all distinct",
               len(set(caps)) == len(caps), f"{len(set(caps))} of {len(caps)}")
-    h2 = next((it for it in q if it["hook"] == 2), None)
-    check("hook 2 is tagged in the caption", h2 is not None and "ท่อน 2" in h2["caption"])
     h1 = next((it for it in q if it["hook"] == 1), None)
-    check("hook 1 stays untagged", h1 is not None and "ท่อน" not in h1["caption"])
+    h2 = next((it for it in q if it["hook"] == 2), None)
+    # The 2026-11-05 advisor panel (3/3) replaced the "(ท่อน N)" part-number with
+    # the series label and a *different answerable prompt* per chorus, so the
+    # three files of one song are three distinct posts. Pin that: no part-number
+    # reads as "part N of the same clip", and each chorus asks something else.
+    # Product cards (hook 0) are captioned by the affiliate module, not here.
+    song_items = [it for it in q if it.get("hook", 0) > 0]
+    check("hook captions carry no part number",
+          all("ท่อน 2" not in it["caption"] and "ท่อน 3" not in it["caption"]
+              for it in song_items))
+    check("each hook caption carries its own series title",
+          all(release.hook_title(it["hook"]) in it["caption"]
+              for it in song_items))
+    check("hook 1 and hook 2 ask different things",
+          h1 is not None and h2 is not None and h1["caption"] != h2["caption"])
     check("hook number is carried on the queue item",
           all("hook" in it for it in q))
 
@@ -1881,6 +1927,7 @@ def main() -> int:
     test_playlist_patch_is_idempotent()
     test_affiliate_short()
     test_affiliate_release()
+    test_plan_rotates_songs()
     test_affiliate_reserve()
     test_outputs()
     print(f"\n{PASS} passed, {FAIL} failed")

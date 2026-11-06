@@ -93,10 +93,14 @@ def caption(slug: str, platform: str, hook: int = 0) -> str:
     h = release.parse_lyrics(slug)
     title = h.get("TITLE", slug)
     tagline = release.TAGLINE.get(h.get("MOOD", "calm"), release.TAGLINE["calm"])
-    # A song yields three Shorts, one per chorus. They are different files but
-    # the same title and mood, so without this they would carry a byte-identical
-    # caption and read as the same post three times on the profile.
-    tag = f" (ท่อน {hook})" if hook > 1 else ""
+    # The 2026-11-05 advisor panel (3/3): the numbered "(ท่อน N)" tag made the
+    # profile read as "part N of 3" of the same clip. It is replaced by the
+    # series label, which is the recurring reason to watch; the chorus still
+    # differs between the three files.
+    series = f"{title} | {release.hook_title(hook or 1)}"
+    # A different prompt per chorus, so the three files of one song are three
+    # distinct posts rather than three copies. See release.HOOK_ANGLES.
+    ask = release.hook_angle(hook or 1)
     if platform == "facebook":
         # Reels leans on fewer hashtags than TikTok; spend the words on the hook.
         # The caption carries the Page's own Shopee tracking link (Sub_id
@@ -104,19 +108,21 @@ def caption(slug: str, platform: str, hook: int = 0) -> str:
         # truncate the caption, so the product link and the follow ask sit in the
         # first two lines and the hashtags go last.
         shopee = monetize.link("facebook")
-        return (f"{title} 🎵 {tagline}{tag}\n"
+        return (f"{series}\n"
+                f"🎵 {tagline}\n"
                 f"{release.LABEL}\n"
                 f"❤️ กดติดตามเพจ · ของน่าซื้อ 👉 {shopee}\n"
                 f"🎬 ดูใหม่ทุกวัน: YouTube {YOUTUBE_HANDLE} · TikTok {TIKTOK_HANDLE}\n"
-                f"💬 เพลงนี้เตือนถึงใคร คอมเมนต์บอกกันได้เลย\n"
-                f"#เพลงไทย #เพลงใหม่ #เพลงเพราะ #AERISMusic #ค่ายเพลงAI")
+                f"💬 {ask}\n"
+                f"#เพลงไทย #เพลงใหม่ #ร้องต่อไหม #AERISMusic #ค่ายเพลงAI")
     shopee = monetize.link("tiktok")
-    return (f"{title} 🎵 {tagline}{tag}\n"
+    return (f"{series}\n"
+            f"🎵 {tagline}\n"
             f"{release.LABEL}\n"
             f"🎧 กดติดตาม · ของน่าซื้อ 👉 {shopee}\n"
             f"🎬 ฟังเต็ม ๆ ได้ที่ YouTube {YOUTUBE_HANDLE} · เพจ FB AERIS Music\n"
-            f"💬 เพลงนี้เตือนถึงใคร พิมพ์ชื่อไว้ได้เลย\n"
-            f"#fyp #เพลงไทย #เพลงใหม่ #เพลงเพราะ #TikTokเพลงไทย #ค่ายเพลงAI")
+            f"💬 {ask}\n"
+            f"#fyp #เพลงไทย #เพลงใหม่ #ร้องต่อไหม #TikTokเพลงไทย #ค่ายเพลงAI")
 
 
 def refresh_captions() -> int:
@@ -136,7 +142,18 @@ def refresh_captions() -> int:
     for item in queue:
         if item["id"] in posted:
             continue
-        want = caption(item["slug"], item["platform"], item.get("hook", 0))
+        if item.get("kind") == "affiliate":
+            # A product card's caption comes from the affiliate module, not from
+            # a lyric header, so it must be rebuilt through that path.
+            try:
+                import make_affiliate_short as aff
+                by_id = {p["id"]: p for p in aff.load_products()}
+                product = by_id.get(item["slug"])
+                want = aff.caption(product, item["platform"]) if product else item["caption"]
+            except ImportError:
+                want = item["caption"]
+        else:
+            want = caption(item["slug"], item["platform"], item.get("hook", 0))
         if item.get("caption") != want:
             item["caption"] = want
             changed += 1

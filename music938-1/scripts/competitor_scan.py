@@ -15,11 +15,11 @@ What it measures, per channel and per video:
   * engagement: views, likes, comments, and likes/views per video
   * which videos are the outliers — the top decile is the pattern worth copying
 
-Quota discipline: `search.list` costs 100 units against the same 10,000/day
-project quota that uploads draw from (1,600 each). So the scan resolves channels
-with search.list only when given a query, then uses channels.list (1),
-playlistItems (1/page) and videos.list (1/page). A full 10-channel scan is a few
-hundred units.
+Quota discipline: `search.list` costs 100 units against the 10,000/day project
+quota; `videos.insert` does *not* — it has its own 100/day bucket. So the scan
+resolves channels with search.list only when given a query, then uses
+channels.list (1), playlistItems (1/page) and videos.list (1/page). A full
+10-channel scan is a few hundred units.
 
 Usage:
     python3 scripts/competitor_scan.py --query "เพลงไทย คาราโอเกะ" --out work/competitors.json

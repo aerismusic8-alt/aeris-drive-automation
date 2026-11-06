@@ -3,10 +3,11 @@
 
 Two hard limits decide the shape of this:
 
-1. **YouTube Data API quota.** A project gets 10,000 units/day and every
-   `videos.insert` costs 1,600, so at most **~6 uploads per day** from one
-   project. This plans and paces releases around that, and `--plan` shows the
-   schedule before anything is sent.
+1. **YouTube Data API quota.** A project gets 10,000 units/day for most
+   endpoints, and `videos.insert` is *not* one of them — it has its own default
+   bucket of **100 calls/day** (verified against Google's quota docs,
+   2026-11-05). So the 6/day cadence below is a choice for the creative test,
+   not a ceiling. `--plan` shows the schedule before anything is sent.
 2. **K reviews a channel's first work.** The first upload of the pack is a
    private draft for K to approve. Nothing is made public by this script unless
    `--public` is passed explicitly.
@@ -49,7 +50,13 @@ STATE = ROOT / "work" / "release-state.json"
 # The affiliate disclosure is mandatory on every card (COMPLIANCE.md).
 AFF_DISCLOSURE = "ลิงก์พันธมิตร Shopee — เราอาจได้ค่าคอมมิชชัน"
 
-UPLOADS_PER_DAY = 6  # 10,000 units / 1,600 units per videos.insert
+# Six uploads a day is a *cadence choice*, not a quota wall. Google's default
+# allocation gives `videos.insert` its own bucket of 100 calls/day, separate from
+# the 10,000-unit pool — verified against the official quota docs on 2026-11-05.
+# The old "10,000 / 1,600 = 6" rule was simply wrong, and the 2026-11-05 advisor
+# panel (3/3) said the same: the ceiling is 100, so pick a cadence for the
+# creative test, not for a limit that does not exist.
+UPLOADS_PER_DAY = 6
 
 # The wrong-render backlog must not eat the whole day. Product clips are the only
 # content with a reason to buy, and nothing else on the channel produces a click
@@ -80,6 +87,34 @@ TAGLINE = {
 }
 HASHTAGS = ("#AERISMusic #เพลงไทย #ศิลปินไทย #เพลงใหม่ #เพลงเพื่อชีวิต "
             "#เพลงเพราะ #ค่ายเพลงAI #AIMusic")
+
+# One song yields three Shorts, one per chorus. The 2026-11-05 advisor panel
+# (3/3) on the growth stall: a numbered "(ท่อนที่ 2)" label reads as "part 2 of
+# the same clip" and gives a viewer no reason to watch this one — but so does
+# dropping the number and repeating one caption three times. Each chorus instead
+# gets a *different answerable prompt*, which is what the panel asked for and
+# what keeps the three captions distinct.
+HOOK_ANGLES = {
+    1: "ท่อนนี้เตือนถึงใคร? คอมเมนต์บอกกันได้เลย",
+    2: "ท่อนนี้ทำให้คิดถึงใคร? พิมพ์ชื่อไว้ได้เลย",
+    3: "ถ้าให้ร้องต่อ ท่อนต่อไปควรพูดว่าอะไร? คอมเมนต์บอกได้เลย",
+}
+# The short form of the same prompt, for the title. Three choruses of one song
+# would otherwise share one title and read as three copies of a clip.
+HOOK_TITLES = {
+    1: "ร้องต่อไหม?",
+    2: "ท่อนนี้คิดถึงใคร?",
+    3: "ร้องต่อท่อนต่อไป",
+}
+
+
+def hook_angle(hook: int) -> str:
+    return HOOK_ANGLES.get(hook, HOOK_ANGLES[1])
+
+
+def hook_title(hook: int) -> str:
+    return HOOK_TITLES.get(hook, HOOK_TITLES[1])
+
 
 # The one honest sentence every description carries. K (2026-11-04): the channel
 # is an AI music label and must say so plainly. The old copy claimed the songs
@@ -297,19 +332,23 @@ def affiliate_pending(state: dict | None = None) -> int:
 def describe_affiliate(card: dict) -> tuple[str, str, list[str]]:
     """Title, description and tags for one product card on YouTube.
 
-    The affiliate link sits directly under the opening line — above YouTube's
-    "Show more" fold — and the disclosure is on the same block, so a viewer sees
-    both the link and the fact that it is an affiliate link without expanding.
+    Layout from the 2026-11-05 advisor panel (3/3, `consult-brief-affiliate-link-fold`):
+    a URL in a Short's description — or a pinned comment — is **not tappable**,
+    so the clickable route is the channel profile link. The first two lines, the
+    only ones above "Show more", therefore carry the mandatory disclosure and a
+    CTA pointing at the profile, with the tracked short URL kept as a copyable
+    fallback and for attribution. The hook and bullets follow below the fold;
+    the video already shows them on screen.
     """
     hookline = card.get("hookline") or card["title"]
     bullets = "\n".join(f"• {b}" for b in card.get("bullets", [])[:3])
     link = monetize.link("youtube")
     title = f"{card['title']} #ของน่าซื้อ #Shorts"
     desc = (
-        f"{hookline}\n\n"
-        f"{bullets}\n"
-        f"🛒 ลิงก์สินค้า 👉 {link}\n"
         f"⚠️ {AFF_DISCLOSURE}\n"
+        f"🛒 ดูสินค้า/สั่งซื้อ: กดลิงก์ Shopee ที่หน้าโปรไฟล์ช่อง 👉 {link}\n\n"
+        f"🎬 {hookline}\n"
+        f"{bullets}\n"
         f"🎵 เพลงจาก AERIS Music — ค่ายเพลง AI\n\n"
         f"#ของน่าซื้อ #หูฟัง #Shopee #AERISMusic #Shorts"
     )
@@ -341,23 +380,27 @@ def describe(slug: str, kind: str, variant: str = "") -> tuple[str, str, list[st
     tagline = genres.tagline_for(slug, mood, TAGLINE) or TAGLINE["calm"]
     extra_tags = genres.hashtags_for(slug)
     n = slug.split("-")[0]
-    hook = ""
-    m = re.search(r"-h(\d+)-", variant)
-    if m:
-        hook = f" (ท่อนที่ {m.group(1)})"
 
     # The affiliate line sits near the top of the description, before YouTube's
     # "Show more" fold, so it is actually seen. See monetize.cta().
     CTA = monetize.cta("youtube")
 
     if kind == "short":
-        title = f"{title_th}{hook} #เพลงไทย #Shorts"
+        # The 2026-11-05 advisor panel (3/3) on the growth stall: the old
+        # "(ท่อนที่ N)" title made each upload read as "part N of 3" of the same
+        # song, which gave a viewer no reason to watch *this* clip or follow.
+        # The series label replaces it, and the sing-along prompt below gives the
+        # comment box something answerable to ask for.
+        hm = re.search(r"-h(\d+)-", variant)
+        hk = int(hm.group(1)) if hm else 1
+        title = f"{title_th} | {hook_title(hk)} #Shorts"
+        angle = hook_angle(hk)
         desc = (
-            f"🎵 {title_th} (ท่อนฮุก)\n\n"
-            f"{tagline}\n"
+            f"🎵 {title_th} — {hook_title(hk)}\n"
+            f"{tagline}\n\n"
+            f"{angle} 👇\n\n"
             f"{LABEL}\n"
-            f"{CTA}\n\n"
-            f"เพลงที่ {int(n)} ในชุดเพลงไทยของ AERIS Music\n"
+            f"{CTA}\n"
             f"🎧 ฟังเวอร์ชันเต็มได้ในช่อง\n\n"
             f"{HASHTAGS} #Shorts"
         )
@@ -488,6 +531,13 @@ def plan(days: int, shorts: bool = False, spread: float = 0) -> list[dict]:
         items.append({"slug": card["id"], "kind": "affiliate",
                       "video": affiliate_file(card), "variant": variant,
                       "card": card})
+    # Build one group per song: its Shorts, then its long-form release. The
+    # groups are then interleaved round-robin, so consecutive uploads are
+    # *different* songs. The 2026-11-05 advisor panel (3/3) on the growth stall:
+    # three numbered parts of one song back to back read as one clip reposted
+    # and gave a viewer no reason to follow. With 10 songs pending, a round of
+    # h1 is ten distinct songs on ten days, not one song three times a day.
+    groups: list[list[dict]] = []
     for slug in all_slugs():
         if not has_song(slug):
             continue
@@ -496,18 +546,22 @@ def plan(days: int, shorts: bool = False, spread: float = 0) -> list[dict]:
             print(f"skip {slug}: rebuilt by the retired Piper engine "
                   f"(see scripts/provenance.py)", file=sys.stderr)
             continue
-        for v in short_files(slug, "song"):
-            items.append({"slug": slug, "kind": "short", "video": v,
-                          "variant": v.stem})
-        if shorts:
-            continue
+        group = [{"slug": slug, "kind": "short", "video": v, "variant": v.stem}
+                 for v in short_files(slug, "song")]
         # The main release only. The sing-along (karaoke) variant is retired
         # (K, 2026-11-03): its lyric sweep was estimated, not measured, and
         # drifted off the sung line, so it was ordered dropped. Already-live
         # karaoke videos stay up; nothing new is planned.
-        if has_video(slug, "song"):
-            items.append({"slug": slug, "kind": "song",
+        if not shorts and has_video(slug, "song"):
+            group.append({"slug": slug, "kind": "song",
                           "video": KARAOKE / f"song-{slug}.mp4", "variant": ""})
+        if group:
+            groups.append(group)
+    depth = max((len(g) for g in groups), default=0)
+    for i in range(depth):
+        for group in groups:
+            if i < len(group):
+                items.append(group[i])
     todo = [i for i in items if (i["slug"], i["kind"], i.get("variant", "")) not in done]
     start = datetime.now(timezone.utc)
     for i, item in enumerate(todo):
@@ -588,9 +642,10 @@ def release_one(item: dict, args) -> int:
     state = load_state()
     used = uploads_today(state)
     if used >= UPLOADS_PER_DAY:
-        print(f"today's quota is spent: {used}/{UPLOADS_PER_DAY} uploads already "
-              f"made this Pacific day. A videos.insert costs 1,600 of the 10,000 "
-              f"daily units, so the next one would 403. Try after 07:00 UTC.",
+        print(f"today's uploads are done: {used}/{UPLOADS_PER_DAY} already "
+              f"made this Pacific day. This is the 6/day cadence, not a quota "
+              f"wall — videos.insert has its own 100/day bucket. Try after "
+              f"07:00 UTC.",
               file=sys.stderr)
         return 3
     if kind == "affiliate":
@@ -698,7 +753,7 @@ def main() -> int:
             print("(generation is window-gated; see scripts/watch.sh)")
             return 0
         print(f"{len(todo)} releases pending, {UPLOADS_PER_DAY}/day "
-              f"(YouTube API quota: 10,000 units / 1,600 per upload):\n")
+              f"(cadence choice; videos.insert bucket is 100/day):\n")
         for item in todo[:24]:
             kind = {"karaoke": "KARAOKE", "short": "SHORT  ",
                     "affiliate": "AFF    "}.get(item["kind"], "SONG   ")
