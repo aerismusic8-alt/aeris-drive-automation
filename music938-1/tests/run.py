@@ -1796,6 +1796,16 @@ def test_phone_login() -> None:
     check("Shopee warns about the slide puzzle", "สไลด์" in hints["shopee"])
     check("Facebook mentions the saved password", "รหัสที่บันทึก" in hints["facebook"])
     check("the easy surfaces say so", "กดปุ๊บ" in hints["flow"])
+    # The pack uses two Google accounts (music/Drive = aerismusic8, Shopee =
+    # kongkeat.p3), so the page must let K pick one without the agent ever typing
+    # a password: the switch button only opens Google's own account chooser.
+    check("offers an account switch", "switch" in phone_login.SURFACES)
+    check("switch opens Google's own chooser, no password",
+          "AccountChooser" in phone_login.SURFACES["switch"][1])
+    check("names the music account on Drive",
+          phone_login.SURFACES["drive"][3] == "aerismusic8@gmail.com")
+    check("names the Shopee account",
+          phone_login.SURFACES["shopee"][3] == "kongkeat.p3@gmail.com")
     # Tapping a surface must reuse the open tab (as the bookmark bar does), not
     # stack a duplicate — otherwise a signed-in surface reloads and loses nothing
     # but the operator gets a pile of tabs.

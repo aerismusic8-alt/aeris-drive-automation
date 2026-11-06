@@ -36,24 +36,35 @@ CDP = "http://127.0.0.1:9222"
 # signed in and open on a tap, Facebook offers the saved password after one tap in
 # the field, and only Shopee needs the slide puzzle. Ordered easiest-first so the
 # surfaces that "just open" are at the top.
+# A tap opens the surface as a tab in the desktop browser. The account hint is
+# per surface, because the pack now uses more than one Google account: the
+# music/Drive work is `aerismusic8`, while the Shopee affiliate is `kongkeat.p3`.
+# The agent must never type a password, so "switch account" only *opens* Google's
+# own account chooser — the operator picks the account and the saved password.
+CHOOSER = ("https://accounts.google.com/AccountChooser"
+           "?continue=https://drive.google.com/drive/my-drive")
+
 SURFACES = {
     "flow": ("Flow Music — เครื่องทำเพลง", "https://www.flowmusic.app/",
-             "กดปุ๊บเข้าได้เลย"),
+             "กดปุ๊บเข้าได้เลย", "aerismusic8@gmail.com"),
     "gemini": ("Gemini web — ภาพประกอบตอน", "https://gemini.google.com/app",
-               "กดปุ๊บเข้าได้เลย"),
+               "กดปุ๊บเข้าได้เลย", "aerismusic8@gmail.com"),
     "youtube": ("YouTube Studio", "https://studio.youtube.com/",
-                "กดปุ๊บเข้าได้เลย"),
+                "กดปุ๊บเข้าได้เลย", "aerismusic8@gmail.com"),
     "tiktok": ("TikTok @aeris.music4", "https://www.tiktok.com/@aeris.music4",
-               "กดปุ๊บเข้าได้เลย"),
+               "กดปุ๊บเข้าได้เลย", ""),
     "facebook": ("Facebook Page", "https://www.facebook.com/",
-                 "แตะช่องรหัสผ่าน 1 ครั้ง แล้วเลือกรหัสที่บันทึกไว้"),
+                 "แตะช่องรหัสผ่าน 1 ครั้ง แล้วเลือกรหัสที่บันทึกไว้", ""),
     "drive": ("Google Drive — โฟลเดอร์เพลง", "https://drive.google.com/drive/my-drive",
-              "ใช้บัญชี aerismusic8@gmail.com (แตะรหัสที่บันทึกไว้ 1 ครั้ง)"),
+              "แตะรหัสที่บันทึกไว้ 1 ครั้ง", "aerismusic8@gmail.com"),
     "shopee": ("Shopee Affiliate", "https://affiliate.shopee.co.th/dashboard",
-               "ต้องสไลด์รูปภาพให้ตรงก่อน"),
+               "ต้องสไลด์รูปภาพให้ตรงก่อน", "kongkeat.p3@gmail.com"),
     "google": ("Google (ใช้เมื่อข้างบนหลุด)", "https://accounts.google.com/",
-               "แตะช่องรหัสผ่าน 1 ครั้ง แล้วเลือกรหัสที่บันทึกไว้"),
+               "แตะช่องรหัสผ่าน 1 ครั้ง แล้วเลือกรหัสที่บันทึกไว้", ""),
+    "switch": ("สลับบัญชี Google (เลือกอีเมลเอง)", CHOOSER,
+               "แตะ แล้วเลือกอีเมลในหน้าจอเครื่อง — ตัวแทนไม่พิมพ์รหัสให้", ""),
 }
+# Kept for the page footer: the account most surfaces expect.
 EXPECTED_ACCOUNT = "aerismusic8@gmail.com"
 STATE = Path(os.environ.get("AERIS_STATE_DIR", "/workspace/ax-tools/aeris938-state"))
 
@@ -135,8 +146,9 @@ PAGE = """<!doctype html><html lang="th"><head>
 </style></head><body>
 <header><h1>AERIS — เข้าสู่ระบบ</h1>
 <div class="sub">แตะปุ่ม = เปิดหน้านั้นในเครื่อง แล้วเข้า noVNC อัตโนมัติ</div></header>
-<div class="acct">บัญชีที่ถูกต้อง: <b>{account}</b><br><span style="font-size:13px;color:#b9aecb">
-หากรหัสผ่านค้างอยู่แล้ว แค่กด "ล็อกอิน" ได้เลย</span></div>
+<div class="acct">บัญชีที่ใช้บ่อย: <b>{account}</b><br><span style="font-size:13px;color:#b9aecb">
+อยากใช้บัญชีอื่น (เช่น <b>kongkeat.p3@gmail.com</b>) กดปุ่ม "สลับบัญชี Google" ล่างสุด
+แล้วเลือกอีเมลในหน้าจอเครื่อง · หากรหัสค้างอยู่ กด "ล็อกอิน" ได้เลย</span></div>
 <div class="grid">{buttons}</div>
 <a class="vnc" href="{vnc}" target="_blank">เปิด noVNC (หน้าจอเครื่อง)</a>
 <div class="note">รหัส VNC: <b>{vncpass}</b><br>
@@ -179,8 +191,10 @@ class Handler(BaseHTTPRequestHandler):
             return self._send(404, b"not found", "text/plain")
         buttons = "".join(
             f'<a class="btn" href="/goto?u={k}">{label}<small>{hint}</small>'
-            f'<em>{url}</em></a>'
-            for k, (label, url, hint) in SURFACES.items())
+            f'<em>{url}</em>'
+            + (f'<em>บัญชี: {acct}</em>' if acct else '')
+            + '</a>'
+            for k, (label, url, hint, acct) in SURFACES.items())
         html = PAGE.format(account=EXPECTED_ACCOUNT, buttons=buttons,
                            vnc=novnc_url(), vncpass=vnc_password() or "(ไม่มีรหัส)",
                            desktop="up" if cdp_alive() else "down",
