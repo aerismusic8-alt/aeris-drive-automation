@@ -158,7 +158,8 @@
    "variant": "short-song-h2-03-khit-thueng-thoe-thuk-khuen",
    "video_id": "-6RdLKwxykk",
    "at": "2026-11-01T09:10:19+00:00",
-   "public": true
+   "public": true,
+   "retired_at": "2026-11-06T14:43:33+00:00"
   },
   {
    "slug": "03-khit-thueng-thoe-thuk-khuen",
@@ -166,7 +167,8 @@
    "variant": "short-song-h3-03-khit-thueng-thoe-thuk-khuen",
    "video_id": "iLwzR8A_1uw",
    "at": "2026-11-01T09:10:27+00:00",
-   "public": true
+   "public": true,
+   "retired_at": "2026-11-06T14:43:51+00:00"
   },
   {
    "slug": "03-khit-thueng-thoe-thuk-khuen",
@@ -191,7 +193,8 @@
    "variant": "short-song-h1-04-saeng-chao-wan-mai",
    "video_id": "FsO5qmneeEQ",
    "at": "2026-11-02T07:06:28+00:00",
-   "public": true
+   "public": true,
+   "retired_at": "2026-11-06T14:44:01+00:00"
   },
   {
    "slug": "04-saeng-chao-wan-mai",
@@ -199,7 +202,8 @@
    "variant": "short-song-h2-04-saeng-chao-wan-mai",
    "video_id": "STQsMvhb0yk",
    "at": "2026-11-02T07:06:35+00:00",
-   "public": true
+   "public": true,
+   "retired_at": "2026-11-06T14:44:19+00:00"
   },
   {
    "slug": "04-saeng-chao-wan-mai",
@@ -374,6 +378,42 @@
    "at": "2026-11-05T15:05:57+00:00",
    "public": true,
    "replaces": "51EuOXD3HPA"
+  },
+  {
+   "slug": "03-khit-thueng-thoe-thuk-khuen",
+   "kind": "short",
+   "variant": "short-song-h2-03-khit-thueng-thoe-thuk-khuen",
+   "video_id": "1T3kibOPyXM",
+   "at": "2026-11-06T14:43:33+00:00",
+   "public": true,
+   "replaces": "-6RdLKwxykk"
+  },
+  {
+   "slug": "03-khit-thueng-thoe-thuk-khuen",
+   "kind": "short",
+   "variant": "short-song-h3-03-khit-thueng-thoe-thuk-khuen",
+   "video_id": "mgYLmXTMOy0",
+   "at": "2026-11-06T14:43:51+00:00",
+   "public": true,
+   "replaces": "iLwzR8A_1uw"
+  },
+  {
+   "slug": "04-saeng-chao-wan-mai",
+   "kind": "short",
+   "variant": "short-song-h1-04-saeng-chao-wan-mai",
+   "video_id": "Lrtqy9ULvbY",
+   "at": "2026-11-06T14:44:01+00:00",
+   "public": true,
+   "replaces": "FsO5qmneeEQ"
+  },
+  {
+   "slug": "04-saeng-chao-wan-mai",
+   "kind": "short",
+   "variant": "short-song-h2-04-saeng-chao-wan-mai",
+   "video_id": "0mkw4cUA9mM",
+   "at": "2026-11-06T14:44:19+00:00",
+   "public": true,
+   "replaces": "STQsMvhb0yk"
   }
  ],
  "playlists": {
