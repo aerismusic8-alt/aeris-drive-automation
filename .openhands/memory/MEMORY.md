@@ -852,3 +852,23 @@ true-instrumental karaoke mix, cover art, a 1920x1080 word-synced video.
   per-*surface*, not per-*product*).
 - **`apply_monetize.py` is the live-description backfill** (Data API, idempotent
   for videos; the playlist branch used to stack its footer every run — fixed).
+
+## The Page-admin agent: automate content, never outbound (2026-11-06)
+- **Five advisors, one answer:** automating follows / friend-invites / comments on
+  other Pages / cold DMs is an artificial-growth signal Meta acts on, and **no
+  per-day rate makes it safe** — the policy keys on the pattern, not the volume.
+  So "pace it like a human" is not a defence. K cannot risk the account → do not
+  build it. `aeris938-2/work/consult-brief-fb-admin-agent-2026-11-06.md`.
+- **Built the safe half:** `aeris938-2/scripts/admin.py` (read inbox → count new →
+  detect a Meta warning TH/EN → draft a canned reply, escalating refunds/rights/
+  complaints to K → log → one ntfy). `ax-music-admin.yml` runs it **hourly**
+  (`15 * * * *`). It **drafts; it never sends.** Verified in CI: restored the
+  session, read the real inbox (1 new item), wrote `work/admin-log.jsonl`.
+- **Disabled the ban-bait:** `outreach.py --follow/--invite` now refuse and print
+  why; they need `--i-understand-the-risk`. That `DAILY_CAP=40` follow loop was
+  the most ban-prone thing in the repo.
+- **The FB inbox is Meta Business Suite at `/latest/inbox/all`** (comments +
+  Messenger + IG + WA in one view). `professional_dashboard/inbox/` 404s.
+- **Advisor-panel gotchas:** Duck.ai needs its tab opened first (else every Duck
+  model fails in 0.0 s); `consult10.py --only` wants the full name (`duck-luna`),
+  not the `duck` prefix; a dead Gemini tab is normal — the gate needs ≥3 answered.
