@@ -44,6 +44,7 @@ SONGS = ROOT / "library" / "songs"
 KARAOKE = ROOT / "library" / "karaoke"
 COVERS = ROOT / "library" / "covers"
 AFF_DIR = ROOT / "library" / "affiliate"
+THUMBS = ROOT / "library" / "thumbs"
 AFF_PRODUCTS = ROOT / "work" / "affiliate-products.json"
 STATE = ROOT / "work" / "release-state.json"
 
@@ -719,6 +720,13 @@ def release_one(item: dict, args) -> int:
         return proc.returncode
     m = re.search(r"video id (\S+)", proc.stdout)
     vid = m.group(1) if m else None
+    # videos.insert has its own 100/day bucket, but thumbnails.set draws on the
+    # shared 10,000-unit pool. On a spent day the video uploads (HTTP 200) and the
+    # thumbnail returns 403, so the video goes live with YouTube's auto frame and
+    # nothing retried it — a silent quality loss on every late-in-the-day upload.
+    # Record the outcome so `fix_thumbnails.py` can repair it once quota is fresh.
+    tm = re.search(r"thumbnail HTTP (\d+)", proc.stdout)
+    thumb_ok = (tm.group(1) == "200") if tm else None
     state = load_state()
     # A new release belongs in the right playlist, or the channel looks like a
     # pile of loose videos rather than a catalogue. Created lazily on first use.
@@ -731,6 +739,7 @@ def release_one(item: dict, args) -> int:
         "video_id": vid,
         "at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
         "public": bool(args.public),
+        "thumb_ok": thumb_ok,
     })
     save_state(state)
     print(f"recorded in {STATE.relative_to(ROOT)}")

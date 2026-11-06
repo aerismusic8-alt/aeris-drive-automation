@@ -841,6 +841,47 @@ def test_ai_covers() -> None:
     check("composed cover has contrast", sd >= 21.7, f"std={sd:.1f}")
 
 
+def test_thumbnail_repair() -> None:
+    """A thumbnail lost to a spent quota must be repaired, and only those.
+
+    `videos.insert` has its own bucket but `thumbnails.set` shares the 10,000-unit
+    pool, so a late upload succeeds and its thumbnail 403s. Nothing retried it, so
+    the video kept YouTube's auto frame forever. `release.py` now records
+    `thumb_ok`, and `fix_thumbnails.py` repairs the false ones — assert it picks
+    exactly those and leaves a good one alone.
+    """
+    section("thumbnail repair")
+    import fix_thumbnails
+    import release
+    import yt_auth
+
+    entries = [
+        {"slug": "a", "kind": "song", "variant": "", "video_id": "V1", "thumb_ok": False},
+        {"slug": "b", "kind": "song", "variant": "", "video_id": "V2", "thumb_ok": True},
+        {"slug": "c", "kind": "short", "variant": "s", "video_id": "V3"},
+    ]
+    seen, saved = [], []
+    real = (release.load_state, release.save_state, fix_thumbnails.thumb_for,
+            yt_auth.access_token, fix_thumbnails.set_thumbnail, sys.argv)
+    try:
+        state = {"released": [dict(e) for e in entries]}
+        release.load_state = lambda: state
+        release.save_state = lambda s: saved.append(s)
+        fix_thumbnails.thumb_for = lambda e: Path("/tmp/thumb.png")
+        yt_auth.access_token = lambda ch: "tok"
+        fix_thumbnails.set_thumbnail = lambda vid, path, tok: (seen.append(vid), (200, {}))[1]
+        sys.argv = ["fix_thumbnails.py"]
+        fix_thumbnails.main()
+    finally:
+        (release.load_state, release.save_state, fix_thumbnails.thumb_for,
+         yt_auth.access_token, fix_thumbnails.set_thumbnail, sys.argv) = real
+
+    check("only the entry with thumb_ok=False is repaired", seen == ["V1"], f"{seen}")
+    check("an entry with no thumb_ok is left alone", "V3" not in seen, f"{seen}")
+    check("the repaired entry is marked ok", saved and
+          saved[-1]["released"][0]["thumb_ok"] is True)
+
+
 def test_titles() -> None:
     """Release titles must fit the shape the competitor scan says wins.
 
@@ -2145,6 +2186,7 @@ def main() -> int:
     test_song_analysis()
     test_thumb_contrast()
     test_ai_covers()
+    test_thumbnail_repair()
     test_titles()
     test_compilation()
     test_flow_extend_kinds()
