@@ -18,6 +18,7 @@ sys.path.insert(0, str(ROOT / "scripts"))
 
 import surfaces  # noqa: E402
 import report  # noqa: E402
+import admin  # noqa: E402
 
 
 def test_exactly_four_surfaces():
@@ -142,6 +143,45 @@ def test_follow_guard_requires_the_page_identity():
     assert 'return "แก้ไขรูปภาพหน้าปก" in head' in src
     assert '"จัดการเพจ" in head' not in src
     assert "'ใช้เพจ'" in src and "'สลับ'" in src
+
+
+def test_admin_never_automates_outbound():
+    """The admin agent must not send anything on its own.
+
+    A five-advisor panel (2026-11-06) said automating outbound engagement —
+    follows, friend-invites, comments on other Pages, cold DMs — is an
+    artificial-growth signal Meta acts on, with no safe per-day rate. The agent
+    therefore drafts replies but never sends them, and the follow/invite verbs in
+    outreach.py refuse to run without an explicit risk acknowledgement.
+    """
+    src = (ROOT / "scripts" / "admin.py").read_text(encoding="utf-8")
+    assert "def draft_reply" in src
+    for banned in ("_js_click_text", "send_message", "submit_reply",
+                   "click(", "follow_page"):
+        assert banned not in src, f"admin.py must not send: found {banned!r}"
+
+    outreach = (ROOT / "scripts" / "outreach.py").read_text(encoding="utf-8")
+    assert "--i-understand-the-risk" in outreach
+    assert "is on hold" in outreach
+
+
+def test_admin_drafts_are_safe():
+    """A canned reply is produced for a clear, low-risk question, and withheld
+    for anything a human must handle (complaint, refund, rights)."""
+    assert admin.draft_reply("ราคาเท่าไหร่ครับ")           # price -> shop link
+    assert admin.draft_reply("เพลงนี้ชื่ออะไร")            # title -> caption
+    assert admin.draft_reply("ขอบคุณมากครับ")             # thanks -> follow ask
+    assert admin.draft_reply("มีปัญหา ขอคืนเงิน") == ""     # refund -> escalate
+    assert admin.draft_reply("เรื่องลิขสิทธิ์") == ""       # rights -> escalate
+    assert admin.draft_reply("") == ""                      # empty -> nothing
+
+
+def test_admin_warning_detection():
+    """A Meta warning must be recognised in either language, because finding one
+    is the single event that has to reach K immediately."""
+    assert admin.is_warning("พบคำเตือนจาก Meta")
+    assert admin.is_warning("Your Page has been restricted")
+    assert not admin.is_warning("ขอบคุณมากครับ เพราะมาก")
 
 
 if __name__ == "__main__":

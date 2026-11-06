@@ -1,0 +1,88 @@
+name: AX Music Admin (FB Page watch + draft)
+
+# The 24/7 half of the Page-admin job. Posting the clips is already on a
+# schedule (ax-music-crosspost.yml); this rail is the *watching* half: it reads
+# the Business Suite inbox and Page status, drafts a reply for anything a fan
+# asked, and pushes one phone alert when something needs K.
+#
+# It deliberately does NOT send. A panel of five independent advisors (2026-11-06)
+# said automating outbound engagement — follows, friend-invites, comments on
+# other Pages, cold DMs — is an artificial-growth signal Meta acts on, and that
+# no per-day rate makes it safe. So the agent prepares K's reply and K taps send.
+#
+# Why GitHub Actions: it is the only always-on runner in this account. The cloud
+# desktop dies with the pod, so the schedule lives here and restores the saved
+# session (AERIS_STORAGE_STATE_B64) into a headless Chromium — the same session
+# the crosspost rail uses.
+#
+# No `push` trigger on purpose: a commit here must not re-trigger the rail.
+
+on:
+  schedule:
+    - cron: '15 * * * *'      # hourly, offset from the crosspost rail's :00
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: ax-music-admin
+  cancel-in-progress: false
+
+jobs:
+  admin:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install Playwright + Chromium
+        run: |
+          set -euo pipefail
+          pip install --quiet playwright
+          python3 -m playwright install --with-deps chromium
+
+      - name: Read the Page inbox and draft replies
+        env:
+          AERIS_STORAGE_STATE_B64: ${{ secrets.AERIS_STORAGE_STATE_B64 }}
+          AX_NTFY_TOPIC: ${{ vars.AX_NTFY_TOPIC }}
+        run: |
+          set -uo pipefail
+          if [ -z "${AERIS_STORAGE_STATE_B64:-}" ]; then
+            echo "::error::AERIS_STORAGE_STATE_B64 is not set; run ops/save_storage_state.py and gh secret set"
+            exit 1
+          fi
+          python3 aeris938-2/scripts/admin.py --run
+
+      - name: Commit the admin log
+        run: |
+          set -euo pipefail
+          git config user.name  "ax-music-admin"
+          git config user.email "ax-music-admin@users.noreply.github.com"
+          git add aeris938-2/work/admin-log.jsonl
+          if git diff --cached --quiet; then
+            echo "no change to record"
+            exit 0
+          fi
+          git commit -m "data(admin): FB Page watch $(date -u +%Y-%m-%dT%H:%MZ)"
+          git pull --rebase --autostash origin "${GITHUB_REF_NAME}"
+          git push
+
+      - name: Notify K if the session died
+        if: failure()
+        env:
+          TOPIC: ${{ vars.AX_NTFY_TOPIC }}
+        run: |
+          set -euo pipefail
+          [ -n "${TOPIC:-}" ] || { echo "no AX_NTFY_TOPIC set"; exit 0; }
+          LINK="${{ vars.AX_LOGIN_URL }}"
+          [ -n "$LINK" ] || LINK="(set the AX_LOGIN_URL repo variable to the work-2 host)"
+          curl -sS --max-time 20 -H "Title: AERIS - FB admin session dead" \
+            -H "Tags: warning" -H "Priority: high" \
+            -d "session ของ Facebook หมดอายุ ตัวช่วยแอดมินอ่านกล่องข้อความไม่ได้. แตะลิงก์เดียวจบ: ${LINK} - ล็อกอิน Facebook Page (AERIS Music). หลังล็อกอิน รอบถัดไปทำงานต่อเอง (ทุก 1 ชม.)" \
+            "https://ntfy.sh/${TOPIC}" || echo "ntfy push failed (non-fatal)"

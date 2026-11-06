@@ -339,19 +339,38 @@ def cmd_status() -> int:
 def main(argv=None) -> int:
     ap = argparse.ArgumentParser(description=__doc__,
                                  formatter_class=argparse.RawDescriptionHelpFormatter)
-    ap.add_argument("--follow", action="store_true", help="follow suggested pages")
-    ap.add_argument("--invite", action="store_true", help="invite friends to like the Page")
+    ap.add_argument("--follow", action="store_true", help="follow suggested pages (DISABLED)")
+    ap.add_argument("--invite", action="store_true", help="invite friends to like the Page (DISABLED)")
     ap.add_argument("--plan", action="store_true", help="show what would happen")
     ap.add_argument("--status", action="store_true", help="counts so far")
     ap.add_argument("--limit", type=int, default=5)
     ap.add_argument("--min-gap", type=int, default=MIN_GAP_SECONDS)
+    ap.add_argument("--i-understand-the-risk", action="store_true",
+                    help="required to run --follow/--invite after the 2026-11-06 hold")
     args = ap.parse_args(argv)
 
     if args.status:
         return cmd_status()
-    if args.invite:
-        return cmd_invite(args.plan)
-    if args.follow:
+    # HOLD (2026-11-06). A panel of five independent advisors, asked whether a
+    # Page can grow by automating follows and friend-invites, answered the same
+    # thing: do not automate it. Reciprocal following and bulk invitations are
+    # artificial-growth signals, and Meta's spam policy keys on the *pattern*
+    # ("very high frequencies" plus inauthenticity signals), not on a safe
+    # per-day number — so slower pacing does not make it safe. K cannot risk the
+    # account, so these two verbs refuse to run unless asked explicitly.
+    if args.follow or args.invite:
+        if not args.i_understand_the_risk:
+            which = " ".join(w for w, on in (("--follow", args.follow),
+                                             ("--invite", args.invite)) if on)
+            print(f"REFUSED: {which} is on hold.\n"
+                  "Automated follows and friend-invites are an artificial-growth\n"
+                  "signal Meta acts on, and no per-day rate makes it safe (5/5\n"
+                  "advisors, 2026-11-06). Grow by content and by K sharing, not by\n"
+                  "outbound automation. Re-run with --i-understand-the-risk only\n"
+                  "after deciding to accept the risk deliberately.")
+            return 3
+        if args.invite:
+            return cmd_invite(args.plan)
         return cmd_follow(args.limit, args.min_gap, args.plan)
     ap.print_help()
     return 2
