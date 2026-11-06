@@ -133,6 +133,23 @@ def _dispatch(workflow_file: str) -> bool:
         return False
 
 
+def _pending_repairs() -> int:
+    """How many releases are still missing a thumbnail or a playlist slot.
+
+    The ledger is committed, so this reads it from the API rather than the local
+    tree: the heartbeat may run before the repair step on a checkout that is
+    behind. A missing or unreadable ledger is 0, not an alert — this is a
+    quality signal, and a network hiccup must not page the phone.
+    """
+    try:
+        blob = _get(f"{API}/repos/{REPO}/contents/music938-1/work/release-state.json")
+        data = json.loads(base64.b64decode(blob["content"]).decode("utf-8"))
+    except Exception:
+        return 0
+    return sum(1 for r in data.get("released", [])
+               if r.get("thumb_ok") is False or r.get("playlist_ok") is False)
+
+
 def collect() -> dict:
     now = datetime.now(timezone.utc)
     rails: dict[str, dict] = {}
@@ -187,6 +204,18 @@ def collect() -> dict:
             alerts.append(f"{name}: never ran")
         elif not fresh:
             alerts.append(f"{name}: stale (last {last_at})")
+
+    # A green run is not the whole answer: on 2026-11-06 the release rail ran
+    # "success" while every one of its six uploads went live without a custom
+    # thumbnail or a playlist slot, because the shared 10,000-unit pool was spent
+    # before the first call. videos.insert has its own bucket, so nothing failed.
+    # The repair script records `thumb_ok`/`playlist_ok` on each ledger row; a
+    # row still false is a real defect the run history cannot show, so the board
+    # reports it and a pending repair cannot sit unnoticed for days.
+    pending = _pending_repairs()
+    if pending:
+        alerts.append(f"music: {pending} release(s) waiting on a thumbnail/playlist repair")
+    rails["AX Music Repairs"] = {"pending": pending}
 
     # A red run in the last 24h is a softer signal (a retry may have fixed it),
     # so it is recorded but only alerted on when the rail is also the latest run.

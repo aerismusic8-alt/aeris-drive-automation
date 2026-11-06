@@ -1937,6 +1937,41 @@ def test_phone_login() -> None:
           and "<input" not in src)
 
 
+def test_heartbeat_repair_signal() -> None:
+    """The board must notice a release that went up without its art.
+
+    A spent quota makes `videos.insert` succeed (its own 100/day bucket) while
+    `thumbnails.set` and `playlistItems.insert` return 403, so the run is green
+    and the defect is invisible. The heartbeat has to read the ledger flags, not
+    the run history, and an unreadable ledger must not page the phone.
+    """
+    section("heartbeat (a green run can still hide a defect)")
+    sys.path.insert(0, str(ROOT.parent / "ops"))
+    import base64
+    import heartbeat  # noqa: E402
+
+    rows = {"released": [
+        {"slug": "a", "thumb_ok": False},
+        {"slug": "b", "playlist_ok": False},
+        {"slug": "c", "thumb_ok": True, "playlist_ok": True},
+        {"slug": "d"},
+    ]}
+    body = base64.b64encode(json.dumps(rows).encode()).decode()
+    heartbeat._get = lambda url: {"content": body}
+    check("counts a false thumbnail and a false playlist",
+          heartbeat._pending_repairs() == 2)
+
+    def boom(url):
+        raise RuntimeError("offline")
+
+    heartbeat._get = boom
+    check("an unreadable ledger is zero, not an alert", heartbeat._pending_repairs() == 0)
+
+    src = (ROOT.parent / "ops/heartbeat.py").read_text()
+    check("the board reports the pending count",
+          "waiting on a thumbnail/playlist repair" in src)
+
+
 def test_consult_gate() -> None:
     """K's standing rule: consult the advisors BEFORE acting.
 
@@ -2221,6 +2256,7 @@ def main() -> int:
     test_promo_site_converts_to_the_page()
     test_operator_url()
     test_phone_login()
+    test_heartbeat_repair_signal()
     test_consult_gate()
     test_watchdog()
     test_fill_playlists()
