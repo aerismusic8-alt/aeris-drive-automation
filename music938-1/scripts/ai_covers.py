@@ -1,27 +1,34 @@
 #!/usr/bin/env python3
-"""AI-generated cover art: Gemini paints the scene, PIL sets the Thai title.
+"""AI-generated cover art: a free image model paints the scene, PIL sets the title.
 
 K (2026-11-06): "ภาพปกใช้ gemini สร้างได้ไหม เขียนพรอมแล้วให้สร้างข้อความด้วย ให้มัน
 ดูแปลก ดูทันสมัย ดูอลังการ" — the old covers were one deterministic gradient with a
-ring motif, so every song looked like the same record.
+ring motif, so every song looked like the same record. K also allowed any free
+app as long as the image comes from a prompt.
 
 The advisor panel's answer, and the reason this is two steps rather than one:
 
-* Ask Gemini to *draw Thai letters* and it misspells them. The spelling is the
-  one thing a cover must get right, so the title is never left to the model.
-* Gemini is good at the part PIL is bad at — a strange, modern, cinematic scene.
+* Ask an image model to *draw Thai letters* and it misspells them. The spelling
+  is the one thing a cover must get right, so the title is never left to the model.
+* The model is good at the part PIL is bad at — a strange, modern, cinematic scene.
 
-So: Gemini renders a text-free 16:9 background from an art-direction prompt, and
-Pillow composites the title in Noto Sans Thai on top. The art direction is picked
-per song, so no two covers share a scene.
+So: the model renders a text-free 16:9 background from an art-direction prompt,
+and Pillow composites the title in Noto Sans Thai on top. The art direction is
+picked per song, so no two covers share a scene.
+
+Backends, in the order they are tried:
+
+1. **Pollinations** (`image.pollinations.ai`) — free, no login, no API key, and
+   it returns the picture straight from a GET. It is the default for that reason.
+2. **Gemini web** — the signed-in cloud desktop (`.agents/skills/ax-cloud-desktop`).
+   Kept as a fallback, but its free image quota runs out mid-batch and it then
+   answers in prose ("ฉันเป็นโมเดลภาษาและไม่มีความสามารถ…") instead of drawing.
 
     python3 scripts/ai_covers.py --list                 # the art directions
     python3 scripts/ai_covers.py --only 24-yut-mai-yom  # one song
     python3 scripts/ai_covers.py --only 24-yut-mai-yom --variant 2
     python3 scripts/ai_covers.py --preview --only ...   # write to work/, keep the live cover
-
-Gemini needs the signed-in cloud desktop (see `.agents/skills/ax-cloud-desktop`);
-with no login the run stops with a login link instead of pretending to work.
+    python3 scripts/ai_covers.py --backend gemini --only ...
 """
 from __future__ import annotations
 
@@ -30,6 +37,10 @@ import json
 import random
 import re
 import sys
+import time
+import urllib.error
+import urllib.parse
+import urllib.request
 from pathlib import Path
 
 from PIL import Image, ImageDraw, ImageFilter, ImageFont
@@ -41,9 +52,6 @@ sys.path.insert(0, str(ROOT / "scripts"))
 import common  # noqa: E402
 import genres  # noqa: E402
 
-sys.path.insert(0, str(REPO / "aeris938-1" / "scripts"))
-import gemini_image  # noqa: E402
-
 LIB = ROOT / "library"
 COVERS = LIB / "covers"
 THUMBS = LIB / "thumbs"
@@ -52,6 +60,7 @@ THAI_FONT = str(ROOT / "fonts" / "NotoSansThai.ttf")
 LATIN_FONT = "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf"
 
 THUMB_W, THUMB_H = 1280, 720
+POLL_MODEL = "flux"
 
 # One scene per direction. Deliberately no two are the same shape of image, so a
 # grid of covers reads as a set of songs rather than one record recoloured.
@@ -255,24 +264,84 @@ def _direction(slug: str, variant: int | None) -> tuple[str, str]:
 def _prompt(slug: str, meta: dict, direction: str) -> str:
     mood = meta["mood"]
     genre = meta["genre"] or genres.palette_key(slug, mood)
-    return (f"Album cover artwork for a Thai {genre} song. Mood: {mood}. "
+    return (f"album cover artwork for a Thai {genre} song, mood {mood}. "
             f"Scene: {direction}." + PROMPT_SUFFIX)
 
 
+def _fetch_pollinations(prompt: str, seed: int, *, timeout: float = 180.0,
+                        tries: int = 8) -> bytes:
+    """The free, key-less image backend. A GET, and the body is the JPEG.
+
+    The free tier allows one image per 45 s per IP and answers a burst with
+    HTTP 402 `FREE_LIMIT`, whose body carries the exact wait ("Retry after 9s").
+    So a batch has to be paced, and the pace is read from the server rather than
+    guessed at here: honour the hint, back off, and try again.
+    """
+    url = ("https://image.pollinations.ai/prompt/" + urllib.parse.quote(prompt)
+           + f"?width={THUMB_W}&height={THUMB_H}&seed={seed}&nologo=true"
+           + f"&model={POLL_MODEL}")
+    req = urllib.request.Request(url, headers={"User-Agent": "aeris-music/1.0"})
+    for attempt in range(tries):
+        try:
+            with urllib.request.urlopen(req, timeout=timeout) as r:
+                return r.read()
+        except urllib.error.HTTPError as exc:
+            if attempt == tries - 1:
+                raise
+            if exc.code == 402:
+                hint = 45.0
+                try:
+                    body = exc.read().decode("utf-8", "replace")
+                    m = re.search(r"Retry after (\d+)s", body)
+                    if m:
+                        hint = float(m.group(1))
+                except Exception:
+                    pass
+                time.sleep(hint + 2.0)
+            elif exc.code in (429, 500, 502, 503, 504):
+                # The pool also 503s under load with no hint; back off a little
+                # more each time and let it recover.
+                time.sleep(10.0 * (attempt + 1))
+            else:
+                raise
+    raise RuntimeError("pollinations kept failing")
+
+
+def _fetch_gemini(prompt: str, key: str, *, force: bool) -> bytes:
+    """Fallback: the signed-in Gemini web app on the cloud desktop."""
+    sys.path.insert(0, str(REPO / "aeris938-1" / "scripts"))
+    import gemini_image  # noqa: E402
+
+    res = gemini_image.generate(prompt, key, suffix="", force=force,
+                                fresh=True, timeout=600.0)
+    return (REPO / "aeris938-1" / res["entry"]["file"]).read_bytes()
+
+
+def _background(slug: str, name: str, prompt: str, *, backend: str, force: bool) -> Image.Image:
+    """The text-free still, from the chosen backend, cached under work/."""
+    cache = WORK / "ai-bg" / f"{slug}-{name}.jpg"
+    if cache.exists() and not force:
+        return Image.open(cache).convert("RGB")
+
+    if backend == "gemini":
+        data = _fetch_gemini(prompt, f"aicover-{slug}-{name}", force=force)
+    else:
+        # Seed off the slug so a re-run is the same picture, not a new lottery.
+        seed = int.from_bytes(slug.encode("utf-8")[:6].ljust(6, b"\0"), "big") % 2**31
+        data = _fetch_pollinations(prompt, seed)
+
+    cache.parent.mkdir(parents=True, exist_ok=True)
+    cache.write_bytes(data)
+    return Image.open(cache).convert("RGB")
+
+
 def build(slug: str, *, variant: int | None = None, preview: bool = False,
-          force: bool = False) -> dict:
+          force: bool = False, backend: str = "pollinations") -> dict:
     meta = _meta(slug)
     name, direction = _direction(slug, variant)
     prompt = _prompt(slug, meta, direction)
-    key = f"aicover-{slug}-{name}"
-    # One still per fresh conversation: a single long Gemini chat slows down
-    # enough by the tenth image that the render misses its timeout.
-    res = gemini_image.generate(prompt, key, suffix="", force=force,
-                                fresh=True, timeout=600.0)
-    # library.add records a path relative to the aeris938-1 tree.
-    png = REPO / "aeris938-1" / res["entry"]["file"]
+    bg = _background(slug, name, prompt, backend=backend, force=force)
 
-    bg = Image.open(png)
     if preview:
         out = WORK / f"ai-cover-{slug}-{name}.jpg"
         _compose(bg, meta["title"], kind="song", subtitle=meta["subtitle"]).save(
@@ -299,6 +368,8 @@ def main() -> int:
     ap.add_argument("--variant", type=int, default=None, help="force an art direction index")
     ap.add_argument("--preview", action="store_true", help="write to work/, keep the live cover")
     ap.add_argument("--force", action="store_true", help="regenerate even if the still exists")
+    ap.add_argument("--backend", default="pollinations", choices=["pollinations", "gemini"],
+                    help="image backend (default: pollinations, free and key-less)")
     ap.add_argument("--list", action="store_true", help="show the art directions and exit")
     args = ap.parse_args()
 
@@ -319,7 +390,8 @@ def main() -> int:
     rc = 0
     for slug in slugs:
         try:
-            r = build(slug, variant=args.variant, preview=args.preview, force=args.force)
+            r = build(slug, variant=args.variant, preview=args.preview, force=args.force,
+                      backend=args.backend)
             print(f"  {slug}: {r['status']} [{r['direction']}] -> "
                   f"{r.get('file') or r.get('cover')}")
         except Exception as exc:  # one bad song must not stop the batch

@@ -254,20 +254,6 @@
       "height": 572
     },
     {
-      "id": "img-aicover-02-rak-thi-mai-mi-wan-chop-chrome",
-      "kind": "img",
-      "file": "library/img/img-aicover-02-rak-thi-mai-mi-wan-chop-chrome.png",
-      "bytes": 828186,
-      "sha256": "d8610553b5f9d969c0255ba7e6bba9cbd1467a74a8207bcc3221c23663dc9266",
-      "created_at": "2026-11-06T17:16:14Z",
-      "source": "gemini-web",
-      "prompt": "Album cover artwork for a Thai warm song. Mood: warm. Scene: an impossible liquid-chrome landscape with floating geometric shards and shattered-glass reflections, pastel neon sky, retro-futuristic and dreamlike. | style: surreal, retro-futuristic, premium album art, cinematic lighting, ultra detailed, rich colour grading, high dynamic range, sculptural studio lighting, subtle film grain. composition: exact 16:9 widescreen; one striking central subject placed on the RIGHT third; keep the LEFT third dark, simple and uncluttered as negative space for a title; strong contrast, crisp silhouette, readable as a small thumbnail. absolutely no text, no letters, no words, no numbers, no logo, no watermark, no border.",
-      "provider": "gemini.google.com",
-      "bytes_written": 828186,
-      "width": 1024,
-      "height": 572
-    },
-    {
       "id": "img-aicover-01-khon-di-thi-chak-pai-temple",
       "kind": "img",
       "file": "library/img/img-aicover-01-khon-di-thi-chak-pai-temple.png",
@@ -294,7 +280,63 @@
       "bytes_written": 983101,
       "width": 1024,
       "height": 572
+    },
+    {
+      "id": "img-aicover-02-rak-thi-mai-mi-wan-chop-chrome",
+      "kind": "img",
+      "file": "library/img/img-aicover-02-rak-thi-mai-mi-wan-chop-chrome.png",
+      "bytes": 870617,
+      "sha256": "1adbdb09e227c02352c12873795e57726bdbab057d354936113ef2c828b6cd1c",
+      "created_at": "2026-11-06T17:41:56Z",
+      "source": "gemini-web",
+      "prompt": "Album cover artwork for a Thai warm song. Mood: warm. Scene: an impossible liquid-chrome landscape with floating geometric shards and shattered-glass reflections, pastel neon sky, retro-futuristic and dreamlike. | style: surreal, retro-futuristic, premium album art, cinematic lighting, ultra detailed, rich colour grading, high dynamic range, sculptural studio lighting, subtle film grain. composition: exact 16:9 widescreen; one striking central subject placed on the RIGHT third; keep the LEFT third dark, simple and uncluttered as negative space for a title; strong contrast, crisp silhouette, readable as a small thumbnail. absolutely no text, no letters, no words, no numbers, no logo, no watermark, no border.",
+      "provider": "gemini.google.com",
+      "bytes_written": 870617,
+      "width": 1024,
+      "height": 572
+    },
+    {
+      "id": "img-aicover-03-khit-thueng-thoe-thuk-khuen-train",
+      "kind": "img",
+      "file": "library/img/img-aicover-03-khit-thueng-thoe-thuk-khuen-train.png",
+      "bytes": 886335,
+      "sha256": "1851e802633f4ce5f97e15f1f43fd20bc2bd9e5103ab8654a72ed1d5d86acfef",
+      "created_at": "2026-11-06T17:42:40Z",
+      "source": "gemini-web",
+      "prompt": "Album cover artwork for a Thai sad song. Mood: sad. Scene: an old night train crossing a glowing bridge toward a distant city of light in the rain, long exposure streaks, nostalgic and strange. | style: surreal, retro-futuristic, premium album art, cinematic lighting, ultra detailed, rich colour grading, high dynamic range, sculptural studio lighting, subtle film grain. composition: exact 16:9 widescreen; one striking central subject placed on the RIGHT third; keep the LEFT third dark, simple and uncluttered as negative space for a title; strong contrast, crisp silhouette, readable as a small thumbnail. absolutely no text, no letters, no words, no numbers, no logo, no watermark, no border.",
+      "provider": "gemini.google.com",
+      "bytes_written": 886335,
+      "width": 1024,
+      "height": 572
+    },
+    {
+      "id": "img-aicover-04-saeng-chao-wan-mai-portal",
+      "kind": "img",
+      "file": "library/img/img-aicover-04-saeng-chao-wan-mai-portal.png",
+      "bytes": 740455,
+      "sha256": "6913653ea99ed420dbf66f3947298639d2eb6e268c91b69d6374a7ad16a57a98",
+      "created_at": "2026-11-06T17:43:22Z",
+      "source": "gemini-web",
+      "prompt": "Album cover artwork for a Thai hopeful song. Mood: hopeful. Scene: a colossal portal of concentric neon rings standing in a vast mirrored salt flat at dusk, a tiny lone silhouette before it, violet and coral light, volumetric haze. | style: surreal, retro-futuristic, premium album art, cinematic lighting, ultra detailed, rich colour grading, high dynamic range, sculptural studio lighting, subtle film grain. composition: exact 16:9 widescreen; one striking central subject placed on the RIGHT third; keep the LEFT third dark, simple and uncluttered as negative space for a title; strong contrast, crisp silhouette, readable as a small thumbnail. absolutely no text, no letters, no words, no numbers, no logo, no watermark, no border.",
+      "provider": "gemini.google.com",
+      "bytes_written": 740455,
+      "width": 1024,
+      "height": 572
+    },
+    {
+      "id": "img-aicover-05-fon-tok-nai-chai-temple",
+      "kind": "img",
+      "file": "library/img/img-aicover-05-fon-tok-nai-chai-temple.png",
+      "bytes": 757698,
+      "sha256": "d3864c4f9eaa26a46b4d53e457e8458d8dfdb9e754f0c7964cc17fc1e8e6ee18",
+      "created_at": "2026-11-06T17:51:17Z",
+      "source": "gemini-web",
+      "prompt": "Create an image: album cover artwork for a Thai calm song. Mood: calm. Scene: a floating Thai temple of white and gold drifting in a violet nebula, long light beams, volumetric fog, surreal and majestic. | style: surreal, retro-futuristic, premium album art, cinematic lighting, ultra detailed, rich colour grading, high dynamic range, sculptural studio lighting, subtle film grain. composition: exact 16:9 widescreen; one striking central subject placed on the RIGHT third; keep the LEFT third dark, simple and uncluttered as negative space for a title; strong contrast, crisp silhouette, readable as a small thumbnail. absolutely no text, no letters, no words, no numbers, no logo, no watermark, no border.",
+      "provider": "gemini.google.com",
+      "bytes_written": 757698,
+      "width": 1024,
+      "height": 572
     }
   ],
-  "updated_at": "2026-11-06T17:30:36Z"
+  "updated_at": "2026-11-06T17:51:17Z"
 }

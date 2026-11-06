@@ -804,6 +804,16 @@ def test_ai_covers() -> None:
     check("genre reaches the prompt", "lukthung" in prompt)
     check("Thai title is NOT in the prompt", "หยุด" not in prompt)
 
+    # The default backend must be the free, key-less one: Gemini's free image
+    # quota runs out mid-batch and then it answers in prose. Pin the host so a
+    # refactor cannot quietly make a login-only service the default.
+    import inspect
+    sig = inspect.signature(ai_covers.build)
+    check("default backend is pollinations",
+          sig.parameters["backend"].default == "pollinations")
+    check("pollinations host is image.pollinations.ai",
+          "image.pollinations.ai" in inspect.getsource(ai_covers._fetch_pollinations))
+
     # _compose must produce a real 16:9 frame with Thai text on it.
     from PIL import Image, ImageDraw, ImageStat
     bg = Image.new("RGB", (1024, 572), (10, 12, 30))
