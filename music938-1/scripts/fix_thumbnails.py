@@ -14,7 +14,9 @@ ledger entry; this repairs the false ones once quota is fresh.
 from __future__ import annotations
 
 import argparse
+import base64
 import json
+import os
 import sys
 from pathlib import Path
 
@@ -25,6 +27,32 @@ sys.path.insert(0, str(ROOT / "scripts"))
 import release  # noqa: E402
 import yt_auth  # noqa: E402
 from yt_publish import set_thumbnail  # noqa: E402
+
+LEDGER = "music938-1/work/release-state.json"
+
+
+def write_ledger(content: bytes) -> bool:
+    """Write the ledger back to the repository through the Contents API.
+
+    This step cannot lean on `daily_release.py` to do it: on a day whose upload
+    slots are already spent, `release.py` returns 3 and the driver returns before
+    its own write-back, so a repair recorded only in the working copy would be
+    lost at the end of the job — and the same videos would be "repaired" again
+    every run.
+    """
+    import daily_release  # the Contents API helper, and the token
+
+    tok = daily_release.token()
+    st, cur = daily_release.api(f"/repos/{daily_release.REPO}/contents/{LEDGER}", tok)
+    sha = cur.get("sha") if st == 200 else None
+    body = {"message": "release: ledger after thumbnail/playlist repairs",
+            "content": base64.b64encode(content).decode(), "branch": "main"}
+    if sha:
+        body["sha"] = sha
+    st, res = daily_release.api(f"/repos/{daily_release.REPO}/contents/{LEDGER}",
+                                tok, "PUT", body)
+    print(f"{LEDGER} write: {st}")
+    return st in (200, 201)
 
 
 def thumb_for(entry: dict) -> Path:
@@ -135,6 +163,9 @@ def main() -> int:
             fixed += 1
     if not args.dry_run and fixed:
         release.save_state(state)
+        # Push the repaired ledger back so the next run does not repeat this.
+        if os.environ.get("AX_GH_TOKEN"):
+            write_ledger(release.STATE.read_bytes())
         print(f"{fixed} release(s) repaired and recorded")
     return 0
 
