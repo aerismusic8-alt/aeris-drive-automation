@@ -242,9 +242,24 @@ def _set_advanced(page, length: str, bpm: str | None):
         page.wait_for_timeout(500)
 
 
+def _out_of_credits(page) -> bool:
+    """Flow disables Generate and shows this banner once the free credits run out.
+
+    Without this the click retries for 30 s and then fails with an opaque
+    Playwright timeout, once per song. Free credits are the whole budget, so the
+    honest outcome is a clean "rate limited, come back tomorrow".
+    """
+    try:
+        return "out of credits" in page.inner_text("body").lower()
+    except Exception:
+        return False
+
+
 def _wait_composer(page, timeout=90_000):
     deadline = time.time() + timeout / 1000
     while time.time() < deadline:
+        if _out_of_credits(page):
+            raise B.RateLimited("Flow Music credits exhausted")
         if page.locator('textarea[aria-label="Lyrics"]').count():
             return True
         # A fresh session opens on the producer chat; a login wall must be
