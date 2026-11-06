@@ -859,27 +859,37 @@ def test_thumbnail_repair() -> None:
         {"slug": "a", "kind": "song", "variant": "", "video_id": "V1", "thumb_ok": False},
         {"slug": "b", "kind": "song", "variant": "", "video_id": "V2", "thumb_ok": True},
         {"slug": "c", "kind": "short", "variant": "s", "video_id": "V3"},
+        {"slug": "d", "kind": "song", "variant": "", "video_id": "V4",
+         "thumb_ok": True, "playlist_ok": False},
     ]
-    seen, saved = [], []
+    seen, saved, added = [], [], []
     real = (release.load_state, release.save_state, fix_thumbnails.thumb_for,
-            yt_auth.access_token, fix_thumbnails.set_thumbnail, sys.argv)
+            yt_auth.access_token, fix_thumbnails.set_thumbnail, sys.argv,
+            fix_thumbnails.in_playlist, release.add_to_playlist)
     try:
-        state = {"released": [dict(e) for e in entries]}
+        state = {"released": [dict(e) for e in entries],
+                 "playlists": {"ch3:song": "PL1"}}
         release.load_state = lambda: state
         release.save_state = lambda s: saved.append(s)
         fix_thumbnails.thumb_for = lambda e: Path("/tmp/thumb.png")
         yt_auth.access_token = lambda ch: "tok"
         fix_thumbnails.set_thumbnail = lambda vid, path, tok: (seen.append(vid), (200, {}))[1]
+        fix_thumbnails.in_playlist = lambda pid, vid, tok: False
+        release.add_to_playlist = lambda pid, vid, ch: (added.append((pid, vid)), True)[1]
         sys.argv = ["fix_thumbnails.py"]
         fix_thumbnails.main()
     finally:
         (release.load_state, release.save_state, fix_thumbnails.thumb_for,
-         yt_auth.access_token, fix_thumbnails.set_thumbnail, sys.argv) = real
+         yt_auth.access_token, fix_thumbnails.set_thumbnail, sys.argv,
+         fix_thumbnails.in_playlist, release.add_to_playlist) = real
 
     check("only the entry with thumb_ok=False is repaired", seen == ["V1"], f"{seen}")
     check("an entry with no thumb_ok is left alone", "V3" not in seen, f"{seen}")
     check("the repaired entry is marked ok", saved and
           saved[-1]["released"][0]["thumb_ok"] is True)
+    check("a lost playlist slot is refilled", added == [("PL1", "V4")], f"{added}")
+    check("the refilled entry is marked ok", saved and
+          saved[-1]["released"][3]["playlist_ok"] is True)
 
 
 def test_titles() -> None:

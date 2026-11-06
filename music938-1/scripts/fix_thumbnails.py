@@ -51,6 +51,29 @@ def thumb_for(entry: dict) -> Path:
     return None
 
 
+def in_playlist(playlist_id: str, video_id: str, token: str) -> bool | None:
+    """Is the video already in the playlist? None if the check itself failed.
+
+    playlistItems.insert is not idempotent — inserting the same video twice
+    leaves two identical rows — so a repair must look before it writes. The
+    lookup costs 1 unit against 50 for the insert.
+    """
+    import urllib.error
+    import urllib.parse
+    import urllib.request
+    q = urllib.parse.urlencode({"part": "id", "playlistId": playlist_id,
+                                "videoId": video_id, "maxResults": 1})
+    req = urllib.request.Request(
+        f"https://www.googleapis.com/youtube/v3/playlistItems?{q}",
+        headers={"Authorization": f"Bearer {token}"})
+    try:
+        with urllib.request.urlopen(req, timeout=60) as r:
+            return bool(json.load(r).get("items"))
+    except urllib.error.HTTPError as e:
+        print(f"playlist lookup failed: HTTP {e.code}", file=sys.stderr)
+        return None
+
+
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument("--ch", default="ch3")
@@ -59,37 +82,60 @@ def main() -> int:
     args = ap.parse_args()
 
     state = release.load_state()
-    todo = [e for e in state.get("released", []) if e.get("thumb_ok") is False]
+    # One pass, two repairs: the thumbnail and the playlist slot are both lost to
+    # the same spent pool, and both cost quota, so they are done together while
+    # the pool is fresh rather than in two scripts that could each be forgotten.
+    todo = [e for e in state.get("released", [])
+            if e.get("thumb_ok") is False or e.get("playlist_ok") is False]
     if not todo:
-        print("no releases are missing a thumbnail")
+        print("no releases are missing a thumbnail or a playlist slot")
         return 0
-    print(f"{len(todo)} release(s) missing a custom thumbnail")
+    print(f"{len(todo)} release(s) need a repair")
 
     tok = None if args.dry_run else yt_auth.access_token(args.ch)
     fixed = 0
     for e in todo:
         if args.limit and fixed >= args.limit:
             break
-        path = thumb_for(e)
-        if not path:
-            print(f"  {e['slug']}: no thumbnail file on disk or on the release",
-                  file=sys.stderr)
-            continue
-        if args.dry_run:
-            print(f"  would set {path.name} on {e['video_id']} ({e['slug']})")
-            fixed += 1
-            continue
-        code, _ = set_thumbnail(e["video_id"], str(path), tok)
-        print(f"  {e['slug']} ({e['video_id']}): HTTP {code}")
-        if code == 403:
-            print("quota spent; the rest waits for a fresh Pacific day")
-            break
-        if code == 200:
-            e["thumb_ok"] = True
+        changed = False
+        if e.get("thumb_ok") is False:
+            path = thumb_for(e)
+            if not path:
+                print(f"  {e['slug']}: no thumbnail file on disk or on the release",
+                      file=sys.stderr)
+            elif args.dry_run:
+                print(f"  would set {path.name} on {e['video_id']} ({e['slug']})")
+                changed = True
+            else:
+                code, _ = set_thumbnail(e["video_id"], str(path), tok)
+                print(f"  thumb {e['slug']} ({e['video_id']}): HTTP {code}")
+                if code == 403:
+                    print("quota spent; the rest waits for a fresh Pacific day")
+                    break
+                if code == 200:
+                    e["thumb_ok"] = True
+                    changed = True
+        if e.get("playlist_ok") is False and not args.dry_run:
+            key = f"{args.ch}:{e['kind']}"
+            pid = state.get("playlists", {}).get(key)
+            if not pid:
+                print(f"  playlist {e['slug']}: no {key} playlist id in state",
+                      file=sys.stderr)
+            else:
+                already = in_playlist(pid, e["video_id"], tok)
+                if already:
+                    e["playlist_ok"] = True
+                    changed = True
+                elif already is False and release.add_to_playlist(
+                        pid, e["video_id"], args.ch):
+                    e["playlist_ok"] = True
+                    print(f"  playlist {e['slug']}: added to {pid}")
+                    changed = True
+        if changed:
             fixed += 1
     if not args.dry_run and fixed:
         release.save_state(state)
-        print(f"{fixed} thumbnail(s) set and recorded")
+        print(f"{fixed} release(s) repaired and recorded")
     return 0
 
 

@@ -730,16 +730,19 @@ def release_one(item: dict, args) -> int:
     state = load_state()
     # A new release belongs in the right playlist, or the channel looks like a
     # pile of loose videos rather than a catalogue. Created lazily on first use.
+    # playlistItems.insert draws on the same 10,000-unit pool as thumbnails.set,
+    # so it fails for the same reason and is repaired by the same script.
+    playlist_ok = None
     if vid:
         pid = ensure_playlist(state, kind, args.ch)
-        if pid:
-            add_to_playlist(pid, vid, args.ch)
+        playlist_ok = bool(pid) and add_to_playlist(pid, vid, args.ch)
     state["released"].append({
         "slug": slug, "kind": kind, "variant": item.get("variant", ""),
         "video_id": vid,
         "at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
         "public": bool(args.public),
         "thumb_ok": thumb_ok,
+        "playlist_ok": playlist_ok,
     })
     save_state(state)
     print(f"recorded in {STATE.relative_to(ROOT)}")
