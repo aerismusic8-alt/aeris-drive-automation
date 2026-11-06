@@ -760,6 +760,22 @@ true-instrumental karaoke mix, cover art, a 1920x1080 word-synced video.
 - **Google's device-code login is not a substitute for the browser session** — it
   mints an OAuth token, not a cookie session, and needs a device-flow OAuth client.
   Flow Music / TikTok / Shopee need the browser session, so noVNC stays the route.
+- **A browser "language" and a browser "font" are independent.** The image ships
+  117 fonts and **none covers Thai**, yet Chrome runs `--lang=th-TH`, so Facebook
+  rendered Thai as tofu boxes (□□□) and K could not read the screen (2026-11-06).
+  `bootstrap.py::ensure_thai_fonts()` now copies `music938-1/fonts/NotoSansThai.ttf`
+  into `~/.fonts` before Chromium starts (apt has no network here). Test with
+  `fc-list :lang=th`; a *running* Chromium caches its font list, so it must be
+  restarted after an install or the boxes stay.
+- **A dashboard that serves "the acting account" answers for the wrong account.**
+  `measure_facebook` read FB insights while the desktop was still the *personal
+  profile*, so it reported the person's numbers (0-49) as the Page's for four days
+  — the Page really had **861 views / 28d, 99.9% non-follower** (2026-11-06). Switch
+  to the Page and *prove* it (`_acting_as_page`) before reading; parse the 28-day
+  total from the "28 วันที่ผ่านมา" range line, not the first "ยอดดู" (that is the
+  tab-label row).
+- **When a metric reads a suspicious exact 0 while a sibling surface is fine,
+  suspect the reader before believing the platform.**
 - **Consult the advisors BEFORE acting — it is a gate, not a note (K, 2026-11-05).**
   `ops/consult.py` asks **five** advisors in one command and appends to
   `ops/consult-log.jsonl`; `consult.require(brief)` (or `consult.py --check`) fails
