@@ -73,6 +73,8 @@ def main() -> int:
                     help="banner PNG to upload (default: the classic one)")
     ap.add_argument("--description", default="",
                     help="set the channel description too (empty = leave it)")
+    ap.add_argument("--description-only", action="store_true",
+                    help="update the description without re-uploading the banner")
     args = ap.parse_args()
     banner = Path(args.banner)
 
@@ -90,17 +92,21 @@ def main() -> int:
     bs = ch["items"][0]["brandingSettings"]
     print("current description head:", repr(bs["channel"]["description"][:60]))
 
-    url = upload_banner(token, banner)
-    print("banner uploaded ->", url[:80], "...")
+    # A copy change (e.g. turning a plain-text social handle into a link) must not
+    # re-upload the banner: the banner URL would change and the two are unrelated.
+    if not args.description_only:
+        url = upload_banner(token, banner)
+        print("banner uploaded ->", url[:80], "...")
+        bs.setdefault("image", {})["bannerExternalUrl"] = url
 
-    bs.setdefault("image", {})["bannerExternalUrl"] = url
     if args.description:
         bs.setdefault("channel", {})["description"] = args.description
         print("description set:", repr(args.description[:60]))
     res = _put(token, "channels?part=brandingSettings",
                {"id": CHANNEL_ID, "brandingSettings": bs})
-    got = res["brandingSettings"]["image"].get("bannerExternalUrl", "")
-    print("banner now:", got[:80], "...")
+    if not args.description_only:
+        got = res["brandingSettings"]["image"].get("bannerExternalUrl", "")
+        print("banner now:", got[:80], "...")
     print("description kept:", repr(res["brandingSettings"]["channel"]["description"][:60]))
     return 0
 

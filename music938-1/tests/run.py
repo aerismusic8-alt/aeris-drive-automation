@@ -1578,6 +1578,11 @@ def test_profile_setup() -> None:
     psrc = (ROOT / "scripts" / "profile_setup.py").read_text()
     check("welcome post types via CDP insertText", "Input.insertText" in psrc)
     check("welcome path is idempotent (detects an existing pin)", "เลิกปักหมุด" in psrc)
+    # The channel description is a discovery surface; its Facebook line must be a
+    # real Page link, and a copy change must not drag the banner along with it.
+    brand_src = (ROOT / "scripts" / "apply_brand.py").read_text()
+    check("channel description can change without re-uploading the banner",
+          "--description-only" in brand_src)
 
 
 def test_login_vault() -> None:
