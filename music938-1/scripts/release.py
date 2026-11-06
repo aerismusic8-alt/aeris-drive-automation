@@ -509,7 +509,8 @@ def add_to_playlist(playlist_id: str, video_id: str, ch: str) -> bool:
         return False
 
 
-def plan(days: int, shorts: bool = False, spread: float = 0) -> list[dict]:
+def plan(days: int, shorts: bool = False, spread: float = 0,
+         kind: str | None = None) -> list[dict]:
     """Pair each built song with its karaoke into a dated release list.
 
     Shorts are discovery, not catalogue: a zero-subscriber channel gets no
@@ -563,6 +564,12 @@ def plan(days: int, shorts: bool = False, spread: float = 0) -> list[dict]:
             if i < len(group):
                 items.append(group[i])
     todo = [i for i in items if (i["slug"], i["kind"], i.get("variant", "")) not in done]
+    if kind:
+        # A song release is what K reviews; the queue interleaves the affiliate
+        # cards and the Shorts first, so without this the long-form clip is
+        # several uploads deep. Filtering keeps the cadence intact and just
+        # chooses which pending item goes next.
+        todo = [i for i in todo if i["kind"] == kind]
     start = datetime.now(timezone.utc)
     for i, item in enumerate(todo):
         if spread:
@@ -734,6 +741,8 @@ def main() -> int:
                     help="release this many items in one run (each scheduled in turn)")
     ap.add_argument("--shorts", action="store_true",
                     help="plan Shorts only (the discovery-first queue)")
+    ap.add_argument("--kind", choices=("song", "short", "affiliate"),
+                    help="release only this kind (e.g. the long-form song clips)")
     ap.add_argument("--ch", default="ch3")
     ap.add_argument("--public", action="store_true",
                     help="publish publicly; without it the upload stays private for K")
@@ -745,7 +754,7 @@ def main() -> int:
     ap.add_argument("--dry-run", action="store_true")
     args = ap.parse_args()
 
-    todo = plan(args.days, shorts=args.shorts, spread=args.spread)
+    todo = plan(args.days, shorts=args.shorts, spread=args.spread, kind=args.kind)
     progress(args.progress_file, f"plan: {len(todo)} pending")
     if args.plan or not args.next:
         if not todo:
