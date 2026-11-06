@@ -152,7 +152,13 @@ jobs:
         run: |
           set -euo pipefail
           [ -n "${TOPIC:-}" ] || { echo "no AX_NTFY_TOPIC set"; exit 0; }
-          curl -sS --max-time 20 -H "Title: AERIS crosspost needs attention" \
+          # A "sign in on the cloud desktop" alert with no address is not
+          # actionable: the desktop is only reachable at the session's work-2
+          # host, and typing a URL on a phone is the hard part. Point at the
+          # tap-first page, which opens the surface in the signed-in desktop.
+          LINK="${{ vars.AX_LOGIN_URL }}"
+          [ -n "$LINK" ] || LINK="(set the AX_LOGIN_URL repo variable to the work-2 host)"
+          curl -sS --max-time 20 -H "Title: AERIS — ต้องล็อกอิน Facebook + TikTok ใหม่" \
             -H "Tags: warning" -H "Priority: high" \
-            -d "Facebook/TikTok posting failed — the saved session is likely dead (Facebook and TikTok both reject a restored cookie once the server session expires). Posts are waiting. Sign in on the cloud desktop, then re-run ops/login_vault.py save and ops/save_storage_state.py to refresh AERIS_STORAGE_STATE_B64." \
+            -d "session ของ Facebook และ TikTok หมดอายุ มีโพสต์ค้างอยู่. แตะปุ่มเดียวจบที่ ${LINK} — ล็อกอิน 2 หน้า: Facebook Page (AERIS Music) และ TikTok @aeris.music4. หลังล็อกอิน ระบบโพสต์ต่อเองในรอบถัดไป (ทุก 2 ชม.). ถ้าเพิ่งล็อกอินแล้วยังแดง ให้รัน ops/login_vault.py save และ ops/save_storage_state.py แล้วตั้ง secret AERIS_STORAGE_STATE_B64 ใหม่" \
             "https://ntfy.sh/${TOPIC}" || echo "ntfy push failed (non-fatal)"
