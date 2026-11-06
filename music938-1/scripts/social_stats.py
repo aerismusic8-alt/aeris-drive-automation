@@ -23,6 +23,7 @@ falls back to the dashboard scrape otherwise.
 """
 from __future__ import annotations
 import os
+import re
 
 import argparse
 import json
@@ -42,7 +43,8 @@ CDP = os.environ.get("AERIS_CDP", "http://127.0.0.1:9222").rstrip("/") + "/json"
 # reader falls back to the Page profile, which always loads signed in and still
 # carries the follower count.
 FB_PAGE = "https://www.facebook.com/profile.php?id=61595890900382"
-FB_INSIGHTS = "https://www.facebook.com/professional_dashboard/insights/"
+FB_INSIGHTS = "https://www.facebook.com/professional_dashboard/profile_insights/views/"
+FB_PAGE_ID = "61595890900382"
 TIKTOK_ANALYTICS = "https://www.tiktok.com/tiktokstudio/analytics"
 SHOPEE_AFFILIATE = "https://affiliate.shopee.co.th/dashboard"
 SHOPEE_AFFILIATE_API = "https://affiliate.shopee.co.th"
@@ -188,22 +190,103 @@ def _fb_signed_out(text: str) -> bool:
     return "เข้าสู่ระบบ" in head and "ผู้ติดตาม" not in text
 
 
-def measure_facebook(desk: Desk) -> dict:
-    """The Page numbers, from the insights dashboard with a profile fallback.
+def _acting_as_page(text: str) -> bool:
+    """True when the desktop is acting as the Page, not the person.
 
-    Followers are always read from the Page profile line ("ผู้ติดตาม N คน"),
-    because the insights page only states followers as a percentage of views.
-    Views (28 days) come from insights.
+    The profile dashboard says "สถานะโปรไฟล์" and the switch banner
+    ("สลับไปใช้เพจ") is present; the Page dashboard says neither. Reading the
+    Page's insights while still acting as the person silently reports the
+    *person's* numbers — that is how the Page looked like it had 0 views for
+    four days when it really had 861 in 28 days.
     """
-    # Land on the Page first: the insights route is reached from inside the Page
-    # and answers "Not Found" when it is the first URL of a fresh tab.
-    desk.goto(FB_PAGE, settle=14)
+    head = text[:1500]
+    if "สถานะโปรไฟล์" in head:
+        return False
+    return "สลับไปใช้เพจ" not in head
+
+
+def _switch_to_page(desk) -> bool:
+    """Make the Page the acting identity, and prove it stuck.
+
+    Same three clicks `profile_setup` / `outreach` proved out: the profile
+    switcher, "สลับ" in its menu, then "ใช้เพจ" in the welcome dialog. The banner
+    click alone does not switch identity. `desk` may be the CDP client or the
+    Playwright client; both expose `.page.evaluate` only for the latter, so the
+    CDP client goes through `.js`.
+    """
+    page = getattr(desk, "page", None)
+    run = page.evaluate if page is not None else desk.js
+    if _acting_as_page(desk.text()):
+        return True
+    try:
+        run("""() => {
+          const b = document.querySelector('div[role=button][aria-label="สลับ"]');
+          if (b) b.click();
+        }""")
+        time.sleep(3.5)
+        run("""() => {
+          for (const m of document.querySelectorAll('div[role=dialog]'))
+            for (const el of m.querySelectorAll('div[role=button],a,span'))
+              if ((el.innerText || '').trim() === 'สลับ') { el.click(); return; }
+        }""")
+        time.sleep(9)
+        run("""() => {
+          for (const d of document.querySelectorAll('div[role=dialog]'))
+            for (const el of d.querySelectorAll('div[role=button],a,span'))
+              if ((el.innerText || '').trim() === 'ใช้เพจ') { el.click(); return; }
+        }""")
+        time.sleep(5)
+    except Exception:  # noqa: BLE001
+        return False
+    return _acting_as_page(desk.text())
+
+
+def _fb_page_views(text: str):
+    """The Page's 28-day views from the views dashboard, or UNKNOWN.
+
+    The dashboard prints a row of tab labels ("Reels", "โพสต์", "สตอรี่") and
+    then, a line later, the numbers for the selected tab. Reading the first
+    number after the *first* "ยอดดู" picks up the label list, not the total, so
+    this keys on the "28 วันที่ผ่านมา" range line and takes the number that
+    follows it — the total for the window.
+    """
+    lines = text.splitlines()
+    for i, line in enumerate(lines):
+        if "วันที่ผ่านมา" in line:
+            for cand in lines[i + 1:i + 6]:
+                tok = cand.strip().replace(",", "")
+                if tok.isdigit():
+                    return int(tok)
+    return "UNKNOWN"
+
+
+def measure_facebook(desk: Desk) -> dict:
+    """The Page numbers, read as the Page (never as the person).
+
+    Followers come from the Page profile line ("ผู้ติดตาม N คน"). Views come from
+    the Page-scoped views dashboard. The identity switch is the whole point: the
+    insights route serves the *acting* account's numbers, so without the switch
+    it reported the person's figures (0-49) and the Page's real reach (861 in 28
+    days, 99.9% from non-followers) was invisible.
+    """
+    # Land on the Page first: the insights route answers "Not Found" when it is
+    # the first URL of a fresh tab, and the switch needs the Page open anyway.
+    desk.goto(FB_PAGE, settle=12)
     profile = desk.text()
     if _fb_signed_out(profile):
         return {"reachable": False, "note": "not signed in"}
     followers = _followers(profile)
 
-    desk.goto(FB_INSIGHTS, settle=16)
+    if not _acting_as_page(profile) and not _switch_to_page(desk):
+        return {
+            "reachable": True,
+            "views_28d": "UNKNOWN",
+            "followers": followers,
+            "note": "could not switch to the Page identity; numbers withheld",
+            "raw": profile[:600],
+        }
+
+    desk.goto(FB_INSIGHTS, settle=14)
     t = desk.text()
     if "Not Found" in t[:200]:
         return {
@@ -215,7 +298,7 @@ def measure_facebook(desk: Desk) -> dict:
         }
     return {
         "reachable": True,
-        "views_28d": _first_int(t, ["ยอดดู", "views"]),
+        "views_28d": _fb_page_views(t),
         "followers": followers,
         "raw": t[:600],
     }

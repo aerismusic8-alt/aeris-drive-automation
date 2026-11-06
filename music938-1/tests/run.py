@@ -1208,6 +1208,25 @@ def test_social_stats_parser() -> None:
     check("a real login wall is caught",
           social_stats._fb_signed_out("เข้าสู่ระบบ\nลืมบัญชีใช่ไหม\nสมัคร"))
 
+    # The insights route serves the *acting* account's numbers, so the reader
+    # must switch to the Page first. Reading it as the person reported the
+    # person's figures and made the Page look dead (0 views) for four days.
+    check("the profile dashboard is not the Page identity",
+          not social_stats._acting_as_page("สถานะโปรไฟล์\nAeris-Ak Akath\nสลับไปใช้เพจ"))
+    check("the switch banner means still the person",
+          not social_stats._acting_as_page("AERIS Music\nสลับไปใช้เพจ\nผู้ติดตาม 1 คน"))
+    check("the Page dashboard is the Page identity",
+          social_stats._acting_as_page("AERIS Music\nแดชบอร์ดครีเอเตอร์\nการวิเคราะห์"))
+
+    # The views dashboard prints the tab labels before the total, so the total
+    # must come from the "28 วันที่ผ่านมา" range line, not the first "ยอดดู".
+    dash = ("ยอดดูทั้งหมด\nReels\nโพสต์\nสตอรี่\n"
+            "28 วันที่ผ่านมา: 9 ต.ค. - 5 พ.ย.\n861\n100%\nยอดดู\n71\n")
+    check("the Page views total is read, not the label row",
+          social_stats._fb_page_views(dash) == 861)
+    check("a dashboard with no range line is UNKNOWN",
+          social_stats._fb_page_views("ยอดดู\n0\n") == "UNKNOWN")
+
     # The report must render UNKNOWN for an unreadable surface, never a blank.
     md = social_stats.render({
         "facebook": {"reachable": False, "note": "not signed in"},
