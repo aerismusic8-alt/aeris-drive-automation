@@ -658,7 +658,7 @@ def release_one(item: dict, args) -> int:
         print(f"today's uploads are done: {used}/{UPLOADS_PER_DAY} already "
               f"made this Pacific day. This is the 6/day cadence, not a quota "
               f"wall — videos.insert has its own 100/day bucket. Try after "
-              f"07:00 UTC.",
+              f"09:00 UTC.",
               file=sys.stderr)
         return 3
     if kind == "affiliate":

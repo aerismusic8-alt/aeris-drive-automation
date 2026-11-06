@@ -19,15 +19,21 @@ name: AX Music Daily Release (Actions fallback)
 
 on:
   schedule:
-    # 07:00 UTC is when the YouTube Data API quota resets for the Pacific day, so
-    # the 6 daily uploads fit.
+    # The daily quotas reset at midnight *Pacific*, and the first tick has to sit
+    # after that reset in both halves of the year. Midnight PT is 07:00 UTC under
+    # PDT (Mar-Nov) and 08:00 UTC under PST (Nov-Mar), so a `07:00` tick runs an
+    # hour *before* the reset for half the year — on 2026-11-06 that is exactly
+    # what happened: the 14:43 UTC run found the 10,000-unit pool already gone,
+    # so all six uploads landed without a thumbnail or a playlist slot while the
+    # uploads themselves succeeded on their separate 100/day bucket. 09:00 UTC is
+    # clear of both offsets.
     #
     # Three ticks, not one. GitHub drops a scheduled run when the queue is busy
     # and a once-a-day cron gets a single chance, so one dropped tick lost the
     # whole day — the 07:00 run did not fire for the first two days of this job's
     # life. Later ticks are free: `release.py --next` returns 3 ("today's uploads
     # are done") once the batch is up, so a retry can never double-upload.
-    - cron: '0 7,13,19 * * *'
+    - cron: '0 9,15,21 * * *'
   workflow_dispatch:
     inputs:
       count:

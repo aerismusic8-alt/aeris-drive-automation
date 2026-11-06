@@ -86,7 +86,7 @@ def main() -> int:
         f"- วิดีโอทั้งหมด: {videos}",
         "",
         "## ระบบที่รันอัตโนมัติ (GitHub Actions, ไม่ใช้ sandbox)",
-        "- `ax-music-release` 07:00Z — ปล่อย 6 คลิป/วัน (ตั้งเวลา public กระจาย)",
+        "- `ax-music-release` 09:00Z — ปล่อย 6 คลิป/วัน (ตั้งเวลา public กระจาย)",
         "- `ax-rail-watchdog` ทุกชั่วโมง — เฝ้า 4 ช่อง + เตือน ntfy",
         "- `ax-music-dashboard` 07:20Z — เขียนหน้านี้ + รายงาน",
         "",
