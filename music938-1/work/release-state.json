@@ -386,7 +386,9 @@
    "video_id": "1T3kibOPyXM",
    "at": "2026-11-06T14:43:33+00:00",
    "public": true,
-   "replaces": "-6RdLKwxykk"
+   "replaces": "-6RdLKwxykk",
+   "thumb_ok": false,
+   "playlist_ok": false
   },
   {
    "slug": "03-khit-thueng-thoe-thuk-khuen",
@@ -395,7 +397,9 @@
    "video_id": "mgYLmXTMOy0",
    "at": "2026-11-06T14:43:51+00:00",
    "public": true,
-   "replaces": "iLwzR8A_1uw"
+   "replaces": "iLwzR8A_1uw",
+   "thumb_ok": false,
+   "playlist_ok": false
   },
   {
    "slug": "04-saeng-chao-wan-mai",
@@ -404,7 +408,9 @@
    "video_id": "Lrtqy9ULvbY",
    "at": "2026-11-06T14:44:01+00:00",
    "public": true,
-   "replaces": "FsO5qmneeEQ"
+   "replaces": "FsO5qmneeEQ",
+   "thumb_ok": false,
+   "playlist_ok": false
   },
   {
    "slug": "04-saeng-chao-wan-mai",
@@ -413,7 +419,9 @@
    "video_id": "0mkw4cUA9mM",
    "at": "2026-11-06T14:44:19+00:00",
    "public": true,
-   "replaces": "STQsMvhb0yk"
+   "replaces": "STQsMvhb0yk",
+   "thumb_ok": false,
+   "playlist_ok": false
   },
   {
    "slug": "06-doen-khon-diao",
