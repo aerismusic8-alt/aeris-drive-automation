@@ -32,12 +32,24 @@ TIKTOK_URL = "https://www.tiktok.com/@aeris.music4"
 TIKTOK_BIO = ("🎵 เพลงไทยเพราะๆ ใหม่ทุกวัน\n"
               "🛒 ลิงก์พันธมิตร: https://s.shopee.co.th/60SrsstoP6")
 FACEBOOK_ID = "61595890900382"
-# The Page's own intro. Short, viewer-focused, one CTA — the same voice as the
-# YouTube description so the brand reads as one thing across surfaces.
-FACEBOOK_BIO = ("🎵 เพลงไทยเพื่อชีวิต · เพลงเศร้า · คาราโอเกะ\n"
-                "เพลงใหม่ทุกวัน ร้องตามได้ 🎤\n"
+# The Page's own intro. A four-advisor panel (2026-11-06) said the intro must
+# answer "what do I get if I follow?" in the first line, so the benefit leads and
+# the follow ask closes it. Same voice as the YouTube description.
+FACEBOOK_BIO = ("🎵 เพลงไทยฟังเพลิน ร้องตามได้ 🎶\n"
+                "เพลงเศร้า · เพื่อชีวิต · ลูกทุ่ง · คาราโอเกะ เพลงใหม่เรื่อย ๆ\n"
+                "กดติดตามไว้ ไม่พลาดเพลงต่อไปครับ ❤️\n"
                 "▶️ ฟังเต็มที่ YouTube: @aerismusicth\n"
                 "🛒 ของน่าซื้อ (ลิงก์พันธมิตร): https://s.shopee.co.th/2qVq75ACtW")
+# The pinned "front door". A stranger who lands on the Page reads this before any
+# Reel, so it names the four things the Page posts and asks for the follow. The
+# first line is the whole pitch; the rest is scannable on a phone.
+WELCOME_POST = ("❤️ ยินดีต้อนรับสู่ AERIS Music\n"
+                "เพลงไทยหลากหลายอารมณ์ เพลงใหม่มาลงเรื่อย ๆ\n"
+                "🎵 เพลงเศร้า สำหรับวันที่คิดถึงใครบางคน\n"
+                "🎸 เพื่อชีวิต สำหรับวันที่ต้องการพลัง\n"
+                "🌾 ลูกทุ่ง กลิ่นอายบ้านเรา\n"
+                "🎤 คาราโอเกะ สำหรับคนที่อยากร้องตาม\n"
+                "กดติดตามเพจไว้ ไม่พลาดเพลงใหม่ครับ ❤️")
 # The AERIS Music *Page* (resolves to /people/AERIS-Music/61595890900382/), the
 # same Page crosspost.py posts Reels to. Do not point this at 61596276533369 —
 # that is K's personal profile ("Aeris-Ak Akath"), which cannot be branded and is
@@ -332,6 +344,118 @@ def facebook() -> int:
     return 0
 
 
+def bio() -> int:
+    """Set only the Page intro — no image upload, so it is safe to re-run.
+
+    The four-advisor panel (2026-11-06) ranked the Page's own copy the #1
+    view->follow fix, and `facebook()` re-uploads the cover and avatar every time,
+    which is too heavy for a copy change. This drives the About tab alone.
+    """
+    from playwright.sync_api import sync_playwright
+    with sync_playwright() as p:
+        br, ctx = B.connect(p)
+        pg = ctx.new_page()
+        pg.set_viewport_size({"width": 1440, "height": 1000})
+        pg.goto(f"https://www.facebook.com/profile.php?id={FACEBOOK_ID}",
+                wait_until="domcontentloaded", timeout=60000)
+        pg.wait_for_timeout(6000)
+        if B.looks_signed_out(pg.inner_text("body")[:4000]):
+            print("facebook: not signed in")
+            pg.close()
+            return 1
+        if not _fb_switch_to_page(pg):
+            print("facebook: could not switch into the Page")
+            _shot(pg, "fb-switch-failed")
+            pg.close()
+            return 1
+        pg.goto(f"https://www.facebook.com/profile.php?id={FACEBOOK_ID}&sk=about",
+                wait_until="domcontentloaded", timeout=60000)
+        pg.wait_for_timeout(6000)
+        _js_click(pg, "แก้ไขคำอธิบายตัวเอง|แก้ไขรายละเอียด|edit.*intro|edit details")
+        pg.wait_for_timeout(3500)
+        print("facebook intro:", "set" if _set_bio(pg, FACEBOOK_BIO) else "NOT found")
+        pg.wait_for_timeout(800)
+        _js_click(pg, "^บันทึก$|^save$")
+        pg.wait_for_timeout(4000)
+        _shot(pg, "fb-bio")
+        pg.close()
+    return 0
+
+
+def welcome() -> int:
+    """Post the pinned front door, then pin it. Safe to re-run.
+
+    Three things this encodes, each found the hard way:
+      * `document.execCommand('insertText')` does NOT stick on the Page composer
+        (only 1 character lands); the CDP `Input.insertText` does.
+      * The composer is two steps: caption -> "ถัดไป" -> "โพสต์".
+      * A pinned post's action menu offers "เลิกปักหมุดโพสต์" (unpin), so if that
+        item is already present the post is pinned and there is nothing to do.
+    """
+    from playwright.sync_api import sync_playwright
+    with sync_playwright() as p:
+        br, ctx = B.connect(p)
+        pg = ctx.new_page()
+        pg.set_viewport_size({"width": 1440, "height": 1100})
+        pg.goto(f"https://www.facebook.com/profile.php?id={FACEBOOK_ID}",
+                wait_until="domcontentloaded", timeout=60000)
+        pg.wait_for_timeout(11000)
+        if B.looks_signed_out(pg.inner_text("body")[:4000]):
+            print("facebook: not signed in")
+            pg.close()
+            return 1
+        if not _fb_switch_to_page(pg):
+            print("facebook: could not switch into the Page")
+            pg.close()
+            return 1
+
+        already = pg.evaluate("""() => {
+          const a=[...document.querySelectorAll('[role=article]')]
+            .find(x=>/ยินดีต้อนรับสู่ AERIS Music/.test(x.innerText||''));
+          return a ? 'found' : 'missing';
+        }""")
+        if already == "missing":
+            pg.evaluate("""() => {const el=[...document.querySelectorAll('[role=button],div[tabindex]')]
+              .find(e=>/กำลังคิดอะไรอยู่/i.test(e.innerText||'')); if(el) el.click();}""")
+            pg.wait_for_timeout(4500)
+            pg.locator('[role=dialog] [contenteditable=true]').first.click()
+            pg.wait_for_timeout(800)
+            ctx.new_cdp_session(pg).send("Input.insertText", {"text": WELCOME_POST})
+            pg.wait_for_timeout(1200)
+            pg.evaluate("""() => {const d=document.querySelector('[role=dialog]');
+              const b=[...d.querySelectorAll('[role=button]')].find(x=>/^ถัดไป$/.test((x.innerText||'').trim()));
+              if(b)b.click();}""")
+            pg.wait_for_timeout(5000)
+            pg.evaluate("""() => {const d=document.querySelector('[role=dialog]');
+              const b=[...d.querySelectorAll('[role=button]')].find(x=>/^โพสต์$/.test((x.innerText||'').trim()));
+              if(b)b.click();}""")
+            pg.wait_for_timeout(9000)
+            print("welcome post: created")
+
+        # Pin it if it is not already pinned. The menu is opened on the post
+        # itself; a pinned post's menu carries "เลิกปักหมุดโพสต์".
+        state = pg.evaluate("""() => {
+          const a=[...document.querySelectorAll('[role=article]')]
+            .find(x=>/ยินดีต้อนรับสู่ AERIS Music/.test(x.innerText||''));
+          const b=a&&[...a.querySelectorAll('[aria-label]')]
+            .find(e=>/การดำเนินการสำหรับโพสต์นี้/.test(e.getAttribute('aria-label')||''));
+          if(!b) return 'no-menu';
+          b.click(); return 'opened';
+        }""")
+        pg.wait_for_timeout(3000)
+        items = pg.evaluate("""() => [...document.querySelectorAll('[role=menuitem]')].map(m=>(m.innerText||'').trim())""")
+        if any(i.startswith("เลิกปักหมุด") for i in items):
+            print("welcome pin: already pinned")
+        else:
+            pg.evaluate("""() => {const it=[...document.querySelectorAll('[role=menuitem]')]
+              .find(m=>/^ปักหมุดโพสต์$/.test((m.innerText||'').trim())); if(it)it.click();}""")
+            pg.wait_for_timeout(3000)
+            print("welcome pin: pinned")
+        _shot(pg, "fb-welcome")
+        pg.close()
+    return 0
+
+
 def status() -> int:
     from playwright.sync_api import sync_playwright
     with sync_playwright() as p:
@@ -349,7 +473,7 @@ def status() -> int:
 
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__)
-    ap.add_argument("target", nargs="?", choices=["tiktok", "facebook", "status"], default="status")
+    ap.add_argument("target", nargs="?", choices=["tiktok", "facebook", "bio", "welcome", "status"], default="status")
     args = ap.parse_args()
     if args.target == "status":
         return status()
@@ -357,6 +481,10 @@ def main() -> int:
         return tiktok()
     if args.target == "facebook":
         return facebook()
+    if args.target == "bio":
+        return bio()
+    if args.target == "welcome":
+        return welcome()
     print("unknown target", file=sys.stderr)
     return 1
 

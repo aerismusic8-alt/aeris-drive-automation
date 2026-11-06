@@ -1564,6 +1564,20 @@ def test_profile_setup() -> None:
     for name, bio in (("TikTok", profile_setup.TIKTOK_BIO),
                       ("Facebook", profile_setup.FACEBOOK_BIO)):
         check(f"{name} bio discloses the affiliate link", "ลิงก์พันธมิตร" in bio)
+    # The bio must answer "what do I get if I follow?" (the four-advisor panel's
+    # #1 fix) and the pinned welcome post must carry the same follow ask.
+    check("Facebook bio leads with the benefit, not the brand",
+          profile_setup.FACEBOOK_BIO.splitlines()[0].startswith("🎵"))
+    check("Facebook bio asks for the follow",
+          "กดติดตาม" in profile_setup.FACEBOOK_BIO)
+    check("welcome post names the four content types",
+          all(k in profile_setup.WELCOME_POST for k in ("เพลงเศร้า", "เพื่อชีวิต", "ลูกทุ่ง", "คาราโอเกะ")))
+    check("welcome post asks for the follow", "กดติดตามเพจ" in profile_setup.WELCOME_POST)
+    # The Page composer drops execCommand input (1 char lands); only the CDP
+    # Input.insertText works, so the welcome path must use it.
+    psrc = (ROOT / "scripts" / "profile_setup.py").read_text()
+    check("welcome post types via CDP insertText", "Input.insertText" in psrc)
+    check("welcome path is idempotent (detects an existing pin)", "เลิกปักหมุด" in psrc)
 
 
 def test_login_vault() -> None:
