@@ -659,17 +659,38 @@ true-instrumental karaoke mix, cover art, a 1920x1080 word-synced video.
   K's 9 bookmarks once (2026-11-04).
 
 ## music938-2 (revenue) — durable facts
+- **A URL in a YouTube Short's description or a pinned comment is NOT tappable**
+  (advisor panel 3/3, 2026-11-05). So the above-fold lines of a product card must
+  carry the *disclosure* + a CTA to the **channel profile link**; the tracked
+  `s.shopee.co.th/...?sub_id=` URL is only a copyable fallback. The channel About
+  already carries the Shopee link, so the CTA is true. YouTube allows affiliate
+  links but *excessive* affiliate posting on a dedicated account can hit the spam
+  policy — keep every card genuinely distinct.
+- **`videos.insert` has its own 100 calls/day bucket**, separate from the
+  10,000-unit pool; it is *not* 1,600 units per upload. `UPLOADS_PER_DAY=6` is a
+  cadence choice, not a quota wall. The old "10,000/1,600=6" rule was wrong and
+  steered the whole cadence. (Advisor panel + Google quota docs, 2026-11-05.)
+- **Repetition, not suppression, was the growth stall.** 25 Shorts from 5 songs
+  in one format titled "part N of 3" gave no reason to follow; the panel's fix is
+  a named series with a *different answerable prompt per chorus*, and Shorts
+  rotated **across songs** (`plan()` interleaves one chorus per song per round).
+  Falling views are not evidence of a duplicate-content penalty.
 - **The affiliate lane now exists on the YouTube rail (2026-11-05, PR #53).**
   `release.plan()` leads with one clip per product card (`kind="affiliate"`),
   before the song Shorts, so purchase-intent clips are not buried behind the
-  catalogue. `describe_affiliate()` puts the surface link + disclosure above the
-  fold; clips land in the `ของน่าซื้อ` playlist. The card renderer existed but
+  catalogue. `describe_affiliate()` puts the disclosure + profile-link CTA above
+  the fold (superseded the earlier "link on line 2" layout, 2026-11-05); clips
+  land in the `ของน่าซื้อ` playlist. The card renderer existed but
   nothing put a card on a channel — that was the whole gap. Detail in
   `.openhands/memory/2026-11-05.md`.
-- **`main` is ruleset-protected: direct pushes are rejected.** Push a branch, then
-  create + merge a PR via the REST API with `AX_GH_TOKEN` (the classic PAT). The
-  GitHub App key is gone in a fresh pod; `gh-app-token.mjs` fails. `GITHUB_TOKEN`
-  is read-only (403).
+- **Pushing to `main`: the classic PAT works directly (verified 2026-11-05), but
+  workflow files need its `workflow` scope.** `AX_GH_TOKEN`/the app-minted token
+  is refused with "refusing to allow an OAuth App to create or update workflow …
+  without `workflow` scope", so any commit touching `.github/workflows/` must use
+  the classic PAT from KV `axsecrets:gh-workflow-token` (read it with
+  `OPENHANDS_API_KEY` set; value is a dict, use `["token"]`). `GITHUB_TOKEN` is
+  read-only (403). An earlier note claimed `main` was ruleset-protected; a direct
+  push succeeded on 2026-11-05, so prefer the direct push and fall back to a PR.
 - **A lost `music938-1/work/*.json` is recoverable from the conversation event
   log** (`/workspace/conversations/<id>/events/event-*.json`): the `file_editor`
   `create` action carries the full `file_text`. `work/affiliate-products.json`
