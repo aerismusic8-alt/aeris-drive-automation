@@ -872,3 +872,29 @@ true-instrumental karaoke mix, cover art, a 1920x1080 word-synced video.
 - **Advisor-panel gotchas:** Duck.ai needs its tab opened first (else every Duck
   model fails in 0.0 s); `consult10.py --only` wants the full name (`duck-luna`),
   not the `duck` prefix; a dead Gemini tab is normal — the gate needs ≥3 answered.
+
+
+## Convert viewers into followers: send every surface to the Page (2026-11-06)
+- **The leak is view→follow, not reach.** YouTube: 861 views / 28 days, 1 follower.
+  A 4-advisor panel (ChatGPT + duck-luna/mistral/oss) ranked the fixes identically:
+  Page bio → pinned post → Page link above the fold everywhere → promo site as a
+  follow-landing page. All four are now done and verified live.
+- **One CTA, Page first.** `monetize.cta()` leads with the Page link, then the
+  product link. `refresh_description()` also strips the old channel-only CTA line
+  (`_OLD_CTA`), so live videos do not end up with two different follow asks.
+  `apply_monetize.py --apply` rewrote 22 videos + 6 playlists; the Page link now
+  sits at char 96 (above YouTube's "Show more" fold).
+- **The promo site is a landing page, not a link list.** `ops/ar_promo_site.py`
+  renders hero + follow button + "what you get" + socials footer. Deployed to
+  GitHub Pages; verify by grepping the live HTML for `facebook.com`, not by
+  trusting the push.
+- **The Page composer drops `document.execCommand('insertText')`** — exactly one
+  character lands. Use CDP `Input.insertText` (`ctx.new_cdp_session(pg).send(...)`).
+  Composer is two steps: caption → "ถัดไป" → "โพสต์". A pinned post's menu shows
+  "เลิกปักหมุดโพสต์", which is how to *verify* a pin took (the page never shows a
+  pin marker to a logged-out viewer). Scripted as `profile_setup.py welcome`
+  (idempotent) + `grow.py facebook --welcome`.
+- **`profile_setup.py bio`** sets the intro alone (no cover/avatar re-upload);
+  **`apply_brand.py --description-only`** changes the channel description without
+  re-uploading the banner. The channel description must carry the Page *URL*, not
+  the plain text "Facebook: AERIS Music" — plain text is not clickable.
