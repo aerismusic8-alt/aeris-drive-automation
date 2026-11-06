@@ -128,6 +128,22 @@ def test_shopee_clicks_and_fallback():
     assert "2026-11-03T01:00:00Z" in text2  # labelled, not silently stale
 
 
+def test_follow_guard_requires_the_page_identity():
+    """The follow loop must never click Follow while the personal profile acts.
+
+    `_acting_as_page` once tested `"จัดการเพจ" in body`, which is also the
+    personal profile's own left-rail entry, so it returned True while the page
+    was still browsing as the person and every follow was misattributed. The
+    guard must reject the "สลับไปใช้เพจ" switch banner and require a Page-only
+    anchor, and the switch must click through all three steps.
+    """
+    src = (ROOT / "scripts" / "outreach.py").read_text(encoding="utf-8")
+    assert 'if "สลับไปใช้เพจ" in head:' in src
+    assert 'return "แก้ไขรูปภาพหน้าปก" in head' in src
+    assert '"จัดการเพจ" in head' not in src
+    assert "'ใช้เพจ'" in src and "'สลับ'" in src
+
+
 if __name__ == "__main__":
     fns = [v for k, v in sorted(globals().items()) if k.startswith("test_")]
     for fn in fns:

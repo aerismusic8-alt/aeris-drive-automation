@@ -139,47 +139,70 @@ def _click_nth_follow(page, n: int) -> bool:
 
 
 def _acting_as_page(page) -> bool:
-    """True when the header shows the Page management shell.
+    """True when the Page — not the personal profile — is the acting identity.
 
-    Facebook only offers the page-profile menu (จัดการเพจ) while the Page is the
-    acting identity; the personal profile shows the personal rail instead. A
-    follow is only a Page follow when this is true, so it is checked, not
-    assumed — otherwise the follows quietly land on the personal profile.
+    Facebook shows a "สลับไปใช้เพจ ... เพื่อดำเนินการเพิ่มเติม" (switch to the Page
+    for more actions) banner whenever you are browsing the Page **as the personal
+    profile**. While that banner is present a Follow click is attributed to the
+    personal profile and the Page gains nothing.
+
+    The old test was `"จัดการเพจ" in body`, but that string is also the personal
+    profile's left-rail entry for the pages it manages, so it was a false
+    positive: the switch was skipped and every follow landed on the person. The
+    banner's absence is the reliable signal; the Page profile's own edit control
+    is a second, independent anchor.
     """
     try:
-        head = page.inner_text("body")[:600]
+        head = page.inner_text("body")[:1500]
     except Exception:  # noqa: BLE001
         return False
-    return "จัดการเพจ" in head
+    if "สลับไปใช้เพจ" in head:
+        return False
+    return "แก้ไขรูปภาพหน้าปก" in head
 
 
 def _switch_to_page(page) -> bool:
     """Make the Page the acting identity, and prove it stuck.
 
-    The switch is triggered from the Page profile, and it must be done *before*
-    navigating to the follow grid: the grid does not offer the switch, so
-    switching after the navigation is a silent no-op.
+    Three clicks, the same sequence `profile_setup._fb_switch_to_page` proved out:
+    the profile switcher, "สลับ" in its menu, then "ใช้เพจ" in the welcome dialog.
+    The banner click alone does not switch identity — Facebook re-renders the
+    Page-as-visitor view and nothing changes.
     """
     page.goto(f"https://www.facebook.com/{PAGE_ID}",
               wait_until="domcontentloaded", timeout=60000)
     page.wait_for_timeout(7000)
     if _acting_as_page(page):
         return True
-    for label in ("สลับเลย", "สลับ"):
-        try:
-            page.get_by_text(label, exact=True).first.click(timeout=4000)
-            page.wait_for_timeout(6000)
-            if _acting_as_page(page):
-                return True
-        except Exception:  # noqa: BLE001
-            continue
+    page.evaluate("""() => {
+      const b = document.querySelector('div[role=button][aria-label="สลับ"]');
+      if (b) b.click();
+    }""")
+    page.wait_for_timeout(3500)
+    page.evaluate("""() => {
+      for (const m of document.querySelectorAll('div[role=dialog]'))
+        for (const el of m.querySelectorAll('div[role=button],a,span'))
+          if ((el.innerText || '').trim() === 'สลับ') { el.click(); return; }
+    }""")
+    page.wait_for_timeout(9000)
+    page.evaluate("""() => {
+      for (const d of document.querySelectorAll('div[role=dialog]'))
+        for (const el of d.querySelectorAll('div[role=button],a,span'))
+          if ((el.innerText || '').trim() === 'ใช้เพจ') { el.click(); return; }
+    }""")
+    page.wait_for_timeout(5000)
     return _acting_as_page(page)
 
 
 def _page_following_count(page) -> int | None:
-    """Read the Page profile's own 'กำลังติดตาม N' (pages it follows)."""
+    """Read the Page profile's own 'กำลังติดตาม N' (pages it follows).
+
+    Use the `sk=following` tab: the bare profile URL sometimes renders the
+    Page-as-visitor view, where the count is missing and the guard would silently
+    read None and never notice a misattributed follow.
+    """
     try:
-        page.goto(f"https://www.facebook.com/{PAGE_ID}",
+        page.goto(f"https://www.facebook.com/profile.php?id={PAGE_ID}&sk=following",
                   wait_until="domcontentloaded", timeout=60000)
         page.wait_for_timeout(6000)
         import re
