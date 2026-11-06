@@ -51,19 +51,30 @@ def link(surface: str = "") -> str:
 
 
 def cta(surface: str = "youtube") -> str:
-    """A one-line call to action that survives YouTube's "Show more" fold.
+    """The above-the-fold call to action for a description.
 
-    YouTube shows roughly the first two lines of a description before truncating,
-    so the affiliate link has to sit *above* the longer footer, not at its end.
-    Returns "" when no link is configured, so the description degrades cleanly.
+    Two actions, in priority order. First the Page: 861 views / 28 days with one
+    follower meant reach was never the problem, so the fold has to ask for the
+    follow and hand over the link directly. Then the product link, which used to
+    be the whole CTA and earned nothing from the bottom of the description.
+    Returns "" when nothing is configured, so a description degrades cleanly.
     """
+    page = config().get("facebook", "")
     shopee = link(surface)
-    if not shopee:
-        return ""
-    return f"🎧 ฟังเพลิน ๆ แล้วกดติดตามช่องนะครับ · ของน่าซื้อ 👉 {shopee}"
+    lines = []
+    if page:
+        lines.append(f"❤️ กดติดตามเพจ Facebook 👉 {page}")
+    if shopee:
+        lines.append(f"🛒 ของน่าซื้อ 👉 {shopee}")
+    return "\n".join(lines)
 
 
 _S_SHOPEE = re.compile(r"https://s\.shopee\.co\.th/\w+")
+
+# The CTA line the first 22 uploads carry. It asked only for a channel subscribe
+# and buried the Page, so `refresh_description` replaces it rather than leaving a
+# description with two different follow asks.
+_OLD_CTA = re.compile(r"^🎧 ฟังเพลิน ๆ แล้วกดติดตามช่องนะครับ · ของน่าซื้อ 👉 https://\S+$", re.M)
 
 
 def refresh_description(desc: str, surface: str = "youtube") -> str:
@@ -71,14 +82,17 @@ def refresh_description(desc: str, surface: str = "youtube") -> str:
 
     `release.describe` only shapes *new* uploads; the videos already live carry
     the old homepage link at the very bottom. This rewrites one of those: every
-    `s.shopee.co.th` link becomes this surface's current product link, and the
-    CTA is inserted after the first paragraph (before the fold) if it is missing.
-    Idempotent — a description already carrying both changes comes back equal.
+    `s.shopee.co.th` link becomes this surface's current product link, the old
+    channel-only CTA is dropped, and the new Page-first CTA is inserted after the
+    first paragraph (before the fold) if it is missing. Idempotent — a
+    description already carrying both changes comes back equal.
     """
     shopee = link(surface)
     line = cta(surface)
     if shopee:
         desc = _S_SHOPEE.sub(shopee, desc)
+    desc = _OLD_CTA.sub("", desc)
+    desc = re.sub(r"\n{3,}", "\n\n", desc)
     if not line or line in desc:
         return desc
     parts = desc.split("\n\n", 1)

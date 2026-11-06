@@ -99,6 +99,12 @@ PLAY_ICON = ('<svg viewBox="0 0 68 48" fill="#fff"><path d="M66.5 7.7a8.5 8.5 0 
              '6C12.8 48 34 48 34 48s21.2 0 26.5-1.7a8.5 8.5 0 0 0 6-6A89 89 0 0 0 68 24a89 89 0 0 0-1.5-16.3z'
              'M27 34V14l18 10z"/></svg>')
 
+# The Page is the conversion goal. A four-advisor panel (2026-11-06) agreed the
+# site's single job is to turn a visitor into a Page follower, so the first
+# screen leads with the follow button — not with a YouTube subscribe.
+PAGE_URL = "https://www.facebook.com/profile.php?id=61595890900382"
+TIKTOK_URL = "https://www.tiktok.com/@aeris.music4"
+
 
 def render(videos: list[dict], channel_url: str) -> str:
     cards = []
@@ -114,10 +120,10 @@ def render(videos: list[dict], channel_url: str) -> str:
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>AERIS Music — เพลงไทยต้นฉบับ</title>
-<meta name="description" content="AERIS Music — เพลงไทยต้นฉบับ เนื้อเพลงจากใจ ฟังได้ทุกที่">
+<title>AERIS Music — เพลงไทยต้นฉบับ · ติดตามเพจ</title>
+<meta name="description" content="AERIS Music — เพลงไทยต้นฉบับ เพลงเศร้า เพื่อชีวิต ลูกทุ่ง และคาราโอเกะ ติดตามเพจไว้ไม่พลาดเพลงใหม่">
 <meta property="og:title" content="AERIS Music — เพลงไทยต้นฉบับ">
-<meta property="og:description" content="เพลงไทยต้นฉบับ เนื้อเพลงจากใจ ฟังได้ทุกที่">
+<meta property="og:description" content="เพลงไทยหลากหลายอารมณ์ พร้อมเวอร์ชันคาราโอเกะ ติดตามเพจไว้ไม่พลาดเพลงใหม่">
 <meta property="og:type" content="website">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -165,17 +171,27 @@ footer{{border-top:1px solid #1e1e2e;padding:34px 0;color:var(--dim);font-size:.
 <div class="wrap">
   <header>
     <div class="logo">AERIS<span>·</span>MUSIC</div>
-    <a class="btn btn-ghost" href="{channel_url}?sub_confirmation=1" target="_blank" rel="noopener">ติดตามช่อง</a>
+    <a class="btn btn-primary" href="{PAGE_URL}" target="_blank" rel="noopener">ติดตามเพจ</a>
   </header>
   <div class="hero">
     <h1>เพลงไทย<em>ต้นฉบับ</em><br>จากใจถึงใจ</h1>
-    <p>AERIS Music — เพลงไทยที่แต่งและร้องเอง เนื้อเพลงจริงใจ ฟังได้ทุกที่ทุกเวลา</p>
+    <p>เพลงเศร้า · เพื่อชีวิต · ลูกทุ่ง · คาราโอเกะ — เพลงใหม่มาลงเพจเรื่อย ๆ<br>ติดตามเพจไว้ ไม่พลาดเพลงต่อไปครับ 🎶</p>
     <div class="cta">
-      <a class="btn btn-primary" href="{channel_url}?sub_confirmation=1" target="_blank" rel="noopener">สมัครรับชมบน YouTube</a>
-      <a class="btn btn-ghost" href="#music">ฟังเพลง</a>
+      <a class="btn btn-primary" href="{PAGE_URL}" target="_blank" rel="noopener">ติดตาม AERIS Music บน Facebook</a>
+      <a class="btn btn-ghost" href="{channel_url}?sub_confirmation=1" target="_blank" rel="noopener">ฟังบน YouTube</a>
     </div>
   </div>
 </div>
+<section class="wrap">
+  <h2>เพจนี้มีอะไรให้ฟัง</h2>
+  <p class="sub">เพลงไทยหลากหลายอารมณ์ พร้อมเวอร์ชันคาราโอเกะให้ร้องตาม</p>
+  <div class="grid">
+    <div class="card"><div class="body"><div class="t">🎵 เพลงเศร้า</div><p class="sub" style="margin:8px 0 0">สำหรับวันที่คิดถึงใครบางคน</p></div></div>
+    <div class="card"><div class="body"><div class="t">🎸 เพื่อชีวิต / ร็อก</div><p class="sub" style="margin:8px 0 0">สำหรับวันที่ต้องการพลัง</p></div></div>
+    <div class="card"><div class="body"><div class="t">🌾 ลูกทุ่ง</div><p class="sub" style="margin:8px 0 0">กลิ่นอายบ้านเรา</p></div></div>
+    <div class="card"><div class="body"><div class="t">🎤 คาราโอเกะ</div><p class="sub" style="margin:8px 0 0">สำหรับคนที่อยากร้องตาม</p></div></div>
+  </div>
+</section>
 <section id="music" class="wrap">
   <h2>ผลงานล่าสุด</h2>
   <p class="sub">เพลงไทยต้นฉบับจาก AERIS Music</p>
@@ -183,9 +199,16 @@ footer{{border-top:1px solid #1e1e2e;padding:34px 0;color:var(--dim);font-size:.
 {grid}
   </div>
 </section>
+<section class="wrap">
+  <div class="cta" style="justify-content:center">
+    <a class="btn btn-primary" href="{PAGE_URL}" target="_blank" rel="noopener">ติดตาม AERIS Music บน Facebook</a>
+  </div>
+</section>
 <footer>
   <div class="socials">
+    <a href="{PAGE_URL}" target="_blank" rel="noopener">Facebook (เพจหลัก)</a>
     <a href="{channel_url}" target="_blank" rel="noopener">YouTube</a>
+    <a href="{TIKTOK_URL}" target="_blank" rel="noopener">TikTok</a>
   </div>
   <div>© AERIS Music — เพลงไทยต้นฉบับ</div>
 </footer>

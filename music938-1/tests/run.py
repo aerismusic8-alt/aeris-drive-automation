@@ -1422,23 +1422,32 @@ def test_monetize_footer() -> None:
     check("cta carries the youtube surface link",
           per.get("youtube", "") and per["youtube"] in cta)
     check("cta asks for a follow", "กดติดตาม" in cta)
+    page = json.loads((ROOT / "channel" / "monetization.json").read_text(encoding="utf-8")).get("facebook", "")
+    check("cta leads with the Page, not the product link",
+          page and page in cta and cta.index(page) < cta.index(per["youtube"]))
     _t, desc, _tg = release.describe("01-khon-di-thi-chak-pai", "song", "")
     check("cta survives the description fold (within the first 200 chars)",
           per.get("youtube", "") and desc.index(per["youtube"]) < 200,
           f"link at {desc.index(per['youtube'])}")
+    check("the Page link is also above the fold",
+          page and desc.index(page) < 200, f"page at {desc.index(page)}" if page else "no page")
     mint_src = (ROOT.parent / "ops" / "shopee_mint.py").read_text()
     check("mint tool exists for re-pointing the links",
           "custom_link" in mint_src)
 
     # The 20 videos already live carry the old homepage link at the bottom.
-    # `refresh_description` must re-point it and lift the CTA, and be idempotent.
-    old = ("🎵 เพลงเก่า\n\nเพลงผ่อนคลาย\n\n🎧 ฟังเพลิน\n\n"
+    # `refresh_description` must re-point it, drop the old channel-only CTA and
+    # lift the new CTA above the fold, and be idempotent.
+    old = ("🎵 เพลงเก่า\n\nเพลงผ่อนคลาย\n\n"
+           "🎧 ฟังเพลิน ๆ แล้วกดติดตามช่องนะครับ · ของน่าซื้อ 👉 https://s.shopee.co.th/8pn3G4alfI\n\n"
            "🛒 สนับสนุนช่องผ่าน Shopee:\nhttps://s.shopee.co.th/OLDHOME")
     fixed = monetize.refresh_description(old, "youtube")
     check("refresh re-points the old homepage link",
           "OLDHOME" not in fixed and per["youtube"] in fixed)
+    check("refresh drops the old channel-only CTA",
+          "กดติดตามช่องนะครับ" not in fixed)
     check("refresh lifts the cta above the fold",
-          fixed.index(per["youtube"]) < 120, f"{fixed.index(per['youtube'])}")
+          fixed.index(per["youtube"]) < 160, f"{fixed.index(per['youtube'])}")
     check("refresh is idempotent",
           monetize.refresh_description(fixed, "youtube") == fixed)
     monetize.CACHE = None
@@ -1918,6 +1927,32 @@ def test_outreach() -> None:
           outreach._acting_as_page(_FakePage("จัดการเพจ AERIS Music แก้ไขรูปภาพหน้าปก")))
 
 
+def test_promo_site_converts_to_the_page() -> None:
+    """The landing page's job is to turn a visitor into a Page follower.
+
+    It used to be a YouTube hub: the only social link in the footer was YouTube,
+    so the one page we control end to end sent nobody to the Page (verified live
+    2026-11-06 — the deployed HTML had zero facebook.com links). A four-advisor
+    panel ranked this the #3 fix, after the Page profile and a pinned post, but it
+    is the part AR owns outright, so it is pinned here.
+    """
+    section("promo site converts to the Page")
+    sys.path.insert(0, str(ROOT.parent / "ops"))
+    import ar_promo_site as P  # noqa: E402
+
+    html = P.render([{"id": "abc123", "title": "เพลงทดสอบ"}],
+                    "https://www.youtube.com/@aerismusicth")
+    check("links to the Facebook Page", "facebook.com/profile.php?id=" in html)
+    check("has more than one follow link", html.count("facebook.com/profile.php?id=") >= 2)
+    check("the follow button names the Page",
+          "ติดตาม AERIS Music บน Facebook" in html)
+    check("links TikTok too", "tiktok.com/@aeris.music4" in html)
+    check("keeps the YouTube subscribe link", "sub_confirmation=1" in html)
+    check("the first button is the Page, not YouTube",
+          html.index("facebook.com/profile.php?id=") < html.index("sub_confirmation=1"))
+    check("says what a follower gets", "คาราโอเกะ" in html)
+
+
 def main() -> int:
     test_lyrics()
     test_tokenizer()
@@ -1955,6 +1990,7 @@ def main() -> int:
     test_profile_setup()
     test_login_vault()
     test_outreach()
+    test_promo_site_converts_to_the_page()
     test_operator_url()
     test_phone_login()
     test_consult_gate()
