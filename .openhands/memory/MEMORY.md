@@ -615,9 +615,14 @@ true-instrumental karaoke mix, cover art, a 1920x1080 word-synced video.
 ## Flow Music render limits (2026-11-03)
 - **Free tier runs out of credits.** After ~7 songs in a session the compose page
   shows "You're out of credits. Upgrade to continue using Flow Music." and the
-  Generate button becomes **disabled** → `flow_song.py` dies with
-  `Locator.click: Timeout ... element is not enabled`. That is a quota, not a bug.
-  Rule #1 = never pay → render 3-4 per window and wait for the free reset.
+  Generate button becomes **disabled**. That is a quota, not a bug. Rule #1 =
+  never pay → render 3-4 per window and wait for the free reset. **`flow_song.py`
+  now detects the banner in `_wait_composer` and raises `RateLimited` immediately**
+  (2026-11-06), so a spent quota prints `{"status": "RATE_LIMITED", ...}` instead
+  of a 30s-per-song opaque `Locator.click: Timeout ... element is not enabled`.
+  A batch loop should stop on the first `RATE_LIMITED`, not march through the rest.
+  `music938-1/scripts/render_remaining.py --check` also probes it
+  (exit 0 ok / 2 out of credits / 3 logged out).
 - **The desktop Chromium dies on its own; the X server does not.** `bootstrap.py
   --status` then shows `DOWN chromium` / CDP refused. `bootstrap.py` (no flags)
   restarts it and re-restores cookies. A dead Chromium also surfaces as
