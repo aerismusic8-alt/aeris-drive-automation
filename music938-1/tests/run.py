@@ -1876,10 +1876,17 @@ def test_outreach() -> None:
         def inner_text(self, _sel):
             return self._t
 
-    check("acting-as-Page is true on the manage shell",
-          outreach._acting_as_page(_FakePage("จัดการเพจ AERIS Music")))
-    check("acting-as-Page is false on the personal shell",
-          not outreach._acting_as_page(_FakePage("Aeris-Ak Akath ผู้ติดตาม 0 คน")))
+    # The identity probe must not be fooled by the personal profile's own
+    # "จัดการเพจ" rail entry, and must reject the switch banner. It needs the
+    # Page-only edit anchor, which the personal shell never shows.
+    check("acting-as-Page rejects the personal shell that lists จัดการเพจ",
+          not outreach._acting_as_page(
+              _FakePage("จัดการเพจ AERIS Music Aeris-Ak Akath ผู้ติดตาม 0 คน")))
+    check("acting-as-Page rejects the switch-to-Page banner",
+          not outreach._acting_as_page(
+              _FakePage("สลับไปใช้เพจ AERIS Music เพื่อดำเนินการเพิ่มเติม แก้ไขรูปภาพหน้าปก")))
+    check("acting-as-Page is true only on the Page shell",
+          outreach._acting_as_page(_FakePage("จัดการเพจ AERIS Music แก้ไขรูปภาพหน้าปก")))
 
 
 def main() -> int:
