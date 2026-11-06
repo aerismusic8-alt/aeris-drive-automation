@@ -126,7 +126,7 @@ def _grab_image(page) -> bytes:
 
 
 def generate(prompt: str, key: str, *, timeout: float = 420.0, force: bool = False,
-             fresh: bool = False) -> dict:
+             fresh: bool = False, suffix: str | None = None) -> dict:
     existing = library.find("img", key)
     if existing and not force:
         return {"status": "REUSED", "entry": existing}
@@ -151,7 +151,7 @@ def generate(prompt: str, key: str, *, timeout: float = 420.0, force: bool = Fal
 
         box = page.locator("div[contenteditable='true'], textarea").first
         box.click(timeout=15_000)
-        box.type(prompt + IMAGE_PROMPT_SUFFIX, delay=12)
+        box.type(prompt + (IMAGE_PROMPT_SUFFIX if suffix is None else suffix), delay=12)
         page.wait_for_timeout(600)
         page.keyboard.press("Enter")
 

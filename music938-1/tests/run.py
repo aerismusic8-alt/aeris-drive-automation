@@ -774,6 +774,48 @@ def test_thumb_contrast() -> None:
               f"min std={min(sds):.1f}")
 
 
+def test_ai_covers() -> None:
+    """The AI cover path: the model paints, Pillow writes the Thai title.
+
+    The rule that matters is the one the advisor panel gave: never let the image
+    model spell the title, because it gets Thai wrong and the spelling is the one
+    thing a cover must not fumble. So the prompt must *forbid* text and must not
+    contain the title, and the title must instead be composited by PIL.
+    """
+    section("ai covers (prompt forbids text; PIL draws the title)")
+    import ai_covers
+
+    names = [n for n, _ in ai_covers.ART_DIRECTIONS]
+    check("at least 6 art directions", len(names) >= 6, f"have {len(names)}")
+    check("art directions are unique", len(set(names)) == len(names))
+
+    suffix = ai_covers.PROMPT_SUFFIX.lower()
+    for bad in ("no text", "no letters", "no words"):
+        check(f"prompt forbids {bad!r}", bad in suffix)
+    check("prompt asks for 16:9", "16:9" in suffix)
+
+    # Deterministic, and the title is never handed to the model.
+    a = ai_covers._direction("24-yut-mai-yom", None)[0]
+    b = ai_covers._direction("24-yut-mai-yom", None)[0]
+    check("direction is deterministic per slug", a == b, f"{a} != {b}")
+    check("direction is one of the known scenes", a in names)
+    meta = {"mood": "calm", "genre": "lukthung"}
+    prompt = ai_covers._prompt("24-yut-mai-yom", meta, "portal")
+    check("genre reaches the prompt", "lukthung" in prompt)
+    check("Thai title is NOT in the prompt", "หยุด" not in prompt)
+
+    # _compose must produce a real 16:9 frame with Thai text on it.
+    from PIL import Image, ImageDraw, ImageStat
+    bg = Image.new("RGB", (1024, 572), (10, 12, 30))
+    d = ImageDraw.Draw(bg)
+    for x in range(0, 1024, 8):
+        d.line([(x, 0), (x, 572)], fill=(x % 255, 40, 120))
+    out = ai_covers._compose(bg, "หยุดไม่อยู่", kind="song", subtitle="ทดสอบ")
+    check("cover is 1280x720", out.size == (1280, 720), f"{out.size}")
+    sd = ImageStat.Stat(out.convert("L").resize((64, 36))).stddev[0]
+    check("composed cover has contrast", sd >= 21.7, f"std={sd:.1f}")
+
+
 def test_titles() -> None:
     """Release titles must fit the shape the competitor scan says wins.
 
@@ -2077,6 +2119,7 @@ def main() -> int:
     test_arrangement_no_repeat()
     test_song_analysis()
     test_thumb_contrast()
+    test_ai_covers()
     test_titles()
     test_compilation()
     test_flow_extend_kinds()

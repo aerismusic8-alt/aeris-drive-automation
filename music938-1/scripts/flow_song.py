@@ -192,9 +192,34 @@ MAX_EXTENDS = 3
 EXTEND_REST_S = 150
 
 
+def _dismiss_overlays(page):
+    """Close the first-run modals that sit over the composer and eat clicks.
+
+    A freshly signed-in Flow account shows a cookie notice, a Privacy Notice
+    dialog and a Google One "Grant access" banner. They are `<div data-state=open>`
+    overlays with `pointer-events-none`, so a normal Playwright click times out
+    with "…intercepts pointer events" — the click never lands. Clicking through
+    `element.click()` in JS bypasses the hit test, which is what unsticks it.
+    """
+    labels = {"OK, got it", "Got it", "Accept all", "Close", "Dismiss", "Agree"}
+    page.evaluate(
+        """(labels) => {
+            document.querySelectorAll('button').forEach(b => {
+                const t = (b.textContent || '').trim();
+                if (labels.includes(t)) { try { b.click(); } catch (e) {} }
+            });
+            // The Privacy Notice has no labelled button; drop the dialog node.
+            document.querySelectorAll('[role=dialog]').forEach(d => {
+                if ((d.textContent || '').includes('Privacy Notice')) d.remove();
+            });
+        }""", list(labels))
+    page.wait_for_timeout(1200)
+
+
 def _open_compose(page):
     """The compose panel starts collapsed: its textareas have zero width until
     the panel is toggled open, so fill() would time out on a hidden element."""
+    _dismiss_overlays(page)
     ta = page.locator('textarea[aria-label="Lyrics"]').first
     if ta.count() and ta.evaluate("e => e.getBoundingClientRect().width") == 0:
         btn = page.locator('button[aria-label="Toggle compose panel"]').first

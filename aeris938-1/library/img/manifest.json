@@ -238,7 +238,63 @@
       "bytes_written": 1374103,
       "width": 1024,
       "height": 572
+    },
+    {
+      "id": "img-cover-test-24",
+      "kind": "img",
+      "file": "library/img/img-cover-test-24.png",
+      "bytes": 1393291,
+      "sha256": "2724790fde0bb8541ca8f500e77e35c29d42f3754cfd21715f4e4982c6968d97",
+      "created_at": "2026-11-06T16:46:24Z",
+      "source": "gemini-web",
+      "prompt": "สร้างภาพปกอัลบั้มเพลงไทย แนวอาร์ตนูโวสไตล์นีออน ฟิวเจอร์ริสติก สีม่วงอมชมพู ฉากมองจากด้านหลังของนักร้องหญิงผมยาวยืนอยู่หน้าประตูมิติที่เรืองแสง ตัวอักษรไทยขนาดใหญ่กลางภาพเขียนว่า 'หยุดไม่อยม' ตัวหนาเรืองแสง มีอนุภาคแสงลอยรอบๆ องค์ประกอบแนวตั้ง 9:16 ความละเอียดสูง",
+      "provider": "gemini.google.com",
+      "bytes_written": 1393291,
+      "width": 1024,
+      "height": 572
+    },
+    {
+      "id": "img-aicover-02-rak-thi-mai-mi-wan-chop-chrome",
+      "kind": "img",
+      "file": "library/img/img-aicover-02-rak-thi-mai-mi-wan-chop-chrome.png",
+      "bytes": 828186,
+      "sha256": "d8610553b5f9d969c0255ba7e6bba9cbd1467a74a8207bcc3221c23663dc9266",
+      "created_at": "2026-11-06T17:16:14Z",
+      "source": "gemini-web",
+      "prompt": "Album cover artwork for a Thai warm song. Mood: warm. Scene: an impossible liquid-chrome landscape with floating geometric shards and shattered-glass reflections, pastel neon sky, retro-futuristic and dreamlike. | style: surreal, retro-futuristic, premium album art, cinematic lighting, ultra detailed, rich colour grading, high dynamic range, sculptural studio lighting, subtle film grain. composition: exact 16:9 widescreen; one striking central subject placed on the RIGHT third; keep the LEFT third dark, simple and uncluttered as negative space for a title; strong contrast, crisp silhouette, readable as a small thumbnail. absolutely no text, no letters, no words, no numbers, no logo, no watermark, no border.",
+      "provider": "gemini.google.com",
+      "bytes_written": 828186,
+      "width": 1024,
+      "height": 572
+    },
+    {
+      "id": "img-aicover-01-khon-di-thi-chak-pai-temple",
+      "kind": "img",
+      "file": "library/img/img-aicover-01-khon-di-thi-chak-pai-temple.png",
+      "bytes": 914275,
+      "sha256": "5de8a41242aeb0246c647ed2e44d55ea16e84963fdf372dae511b6ab0a1c8c88",
+      "created_at": "2026-11-06T17:18:35Z",
+      "source": "gemini-web",
+      "prompt": "Album cover artwork for a Thai sad song. Mood: sad. Scene: a floating Thai temple of white and gold drifting in a violet nebula, long light beams, volumetric fog, surreal and majestic. | style: surreal, retro-futuristic, premium album art, cinematic lighting, ultra detailed, rich colour grading, high dynamic range, sculptural studio lighting, subtle film grain. composition: exact 16:9 widescreen; one striking central subject placed on the RIGHT third; keep the LEFT third dark, simple and uncluttered as negative space for a title; strong contrast, crisp silhouette, readable as a small thumbnail. absolutely no text, no letters, no words, no numbers, no logo, no watermark, no border.",
+      "provider": "gemini.google.com",
+      "bytes_written": 914275,
+      "width": 1024,
+      "height": 572
+    },
+    {
+      "id": "img-aicover-24-yut-mai-yom-chrome",
+      "kind": "img",
+      "file": "library/img/img-aicover-24-yut-mai-yom-chrome.png",
+      "bytes": 983101,
+      "sha256": "c9ea77d15eb6575ffc6d5496f28cc555ae091d69bcf716baccd08adb0bcd87da",
+      "created_at": "2026-11-06T17:30:36Z",
+      "source": "gemini-web",
+      "prompt": "Album cover artwork for a Thai rock song. Mood: epic. Scene: an impossible liquid-chrome landscape with floating geometric shards and shattered-glass reflections, pastel neon sky, retro-futuristic and dreamlike. | style: surreal, retro-futuristic, premium album art, cinematic lighting, ultra detailed, rich colour grading, high dynamic range, sculptural studio lighting, subtle film grain. composition: exact 16:9 widescreen; one striking central subject placed on the RIGHT third; keep the LEFT third dark, simple and uncluttered as negative space for a title; strong contrast, crisp silhouette, readable as a small thumbnail. absolutely no text, no letters, no words, no numbers, no logo, no watermark, no border.",
+      "provider": "gemini.google.com",
+      "bytes_written": 983101,
+      "width": 1024,
+      "height": 572
     }
   ],
-  "updated_at": "2026-10-27T19:07:34Z"
+  "updated_at": "2026-11-06T17:30:36Z"
 }

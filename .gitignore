@@ -79,3 +79,7 @@ music938-1/library/compilations/*.mp4
 # publish it and never commit it (see scripts/provenance.py).
 music938-1/library/quarantine/
 ops/out/
+
+# Scratch: K's source uploads, extracted frames and preview renders.
+/work/
+music938-1/work/
