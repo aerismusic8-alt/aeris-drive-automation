@@ -861,6 +861,15 @@ true-instrumental karaoke mix, cover art, a 1920x1080 word-synced video.
   **16,000 chars** is rejected by Duck.ai.
 - Detail: `.openhands/memory/2026-11-06.md`.
 
+## Two Google accounts in the desktop (2026-11-06)
+- **The pack spans two Google identities**, and the phone page now says which per
+  surface: `aerismusic8@gmail.com` = music / Drive / YouTube / Gemini / Flow;
+  `kongkeat.p3@gmail.com` (Shopee login `navintas`) = Shopee Affiliate.
+- **`ops/phone_login.py` has a `switch` button** that opens Google's own
+  `AccountChooser` — the agent never types a password, K taps the account and the
+  saved password fills it. `SURFACES` values are now 4-tuples
+  `(label, url, hint, account)`; update any code that unpacked the old 3-tuple.
+
 ## Crosspost rail + session reality (2026-11-05)
 - **A green crosspost run can post nothing.** The rail skipped every signed-out
   surface and still ended `success`; ntfy fires only on `failure()`, so a dead
