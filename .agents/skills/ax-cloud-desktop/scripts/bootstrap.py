@@ -25,6 +25,7 @@ import urllib.request
 from pathlib import Path
 
 STATE = Path(os.environ.get("AERIS_STATE_DIR", "/workspace/ax-tools/aeris938-state"))
+REPO = Path(__file__).resolve().parents[4]  # .agents/skills/ax-cloud-desktop/scripts/ -> repo root
 DISPLAY = ":99"
 SCREEN = "1600x900x24"
 VNC_PORT = 5900
@@ -71,6 +72,38 @@ def install() -> None:
     if need_pip:
         print(f"[+] pip: {need_pip}")
         sh([sys.executable, "-m", "pip", "install", "-q", *need_pip])
+
+
+def ensure_thai_fonts() -> None:
+    """Install a Thai font, or every Thai glyph renders as a tofu box.
+
+    The image ships 117 fonts and none of them covers Thai, so the Facebook UI
+    (which renders in Thai from K's locale) and every Thai caption drew as □□□
+    and K could not read the screen at all. `fc-list :lang=th` is the test.
+
+    The font is copied from the repo (music938-1/fonts/NotoSansThai.ttf), not
+    apt-installed: apt has no working network here, and the copy is instant. It
+    goes to ~/.fonts, which is on the container overlay and is re-created here on
+    every recycle. A running Chromium caches the font list, so this reports
+    `changed` when it had to install, and the caller restarts Chromium.
+    """
+    if sh(["fc-list", ":lang=th"]).stdout.strip():
+        return False
+    src = None
+    for cand in (REPO / "music938-1" / "fonts" / "NotoSansThai.ttf",
+                 Path("/workspace/ax-tools/fonts/NotoSansThai.ttf")):
+        if cand.is_file():
+            src = cand
+            break
+    dest = Path.home() / ".fonts"
+    dest.mkdir(parents=True, exist_ok=True)
+    if src is None:
+        print("[!] no Thai font source found; Thai text will render as boxes")
+        return False
+    shutil.copy2(src, dest / src.name)
+    sh(["fc-cache", "-f", str(dest)])
+    print(f"[+] Thai font installed ({src.name})")
+    return True
 
 
 def ensure_x11_socket() -> None:
@@ -145,6 +178,13 @@ def start() -> None:
     (STATE / "run").mkdir(parents=True, exist_ok=True)
     ensure_x11_socket()
     ensure_pylibs()
+    # Before Chromium, and restart it if the font had to be added: a running
+    # Chromium caches the font list, so a late install would not show up until
+    # the next recycle — which is exactly how K got a screen of tofu boxes.
+    if ensure_thai_fonts() and up(f"remote-debugging-port={CDP_PORT}"):
+        print("[+] restarting chromium to pick up the Thai font")
+        sh(["pkill", "-f", f"remote-debugging-port={CDP_PORT}"])
+        time.sleep(4)
     clear_stale_lock(profile)
 
     if not up(f"Xvfb {DISPLAY}"):
