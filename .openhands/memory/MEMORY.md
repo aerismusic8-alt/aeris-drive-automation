@@ -835,6 +835,27 @@ true-instrumental karaoke mix, cover art, a 1920x1080 word-synced video.
 - **The Turntable tops out well below 100/100 in a day** (83 -> 86 and stopped).
   It is not a route to an unlimited credit top-up; plan ~2 render windows/day.
 
+## The songbook must not sound like one song (music938-1, 2026-11-06)
+- **K's binding rules:** pentatonic core ("ใช้เพนทาโทนิค"); **music must not
+  repeat** ("ดนตรีห้ามซ้ำกัน" — a new genre label is not enough, the arrangement
+  must differ); 5–7 syllables is an **example, not a rule**; rework the catalogue
+  before releasing; upload finished songs to **Google Drive** in per-type folders.
+- **The measured cause was one production template.** 20/22 songs had no
+  `# GENRE:` header → all fell back to one "เพื่อชีวิต" style; 21/22 female voice;
+  tempo 64–96; identical `V-C-V-C-B-C`; hook sung once per chorus. A 9/10 advisor
+  panel agreed and prescribed a genre rotation + spread tempo + varied voice.
+- **`channel/arrangements.json` = 24 signatures (6/genre).** `arrangement.py`
+  `assign()` is **two-pass** (tagged songs first inside their own genre pool, then
+  header-less released songs) — one greedy pass lets a header-less song starve a
+  genre. `--check` fails on a shared id.
+- **`scripts/rework_catalog.py` rewrites headers only** (GENRE/TEMPO/VOICE) on the
+  17 unreleased songs; the 5 released songs are left byte-identical. Never re-tag a
+  live song: its audio cannot be re-rendered, so the metadata would lie.
+- **`consult10.py` only writes `--out` at the end** → one hung advisor loses every
+  earlier answer. Use `run_panel.py` (saves after each answer). A brief over
+  **16,000 chars** is rejected by Duck.ai.
+- Detail: `.openhands/memory/2026-11-06.md`.
+
 ## Crosspost rail + session reality (2026-11-05)
 - **A green crosspost run can post nothing.** The rail skipped every signed-out
   surface and still ended `success`; ntfy fires only on `failure()`, so a dead
