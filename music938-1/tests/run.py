@@ -1141,6 +1141,16 @@ def test_crosspost_pace_and_captions() -> None:
     check("5 Page posts in a day hit the daily cap",
           not crosspost.pace_ok(page_burst, "facebook", now)[0])
 
+    # Facebook is capped lower than the other surfaces while its first Reels are
+    # still being tested, so 2 Page posts in a day is already over its cap even
+    # though TikTok would still be allowed.
+    two_pages = {"posted": {f"facebook-page:s{i}": {"at": at(1800 + i * 90)}
+                            for i in range(crosspost.FACEBOOK_DAILY_CAP)}}
+    check("Facebook posts a day fewer than TikTok",
+          crosspost.FACEBOOK_DAILY_CAP < crosspost.DAILY_CAP)
+    check("Page posts at the Facebook cap are held back",
+          not crosspost.pace_ok(two_pages, "facebook", now)[0])
+
     # The post URL must come from the platform's own list, never `page.url`.
     src = (ROOT / "scripts" / "crosspost.py").read_text()
     check("a post-list reader exists", "def newest_post_url(" in src)

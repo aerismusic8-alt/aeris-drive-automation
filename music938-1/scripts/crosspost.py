@@ -297,6 +297,17 @@ def pending(queue: list[dict], state: dict, platform: str | None) -> list[dict]:
 MIN_GAP_SECONDS = 20 * 60
 DAILY_CAP = 4
 
+# The Facebook Page is still being judged by the recommender, and 4 near-identical
+# Reels a day both risk reading as repetitive and make it impossible to tell which
+# edit earned its reach. A 10-advisor panel (2026-11-06) said the same thing: post
+# fewer, more distinct clips and read each one's insights. Facebook is the only
+# surface capped lower until the first Reels show they are being tested.
+FACEBOOK_DAILY_CAP = 2
+
+
+def _daily_cap(platform: str) -> int:
+    return FACEBOOK_DAILY_CAP if platform == "facebook" else DAILY_CAP
+
 
 def _posted_times(state: dict, platform: str) -> list[float]:
     """Epoch seconds of every successful post on `platform`, from the state file.
@@ -339,8 +350,9 @@ def pace_ok(state: dict, platform: str, now: float | None = None) -> tuple[bool,
             wait = int(MIN_GAP_SECONDS - since)
             return False, f"last post {int(since)}s ago; wait {wait}s"
     day = [t for t in times if now - t < 86400]
-    if len(day) >= DAILY_CAP:
-        return False, f"{len(day)} posts in the last 24h (cap {DAILY_CAP})"
+    cap = _daily_cap(platform)
+    if len(day) >= cap:
+        return False, f"{len(day)} posts in the last 24h (cap {cap})"
     return True, "ok"
 
 
