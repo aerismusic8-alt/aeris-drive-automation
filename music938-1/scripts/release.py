@@ -510,7 +510,7 @@ def add_to_playlist(playlist_id: str, video_id: str, ch: str) -> bool:
 
 
 def plan(days: int, shorts: bool = False, spread: float = 0,
-         kind: str | None = None) -> list[dict]:
+         kind: str | None = None, slug: str | None = None) -> list[dict]:
     """Pair each built song with its karaoke into a dated release list.
 
     Shorts are discovery, not catalogue: a zero-subscriber channel gets no
@@ -539,23 +539,26 @@ def plan(days: int, shorts: bool = False, spread: float = 0,
     # and gave a viewer no reason to follow. With 10 songs pending, a round of
     # h1 is ten distinct songs on ten days, not one song three times a day.
     groups: list[list[dict]] = []
-    for slug in all_slugs():
-        if not has_song(slug):
+    # `song`, not `slug`: the function also takes a `slug` argument to select one
+    # song, and a loop variable of the same name clobbered it, so --slug silently
+    # filtered on the last song in the list and matched nothing.
+    for song in all_slugs():
+        if not has_song(song):
             continue
-        if is_retired(slug):
+        if is_retired(song):
             # A rebuilt song is the rejected engine; it must not be uploaded.
-            print(f"skip {slug}: rebuilt by the retired Piper engine "
+            print(f"skip {song}: rebuilt by the retired Piper engine "
                   f"(see scripts/provenance.py)", file=sys.stderr)
             continue
-        group = [{"slug": slug, "kind": "short", "video": v, "variant": v.stem}
-                 for v in short_files(slug, "song")]
+        group = [{"slug": song, "kind": "short", "video": v, "variant": v.stem}
+                 for v in short_files(song, "song")]
         # The main release only. The sing-along (karaoke) variant is retired
         # (K, 2026-11-03): its lyric sweep was estimated, not measured, and
         # drifted off the sung line, so it was ordered dropped. Already-live
         # karaoke videos stay up; nothing new is planned.
-        if not shorts and has_video(slug, "song"):
-            group.append({"slug": slug, "kind": "song",
-                          "video": KARAOKE / f"song-{slug}.mp4", "variant": ""})
+        if not shorts and has_video(song, "song"):
+            group.append({"slug": song, "kind": "song",
+                          "video": KARAOKE / f"song-{song}.mp4", "variant": ""})
         if group:
             groups.append(group)
     depth = max((len(g) for g in groups), default=0)
@@ -570,6 +573,8 @@ def plan(days: int, shorts: bool = False, spread: float = 0,
         # several uploads deep. Filtering keeps the cadence intact and just
         # chooses which pending item goes next.
         todo = [i for i in todo if i["kind"] == kind]
+    if slug:
+        todo = [i for i in todo if i["slug"] == slug]
     start = datetime.now(timezone.utc)
     for i, item in enumerate(todo):
         if spread:
@@ -743,6 +748,7 @@ def main() -> int:
                     help="plan Shorts only (the discovery-first queue)")
     ap.add_argument("--kind", choices=("song", "short", "affiliate"),
                     help="release only this kind (e.g. the long-form song clips)")
+    ap.add_argument("--slug", help="release only this song (one specific upload)")
     ap.add_argument("--ch", default="ch3")
     ap.add_argument("--public", action="store_true",
                     help="publish publicly; without it the upload stays private for K")
@@ -754,7 +760,8 @@ def main() -> int:
     ap.add_argument("--dry-run", action="store_true")
     args = ap.parse_args()
 
-    todo = plan(args.days, shorts=args.shorts, spread=args.spread, kind=args.kind)
+    todo = plan(args.days, shorts=args.shorts, spread=args.spread, kind=args.kind,
+                slug=args.slug)
     progress(args.progress_file, f"plan: {len(todo)} pending")
     if args.plan or not args.next:
         if not todo:

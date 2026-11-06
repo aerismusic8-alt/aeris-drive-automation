@@ -419,6 +419,21 @@ def test_plan_rotates_songs() -> None:
     check("no two consecutive Shorts are the same song", not consecutive,
           f"repeats: {sorted(set(consecutive))}")
 
+    # --kind / --slug select the pending queue. A loop variable named `slug`
+    # shadowed the `slug` argument and filtered on the last song in the list, so
+    # `--slug X` returned nothing at all. Assert the selectors match what they
+    # claim to, not just that they run.
+    songs = release.plan(0, kind="song")
+    check("kind=song returns only song items",
+          songs and all(i["kind"] == "song" for i in songs), f"{len(songs)} items")
+    if songs:
+        one = release.plan(0, kind="song", slug=songs[0]["slug"])
+        check("slug selects exactly that one song",
+              len(one) == 1 and one[0]["slug"] == songs[0]["slug"],
+              f"got {[i['slug'] for i in one]}")
+        check("a slug that is not pending returns nothing",
+              release.plan(0, kind="song", slug="no-such-song") == [])
+
 
 
 
