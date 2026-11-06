@@ -60,7 +60,18 @@ def thumb_for(entry: dict) -> Path:
     names = []
     if entry.get("variant"):
         names.append(f"thumb-{entry['variant']}.png")
-    names += [f"thumb-{kind}-{slug}.png", f"cover-{slug}.jpg"]
+    names.append(f"thumb-{kind}-{slug}.png")
+    if kind == "short":
+        # A Short's vertical art is stored under the song slug, not the variant:
+        # `thumb-short-song-<slug>.png` is the base frame the variants derive
+        # from, and it is what the upload used before the variants existed.
+        names.append(f"thumb-short-song-{slug}.png")
+    else:
+        # The square cover is the last resort for a song or karaoke, whose art is
+        # 16:9. It is deliberately NOT a Short fallback: a square image on a
+        # vertical Short is the wrong shape, so a Short with no vertical art is
+        # reported as missing instead of being quietly given a cover.
+        names.append(f"cover-{slug}.jpg")
     for name in names:
         p = release.THUMBS / name
         if p.exists():
