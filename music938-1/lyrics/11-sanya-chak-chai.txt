@@ -1,11 +1,10 @@
 # TITLE: สัญญาจากใจ
 # SUBTITLE: เพลงที่ 11 · เพลงไทยเพื่อชีวิต
+# GENRE: indie
 # KEY: G
 # MOOD: hopeful
-# TEMPO: 80
+# TEMPO: 84
 # VOICE: female
-
-
 [verse]
 ฟ้าค่ำคืนนี้มืดมน
 แต่ใจคนไม่หวั่นไหว

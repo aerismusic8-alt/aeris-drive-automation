@@ -1,11 +1,10 @@
 # TITLE: ความฝันที่ยังไม่ตาย
 # SUBTITLE: เพลงที่ 16 · เพลงไทยเพื่อชีวิต
+# GENRE: lukthung
 # KEY: G
 # MOOD: epic
-# TEMPO: 94
+# TEMPO: 144
 # VOICE: female
-
-
 [verse]
 ทางไกลที่เดินก้าวไป
 ยังมีความหวังนำทาง

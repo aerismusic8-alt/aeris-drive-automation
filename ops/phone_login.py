@@ -47,6 +47,8 @@ SURFACES = {
                "กดปุ๊บเข้าได้เลย"),
     "facebook": ("Facebook Page", "https://www.facebook.com/",
                  "แตะช่องรหัสผ่าน 1 ครั้ง แล้วเลือกรหัสที่บันทึกไว้"),
+    "drive": ("Google Drive — โฟลเดอร์เพลง", "https://drive.google.com/drive/my-drive",
+              "ใช้บัญชี aerismusic8@gmail.com (แตะรหัสที่บันทึกไว้ 1 ครั้ง)"),
     "shopee": ("Shopee Affiliate", "https://affiliate.shopee.co.th/dashboard",
                "ต้องสไลด์รูปภาพให้ตรงก่อน"),
     "google": ("Google (ใช้เมื่อข้างบนหลุด)", "https://accounts.google.com/",

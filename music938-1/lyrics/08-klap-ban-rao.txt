@@ -1,11 +1,10 @@
 # TITLE: กลับบ้านเรา
 # SUBTITLE: เพลงที่ 8 · เพลงไทยเพื่อชีวิต
+# GENRE: lukthung
 # KEY: F
 # MOOD: warm
-# TEMPO: 78
+# TEMPO: 120
 # VOICE: female
-
-
 [verse]
 แสงไฟที่ส่องนำทาง
 พาใจย้อนมาเจอหน้ากัน

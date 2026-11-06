@@ -1,11 +1,10 @@
 # TITLE: คืนที่ไม่มีดาว
 # SUBTITLE: เพลงที่ 12 · เพลงไทยเพื่อชีวิต
+# GENRE: pop
 # KEY: Dm
 # MOOD: mystic
-# TEMPO: 68
-# VOICE: female
-
-
+# TEMPO: 108
+# VOICE: male
 [verse]
 ความมืดมิดปิดรอบกาย
 ลมหนาวพัดผ่านเข้ามา

@@ -1,11 +1,10 @@
 # TITLE: ลมหนาวกับความคิดถึง
 # SUBTITLE: เพลงที่ 19 · เพลงไทยเพื่อชีวิต
+# GENRE: lukthung
 # KEY: Em
 # MOOD: mystic
-# TEMPO: 70
+# TEMPO: 136
 # VOICE: female
-
-
 [verse]
 ลมพัดโชยมาพาหนาว
 ใจฉันร้าวรานเหลือเกิน

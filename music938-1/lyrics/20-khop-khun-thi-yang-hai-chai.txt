@@ -1,11 +1,10 @@
 # TITLE: ขอบคุณที่ยังหายใจ
 # SUBTITLE: เพลงที่ 20 · เพลงไทยเพื่อชีวิต
+# GENRE: rock
 # KEY: C
 # MOOD: hopeful
-# TEMPO: 78
-# VOICE: female
-
-
+# TEMPO: 130
+# VOICE: male
 [verse]
 วันคืนที่พ้นลับลา
 ความเจ็บช้าผ่านเข้ามา

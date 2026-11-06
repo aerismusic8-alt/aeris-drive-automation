@@ -1,11 +1,10 @@
 # TITLE: คนที่ฉันเคยรัก
 # SUBTITLE: เพลงที่ 18 · เพลงไทยเพื่อชีวิต
+# GENRE: indie
 # KEY: Bm
 # MOOD: sad
-# TEMPO: 68
-# VOICE: female
-
-
+# TEMPO: 80
+# VOICE: male
 [verse]
 เดินผ่านร้านเดิมที่คุ้น
 ภาพวันนั้นยังชัดเจน

@@ -1,11 +1,10 @@
 # TITLE: ถนนสายเก่า
 # SUBTITLE: เพลงที่ 15 · เพลงไทยเพื่อชีวิต
+# GENRE: rock
 # KEY: Am
 # MOOD: calm
-# TEMPO: 72
-# VOICE: female
-
-
+# TEMPO: 152
+# VOICE: male
 [verse]
 เดินย่างก้าวบนเส้นทาง
 ที่มีร่องรอยความหลัง

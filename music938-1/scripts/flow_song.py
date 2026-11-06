@@ -99,15 +99,43 @@ def parse_lyric(path: Path) -> dict:
     return {"meta": meta, "lyrics": body}
 
 
+def _dedupe_clauses(text: str) -> str:
+    """Drop a clause that is repeated verbatim.
+
+    A genre style and an arrangement both name the drum groove, so the joined
+    prompt can say "driving straight eighth-note drums" twice. Flow reads it
+    fine, but a duplicated clause is noise, so keep the first.
+    """
+    seen: set[str] = set()
+    out: list[str] = []
+    for part in text.split(", "):
+        k = part.strip().lower().rstrip(".")
+        if k and k not in seen:
+            seen.add(k)
+            out.append(part.strip())
+    return ", ".join(out)
+
+
 def style_for(meta: dict, slug: str = "") -> str:
     """The Flow Music style prompt for a song.
 
     A `# GENRE:` header wins, so the catalogue can grow past the original Thai
     moods without adding a branch here; a song without one uses its mood, which
     keeps the first 20 unchanged.
+
+    Two of K's rules (2026-11-06) are appended here so no song can miss them:
+    a pentatonic melody ("ใช้เพนทาโทนิค") and this song's own arrangement
+    ("ดนตรีห้ามซ้ำกัน"), both from `scripts/arrangement.py`.
     """
     mood = (meta.get("mood") or "").lower()
     base = genres.style_for(slug, mood, STYLE.get(mood, STYLE["sad"]))
+    if slug:
+        try:
+            import arrangement  # noqa: PLC0415
+            base = f"{base}, {arrangement.suffix(slug, meta)}"
+        except Exception:  # noqa: BLE001 — a missing plan must not block a render
+            pass
+    base = _dedupe_clauses(base)
     key = meta.get("key")
     return f"{base}. Key of {key}." if key else base
 

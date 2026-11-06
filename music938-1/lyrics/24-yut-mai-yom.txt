@@ -1,11 +1,9 @@
 # TITLE: ยืนหยัดไม่ยอม
 # GENRE: rock
+# KEY: Em
 # MOOD: epic
 # TEMPO: 160
-# KEY: Em
 # VOICE: male
-
-
 [verse]
 ฟ้าจะกดฉันลงก็ไม่กลัว
 ฟาดฝันจนตัวล้มยังลุกไหว

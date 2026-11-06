@@ -1,11 +1,10 @@
 # TITLE: เดินคนเดียว
 # SUBTITLE: เพลงที่ 6 · เพลงไทยเพื่อชีวิต
+# GENRE: indie
 # KEY: Am
 # MOOD: mystic
-# TEMPO: 70
-# VOICE: female
-
-
+# TEMPO: 96
+# VOICE: male
 [verse]
 เงาจันทร์ที่ทาบพื้นดิน
 เดินผ่านคืนนี้เงียบงัน

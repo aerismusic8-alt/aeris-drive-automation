@@ -666,6 +666,83 @@ def test_genres() -> None:
     check("a mood-only song gets no genre brief", "แนวนำทาง" not in plain)
 
 
+def test_arrangement_no_repeat() -> None:
+    section("arrangement (WIRING: 'ดนตรีห้ามซ้ำกัน' + pentatonic)")
+    import arrangement as A
+    import flow_song as F
+
+    cat = A.slugs()
+    # K, 2026-11-06: no two songs may share the same music. Every song gets its
+    # own signature and the check must pass, or two songs ship identical.
+    used: dict[str, list[str]] = {}
+    for s in cat:
+        used.setdefault(A.signature_for(s, cat)["id"], []).append(s)
+    dupes = {k: v for k, v in used.items() if len(v) > 1}
+    check("every song has its own arrangement", not dupes, str(dupes))
+
+    # The arrangement must be coherent with the genre: a rock song must never be
+    # handed a khaen loop, which is what a global round-robin produced.
+    for s in cat:
+        g = (A.header(s).get("genre") or "").lower()
+        if not g:
+            continue
+        a = A.signature_for(s, cat)
+        check(f"{s}: arrangement matches its genre", a.get("genre") == g,
+              f"{g} -> {a.get('genre')}")
+
+    # Every arrangement needs all three parts or the Flow prompt is thin.
+    for a in A.signatures():
+        check(f"{a['id']}: has instruments", bool(a.get("instruments")))
+        check(f"{a['id']}: has groove", bool(a.get("groove")))
+        check(f"{a['id']}: has mix", bool(a.get("mix")))
+    ids = [a["id"] for a in A.signatures()]
+    check("arrangement ids are unique", len(ids) == len(set(ids)))
+
+    # Pentatonic: every song resolves to a scale and it reaches the style prompt.
+    for s in cat:
+        scale = A.scale_for(s)
+        check(f"{s}: has a pentatonic scale", scale in A.PENTATONIC)
+        style = F.style_for(F.parse_lyric(ROOT / "lyrics" / f"{s}.txt")["meta"], s)
+        check(f"{s}: style asks for pentatonic", "pentatonic" in style.lower())
+        a = A.signature_for(s, cat)
+        # The mix phrase is always appended and never collides with a genre
+        # style, so it proves the song's own arrangement reached the prompt.
+        check(f"{s}: style carries its arrangement", a["mix"].lower() in style.lower())
+    # A mood-only song (no genre) still gets a scale from its mood.
+    check("sad -> minor pentatonic", A.scale_for("01-khon-di-thi-chak-pai") == "minor")
+    check("hopeful -> major pentatonic",
+          A.scale_for("04-saeng-chao-wan-mai") == "major")
+    # The dedupe must not leave a doubled clause in the prompt.
+    style = F.style_for(F.parse_lyric(ROOT / "lyrics" / "24-yut-mai-yom.txt")["meta"],
+                        "24-yut-mai-yom")
+    parts = [p.strip().lower() for p in style.split(", ")]
+    check("no duplicated clause in the style prompt",
+          len(parts) == len(set(parts)), str([p for p in parts if parts.count(p) > 1]))
+
+
+def test_song_analysis() -> None:
+    section("song analysis (WIRING: the measured songbook)")
+    import analyze_songs as S
+
+    rows = [S.analyse(S.parse(p)) for p in sorted((ROOT / "lyrics").glob("*.txt"))]
+    check("analysis covers the catalogue", len(rows) >= 20, str(len(rows)))
+    for r in rows:
+        check(f"{r['slug']}: has a structure", bool(r["structure"]))
+        check(f"{r['slug']}: hook measured", bool(r["hook"]))
+        check(f"{r['slug']}: syllable count is sane", 3 <= r["syl_mean"] <= 12,
+              f"{r['syl_mean']}")
+    # The measured problem K is reacting to: the old catalogue had no genre tag,
+    # so the fix must show up as genre coverage, not as a claim in a doc. The five
+    # already-released songs keep their original headerless form (their audio
+    # cannot be re-rendered), so the bar is the 17 unreleased songs.
+    import rework_catalog as R
+    pending = [r for r in rows if r["slug"] not in R.RELEASED]
+    tagged = [r for r in pending if r["genre"] != "(none)"]
+    check("every unreleased song is genre-tagged", len(tagged) == len(pending),
+          f"{len(tagged)}/{len(pending)} tagged")
+    check("the unreleased catalogue is 17 songs", len(pending) == 17, str(len(pending)))
+
+
 def test_thumb_contrast() -> None:
     """A thumbnail must not be flat.
 
@@ -1987,6 +2064,8 @@ def main() -> int:
     test_shorts()
     test_provenance()
     test_genres()
+    test_arrangement_no_repeat()
+    test_song_analysis()
     test_thumb_contrast()
     test_titles()
     test_compilation()

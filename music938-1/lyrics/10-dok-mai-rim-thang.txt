@@ -1,11 +1,10 @@
 # TITLE: ดอกไม้ริมทาง
 # SUBTITLE: เพลงที่ 10 · เพลงไทยเพื่อชีวิต
+# GENRE: rock
 # KEY: D
 # MOOD: calm
-# TEMPO: 74
-# VOICE: female
-
-
+# TEMPO: 116
+# VOICE: male
 [verse]
 เดินผ่านทางเปลี่ยวเดียวดาย
 มองเห็นมุมหนึ่งข้างทาง

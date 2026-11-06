@@ -1,11 +1,10 @@
 # TITLE: เพลงของคนเหนื่อย
 # SUBTITLE: เพลงที่ 9 · เพลงไทยเพื่อชีวิต
+# GENRE: pop
 # KEY: Am
 # MOOD: epic
-# TEMPO: 90
-# VOICE: female
-
-
+# TEMPO: 124
+# VOICE: male
 [verse]
 วันและคืนช่างโหดร้าย
 แบกความฝันไว้จนล้า

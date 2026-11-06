@@ -62,7 +62,16 @@
       "tagline": "ร็อกไทย กระแทกใจ ปลุกพลังในตัวคุณ",
       "style": "Thai fast-paced rock, driving straight eighth-note drums, energetic double-time feel, tight bass and drums, aggressive distorted electric guitars, urgent fast vocal phrasing, anthemic chorus, gritty lead vocal singing in Thai",
       "hashtags": ["เพลงร็อก", "ร็อกไทย", "เพลงมันส์"],
-      "planned": 4
+      "planned": 6
+    },
+    {
+      "id": "pop",
+      "name_th": "ป็อป",
+      "name_en": "Pop",
+      "tagline": "ป็อปไทย ฟังง่าย ติดหู ฟังได้ทุกวัน",
+      "style": "Thai pop, bright piano or synth hook, steady 4/4 beat, clap on 2 and 4, memorable singable chorus, clear lead vocal singing in Thai",
+      "hashtags": ["เพลงป็อป", "ป็อปไทย", "เพลงใหม่"],
+      "planned": 6
     },
     {
       "id": "indie",
@@ -71,7 +80,7 @@
       "tagline": "อินดี้ อบอุ่น จริงใจ ฟังได้ทุกวัน",
       "style": "Thai indie folk, fingerpicked guitar, brush drums, intimate close-mic lead vocal singing in Thai",
       "hashtags": ["indie", "เพลงอินดี้", "เพลงฟังสบาย"],
-      "planned": 4
+      "planned": 6
     },
     {
       "id": "edm",

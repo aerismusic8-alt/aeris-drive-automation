@@ -1,11 +1,10 @@
 # TITLE: วันที่ฟ้าเป็นใจ
 # SUBTITLE: เพลงที่ 17 · เพลงไทยเพื่อชีวิต
+# GENRE: pop
 # KEY: D
 # MOOD: hopeful
-# TEMPO: 84
-# VOICE: female
-
-
+# TEMPO: 128
+# VOICE: male
 [verse]
 ลมหนาวพัดผ่านเข้ามา
 พาน้ำตาให้จางหาย

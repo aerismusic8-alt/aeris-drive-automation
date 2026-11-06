@@ -1,11 +1,10 @@
 # TITLE: เพลงกล่อมของแม่
 # SUBTITLE: เพลงที่ 14 · เพลงไทยเพื่อชีวิต
+# GENRE: indie
 # KEY: C
 # MOOD: warm
-# TEMPO: 64
+# TEMPO: 76
 # VOICE: female
-
-
 [verse]
 แสงดาวพร่างพราวฟากฟ้า
 ลูกรักนิทราหลับใหล

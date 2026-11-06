@@ -1,11 +1,10 @@
 # TITLE: รักที่จากไป
 # SUBTITLE: เพลงที่ 13 · เพลงไทยเพื่อชีวิต
+# GENRE: lukthung
 # KEY: Em
 # MOOD: sad
-# TEMPO: 66
+# TEMPO: 132
 # VOICE: female
-
-
 [verse]
 ลมหนาวพัดผ่านเข้ามา
 น้ำตาไหลรินรดใจ

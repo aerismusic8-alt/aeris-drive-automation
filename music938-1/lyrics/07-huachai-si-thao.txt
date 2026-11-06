@@ -1,11 +1,10 @@
 # TITLE: หัวใจสีเทา
 # SUBTITLE: เพลงที่ 7 · เพลงไทยเพื่อชีวิต
+# GENRE: rock
 # KEY: Bm
 # MOOD: sad
-# TEMPO: 68
-# VOICE: female
-
-
+# TEMPO: 138
+# VOICE: male
 [verse]
 มองฟ้าที่ไร้แสงดาว
 ความเหงายังคอยกัดกิน

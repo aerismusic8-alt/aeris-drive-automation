@@ -1,11 +1,9 @@
 # TITLE: สาวนาคอยพี่
 # GENRE: lukthung
-# MOOD: hopeful
-# TEMPO: 96
 # KEY: Am
+# MOOD: hopeful
+# TEMPO: 112
 # VOICE: female
-
-
 [verse]
 ลมหนาวพัดผ่านคันนาบ้านเรา
 พี่จากบ้านไปตั้งแต่หน้าฝน
