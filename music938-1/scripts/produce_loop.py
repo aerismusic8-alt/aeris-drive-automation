@@ -71,6 +71,18 @@ THEMES = [
     ("country", "ชีวิตชนบทที่สงบ", "ทุ่งนากับแสงเช้า", "calm", "thung-na-kap-saeng-chao"),
 ]
 
+# Each theme yields several songs before the pool runs dry. The variant is a
+# distinct angle on the same theme, not a repeat: 12 themes x 5 variants = 60
+# songs, which is months at one per 4h, and the slug stays readable because the
+# variant only touches the title.
+VARIANTS = [
+    ("", "variation 0"),
+    ("อีกครั้ง", "variation 1"),
+    ("ในฝัน", "variation 2"),
+    ("ยามเช้า", "variation 3"),
+    ("ยามค่ำ", "variation 4"),
+]
+
 MOOD_KEY = {"sad": "Am", "calm": "C", "warm": "G", "hopeful": "D",
             "mystic": "Em", "epic": "Am"}
 MOOD_TEMPO = {"sad": "68", "calm": "72", "warm": "78", "hopeful": "96",
@@ -101,19 +113,27 @@ def save_queue(q: dict) -> None:
     QUEUE.write_text(json.dumps(q, ensure_ascii=False, indent=2), encoding="utf-8")
 
 
-def pick_theme(used: set[str]) -> tuple[str, str, str, str, str] | None:
-    """The first theme not yet attempted. `used` is the titles already in the log."""
-    for theme in THEMES:
-        if theme[2] in used:
-            continue
-        return theme
+def pick_theme(used: set[str]) -> tuple[str, str, str, str, str, str] | None:
+    """The first (theme, variant) not yet attempted.
+
+    `used` holds the titles already in the log. A theme with no variant left is
+    skipped rather than repeated, so the pool never runs dry at 12 songs.
+    """
+    for genre, angle, title, mood, slug_word in THEMES:
+        for suffix, label in VARIANTS:
+            full = f"{title}{suffix}"
+            if full in used:
+                continue
+            return genre, angle, full, mood, slug_word, suffix
     return None
 
 
-def make_one(theme: tuple[str, str, str, str, str], *, flow: bool) -> dict:
-    genre, angle, title, mood, slug_word = theme
+def make_one(theme: tuple[str, str, str, str, str, str], *, flow: bool) -> dict:
+    genre, angle, title, mood, slug_word, suffix = theme
     n = next_number()
     slug = f"{n:02d}-{slug_word or _slugify(title)}"
+    if suffix:  # keep the slug unique without romanising the Thai variant
+        slug += f"-v{n:02d}"
     meta = {"TITLE": title, "SUBTITLE": f"เพลงที่ {n} · {G.by_id().get(genre, {}).get('name_th', genre)}",
             "GENRE": genre, "MOOD": mood, "TEMPO": MOOD_TEMPO.get(mood, "80"),
             "KEY": MOOD_KEY.get(mood, "C"), "VOICE": "female"}
@@ -143,30 +163,39 @@ def make_one(theme: tuple[str, str, str, str, str], *, flow: bool) -> dict:
                     "--only", slug], cwd=ROOT, capture_output=True, text=True)
 
     rec = {"slug": slug, "title": title, "genre": genre, "mood": mood,
-           "result": "lyric", "flow": False}
-    # Keyless master first, so the song exists even if Flow is down.
-    r = subprocess.run([sys.executable, str(ROOT / "scripts" / "flow_song.py"),
-                        slug, "--offline", "--force"],
-                       cwd=ROOT, capture_output=True, text=True, timeout=900)
-    rec["offline_rc"] = r.returncode
-    print(f"  keyless master: rc={r.returncode} {(r.stdout or r.stderr or '').strip()[-120:]}", flush=True)
+           "result": "lyric", "flow": False, "audio": "none"}
 
+    # A Flow render is a real sung take; the ffmpeg synth is a bed. Try Flow
+    # first — the desktop is signed in nearly all the time — and keep the synth
+    # only as the fallback, so a share pack never ships a bed as a song while the
+    # real rail is available. K noticed a "song" that was a bed (2026-11-07):
+    # the loop was synth-only, so nothing it published was ever a real song.
     if flow:
         r2 = subprocess.run([sys.executable, str(ROOT / "scripts" / "flow_song.py"),
                              slug, "--force"],
-                            cwd=ROOT, capture_output=True, text=True, timeout=1500)
+                            cwd=ROOT, capture_output=True, text=True, timeout=1800)
         rec["flow_rc"] = r2.returncode
         rec["flow"] = r2.returncode == 0
-        print(f"  flow render: rc={r2.returncode} (kept the keyless master either way)", flush=True)
+        if rec["flow"]:
+            rec["audio"] = "flow"
+        print(f"  flow render: rc={r2.returncode} "
+              f"{(r2.stdout or r2.stderr or '').strip()[-160:]}", flush=True)
 
-    # The synth master has no vocal, so it doubles as the instrumental bed a
-    # clip with narration wants. A Flow render does have a vocal, so it must not
-    # be filed as karaoke.
-    song = ROOT / "library" / "songs" / f"song-{slug}.mp3"
-    if song.exists() and not rec["flow"]:
-        import shutil
-        shutil.copyfile(song, ROOT / "library" / "songs" / f"karaoke-{slug}.mp3")
-        rec["instrumental"] = True
+    if not rec["flow"]:
+        # Keyless master, so the song still exists when Flow is down. It is a bed,
+        # and it is labelled as one.
+        r = subprocess.run([sys.executable, str(ROOT / "scripts" / "flow_song.py"),
+                            slug, "--offline", "--force"],
+                           cwd=ROOT, capture_output=True, text=True, timeout=900)
+        rec["offline_rc"] = r.returncode
+        rec["audio"] = "synth-bed" if r.returncode == 0 else "none"
+        print(f"  keyless master: rc={r.returncode} "
+              f"{(r.stdout or r.stderr or '').strip()[-120:]}", flush=True)
+
+    # flow_song --offline already writes `karaoke-<slug>.mp3` beside the master
+    # (the synth bed has no vocal, so it *is* the instrumental). A Flow render has
+    # a vocal, so its karaoke is a separate stem and must not be overwritten.
+    rec["instrumental"] = (ROOT / "library" / "songs" / f"karaoke-{slug}.mp3").exists()
     return rec
 
 
@@ -196,8 +225,10 @@ def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__,
                                  formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--count", type=int, default=1, help="songs to produce this run")
-    ap.add_argument("--flow", action="store_true",
-                    help="also attempt a Flow Music vocal render (needs the session)")
+    ap.add_argument("--flow", dest="flow", action="store_true", default=True,
+                    help="render a real vocal with Flow Music first (the default)")
+    ap.add_argument("--no-flow", dest="flow", action="store_false",
+                    help="synth bed only; use when the desktop is not signed in")
     ap.add_argument("--push", action="store_true",
                     help="publish the new media to the public media-938 release")
     ap.add_argument("--pack-only", action="store_true",
@@ -233,7 +264,10 @@ def main() -> int:
 
     print(json.dumps({"produced": [m["slug"] for m in made],
                       "total_made": q["made"]}, ensure_ascii=False))
-    return 0 if made or not made else 0
+    # The first CI run produced nothing (every drafter failed) and still exited 0,
+    # so the workflow went green and no song appeared. A requested song that was
+    # not produced is a failure the caller must see.
+    return 0 if made else 1
 
 
 if __name__ == "__main__":

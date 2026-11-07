@@ -40,7 +40,85 @@
       "mood": "calm thai folk, khamen sai, warm, slow, instrumental",
       "duration_seconds": 179.952,
       "note": "real song generated in Google Flow Music; loops to fill the episode"
+    },
+    {
+      "id": "music-share-bed-calm",
+      "kind": "music",
+      "file": "library/music/music-share-bed-calm.mp3",
+      "bytes": 2890413,
+      "sha256": "43b4ca09e4c65cfefe628bc474997334c6a395aa11ee6eea5bed61223cd706e7",
+      "created_at": "2026-11-07T19:23:22Z",
+      "source": "ffmpeg-synth",
+      "mood": "calm",
+      "duration_seconds": 120.0,
+      "bpm": 60,
+      "integrated_lufs": -20.0
+    },
+    {
+      "id": "music-share-bed-warm",
+      "kind": "music",
+      "file": "library/music/music-share-bed-warm.mp3",
+      "bytes": 2890413,
+      "sha256": "0cde35cc58793d5f39c9c4fd55f96c7ba48cd9501a58f1984b92a44d33f12df9",
+      "created_at": "2026-11-07T19:23:25Z",
+      "source": "ffmpeg-synth",
+      "mood": "warm",
+      "duration_seconds": 120.0,
+      "bpm": 66,
+      "integrated_lufs": -20.0
+    },
+    {
+      "id": "music-share-bed-sad",
+      "kind": "music",
+      "file": "library/music/music-share-bed-sad.mp3",
+      "bytes": 2890413,
+      "sha256": "ddc3550e9d4470d1d7e27c386d7ca921454a88e04218784f11abda4352c34d10",
+      "created_at": "2026-11-07T19:23:28Z",
+      "source": "ffmpeg-synth",
+      "mood": "sad",
+      "duration_seconds": 120.0,
+      "bpm": 52,
+      "integrated_lufs": -20.0
+    },
+    {
+      "id": "music-share-bed-hopeful",
+      "kind": "music",
+      "file": "library/music/music-share-bed-hopeful.mp3",
+      "bytes": 2890413,
+      "sha256": "6e73f61057ccf063eb1c184a0287909a02d26a2d2cd4df2213b2014d5c0e880e",
+      "created_at": "2026-11-07T19:23:30Z",
+      "source": "ffmpeg-synth",
+      "mood": "hopeful",
+      "duration_seconds": 120.0,
+      "bpm": 72,
+      "integrated_lufs": -20.0
+    },
+    {
+      "id": "music-share-bed-mystic",
+      "kind": "music",
+      "file": "library/music/music-share-bed-mystic.mp3",
+      "bytes": 2890413,
+      "sha256": "6d506691a247346222a2d5fd22e746fa076e5fdb47bd3875064841294f408c96",
+      "created_at": "2026-11-07T19:23:33Z",
+      "source": "ffmpeg-synth",
+      "mood": "mystic",
+      "duration_seconds": 120.0,
+      "bpm": 48,
+      "integrated_lufs": -20.0
+    },
+    {
+      "id": "music-share-bed-epic",
+      "kind": "music",
+      "file": "library/music/music-share-bed-epic.mp3",
+      "bytes": 2890413,
+      "sha256": "2781a4c40272c20f19f9feb2fd5861cc46c300cd6b44266695fce788bec65def",
+      "created_at": "2026-11-07T19:23:36Z",
+      "source": "ffmpeg-synth",
+      "mood": "epic",
+      "duration_seconds": 120.0,
+      "bpm": 84,
+      "integrated_lufs": -20.1
     }
   ],
-  "updated_at": "2026-10-28T06:21:12Z"
+  "updated_at": "2026-11-07T19:23:36Z"
 }

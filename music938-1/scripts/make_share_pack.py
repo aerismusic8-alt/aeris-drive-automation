@@ -125,6 +125,30 @@ def release_song_names(tok: str = "") -> list[str]:
                   if re.match(r"song-.*\.mp3$", a["name"]))
 
 
+def _audio_provenance(slug: str) -> dict:
+    """Did a real singer render this, or is it the ffmpeg synth bed?
+
+    The discriminator is the one `provenance.py` already trusts: the synth bed is
+    one mono signal copied into both channels, so its two channels are
+    bit-identical over a stretch of audio. A real stereo mix never is. Presence of
+    a `clipmeta` file would be easier but wrong — the older Flow renders have no
+    clipmeta and are still real songs. Without this the catalogue called a bed a
+    song and a consumer could not tell them apart; K heard the difference first
+    (2026-11-07).
+    """
+    path = SONGS / f"song-{slug}.mp3"
+    if not path.exists():
+        return {"audio": "unknown", "has_vocals": None}
+    try:
+        import provenance  # noqa: PLC0415
+        mono = bool(provenance.signature(path).get("mono_duplicated"))
+    except Exception:  # noqa: BLE001 - a missing ffmpeg must not break the pack
+        mono = None
+    if mono is None:
+        return {"audio": "unknown", "has_vocals": None}
+    return {"audio": "synth-bed" if mono else "flow", "has_vocals": not mono}
+
+
 def catalogue(extra_songs: list[str] | None = None) -> list[dict]:
     manifest = {}
     mpath = SONGS / "manifest.json"
@@ -160,6 +184,7 @@ def catalogue(extra_songs: list[str] | None = None) -> list[dict]:
             "has_instrumental": (SONGS / f"karaoke-{slug}.mp3").exists(),
             "lyrics": f"../music938-1/lyrics/{slug}.txt",
         }
+        row.update(_audio_provenance(slug))
         cover = COVERS / f"cover-{slug[3:]}.jpg"
         if cover.exists():
             row["cover"] = f"covers/{cover.name}"
@@ -203,6 +228,11 @@ PROMPT_TH = """คุณคือผู้ช่วยทำคลิปวิ�
 อ่าน catalog.json ก่อน แล้วเลือกเพลงตามอารมณ์ของคลิป โดยดู 2 ค่า:
 - mood / mood_th  = อารมณ์ (sad=เศร้า, calm=สงบ, warm=อบอุ่น, hopeful=มีหวัง, mystic=ลึกลับ, epic=ยิ่งใหญ่)
 - tempo_bpm       = จังหวะ (ต่ำกว่า 70 = ช้า/เศร้า, 70-100 = กลาง, 100+ = เร็ว/ตื่นเต้น)
+
+ทุกเพลงใน songs/ เป็นเพลงร้องจริง (audio="flow", มีร้อง) ตรวจสอบได้จากฟิลด์:
+- audio = "flow" (เพลงร้องจริง) หรือ "synth-bed" (ดนตรีบรรเลงล้วน)
+- has_vocals = true/false — ถ้า true ใช้เป็นเพลงเปิด มีเสียงร้อง, ถ้า false ใช้เป็นดนตรีประกอบที่มีคนพูดทับ
+ถ้าคลิปมีเสียงบรรยาย ต้องใช้เฉพาะรายการ has_vocals=false หรือไฟล์ใน beds/ เท่านั้น อย่าเอาเพลงร้องไปทับเสียงพูด
 
 กติกาการใช้:
 1. ใช้ได้ฟรีทั้งหมด (CC0) รวมงานขาย ใส่เครดิต "AERIS Music (youtube.com/@aerismusicth)" ไม่บังคับแต่ขอบคุณ
@@ -256,11 +286,12 @@ def main() -> int:
                     "credit": "AERIS Music (youtube.com/@aerismusicth)",
                     "songs": rows, "beds": beds},
                    ensure_ascii=False, indent=2), encoding="utf-8")
-    csv = ["id,title,mood,tempo_bpm,key,duration_seconds,url,instrumental_url"]
+    csv = ["id,title,mood,audio,has_vocals,tempo_bpm,key,duration_seconds,url,instrumental_url"]
     for r in rows:
         csv.append(",".join(str(r.get(k, "")) for k in
-                            ("id", "title", "mood", "tempo_bpm", "key",
-                             "duration_seconds", "url", "instrumental_url")))
+                            ("id", "title", "mood", "audio", "has_vocals",
+                             "tempo_bpm", "key", "duration_seconds", "url",
+                             "instrumental_url")))
     (OUT / "catalog.csv").write_text("\n".join(csv) + "\n", encoding="utf-8")
     (OUT / "LICENSE.txt").write_text(LICENSE, encoding="utf-8")
     (OUT / "PROMPT-TH.md").write_text(PROMPT_TH, encoding="utf-8")

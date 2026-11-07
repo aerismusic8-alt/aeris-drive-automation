@@ -11,29 +11,46 @@ Same call shape as `duck_ask.ask`, so `ops/consult.py` can treat it as a vendor.
 from __future__ import annotations
 
 import json
+import time
+import urllib.error
+
 import urllib.request
 
-ENDPOINT = "https://text.pollinations.ai/openai"
-# gpt-oss-20b is the model Pollinations serves to anonymous callers; naming a
-# bigger one just returns an error rather than a different model.
-DEFAULT_MODEL = "openai-fast"
+# POST the root with the OpenAI `messages` shape: it answers with bare text and
+# has no URL length limit. The GET form is easier but a song prompt is long
+# enough to 404, and POST /openai 400s for an anonymous caller. Measured
+# 2026-11-07.
+ENDPOINT = "https://text.pollinations.ai/"
+# One reply per ~45s per IP is the free tier's real limit. Waiting it out is
+# cheaper than dropping the song, because the caller has nothing else to do.
+FREE_LIMIT_WAIT = 48
 
 
-def ask(problem: str, timeout: float = 180.0, model: str = DEFAULT_MODEL) -> str:
-    body = json.dumps({
-        "model": model,
-        "messages": [{"role": "user", "content": problem}],
-    }).encode("utf-8")
+def ask(problem: str, timeout: float = 180.0, model: str = "openai") -> str:
+    # `reasoning_effort: low` is not cosmetic: the default reasoning budget is
+    # spent before the model emits an answer, and a song prompt is long enough to
+    # trigger `output_token_limit_exceeded` (HTTP 400). Measured 2026-11-07.
+    body = {"messages": [{"role": "user", "content": problem}],
+            "reasoning_effort": "low"}
+    if model:
+        body["model"] = model
+    data = json.dumps(body).encode("utf-8")
     req = urllib.request.Request(
-        ENDPOINT, data=body,
+        ENDPOINT, data=data,
         headers={"Content-Type": "application/json",
                  "User-Agent": "aeris-consult/1.0"})
-    with urllib.request.urlopen(req, timeout=timeout) as r:
-        data = json.loads(r.read().decode("utf-8", "ignore"))
-    answer = (data.get("choices") or [{}])[0].get("message", {}).get("content", "")
-    if not answer.strip():
-        raise RuntimeError("empty answer from pollinations")
-    return answer
+    for attempt in range(3):
+        try:
+            with urllib.request.urlopen(req, timeout=timeout) as r:
+                answer = r.read().decode("utf-8", "ignore")
+            if not answer.strip():
+                raise RuntimeError("empty answer from pollinations")
+            return answer
+        except urllib.error.HTTPError as e:
+            if e.code not in (402, 429) or attempt == 2:
+                raise
+            time.sleep(FREE_LIMIT_WAIT)
+    raise RuntimeError("pollinations did not answer")
 
 
 if __name__ == "__main__":

@@ -2351,8 +2351,13 @@ def test_produce_loop() -> None:
     first = pl.pick_theme(set())
     second = pl.pick_theme({first[2]})
     check("the picker skips a title already used", first[2] != second[2])
+    # The pool is themes x variants; it must exhaust (not repeat) only once every
+    # combination is used, so the loop can run for weeks without a duplicate.
+    all_titles = {f"{t[2]}{s}" for t in pl.THEMES for s, _ in pl.VARIANTS}
     check("the picker exhausts rather than repeats",
-          pl.pick_theme({t[2] for t in pl.THEMES}) is None)
+          pl.pick_theme(all_titles) is None)
+    check("the pool is deeper than the theme count",
+          len(all_titles) > len(pl.THEMES))
     # Slugs must be filename-safe and stable (a save/playlist keys off them).
     s1, s2 = pl._slugify("ไฟนีออนกับใจที่ล้า"), pl._slugify("ไฟนีออนกับใจที่ล้า")
     check("a Thai title yields a stable slug", s1 == s2 and s1.isascii())
@@ -2390,6 +2395,15 @@ def test_share_pack() -> None:
           all(r["instrumental"].startswith("music/karaoke-") for r in rows))
     check("the karaoke files actually exist for most songs",
           sum(1 for r in rows if r["has_instrumental"]) >= len(rows) - 2)
+    # A "song" that is really the ffmpeg bed must say so: K was served a bed as a
+    # song and only found out by listening (2026-11-07). Every row carries a
+    # provenance label, and it is derived from the audio, not from a file's name.
+    check("every entry states whether it is a real song or a bed",
+          all(r.get("audio") in ("flow", "synth-bed", "unknown") for r in rows))
+    check("every entry states whether it has vocals",
+          all("has_vocals" in r for r in rows))
+    check("provenance comes from the audio, not a filename",
+          "mono_duplicated" in src or "provenance" in src)
     # A soundtrack picker needs a fast/slow spread, not 22 identical tempos.
     tempos = {r["tempo_bpm"] for r in rows if r["tempo_bpm"]}
     check("the catalog spans more than one tempo", len(tempos) >= 3)

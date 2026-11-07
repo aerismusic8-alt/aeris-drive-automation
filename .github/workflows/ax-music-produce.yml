@@ -11,20 +11,24 @@ name: AX Music Produce (continuous raw material)
 # browser or a credential. So a runner can produce a song on its own. It runs on
 # ubuntu-latest (free minutes on a public repo), not the self-hosted Windows box.
 #
-# The keyless lane only. A Flow Music vocal render needs the signed-in desktop
-# and is never attempted here; the loop treats it as a bonus lane.
+# This lane is beds, not songs. A Flow Music vocal render needs the signed-in
+# desktop, which lives in the sandbox, so it is passed --no-flow and its output is
+# labelled `audio: synth-bed` in the catalogue. Before 2026-11-07 the runner ran
+# the same command as the sandbox and the two were indistinguishable in the pack,
+# so a bed could be shipped as a "song" (K caught it). Real songs come from the
+# sandbox loop; this keeps raw material flowing when the desktop is unavailable.
 #
-# Each run: draft one lyric -> synthesise the master -> draw the cover -> upload
+# Each run: draft one lyric -> synthesise the bed -> draw the cover -> upload
 # the media to the public `media-938` release -> commit the refreshed share
 # catalog. No secret beyond the job's own GITHUB_TOKEN, which is why this can
 # never be blocked by an expired PAT.
 
 on:
   schedule:
-    # Every 4 hours. One song per run is ~6/day, which is more than the release
+    # Every 4 hours. One item per run is ~6/day, which is more than the release
     # rail consumes, so the material always leads demand — but not so fast that
-    # the theme pool (12 themes) empties in two days. GitHub drops a scheduled
-    # run when the queue is busy, so a missed tick costs one song, not the rail.
+    # the theme pool (12 themes x 5 variants) empties in a fortnight. GitHub drops
+    # a scheduled run when the queue is busy, so a missed tick costs one bed.
     - cron: '17 */4 * * *'
   workflow_dispatch:
     inputs:
@@ -53,13 +57,17 @@ jobs:
           sudo apt-get install -y -qq ffmpeg fonts-noto-core
           python3 -m pip install --quiet --disable-pip-version-check Pillow
 
-      - name: Produce the next song (keyless lane)
+      - name: Produce the next bed (no Flow, no login)
         working-directory: music938-1
         env:
           AX_GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           set -euo pipefail
-          python3 scripts/produce_loop.py --count "${{ github.event.inputs.count || '1' }}"
+          # --pack-only rebuilds the share catalog from the release union; the
+          # upload step below then pushes the media. Without it the catalog is
+          # never refreshed in CI and a new song never reaches the share pack.
+          python3 scripts/produce_loop.py --no-flow \
+            --count "${{ github.event.inputs.count || '1' }}" --pack-only
 
       - name: Upload the media to the public release
         env:
