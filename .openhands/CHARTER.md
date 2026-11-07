@@ -193,6 +193,16 @@ four jobs above — nothing else appears here.
   Google `aerismusic8@gmail.com` + `flowmusic.app` — unlocks the whole factory:
   after it AR runs `ops/login_vault.py save` and `ops/save_storage_state.py`
   (both now cover Flow Music and YouTube) and every rail runs unattended again.
+  **This is now an upgrade, not a blocker (2026-11-07):** the content engine is
+  K-free. Lyrics draft on Duck.ai (`forge_song.py`) and the song master has a
+  keyless path (`flow_song.py --offline`), so a song can be produced with no
+  session at all — the sign-in only gets a *real* Flow render instead of a synth
+  bed. See `ops/k_free_status.py` (5/11 rails K-free).
+
+**Blocked on K's admin (not fixable in-repo):** FB Page and TikTok posting need
+an API token (a Meta System User token / TikTok Content Posting review), and the
+YouTube channel avatar has no API. Each is one precise K action; the software
+side is already in place.
 - Anything that costs money (never).
 - **Shopee Affiliate onboarding** — DONE 2026-11-02, no QR needed; the account
   was already onboarded (`navintas`).
