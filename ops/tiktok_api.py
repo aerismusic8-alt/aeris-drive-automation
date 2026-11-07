@@ -55,7 +55,7 @@ def _get(key: str) -> str:
         return ""
     try:
         return (v.kv_get(v.ensure_anchor(), key) or "").strip()
-    except Exception:
+    except BaseException:  # noqa: BLE001 — CI has no vault; ensure_anchor exits
         return ""
 
 
@@ -66,7 +66,7 @@ def _put(key: str, value: str) -> bool:
     try:
         v.kv_put(v.ensure_anchor(), key, value)
         return True
-    except Exception:
+    except BaseException:  # noqa: BLE001
         return False
 
 

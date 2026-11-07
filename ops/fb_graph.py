@@ -43,6 +43,11 @@ TIMEOUT = 120
 
 
 def _vault() -> object | None:
+    # CI has no vault. `ax_vault.ensure_anchor()` talks to the OpenHands API and
+    # raises SystemExit (a BaseException, so a plain `except Exception` misses it)
+    # when that API rejects the caller. Guard both the import and the anchor here,
+    # and read the env before ever touching the vault, so a GitHub runner never
+    # dies with a traceback from a secret lookup.
     try:
         sys.path.insert(0, str(Path(__file__).resolve().parent))
         import ax_vault  # noqa: PLC0415
@@ -58,7 +63,7 @@ def _vault_get(key: str) -> str:
         return ""
     try:
         return (v.kv_get(v.ensure_anchor(), key) or "").strip()
-    except Exception:
+    except BaseException:  # noqa: BLE001 — SystemExit from the anchor lookup
         return ""
 
 
@@ -69,7 +74,7 @@ def _vault_put(key: str, value: str) -> bool:
     try:
         v.kv_put(v.ensure_anchor(), key, value)
         return True
-    except Exception:
+    except BaseException:  # noqa: BLE001
         return False
 
 

@@ -59,7 +59,7 @@ jobs:
         env:
           TOPIC: ${{ vars.AX_NTFY_TOPIC }}
         run: |
-          set -euo pipefail
+          set -uo pipefail
           [ -n "${TOPIC:-}" ] || { echo "no AX_NTFY_TOPIC set"; exit 0; }
           curl -sS --max-time 20 -H "Title: AERIS token expired" -H "Tags: warning" \
             -d "A Facebook/TikTok API token has lapsed — the browser route still posts, but re-provision the token to keep K out of the loop." \

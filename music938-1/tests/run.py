@@ -1391,6 +1391,14 @@ def test_api_posting_route() -> None:
     check("heartbeat explains why CI must not refresh",
           "cannot write a new secret" in hb)
 
+    # CI has no vault: ax_vault.ensure_anchor() raises SystemExit (a BaseException)
+    # when the OpenHands API rejects the runner. The 2026-11-07 heartbeat run died
+    # on exactly that — a secret lookup must never kill a GitHub job.
+    for name in ("fb_graph.py", "tiktok_api.py"):
+        src = (ops / name).read_text()
+        check(f"{name} survives a vault SystemExit",
+              "except BaseException" in src)
+
     wf = (ROOT.parent / ".github" / "workflows" / "ax-token-heartbeat.yml").read_text()
     check("a scheduled heartbeat workflow exists", "cron:" in wf)
     check("the heartbeat alerts K only on failure", "if: failure()" in wf)
