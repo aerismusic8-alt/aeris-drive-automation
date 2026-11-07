@@ -38,13 +38,34 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      # A compilation is a long-form album, not a daily upload. Publishing a new
+      # near-identical one every month is exactly the "flood the channel with
+      # interchangeable uploads" the advisor panel warned about, and it is a
+      # channel-level monetization risk. So the job stops the moment one is
+      # already live. To refresh it on purpose, delete the state file (or clear
+      # its video_id) and re-dispatch.
+      - name: Skip when a compilation is already published
+        id: gate
+        run: |
+          set -euo pipefail
+          state=music938-1/work/compilation-state-compilation.json
+          if [ -f "$state" ] && grep -q '"video_id": *"[^"]' "$state"; then
+            vid=$(python3 -c "import json;print(json.load(open('$state'))['video_id'])")
+            echo "compilation already live: $vid — nothing to do"
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "skip=false" >> "$GITHUB_OUTPUT"
+          fi
+
       - name: Install ffmpeg
+        if: steps.gate.outputs.skip != 'true'
         run: |
           set -euo pipefail
           sudo apt-get update -qq
           sudo apt-get install -y -qq ffmpeg
 
       - name: Pull the song masters and covers
+        if: steps.gate.outputs.skip != 'true'
         env:
           AX_GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
@@ -53,6 +74,7 @@ jobs:
           python3 music938-1/scripts/pull_media.py --only covers
 
       - name: Build the compilation video
+        if: steps.gate.outputs.skip != 'true'
         run: |
           set -euo pipefail
           cd music938-1
@@ -61,11 +83,13 @@ jobs:
           python3 scripts/compile_album.py --name "รวมเพลงไทยเพื่อชีวิต" --max 60 --render
 
       - name: Build the 16:9 thumbnail
+        if: steps.gate.outputs.skip != 'true'
         run: |
           set -euo pipefail
           cd music938-1 && python3 scripts/brand.py
 
       - name: Upload to AERIS Music (ch3)
+        if: steps.gate.outputs.skip != 'true'
         env:
           YT_CLIENT_ID: ${{ secrets.YT_CLIENT_ID }}
           YT_CLIENT_SECRET: ${{ secrets.YT_CLIENT_SECRET }}
@@ -76,6 +100,7 @@ jobs:
           python3 scripts/upload_compilation.py --upload --ch ch3
 
       - name: Record the upload
+        if: steps.gate.outputs.skip != 'true'
         run: |
           set -euo pipefail
           git config user.name  "ax-music-compilation"
