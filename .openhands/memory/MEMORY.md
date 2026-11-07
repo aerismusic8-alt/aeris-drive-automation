@@ -815,6 +815,25 @@ true-instrumental karaoke mix, cover art, a 1920x1080 word-synced video.
 - **The real remaining win is a fast Thai-capable keyless model.** The panel is a
   few minutes, not ~15, but Duck is the floor. Rule #1 forbids paid APIs.
   `family()` maps a seat to its vendor; `quorum()` decides the floor in one place.
+- **K-free = a rail with no credential that can expire.** `ops/k_free_status.py`
+  audits it (`--check` exits 1 while any rail needs K). Two auth kinds count as
+  K-free: `api` with its token present, and **`keyless`** — no credential at all.
+  A `browser` rail is never K-free (the snapshot works until it expires).
+  As of 2026-11-07: **5/11 rails K-free**. The content engine is now K-free:
+  lyrics draft on **Duck.ai** (`ai_lyrics.DRAFTERS["duck"]`, tried first in
+  `forge_song.py`) and the song master has a keyless path
+  (`flow_song.py --offline` → `aeris938-1/scripts/make_music.py` ffmpeg synth,
+  opt-in so a normal run never silently downgrades). The remaining K-blockers are
+  not fixable in-repo: FB Page + TikTok posting need an API token (K's admin) and
+  the YouTube channel avatar has no API.
+- **Pollinations free tier is 1 reply / 45s / IP** (`FREE_LIMIT` 402) and only
+  `openai-fast` (GPT-OSS 20B) is anonymous — the bigger models 402 "Payment
+  Required". So it is a *second* opinion, never the driver. And there is **no free
+  audio/music API** (pollinations serves text + image only); the only keyless
+  music is the local ffmpeg synth.
+- **Duck.ai appends an "Nth opinion" marker** after each answer in a thread and it
+  fuses onto the last real line. `duck_ask._clean` strips it; without that, every
+  lyric draft fails the Latin-text lint.
 - **The gate is now wired into a real runner, not just tests.** `aeris938-2/scripts/admin.py`
   calls `consult.consulted()` before it drafts and exits 2 without a quorum
   (`--no-gate` is the only escape hatch), with one ntfy alert per day. It is still
