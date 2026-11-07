@@ -663,6 +663,21 @@ true-instrumental karaoke mix, cover art, a 1920x1080 word-synced video.
   starts or K sees an empty bar. `bootstrap.py` handles both. This is what lost
   K's 9 bookmarks once (2026-11-04).
 
+- **A trailing-slash `.gitignore` rule over a directory kills every `!` re-include
+  inside it** — git cannot re-include a file in an ignored directory. A duplicate
+  bare `music938-1/work/` (added `a9a3cf7a`) made `git add` of the tracked ledgers
+  exit 1, so the crosspost rail's commit step failed after every post. Find this
+  with `git check-ignore -v --no-index <file>`; a plain `check-ignore` hides it for
+  a tracked file. Fixed `51ac8c18`, pinned by `test_state_files_are_addable`.
+- **The session has two halves: `login_vault.py save` (pod restore) and
+  `save_storage_state.py` → secret `AERIS_STORAGE_STATE_B64` (the Actions rail).**
+  Updating only the vault leaves Actions signed out. Do both after K signs in.
+- **`bootstrap.py` used to skip the login restore unless `OPENHANDS_API_KEY` was
+  set; that key is not in the vault's auth path** (`ax_vault`/`AX_VAULT_BOOTSTRAP`).
+  The guard is gone (`802d2763`) — do not re-add it.
+- **`FACEBOOK_DAILY_CAP = 2`, TikTok `DAILY_CAP = 4`** (10-advisor call: fewer,
+  more distinct FB Reels so each one's insights are readable). A "cadence: hold"
+  line is not a failure.
 ## music938-2 (revenue) — durable facts
 - **A URL in a YouTube Short's description or a pinned comment is NOT tappable**
   (advisor panel 3/3, 2026-11-05). So the above-fold lines of a product card must
