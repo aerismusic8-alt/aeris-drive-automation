@@ -211,8 +211,7 @@
    "variant": "short-song-h3-04-saeng-chao-wan-mai",
    "video_id": "snpnSF5Y_U0",
    "at": "2026-11-02T07:06:41+00:00",
-   "public": true,
-   "retired_at": "2026-11-07T15:19:30+00:00"
+   "public": true
   },
   {
    "slug": "04-saeng-chao-wan-mai",
@@ -237,8 +236,7 @@
    "variant": "short-song-h1-05-fon-tok-nai-chai",
    "video_id": "FTKnHZGW6dI",
    "at": "2026-11-03T09:57:53+00:00",
-   "public": true,
-   "retired_at": "2026-11-07T15:19:57+00:00"
+   "public": true
   },
   {
    "slug": "05-fon-tok-nai-chai",
@@ -246,8 +244,7 @@
    "variant": "short-song-h2-05-fon-tok-nai-chai",
    "video_id": "Dmmvl07DkVw",
    "at": "2026-11-03T09:57:58+00:00",
-   "public": true,
-   "retired_at": "2026-11-07T15:20:16+00:00"
+   "public": true
   },
   {
    "slug": "05-fon-tok-nai-chai",
@@ -255,8 +252,7 @@
    "variant": "short-song-h3-05-fon-tok-nai-chai",
    "video_id": "4lsmpLtFxzc",
    "at": "2026-11-03T09:58:03+00:00",
-   "public": true,
-   "retired_at": "2026-11-07T15:20:25+00:00"
+   "public": true
   },
   {
    "slug": "05-fon-tok-nai-chai",
@@ -436,42 +432,6 @@
    "public": true,
    "thumb_ok": false,
    "playlist_ok": false
-  },
-  {
-   "slug": "04-saeng-chao-wan-mai",
-   "kind": "short",
-   "variant": "short-song-h3-04-saeng-chao-wan-mai",
-   "video_id": "EQiJAe5MDZo",
-   "at": "2026-11-07T15:19:30+00:00",
-   "public": true,
-   "replaces": "snpnSF5Y_U0"
-  },
-  {
-   "slug": "05-fon-tok-nai-chai",
-   "kind": "short",
-   "variant": "short-song-h1-05-fon-tok-nai-chai",
-   "video_id": "26NljlQecXk",
-   "at": "2026-11-07T15:19:57+00:00",
-   "public": true,
-   "replaces": "FTKnHZGW6dI"
-  },
-  {
-   "slug": "05-fon-tok-nai-chai",
-   "kind": "short",
-   "variant": "short-song-h2-05-fon-tok-nai-chai",
-   "video_id": "Rfu36NBYdTQ",
-   "at": "2026-11-07T15:20:16+00:00",
-   "public": true,
-   "replaces": "Dmmvl07DkVw"
-  },
-  {
-   "slug": "05-fon-tok-nai-chai",
-   "kind": "short",
-   "variant": "short-song-h3-05-fon-tok-nai-chai",
-   "video_id": "R1ciTRG9gk0",
-   "at": "2026-11-07T15:20:25+00:00",
-   "public": true,
-   "replaces": "4lsmpLtFxzc"
   }
  ],
  "playlists": {
