@@ -63,19 +63,22 @@ sys.path.insert(0, str(HERE))
 
 import ask_agents  # noqa: E402
 import duck_ask  # noqa: E402
+import pollinations_ask  # noqa: E402
 
 LOG = HERE / "consult-log.jsonl"
 
-# Five channels, three vendors. Two are the ChatGPT and Gemini web apps; three
-# are Duck.ai models, which need no login and so keep the panel alive when Google
-# is signed out. Ordered most-reliable-to-drive first; one failure does not stop
-# the rest.
+# Six channels, four vendors. Two are the ChatGPT and Gemini web apps; three are
+# Duck.ai models; one is Pollinations over plain HTTP. Duck and Pollinations need
+# no login and no API key, so the panel still reaches quorum when Google is signed
+# out and ChatGPT free is rate-limited — which is now the common case.
+# Ordered most-reliable-to-drive first; one failure does not stop the rest.
 VENDORS = {
     "chatgpt": ask_agents.AGENTS["chatgpt"],
     "gemini": ask_agents.AGENTS["gemini"],
     "duck": duck_ask.ask,
     "duck-claude": functools.partial(duck_ask.ask, model="Claude Haiku 5.5"),
     "duck-oss": functools.partial(duck_ask.ask, model="gpt-oss 120B"),
+    "pollinations": pollinations_ask.ask,
 }
 
 

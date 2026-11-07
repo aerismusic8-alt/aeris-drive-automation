@@ -2024,10 +2024,16 @@ def test_consult_gate() -> None:
 
     src = (ROOT.parent / "ops" / "consult.py").read_text()
     check("asks every vendor", all(v in src for v in ("chatgpt", "gemini", "duck")))
-    check("the panel is five channels (K, 2026-11-05)",
-          len(consult.VENDORS) >= 5, f"{len(consult.VENDORS)}")
+    check("the panel is at least six channels (K, 2026-11-05; pollinations 2026-11-07)",
+          len(consult.VENDORS) >= 6, f"{len(consult.VENDORS)}")
     check("three of them are Duck.ai models, which need no login",
           sum(1 for k in consult.VENDORS if k.startswith("duck")) >= 3)
+    # The browser channels die together: Gemini signs out, ChatGPT free throttles,
+    # a Duck tab wedges. A keyless HTTP channel is what keeps the panel at quorum
+    # on those days, so it must be a first-class vendor, not a fallback script.
+    check("a keyless HTTP channel is in the panel", "pollinations" in consult.VENDORS)
+    check("that channel is a distinct vendor family",
+          consult.family("pollinations") == "pollinations")
     # The quorum counts *vendors*, not channels. Eight of the ten channels in the
     # wide panel are one Duck.ai page; counting channels let one page pass for a
     # panel (the 2026-11-06 FB brief "10/10 agreed" while 8 were the same page).
