@@ -12,6 +12,7 @@ from __future__ import annotations
 import json
 import os
 import re
+import subprocess
 import sys
 import unicodedata
 from pathlib import Path
@@ -1171,6 +1172,36 @@ def test_crosspost_uses_committed_queue() -> None:
         crosspost.QUEUE = real
 
 
+def test_state_files_are_addable() -> None:
+    """Every durable state file must survive `git add` in a fresh checkout.
+
+    A bare `music938-1/work/` line in .gitignore ignores the whole *directory*,
+    and git cannot re-include a file inside an ignored directory — so the `!`
+    rules that keep the ledgers tracked were dead. `git add` then exits 1 with
+    "The following paths are ignored", which is how the crosspost rail failed to
+    record its state after every post (run 42317640960, step 8). Guard both the
+    rule and the effect.
+    """
+    section("durable state files are not gitignored (crosspost commit fix)")
+    ignore = (ROOT.parent / ".gitignore").read_text()
+    check("no bare directory ignore that swallows the re-includes",
+          not any(l.strip() == "music938-1/work/" for l in ignore.splitlines()))
+
+    repo = ROOT.parent
+    files = ["music938-1/work/crosspost-state.json",
+             "music938-1/work/crosspost-queue.json",
+             "music938-1/work/release-state.json",
+             "music938-1/work/playlist-state.json"]
+    for rel in files:
+        try:
+            r = subprocess.run(["git", "check-ignore", "-q", "--no-index", rel],
+                               cwd=str(repo), capture_output=True)
+        except (OSError, FileNotFoundError):
+            return  # no git here; the source check above still stands
+        check(f"{Path(rel).name} is addable", r.returncode != 0,
+              "git check-ignore says it is ignored")
+
+
 def test_crosspost_blocked_vs_empty() -> None:
     """A dead session with work waiting must fail; an empty queue must not.
 
@@ -2249,6 +2280,7 @@ def main() -> int:
     test_crosspost_engine()
     test_browser_ci_storage_state()
     test_crosspost_uses_committed_queue()
+    test_state_files_are_addable()
     test_crosspost_blocked_vs_empty()
     test_crosspost_pace_and_captions()
     test_social_stats_parser()
