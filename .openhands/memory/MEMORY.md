@@ -941,6 +941,37 @@ true-instrumental karaoke mix, cover art, a 1920x1080 word-synced video.
 - **`apply_monetize.py` is the live-description backfill** (Data API, idempotent
   for videos; the playlist branch used to stack its footer every run — fixed).
 
+## K out of the loop: the API posting route (2026-11-07)
+- **K's directive: cut K out of the automation cycle.** Advisor panel (6 channels
+  / 4 vendors, `ops/consult.py` PASS) was unanimous: Facebook = Meta Graph API +
+  **System User** token (Business Settings → System Users → assign Page + app →
+  `pages_manage_posts`; *Never* expiry if offered, else the 60-day token renews
+  via `fb_exchange_token`). TikTok = Content Posting API but with a **hard limit**
+  — refresh token expires, app needs audit, and an *unaudited* app may only post
+  `SELF_ONLY` (private). **Never invest in keeping browser cookies alive.**
+- **The API route is wired and inert until a token exists**: `ops/fb_graph.py`
+  (Reel start→upload→finish/PUBLISHED + refresh + `debug_token` + `get()`),
+  `ops/tiktok_api.py` (refuses `SELF_ONLY` so a token can't silently downgrade a
+  public post), `crosspost.api_poster()` + `post()` (no browser at all when a
+  token is set), `admin.page_snapshot_via_graph()`. No token → behaviour is
+  byte-for-byte the old browser path. `docs/remove-k-from-the-loop.md` is K's
+  one-time provisioning guide.
+- **`ops/token_heartbeat.py` + `ax-token-heartbeat.yml`** check the tokens every
+  6h and ntfy K *only* when one has actually expired. CI is **check-only** — TikTok
+  rotates its refresh token on refresh and an Actions job cannot write a secret
+  back, so `--refresh` is agent-side (writes the vault).
+- **`ax_vault.ensure_anchor()` raises `SystemExit` — a `BaseException`, not an
+  `Exception`.** The first heartbeat run died on the GitHub runner (no vault → the
+  OpenHands API 401s → SystemExit sailed through `except Exception`). Any ops
+  script that reads the vault from CI must catch `BaseException` around the anchor
+  lookup. This would have been *every* run, not a flake.
+- **What cannot be automated, say it plainly**: the first token needs a human once;
+  TikTok public posting needs app audit; Meta can revoke. The heartbeat converts
+  "silently dead" into "K knows", which is the achievable goal.
+- **The dashboard does not die without a session** — YouTube is Data-API OAuth, so
+  `report.py` still prints real numbers with `AERIS_STORAGE_STATE_B64` unset. Only
+  the FB/TikTok/Shopee lines degrade to labelled fallbacks.
+
 ## The Page-admin agent: automate content, never outbound (2026-11-06)
 - **Five advisors, one answer:** automating follows / friend-invites / comments on
   other Pages / cold DMs is an artificial-growth signal Meta acts on, and **no
