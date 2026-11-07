@@ -2284,6 +2284,58 @@ def test_brand_identity() -> None:
     check("banner writer refuses a stripped PUT", "no description" in art)
 
 
+def test_k_free_status() -> None:
+    """The K-free audit must be honest, and must not need a live secret.
+
+    K asked for the automation to run with K out of the loop 100%. That is only
+    checkable if something can say, per rail, whether it authenticates by a
+    refreshable API token or by a browser snapshot that expires. This pins the
+    two rules that make the audit trustworthy: a browser rail is *never* counted
+    K-free (the snapshot working today does not stop it expiring), and an api rail
+    with no credential is blocked. The secret lookup is stubbed so the suite
+    never touches a live token.
+    """
+    section("k-free status (is K still in the loop?)")
+    sys.path.insert(0, str(ROOT.parent / "ops"))
+    import k_free_status as kfs  # noqa: E402
+
+    real = kfs.get_secret
+    try:
+        # Everything present: every api rail clears, every browser/none rail stays.
+        kfs.get_secret = lambda name: "x"
+        rep = kfs.audit()
+        by = {(r["surface"], r["rail"]): r for r in rep["rails"]}
+        check("an api rail with its token is K-free",
+              by[("facebook", "Page Reels")]["k_free"])
+        check("a browser rail is never K-free",
+              not by[("tiktok", "Short posting (fallback)")]["k_free"])
+        check("a no-API rail is never K-free",
+              not by[("youtube", "channel avatar")]["k_free"])
+        check("k_free_all is False while any rail needs K", rep["k_free_all"] is False)
+        check("the blocked list names the surface", 
+              any(b["surface"] == "music" for b in rep["blocked"]))
+
+        # Nothing present: no api rail can claim K-free.
+        kfs.get_secret = lambda name: ""
+        rep0 = kfs.audit()
+        check("with no secrets, no rail is K-free", rep0["k_free"] == 0)
+    finally:
+        kfs.get_secret = real
+
+
+def test_vault_key_fallback() -> None:
+    """ax_vault must resolve the API key through ax_secrets, not only os.environ.
+
+    The sandbox injects a secret into the environment only when the command text
+    names the key, so a fresh session that never types OPENHANDS_API_KEY gets a
+    401 that reads as "the vault is gone". The fallback is what stops that.
+    """
+    section("vault key resolution")
+    src = (ROOT.parent / "ops" / "ax_vault.py").read_text()
+    check("ax_vault falls back to ax_secrets for the key",
+          "from ax_secrets import get_secret" in src and "_get_secret(\"OPENHANDS_API_KEY\")" in src)
+
+
 def test_consult_gate() -> None:
     """K's standing rule: consult the advisors BEFORE acting.
 
@@ -2425,6 +2477,11 @@ def test_watchdog() -> None:
     src = (ROOT.parent / "plugins/ax-watchdog/scripts/main.py").read_text()
     check("runs outside the sandbox (no dependency on it)", "AUTOMATION_KV_TOKEN" in src)
     check("pushes through ntfy", "ntfy.sh" in src)
+    # The K-free audit is reported but must never be an alert: the avatar and the
+    # song beds have no API, so "not all K-free" is the steady state and alerting
+    # on it every hour would train K to ignore the watchdog.
+    check("reports the k-free audit", "k_free_status" in src)
+    check("the k-free audit is not an alert", "problems.append" not in src.split("k_free_status")[1].split("now = datetime")[0])
 
 
 def test_fill_playlists() -> None:
@@ -2611,6 +2668,8 @@ def main() -> int:
     test_phone_login()
     test_heartbeat_repair_signal()
     test_consult_gate()
+    test_k_free_status()
+    test_vault_key_fallback()
     test_brand_identity()
     test_watchdog()
     test_fill_playlists()

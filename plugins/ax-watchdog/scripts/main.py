@@ -325,9 +325,23 @@ def main() -> int:
     except Exception as exc:  # noqa: BLE001
         problems.append(f"heartbeat error: {exc}")
 
+    # K-free audit: how many rails still need a human. Reported, never alerted —
+    # the avatar has no API and the song beds have no API, so "not all K-free" is
+    # the steady state, and alerting on it every hour would train K to ignore the
+    # watchdog. It is here so the number is visible and moves when a token lands.
+    kfree = {}
+    try:
+        sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)),
+                                        "..", "..", "..", "ops"))
+        import k_free_status  # noqa: PLC0415
+        kfree = k_free_status.audit()
+    except Exception as exc:  # noqa: BLE001
+        kfree = {"error": str(exc)[:120]}
+
     now = datetime.now(timezone.utc)
     kv_set("latest", {"at": now.isoformat(timespec="seconds"),
-                      "problems": problems, "actions": actions, "channels": rows})
+                      "problems": problems, "actions": actions, "channels": rows,
+                      "k_free": {k: kfree.get(k) for k in ("k_free", "total", "blocked")}})
 
     alerted = False
     if problems:
@@ -354,6 +368,12 @@ def main() -> int:
                   f"last upload {r.get('hours_since_upload', '?')}h")
     if not problems:
         print("all clear")
+    if kfree and "k_free" in kfree:
+        print(f"k-free: {kfree['k_free']}/{kfree['total']} rails need no human")
+        for b in kfree.get("blocked", []):
+            print(f"      needs K: {b['surface']} — {b['rail']} ({b['auth']})")
+    elif kfree.get("error"):
+        print(f"k-free audit error: {kfree['error']}")
     print(f"\nalert: {'pushed' if alerted else ('held (cooldown)' if problems else 'not needed')}")
     return 0
 

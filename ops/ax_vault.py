@@ -45,7 +45,19 @@ import urllib.request
 from pathlib import Path
 
 HOST = os.environ.get("OPENHANDS_HOST", "https://app.all-hands.dev").rstrip("/")
-API_KEY = os.environ.get("OPENHANDS_API_KEY", "")
+# The sandbox injects a secret into the environment only when the *command text*
+# names the key. A fresh session that never types `OPENHANDS_API_KEY` therefore
+# has no key, and every vault call 401s — which reads as "the vault is gone"
+# rather than "the key was never named". Read it through ax_secrets so the
+# settings API can supply it even when the environment does not.
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+try:
+    from ax_secrets import get_secret as _get_secret
+except Exception:  # noqa: BLE001
+    def _get_secret(_name: str) -> str:  # pragma: no cover
+        return ""
+API_KEY = (os.environ.get("OPENHANDS_API_KEY", "")
+           or _get_secret("OPENHANDS_API_KEY"))
 ANCHOR_NAME = "AX KNOWLEDGE VAULT (do not delete)"
 INDEX_KEY = "axvault:index"
 CHUNK_KEY = "axvault:d:{i}"
