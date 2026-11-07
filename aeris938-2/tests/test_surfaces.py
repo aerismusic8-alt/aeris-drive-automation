@@ -214,6 +214,50 @@ def test_admin_is_gated_on_the_consultation():
         admin.WORK = saved
 
 
+def test_inbox_count_does_not_count_the_filter_label():
+    """The rail used to report "มีรายการใหม่ 2 รายการ" on an empty inbox forever.
+
+    It counted the substring "ใหม่" anywhere on the page, and the inbox carries a
+    permanent filter chip with that exact label. Pin the fix: an empty inbox is
+    0, a label alone is unknown, and a printed number is that number.
+    """
+    empty = "กล่องข้อความ\nใหม่\nยังไม่ได้อ่าน\nไม่มีข้อความ\nคุณยังไม่มีข้อความใดๆ"
+    assert admin._inbox_state(empty) == 0
+    # A filter label on its own is not evidence of unread mail: unknown, not 2.
+    assert admin._inbox_state("ใหม่\nNew\nกล่องข้อความ") == -1
+    assert admin._inbox_state("กล่องข้อความ\nยังไม่ได้อ่าน 3\n") == 3
+    # Unreadable is "unknown" (-1), not a confident 0.
+    assert admin._inbox_state("กล่องข้อความ") == -1
+
+
+def test_page_snapshot_shape_and_no_phantom_drafts():
+    """A snapshot with no comments must not produce a reply to nobody.
+
+    The empty inbox prints a "create an ad" prompt; scanning it drafted a reply
+    anyway. `run()` now gates drafting on `comments > 0`, and the digest shows
+    the real numbers. These are the pure parts, so they need no browser.
+    """
+    snap = {"reachable": True, "unread": 0, "comments": 0, "followers": 1,
+            "warning": False, "comments_text": ""}
+    assert admin.digest(snap, [], None).splitlines()[0] == "ผู้ติดตาม: 1"
+    assert "ความคิดเห็น 0" in admin.digest(snap, [], None)
+
+
+def test_stall_detection_fires_on_a_page_that_never_grew():
+    """One follower after a week of posting is the real problem, and it must be
+    visible — not buried under a phantom inbox count."""
+    hist = [{"at": "2026-11-01T00:00:00Z", "followers": 1},
+            {"at": "2026-11-07T00:00:00Z", "followers": 1}]
+    stall = admin._stall(hist)
+    assert stall and stall["followers"] == 1 and stall["days"] == 6
+    # Growing past the floor, or too short a window, is not a stall.
+    assert admin._stall([{"at": "2026-11-01T00:00:00Z", "followers": 1},
+                         {"at": "2026-11-07T00:00:00Z", "followers": 25}]) is None
+    assert admin._stall([{"at": "2026-11-06T00:00:00Z", "followers": 1},
+                         {"at": "2026-11-07T00:00:00Z", "followers": 1}]) is None
+    assert admin._stall([]) is None
+
+
 if __name__ == "__main__":
     fns = [v for k, v in sorted(globals().items()) if k.startswith("test_")]
     for fn in fns:
