@@ -180,12 +180,60 @@ def _page_followers(desk) -> int | None:
         return None
 
 
+def page_snapshot_via_graph() -> dict | None:
+    """The Page's numbers from the Graph API — the route that needs no browser.
+
+    The advisor panel (2026-11-07, 6 channels / 4 vendors) ranked the Graph API
+    with a System User token the most durable way to run this Page unattended, so
+    when a token is configured the rail does not depend on K's cookie session to
+    know whether the Page is growing. Returns None when no token is set, so the
+    caller falls back to the browser reader exactly as before.
+    """
+    try:
+        sys.path.insert(0, str(surfaces.OPS))
+        import fb_graph  # noqa: E402
+    except Exception:  # noqa: BLE001
+        return None
+    if not fb_graph.available():
+        return None
+    try:
+        page = fb_graph.get(fb_graph.PAGE_ID, {"fields": "followers_count,fan_count,name"})
+        # Conversations give the unread/comments counts the browser reader parses
+        # out of the inbox DOM; the API states them directly.
+        conv = fb_graph.get(f"{fb_graph.PAGE_ID}/conversations",
+                            {"fields": "unread_count,message_count", "limit": "1"})
+        comments = fb_graph.get(f"{fb_graph.PAGE_ID}/feed",
+                                {"fields": "comments.summary(true)", "limit": "1"})
+    except Exception:  # noqa: BLE001
+        return None
+    followers = page.get("followers_count", page.get("fan_count"))
+    unread = conv.get("unread_count", 0)
+    cm = 0
+    try:
+        cm = (comments.get("data") or [{}])[0].get("comments", {}).get("summary", {}).get("total_count", 0)
+    except (IndexError, AttributeError):
+        cm = 0
+    return {
+        "reachable": True,
+        "via": "graph",
+        "unread": unread,
+        "comments": cm,
+        "comments_text": "",
+        "followers": followers,
+        "warning": False,
+        "raw": json.dumps(page, ensure_ascii=False)[:400],
+    }
+
+
 def page_snapshot(desk) -> dict:
     """The real state of the Page: inbox, comments, followers, warnings.
 
     This replaces a snapshot that counted the word "ใหม่" and so reported new
     mail on an empty inbox forever. Everything here is read as the Page.
     """
+    graph = page_snapshot_via_graph()
+    if graph is not None:
+        return graph
     desk.goto(INBOX, settle=12)
     text = desk.text()
     if "กล่องข้อความ" not in text and "Inbox" not in text:

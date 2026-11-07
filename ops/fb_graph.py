@@ -126,6 +126,22 @@ def whoami(token: str | None = None) -> dict:
         return {"ok": False, "error": f"{e.code}: {e.read().decode()[:200]}"}
 
 
+def get(path: str, params: dict | None = None) -> dict:
+    """A GET against the Graph API with the Page token attached.
+
+    Raises RuntimeError on a real API error so the caller can decide whether to
+    degrade to "unknown" or fall back to the browser.
+    """
+    p = dict(params or {})
+    p["access_token"] = p.get("access_token") or page_token()
+    url = f"{GRAPH}/{path.lstrip('/')}?" + urllib.parse.urlencode(p)
+    try:
+        with urllib.request.urlopen(url, timeout=30) as r:
+            return json.loads(r.read().decode())
+    except urllib.error.HTTPError as e:
+        raise RuntimeError(f"graph {e.code}: {e.read().decode()[:300]}") from e
+
+
 def refresh() -> str:
     """Exchange the current token for a fresh long-lived one and store it back.
 

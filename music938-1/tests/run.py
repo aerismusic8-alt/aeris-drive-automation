@@ -1408,6 +1408,13 @@ def test_api_posting_route() -> None:
     check("crosspost forwards FB_PAGE_TOKEN", "FB_PAGE_TOKEN" in cp)
     check("crosspost forwards the TikTok tokens", "TT_REFRESH_TOKEN" in cp)
 
+    # The admin rail reads the Page's growth numbers; the Graph API must be able
+    # to supply them when K's cookie session is dead.
+    adm = (ROOT.parent / "aeris938-2" / "scripts" / "admin.py").read_text()
+    check("admin has a Graph API snapshot path", "def page_snapshot_via_graph(" in adm)
+    check("admin prefers Graph over the browser",
+          "graph = page_snapshot_via_graph()" in adm)
+
 
 def test_crosspost_pace_and_captions() -> None:
     """The two defects found on 2026-11-01 must not come back.
