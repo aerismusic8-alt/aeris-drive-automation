@@ -458,6 +458,25 @@
       "lyrics": "../music938-1/lyrics/26-ban-lang-lek-khong-rao.txt",
       "audio": "flow",
       "has_vocals": true
+    },
+    {
+      "id": "song-27-khuen-thi-yang-mai-lap-v27",
+      "title": "คืนที่ยังไม่หลับอีกครั้ง",
+      "mood": "calm",
+      "mood_th": "สงบ ผ่อนคลาย เบา ๆ กล่อม",
+      "genre": "lofi",
+      "key": "C",
+      "tempo_bpm": 72,
+      "voice": "female",
+      "duration_seconds": 236.0,
+      "file": "music/song-27-khuen-thi-yang-mai-lap-v27.mp3",
+      "url": "https://github.com/aerismusic8-alt/aeris-drive-automation/releases/download/media-938/song-27-khuen-thi-yang-mai-lap-v27.mp3",
+      "instrumental": "music/karaoke-27-khuen-thi-yang-mai-lap-v27.mp3",
+      "instrumental_url": "https://github.com/aerismusic8-alt/aeris-drive-automation/releases/download/media-938/karaoke-27-khuen-thi-yang-mai-lap-v27.mp3",
+      "has_instrumental": true,
+      "lyrics": "../music938-1/lyrics/27-khuen-thi-yang-mai-lap-v27.txt",
+      "audio": "flow",
+      "has_vocals": true
     }
   ],
   "beds": [

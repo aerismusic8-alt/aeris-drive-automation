@@ -1,5 +1,5 @@
 {
-  "made": 2,
+  "made": 3,
   "log": [
     {
       "slug": "25-thai-5bcb50c5",
@@ -26,6 +26,17 @@
       "problems": [
         "pollinations: HTTPError: HTTP Error 400: Bad Request"
       ]
+    },
+    {
+      "slug": "27-khuen-thi-yang-mai-lap-v27",
+      "title": "คืนที่ยังไม่หลับอีกครั้ง",
+      "genre": "lofi",
+      "mood": "calm",
+      "result": "lyric",
+      "flow": true,
+      "audio": "flow",
+      "flow_rc": 0,
+      "instrumental": true
     }
   ]
 }

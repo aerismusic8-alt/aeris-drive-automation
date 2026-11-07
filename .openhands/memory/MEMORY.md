@@ -1118,3 +1118,15 @@ true-instrumental karaoke mix, cover art, a 1920x1080 word-synced video.
   restore` can never sign YouTube in — and `check_login.py` reports Google
   SIGNED_IN from cookies alone while YouTube still asks for a password. Only a real
   sign-in (then `login_vault.py save`) fixes the avatar step.
+- **A share pack must label whether an item is a real song or a synth bed, from the
+  audio itself.** `produce_loop.py` used to build the ffmpeg bed first and treat the
+  Flow Music render as optional, so songs 25/26 shipped as beds (mono) while 01-24
+  were real stereo takes; K caught it by listening. Flow is now the default
+  (`--no-flow` opts out), the CI runner lane is explicitly bed-only, and
+  `make_share_pack._audio_provenance()` labels each row `audio: flow|synth-bed` +
+  `has_vocals` using `provenance.py`'s mono-duplicated channel test. Never infer
+  provenance from a filename or a side file: `clipmeta-<slug>.json` exists only for
+  newer Flow renders, so it would mislabel the older real songs. If a script asks
+  for a song and makes none, it must exit non-zero — the 2026-11-07 CI run went
+  green with `produced: []` because `pollinations_ask` POSTed a shape that 400s.
+  Details in `.openhands/memory/2026-11-07.md`.
