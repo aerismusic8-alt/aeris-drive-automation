@@ -140,7 +140,10 @@ def refresh() -> str:
 
 def creator_info() -> dict:
     """What privacy levels this account may use (SELF_ONLY means unaudited)."""
-    tok = access_token() or refresh()
+    # Same rotation guard as post_video: only the agent may burn the refresh token.
+    tok = access_token()
+    if not tok and _put("axsecrets:tiktok-probe", "1"):
+        tok = refresh()
     if not tok:
         return {"ok": False, "error": "no access token"}
     try:
@@ -167,7 +170,13 @@ def post_video(video: Path, caption: str, *, allow_private: bool = False) -> str
     """
     if not available():
         return None
-    tok = access_token() or refresh()
+    # Rotating burns the stored refresh token, so only the agent — the one place
+    # that can write the new value back to the vault — may do it. CI has no
+    # vault, `_put` returns False, so this stays a plain read there and the
+    # token is left for the agent to rotate on its own schedule.
+    tok = access_token()
+    if not tok and _put("axsecrets:tiktok-probe", "1"):
+        tok = refresh()
     if not tok:
         return None
     info = creator_info()
@@ -208,7 +217,10 @@ def post_video(video: Path, caption: str, *, allow_private: bool = False) -> str
 
 
 def status(publish_id: str) -> dict:
-    tok = access_token() or refresh()
+    # Rotation guard: a status check must never burn the refresh token in CI.
+    tok = access_token()
+    if not tok and _put("axsecrets:tiktok-probe", "1"):
+        tok = refresh()
     if not tok:
         return {"ok": False, "error": "no access token"}
     try:

@@ -18,6 +18,11 @@ Actions job cannot write a new secret back, so refreshing there would consume th
 stored refresh token and break the next run. CI only *checks*; the agent (which
 can write the vault) refreshes.
 
+`--refresh --push-secrets --repo owner/name` is the agent's one command: it renews
+the tokens from the vault *and* writes the rotated values back to the repo's
+Actions secrets, so the next CI run is not left holding a spent token. That is the
+piece that keeps the Facebook/TikTok rails K-free after the one-time setup.
+
 That last line is the honest boundary the advisors drew: an *unattended* pipeline
 can renew credentials, but it cannot create them, and TikTok cannot be made fully
 unattended at all. This job narrows K's job to "do the one-time provisioning" and
@@ -27,6 +32,8 @@ then reports the day that provisioning lapses.
 from __future__ import annotations
 
 import json
+import os
+import subprocess
 import sys
 import time
 from pathlib import Path
@@ -86,11 +93,54 @@ def check_tiktok(*, refresh: bool) -> dict:
     return {"surface": "tiktok", "state": "ok", "detail": f"valid; privacy={level}"}
 
 
+def push_secrets(repo: str) -> int:
+    """Write the currently-effective tokens back to the repo's Actions secrets.
+
+    TikTok rotates its refresh token on every refresh, and a GitHub Actions job
+    cannot write a new secret back — so without this, the *next* CI run would
+    authenticate with a token that was already spent. The agent is the only
+    component that can write, so `--refresh --push-secrets` closes the loop: it
+    renews from the vault and publishes the rotated values to CI in one step.
+    That is what keeps the rail K-free between authorizations.
+    """
+    import os
+    import subprocess
+    tok = os.environ.get("AX_GH_TOKEN") or os.environ.get("GH_PAT") or ""
+    if not tok:
+        print("push-secrets: no AX_GH_TOKEN (need repo scope); skipping")
+        return 1
+    vals = {}
+    if fb_graph is not None:
+        vals["FB_PAGE_TOKEN"] = fb_graph.page_token()
+    if tiktok_api is not None:
+        vals["TT_ACCESS_TOKEN"] = tiktok_api.access_token()
+        vals["TT_REFRESH_TOKEN"] = tiktok_api.refresh_token()
+    names = [k for k, v in vals.items() if v]
+    if not names:
+        print("push-secrets: no tokens configured; nothing to push")
+        return 0
+    env = dict(os.environ, GITHUB_TOKEN=tok, **{k: vals[k] for k in names})
+    root = Path(__file__).resolve().parent.parent
+    r = subprocess.run(
+        [sys.executable, str(root / "scripts" / "gh-put-secrets.py"),
+         "--repo", repo, *names],
+        env=env, cwd=str(root), capture_output=True, text=True)
+    print(r.stdout.strip() or r.stderr.strip())
+    return r.returncode
+
+
 def main(argv: list[str]) -> int:
     refresh = "--refresh" in argv
+    push = "--push-secrets" in argv
+    repo = ""
+    for i, a in enumerate(argv):
+        if a == "--repo" and i + 1 < len(argv):
+            repo = argv[i + 1]
     rows = [check_facebook(refresh=refresh), check_tiktok(refresh=refresh)]
     for r in rows:
         print(f"{r['surface']:9} {r['state']:8} {r['detail']}")
+    if push and refresh and repo:
+        push_secrets(repo)
     # A "browser" state is not a failure: the rail is still running, just without
     # the API. Only an *expired* credential means K is needed.
     bad = [r for r in rows if r["state"] == "expired"]

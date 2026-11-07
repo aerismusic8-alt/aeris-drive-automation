@@ -1390,6 +1390,18 @@ def test_api_posting_route() -> None:
     check("heartbeat defaults to check-only", 'refresh = "--refresh" in argv' in hb)
     check("heartbeat explains why CI must not refresh",
           "cannot write a new secret" in hb)
+    # The agent is the only component that can write the vault, so the one
+    # command that renews *and* publishes the rotated token to CI is what keeps
+    # the rail alive after the one-time setup. Without it TikTok's rotating
+    # refresh token leaves the next CI run holding a spent token.
+    check("heartbeat can push the rotated token back to CI",
+          "--push-secrets" in hb and "gh-put-secrets.py" in hb)
+
+    # Token rotation burns TikTok's stored refresh token, so it may only happen
+    # where the new value can be written back. `_put` returns False with no vault
+    # (CI), so every rotation site must be guarded by it.
+    check("tiktok rotation is guarded by a vault write",
+          tt.count("_put(") >= 3 and "access_token() or refresh()" not in tt)
 
     # CI has no vault: ax_vault.ensure_anchor() raises SystemExit (a BaseException)
     # when the OpenHands API rejects the runner. The 2026-11-07 heartbeat run died
@@ -1981,6 +1993,13 @@ def test_profile_setup() -> None:
     check("drives the cloud desktop", "browser as B" in src)
     check("has a TikTok path", "def tiktok(" in src)
     check("has a Facebook path", "def facebook(" in src)
+    # The channel avatar has no API, so the Studio UI is the only route; the
+    # script must (a) drive it and (b) click the final Publish, or the upload
+    # looks done and never lands.
+    check("has a YouTube avatar path", "def youtube(" in src)
+    check("youtube path publishes the staged branding change",
+          "เผยแพร่" in src and "publish" in src)
+    check("youtube path is wired into main", '"youtube"' in src)
     check("sets a Thai bio", "เพลงไทย" in src)
     # The Page must be entered as the Page or the cover control does not exist.
     check("switches into the Page", "_fb_switch_to_page" in src)
@@ -2287,13 +2306,15 @@ def test_brand_identity() -> None:
 def test_k_free_status() -> None:
     """The K-free audit must be honest, and must not need a live secret.
 
-    K asked for the automation to run with K out of the loop 100%. That is only
-    checkable if something can say, per rail, whether it authenticates by a
-    refreshable API token or by a browser snapshot that expires. This pins the
-    two rules that make the audit trustworthy: a browser rail is *never* counted
-    K-free (the snapshot working today does not stop it expiring), and an api rail
-    with no credential is blocked. The secret lookup is stubbed so the suite
-    never touches a live token.
+    K asked to cut K out 100%. The truthful answer (consult 2026-11-07, both
+    vendors) is that every platform requires the owner to authorize *once*; what
+    can be driven to zero is the *recurring* need. So the audit reports three
+    things per rail — k_free, needs K once, needs K repeatedly — and the invariant
+    that matters is `needs_k == 0`. This pins the rules that make it trustworthy:
+    a browser fallback is not a K-dependency while its api primary is present, a
+    keyless rail is K-free with no secrets, and with no tokens the fallbacks do
+    become recurring. The secret lookup is stubbed so the suite never touches a
+    live token.
     """
     section("k-free status (is K still in the loop?)")
     sys.path.insert(0, str(ROOT.parent / "ops"))
@@ -2301,24 +2322,29 @@ def test_k_free_status() -> None:
 
     real = kfs.get_secret
     try:
-        # Everything present: every api rail clears, every browser/none rail stays.
+        # Every credential present: the api primaries are K-free, so the browser
+        # fallbacks are covered and nothing needs K again.
         kfs.get_secret = lambda name: "x"
         rep = kfs.audit()
         by = {(r["surface"], r["rail"]): r for r in rep["rails"]}
         check("an api rail with its token is K-free",
               by[("facebook", "Page Reels")]["k_free"])
-        check("a browser rail is never K-free",
-              not by[("tiktok", "Short posting (fallback)")]["k_free"])
-        check("a no-API rail is never K-free",
-              not by[("youtube", "channel avatar")]["k_free"])
-        check("k_free_all is False while any rail needs K", rep["k_free_all"] is False)
-        check("the blocked list names the surface", 
-              any(b["surface"] == "music" for b in rep["blocked"]))
+        check("a covered browser fallback is not recurring",
+              by[("tiktok", "Short posting (fallback)")]["covered"]
+              and not by[("tiktok", "Short posting (fallback)")]["needs_k"])
+        check("the Flow render is covered by the keyless synth bed",
+              by[("music", "song beds (Flow render)")]["covered"])
+        check("the avatar is a one-time K action, not recurring",
+              by[("youtube", "channel avatar")]["one_time"]
+              and not by[("youtube", "channel avatar")]["needs_k"])
+        check("with tokens present, nothing needs K again", rep["needs_k"] == 0)
+        check("k_free_all means no recurring need", rep["k_free_all"] is True)
+        check("with every token present, only the avatar is a one-time action",
+              rep["needs_k_once"] == 1)
 
         # Nothing present: no *api* rail can claim K-free, but a keyless rail has
-        # no credential to lose, so it stays K-free. That is the whole point of
-        # the keyless kind — the lyrics and offline-music rails keep working on a
-        # pod with no secrets at all.
+        # no credential to lose, so it stays K-free. With no tokens the browser
+        # fallbacks have no primary, so K is pulled back in — the honest failure.
         kfs.get_secret = lambda name: ""
         rep0 = kfs.audit()
         by0 = {(r["surface"], r["rail"]): r for r in rep0["rails"]}
@@ -2327,6 +2353,12 @@ def test_k_free_status() -> None:
         check("a keyless rail is K-free with no secrets at all",
               by0[("lyrics", "Thai lyrics")]["k_free"]
               and by0[("music", "song beds (offline)")]["k_free"])
+        check("with no tokens, an unprovisioned api rail is a one-time need",
+              by0[("facebook", "Page Reels")]["one_time"])
+        check("with no tokens, every api/oneshot rail is a one-time need",
+              rep0["needs_k_once"] == 6)
+        check("with no tokens, the fallbacks become recurring",
+              rep0["needs_k"] == 2 and rep0["k_free_all"] is False)
     finally:
         kfs.get_secret = real
 

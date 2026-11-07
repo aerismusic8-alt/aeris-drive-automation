@@ -471,9 +471,68 @@ def status() -> int:
     return 0
 
 
+def youtube() -> int:
+    """Set the channel avatar in YouTube Studio. The one YouTube step needing K.
+
+    There is no API for the channel avatar (consult 2026-11-07: "channels.update
+    covers metadata/branding, not the profile picture"), so the only route is the
+    Studio UI. That makes it the single YouTube action that cannot be automated
+    past a sign-in — but once the Google session is restored from the vault it
+    re-runs unattended like the other surfaces, so it is "one K action, then
+    never again". Studio stages branding edits and requires a final Publish, so
+    this clicks that too; without it the avatar upload looks done and never lands.
+    """
+    from playwright.sync_api import sync_playwright
+    with sync_playwright() as p:
+        br, ctx = B.connect(p)
+        pg = ctx.new_page()
+        pg.set_viewport_size({"width": 1440, "height": 1000})
+        pg.goto("https://studio.youtube.com/", wait_until="domcontentloaded",
+                timeout=60000)
+        pg.wait_for_timeout(9000)
+        if "accounts.google.com" in pg.url or \
+                B.looks_signed_out(pg.inner_text("body")[:4000]):
+            print("youtube: not signed in — Google asks the password (the one K step)")
+            return 1
+        _js_click(pg, "^การปรับแต่ง$|^customi[sz]ation$")
+        pg.wait_for_timeout(5000)
+        _shot(pg, "yt-customization")
+        _js_click(pg, "^การสร้างแบรนด์$|^branding$")
+        pg.wait_for_timeout(4000)
+        _shot(pg, "yt-branding")
+        # The picture's control is a hover button labelled "เปลี่ยนรูปภาพ" /
+        # "Change picture"; its accessible name carries "picture".
+        opened = bool(pg.evaluate("""() => {
+          const re = /เปลี่ยนรูปภาพ|change (profile )?picture|เปลี่ยน|^change$/i;
+          const els = [...document.querySelectorAll('button, [role="button"], a')]
+            .filter(e => re.test((e.getAttribute('aria-label') || e.innerText || '').trim()));
+          if (!els.length) return false;
+          els[0].click(); return true;
+        }"""))
+        print("youtube: picture control", "opened" if opened else "NOT found")
+        pg.wait_for_timeout(3000)
+        try:
+            pg.locator('input[type="file"]').first.set_input_files(str(AVATAR))
+            pg.wait_for_timeout(7000)
+            _shot(pg, "yt-avatar-upload")
+            _real_click_text(pg, "^บันทึก$|^save$|^เสร็จสิ้น$|^done$|^apply$")
+            pg.wait_for_timeout(3000)
+        except Exception as exc:  # noqa: BLE001
+            print(f"youtube: avatar upload failed: {exc}")
+        # Studio stages branding edits behind a final Publish; skip it and the
+        # avatar silently never goes live.
+        _real_click_text(pg, "^เผยแพร่$|^publish$")
+        pg.wait_for_timeout(6000)
+        _shot(pg, "yt-avatar-published")
+        pg.close()
+    return 0
+
+
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__)
-    ap.add_argument("target", nargs="?", choices=["tiktok", "facebook", "bio", "welcome", "status"], default="status")
+    ap.add_argument("target", nargs="?",
+                    choices=["tiktok", "facebook", "youtube", "bio", "welcome",
+                             "status"], default="status")
     args = ap.parse_args()
     if args.target == "status":
         return status()
@@ -481,6 +540,8 @@ def main() -> int:
         return tiktok()
     if args.target == "facebook":
         return facebook()
+    if args.target == "youtube":
+        return youtube()
     if args.target == "bio":
         return bio()
     if args.target == "welcome":
