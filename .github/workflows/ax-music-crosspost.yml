@@ -112,26 +112,14 @@ jobs:
               || echo "$p: nothing posted this run (cadence hold or signed out)"
           done
 
-      - name: Fail if a surface was blocked with work waiting
-        # A run that posts nothing because the queue is empty is a normal no-op
-        # and must stay green. A run that posts nothing because the session is
-        # dead, while posts are pending, is a real outage — and for weeks it
-        # looked identical (green) to the healthy case, so K was never told.
-        # This turns that outage red so the ntfy step below fires.
-        run: |
-          set -uo pipefail
-          if [ ! -f /tmp/blocked-pending.txt ]; then
-            echo "no blocked surface with pending work"
-            exit 0
-          fi
-          total=$(awk '{s+=$1} END{print s+0}' /tmp/blocked-pending.txt)
-          if [ "${total:-0}" -gt 0 ]; then
-            echo "::error::$total post(s) pending but the session is signed out; nothing was posted"
-            exit 1
-          fi
-          echo "blocked surfaces had no pending work; nothing lost"
-
       - name: Commit the crosspost state
+        # `if: always()` because this must run even when a surface is blocked.
+        # The posting loop writes the ledger as it goes, so a run that posts to
+        # TikTok and is then blocked on Facebook has real state to save. With the
+        # old order — gate first, commit second — the gate's non-zero exit skipped
+        # this step, the successful TikTok post was never recorded, and the next
+        # run posted it a second time.
+        if: always()
         run: |
           set -euo pipefail
           git config user.name  "ax-music-crosspost"
@@ -144,6 +132,28 @@ jobs:
           git commit -m "data(music): crosspost state $(date -u +%Y-%m-%dT%H:%MZ)"
           git pull --rebase --autostash origin "${GITHUB_REF_NAME}"
           git push
+
+      - name: Fail if a surface was blocked with work waiting
+        # A run that posts nothing because the queue is empty is a normal no-op
+        # and must stay green. A run that posts nothing because the session is
+        # dead, while posts are pending, is a real outage — and for weeks it
+        # looked identical (green) to the healthy case, so K was never told.
+        # This turns that outage red so the ntfy step below fires.
+        #
+        # It runs *after* the commit step on purpose: failing here must not
+        # discard the ledger of whatever did post.
+        run: |
+          set -uo pipefail
+          if [ ! -f /tmp/blocked-pending.txt ]; then
+            echo "no blocked surface with pending work"
+            exit 0
+          fi
+          total=$(awk '{s+=$1} END{print s+0}' /tmp/blocked-pending.txt)
+          if [ "${total:-0}" -gt 0 ]; then
+            echo "::error::$total post(s) pending but the session is signed out; nothing was posted"
+            exit 1
+          fi
+          echo "blocked surfaces had no pending work; nothing lost"
 
       - name: Notify K on ntfy
         if: failure()

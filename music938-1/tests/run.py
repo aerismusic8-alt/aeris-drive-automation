@@ -1324,6 +1324,19 @@ def test_crosspost_blocked_vs_empty() -> None:
     check("empty/healthy run exits clean",
           "no blocked surface with pending work" in wf)
 
+    # The ledger must be committed *before* the gate can fail the run. The gate
+    # exits 1, and a non-zero exit skips every later step, so a run that posted to
+    # TikTok and was then blocked on Facebook lost its TikTok record and reposted
+    # it next time. `if: always()` on the commit step plus the gate after it is
+    # what keeps the ledger safe.
+    commit_at = wf.find("Commit the crosspost state")
+    gate_at = wf.find("Fail if a surface was blocked")
+    check("the state is committed before the blocked-gate can fail",
+          0 < commit_at < gate_at, f"commit@{commit_at} gate@{gate_at}")
+    commit_block = wf[commit_at:gate_at]
+    check("the commit step runs even when a surface is blocked",
+          "if: always()" in commit_block)
+
     # Behaviour: the count the rail reads is real, and zero once posted.
     q = crosspost.build_queue()
     empty_state = {"posted": {}}
