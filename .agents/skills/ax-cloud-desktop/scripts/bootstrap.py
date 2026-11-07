@@ -265,11 +265,9 @@ def restore_bookmarks() -> None:
     vault = _vault_path()
     if not vault.exists():
         return
-    # The snapshot lives in the KV store, which is authenticated with
-    # OPENHANDS_API_KEY; without it the read 401s (same reason as restore_login).
-    if not os.environ.get("OPENHANDS_API_KEY"):
-        print("[=] bookmark restore skipped: OPENHANDS_API_KEY is not set")
-        return
+    # Same reasoning as restore_login: the vault authenticates itself, so the
+    # OPENHANDS_API_KEY gate that used to sit here only ever skipped a restore
+    # that would have worked.
     try:
         r = sh([sys.executable, str(vault), "restore-bookmarks"], timeout=60)
     except Exception as exc:  # noqa: BLE001
@@ -314,14 +312,12 @@ def restore_login() -> None:
     vault = _vault_path()
     if not vault.exists():
         return
-    # The KV store that holds the snapshot is authenticated with OPENHANDS_API_KEY.
-    # Without it the restore fails with a bare 401 that reads like "no saved
-    # session", so a lost login looked like a fresh account. Say which it is.
-    if not os.environ.get("OPENHANDS_API_KEY"):
-        print("[=] login restore skipped: OPENHANDS_API_KEY is not set, so the "
-              "saved session cannot be read (the cookies are in the KV store, "
-              "not on disk).")
-        return
+    # Do NOT gate this on OPENHANDS_API_KEY. The vault resolves its own anchor
+    # through ax_vault, which reads the durable KV store with the anchor id in
+    # AX_VAULT_BOOTSTRAP; OPENHANDS_API_KEY is not part of that path. Requiring
+    # it here meant the saved session was never restored in a normal pod, so K
+    # had to sign in again after every recycle even though the snapshot existed
+    # (verified 2026-11-06: `login_vault.py restore` works with the key unset).
     try:
         r = sh([sys.executable, str(vault), "restore"], timeout=120)
     except Exception as exc:  # noqa: BLE001

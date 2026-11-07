@@ -1883,6 +1883,12 @@ def test_operator_url() -> None:
         # The wheels live on /workspace but the .pth pointing at them does not, so
         # after a recycle every script dies with "ModuleNotFoundError: numpy".
         check("re-points Python at the /workspace libs", "def ensure_pylibs" in src)
+        # The restore used to be gated on OPENHANDS_API_KEY, which is not part of
+        # the vault's auth path, so a normal pod skipped the restore and K signed
+        # in again for nothing. The gate must not come back.
+        check("restores the saved login without an API-key gate",
+              "def restore_login" in src
+              and 'environ.get("OPENHANDS_API_KEY")' not in src)
     finally:
         if old is None:
             os.environ.pop("RUNTIME_ID", None)
