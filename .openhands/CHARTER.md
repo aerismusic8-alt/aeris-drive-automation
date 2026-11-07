@@ -96,28 +96,29 @@ account — not just when K is watching.
 **The step, in order, before writing any code or starting any non-trivial job:**
 
 1. State the problem in one paragraph, plainly.
-2. Run `python3 ops/consult.py "<problem>"` (or `--file`). It asks **five**
-   advisors at once over the cloud desktop and appends the answers to
-   `ops/consult-log.jsonl`:
-   - `chatgpt` — best at separating the automatable from the impossible
-   - `gemini` — fast second opinion
-   - `duck` — Duck.ai's default model
-   - `duck-claude` — Duck.ai on Claude
-   - `duck-oss` — Duck.ai on gpt-oss
+2. Run `python3 ops/consult.py "<problem>"` (or `--file`). It asks the panel at
+   once and appends the answers to `ops/consult-log.jsonl`. The default panel is
+   the two **keyless** channels — no login, no API key, so it works on the day
+   the Google session is the thing that is broken:
+   - `pollinations` — plain HTTP, ~10s
+   - `duck` — Duck.ai's default model, ~90s+ (its Thai reads the best)
 
-   Duck.ai needs **no login**, so its three seats keep the panel alive on the day
-   the Google session is the thing that is broken. K raised the panel from three
-   to five on 2026-11-05: "เพิ่มเป็น 5 ที่ปรึกษาเลยในทุกงาน". The gate requires at
-   least **three channels across at least two vendors** (`MIN_ADVISORS` /
-   `MIN_FAMILIES`). The vendor count is what matters: three of the five seats are
-   the *same* Duck.ai page, so counting seats alone let one vendor pass for a
-   panel — the 2026-11-06 Facebook brief answered "10/10" while 8 of the 10 were
-   that one page agreeing with itself. Measured against `consult-log.jsonl`, a
-   five-seat floor was never met in practice (4 of 33) and got skipped, which is
-   the exact failure the rule exists to prevent; two vendors is reachable and is
-   the number that actually changes a decision. The gate is wired into a real
-   runner (`aeris938-2/scripts/admin.py` fails closed without a quorum); it is
-   not enforced in CI, so on a pod-side decision it is still on you to call it.
+   `chatgpt` and `gemini` remain reachable with `--only`, but they are out of the
+   default because they need the Google session, which is usually signed out, so
+   they mostly added latency.
+
+   **K cut the slow seats (2026-11-07): "the advisors are slow and give weak
+   answers — cut them; use the ones that are good and useful."** Measured first:
+   every Duck.ai seat costs 90-600s because they are one page, so the old
+   three-Duck panel was three names for *one* opinion (~10 minutes for no extra
+   view), and the wide `consult10.py` panel was eight Duck models — ~12 minutes of
+   one page agreeing with itself. The gate requires at least **two channels across
+   at least two vendors** (`MIN_ADVISORS` / `MIN_FAMILIES`). The vendor count is
+   what matters: several seats are the *same* Duck.ai page, so counting seats alone
+   let one vendor pass for a panel — the 2026-11-06 Facebook brief answered "10/10"
+   while 8 of the 10 were that one page. The gate is wired into a real runner
+   (`aeris938-2/scripts/admin.py` fails closed without a quorum); it is not enforced
+   in CI, so on a pod-side decision it is still on you to call it.
 3. Read the answers. Where they agree, that is the plan. Where they disagree,
    say so and pick, with the reason.
 4. **Then** act. Record which advice was followed in the commit or the memory
@@ -127,12 +128,12 @@ Trivial, mechanical work — a typo, a version bump, a doc fix, a command alread
 known to be right — does not need a consultation. Judgement calls do: a new
 feature, a strategy, a "why is this failing" that has already resisted one fix.
 
-The `--only duck` flag exists for a quick check and for the case where the other
-two are signed out; it is not an excuse to skip the panel on a real decision.
+The `--only duck` flag exists for a quick check; it is not an excuse to skip the
+panel on a real decision.
 
 A vendor that repeatedly gives the better answer becomes the default advisor for
 that class of problem — K's standing instruction is to adopt whichever one
-actually solves it and keep using it.
+actually solves it and keep using it, and to drop the ones that are slow or weak.
 
 ## The perpetual loop (this work is never "done")
 
