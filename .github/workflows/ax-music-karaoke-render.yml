@@ -20,10 +20,6 @@ on:
     # release rail's 09:00 upload window.
     - cron: '30 6 * * *'
   workflow_dispatch:
-    inputs:
-      limit:
-        description: "max songs to render this run (0 = all)"
-        default: "8"
 
 permissions:
   contents: write
