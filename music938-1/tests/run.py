@@ -2227,6 +2227,63 @@ def test_heartbeat_repair_signal() -> None:
           "waiting on a thumbnail/playlist repair" in src)
 
 
+def test_brand_identity() -> None:
+    """The channel identity must obey the two rules the advisors set.
+
+    The 2026-11-07 consult (4 channels / 2 vendors) said to keep the indigo
+    A-wave mark but warm it, to keep headphones a prop and not the icon, and to
+    put only the mark, the wordmark and one Thai tagline inside the banner's
+    guaranteed-visible strip. Those are geometry facts, so they are testable:
+    if the mark drifts out of the strip, or a headphone is drawn into the
+    avatar, this fails instead of shipping.
+    """
+    section("brand identity (safe strip + warm evolution)")
+    import brand_pro as bp
+    from PIL import Image
+
+    check("indigo field kept from v2", bp.INK == (32, 42, 70))
+    src = (ROOT / "scripts" / "brand_pro.py").read_text()
+    # The avatar call is the one that must be bold; a thin stroke vanishes at 88px.
+    check("avatar draws the mark bolder than the banner",
+          "color=CREAM, width_frac=0.075" in src)
+    check("the avatar has no headphone", "_headphone" not in src.split("def make_avatar")[1]
+          .split("def make_youtube_banner")[0])
+
+    x0, y0, x1, y1 = bp.SAFE_STRIP
+    check("safe strip is the 1546x423 YouTube area",
+          (x1 - x0, y1 - y0) == (1546, 423), f"{(x1 - x0, y1 - y0)}")
+    check("safe strip is centred", abs((x0 + x1) / 2 - 1280) <= 1
+          and abs((y0 + y1) / 2 - 720) <= 1)
+
+    banner = ROOT / "channel" / "banner-pro-2560x1440.png"
+    avatar = ROOT / "channel" / "avatar-pro-800x800.png"
+    if not banner.exists() or not avatar.exists():
+        skip("brand assets not rendered yet")
+        return
+    b = np.asarray(Image.open(banner).convert("RGB")).astype(int)
+    check("banner is 2560x1440", b.shape[:2] == (1440, 2560))
+    # Bright = text. The corners may glow (the morning window) but no glyph may
+    # sit there, so only near-white counts as a violation outside the strip.
+    def white(a):
+        return int((a.min(axis=2) > 210).sum())
+    outside = (white(b[:y0]), white(b[y1:]), white(b[y0:y1, :x0]), white(b[y0:y1, x1:]))
+    check("no wordmark outside the safe strip", sum(outside) == 0, str(outside))
+    check("the strip carries the wordmark", white(b[y0:y1, x0:x1]) > 20000)
+
+    a = Image.open(avatar).convert("RGB")
+    check("avatar is square 800", a.size == (800, 800))
+    small = np.asarray(a.convert("L").resize((88, 88))).astype(float)
+    contrast = np.percentile(small, 95) - np.percentile(small, 5)
+    check("the mark still reads at 88px", contrast >= 100, f"contrast {contrast:.0f}")
+
+    # The banner writer is a full-replace PUT, so it must read the current
+    # brandingSettings first and refuse to write one with no description.
+    art = (ROOT.parent / "ops" / "apply_channel_art.py").read_text()
+    check("banner writer reads settings before it writes",
+          'api_get("channels"' in art and 'part="brandingSettings"' in art)
+    check("banner writer refuses a stripped PUT", "no description" in art)
+
+
 def test_consult_gate() -> None:
     """K's standing rule: consult the advisors BEFORE acting.
 
@@ -2554,6 +2611,7 @@ def main() -> int:
     test_phone_login()
     test_heartbeat_repair_signal()
     test_consult_gate()
+    test_brand_identity()
     test_watchdog()
     test_fill_playlists()
     test_playlist_patch_is_idempotent()
