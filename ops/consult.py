@@ -265,8 +265,11 @@ def main(argv=None) -> int:
                                  formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("problem", nargs="?")
     ap.add_argument("--file", help="read the problem from this file")
-    ap.add_argument("--only", choices=sorted(VENDORS),
-                    help="ask just one vendor")
+    ap.add_argument("--only", action="append", choices=sorted(VENDORS),
+                    help="ask just this vendor; repeat to pick several "
+                         "(default: all). Repeatable on purpose — a single-value "
+                         "flag silently dropped every vendor after the first, so "
+                         "a retry of two named vendors asked one.")
     ap.add_argument("--timeout", type=float, default=300.0)
     ap.add_argument("--json", action="store_true")
     ap.add_argument("--log", action="store_true", help="list recent consultations")
@@ -309,7 +312,7 @@ def main(argv=None) -> int:
     if not problem:
         ap.error("give a problem or --file (or --log to review past ones)")
 
-    which = [a.only] if a.only else list(VENDORS)
+    which = a.only if a.only else list(VENDORS)
     answers = consult(problem, which, a.timeout, retries=a.retries)
     record(problem, answers)
 
