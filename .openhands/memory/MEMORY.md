@@ -986,3 +986,33 @@ true-instrumental karaoke mix, cover art, a 1920x1080 word-synced video.
   **`apply_brand.py --description-only`** changes the channel description without
   re-uploading the banner. The channel description must carry the Page *URL*, not
   the plain text "Facebook: AERIS Music" — plain text is not clickable.
+
+## Goal = the $500 and the 1,000 gate (K, 2026-11-07)
+
+- **A follower count is a gate, not vanity.** YouTube 1,000 subs = YPP; TikTok
+  1,000 followers = TikTok Shop Affiliate. Growing the channel and earning are
+  the same job. K rejected "platforms cannot pay, do affiliate instead" — the
+  task is to *build the channels to the gate*. K accepts missing the month; the
+  rule is do every free thing, watch it, improve until it works.
+- **`aeris938-2/scripts/goal_watch.py`** is the daily judge. Reads
+  `work/history.jsonl`, names the ONE blocking constraint (income > reach >
+  conversion > offer), writes `work/goal-watch.md`, pushes to ntfy. Exits 0 on
+  bad news. Wired into `ax-music-dashboard.yml` (which now sends its headline).
+- **A karaoke clip whose words do not match the song is worse than none (K).**
+  `make_short.karaoke_ok(slug)` is the hard gate: mix exists, length within 2% of
+  the song, cover exists, lyric has `[chorus]`. `render(mix="karaoke")` raises on
+  a refusal; `--skip-existing` skips that song. Do not ship a mismatched clip.
+- **`ax-music-karaoke-render.yml`** renders a lyric-led karaoke Short per song on
+  the free Actions rail (pulls masters from `media-938`, no pod), then
+  `crosspost.py --merge-queue` adds them. `--merge-queue` appends new ids and
+  never drops the backlog; `--rebuild-queue` WOULD drop it (enumerates the
+  gitignored `library/shorts/`).
+- **`crosspost._slug_of`/`_hook_of` must strip `short-song-` AND `short-karaoke-`.**
+  They only knew the first prefix, so a karaoke clip would be captioned with its
+  whole stem and every link/lyric line wrong.
+- **The opening Short card is the first sung lyric**, overlaid at t=0 with the
+  audio unchanged (panel lever #1: open on the hook, do not delay the song). The
+  old question-card was 2s of delay.
+- **Honest ceiling:** the channel needs to feel authored (real voice/story/series),
+  not interchangeable generated songs, or people will not follow and monetization
+  policy is at risk. "Post more / more hashtags / same file everywhere" is not growth.
