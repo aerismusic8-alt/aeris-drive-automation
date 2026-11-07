@@ -1,0 +1,90 @@
+name: AX Music Compilation Release
+
+# Publishes the long-form album compilation: all the songs on one video with a
+# clickable chapter list.
+#
+# Why this is the watch-hour lever. The YouTube Partner Program gate is 4,000
+# public watch-hours in 12 months. A 3-minute song watched once earns 0.05 of an
+# hour, so songs alone need ~80,000 views; one 57-minute compilation watched once
+# earns a whole hour, so the same catalogue needs ~4,000 views. Same songs, same
+# cost, ~20x less audience. This is how free music channels clear the bar.
+#
+# The 2026-11-07 advisor panel put it first: publish the compilation now, keep it
+# on the one channel (splitting would just dilute the subscriber count), and give
+# it a real chapter list so the "(เลือกเพลงฟังได้)" title is honest.
+#
+# It runs monthly, not daily: the video is ~142 MB and one upload is enough. The
+# upload is guarded by `compilation-state-<stem>.json`, so a retry never doubles
+# it. Free minutes only — no pod, no browser, no paid anything.
+
+on:
+  schedule:
+    # 10:00 UTC on the 1st. After the 09:00 daily-release tick, so the two
+    # uploads do not fight for the same quota pool.
+    - cron: '0 10 1 * *'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: ax-music-compilation
+  cancel-in-progress: false
+
+jobs:
+  compilation:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install ffmpeg
+        run: |
+          set -euo pipefail
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq ffmpeg
+
+      - name: Pull the song masters and covers
+        env:
+          AX_GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          python3 music938-1/scripts/pull_media.py --only songs
+          python3 music938-1/scripts/pull_media.py --only covers
+
+      - name: Build the compilation video
+        run: |
+          set -euo pipefail
+          cd music938-1
+          # 60 minutes of songs, crossfaded, on one still. Under 12 tracks it
+          # refuses on purpose: a "N เพลง" title over three songs misleads.
+          python3 scripts/compile_album.py --name "รวมเพลงไทยเพื่อชีวิต" --max 60 --render
+
+      - name: Build the 16:9 thumbnail
+        run: |
+          set -euo pipefail
+          cd music938-1 && python3 scripts/brand.py
+
+      - name: Upload to AERIS Music (ch3)
+        env:
+          YT_CLIENT_ID: ${{ secrets.YT_CLIENT_ID }}
+          YT_CLIENT_SECRET: ${{ secrets.YT_CLIENT_SECRET }}
+          YT_CH3_REFRESH_TOKEN: ${{ secrets.YT_CH3_REFRESH_TOKEN }}
+        run: |
+          set -euo pipefail
+          cd music938-1
+          python3 scripts/upload_compilation.py --upload --ch ch3
+
+      - name: Record the upload
+        run: |
+          set -euo pipefail
+          git config user.name  "ax-music-compilation"
+          git config user.email "ax-music-compilation@users.noreply.github.com"
+          git add music938-1/work/compilation-state-*.json 2>/dev/null || true
+          if git diff --cached --quiet; then
+            echo "no state change to record"
+            exit 0
+          fi
+          git commit -m "data(music): compilation upload $(date -u +%Y-%m-%dT%H:%MZ)"
+          git pull --rebase --autostash origin "${GITHUB_REF_NAME}"
+          git push
