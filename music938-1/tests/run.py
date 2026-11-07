@@ -995,6 +995,7 @@ def test_thumbnail_repair() -> None:
     import fix_thumbnails
     import release
     import yt_auth
+    import yt_quota
 
     entries = [
         {"slug": "a", "kind": "song", "variant": "", "video_id": "V1", "thumb_ok": False},
@@ -1006,7 +1007,8 @@ def test_thumbnail_repair() -> None:
     seen, saved, added = [], [], []
     real = (release.load_state, release.save_state, fix_thumbnails.thumb_for,
             yt_auth.access_token, fix_thumbnails.set_thumbnail, sys.argv,
-            fix_thumbnails.in_playlist, release.add_to_playlist)
+            fix_thumbnails.in_playlist, release.add_to_playlist,
+            yt_quota.remaining, yt_quota.record, yt_quota.commit)
     try:
         state = {"released": [dict(e) for e in entries],
                  "playlists": {"ch3:song": "PL1"}}
@@ -1017,12 +1019,18 @@ def test_thumbnail_repair() -> None:
         fix_thumbnails.set_thumbnail = lambda vid, path, tok: (seen.append(vid), (200, {}))[1]
         fix_thumbnails.in_playlist = lambda pid, vid, tok: False
         release.add_to_playlist = lambda pid, vid, ch: (added.append((pid, vid)), True)[1]
+        # The quota gate must not depend on the live ledger, or the test would
+        # pass or fail with whatever the day's real spend happens to be.
+        yt_quota.remaining = lambda *a, **k: 10_000
+        yt_quota.record = lambda *a, **k: 0
+        yt_quota.commit = lambda *a, **k: True
         sys.argv = ["fix_thumbnails.py"]
         fix_thumbnails.main()
     finally:
         (release.load_state, release.save_state, fix_thumbnails.thumb_for,
          yt_auth.access_token, fix_thumbnails.set_thumbnail, sys.argv,
-         fix_thumbnails.in_playlist, release.add_to_playlist) = real
+         fix_thumbnails.in_playlist, release.add_to_playlist,
+         yt_quota.remaining, yt_quota.record, yt_quota.commit) = real
 
     check("only the entry with thumb_ok=False is repaired", seen == ["V1"], f"{seen}")
     check("an entry with no thumb_ok is left alone", "V3" not in seen, f"{seen}")

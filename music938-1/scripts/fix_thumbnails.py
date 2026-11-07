@@ -41,11 +41,22 @@ def write_ledger(content: bytes) -> bool:
     lost at the end of the job — and the same videos would be "repaired" again
     every run.
     """
+    import base64 as _b64
     import daily_release  # the Contents API helper, and the token
 
     tok = daily_release.token()
     st, cur = daily_release.api(f"/repos/{daily_release.REPO}/contents/{LEDGER}", tok)
     sha = cur.get("sha") if st == 200 else None
+    # Skip a no-op write. A run that repaired nothing (the pool was spent, so the
+    # repair never ran) would otherwise add an empty "repairs" commit to main on
+    # every tick — real history noise with nothing in it.
+    if sha and cur.get("content"):
+        try:
+            if _b64.b64decode(cur["content"]) == content:
+                print(f"{LEDGER} unchanged; no commit")
+                return True
+        except Exception:  # noqa: BLE001
+            pass
     body = {"message": "release: ledger after thumbnail/playlist repairs",
             "content": base64.b64encode(content).decode(), "branch": "main"}
     if sha:
