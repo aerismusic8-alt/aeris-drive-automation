@@ -1,30 +1,5 @@
 {
  "_why": "K (2026-11-04): the channel must hold only quality work and the burned text must go. Every upload made before the 2026-11-03 14:22 fix carries a drifting lyric sweep (estimated, not measured) that did not match the sung line, plus a title card and a closing card. The renderers no longer burn any text, so the corrected files in library/ (and on the media-938 release) are the replacement. Each replacement costs one upload slot, so they drain at the leftover quota of the Pacific day (07:00 UTC reset) before new releases.",
  "channel": "ch3",
- "pending": [
-  {
-   "slug": "04-saeng-chao-wan-mai",
-   "kind": "short",
-   "variant": "short-song-h3-04-saeng-chao-wan-mai",
-   "old": "snpnSF5Y_U0"
-  },
-  {
-   "slug": "05-fon-tok-nai-chai",
-   "kind": "short",
-   "variant": "short-song-h1-05-fon-tok-nai-chai",
-   "old": "FTKnHZGW6dI"
-  },
-  {
-   "slug": "05-fon-tok-nai-chai",
-   "kind": "short",
-   "variant": "short-song-h2-05-fon-tok-nai-chai",
-   "old": "Dmmvl07DkVw"
-  },
-  {
-   "slug": "05-fon-tok-nai-chai",
-   "kind": "short",
-   "variant": "short-song-h3-05-fon-tok-nai-chai",
-   "old": "4lsmpLtFxzc"
-  }
- ]
+ "pending": []
 }
