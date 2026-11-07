@@ -129,6 +129,21 @@ def test_shopee_clicks_and_fallback():
     assert "2026-11-03T01:00:00Z" in text2  # labelled, not silently stale
 
 
+def test_revenue_goal_is_measured_and_never_guessed():
+    """K set a $500 goal (2026-11-07). It must be counted from the real Shopee
+    commission — the only route that can pay in Thailand — converted to THB, and
+    read UNKNOWN when the dashboard is unreachable, never a guessed figure."""
+    assert report.GOAL_USD == 500
+    text = "\n".join(report.goal_block({"commission": "5,000", "orders": "120",
+                                        "clicks": "9,000"}))
+    assert "29.80%" in text                      # 5000 / 16780
+    assert "คำสั่งซื้อสะสม: 120" in text
+    blocked = "\n".join(report.goal_block({"commission": "UNKNOWN"}))
+    assert "UNKNOWN" in blocked and "ไม่เดา" in blocked
+    # The route line must name the real 2026 blocker instead of promising ad money.
+    assert "ไม่มีในไทย" in blocked and "invite-only" in blocked
+
+
 def test_follow_guard_requires_the_page_identity():
     """The follow loop must never click Follow while the personal profile acts.
 

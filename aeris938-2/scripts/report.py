@@ -31,6 +31,62 @@ REPORT = surfaces.WORK / "growth-report.md"
 HISTORY = surfaces.WORK / "history.jsonl"
 YT = surfaces.OPS / "yt_auth.py"
 
+# The revenue goal K set (2026-11-07). The Shopee dashboard reports THB, so the
+# target is converted to THB for the progress line. Rate is a planning figure,
+# dated — not a live quote.
+GOAL_USD = 500.0
+THB_PER_USD = 33.56
+
+
+def _money(v):
+    """Parse a dashboard money cell to a float, or None when unreadable."""
+    if v in (None, "", "UNKNOWN"):
+        return None
+    s = str(v).replace(",", "").replace("฿", "").replace("$", "").strip()
+    try:
+        return float(s)
+    except ValueError:
+        return None
+
+
+def goal_block(sp: dict) -> list[str]:
+    """Progress toward the $500 goal, from the number that actually counts.
+
+    The platforms cannot pay here: TikTok Creator Rewards is not available in
+    Thailand, Facebook Content Monetization is invite-only with no public
+    threshold, and YouTube Shorts RPM is cents per thousand views. Shopee
+    affiliate is the one route that can pay today, so the goal is measured in
+    its commission — read live, never guessed.
+    """
+    target_thb = GOAL_USD * THB_PER_USD
+    comm = _money(sp.get("commission"))
+    orders = _money(sp.get("orders"))
+    clicks = _money(sp.get("clicks"))
+    lines = ["## เป้าหมายรายได้ $500 (K, 2026-11-07)", "",
+             f"- เป้า: ${GOAL_USD:.0f} ≈ ฿{target_thb:,.0f} (ที่ ฿{THB_PER_USD}/$)"]
+    if comm is None:
+        lines.append("- ค่าคอมมิชชั่นสะสม: UNKNOWN (อ่านไม่ได้ — ไม่เดา)")
+    else:
+        pct = 100.0 * comm / target_thb
+        left = max(target_thb - comm, 0.0)
+        lines.append(f"- ค่าคอมมิชชั่นสะสม: ฿{comm:,.2f} — {pct:.2f}% ของเป้า "
+                     f"(เหลือ ฿{left:,.0f})")
+    if orders is not None:
+        lines.append(f"- คำสั่งซื้อสะสม: {orders:,.0f}")
+    if clicks is not None:
+        lines.append(f"- คลิกสะสม: {clicks:,.0f}")
+    lines += [
+        "",
+        "เส้นทางที่เร็วสุด (เกณฑ์จริง 2026-11-07):",
+        "- Shopee Affiliate = ทางเดียวที่จ่ายได้ตอนนี้; TikTok Creator Rewards "
+        "ไม่มีในไทย; Facebook Content Monetization เป็น invite-only "
+        "ไม่มีเกณฑ์สาธารณะ; YouTube Shorts RPM ต่ำมาก (ต้อง 8-50 ล้านวิว/เป้า)",
+        "- ต้องมีออเดอร์จริง → ลิงก์ต้องตรงสินค้าที่คนอยากซื้อ "
+        "(การ์ดหูฟัง/อุปกรณ์ฟังเพลง) ไม่ใช่ปิดท้ายเพลงเฉย ๆ",
+        "",
+    ]
+    return lines
+
 
 def youtube_stats() -> dict:
     """Subs, videos and views for the one channel this project grows.
@@ -251,6 +307,7 @@ def render(yt: dict, dash: dict, prev: dict | None = None,
         for surf, url in links.items():
             lines.append(f"- {surf}: {url}")
         lines.append("")
+    lines += goal_block(sp)
     lines += [
         "## เป้าหมาย (GOAL.md)", "",
         "- YouTube: 1,000 ซับ + 4,000 ชม. → เปิด monetization",
