@@ -106,10 +106,24 @@ def forge(genre: str, slug: str, title: str, mood: str, tempo: str, key: str,
     meta = {"TITLE": title, "GENRE": genre, "MOOD": mood, "TEMPO": tempo,
             "KEY": key, "VOICE": voice}
     drafts: list[tuple[list[tuple[str, list[str]]], list[str]]] = []
+    # Keyless first: Duck.ai needs no login, so a song can still be made on the
+    # day K's Google session is signed out. ChatGPT is the fallback for when
+    # Duck is rate-limited or its draft fails the lint. Both go through the same
+    # prompt, parser and filter, so a weaker channel costs a retry, not a render.
     for i, angle in enumerate(angles):
         print(f"[draft {i+1}/{len(angles)}] {angle}", flush=True)
-        secs, problems = A.draft(meta, angle, drafter="chatgpt")
-        print(f"  sections={len(secs)} problems={problems[:2]}", flush=True)
+        secs: list[tuple[str, list[str]]] = []
+        problems: list[str] = []
+        for drafter in ("duck", "chatgpt"):
+            try:
+                secs, problems = A.draft(meta, angle, drafter=drafter)
+            except Exception as exc:  # noqa: BLE001
+                problems = [f"{drafter}: {type(exc).__name__}: {exc}"]
+                continue
+            print(f"  {drafter}: sections={len(secs)} problems={problems[:2]}",
+                  flush=True)
+            if secs and not problems:
+                break
         if secs and not problems:
             drafts.append((secs, problems))
         time.sleep(2)

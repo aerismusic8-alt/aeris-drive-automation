@@ -16,6 +16,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import re
 import sys
 import time
 import urllib.request
@@ -134,6 +135,11 @@ def _extract_answer(column: str) -> str:
     # part of the answer.
     if lines and len(lines[0].strip()) <= 30:
         lines.pop(0)
+    # Duck.ai appends an ordinal marker ("2nd opinion", "3rd opinion") after each
+    # answer in a thread. It is chrome, not content, and it fuses onto the last
+    # real line — a lyric drafter that keeps it fails the Latin-text lint.
+    while lines and re.fullmatch(r"\s*\d+(?:st|nd|rd|th)\s+opinion\s*", lines[-1], re.I):
+        lines.pop()
     return "\n".join(lines).strip()
 
 

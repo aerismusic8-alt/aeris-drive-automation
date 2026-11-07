@@ -2336,6 +2336,38 @@ def test_vault_key_fallback() -> None:
           "from ax_secrets import get_secret" in src and "_get_secret(\"OPENHANDS_API_KEY\")" in src)
 
 
+def test_keyless_lyric_drafter() -> None:
+    """The lyric rail must not depend on K's Google session.
+
+    The drafting step used to need the signed-in ChatGPT/Gemini web app, so a
+    signed-out desktop meant no new song at all — a K-dependency in the content
+    engine itself. Duck.ai needs no login and no key, so it is now the drafter,
+    with the lint as the quality gate. Two things make that safe and are pinned
+    here: Duck.ai's "Nth opinion" chrome must be stripped or the last lyric line
+    fails the Latin-text lint, and both drafters must share the same prompt/parse
+    /lint path so a weaker channel costs a retry rather than a bad render.
+    """
+    section("keyless lyric drafter (no Google session needed)")
+    sys.path.insert(0, str(ROOT / "scripts"))
+    sys.path.insert(0, str(ROOT.parent / "ops"))
+    import ai_lyrics as A  # noqa: E402
+
+    check("duck is a registered drafter", "duck" in A.DRAFTERS)
+    check("chatgpt stays as the fallback drafter", "chatgpt" in A.DRAFTERS)
+    # The chrome is stripped where every answer is read, not just for lyrics.
+    check("duck_ask strips the 'Nth opinion' marker",
+          "opinion" in (ROOT.parent / "ops" / "duck_ask.py").read_text()
+          and re.search(r"st\|nd\|rd\|th", (ROOT.parent / "ops" / "duck_ask.py").read_text())
+          is not None)
+    # A draft carrying the marker fails the lint — which is why the strip matters.
+    bad = [("chorus", ["คิดถึงบ้านยามฝนตกทุกครา", "2nd opinion"])]
+    check("the marker would fail the lint",
+          any("Latin" in p for p in A.lint_sections(bad)))
+    forge = (ROOT / "scripts" / "forge_song.py").read_text()
+    check("the forge tries the keyless drafter first",
+          forge.index('for drafter in ("duck", "chatgpt")') > 0)
+
+
 def test_consult_gate() -> None:
     """K's standing rule: consult the advisors BEFORE acting.
 
@@ -2677,6 +2709,7 @@ def main() -> int:
     test_consult_gate()
     test_k_free_status()
     test_vault_key_fallback()
+    test_keyless_lyric_drafter()
     test_brand_identity()
     test_watchdog()
     test_fill_playlists()

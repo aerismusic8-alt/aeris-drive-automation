@@ -17,6 +17,8 @@ The distinction that matters, and the reason a rail is not automatically "K-free
 just because it works today:
 
 * **api** — an OAuth/token credential that a scheduled job can refresh. K-free.
+* **keyless** — no credential at all: a free endpoint reached over plain HTTP or
+  CDP (Duck.ai, Pollinations). Nothing expires, so nothing can put K back.
 * **browser** — a Playwright session restored from a snapshot. It works until the
   snapshot expires, and then it is a K sign-in, so it is *not* K-free.
 * **none** — no API exists; only a human in the UI. Not K-free.
@@ -46,8 +48,8 @@ RAILS: list[tuple[str, str, str, list[str], str]] = [
      "Content Posting API refresh token"),
     ("tiktok", "Short posting (fallback)", "browser",
      ["AERIS_STORAGE_STATE_B64"], "expires; a dead snapshot is a K sign-in"),
-    ("lyrics", "Thai lyrics", "browser",
-     ["GEMINI_API_KEY"], "drives gemini.google.com unless a free API key is set"),
+    ("lyrics", "Thai lyrics", "keyless", [],
+     "Duck.ai drafts with no login; the lint is the quality gate"),
     ("music", "song beds", "browser", [],
      "flowmusic.app has no API; browser session only"),
     ("drive", "asset sync", "api", ["GDRIVE_REFRESH_TOKEN"],
@@ -65,9 +67,10 @@ def audit() -> dict:
     rows = []
     for surface, rail, kind, names, note in RAILS:
         have = _present(names) if names else False
-        # An api rail is K-free when its credential is here. A browser rail is
-        # never K-free: the snapshot working today does not stop it expiring.
-        k_free = have and kind == "api"
+        # An api rail is K-free when its credential is here; a keyless rail needs
+        # no credential, so it is K-free by construction. A browser rail is never
+        # K-free: the snapshot working today does not stop it expiring.
+        k_free = (kind == "keyless") or (have and kind == "api")
         rows.append({"surface": surface, "rail": rail, "auth": kind,
                      "needs": names, "present": have, "k_free": k_free,
                      "note": note})

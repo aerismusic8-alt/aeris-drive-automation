@@ -280,7 +280,24 @@ def _drive_chatgpt(prompt: str, timeout_s: int = 300) -> str:
     return chatgpt_ask.ask(prompt, new_chat=True, timeout=timeout_s)
 
 
-DRAFTERS = {"gemini": _drive_gemini, "chatgpt": _drive_chatgpt}
+def _drive_duck(prompt: str, timeout_s: int = 300) -> str:
+    """Draft with Duck.ai — no login, no API key, so it survives a dead session.
+
+    The lyric rail used to need the ChatGPT web app, which needs K's Google
+    session; when that is signed out there is no new song at all. Duck.ai is
+    keyless and its Thai is the strongest of the free channels (measured
+    2026-11-07: pollinations is faster but its Thai is weak and it rate-limits to
+    one reply per 45s, so it is the second opinion, not the drafter). The
+    `lint_sections` filter still decides whether a draft may reach Flow Music, so
+    a weaker channel costs a retry, not a bad render.
+    """
+    sys.path.insert(0, str(ROOT.parent / "ops"))
+    import duck_ask  # noqa: PLC0415
+
+    return duck_ask.ask(prompt, timeout=timeout_s)
+
+
+DRAFTERS = {"gemini": _drive_gemini, "chatgpt": _drive_chatgpt, "duck": _drive_duck}
 
 
 def draft(meta: dict, angle: str = "", drafter: str = "chatgpt"
