@@ -23,34 +23,27 @@ answer, timestamps, the vendor families that answered, and what was later
 *applied*) so the reasoning behind a decision is auditable later and the
 "which vendor actually helped" question has data behind it.
 
-Vendors, all free (Rule #1), driven over the cloud desktop's CDP:
-  - chatgpt  : strongest at separating what is automatable from what is not
-  - gemini   : fast, terse, good second opinion
-  - duck     : Duck.ai, needs NO login, so it still works when the Google
-               session is the thing that is broken. Duck.ai routes to several
-               vendors behind one page, and each is a distinct opinion, so it
-               supplies three of the five: its default model, Claude, and
-               gpt-oss.
+Vendors (all free, Rule #1). The default panel is the two keyless ones:
+  - pollinations : plain HTTP, no login, no API key — ~12s
+  - duck         : Duck.ai, needs NO login, so it still works when the Google
+                   session is the thing that is broken — ~90s
 
-K's rule is five *channels* on every non-trivial task (2026-11-05). The gate
-requires at least `MIN_ADVISORS` (three) to have answered **across at least
-`MIN_FAMILIES` (two) vendors**.
+The ChatGPT and Gemini web apps remain available (`--only chatgpt`), but they
+are out of the default: they need the Google session, which is usually signed
+out, so they mostly added latency. Three of the old channels were the same
+Duck.ai page under different names — one opinion, three times the wait.
 
-Why families and not just channels: measured against `consult-log.jsonl`, the
-median consultation had exactly ONE channel answer and only 4 of 33 reached
-five — so a five-channel floor was never met in practice and got skipped, which
-is the failure the rule exists to prevent. And three of the five channels are
-the *same* Duck.ai page, so counting channels let one vendor pass for a panel:
-the 2026-11-06 Facebook brief answered "10/10" while 8 of the 10 were that one
-page agreeing with itself. Two vendors is the honest minimum for "not a single
-opinion", it is reachable, and it is the number that actually changes a
-decision. `family()` maps a channel to its vendor; `quorum()` decides the floor
-in one place.
+K's original rule was five *channels* on every non-trivial task (2026-11-05).
+Measured against `consult-log.jsonl` that floor was never met (4 of 33 rows) and
+got skipped, which is the failure the rule exists to prevent. K's correction
+(2026-11-07): use the advisors that are fast and useful, drop the rest. So the
+gate now requires `MIN_ADVISORS` (two) channels to answer **across at least
+`MIN_FAMILIES` (two) vendors** — two real vendors is the honest minimum for "not
+a single opinion", and it is what the panel actually delivers.
 """
 from __future__ import annotations
 
 import argparse
-import functools
 import hashlib
 import json
 import sys
@@ -67,18 +60,25 @@ import pollinations_ask  # noqa: E402
 
 LOG = HERE / "consult-log.jsonl"
 
-# Six channels, four vendors. Two are the ChatGPT and Gemini web apps; three are
-# Duck.ai models; one is Pollinations over plain HTTP. Duck and Pollinations need
-# no login and no API key, so the panel still reaches quorum when Google is signed
-# out and ChatGPT free is rate-limited — which is now the common case.
-# Ordered most-reliable-to-drive first; one failure does not stop the rest.
+# The standing panel. K (2026-11-07): "the advisors are slow and give weak
+# answers — cut them; use the ones that are good and useful."
+#
+# Measured before cutting: every Duck.ai channel takes 90-600s because they are
+# one page, and the old three-Duck panel was three names for ONE opinion (family
+# "duck"), so it spent ~10 minutes to buy nothing. `consult10.py` widened that to
+# eight Duck models — ~12 minutes of one page agreeing with itself.
+#
+# So the default panel is now the two keyless channels that answer over plain
+# HTTP: Pollinations (12s) and a single Duck.ai call. Two real vendors, no login,
+# no key, about two minutes. The ChatGPT/Gemini web apps stay in VENDORS and can
+# still be named with `--only` when a Google session is up, but they are out of
+# the default: a channel that is usually signed out only adds latency.
+PANEL = ["duck", "pollinations"]
 VENDORS = {
+    "duck": duck_ask.ask,
+    "pollinations": pollinations_ask.ask,
     "chatgpt": ask_agents.AGENTS["chatgpt"],
     "gemini": ask_agents.AGENTS["gemini"],
-    "duck": duck_ask.ask,
-    "duck-claude": functools.partial(duck_ask.ask, model="Claude Haiku 5.5"),
-    "duck-oss": functools.partial(duck_ask.ask, model="gpt-oss 120B"),
-    "pollinations": pollinations_ask.ask,
 }
 
 
@@ -102,11 +102,12 @@ def families(answers: dict) -> set[str]:
 # refused most of them (median was ONE channel), so the rule was skipped in
 # practice — the failure mode the advisors warned about. What actually matters
 # is more than one *vendor*: two families is the honest minimum for "not a
-# single opinion", and it is reachable (a retry turns a transient web-app
-# failure into a second family). Three channels still must answer, so one
-# family cannot pass by echoing itself three times.
+# single opinion", and the trimmed panel of two keyless channels delivers it.
 MIN_FAMILIES = 2
-MIN_ADVISORS = 3
+# Two channels, not three: the old three-channel floor was reachable only by
+# naming the same Duck page three times, which is one opinion and ~10 minutes.
+# With two real vendors in the panel, two answered channels IS two vendors.
+MIN_ADVISORS = 2
 
 
 def quorum(answers: dict) -> tuple[bool, str]:
@@ -315,7 +316,7 @@ def main(argv=None) -> int:
     if not problem:
         ap.error("give a problem or --file (or --log to review past ones)")
 
-    which = a.only if a.only else list(VENDORS)
+    which = a.only if a.only else list(PANEL)
     answers = consult(problem, which, a.timeout, retries=a.retries)
     record(problem, answers)
 

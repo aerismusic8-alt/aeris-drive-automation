@@ -2350,20 +2350,26 @@ def test_consult_gate() -> None:
     import tempfile
 
     src = (ROOT.parent / "ops" / "consult.py").read_text()
-    check("asks every vendor", all(v in src for v in ("chatgpt", "gemini", "duck")))
-    check("the panel is at least six channels (K, 2026-11-05; pollinations 2026-11-07)",
-          len(consult.VENDORS) >= 6, f"{len(consult.VENDORS)}")
-    check("three of them are Duck.ai models, which need no login",
-          sum(1 for k in consult.VENDORS if k.startswith("duck")) >= 3)
-    # The browser channels die together: Gemini signs out, ChatGPT free throttles,
-    # a Duck tab wedges. A keyless HTTP channel is what keeps the panel at quorum
-    # on those days, so it must be a first-class vendor, not a fallback script.
+    check("chatgpt/gemini/duck stay available via --only",
+          all(v in consult.VENDORS for v in ("chatgpt", "gemini", "duck")))
+    # K cut the slow advisors (2026-11-07): the default panel is the keyless
+    # channels only. The web apps stay reachable but are out of the default,
+    # because they need the Google session and mostly added latency.
+    check("the default panel is small (K: cut the slow ones)",
+          len(consult.PANEL) <= 3, f"{len(consult.PANEL)}")
+    check("every default channel is keyless (no login, no API key)",
+          set(consult.PANEL) == {"duck", "pollinations"})
+    check("the default panel names two distinct vendors",
+          len({consult.family(c) for c in consult.PANEL}) >= 2)
+    # A keyless HTTP channel keeps the panel at quorum on the days the browser
+    # channels die together (Gemini signs out, ChatGPT free throttles, a Duck tab
+    # wedges), so it is a first-class vendor, not a fallback script.
     check("a keyless HTTP channel is in the panel", "pollinations" in consult.VENDORS)
     check("that channel is a distinct vendor family",
           consult.family("pollinations") == "pollinations")
-    # The quorum counts *vendors*, not channels. Eight of the ten channels in the
-    # wide panel are one Duck.ai page; counting channels let one page pass for a
-    # panel (the 2026-11-06 FB brief "10/10 agreed" while 8 were the same page).
+    # The quorum counts *vendors*, not channels: several Duck.ai models are one
+    # page, so counting channels let one page pass for a panel (the 2026-11-06 FB
+    # brief "10/10 agreed" while 8 were the same page).
     check("duck channels collapse to one vendor",
           consult.family("duck-luna") == consult.family("duck-oss") == "duck")
     check("chatgpt and gemini are their own vendors",
@@ -2371,8 +2377,9 @@ def test_consult_gate() -> None:
           and consult.family("gemini") == "gemini")
     check("the floor is measured in families", consult.MIN_FAMILIES >= 2,
           f"{consult.MIN_FAMILIES}")
-    check("the floor still needs real channels", consult.MIN_ADVISORS >= 3,
-          f"{consult.MIN_ADVISORS}")
+    check("the floor matches the two-channel default",
+          consult.MIN_ADVISORS == len(consult.PANEL),
+          f"{consult.MIN_ADVISORS} vs {len(consult.PANEL)}")
     check("duck needs no login", "duck" in consult.VENDORS)
     check("records the problem and answers", "consult-log.jsonl" in src)
     check("records what was applied, not just what was asked",

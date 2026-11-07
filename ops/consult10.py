@@ -40,18 +40,16 @@ import ask_agents  # noqa: E402
 import duck_ask  # noqa: E402
 from consult import record  # noqa: E402
 
-# Eight Duck.ai models, each a separate opinion. The default model carries tools;
-# "Fast" is the same base without them; the rest are the other vendors Duck
-# routes to. Names must match the Duck.ai model menu.
+# The standing panel is `ops/consult.py`: two keyless channels, ~2 minutes. This
+# wide panel is for the rare hard problem, and it is slower — every Duck.ai model
+# is the same page, so eight of them is one opinion eight times over. K cut the
+# slow ones (2026-11-07), so the default here is the three *distinct* models that
+# are worth the wait; the rest of the old eight were near-duplicates. Names must
+# match the Duck.ai model menu.
 DUCK_MODELS = [
     ("duck-luna", "6 Luna"),
-    ("duck-luna-fast", "Fast 6 Luna"),
     ("duck-mistral", "Mistral Small 4"),
     ("duck-oss", "gpt-oss 120B"),
-    ("duck-gpt-terra", "GPT-5.6 Terra PLUS"),
-    ("duck-claude-sonnet", "Claude Sonnet 5.5 PLUS"),
-    ("duck-gpt-sol", "GPT-5.6 Sol PRO"),
-    ("duck-claude-opus", "Claude Opus 5.5 PRO"),
 ]
 
 WEB_APPS = [
