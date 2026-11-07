@@ -797,20 +797,24 @@ true-instrumental karaoke mix, cover art, a 1920x1080 word-synced video.
 - **When a metric reads a suspicious exact 0 while a sibling surface is fine,
   suspect the reader before believing the platform.**
 - **Consult the advisors BEFORE acting — it is a gate, not a note (K, 2026-11-05).**
-  `ops/consult.py` asks **five channels** in one command and appends to
+  `ops/consult.py` asks the panel in one command and appends to
   `ops/consult-log.jsonl`; `consult.require(brief)` (or `consult.py --check`) fails
-  closed unless a *recent* consultation for that exact brief with **≥3 channels
-  across ≥2 vendors** is on record. K raised the panel from 3 to 5 ("เพิ่มเป็น 5
-  ที่ปรึกษาเลยในทุกงาน"): `chatgpt`, `gemini`, and three Duck.ai models (`duck`,
-  `duck-claude`, `duck-oss`) — Duck.ai's "Switch model" picker is what supplies
-  three seats from one no-login page.
-- **The quorum counts VENDORS, not seats (2026-11-07).** Measured against the log,
-  the median consultation answered on **one** channel and only 4 of 33 reached five,
-  so a five-seat floor was a dead letter that got skipped — the failure the rule
-  exists to prevent. And 3 of the 5 seats are one Duck.ai page, so "3 answered"
-  could be one vendor echoing itself (the 2026-11-06 FB brief: "10/10" while 8 were
-  that page). `MIN_FAMILIES = 2` + `MIN_ADVISORS = 3` is the honest, reachable floor.
-  `family()` maps a seat to its vendor; `quorum()` decides it in one place.
+  closed unless a *recent* consultation for that exact brief with **≥2 channels
+  across ≥2 vendors** is on record.
+- **The panel is the two KEYLESS channels now (K, 2026-11-07: "cut the slow ones,
+  use the good useful ones").** Measured first: every Duck.ai channel costs 90-600s
+  because they are ONE page, so the old 3-Duck panel was three names for one
+  opinion (~10 min, no extra view) and `consult10.py`'s 8 Duck models was ~12 min
+  of one page agreeing with itself. `PANEL = ["duck", "pollinations"]` — duck is the
+  one whose Thai reads well but is slow (~90s+); pollinations is keyless plain HTTP
+  in ~10s but its free `openai-fast` model's Thai is weak, so it is the *second*
+  opinion. chatgpt/gemini stay in `VENDORS`, reachable with `--only`, but are out of
+  the default (Google session is usually signed out). `MIN_ADVISORS = 2`,
+  `MIN_FAMILIES = 2`. The quorum still counts **vendors**, never seats: several
+  Duck models are one page and let "3 answered" be one vendor echoing itself.
+- **The real remaining win is a fast Thai-capable keyless model.** The panel is a
+  few minutes, not ~15, but Duck is the floor. Rule #1 forbids paid APIs.
+  `family()` maps a seat to its vendor; `quorum()` decides the floor in one place.
 - **The gate is now wired into a real runner, not just tests.** `aeris938-2/scripts/admin.py`
   calls `consult.consulted()` before it drafts and exits 2 without a quorum
   (`--no-gate` is the only escape hatch), with one ntfy alert per day. It is still
