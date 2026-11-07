@@ -1,20 +1,3 @@
 {
- "days": {
-  "2026-11-07": {
-   "units": 201,
-   "calls": {
-    "thumbnails.set": 2,
-    "playlistItems.insert": 2,
-    "playlistItems.list": 1
-   },
-   "reserves": [
-    {
-     "purpose": "batch",
-     "units": 600,
-     "at": "2026-11-07T23:06:44+00:00"
-    }
-   ],
-   "updated": "2026-11-07T23:07:49+00:00"
-  }
- }
+ "days": {}
 }
