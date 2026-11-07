@@ -1062,3 +1062,23 @@ true-instrumental karaoke mix, cover art, a 1920x1080 word-synced video.
   tagline + ask read as a duplicate; the "captions are all distinct" test fails).
   `caption(slug, platform, hook, kind="karaoke")` gives it its own label; `kind`
   is stored in the queue and inferred from the video path in `refresh_captions`.
+
+## AERIS Music identity — durable facts
+- **The banner is API-settable; the avatar is not.** `channelBanners.insert`
+  (POST to `www.googleapis.com/upload`, which the proxy serves) + `channels.update`
+  set the banner with no human — `ops/apply_channel_art.py`. YouTube has never
+  exposed an avatar write, so the avatar is Studio-only
+  (`ops/set_avatar_studio.py`, `channel/AVATAR-ONE-TAP.md`).
+- **`channels.update` is a FULL replace of `brandingSettings`.** Read it first and
+  swap only `image.bannerExternalUrl`, or the description and keywords are lost.
+  `apply_channel_art.py` refuses to PUT a blob with no description.
+- **Identity v3 = evolve, not pivot** (consult quorum PASS 2026-11-07, 4 channels /
+  2 vendors). Indigo #202A46 + the A-wave stay; cream/coral/sage warm it. Headphones
+  are a corner prop, never the icon — the channel posts Thai songs, not gear
+  reviews. Only the mark, the wordmark and one Thai tagline go inside the banner's
+  1546x423 safe strip; the posting-schedule line was cut. `test_brand_identity`
+  pins the strip geometry, the palette and the bold avatar stroke.
+- **The login vault snapshot has no `youtube.com` cookies**, so `login_vault.py
+  restore` can never sign YouTube in — and `check_login.py` reports Google
+  SIGNED_IN from cookies alone while YouTube still asks for a password. Only a real
+  sign-in (then `login_vault.py save`) fixes the avatar step.
