@@ -11,5 +11,11 @@
   "_shopee_links_comment": "Per-surface Custom Links minted 2026-11-03 from the affiliate dashboard (account navintas) with ops/shopee_mint.py. Target: a music-lifestyle product search (หูฟังบลูทูธ / Bluetooth headphones) so a viewer who taps lands on something buyable, not the generic homepage that gave 0 clicks. Each carries its surface in Sub_id1 (utm_content=youtube|tiktok|facebook, verified on the 301). Re-mint with `python3 ops/shopee_mint.py --target <url> --write`.",
   "facebook": "https://www.facebook.com/profile.php?id=61595890900382",
   "tiktok": "https://www.tiktok.com/@aeris.music4",
-  "playlist_all": "https://www.youtube.com/@aerismusicth/playlists"
+  "playlist_all": "https://www.youtube.com/@aerismusicth/playlists",
+  "commission": {
+    "price_thb": 990,
+    "contact": "https://www.facebook.com/profile.php?id=61595890900382",
+    "text": "🎼 รับทำเพลงไทยสั่งทำ (Custom Song)\nอยากได้เพลงของตัวเอง? เพลงแทนใจ เพลงอวยพรวันเกิด เพลงให้ร้านค้า/แบรนด์ — ทำนอง + เนื้อร้อง + เสียงร้อง\nเริ่มต้น ฿990 / เพลง (แก้ได้ 2 ครั้ง)\nทักแชทเพจ AERIS Music 👉 https://www.facebook.com/profile.php?id=61595890900382",
+    "_comment": "The first paid offer. The 2026-11-07 advisor panel said the near-term bottleneck is that nobody has a way to pay before the follower gates; this is that way. Price and scope are deliberate: ฿990 is a normal Thai AI-song commission, ~17 of them is the $500 goal. K owns the price if it should change."
+  }
 }

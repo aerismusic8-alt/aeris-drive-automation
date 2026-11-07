@@ -89,18 +89,27 @@ YOUTUBE_HANDLE = "@aerismusicth"
 TIKTOK_HANDLE = "@aeris.music4"
 
 
-def caption(slug: str, platform: str, hook: int = 0) -> str:
+def caption(slug: str, platform: str, hook: int = 0, kind: str = "song") -> str:
     h = release.parse_lyrics(slug)
     title = h.get("TITLE", slug)
     tagline = release.TAGLINE.get(h.get("MOOD", "calm"), release.TAGLINE["calm"])
-    # The 2026-11-05 advisor panel (3/3): the numbered "(ท่อน N)" tag made the
-    # profile read as "part N of 3" of the same clip. It is replaced by the
-    # series label, which is the recurring reason to watch; the chorus still
-    # differs between the three files.
-    series = f"{title} | {release.hook_title(hook or 1)}"
-    # A different prompt per chorus, so the three files of one song are three
-    # distinct posts rather than three copies. See release.HOOK_ANGLES.
-    ask = release.hook_angle(hook or 1)
+    # A karaoke clip of a song would otherwise caption exactly like that song's
+    # first-hook Short — same title, same tagline, same ask — which reads as a
+    # duplicate post and the "captions are all distinct" test catches it. It is a
+    # different offer (sing along vs listen), so it gets its own series label and
+    # its own ask.
+    if kind == "karaoke":
+        series = f"{title} | คาราโอเกะร้องตาม"
+        ask = "🎤 อยากลองร้องไหม? กดบันทึกไว้ร้องตามได้เลย"
+    else:
+        # The 2026-11-05 advisor panel (3/3): the numbered "(ท่อน N)" tag made the
+        # profile read as "part N of 3" of the same clip. It is replaced by the
+        # series label, which is the recurring reason to watch; the chorus still
+        # differs between the three files.
+        series = f"{title} | {release.hook_title(hook or 1)}"
+        # A different prompt per chorus, so the three files of one song are three
+        # distinct posts rather than three copies. See release.HOOK_ANGLES.
+        ask = release.hook_angle(hook or 1)
     if platform == "facebook":
         # Reels leans on fewer hashtags than TikTok; spend the words on the hook.
         # The caption carries the Page's own Shopee tracking link (Sub_id
@@ -153,7 +162,12 @@ def refresh_captions() -> int:
             except ImportError:
                 want = item["caption"]
         else:
-            want = caption(item["slug"], item["platform"], item.get("hook", 0))
+            # The committed backlog predates the `kind` field, so infer it from
+            # the video path rather than defaulting every item to a song caption.
+            kind = item.get("kind") or (
+                "karaoke" if "short-karaoke-" in Path(item["video"]).stem else "song")
+            want = caption(item["slug"], item["platform"], item.get("hook", 0), kind)
+            item["kind"] = kind
         if item.get("caption") != want:
             item["caption"] = want
             changed += 1
@@ -180,10 +194,15 @@ def _hook_of(stem: str) -> int:
     """short-song-h2-01-... -> 2. The chorus index a Short was cut from.
 
     A karaoke Short carries no hook index (one per song), so it returns 0 and
-    the caption falls back to the first hook's copy.
+    the caption falls back to the karaoke series label.
     """
     m = re.match(r"short-(?:song|karaoke)-h(\d+)-", stem)
     return int(m.group(1)) if m else 0
+
+
+def _kind_of(short: Path) -> str:
+    """`karaoke` for a sing-along clip, `song` otherwise."""
+    return "karaoke" if short.stem.startswith("short-karaoke-") else "song"
 
 
 def interleave(primary: list[dict], secondary: list[dict], every: int,
@@ -213,14 +232,16 @@ def build_queue() -> list[dict]:
         slug = _slug_of(short)
         rel = str(short.relative_to(ROOT))
         hook = _hook_of(short.stem)
+        kind = _kind_of(short)
         for platform, cfg in PLATFORMS.items():
             items.append({
                 "id": f"{cfg['state_key']}:{short.stem}",
                 "platform": platform,
                 "slug": slug,
                 "hook": hook,
+                "kind": kind,
                 "video": rel,
-                "caption": caption(slug, platform, hook),
+                "caption": caption(slug, platform, hook, kind),
             })
     # One product card pair (both surfaces) after every 6 queue items — 3 song
     # clips — which is the 25% product share PLAN-30D-AI asks for, and still

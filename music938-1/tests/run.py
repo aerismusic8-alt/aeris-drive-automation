@@ -1379,6 +1379,20 @@ def test_crosspost_pace_and_captions() -> None:
     check("hook number is carried on the queue item",
           all("hook" in it for it in q))
 
+    # A karaoke clip of a song used to caption exactly like that song's first-hook
+    # Short — same title, tagline and ask — so the pair read as a duplicate post.
+    # It is a different offer (sing along, not listen), so it must carry its own
+    # series label and ask, and `kind` must be on the item for refresh_captions.
+    kara = [it for it in q if it.get("kind") == "karaoke"]
+    if kara:
+        check("karaoke captions carry the sing-along label",
+              all("คาราโอเกะ" in it["caption"] for it in kara))
+        check("karaoke caption differs from the song's hook-1 caption",
+              all(it["caption"] != crosspost.caption(it["slug"], it["platform"], 1)
+                  for it in kara))
+    check("kind is carried on the queue item",
+          all("kind" in it for it in q))
+
     # The caption's last job is the ask: a follow so the next song reaches them,
     # and a question because a comment is the cheapest engagement a small Page
     # can earn. Both must survive a caption rewrite.
@@ -1715,7 +1729,27 @@ def test_monetize_footer() -> None:
           per.get("youtube", "") and per["youtube"] in monetize.block("song"))
     monetize.CACHE = None
 
+    # The paid offer (2026-11-07 advisor panel, action #1): before the follower
+    # gates there was no way for an interested viewer to pay. It must reach the
+    # long-form descriptions and must NOT be pushed into every Short.
+    offer = monetize.commission_block()
+    check("a paid commission offer is configured", bool(offer.strip()))
+    check("the offer names a price", "990" in offer)
+    check("the offer gives a way to contact", "facebook.com" in offer)
+    import release as _rel
+    _, song_desc, _ = _rel.describe("01-khon-di-thi-chak-pai", "song")
+    _, short_desc, _ = _rel.describe("01-khon-di-thi-chak-pai", "short")
+    check("a song description carries the offer",
+          "รับทำเพลงไทยสั่งทำ" in song_desc)
+    check("a Short description does not carry the offer",
+          "รับทำเพลงไทยสั่งทำ" not in short_desc)
+    monetize.CACHE = None
+
     apply_src = (ROOT / "scripts" / "apply_monetize.py").read_text()
+    # The backfill decides long-form from the duration, so the API call must ask
+    # for contentDetails or every upload looks like a Short and gets no offer.
+    check("the backfill reads the duration to pick long-form",
+          "contentDetails" in apply_src and "_is_longform" in apply_src)
     check("backfills video descriptions", "videos?part=snippet" in apply_src)
     check("backfills playlists too", "patch_playlists" in apply_src)
     check("only edits the channel's own playlists", "channelId={CHANNEL_ID}" in apply_src)

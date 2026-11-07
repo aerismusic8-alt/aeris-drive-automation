@@ -77,7 +77,8 @@ _S_SHOPEE = re.compile(r"https://s\.shopee\.co\.th/\w+")
 _OLD_CTA = re.compile(r"^🎧 ฟังเพลิน ๆ แล้วกดติดตามช่องนะครับ · ของน่าซื้อ 👉 https://\S+$", re.M)
 
 
-def refresh_description(desc: str, surface: str = "youtube") -> str:
+def refresh_description(desc: str, surface: str = "youtube",
+                        with_offer: bool = False) -> str:
     """Upgrade a live description in place: new link, and the CTA up top.
 
     `release.describe` only shapes *new* uploads; the videos already live carry
@@ -86,6 +87,10 @@ def refresh_description(desc: str, surface: str = "youtube") -> str:
     channel-only CTA is dropped, and the new Page-first CTA is inserted after the
     first paragraph (before the fold) if it is missing. Idempotent — a
     description already carrying both changes comes back equal.
+
+    `with_offer` appends the paid commission offer. It is off by default and the
+    caller turns it on only for long-form uploads: a Short's description is
+    barely read, so a sales pitch there adds noise and can read as spam.
     """
     shopee = link(surface)
     line = cta(surface)
@@ -93,12 +98,28 @@ def refresh_description(desc: str, surface: str = "youtube") -> str:
         desc = _S_SHOPEE.sub(shopee, desc)
     desc = _OLD_CTA.sub("", desc)
     desc = re.sub(r"\n{3,}", "\n\n", desc)
+    if with_offer:
+        offer = commission_block().strip()
+        if offer and offer.splitlines()[0] not in desc:
+            desc = desc.rstrip() + "\n\n" + offer
     if not line or line in desc:
         return desc
     parts = desc.split("\n\n", 1)
     if len(parts) == 2:
         return f"{parts[0]}\n{line}\n\n{parts[1]}"
     return f"{desc}\n{line}"
+
+
+def commission_block() -> str:
+    """The paid custom-song offer, or "" until it is configured.
+
+    Kept separate from `block()` because it is an offer, not a link list, and it
+    should sit above the socials footer where a viewer still reads. The 2026-11-07
+    advisor panel made this the first revenue action: before the follower gates
+    there is no way for an interested viewer to pay, and this creates one.
+    """
+    text = (config().get("commission") or {}).get("text", "").strip()
+    return f"\n\n{text}" if text else ""
 
 
 def block(kind: str = "song") -> str:

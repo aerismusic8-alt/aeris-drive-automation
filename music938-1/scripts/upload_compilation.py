@@ -117,6 +117,9 @@ def main() -> int:
     try:
         import monetize
         desc = desc + "\n" + monetize.block("song")
+        # The compilation is the long-form upload, so it carries the paid offer
+        # (the 2026-11-07 advisor panel's #1 revenue action). Shorts do not.
+        desc = desc + monetize.commission_block()
     except Exception as e:
         print("monetize skipped:", e, file=sys.stderr)
 

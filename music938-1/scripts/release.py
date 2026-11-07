@@ -433,6 +433,11 @@ def describe(slug: str, kind: str, variant: str = "") -> tuple[str, str, list[st
     tags += [t for t in extra_tags if t not in tags]
     # Every description carries the outbound links from channel/monetization.json.
     desc = desc.rstrip() + "\n" + monetize.block(kind)
+    # The paid offer sits above the socials footer, on songs and compilations
+    # only — a Short is too small to sell a commission in and it would push the
+    # product link below the fold.
+    if kind in ("song", "compilation"):
+        desc = desc.rstrip() + monetize.commission_block()
     return title[:100], desc[:4900], tags[:30]
 
 

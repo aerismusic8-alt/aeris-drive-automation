@@ -113,6 +113,17 @@ def _arg_int(name: str, default: int = 0) -> int:
     return default
 
 
+def _is_longform(item: dict) -> bool:
+    """True for a song or a compilation, False for a Short.
+
+    ISO-8601 duration: a Short is under a minute (`PT58S`), a song is `PT3M12S`
+    and a compilation is `PT57M`. Anything with an `M` or an `H` is long-form.
+    """
+    dur = (item.get("contentDetails") or {}).get("duration", "")
+    body = dur.split("T", 1)[1] if "T" in dur else ""
+    return "M" in body or "H" in body
+
+
 def main() -> int:
     apply = "--apply" in sys.argv
     # Cap how many videos this run rewrites. A write costs ~50 quota units, so
@@ -140,22 +151,27 @@ def main() -> int:
             break
         batch = ids[i:i + 50]
         _, v = yt_auth._request(
-            "https://www.googleapis.com/youtube/v3/videos?part=snippet&id=" + ",".join(batch),
+            "https://www.googleapis.com/youtube/v3/videos?part=snippet,contentDetails&id=" + ",".join(batch),
             headers={"Authorization": f"Bearer {token}"})
         for it in v["items"]:
             if limit and changed >= limit:
                 break
             sn = it["snippet"]
             desc = sn.get("description", "")
+            # Long-form uploads get the paid offer; Shorts do not (their
+            # description is barely read and a pitch there reads as spam).
+            longform = _is_longform(it)
             # `refresh` re-points an old homepage link at the current product
             # link and lifts the CTA above the fold; `link in desc` alone would
             # skip those videos even though they carry the wrong link.
-            new = monetize.refresh_description(desc, "youtube")
+            new = monetize.refresh_description(desc, "youtube", with_offer=longform)
             if link in desc and new == desc:
                 skipped += 1
                 continue
             if new == desc:
                 new = (desc.rstrip() + "\n" + block)[:MAX_DESC]
+            if longform and new == desc:
+                new = (desc.rstrip() + monetize.commission_block())[:MAX_DESC]
             if new == desc:
                 skipped += 1
                 continue
