@@ -19,6 +19,13 @@
       "flow": false,
       "offline_rc": 0,
       "instrumental": true
+    },
+    {
+      "slug": "27-fai-nion-kap-chai-thi-la",
+      "result": "no-draft",
+      "problems": [
+        "pollinations: HTTPError: HTTP Error 400: Bad Request"
+      ]
     }
   ]
 }
