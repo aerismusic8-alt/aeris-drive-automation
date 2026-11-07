@@ -55,6 +55,11 @@ music938-1/work/*
 # the source of truth for a *re-render* is this file — without it a fresh pod has
 # no cards, make_affiliate_short cannot run, and its test fails on an empty list.
 !music938-1/work/affiliate-products.json
+# The compilation upload record. It is the guard that stops the monthly job from
+# publishing a near-identical album every month — on a fresh CI checkout the file
+# only exists if it is tracked, so an ignored state file means the guard never
+# fires and the channel floods with duplicates.
+!music938-1/work/compilation-state-*.json
 music938-1/library/songs/*.mp3
 music938-1/library/songs/*.wav
 music938-1/library/songs/*.m4a
