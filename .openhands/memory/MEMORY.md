@@ -816,16 +816,29 @@ true-instrumental karaoke mix, cover art, a 1920x1080 word-synced video.
   few minutes, not ~15, but Duck is the floor. Rule #1 forbids paid APIs.
   `family()` maps a seat to its vendor; `quorum()` decides the floor in one place.
 - **K-free = a rail with no credential that can expire.** `ops/k_free_status.py`
-  audits it (`--check` exits 1 while any rail needs K). Two auth kinds count as
-  K-free: `api` with its token present, and **`keyless`** — no credential at all.
-  A `browser` rail is never K-free (the snapshot works until it expires).
-  As of 2026-11-07: **5/11 rails K-free**. The content engine is now K-free:
-  lyrics draft on **Duck.ai** (`ai_lyrics.DRAFTERS["duck"]`, tried first in
-  `forge_song.py`) and the song master has a keyless path
-  (`flow_song.py --offline` → `aeris938-1/scripts/make_music.py` ffmpeg synth,
-  opt-in so a normal run never silently downgrades). The remaining K-blockers are
-  not fixable in-repo: FB Page + TikTok posting need an API token (K's admin) and
-  the YouTube channel avatar has no API.
+  audits it (`--check` exits 0 only when nothing pulls K back in). Three states:
+  `k_free` (keyless, or an api/oneshot rail with its credential present),
+  **needs K once** (one-time authorization — unavoidable: every platform's terms
+  require the owner to consent at least once; consult 2026-11-07, unanimous), and
+  **needs K repeatedly** (a browser snapshot with no K-free primary, or an
+  unprovisioned token) — this last must be 0. A **browser fallback is not a
+  K-dependency while its api primary is present** (`superseded_by`): the
+  FB/TikTok browser posters are covered by the Meta/TikTok api rails, and the
+  Flow Music render by the keyless synth bed. The content engine is K-free:
+  lyrics on **Duck.ai** (`ai_lyrics.DRAFTERS["duck"]` first in `forge_song.py`)
+  and song masters via `flow_song.py --offline` (`aeris938-1/scripts/make_music.py`
+  ffmpeg synth). With all tokens present: 7/11 K-free, 1 one-time (the avatar),
+  0 recurring.
+- **TikTok rotates its refresh token on every refresh and a GH Actions job cannot
+  write a secret back** — refreshing in CI *burns* it and the next run 403s. The
+  fix is `ops/token_heartbeat.py --refresh --push-secrets --repo owner/name`
+  (renew from the vault + publish to repo secrets in one step), plus a `_put(...)`
+  guard at every rotation site in `tiktok_api.py` (no vault → no rotation).
+- **The YouTube channel avatar has no API** — it is the one YouTube step needing a
+  Studio click; `profile_setup.py youtube` drives it and must click the final
+  **Publish** (Studio stages branding edits). **Google also refuses to let the
+  vault restore Studio** — it asks the password even with cookies+localStorage
+  restored, so this is the one credential K must type. Runbook: `docs/k-free-runbook.md`.
 - **Pollinations free tier is 1 reply / 45s / IP** (`FREE_LIMIT` 402) and only
   `openai-fast` (GPT-OSS 20B) is anonymous — the bigger models 402 "Payment
   Required". So it is a *second* opinion, never the driver. And there is **no free
