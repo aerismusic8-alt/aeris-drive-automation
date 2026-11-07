@@ -52,6 +52,8 @@ RAILS: list[tuple[str, str, str, list[str], str]] = [
      "Duck.ai drafts with no login; the lint is the quality gate"),
     ("music", "song beds", "browser", [],
      "flowmusic.app has no API; browser session only"),
+    ("music", "song beds (offline)", "keyless", [],
+     "ffmpeg-synth master via `flow_song --offline`; no login, no key"),
     ("drive", "asset sync", "api", ["GDRIVE_REFRESH_TOKEN"],
      "OAuth refresh token"),
     ("vault", "login/state store", "api", ["OPENHANDS_API_KEY"],

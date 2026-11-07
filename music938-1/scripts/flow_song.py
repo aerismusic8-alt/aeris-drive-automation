@@ -26,6 +26,7 @@ import base64
 import json
 import os
 import re
+import shutil
 import subprocess
 import sys
 import time
@@ -729,10 +730,45 @@ def _karaoke_only(slug: str) -> int:
     return 0
 
 
+def _offline_bed(slug: str, force: bool = False) -> dict:
+    """A keyless song master: lyrics + an ffmpeg-synth bed, no Flow Music.
+
+    Flow Music has no API and its browser session expires, so on a fresh pod the
+    release rail stops at "sign in" — a K-dependency in the song engine itself.
+    This is the Rule #1 fallback: `aeris938-1/scripts/make_music.py` synthesises a
+    mood bed offline (deterministic, royalty-free, no login), and the existing
+    karaoke path still burns the lyrics onto it. It is deliberately opt-in
+    (`--offline`) so a normal run never silently downgrades a real Flow render to
+    a synth bed; a release that *has* to happen, however, no longer has to wait
+    for K.
+    """
+    import make_music  # noqa: PLC0415
+
+    lyric = LYRICS_DIR / f"{slug}.txt"
+    if not lyric.exists():
+        raise SystemExit(f"no lyric: {lyric}")
+    meta = parse_lyric(lyric)["meta"]
+    mood = (meta.get("mood") or "calm").strip().lower()
+    if mood not in make_music.MOODS:
+        mood = "calm"
+    key = (meta.get("key") or "C").strip() or "C"
+    bed = make_music.make(mood, key, duration=210.0, force=force)
+    src = Path(make_music.__file__).resolve().parent.parent / bed["entry"]["file"]
+    out = OUT_DIR / f"{slug}.mp3"
+    out.parent.mkdir(parents=True, exist_ok=True)
+    shutil.copyfile(src, out)
+    rec = {"slug": slug, "status": "OFFLINE_BED", "source": "ffmpeg-synth",
+           "mood": mood, "file": str(out)}
+    print(json.dumps(rec, ensure_ascii=False))
+    return rec
+
+
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument("slug", nargs="?")
     ap.add_argument("--force", action="store_true")
+    ap.add_argument("--offline", action="store_true",
+                    help="make a keyless ffmpeg-synth master (no Flow Music, no login)")
     ap.add_argument("--list", action="store_true")
     ap.add_argument("--karaoke-only", action="store_true",
                     help="rebuild the karaoke mix from local stems/song; no Flow, no credits")
@@ -772,6 +808,8 @@ def main() -> int:
         return 0
     if not args.slug:
         ap.error("need a slug (or --list)")
+    if args.offline:
+        return 0 if _offline_bed(args.slug, force=args.force) else 1
     if args.karaoke_only:
         return _karaoke_only(args.slug)
     try:

@@ -2315,10 +2315,18 @@ def test_k_free_status() -> None:
         check("the blocked list names the surface", 
               any(b["surface"] == "music" for b in rep["blocked"]))
 
-        # Nothing present: no api rail can claim K-free.
+        # Nothing present: no *api* rail can claim K-free, but a keyless rail has
+        # no credential to lose, so it stays K-free. That is the whole point of
+        # the keyless kind — the lyrics and offline-music rails keep working on a
+        # pod with no secrets at all.
         kfs.get_secret = lambda name: ""
         rep0 = kfs.audit()
-        check("with no secrets, no rail is K-free", rep0["k_free"] == 0)
+        by0 = {(r["surface"], r["rail"]): r for r in rep0["rails"]}
+        check("with no secrets, no api rail is K-free",
+              not any(r["k_free"] for r in rep0["rails"] if r["auth"] == "api"))
+        check("a keyless rail is K-free with no secrets at all",
+              by0[("lyrics", "Thai lyrics")]["k_free"]
+              and by0[("music", "song beds (offline)")]["k_free"])
     finally:
         kfs.get_secret = real
 
@@ -2366,6 +2374,18 @@ def test_keyless_lyric_drafter() -> None:
     forge = (ROOT / "scripts" / "forge_song.py").read_text()
     check("the forge tries the keyless drafter first",
           forge.index('for drafter in ("duck", "chatgpt")') > 0)
+
+    # The song master itself must not depend on Flow Music's login either.
+    flow = (ROOT / "scripts" / "flow_song.py").read_text()
+    check("flow_song has a keyless offline master path",
+          "--offline" in flow and "def _offline_bed" in flow)
+    check("the offline path uses the offline synth, not Flow",
+          "make_music" in flow and 'status": "OFFLINE_BED' in flow)
+    check("the offline path reads the lyric header",
+          'parse_lyric(lyric)["meta"]' in flow)
+    # A normal run must never silently downgrade a Flow render to a synth bed.
+    check("the offline master is opt-in, not automatic",
+          "if args.offline" in flow and "except B.LoginRequired" in flow)
 
 
 def test_consult_gate() -> None:
