@@ -2303,6 +2303,50 @@ def test_brand_identity() -> None:
     check("banner writer refuses a stripped PUT", "no description" in art)
 
 
+def test_share_pack() -> None:
+    """The pack must let another AI pick a track, so it must carry the *why*.
+
+    K asked to share the songs so another AI can use them as a soundtrack. A
+    folder of .mp3 tells an agent nothing — it cannot tell a 52 BPM funeral
+    ballad from an 84 BPM battle theme, so it picks at random and the cut feels
+    wrong. This pins the fields that make the choice possible (mood + bpm), that
+    every song on disk is in the catalog, that each carries an instrumental path,
+    and that the license is stated in the pack itself rather than assumed.
+    """
+    section("share pack (music another AI can use)")
+    src = (ROOT / "scripts" / "make_share_pack.py").read_text()
+    check("the pack is keyed by mood and tempo", '"mood"' in src and "tempo_bpm" in src)
+    check("Thai search words are included", "mood_th" in src)
+    check("the pack states its license", "CC0" in src)
+    check("the pack ships a prompt for another AI", "PROMPT-TH.md" in src)
+    check("instrumental beds are offered", "beds" in src)
+
+    # The catalog must be buildable from the library without network or login.
+    sys.path.insert(0, str(ROOT / "scripts"))
+    import make_share_pack as msp  # noqa: E402
+
+    rows = msp.catalogue()
+    disk = sorted(p.name for p in (ROOT / "library" / "songs").glob("song-*.mp3"))
+    check("every song on disk is in the catalog", len(rows) == len(disk))
+    check("every entry carries a mood", all(r["mood"] for r in rows))
+    check("every entry has a duration", all(r["duration_seconds"] for r in rows))
+    check("every entry points at an instrumental path",
+          all(r["instrumental"].startswith("music/karaoke-") for r in rows))
+    check("the karaoke files actually exist for most songs",
+          sum(1 for r in rows if r["has_instrumental"]) >= len(rows) - 2)
+    # A soundtrack picker needs a fast/slow spread, not 22 identical tempos.
+    tempos = {r["tempo_bpm"] for r in rows if r["tempo_bpm"]}
+    check("the catalog spans more than one tempo", len(tempos) >= 3)
+    check("the catalog spans more than one mood",
+          len({r["mood"] for r in rows}) >= 3)
+    # No secrets, no K: this is what makes it shareable.
+    blob = src.lower()
+    check("building the pack needs no credential",
+          "get_secret" not in blob and "token" not in blob.replace("tt_client", ""))
+    check("the audio is gitignored (only the small files commit)",
+          "share/aeris-music/music/" in (ROOT.parent / ".gitignore").read_text())
+
+
 def test_k_free_status() -> None:
     """The K-free audit must be honest, and must not need a live secret.
 
@@ -2759,6 +2803,7 @@ def main() -> int:
     test_phone_login()
     test_heartbeat_repair_signal()
     test_consult_gate()
+    test_share_pack()
     test_k_free_status()
     test_vault_key_fallback()
     test_keyless_lyric_drafter()

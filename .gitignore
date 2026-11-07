@@ -87,3 +87,8 @@ ops/out/
 
 # Scratch: K's source uploads, extracted frames and preview renders.
 /work/
+
+# The share pack: small files are committed, the audio is large and is not.
+share/aeris-music/music/
+share/aeris-music/covers/*.jpg
+!share/aeris-music/beds/
