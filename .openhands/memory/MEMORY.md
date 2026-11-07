@@ -1016,3 +1016,18 @@ true-instrumental karaoke mix, cover art, a 1920x1080 word-synced video.
 - **Honest ceiling:** the channel needs to feel authored (real voice/story/series),
   not interchangeable generated songs, or people will not follow and monetization
   policy is at risk. "Post more / more hashtags / same file everywhere" is not growth.
+- **The paid offer is live (2026-11-07, panel action #1).** `monetization.json.commission`
+  = ฿990 custom-song offer; `monetize.commission_block()` renders it;
+  `release.describe` appends it to songs + compilations (never Shorts);
+  `apply_monetize.py --apply` backfills live long-form descriptions (it reads
+  `contentDetails` to tell a song from a Short). `ops/yt_comment.py` would pin it
+  as a comment but the channel tokens lack `youtube.force-ssl` → 403; the
+  description route works.
+- **The compilation was ALREADY live.** `รวมเพลงไทยเพื่อชีวิต 15 เพลง`
+  (`3Yz2jxZnKmM`, 56:42) was published earlier, so a fresh 16-track render is a
+  near-duplicate — check the channel first. `ax-music-compilation.yml` now skips
+  when `compilation-state-<stem>.json` carries a `video_id`.
+- **A karaoke Short must not caption like its song's hook-1 Short** (same title +
+  tagline + ask read as a duplicate; the "captions are all distinct" test fails).
+  `caption(slug, platform, hook, kind="karaoke")` gives it its own label; `kind`
+  is stored in the queue and inferred from the video path in `refresh_captions`.
