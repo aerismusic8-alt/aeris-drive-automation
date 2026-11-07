@@ -108,8 +108,16 @@ account — not just when K is watching.
    Duck.ai needs **no login**, so its three seats keep the panel alive on the day
    the Google session is the thing that is broken. K raised the panel from three
    to five on 2026-11-05: "เพิ่มเป็น 5 ที่ปรึกษาเลยในทุกงาน". The gate requires at
-   least **three** of the five to have actually answered, so one signed-out web
-   app does not block the rail, but a single reply can never pass for a panel.
+   least **three channels across at least two vendors** (`MIN_ADVISORS` /
+   `MIN_FAMILIES`). The vendor count is what matters: three of the five seats are
+   the *same* Duck.ai page, so counting seats alone let one vendor pass for a
+   panel — the 2026-11-06 Facebook brief answered "10/10" while 8 of the 10 were
+   that one page agreeing with itself. Measured against `consult-log.jsonl`, a
+   five-seat floor was never met in practice (4 of 33) and got skipped, which is
+   the exact failure the rule exists to prevent; two vendors is reachable and is
+   the number that actually changes a decision. The gate is wired into a real
+   runner (`aeris938-2/scripts/admin.py` fails closed without a quorum); it is
+   not enforced in CI, so on a pod-side decision it is still on you to call it.
 3. Read the answers. Where they agree, that is the plan. Where they disagree,
    say so and pick, with the reason.
 4. **Then** act. Record which advice was followed in the commit or the memory

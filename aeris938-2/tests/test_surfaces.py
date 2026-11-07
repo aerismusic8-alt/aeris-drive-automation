@@ -184,6 +184,36 @@ def test_admin_warning_detection():
     assert not admin.is_warning("ขอบคุณมากครับ เพราะมาก")
 
 
+def test_admin_is_gated_on_the_consultation():
+    """The rail must not run the work the consultation is supposed to authorise.
+
+    The rule "consult before acting" was prose, so it got skipped — the failure
+    the advisors themselves warned about. `run()` now calls the gate and fails
+    closed (return 2) when the brief has no quorum, with `--no-gate` as the only
+    escape hatch. Pin both halves: the gate exists and it is wired into run().
+    """
+    src = (ROOT / "scripts" / "admin.py").read_text(encoding="utf-8")
+    assert "def check_gate" in src
+    assert "consult.consulted(" in src, "admin must ask the gate, not remember it"
+    assert "--no-gate" in src, "the escape hatch must be explicit"
+    # Fails closed: no brief on disk, or no quorum, is a FAIL not a pass.
+    assert "no admin brief file on disk" in src
+    assert "return 2" in src
+
+    # The gate reads the committed brief, so the digest can match the consultation.
+    saved = admin.WORK
+    try:
+        import tempfile
+        with tempfile.TemporaryDirectory() as tmp:
+            admin.WORK = Path(tmp)
+            assert admin._gate_brief() == ""          # missing -> empty -> FAIL
+            p = Path(tmp) / "consult-brief-fb-admin-agent-2026-11-06.md"
+            p.write_text("hello brief", encoding="utf-8")
+            assert admin._gate_brief() == "hello brief"
+    finally:
+        admin.WORK = saved
+
+
 if __name__ == "__main__":
     fns = [v for k, v in sorted(globals().items()) if k.startswith("test_")]
     for fn in fns:

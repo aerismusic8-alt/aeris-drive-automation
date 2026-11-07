@@ -26,6 +26,13 @@ What it does unattended, on a schedule:
 What it never does: send a reply, follow, invite, comment elsewhere, or DM. It
 prepares everything so K's send is one tap.
 
+The rail is gated: before it drafts anything it checks that this brief has a
+recent consultation with a real quorum (`ops/consult.py`). The rule is K's
+standing one — consult before acting — and writing it in a document was not
+enough, because a gate that only lives in prose is skipped under pressure. Here
+it is checkable and it fails closed, with an alert that says exactly how to
+re-consult. `--no-gate` is the documented escape hatch for an emergency.
+
     python3 scripts/admin.py --check          # read only, print the digest
     python3 scripts/admin.py --run            # read + draft + log + alert
     python3 scripts/admin.py --draft "ราคาเท่าไหร่"   # preview one reply
@@ -45,6 +52,7 @@ sys.path.insert(0, str(surfaces.music_scripts()))
 
 WORK = surfaces.WORK
 LOG = WORK / "admin-log.jsonl"
+GATE_ALERT = WORK / "admin-gate-alert.json"
 
 INBOX = "https://www.facebook.com/latest/inbox/all"
 PAGE = "https://www.facebook.com/profile.php?id=61595890900382"
@@ -134,7 +142,91 @@ def digest(snap: dict, drafts: list[str]) -> str:
     return "\n".join(lines)
 
 
-def run(check_only: bool = False) -> int:
+# A standing mandate, not a one-off decision: this rail runs hourly for months,
+# and the thing the gate guards is "did we ever consult before building this",
+# not "did we ask again this morning". So the window is generous and a *stale*
+# consultation still passes, but it warns so a real re-ask happens when the
+# mandate changes. The gate still fails hard if no quorum was ever recorded.
+GATE_MAX_AGE_HOURS = 30 * 24
+GATE_WARN_AFTER_HOURS = 7 * 24
+
+
+def _gate_brief() -> str:
+    """The brief this rail is the execution of.
+
+    It must be the *same text* the consultation used, because the gate keys off a
+    digest of the problem. Read the committed brief file, not a paraphrase, or
+    the digest will never match.
+    """
+    for name in ("consult-brief-fb-admin-agent-2026-11-06.md",
+                 "consult-brief-fb-admin-agent.md"):
+        p = WORK / name
+        if p.exists():
+            return p.read_text(encoding="utf-8")
+    return ""
+
+
+def check_gate() -> tuple[bool, str]:
+    """Has this brief been consulted, with a real quorum?
+
+    Fails closed: an unreadable gate (missing module, missing brief) is a FAIL,
+    because "I could not check" is not "it was checked".
+    """
+    sys.path.insert(0, str(surfaces.OPS))
+    try:
+        import consult  # noqa: E402
+    except Exception as exc:  # noqa: BLE001
+        return False, f"consult gate unavailable: {type(exc).__name__}: {exc}"
+    brief = _gate_brief()
+    if not brief:
+        return False, "no admin brief file on disk to gate against"
+    row = consult.consulted(brief, max_age_hours=GATE_MAX_AGE_HOURS)
+    if row is None:
+        return False, ("no consultation for the admin brief with a quorum "
+                       f"(2 vendors / 3 channels) within {GATE_MAX_AGE_HOURS // 24}d")
+    from datetime import datetime, timezone
+    age_h = (datetime.now(timezone.utc)
+             - datetime.fromisoformat(row["at"])).total_seconds() / 3600.0
+    why = consult.quorum(row["answers"])[1]
+    if age_h > GATE_WARN_AFTER_HOURS:
+        return True, f"{why} (consulted {age_h / 24:.0f}d ago — consider re-asking)"
+    return True, why
+
+
+def _gate_alert_once(why: str) -> None:
+    """One alert per day, not one per hourly run.
+
+    The gate fails closed, so a missing quorum fails every run until it is fixed.
+    Alerting hourly would train K to ignore the alert, so remember the last day
+    we shouted.
+    """
+    today = time.strftime("%Y-%m-%d")
+    try:
+        last = json.loads(GATE_ALERT.read_text(encoding="utf-8")) if GATE_ALERT.exists() else {}
+    except (OSError, json.JSONDecodeError):
+        last = {}
+    if last.get("date") == today:
+        return
+    _ntfy("AR: admin rail blocked — consult first",
+          f"ที่ปรึกษาไม่ผ่านเกณฑ์: {why}\n"
+          "รัน: python3 ops/consult.py --file "
+          "aeris938-2/work/consult-brief-fb-admin-agent-2026-11-06.md",
+          "high")
+    GATE_ALERT.parent.mkdir(parents=True, exist_ok=True)
+    GATE_ALERT.write_text(json.dumps({"date": today, "why": why}), encoding="utf-8")
+
+
+def run(check_only: bool = False, gate: bool = True) -> int:
+    if gate:
+        ok, why = check_gate()
+        print(f"gate: {'PASS' if ok else 'FAIL'} — {why}")
+        if not ok:
+            # Alert (once a day), then fail. The rail must not silently do the
+            # work the consultation is supposed to authorise.
+            _gate_alert_once(why)
+            print("::error::admin rail blocked by the consult gate", file=sys.stderr)
+            return 2
+
     import social_stats as S  # noqa: E402  (path set above)
 
     desk = S.open_desk()
@@ -180,12 +272,16 @@ def main(argv=None) -> int:
     ap.add_argument("--check", action="store_true", help="read only, print digest")
     ap.add_argument("--run", action="store_true", help="read, draft, log, alert")
     ap.add_argument("--draft", metavar="TEXT", help="preview a reply for TEXT")
+    ap.add_argument("--no-gate", action="store_true",
+                    help="skip the consult gate (emergency only; logs the bypass)")
     args = ap.parse_args(argv)
     if args.draft is not None:
         r = draft_reply(args.draft)
         print(r or "(escalate to K — no safe canned reply)")
         return 0
-    return run(check_only=args.check)
+    if args.no_gate:
+        print("::warning::consult gate bypassed with --no-gate", file=sys.stderr)
+    return run(check_only=args.check, gate=not args.no_gate)
 
 
 if __name__ == "__main__":

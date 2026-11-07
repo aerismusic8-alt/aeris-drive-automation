@@ -2024,14 +2024,27 @@ def test_consult_gate() -> None:
 
     src = (ROOT.parent / "ops" / "consult.py").read_text()
     check("asks every vendor", all(v in src for v in ("chatgpt", "gemini", "duck")))
-    check("the panel is five advisors (K, 2026-11-05)",
+    check("the panel is five channels (K, 2026-11-05)",
           len(consult.VENDORS) >= 5, f"{len(consult.VENDORS)}")
     check("three of them are Duck.ai models, which need no login",
           sum(1 for k in consult.VENDORS if k.startswith("duck")) >= 3)
-    check("the gate needs a quorum, not one answer", consult.MIN_ADVISORS >= 3,
+    # The quorum counts *vendors*, not channels. Eight of the ten channels in the
+    # wide panel are one Duck.ai page; counting channels let one page pass for a
+    # panel (the 2026-11-06 FB brief "10/10 agreed" while 8 were the same page).
+    check("duck channels collapse to one vendor",
+          consult.family("duck-luna") == consult.family("duck-oss") == "duck")
+    check("chatgpt and gemini are their own vendors",
+          consult.family("chatgpt") == "chatgpt"
+          and consult.family("gemini") == "gemini")
+    check("the floor is measured in families", consult.MIN_FAMILIES >= 2,
+          f"{consult.MIN_FAMILIES}")
+    check("the floor still needs real channels", consult.MIN_ADVISORS >= 3,
           f"{consult.MIN_ADVISORS}")
     check("duck needs no login", "duck" in consult.VENDORS)
     check("records the problem and answers", "consult-log.jsonl" in src)
+    check("records what was applied, not just what was asked",
+          "applied" in src and "def note_applied" in src)
+    check("retries a failed channel", "retries" in src)
 
     with tempfile.TemporaryDirectory() as tmp:
         consult.LOG = Path(tmp) / "consult-log.jsonl"
@@ -2049,17 +2062,29 @@ def test_consult_gate() -> None:
         check("an unanswered consultation does not satisfy the gate",
               consult.consulted(brief) is None)
 
-        # Nor is a single answer: K asked for a panel of five.
+        # One family under three names is still one opinion — the exact shape the
+        # old channel count passed.
+        consult.record(brief, {"duck": {"ok": True, "answer": "a"},
+                               "duck-claude": {"ok": True, "answer": "b"},
+                               "duck-oss": {"ok": True, "answer": "c"}})
+        check("one vendor echoing itself is not a quorum",
+              consult.consulted(brief) is None)
+
+        # A single channel is not a panel either.
         consult.record(brief, {"chatgpt": {"ok": True, "answer": "x"}})
         check("one answer does not satisfy the gate",
               consult.consulted(brief) is None)
 
-        # A quorum of real answers satisfies it.
+        # Two vendors across three channels satisfies it.
         consult.record(brief, {"chatgpt": {"ok": True, "answer": "x"},
                                "duck": {"ok": True, "answer": "y"},
                                "duck-oss": {"ok": True, "answer": "z"}})
         row = consult.require(brief)
-        check("gate passes after a quorum of answers", row is not None)
+        check("gate passes after a real quorum (2 vendors / 3 channels)",
+              row is not None)
+        check("the quorum reason names the vendors",
+              "chatgpt" in consult.quorum(row["answers"])[1]
+              and "duck" in consult.quorum(row["answers"])[1])
         check("the digest is stable across whitespace",
               consult.digest(brief) == consult.digest("  " + brief + "  "))
         check("a different brief is a different gate",
@@ -2067,6 +2092,13 @@ def test_consult_gate() -> None:
         # Staleness: an old consultation must not authorise today's action.
         check("gate rejects a stale consultation",
               consult.consulted(brief, max_age_hours=-1) is None)
+
+        # "Which advice did we use" must be answerable after the fact.
+        n = consult.note_applied(brief, ["raise FACEBOOK_DAILY_CAP to 2",
+                                         "read each Reel's insights"])
+        check("note_applied records on the matching row", n >= 1)
+        got = [r for r in consult.consulted(brief, max_age_hours=48)["applied"]]
+        check("the applied list is stored", len(got) == 2)
 
 
 def test_watchdog() -> None:

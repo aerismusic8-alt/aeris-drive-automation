@@ -797,19 +797,33 @@ true-instrumental karaoke mix, cover art, a 1920x1080 word-synced video.
 - **When a metric reads a suspicious exact 0 while a sibling surface is fine,
   suspect the reader before believing the platform.**
 - **Consult the advisors BEFORE acting — it is a gate, not a note (K, 2026-11-05).**
-  `ops/consult.py` asks **five** advisors in one command and appends to
+  `ops/consult.py` asks **five channels** in one command and appends to
   `ops/consult-log.jsonl`; `consult.require(brief)` (or `consult.py --check`) fails
-  closed unless a *recent* consultation for that exact brief with **≥3 answered**
-  is on record. K raised the panel from 3 to 5 ("เพิ่มเป็น 5 ที่ปรึกษาเลยในทุกงาน"):
-  `chatgpt`, `gemini`, and three Duck.ai models (`duck`, `duck-claude`, `duck-oss`)
-  — Duck.ai's "Switch model" picker is what supplies three seats from one no-login
-  page. `MIN_ADVISORS = 3` is the quorum; all five vendors said the same thing about
-  making the habit stick: a rule in a document gets skipped — put it in a runner the
-  worker cannot bypass. A consultation below quorum does NOT satisfy the gate.
+  closed unless a *recent* consultation for that exact brief with **≥3 channels
+  across ≥2 vendors** is on record. K raised the panel from 3 to 5 ("เพิ่มเป็น 5
+  ที่ปรึกษาเลยในทุกงาน"): `chatgpt`, `gemini`, and three Duck.ai models (`duck`,
+  `duck-claude`, `duck-oss`) — Duck.ai's "Switch model" picker is what supplies
+  three seats from one no-login page.
+- **The quorum counts VENDORS, not seats (2026-11-07).** Measured against the log,
+  the median consultation answered on **one** channel and only 4 of 33 reached five,
+  so a five-seat floor was a dead letter that got skipped — the failure the rule
+  exists to prevent. And 3 of the 5 seats are one Duck.ai page, so "3 answered"
+  could be one vendor echoing itself (the 2026-11-06 FB brief: "10/10" while 8 were
+  that page). `MIN_FAMILIES = 2` + `MIN_ADVISORS = 3` is the honest, reachable floor.
+  `family()` maps a seat to its vendor; `quorum()` decides it in one place.
+- **The gate is now wired into a real runner, not just tests.** `aeris938-2/scripts/admin.py`
+  calls `consult.consulted()` before it drafts and exits 2 without a quorum
+  (`--no-gate` is the only escape hatch), with one ntfy alert per day. It is still
+  NOT in CI, so a pod-side decision relies on you calling it.
+- **Record what you APPLIED, not just what you asked.** `consult.py --applied
+  "<brief>" --note "..."` (or `note_applied`) stamps the decision onto the row.
 - **`duck.ai` needs its tab opened first** or `duck_ask` raises "no duck.ai tab";
   open it with `curl -X PUT 'http://127.0.0.1:9222/json/new?https://duck.ai/'`.
-  Duck took ~300 s on a long Thai prompt while ChatGPT/Gemini took ~25 s. The full
-  5-seat panel takes ~15 min (each Duck model streams serially), so run it in the
+  **chatgpt/gemini need their tabs open too** — otherwise they raise "no chatgpt.com
+  tab", which silently drops the panel to Duck-only (1 family) and the gate FAILS.
+  Open all three before a real consult. Duck took ~300 s on a long Thai prompt while
+  ChatGPT/Gemini took ~25 s. The full panel takes ~15 min (each Duck model streams
+  serially), so run it in the
   background and poll rather than blocking on it.
 - **A Short's description link may not be tappable — pin a comment instead.** Every
   member of the 2026-11-05 panel raised it. `studio_web.py` `short_pin_targets()`

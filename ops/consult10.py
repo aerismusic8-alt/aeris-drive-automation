@@ -1,14 +1,20 @@
 #!/usr/bin/env python3
-"""Ask a panel of TEN AI advisors the same brief and record every answer.
+"""Ask a wide panel of AI advisors the same brief and record every answer.
 
 K asked (2026-11-06) for a ten-agent panel on a hard problem, one platform at a
 time. `ops/consult.py` runs the standing five (ChatGPT web, Gemini web, and three
 Duck.ai models) and is the gate the daily rails call. This script widens the
-panel to ten *distinct* models:
+panel to ten *channels*:
 
   chatgpt                     ChatGPT web app   (cloud desktop)
   gemini                      Gemini web app    (cloud desktop)
   duck-*                      eight Duck.ai models, driven one at a time
+
+Ten channels is **not** ten independent opinions: eight of them are one Duck.ai
+page routing to different models, so they share that page's context and tend to
+agree. `report()` therefore prints the *vendor* count (usually 2-3) alongside the
+channel count, and the gate counts vendors, not channels. Read the answers for
+their reasoning; do not treat "10/10 agreed" as ten witnesses.
 
 Duck.ai is used sequentially because it is a single page whose model is switched
 before each question; asking two models at once would race the switch.
@@ -67,20 +73,41 @@ def _duck(model: str):
     return run
 
 
-def consult(problem: str, timeout: float, only: list[str] | None) -> dict:
+def consult(problem: str, timeout: float, only: list[str] | None,
+            retries: int = 1) -> dict:
     answers: dict = {}
     for name, fn in panel():
         if only and name not in only:
             continue
-        t0 = time.time()
-        try:
-            answers[name] = {"ok": True, "answer": fn(problem, timeout=timeout)}
-        except Exception as exc:  # noqa: BLE001
-            answers[name] = {"ok": False, "error": f"{type(exc).__name__}: {exc}"}
-        answers[name]["seconds"] = round(time.time() - t0, 1)
+        attempts = 0
+        while True:
+            t0 = time.time()
+            try:
+                answers[name] = {"ok": True, "answer": fn(problem, timeout=timeout)}
+            except Exception as exc:  # noqa: BLE001
+                answers[name] = {"ok": False, "error": f"{type(exc).__name__}: {exc}"}
+            answers[name]["seconds"] = round(time.time() - t0, 1)
+            if answers[name]["ok"] or attempts >= retries:
+                break
+            attempts += 1
         print(f"[{name}] {'ok' if answers[name]['ok'] else 'FAIL'} "
               f"({answers[name]['seconds']}s)", flush=True)
     return answers
+
+
+def report(answers: dict) -> str:
+    """Honest summary: channels and the *distinct vendors* behind them.
+
+    Eight of the ten channels are one Duck.ai page, so "10/10 agreed" overstates
+    the evidence — that is one vendor echoing itself. The number that matters for
+    confidence is the vendor count.
+    """
+    from consult import families, quorum
+    ok = sum(1 for a in answers.values() if a.get("ok"))
+    fams = sorted(families(answers))
+    passed, why = quorum(answers)
+    return (f"{ok}/{len(answers)} channels answered across {len(fams)} vendors "
+            f"({', '.join(fams) or 'none'}) — quorum {'PASS' if passed else 'FAIL'}: {why}")
 
 
 def main(argv=None) -> int:
@@ -90,6 +117,7 @@ def main(argv=None) -> int:
     ap.add_argument("--out")
     ap.add_argument("--timeout", type=float, default=300.0)
     ap.add_argument("--only", action="append")
+    ap.add_argument("--retries", type=int, default=1)
     ap.add_argument("--list", action="store_true")
     args = ap.parse_args(argv)
 
@@ -104,14 +132,13 @@ def main(argv=None) -> int:
     if not problem:
         ap.error("give a problem string or --file")
 
-    answers = consult(problem, args.timeout, args.only)
-    ok = sum(1 for a in answers.values() if a.get("ok"))
-    print(f"\n{ok}/{len(answers)} advisors answered")
+    answers = consult(problem, args.timeout, args.only, retries=args.retries)
+    print("\n" + report(answers))
     record(problem, answers)  # satisfies the consult.py gate + audit trail
     if args.out:
         Path(args.out).write_text(json.dumps(answers, ensure_ascii=False, indent=1),
                                   encoding="utf-8")
-    return 0 if ok else 1
+    return 0 if any(a.get("ok") for a in answers.values()) else 1
 
 
 if __name__ == "__main__":
