@@ -93,3 +93,6 @@ share/aeris-music/music/
 share/aeris-music/covers/*.jpg
 !share/aeris-music/beds/
 !music938-1/work/produce-queue.json
+# The YouTube shared-quota ledger. Every worker reads and writes it through the
+# Contents API, so it must be tracked or the reservation is invisible to the rest.
+!music938-1/work/yt-quota.json

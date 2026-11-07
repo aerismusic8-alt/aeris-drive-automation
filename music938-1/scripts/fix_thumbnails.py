@@ -26,6 +26,7 @@ sys.path.insert(0, str(ROOT / "scripts"))
 
 import release  # noqa: E402
 import yt_auth  # noqa: E402
+import yt_quota  # noqa: E402
 from yt_publish import set_thumbnail  # noqa: E402
 
 LEDGER = "music938-1/work/release-state.json"
@@ -131,6 +132,20 @@ def main() -> int:
         return 0
     print(f"{len(todo)} release(s) need a repair")
 
+    # Price the repair against the shared pool first, exactly as the release does.
+    # A repair is 50 units for the thumbnail plus 50 for the playlist slot per
+    # video, and it is the highest-value use of the pool: it fixes content that is
+    # already live and already earning nothing. If the pool cannot cover the whole
+    # backlog, repair what it can and leave the rest for tomorrow rather than
+    # failing halfway on a 403.
+    need_each = yt_quota.UNITS_PER_RELEASE
+    if not args.dry_run:
+        room = yt_quota.remaining() // need_each
+        if room < len(todo):
+            print(f"pool has room for {room} of {len(todo)} repair(s) today; "
+                  f"the rest waits for the next Pacific day")
+            todo = todo[:room]
+
     tok = None if args.dry_run else yt_auth.access_token(args.ch)
     fixed = 0
     for e in todo:
@@ -148,6 +163,7 @@ def main() -> int:
             else:
                 code, _ = set_thumbnail(e["video_id"], str(path), tok)
                 print(f"  thumb {e['slug']} ({e['video_id']}): HTTP {code}")
+                yt_quota.record("thumbnails.set")
                 if code == 403:
                     print("quota spent; the rest waits for a fresh Pacific day")
                     break
@@ -162,11 +178,13 @@ def main() -> int:
                       file=sys.stderr)
             else:
                 already = in_playlist(pid, e["video_id"], tok)
+                yt_quota.record("playlistItems.list")
                 if already:
                     e["playlist_ok"] = True
                     changed = True
                 elif already is False and release.add_to_playlist(
                         pid, e["video_id"], args.ch):
+                    yt_quota.record("playlistItems.insert")
                     e["playlist_ok"] = True
                     print(f"  playlist {e['slug']}: added to {pid}")
                     changed = True
@@ -178,6 +196,8 @@ def main() -> int:
         if os.environ.get("AX_GH_TOKEN"):
             write_ledger(release.STATE.read_bytes())
         print(f"{fixed} release(s) repaired and recorded")
+    if not args.dry_run:
+        yt_quota.commit("quota: repair run")
     return 0
 
 

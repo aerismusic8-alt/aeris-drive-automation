@@ -39,6 +39,8 @@ import monetize
 
 ROOT = Path(__file__).resolve().parent.parent
 OPS = ROOT.parent / "ops"
+sys.path.insert(0, str(OPS))
+import yt_quota  # noqa: E402
 LYRICS = ROOT / "lyrics"
 SONGS = ROOT / "library" / "songs"
 KARAOKE = ROOT / "library" / "karaoke"
@@ -732,6 +734,11 @@ def release_one(item: dict, args) -> int:
     # Record the outcome so `fix_thumbnails.py` can repair it once quota is fresh.
     tm = re.search(r"thumbnail HTTP (\d+)", proc.stdout)
     thumb_ok = (tm.group(1) == "200") if tm else None
+    if thumb_ok is not None:
+        # Price the call whether it worked or not: a 403 still burned nothing,
+        # but the ledger must reflect the *attempt* so the next worker's
+        # pre-flight sees the pool as the API does.
+        yt_quota.record("thumbnails.set")
     state = load_state()
     # A new release belongs in the right playlist, or the channel looks like a
     # pile of loose videos rather than a catalogue. Created lazily on first use.
@@ -741,6 +748,7 @@ def release_one(item: dict, args) -> int:
     if vid:
         pid = ensure_playlist(state, kind, args.ch)
         playlist_ok = bool(pid) and add_to_playlist(pid, vid, args.ch)
+        yt_quota.record("playlistItems.insert")
     state["released"].append({
         "slug": slug, "kind": kind, "variant": item.get("variant", ""),
         "video_id": vid,
@@ -774,6 +782,9 @@ def main() -> int:
                     help="hours between the items of one batch (a 24h activity spread)")
     ap.add_argument("--progress-file",
                     help="append one line per action, so an unattended run can report progress")
+    ap.add_argument("--quota-ok", action="store_true",
+                    help="skip the shared-pool pre-flight (manual override; the "
+                         "upload may then go live without its thumbnail)")
     ap.add_argument("--dry-run", action="store_true")
     args = ap.parse_args()
 
@@ -798,8 +809,24 @@ def main() -> int:
     # A batch is what keeps the channel active around the clock: each item is
     # scheduled `spread` hours after the previous, so the uploads cover the day
     # instead of landing together. Without --spread they all go out now.
+    #
+    # Reserve the shared pool BEFORE the first upload. `videos.insert` has its own
+    # bucket, so an upload always succeeds — which is exactly the trap: on a spent
+    # pool the video goes live with no thumbnail and no playlist row. Refusing to
+    # start is the only outcome that does not leave a half-finished video behind.
+    batch = todo[: args.count]
+    need = len(batch) * yt_quota.UNITS_PER_RELEASE
+    if not args.quota_ok and not yt_quota.reserve(
+            need, purpose=f"release {len(batch)} item(s)", commit_it=not args.dry_run):
+        left = yt_quota.remaining()
+        print(f"shared quota pool too low: need {need} units for {len(batch)} "
+              f"release(s), {left} left today. Holding the batch until the pool "
+              f"resets at midnight Pacific — a video that cannot get its "
+              f"thumbnail is a video nobody clicks.", file=sys.stderr)
+        return 3
+
     rc = 0
-    for i, item in enumerate(todo[: args.count]):
+    for i, item in enumerate(batch):
         if i:
             print(f"--- release {i + 1}/{args.count} ---")
         progress(args.progress_file,

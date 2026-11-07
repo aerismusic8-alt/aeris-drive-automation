@@ -689,6 +689,84 @@ def test_provenance() -> None:
               "entries" in data and all("id" in e for e in data["entries"]))
 
 
+def test_youtube_quota_ledger() -> None:
+    section("YouTube shared quota (WIRING: an upload must never ship thumbnail-less)")
+    sys.path.insert(0, str(ROOT.parent / "ops"))
+    import importlib
+    import yt_quota
+    importlib.reload(yt_quota)
+    from datetime import datetime, timezone
+
+    # The pool is 10,000 units/day and the shared calls are priced from the
+    # official table. A wrong price here is what let the pool be mis-budgeted.
+    check("the shared pool is 10,000 units", yt_quota.POOL == 10_000)
+    check("a thumbnail costs 50 units", yt_quota.COST["thumbnails.set"] == 50)
+    check("a playlist insert costs 50 units",
+          yt_quota.COST["playlistItems.insert"] == 50)
+    check("videos.insert is not priced against the shared pool",
+          "videos.insert" not in yt_quota.COST)
+    # One release = six videos x (thumbnail + playlist) with margin.
+    check("a release reserves at least 100 units per video",
+          yt_quota.UNITS_PER_RELEASE >= 100)
+
+    # The day key must roll over on Pacific midnight, not UTC: a UTC key
+    # overcounts by the offset and refuses a legal upload.
+    day = yt_quota.pac_day(datetime(2026, 11, 7, 6, 30, tzinfo=timezone.utc))
+    check("06:30 UTC is still the previous Pacific day", day == "2026-11-06")
+    day2 = yt_quota.pac_day(datetime(2026, 11, 7, 8, 30, tzinfo=timezone.utc))
+    check("08:30 UTC is the new Pacific day", day2 == "2026-11-07")
+
+    # A fresh day can afford a batch; a spent day cannot. This is the whole gate.
+    d = {"days": {}}
+    check("an empty ledger can afford a release",
+          yt_quota.can_afford(600, d, "2026-11-07"))
+    spent = {"days": {"2026-11-07": {"units": 9_800, "calls": {}}}}
+    check("a nearly spent pool refuses a release",
+          not yt_quota.can_afford(600, spent, "2026-11-07"))
+    check("a reserve on a spent pool fails",
+          not yt_quota.reserve(600, "x", commit_it=False, data=spent, day="2026-11-07"))
+
+    # record() prices a call at the official cost and never double-counts a
+    # reservation (reserve is a pre-flight, not a counter).
+    d = {"days": {}}
+    yt_quota.reserve(600, "batch", commit_it=False, data=d, day="2026-11-07")
+    check("a reservation does not spend the pool",
+          yt_quota.used(d, "2026-11-07") == 0)
+    yt_quota.record("thumbnails.set", data=d, day="2026-11-07")
+    yt_quota.record("playlistItems.insert", data=d, day="2026-11-07")
+    check("recording two shared calls costs 100 units",
+          yt_quota.used(d, "2026-11-07") == 100)
+    check("remaining reflects the spend",
+          yt_quota.remaining(d, "2026-11-07") == 9_900)
+
+    # The release must reserve before it uploads, and refuse when it cannot.
+    rel = (ROOT / "scripts" / "release.py").read_text(encoding="utf-8")
+    check("release reserves the pool before uploading",
+          "yt_quota.reserve(" in rel and rel.index("yt_quota.reserve(") < rel.index("for i, item in enumerate(batch)"))
+    check("release refuses a batch it cannot cover", "return 3" in rel)
+    check("release prices the thumbnail it set", 'yt_quota.record("thumbnails.set")' in rel)
+    check("release prices the playlist insert",
+          'yt_quota.record("playlistItems.insert")' in rel)
+
+    # The repair is gated on the same pool, or it just re-fails on a spent day.
+    fix = (ROOT / "scripts" / "fix_thumbnails.py").read_text(encoding="utf-8")
+    check("the repair checks the pool before it runs",
+          "yt_quota.remaining()" in fix)
+    check("the repair prices its thumbnail", 'yt_quota.record("thumbnails.set")' in fix)
+
+    # The ledger is worthless if git cannot carry it between workers. `check-ignore`
+    # returns 0 when the *last* matching rule is a negation, so read the rule text,
+    # not the exit code: the file must be re-included and not caught by work/*.
+    gi = (ROOT.parent / ".gitignore").read_text(encoding="utf-8")
+    check("the quota ledger is tracked", "!music938-1/work/yt-quota.json" in gi)
+    out = subprocess.run(
+        ["git", "check-ignore", "-v", "--no-index",
+         "music938-1/work/yt-quota.json"],
+        cwd=str(ROOT.parent), capture_output=True, text=True)
+    check("the last gitignore rule for the ledger is the re-include",
+          "!music938-1/work/yt-quota.json" in out.stdout, out.stdout.strip()[:100])
+
+
 def test_genres() -> None:
     section("genres (WIRING: catalogue is open, any genre)")
     import genres
@@ -2888,6 +2966,7 @@ def main() -> int:
     test_affiliate_release()
     test_plan_rotates_songs()
     test_affiliate_reserve()
+    test_youtube_quota_ledger()
     test_outputs()
     print(f"\n{PASS} passed, {FAIL} failed")
     if FAILURES:
