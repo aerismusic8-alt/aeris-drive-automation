@@ -147,6 +147,23 @@ def test_revenue_goal_is_measured_and_never_guessed():
     assert "TikTok Shop Affiliate" in blocked and "1,000 ผู้ติดตาม" in blocked
 
 
+def test_gate_block_counts_the_gap_to_each_gate():
+    """The channel's own money is behind a follower gate (YT 1,000 subs, TikTok
+    Shop Affiliate 1,000 followers). The gap must be a number in the report, not
+    an implied one — a channel that is not growing toward its gate is failing."""
+    assert report.YT_GATE_SUBS == 1000 and report.TT_GATE_FOLLOWERS == 1000
+    yt = {"handle": "@aerismusicth", "subs": 7}
+    fb = {"followers": 1}
+    tk = {"followers_total": 0}
+    text = "\n".join(report.gate_block(yt, fb, tk))
+    assert "7 / 1,000 ซับ = 0.7%" in text
+    assert "993 ซับ" in text
+    assert "0 / 1,000 ผู้ติดตาม" in text
+    assert "TikTok Shop Affiliate" in text
+    # Unreadable input must read UNKNOWN, never a fabricated zero.
+    assert "UNKNOWN" in "\n".join(report.gate_block({}, {}, {}))
+
+
 def test_follow_guard_requires_the_page_identity():
     """The follow loop must never click Follow while the personal profile acts.
 

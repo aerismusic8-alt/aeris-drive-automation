@@ -44,9 +44,10 @@ HOOK_PAD = 0.6            # a beat of lead-in so the hook does not start on fram
 
 # The opening card. Every platform's ranking leans hardest on the first two
 # seconds — a scroll is decided before the chorus lands — and the file used to
-# open on the cover art with no words at all. This draws the one line that gives
-# the viewer a reason to stay: the same short hook the title and the caption
-# carry, so the promise matches what the clip delivers.
+# open on the cover art with no words at all. This draws the *first sung line*
+# of the hook, so the one frame every viewer sees gives them something to read
+# and sing along with. The 2026-11-07 advisor panel put lyric-led first and told
+# us not to delay the song, so the card overlays frame 0 while the audio plays.
 HOOK_CARD_SECONDS = 2.0
 HOOK_CARD_FADE = 0.25
 
@@ -150,10 +151,18 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
     full = estimate(lines, duration)
     events: list[str] = []
 
-    # The hook card, at the very top of the clip. It is the only text a viewer is
-    # guaranteed to see, so it carries the one line that earns the next few
-    # seconds; it is not the song title, which the cover art already shows.
-    card = release.hook_title(hook)
+    # The opening card carries the *first sung line* of this hook, not a generic
+    # question. The first frame is the one frame every viewer sees, so it shows
+    # the actual lyric they are about to hear — a viewer gets something to read
+    # and sing along with, which is the lever the 2026-11-07 advisor panel put
+    # first ("lyric-led beats a template card; do not delay the song"). The
+    # audio still starts on frame 0, so the card overlays, it does not delay.
+    card = ""
+    for t in full:
+        if t.get("start", 0.0) >= start - 0.05 and str(t.get("text", "")).strip():
+            card = str(t["text"]).strip()
+            break
+    card = card or release.hook_title(hook)
     if card:
         events.append(
             f"Dialogue: 0,0.00,{HOOK_CARD_SECONDS:.2f},HookCard,,0,0,0,,"

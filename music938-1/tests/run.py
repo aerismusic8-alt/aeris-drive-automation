@@ -605,18 +605,23 @@ def test_shorts() -> None:
     # Vertical canvas, or YouTube will not treat it as a Short.
     check("vertical canvas", (make_short.W, make_short.H) == (1080, 1920))
     # The first two seconds decide the scroll, and the file used to open on the
-    # cover art with no words. Every hook must now carry a card that names the
-    # hook, so the promise on screen matches the title and the caption.
+    # cover art with no words. Every hook must now open on the *actual first sung
+    # line* of that hook — not a generic question — so the frame every viewer
+    # sees gives them something to read and sing along with (2026-11-07 panel:
+    # lyric-led first, do not delay the song).
     meta, lines = make_short.load_lyrics("01-khon-di-thi-chak-pai")
     for hook in (1, 2, 3):
         ass = make_short.build_ass("01-khon-di-thi-chak-pai", lines, meta,
                                    20.0, 30.0, 178.7, hook=hook)
-        card = release.hook_title(hook)
-        check(f"hook {hook} opens with a card",
-              f"HookCard,,0,0,0,," in ass and card in ass)
+        card_lines = [ln for ln in ass.splitlines()
+                      if "HookCard,,0,0,0,," in ln]
+        check(f"hook {hook} opens with a card", len(card_lines) == 1)
         check(f"hook {hook} card starts at t=0",
-              any(ln.startswith("Dialogue: 0,0.00,") and "HookCard" in ln
-                  for ln in ass.splitlines()))
+              any(ln.startswith("Dialogue: 0,0.00,") for ln in card_lines))
+        # The card is a real lyric line, not the generic hook title.
+        body = card_lines[0].split(",,", 1)[1] if card_lines else ""
+        check(f"hook {hook} card is a lyric, not a template",
+              release.hook_title(hook) not in body and len(body) > 4)
     check("the card is short enough to earn the chorus",
           make_short.HOOK_CARD_SECONDS <= 3.0, f"{make_short.HOOK_CARD_SECONDS}")
 

@@ -37,6 +37,11 @@ YT = surfaces.OPS / "yt_auth.py"
 GOAL_USD = 500.0
 THB_PER_USD = 33.56
 
+# The gate that unlocks each platform's own money, from the official pages: a
+# channel is not a place to stick an ad, it is the door to a revenue route.
+YT_GATE_SUBS = 1000          # YouTube Partner Program
+TT_GATE_FOLLOWERS = 1000     # TikTok Shop Affiliate (verified 2026-11-07)
+
 
 def _money(v):
     """Parse a dashboard money cell to a float, or None when unreadable."""
@@ -49,14 +54,61 @@ def _money(v):
         return None
 
 
+def gate_block(yt: dict, fb: dict, tk: dict) -> list[str]:
+    """How far each channel is from the follower count that unlocks its money.
+
+    The channels are not a place to stick an affiliate link; they are the door
+    to a platform's own revenue route. YouTube opens at 1,000 subs, TikTok Shop
+    Affiliate at 1,000 followers. A channel that is not growing toward its gate
+    is not doing the job, so the gap is a first-class number in the report.
+    """
+    def _n(d, *keys):
+        for k in keys:
+            v = d.get(k)
+            if isinstance(v, (int, float)):
+                return int(v)
+            if isinstance(v, str) and v.strip().isdigit():
+                return int(v)
+        return None
+
+    subs = _n(yt, "subs")
+    fb_f = _n(fb, "followers")
+    tk_f = _n(tk, "followers_total")
+    lines = ["## ประตูรายได้ของช่อง (ต้องถึงก่อนจึงจะได้เงินจากแพลตฟอร์ม)", ""]
+    if subs is None:
+        lines.append("- YouTube: UNKNOWN (อ่านไม่ได้ — ไม่เดา)")
+    else:
+        pct = 100.0 * subs / YT_GATE_SUBS
+        lines.append(f"- YouTube {yt.get('handle','')}: {subs:,} / "
+                     f"{YT_GATE_SUBS:,} ซับ = {pct:.1f}% "
+                     f"(อีก {max(YT_GATE_SUBS - subs, 0):,} ซับ → YPP)")
+    if tk_f is None:
+        lines.append("- TikTok: UNKNOWN (อ่านไม่ได้ — ไม่เดา)")
+    else:
+        pct = 100.0 * tk_f / TT_GATE_FOLLOWERS
+        lines.append(f"- TikTok: {tk_f:,} / {TT_GATE_FOLLOWERS:,} ผู้ติดตาม = "
+                     f"{pct:.1f}% (อีก {max(TT_GATE_FOLLOWERS - tk_f, 0):,} → "
+                     "TikTok Shop Affiliate)")
+    if fb_f is not None:
+        lines.append(f"- Facebook: {fb_f:,} ผู้ติดตาม (ไม่มีเกณฑ์ผู้ติดตาม — "
+                     "ใช้ affiliate ได้เลย)")
+    lines += [
+        "",
+        "ช่องที่ไม่โตเข้าหาประตู = ยังไม่ได้ทำหน้าที่ของมัน; "
+        "เป้าคือดันจำนวนผู้ติดตามให้ถึงเกณฑ์ ไม่ใช่แค่โพสต์ให้ครบ",
+        "",
+    ]
+    return lines
+
+
 def goal_block(sp: dict) -> list[str]:
     """Progress toward the $500 goal, from the number that actually counts.
 
-    The platforms cannot pay here: TikTok Creator Rewards is not available in
-    Thailand, Facebook Content Monetization is invite-only with no public
-    threshold, and YouTube Shorts RPM is cents per thousand views. Shopee
-    affiliate is the one route that can pay today, so the goal is measured in
-    its commission — read live, never guessed.
+    Two Thai routes can pay today: Shopee affiliate (no follower gate, so it can
+    pay now) and TikTok Shop Affiliate (at 1,000 followers). Creator Rewards has
+    no Thai market, Facebook Content Monetization is invite-only, and YouTube
+    pays cents per thousand Shorts views — so the goal is measured in the Shopee
+    commission, read live and never guessed.
     """
     target_thb = GOAL_USD * THB_PER_USD
     comm = _money(sp.get("commission"))
@@ -311,6 +363,7 @@ def render(yt: dict, dash: dict, prev: dict | None = None,
         for surf, url in links.items():
             lines.append(f"- {surf}: {url}")
         lines.append("")
+    lines += gate_block(yt, fb, tk)
     lines += goal_block(sp)
     lines += [
         "## เป้าหมาย (GOAL.md)", "",
