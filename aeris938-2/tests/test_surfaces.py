@@ -140,8 +140,11 @@ def test_revenue_goal_is_measured_and_never_guessed():
     assert "คำสั่งซื้อสะสม: 120" in text
     blocked = "\n".join(report.goal_block({"commission": "UNKNOWN"}))
     assert "UNKNOWN" in blocked and "ไม่เดา" in blocked
-    # The route line must name the real 2026 blocker instead of promising ad money.
+    # The route line must name the real 2026 blockers instead of promising ad
+    # money, and must not hide TikTok: Creator Rewards is closed to Thailand but
+    # TikTok Shop Affiliate is open at 1,000 followers.
     assert "ไม่มีในไทย" in blocked and "invite-only" in blocked
+    assert "TikTok Shop Affiliate" in blocked and "1,000 ผู้ติดตาม" in blocked
 
 
 def test_follow_guard_requires_the_page_identity():
