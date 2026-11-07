@@ -624,6 +624,38 @@ def test_shorts() -> None:
               release.hook_title(hook) not in body and len(body) > 4)
     check("the card is short enough to earn the chorus",
           make_short.HOOK_CARD_SECONDS <= 3.0, f"{make_short.HOOK_CARD_SECONDS}")
+    # K, 2026-11-07: a karaoke clip whose words do not match the song is worse
+    # than none. The gate must refuse a missing mix, a mismatched length, and a
+    # lyric with no chorus — and must accept a well-formed song.
+    import tempfile, pathlib
+    with tempfile.TemporaryDirectory() as td:
+        lib = pathlib.Path(td) / "library"
+        (lib / "songs").mkdir(parents=True)
+        (lib / "covers").mkdir(parents=True)
+        (lib / "songs" / "song-zz-test.mp3").write_bytes(b"x")
+        (lib / "songs" / "karaoke-zz-test.mp3").write_bytes(b"x")
+        (lib / "covers" / "cover-zz-test.jpg").write_bytes(b"x")
+        (pathlib.Path(td) / "lyrics").mkdir()
+        (pathlib.Path(td) / "lyrics" / "zz-test.txt").write_text(
+            "[verse]\na\n[chorus]\nb\n", encoding="utf-8")
+        old_root, old_dur = make_short.ROOT, make_short._duration
+        try:
+            make_short.ROOT = pathlib.Path(td)
+            make_short._duration = lambda p: 200.0
+            ok, why = make_short.karaoke_ok("zz-test")
+            check("karaoke gate accepts a matched song", ok, why)
+            make_short._duration = lambda p: 200.0 if p.name.startswith("song-") else 150.0
+            ok, why = make_short.karaoke_ok("zz-test")
+            check("karaoke gate refuses a length mismatch",
+                  not ok and "length" in why, why)
+            make_short._duration = lambda p: 200.0
+            (pathlib.Path(td) / "lyrics" / "zz-test.txt").write_text(
+                "[verse]\na\n", encoding="utf-8")
+            ok, why = make_short.karaoke_ok("zz-test")
+            check("karaoke gate refuses lyrics with no chorus",
+                  not ok and "chorus" in why, why)
+        finally:
+            make_short.ROOT, make_short._duration = old_root, old_dur
 
 
 def test_provenance() -> None:
@@ -1063,6 +1095,14 @@ def test_crosspost_engine() -> None:
           f"{len(q)} vs ({len(shorts)}+{len(aff)})*2")
     check("ids are unique", len({it["id"] for it in q}) == len(q))
 
+    # A karaoke Short must resolve to its song slug, not its whole stem, or the
+    # caption reads "short-karaoke-01-..." and every link/lyric line is wrong.
+    check("karaoke short resolves to its slug",
+          crosspost._slug_of(Path("short-karaoke-01-khon-di-thi-chak-pai.mp4"))
+          == "01-khon-di-thi-chak-pai")
+    check("karaoke short carries no hook index",
+          crosspost._hook_of("short-karaoke-01-khon-di-thi-chak-pai") == 0)
+
     t = next(it for it in q if it["platform"] == "tiktok")
     f = next(it for it in q if it["platform"] == "facebook")
     check("tiktok caption carries #fyp", "#fyp" in t["caption"])
@@ -1189,6 +1229,42 @@ def test_crosspost_uses_committed_queue() -> None:
             crosspost.QUEUE.write_text(json.dumps(sample), encoding="utf-8")
             check("load_queue returns the file contents",
                   crosspost.load_queue() == sample)
+    finally:
+        crosspost.QUEUE = real
+
+
+def test_merge_queue_keeps_the_backlog() -> None:
+    """Adding newly rendered clips must never drop the pending backlog.
+
+    A rebuild enumerates `library/shorts/` and would replace the committed queue,
+    silently losing the pending posts. `merge_queue` appends only new
+    (platform, video) ids, so the backlog survives and the new karaoke clips join
+    the rotation behind it.
+    """
+    section("merge_queue keeps the backlog (new-format safety)")
+    import crosspost
+    import tempfile
+
+    real = crosspost.QUEUE
+    try:
+        with tempfile.TemporaryDirectory() as d:
+            crosspost.QUEUE = Path(d) / "q.json"
+            existing = [{"id": "tiktok:short-song-x", "platform": "tiktok",
+                         "video": "a.mp4", "caption": "old"}]
+            crosspost.QUEUE.write_text(json.dumps(existing), encoding="utf-8")
+            fresh = existing + [{"id": "tiktok:short-karaoke-x",
+                                 "platform": "tiktok",
+                                 "video": "b.mp4", "caption": "new"}]
+            n = crosspost.merge_queue(fresh)
+            check("merge adds only the new item", n == 1, str(n))
+            got = json.loads(crosspost.QUEUE.read_text(encoding="utf-8"))
+            ids = [it["id"] for it in got]
+            check("the old backlog item is still there",
+                  "tiktok:short-song-x" in ids)
+            check("the new item was appended",
+                  ids[-1] == "tiktok:short-karaoke-x")
+            check("re-merging the same list adds nothing",
+                  crosspost.merge_queue(fresh) == 0)
     finally:
         crosspost.QUEUE = real
 
@@ -2339,6 +2415,7 @@ def main() -> int:
     test_crosspost_engine()
     test_browser_ci_storage_state()
     test_crosspost_uses_committed_queue()
+    test_merge_queue_keeps_the_backlog()
     test_state_files_are_addable()
     test_crosspost_blocked_vs_empty()
     test_crosspost_pace_and_captions()

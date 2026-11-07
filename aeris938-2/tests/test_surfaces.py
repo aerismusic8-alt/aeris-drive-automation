@@ -19,6 +19,7 @@ sys.path.insert(0, str(ROOT / "scripts"))
 import surfaces  # noqa: E402
 import report  # noqa: E402
 import admin  # noqa: E402
+import goal_watch  # noqa: E402
 
 
 def test_exactly_four_surfaces():
@@ -162,6 +163,31 @@ def test_gate_block_counts_the_gap_to_each_gate():
     assert "TikTok Shop Affiliate" in text
     # Unreadable input must read UNKNOWN, never a fabricated zero.
     assert "UNKNOWN" in "\n".join(report.gate_block({}, {}, {}))
+
+
+def test_goal_watch_names_the_blocking_constraint():
+    """The daily monitor must name the one constraint that is blocking revenue,
+    in priority order: income > reach > conversion > offer. It is a monitor, not
+    a gate, so it must never raise on bad news."""
+    def row(at, **kw):
+        return {"at": at, **kw}
+
+    base = dict(yt_subs=7, yt_views=2042, tk_followers=0, sp_commission=0,
+                sp_clicks=0)
+    # Views flat → reach is the blocker, even though clicks are also zero.
+    flat = [row("2026-11-01T00:00:00Z", **base),
+            row("2026-11-07T00:00:00Z", **base)]
+    assert goal_watch.diagnose(flat)["constraint"] == "reach"
+    # Views growing but subs flat → conversion.
+    conv = [row("2026-11-01T00:00:00Z", **base),
+            row("2026-11-07T00:00:00Z", **dict(base, yt_views=5000))]
+    assert goal_watch.diagnose(conv)["constraint"] == "conversion"
+    # A commission beats everything.
+    paid = [row("2026-11-01T00:00:00Z", **base),
+            row("2026-11-07T00:00:00Z", **dict(base, sp_commission=120))]
+    assert goal_watch.diagnose(paid)["constraint"] == "income"
+    # And the digest always renders, with no history at all.
+    assert "คอขวด" in goal_watch.render(goal_watch.diagnose([]))
 
 
 def test_follow_guard_requires_the_page_identity():

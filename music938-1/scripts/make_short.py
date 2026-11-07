@@ -51,6 +51,44 @@ HOOK_PAD = 0.6            # a beat of lead-in so the hook does not start on fram
 HOOK_CARD_SECONDS = 2.0
 HOOK_CARD_FADE = 0.25
 
+# K, 2026-11-07: "a karaoke clip whose words do not match the song is worse than
+# no clip." We cannot machine-check syllable timing for free, but we can refuse
+# the gross errors — a missing karaoke mix, a mix whose length differs from the
+# song (a different take, or the wrong track), or a lyric file with no chorus.
+# Any karaoke render must pass this first; a song that fails is simply not made
+# into a karaoke clip, never shipped mismatched.
+KARAOKE_LEN_TOLERANCE = 0.02
+
+
+def karaoke_ok(slug: str) -> tuple[bool, str]:
+    """May this song become a karaoke Short? Returns (ok, reason).
+
+    The check is deliberately about *matching the song*, not about style: the
+    karaoke mix must exist and run the same length as the song (±2%), the cover
+    must exist, and the lyric file must actually carry a chorus. That is the
+    strongest guarantee a free pipeline can give that the words on screen belong
+    to the audio being played.
+    """
+    songs = ROOT / "library" / "songs"
+    song = songs / f"song-{slug}.mp3"
+    kara = songs / f"karaoke-{slug}.mp3"
+    cover = ROOT / "library" / "covers" / f"cover-{slug}.jpg"
+    lyric = ROOT / "lyrics" / f"{slug}.txt"
+    if not song.exists():
+        return False, f"missing {song.name}"
+    if not kara.exists():
+        return False, f"missing {kara.name}"
+    if not cover.exists():
+        return False, f"missing {cover.name}"
+    if not lyric.exists():
+        return False, f"missing lyrics/{slug}.txt"
+    if "[chorus]" not in lyric.read_text(encoding="utf-8").lower():
+        return False, "lyrics have no chorus section"
+    ds, dk = _duration(song), _duration(kara)
+    if abs(ds - dk) > KARAOKE_LEN_TOLERANCE * max(ds, dk):
+        return False, f"karaoke length {dk:.1f}s != song {ds:.1f}s"
+    return True, "ok"
+
 
 def chorus_spans(slug: str) -> list[tuple[float, float]]:
     """Every chorus block as a (start, length) share of the sung lines.
@@ -213,6 +251,14 @@ def render(slug: str, *, mix: str = "song", out_dir: Path | None = None,
         if not p.exists():
             raise FileNotFoundError(f"missing {p}; run flow_song.py first")
 
+    # A karaoke clip must be refused outright when the words cannot be trusted to
+    # match the song (K, 2026-11-07). The lyric-card path makes this a hard gate,
+    # not a note: better to ship no karaoke clip than a mismatched one.
+    if mix == "karaoke":
+        ok, why = karaoke_ok(slug)
+        if not ok:
+            raise RuntimeError(f"karaoke refused — {why}")
+
     meta, lines = load_lyrics(slug)
     duration = _duration(audio)
     windows = _pick_windows(slug, duration)
@@ -303,6 +349,8 @@ def main() -> int:
                     help="one Short per chorus, not just the first")
     ap.add_argument("--captions", action="store_true",
                     help="burn the estimated lyric sweep (retired: it drifts)")
+    ap.add_argument("--skip-existing", action="store_true",
+                    help="do not re-render a Short that is already on disk")
     args = ap.parse_args()
 
     if args.all:
@@ -315,6 +363,15 @@ def main() -> int:
     rc = 0
     for slug in slugs:
         try:
+            # A karaoke mix whose words cannot be trusted is refused by render(),
+            # so a `--mix karaoke` batch skips those songs instead of shipping a
+            # mismatched clip (K, 2026-11-07).
+            if args.skip_existing:
+                outs_dir = ROOT / "library" / "shorts"
+                already = sorted(outs_dir.glob(f"short-{args.mix}*-{slug}.mp4"))
+                if already:
+                    print(f"{slug}: skip (exists)")
+                    continue
             outs = render(slug, mix=args.mix, all_hooks=args.hooks,
                           captions=args.captions)
             for out in outs:

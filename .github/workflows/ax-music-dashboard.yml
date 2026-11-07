@@ -67,6 +67,10 @@ jobs:
           # back to the last reading the desktop captured — labelled, not blank.
           python3 aeris938-2/scripts/report.py \
             || echo "report.py skipped (desktop/CDP unavailable)"
+          # The daily judge: reads the history report.py just wrote and names the
+          # one constraint blocking revenue. Exits 0 on bad news by design.
+          python3 aeris938-2/scripts/goal_watch.py --no-push \
+            || echo "goal_watch.py skipped"
 
       - name: Commit the dashboard
         run: |
@@ -75,7 +79,8 @@ jobs:
           git config user.email "ax-music-dashboard@users.noreply.github.com"
           git add music938-1/work/market-report.md music938-1/work/market-snapshot.json \
                   music938-1/channel/PROGRESS.md \
-                  aeris938-2/work/growth-report.md aeris938-2/work/history.jsonl
+                  aeris938-2/work/growth-report.md aeris938-2/work/history.jsonl \
+                  aeris938-2/work/goal-watch.md
           if git diff --cached --quiet; then
             echo "no change to record"
             exit 0
@@ -84,9 +89,10 @@ jobs:
           git pull --rebase --autostash origin "${GITHUB_REF_NAME}"
           git push
 
-      # Push the headline numbers to K's phone so progress is seen without
-      # opening the repo. ntfy is free and needs no account; the topic is the
-      # same AX_NTFY_TOPIC the watchdog already uses.
+      # Push the goal headline to K's phone so progress toward $500 is seen
+      # without opening the repo. goal_watch.py owns the message: it carries the
+      # commission, both gate counts and the named constraint. ntfy is free and
+      # needs no account; the topic is the same AX_NTFY_TOPIC the watchdog uses.
       - name: Notify K on ntfy
         if: always()
         env:
@@ -94,12 +100,5 @@ jobs:
         run: |
           set -euo pipefail
           [ -n "${TOPIC:-}" ] || { echo "no AX_NTFY_TOPIC set"; exit 0; }
-          line=$(grep -m1 'ผู้ติดตาม' music938-1/channel/PROGRESS.md || true)
-          views=$(grep -m1 'ยอดดูรวม' music938-1/channel/PROGRESS.md || true)
-          # The four-surface report carries Shopee, which the YouTube-only
-          # dashboard never showed. Pull the Shopee row so K sees it too.
-          sp=$(grep -m1 'Shopee | คลิก' aeris938-2/work/growth-report.md 2>/dev/null || true)
-          sp=${sp#*| คลิก | }; sp=${sp%% |*}
-          body="AERIS Music | ${line} | ${views} | Shopee คลิก ${sp:-UNKNOWN}"
-          curl -sS --max-time 20 -H "Title: AERIS Music" -H "Tags: musical_note" \
-            -d "$body" "https://ntfy.sh/${TOPIC}" || echo "ntfy push failed (non-fatal)"
+          AX_NTFY_TOPIC="$TOPIC" python3 aeris938-2/scripts/goal_watch.py \
+            || echo "goal_watch push failed (non-fatal)"

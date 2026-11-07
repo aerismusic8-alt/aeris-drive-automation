@@ -167,13 +167,22 @@ def refresh_captions() -> int:
 
 def _slug_of(short: Path) -> str:
     # short-song-h1-01-khon-di-thi-chak-pai -> 01-khon-di-thi-chak-pai
-    s = short.stem[len("short-song-"):] if short.stem.startswith("short-song-") else short.stem
-    return re.sub(r"^h\d+-", "", s)
+    # short-karaoke-01-khon-di-thi-chak-pai -> 01-khon-di-thi-chak-pai
+    stem = short.stem
+    for prefix in ("short-song-", "short-karaoke-"):
+        if stem.startswith(prefix):
+            stem = stem[len(prefix):]
+            break
+    return re.sub(r"^h\d+-", "", stem)
 
 
 def _hook_of(stem: str) -> int:
-    """short-song-h2-01-... -> 2. The chorus index a Short was cut from."""
-    m = re.match(r"short-song-h(\d+)-", stem)
+    """short-song-h2-01-... -> 2. The chorus index a Short was cut from.
+
+    A karaoke Short carries no hook index (one per song), so it returns 0 and
+    the caption falls back to the first hook's copy.
+    """
+    m = re.match(r"short-(?:song|karaoke)-h(\d+)-", stem)
     return int(m.group(1)) if m else 0
 
 
@@ -678,6 +687,32 @@ def post(platform: str, limit: int) -> int:
 
 # --- cli --------------------------------------------------------------------
 
+def merge_queue(fresh: list[dict]) -> int:
+    """Add items the queue does not yet carry, keep everything already in it.
+
+    A plain rebuild enumerates `library/shorts/` and replaces the committed
+    backlog, so new karaoke clips would silently drop the 83 pending posts. This
+    appends only genuinely new (platform, video) pairs and never removes an item,
+    so the backlog survives and the new format joins the end of the rotation.
+    Returns the number of items added.
+    """
+    if not QUEUE.exists():
+        QUEUE.parent.mkdir(parents=True, exist_ok=True)
+        QUEUE.write_text(json.dumps(fresh, ensure_ascii=False, indent=2) + "\n",
+                         encoding="utf-8")
+        return len(fresh)
+    try:
+        cur = json.loads(QUEUE.read_text(encoding="utf-8"))
+    except ValueError:
+        cur = []
+    seen = {it["id"] for it in cur}
+    added = [it for it in fresh if it["id"] not in seen]
+    if added:
+        QUEUE.write_text(json.dumps(cur + added, ensure_ascii=False, indent=2) + "\n",
+                         encoding="utf-8")
+    return len(added)
+
+
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__,
                                  formatter_class=argparse.RawDescriptionHelpFormatter)
@@ -692,6 +727,8 @@ def main() -> int:
     ap.add_argument("--platform", choices=sorted(PLATFORMS), default=None)
     ap.add_argument("--limit", type=int, default=1)
     ap.add_argument("--rebuild-queue", action="store_true")
+    ap.add_argument("--merge-queue", action="store_true",
+                    help="append newly rendered Shorts without dropping the backlog")
     ap.add_argument("--refresh-captions", action="store_true",
                     help="rewrite pending captions in the committed queue")
     args = ap.parse_args()
@@ -701,6 +738,10 @@ def main() -> int:
     if args.refresh_captions:
         n = refresh_captions()
         print(f"refreshed {n} pending caption(s)")
+        return 0
+    if args.merge_queue:
+        n = merge_queue(build_queue())
+        print(f"queue: added {n} new item(s)")
         return 0
     if args.rebuild_queue or not QUEUE.exists():
         q = build_queue()

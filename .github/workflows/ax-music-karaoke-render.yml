@@ -1,0 +1,90 @@
+name: AX Music Karaoke Render
+
+# Turns each song into a lyric-led karaoke Short, so the discovery rail stops
+# posting the same cover-zoom format over and over. The 2026-11-07 advisor panel
+# put this first: a sing-along clip gives a scroller a reason to stay and a
+# reason to follow, which is what the channel's 1,000-subscriber gate needs.
+#
+# It renders from media the `media-938` release already holds (songs, karaoke
+# mixes, covers) and pushes the new clips back, so it needs no build pod and no
+# signed-in browser. K's rule holds: nothing here can ship a karaoke clip whose
+# words do not match the song — `make_short.karaoke_ok` refuses a missing mix, a
+# length mismatch, or a lyric file with no chorus, and a refused song is simply
+# skipped.
+#
+# It runs before the daily crosspost so a fresh clip can enter that day's queue.
+
+on:
+  schedule:
+    # 06:30 UTC, before the crosspost rail's 07:00 slot and clear of the
+    # release rail's 09:00 upload window.
+    - cron: '30 6 * * *'
+  workflow_dispatch:
+    inputs:
+      limit:
+        description: "max songs to render this run (0 = all)"
+        default: "8"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: ax-music-karaoke-render
+  cancel-in-progress: false
+
+jobs:
+  render:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install ffmpeg
+        run: |
+          set -euo pipefail
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq ffmpeg
+
+      - name: Pull the song masters and karaoke mixes
+        env:
+          AX_GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          python3 music938-1/scripts/pull_media.py --only songs
+          python3 music938-1/scripts/pull_media.py --only covers
+
+      - name: Render the karaoke Shorts (safety gate inside)
+        run: |
+          set -euo pipefail
+          cd music938-1
+          # A song that fails the gate is skipped, not forced; the loop keeps
+          # going so one bad lyric cannot stop the batch.
+          python3 scripts/make_short.py --all --mix karaoke --skip-existing || true
+
+      - name: Push the new clips back to the media store
+        env:
+          AX_GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          python3 music938-1/scripts/publish_media.py
+
+      - name: Add the new clips to the crosspost queue
+        run: |
+          set -euo pipefail
+          # --merge-queue appends only new (platform, video) ids, so the pending
+          # backlog is never dropped when a new format joins the rotation.
+          python3 music938-1/scripts/crosspost.py --merge-queue
+
+      - name: Commit the queue and ledger
+        run: |
+          set -euo pipefail
+          git config user.name  "ax-music-karaoke"
+          git config user.email "ax-music-karaoke@users.noreply.github.com"
+          git add music938-1/work/crosspost-queue.json
+          if git diff --cached --quiet; then
+            echo "no change to record"
+            exit 0
+          fi
+          git commit -m "data(music): karaoke render $(date -u +%Y-%m-%dT%H:%MZ)"
+          git pull --rebase --autostash origin "${GITHUB_REF_NAME}"
+          git push
