@@ -12,6 +12,13 @@ name: AX Music Crosspost (FB Reels + TikTok)
 # cloud desktop and re-running the exporter; a dead session makes the run fail
 # loudly and push a phone alert, so it never fails silently.
 #
+# The browser is now the *fallback*, not the only route. When an API token is
+# present the rail posts through the Meta Graph API / TikTok Content Posting API
+# with no browser at all, so K is out of the loop:
+#   FB_PAGE_TOKEN + FB_APP_ID + FB_APP_SECRET   -> Facebook (never-expiring System User token)
+#   TT_CLIENT_KEY + TT_CLIENT_SECRET + TT_REFRESH_TOKEN -> TikTok
+# Both are optional. With neither, everything below behaves exactly as before.
+#
 # Pacing lives in `crosspost.py` (20-min gap, 4 posts/platform/day). A run posts
 # at most one per platform because the second is inside the gap; run every 2
 # hours and the daily cap is what limits throughput, not the schedule.
@@ -63,10 +70,18 @@ jobs:
         id: probe
         env:
           AERIS_STORAGE_STATE_B64: ${{ secrets.AERIS_STORAGE_STATE_B64 }}
+          # API tokens make the browser unnecessary; the probe reports those
+          # surfaces as signed in without launching Chromium.
+          FB_PAGE_TOKEN: ${{ secrets.FB_PAGE_TOKEN }}
+          FB_APP_ID: ${{ secrets.FB_APP_ID }}
+          FB_APP_SECRET: ${{ secrets.FB_APP_SECRET }}
+          TT_CLIENT_KEY: ${{ secrets.TT_CLIENT_KEY }}
+          TT_CLIENT_SECRET: ${{ secrets.TT_CLIENT_SECRET }}
+          TT_REFRESH_TOKEN: ${{ secrets.TT_REFRESH_TOKEN }}
         run: |
           set -uo pipefail
-          if [ -z "${AERIS_STORAGE_STATE_B64:-}" ]; then
-            echo "::error::AERIS_STORAGE_STATE_B64 is not set; run ops/save_storage_state.py and gh secret set"
+          if [ -z "${AERIS_STORAGE_STATE_B64:-}" ] && [ -z "${FB_PAGE_TOKEN:-}${TT_REFRESH_TOKEN:-}" ]; then
+            echo "::error::no posting credential at all: set AERIS_STORAGE_STATE_B64 or an API token"
             exit 1
           fi
           for p in facebook tiktok; do
@@ -81,6 +96,12 @@ jobs:
       - name: Post the pending Shorts
         env:
           AERIS_STORAGE_STATE_B64: ${{ secrets.AERIS_STORAGE_STATE_B64 }}
+          FB_PAGE_TOKEN: ${{ secrets.FB_PAGE_TOKEN }}
+          FB_APP_ID: ${{ secrets.FB_APP_ID }}
+          FB_APP_SECRET: ${{ secrets.FB_APP_SECRET }}
+          TT_CLIENT_KEY: ${{ secrets.TT_CLIENT_KEY }}
+          TT_CLIENT_SECRET: ${{ secrets.TT_CLIENT_SECRET }}
+          TT_REFRESH_TOKEN: ${{ secrets.TT_REFRESH_TOKEN }}
           # The job token, as in ax-music-release.yml: fetch_media reads the
           # public media release with it. No personal PAT is stored.
           AX_GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}

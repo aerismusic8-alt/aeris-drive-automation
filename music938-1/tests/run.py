@@ -1349,6 +1349,58 @@ def test_crosspost_blocked_vs_empty() -> None:
               len(crosspost.pending(q, full_state, "tiktok")) == 0)
 
 
+def test_api_posting_route() -> None:
+    """The API route that removes K from the loop must be present and inert.
+
+    Advisors (2026-11-07, 6 channels / 4 vendors) ranked the Meta Graph API with
+    a System User token the most durable way to post without K, and the TikTok
+    Content Posting API second. The code is wired but has no token yet, so the
+    invariant that matters is: with no token, nothing changes and nothing breaks.
+    """
+    section("crosspost: API posting route (K out of the loop)")
+    import crosspost
+
+    # The modules exist and are importable from the rail.
+    check("fb_graph module is wired into crosspost", crosspost.fb_graph is not None)
+    check("tiktok_api module is wired into crosspost", crosspost.tiktok_api is not None)
+
+    ops = ROOT.parent / "ops"
+    for f in ("fb_graph.py", "tiktok_api.py", "token_heartbeat.py"):
+        check(f"ops/{f} exists", (ops / f).is_file())
+
+    # With no token configured, api_poster falls back to the browser.
+    check("no FB token -> browser poster", crosspost.api_poster("facebook") is None)
+    check("no TikTok token -> browser poster", crosspost.api_poster("tiktok") is None)
+
+    # A Reel is a three-call flow; the finish call must PUBLISH, not just upload.
+    fb = (ops / "fb_graph.py").read_text()
+    check("fb_graph starts a reel upload", "upload_phase" in fb and '"start"' in fb)
+    check("fb_graph publishes (not drafts) the reel", "PUBLISHED" in fb)
+    check("fb_graph can refresh a 60-day token", "fb_exchange_token" in fb)
+
+    # TikTok: the honest limit — an unaudited app may only post SELF_ONLY, and the
+    # code must refuse to silently replace a public post with a private one.
+    tt = (ops / "tiktok_api.py").read_text()
+    check("tiktok_api uses the official publish endpoint", "publish/video/init" in tt)
+    check("tiktok_api detects the SELF_ONLY (unaudited) cap", "SELF_ONLY" in tt)
+    check("tiktok_api refuses a private-only post by default", "allow_private" in tt)
+
+    # The heartbeat must not be able to burn the rotating refresh token in CI.
+    hb = (ops / "token_heartbeat.py").read_text()
+    check("heartbeat defaults to check-only", 'refresh = "--refresh" in argv' in hb)
+    check("heartbeat explains why CI must not refresh",
+          "cannot write a new secret" in hb)
+
+    wf = (ROOT.parent / ".github" / "workflows" / "ax-token-heartbeat.yml").read_text()
+    check("a scheduled heartbeat workflow exists", "cron:" in wf)
+    check("the heartbeat alerts K only on failure", "if: failure()" in wf)
+
+    # The crosspost workflow must forward the API secrets, or the route is dead.
+    cp = (ROOT.parent / ".github" / "workflows" / "ax-music-crosspost.yml").read_text()
+    check("crosspost forwards FB_PAGE_TOKEN", "FB_PAGE_TOKEN" in cp)
+    check("crosspost forwards the TikTok tokens", "TT_REFRESH_TOKEN" in cp)
+
+
 def test_crosspost_pace_and_captions() -> None:
     """The two defects found on 2026-11-01 must not come back.
 
@@ -1502,10 +1554,17 @@ def test_crosspost_pace_and_captions() -> None:
           not crosspost.pace_ok(two_pages, "facebook", now)[0])
 
     # The post URL must come from the platform's own list, never `page.url`.
+    # Two routes now build it: the browser path reads it back with
+    # `newest_post_url`, and the API path composes it from the returned video id.
+    # Pin the behaviour (a real URL on each route), not one literal line.
     src = (ROOT / "scripts" / "crosspost.py").read_text()
     check("a post-list reader exists", "def newest_post_url(" in src)
-    check("the studio/composer page is not stored as the post URL",
-          "real = newest_post_url(" in src)
+    check("the browser route reads the URL back from the platform",
+          "newest_post_url(pg, it[\"platform\"]" in src)
+    check("the API route composes the URL from the returned id",
+          "facebook.com/reel/" in src and "/video/" in src)
+    check("the ledger stores the resolved URL, not the composer page",
+          '"url": real' in src)
 
 
 def test_social_stats_parser() -> None:
@@ -2465,6 +2524,7 @@ def main() -> int:
     test_merge_queue_keeps_the_backlog()
     test_state_files_are_addable()
     test_crosspost_blocked_vs_empty()
+    test_api_posting_route()
     test_crosspost_pace_and_captions()
     test_social_stats_parser()
     test_setup_pod_ffmpeg()

@@ -1,0 +1,66 @@
+name: AX Token Heartbeat
+
+# Keeps K out of the loop for the Facebook and TikTok rails.
+#
+# The browser route needs K to sign in whenever a cookie session dies. The API
+# route (Meta Graph API + TikTok Content Posting API) does not — but its tokens
+# still expire, and "silently expired" looks exactly like "nothing to post". This
+# job checks them on a schedule and pages K only when a token has actually
+# lapsed, which is the one moment K is genuinely required.
+#
+# It is a pure *check*. TikTok rotates its refresh token on every refresh and a
+# GitHub Actions job cannot write a new secret back, so refreshing here would
+# burn the stored token. The agent-side `ops/token_heartbeat.py --refresh` does
+# the rotation, writing to the vault instead.
+#
+# With no tokens configured the job exits 0 and says so — a repo that has not yet
+# provisioned the API must not go red.
+
+on:
+  schedule:
+    - cron: '45 */6 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ax-token-heartbeat
+  cancel-in-progress: false
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Check the posting tokens
+        id: check
+        env:
+          FB_PAGE_TOKEN: ${{ secrets.FB_PAGE_TOKEN }}
+          FB_APP_ID: ${{ secrets.FB_APP_ID }}
+          FB_APP_SECRET: ${{ secrets.FB_APP_SECRET }}
+          FB_PAGE_ID: ${{ vars.FB_PAGE_ID }}
+          TT_CLIENT_KEY: ${{ secrets.TT_CLIENT_KEY }}
+          TT_CLIENT_SECRET: ${{ secrets.TT_CLIENT_SECRET }}
+          TT_REFRESH_TOKEN: ${{ secrets.TT_REFRESH_TOKEN }}
+        run: |
+          set -uo pipefail
+          python3 ops/token_heartbeat.py
+
+      - name: Notify K on ntfy
+        if: failure()
+        env:
+          TOPIC: ${{ vars.AX_NTFY_TOPIC }}
+        run: |
+          set -euo pipefail
+          [ -n "${TOPIC:-}" ] || { echo "no AX_NTFY_TOPIC set"; exit 0; }
+          curl -sS --max-time 20 -H "Title: AERIS token expired" -H "Tags: warning" \
+            -d "A Facebook/TikTok API token has lapsed — the browser route still posts, but re-provision the token to keep K out of the loop." \
+            "https://ntfy.sh/${TOPIC}" || echo "ntfy push failed (non-fatal)"

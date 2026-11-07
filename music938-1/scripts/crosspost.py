@@ -28,6 +28,7 @@ from __future__ import annotations
 
 import argparse
 import calendar
+import contextlib
 import json
 import re
 import sys
@@ -37,10 +38,20 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / "scripts"))
 sys.path.insert(0, str(ROOT.parent / "aeris938-1" / "scripts"))
+sys.path.insert(0, str(ROOT.parent / "ops"))  # fb_graph / tiktok_api live here
 
 import browser as B  # noqa: E402
 import monetize  # noqa: E402
 import release  # noqa: E402
+
+try:  # the headless API posters; absent only on a very old checkout
+    import fb_graph  # noqa: E402
+except Exception:  # noqa: BLE001
+    fb_graph = None
+try:
+    import tiktok_api  # noqa: E402
+except Exception:  # noqa: BLE001
+    tiktok_api = None
 
 WORK = ROOT / "work"
 SHORTS = ROOT / "library" / "shorts"
@@ -408,9 +419,18 @@ def probe(platform: str | None = None) -> int:
     """
     rc = 0
     names = [platform] if platform else list(PLATFORMS)
+    # A surface with an API token is "signed in" without any browser: the probe
+    # must not report a healthy API surface as dead just because the cookie
+    # session it no longer uses has expired.
+    api_names = {n for n in names if api_poster(n) is not None}
+    if api_names:
+        print(f"API-token surfaces (no browser needed): {', '.join(sorted(api_names))}")
+    browser_names = [n for n in names if n not in api_names]
+    if not browser_names:
+        return 0
     with _connect() as p:
         br, ctx = B.connect(p)
-        for name in names:
+        for name in browser_names:
             cfg = PLATFORMS[name]
             pg = ctx.new_page()
             try:
@@ -651,6 +671,21 @@ def newest_post_url(page, platform: str, seen: set | None = None) -> str:
     return ""
 
 
+def api_poster(platform: str):
+    """Return the headless API poster for a surface, or None to use the browser.
+
+    The API route exists so the rail does not need K to sign in when a cookie
+    session dies. It is only used when its credentials are actually configured;
+    otherwise the browser path runs exactly as before, so a missing token never
+    breaks a run.
+    """
+    if platform == "facebook" and fb_graph is not None and fb_graph.available():
+        return fb_graph.post_reel
+    if platform == "tiktok" and tiktok_api is not None and tiktok_api.available():
+        return tiktok_api.post_video
+    return None
+
+
 def post(platform: str, limit: int) -> int:
     state = load_state()
     queue = load_queue()
@@ -663,8 +698,14 @@ def post(platform: str, limit: int) -> int:
         print(f"held back by cadence: {why}")
         return 1
     posted = 0
-    with _connect() as p:
-        br, ctx = B.connect(p)
+    api = api_poster(platform)
+    print(f"posting {platform} via {'Graph/Content API' if api else 'browser session'}")
+    # With an API token there is no browser to launch at all — that is the point
+    # of the API route, and it is what lets the rail run on a runner with no
+    # Chromium and no cookie session.
+    ctxmgr = contextlib.nullcontext(None) if api is not None else _connect()
+    with ctxmgr as p:
+        ctx = None if api is not None else B.connect(p)[1]
         for it in todo:
             # Re-check before each item: one run must not be able to burst.
             allowed, why = pace_ok(load_state(), platform)
@@ -679,15 +720,24 @@ def post(platform: str, limit: int) -> int:
             if not video.exists():
                 print(f"  skip {it['id']}: {video} missing")
                 continue
-            pg = ctx.new_page()
+            pg = ctx.new_page() if ctx is not None else None
             try:
                 print(f"  posting {it['id']} ...", flush=True)
-                url = POSTERS[it["platform"]](pg, video, it["caption"])
+                if api is not None:
+                    # The API returns a video id; the browser poster returns the
+                    # page URL it landed on. Normalise to a URL for the ledger.
+                    vid = api(video, it["caption"])
+                    url = None
+                    if vid:
+                        url = (f"https://www.facebook.com/reel/{vid}" if platform == "facebook"
+                               else f"https://www.tiktok.com/@aeris.music4/video/{vid}")
+                else:
+                    url = POSTERS[it["platform"]](pg, video, it["caption"])
                 if url is None:
                     print(f"  {it['id']}: not published — left pending "
                           f"(reason in the abort line above)")
                     continue
-                real = newest_post_url(pg, it["platform"], seen=_posted_urls(state))
+                real = url if api is not None else newest_post_url(pg, it["platform"], seen=_posted_urls(state))
                 if not real:
                     print(f"  {it['id']}: posted, but the post URL could not be read")
                 state.setdefault("posted", {})[it["id"]] = {
@@ -698,10 +748,12 @@ def post(platform: str, limit: int) -> int:
                 posted += 1
                 print(f"  {it['id']}: posted -> {real or '(url unknown)'}")
             except Exception as exc:  # noqa: BLE001
-                _abort(pg, it["platform"], str(exc))
+                if pg is not None:
+                    _abort(pg, it["platform"], str(exc))
                 print(f"  {it['id']}: FAILED {exc}")
             finally:
-                pg.close()
+                if pg is not None:
+                    pg.close()
     print(f"posted {posted}/{len(todo)}")
     return 0 if posted else 1
 
