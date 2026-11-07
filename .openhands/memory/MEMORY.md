@@ -817,6 +817,30 @@ true-instrumental karaoke mix, cover art, a 1920x1080 word-synced video.
   NOT in CI, so a pod-side decision relies on you calling it.
 - **Record what you APPLIED, not just what you asked.** `consult.py --applied
   "<brief>" --note "..."` (or `note_applied`) stamps the decision onto the row.
+- **A watcher that reports activity on a quiet surface is wrong about the surface,
+  not right about the activity.** The FB admin rail printed "กล่องข้อความ: มีรายการใหม่
+  2 รายการ" every hour for days on a *completely empty* inbox, because `_count_new()`
+  counted the substring "ใหม่" and the Business Suite inbox carries a permanent
+  filter chip with that exact label — it read the filter UI as mail. It then drafted
+  a canned reply to nobody each run and, worst, never alerted on the number that
+  matters (the Page has **1 follower, 0 comments**, posting daily). Same shape as the
+  "0 views" bug and `Skills.hotbar`: a count taken from a label rather than an item
+  is not a measurement. Fixed 2026-11-07 (`aeris938-2/scripts/admin.py`):
+  `_inbox_state()` uses the empty-state text for 0 and returns **-1 unknown** rather
+  than a confident 0; `page_snapshot()` switches to the Page identity first (the
+  same switch that fixed the views); drafts only when `comments > 0`; `_stall()`
+  alerts "เพจไม่โต" (≥3d, <10 followers) with the flag stored in the **committed**
+  `admin-log.jsonl`, since a side file does not survive CI's fresh checkout.
+- **`OPENHANDS_API_KEY` must appear by name in the command** for the sandbox to
+  inject it; `ax_vault` returns 401 ("cannot list automations") without it, which
+  reads as "the KV token is gone" when it is really "the env var was not injected".
+  It mints the `axsecrets:gh-workflow-token` classic PAT used for `git push`.
+- **The cloud desktop dies with the parent shell** — `nohup ... &` alone lost it
+  twice within minutes; `setsid ... & disown` kept Xvfb/chromium up. After a pod
+  recycle also re-check `ops/phone_login.py` (work-2 tap-login page, 502 until
+  restarted) and the `ax-pylibs.pth` (a failed write left it **empty**, so
+  `import playwright` failed while the pth existed — verify with
+  `env -u PYTHONPATH python3 -c "import websocket,playwright,numpy"`).
 - **`duck.ai` needs its tab opened first** or `duck_ask` raises "no duck.ai tab";
   open it with `curl -X PUT 'http://127.0.0.1:9222/json/new?https://duck.ai/'`.
   **chatgpt/gemini need their tabs open too** — otherwise they raise "no chatgpt.com
