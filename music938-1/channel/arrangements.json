@@ -1,101 +1,404 @@
 {
   "_comment": "K, 2026-11-06: 'ดนตรีห้ามซ้ำกัน'. One signature per song — a distinct lead instrument + groove + mix character, so two songs of the same genre are still different music. `scripts/arrangement.py` assigns one per song by the song's index among the songs of its genre and `--check` fails if any id is reused. The pool is 6 per genre so the 4-genre rotation the advisor panel recommended (max 6 songs in a genre) can never collide. `instruments`/`groove`/`mix` are appended to the Flow Music style prompt after the pentatonic clause.",
   "arrangements": [
-    {"id": "lukthung-phin-sway", "genre": "lukthung",
-     "instruments": "lead phin answering the vocal, khaen pad, warm round bass, acoustic drum kit with rim clicks",
-     "groove": "slow two-step luk-thung sway, kick on 1 and 3",
-     "mix": "live one-take band feel, vocal forward, slight room reverb"},
-    {"id": "lukthung-bigband", "genre": "lukthung",
-     "instruments": "full luk-thung horn section, phin lead, electric organ, snappy kit",
-     "groove": "bouncy luk-thung big-band two-step",
-     "mix": "busy and joyful, horns answering the vocal"},
-    {"id": "lukthung-lofi", "genre": "lukthung",
-     "instruments": "phin and khaen over a lo-fi drum loop, warm tape wobble",
-     "groove": "laid-back luk-thung with a hip-hop lean",
-     "mix": "lo-fi warmth, vocal slightly behind the beat"},
-    {"id": "lukthung-dance", "genre": "lukthung",
-     "instruments": "mor-lam dance beat, khaen riff, electric bass, hand claps, phin fills",
-     "groove": "upbeat luk-thung dance two-step",
-     "mix": "bright and punchy, khaen wide in stereo"},
-    {"id": "lukthung-strings", "genre": "lukthung",
-     "instruments": "phin over a warm string pad, soft kit, upright bass, light bell accents",
-     "groove": "slow sentimental luk-thung with a string swell",
-     "mix": "lush and gentle, strings under the vocal"},
-    {"id": "lukthung-organ", "genre": "lukthung",
-     "instruments": "whirling electric organ, phin lead, tambourine, tight drum kit",
-     "groove": "mid-tempo luk-thung with an organ hook",
-     "mix": "retro warmth, organ trading with the vocal"},
-    {"id": "rock-distorted-anthem", "genre": "rock",
-     "instruments": "two layered distorted electric guitars, driving straight eighth-note drums, overdriven bass, gang-vocal chorus",
-     "groove": "fast double-time rock, kick-snare on every beat",
-     "mix": "loud wall-of-guitars, aggressive compression, vocal sitting on top"},
-    {"id": "rock-punk-drive", "genre": "rock",
-     "instruments": "single crunch guitar, fast snare-driven kit, picked bass, shouted backing",
-     "groove": "relentless driving punk-rock pulse, no fills",
-     "mix": "raw and dry, guitars panned hard left and right"},
-    {"id": "rock-ballad", "genre": "rock",
-     "instruments": "clean arpeggiated guitar into distorted chorus, piano underneath, live drum kit",
-     "groove": "slow-build rock ballad, half-time chorus",
-     "mix": "dynamic, quiet verse to loud chorus"},
-    {"id": "rock-garage", "genre": "rock",
-     "instruments": "fuzzy garage guitar, tambourine on the snare, simple bass, loose fills",
-     "groove": "loose mid-tempo garage rock",
-     "mix": "gritty and immediate, slight distortion on the vocal"},
-    {"id": "rock-strings-anthem", "genre": "rock",
-     "instruments": "soaring lead guitar, string section under the chorus, stadium drum kit, sustained bass",
-     "groove": "wide mid-tempo stadium rock, big final chorus",
-     "mix": "huge and open, guitars and strings layered"},
-    {"id": "rock-blues", "genre": "rock",
-     "instruments": "slide electric guitar, walking bass, shuffle kit, hammond organ",
-     "groove": "swung blues-rock shuffle",
-     "mix": "warm and live, guitar answering the vocal"},
-    {"id": "pop-piano-drive", "genre": "pop",
-     "instruments": "piano-driven pop with a four-chord loop, programmed beat, synth strings",
-     "groove": "steady modern pop mid-tempo, clap on 2 and 4",
-     "mix": "radio-bright, vocal doubled and tuned tight"},
-    {"id": "pop-synth-bounce", "genre": "pop",
-     "instruments": "plucky synth hook, bouncy sub bass, tight electronic kit",
-     "groove": "upbeat dance-pop bounce",
-     "mix": "punchy and clean, hook forward"},
-    {"id": "pop-ballad-strings", "genre": "pop",
-     "instruments": "grand piano, swelling string section, soft kit entering at the second chorus",
-     "groove": "slow ballad, sparse first verse",
-     "mix": "wide strings, vocal dry and close"},
-    {"id": "pop-epic-cinematic", "genre": "pop",
-     "instruments": "big taiko drums, soaring string ostinato, choir pad, electric guitar accents",
-     "groove": "epic cinematic build with a huge final chorus",
-     "mix": "enormous and wide, layered to fill the room"},
-    {"id": "pop-funk", "genre": "pop",
-     "instruments": "clavinet riff, slap bass, tight funk kit, brass stabs",
-     "groove": "groovy mid-tempo pop-funk",
-     "mix": "punchy and rhythmic, bass up front"},
-    {"id": "pop-acoustic-bright", "genre": "pop",
-     "instruments": "strummed acoustic guitar, light shaker, piano, simple programmed beat",
-     "groove": "cheerful acoustic pop mid-tempo",
-     "mix": "bright and open, natural vocal"},
-    {"id": "indie-fingerpick", "genre": "indie",
-     "instruments": "fingerpicked acoustic guitar, brush drums, upright bass, faint glockenspiel",
-     "groove": "gentle mid-tempo indie-folk sway",
-     "mix": "intimate close-mic vocal, warm tape saturation, natural room"},
-    {"id": "indie-reverb", "genre": "indie",
-     "instruments": "reverb-drenched clean electric guitar, soft mallet drums, synth pad underneath",
-     "groove": "dreamy slow indie groove, sparse and unhurried",
-     "mix": "washed-out reverb, vocal half-buried in the texture"},
-    {"id": "indie-pop-bright", "genre": "indie",
-     "instruments": "jangly clean guitar, tambourine, bouncy bass, simple kit",
-     "groove": "cheerful indie-pop mid-tempo",
-     "mix": "bright and jangly, vocal with light reverb"},
-    {"id": "indie-shoegaze", "genre": "indie",
-     "instruments": "layered tremolo guitars, distant drums, low synth drone, hushed vocal",
-     "groove": "slow shoegaze wash, no clear backbeat",
-     "mix": "heavy reverb, guitars swallowing the vocal"},
-    {"id": "indie-folk-duet", "genre": "indie",
-     "instruments": "two interlocking acoustic guitars, light cajon, two-part harmony",
-     "groove": "gentle folk duet, steady and warm",
-     "mix": "natural, voices up front"},
-    {"id": "indie-electro", "genre": "indie",
-     "instruments": "clean chorused guitar over an electronic beat, warm analog bass, glassy keys",
-     "groove": "mid-tempo indie-electro groove",
-     "mix": "cool and wide, guitar and synth trading space"}
+    {
+      "id": "lukthung-phin-sway",
+      "genre": "lukthung",
+      "instruments": "lead phin answering the vocal, khaen pad, warm round bass, acoustic drum kit with rim clicks",
+      "groove": "slow two-step luk-thung sway, kick on 1 and 3",
+      "mix": "live one-take band feel, vocal forward, slight room reverb"
+    },
+    {
+      "id": "lukthung-bigband",
+      "genre": "lukthung",
+      "instruments": "full luk-thung horn section, phin lead, electric organ, snappy kit",
+      "groove": "bouncy luk-thung big-band two-step",
+      "mix": "busy and joyful, horns answering the vocal"
+    },
+    {
+      "id": "lukthung-lofi",
+      "genre": "lukthung",
+      "instruments": "phin and khaen over a lo-fi drum loop, warm tape wobble",
+      "groove": "laid-back luk-thung with a hip-hop lean",
+      "mix": "lo-fi warmth, vocal slightly behind the beat"
+    },
+    {
+      "id": "lukthung-dance",
+      "genre": "lukthung",
+      "instruments": "mor-lam dance beat, khaen riff, electric bass, hand claps, phin fills",
+      "groove": "upbeat luk-thung dance two-step",
+      "mix": "bright and punchy, khaen wide in stereo"
+    },
+    {
+      "id": "lukthung-strings",
+      "genre": "lukthung",
+      "instruments": "phin over a warm string pad, soft kit, upright bass, light bell accents",
+      "groove": "slow sentimental luk-thung with a string swell",
+      "mix": "lush and gentle, strings under the vocal"
+    },
+    {
+      "id": "lukthung-organ",
+      "genre": "lukthung",
+      "instruments": "whirling electric organ, phin lead, tambourine, tight drum kit",
+      "groove": "mid-tempo luk-thung with an organ hook",
+      "mix": "retro warmth, organ trading with the vocal"
+    },
+    {
+      "id": "rock-distorted-anthem",
+      "genre": "rock",
+      "instruments": "two layered distorted electric guitars, driving straight eighth-note drums, overdriven bass, gang-vocal chorus",
+      "groove": "fast double-time rock, kick-snare on every beat",
+      "mix": "loud wall-of-guitars, aggressive compression, vocal sitting on top"
+    },
+    {
+      "id": "rock-punk-drive",
+      "genre": "rock",
+      "instruments": "single crunch guitar, fast snare-driven kit, picked bass, shouted backing",
+      "groove": "relentless driving punk-rock pulse, no fills",
+      "mix": "raw and dry, guitars panned hard left and right"
+    },
+    {
+      "id": "rock-ballad",
+      "genre": "rock",
+      "instruments": "clean arpeggiated guitar into distorted chorus, piano underneath, live drum kit",
+      "groove": "slow-build rock ballad, half-time chorus",
+      "mix": "dynamic, quiet verse to loud chorus"
+    },
+    {
+      "id": "rock-garage",
+      "genre": "rock",
+      "instruments": "fuzzy garage guitar, tambourine on the snare, simple bass, loose fills",
+      "groove": "loose mid-tempo garage rock",
+      "mix": "gritty and immediate, slight distortion on the vocal"
+    },
+    {
+      "id": "rock-strings-anthem",
+      "genre": "rock",
+      "instruments": "soaring lead guitar, string section under the chorus, stadium drum kit, sustained bass",
+      "groove": "wide mid-tempo stadium rock, big final chorus",
+      "mix": "huge and open, guitars and strings layered"
+    },
+    {
+      "id": "rock-blues",
+      "genre": "rock",
+      "instruments": "slide electric guitar, walking bass, shuffle kit, hammond organ",
+      "groove": "swung blues-rock shuffle",
+      "mix": "warm and live, guitar answering the vocal"
+    },
+    {
+      "id": "pop-piano-drive",
+      "genre": "pop",
+      "instruments": "piano-driven pop with a four-chord loop, programmed beat, synth strings",
+      "groove": "steady modern pop mid-tempo, clap on 2 and 4",
+      "mix": "radio-bright, vocal doubled and tuned tight"
+    },
+    {
+      "id": "pop-synth-bounce",
+      "genre": "pop",
+      "instruments": "plucky synth hook, bouncy sub bass, tight electronic kit",
+      "groove": "upbeat dance-pop bounce",
+      "mix": "punchy and clean, hook forward"
+    },
+    {
+      "id": "pop-ballad-strings",
+      "genre": "pop",
+      "instruments": "grand piano, swelling string section, soft kit entering at the second chorus",
+      "groove": "slow ballad, sparse first verse",
+      "mix": "wide strings, vocal dry and close"
+    },
+    {
+      "id": "pop-epic-cinematic",
+      "genre": "pop",
+      "instruments": "big taiko drums, soaring string ostinato, choir pad, electric guitar accents",
+      "groove": "epic cinematic build with a huge final chorus",
+      "mix": "enormous and wide, layered to fill the room"
+    },
+    {
+      "id": "pop-funk",
+      "genre": "pop",
+      "instruments": "clavinet riff, slap bass, tight funk kit, brass stabs",
+      "groove": "groovy mid-tempo pop-funk",
+      "mix": "punchy and rhythmic, bass up front"
+    },
+    {
+      "id": "pop-acoustic-bright",
+      "genre": "pop",
+      "instruments": "strummed acoustic guitar, light shaker, piano, simple programmed beat",
+      "groove": "cheerful acoustic pop mid-tempo",
+      "mix": "bright and open, natural vocal"
+    },
+    {
+      "id": "indie-fingerpick",
+      "genre": "indie",
+      "instruments": "fingerpicked acoustic guitar, brush drums, upright bass, faint glockenspiel",
+      "groove": "gentle mid-tempo indie-folk sway",
+      "mix": "intimate close-mic vocal, warm tape saturation, natural room"
+    },
+    {
+      "id": "indie-reverb",
+      "genre": "indie",
+      "instruments": "reverb-drenched clean electric guitar, soft mallet drums, synth pad underneath",
+      "groove": "dreamy slow indie groove, sparse and unhurried",
+      "mix": "washed-out reverb, vocal half-buried in the texture"
+    },
+    {
+      "id": "indie-pop-bright",
+      "genre": "indie",
+      "instruments": "jangly clean guitar, tambourine, bouncy bass, simple kit",
+      "groove": "cheerful indie-pop mid-tempo",
+      "mix": "bright and jangly, vocal with light reverb"
+    },
+    {
+      "id": "indie-shoegaze",
+      "genre": "indie",
+      "instruments": "layered tremolo guitars, distant drums, low synth drone, hushed vocal",
+      "groove": "slow shoegaze wash, no clear backbeat",
+      "mix": "heavy reverb, guitars swallowing the vocal"
+    },
+    {
+      "id": "indie-folk-duet",
+      "genre": "indie",
+      "instruments": "two interlocking acoustic guitars, light cajon, two-part harmony",
+      "groove": "gentle folk duet, steady and warm",
+      "mix": "natural, voices up front"
+    },
+    {
+      "id": "indie-electro",
+      "genre": "indie",
+      "instruments": "clean chorused guitar over an electronic beat, warm analog bass, glassy keys",
+      "groove": "mid-tempo indie-electro groove",
+      "mix": "cool and wide, guitar and synth trading space"
+    },
+    {
+      "id": "morlam-khaen-drive",
+      "genre": "morlam",
+      "instruments": "khaen lead riff answering the vocal, saw-u bass, long-drum morlam groove, hand claps on the backbeat",
+      "groove": "bouncy morlam two-step, long drum on the offbeat",
+      "mix": "bright village-stage mix, khaen forward, vocal slightly dry"
+    },
+    {
+      "id": "morlam-longdrum-bounce",
+      "genre": "morlam",
+      "instruments": "long drum (klong yao) lead, phin counter-melody, punchy electric bass, shout chorus",
+      "groove": "fast morlam bounce, kick and long drum trading accents",
+      "mix": "live temple-fair mix, big room reverb, vocal on top"
+    },
+    {
+      "id": "morlam-phasin-funk",
+      "genre": "morlam",
+      "instruments": "phasin string melody, funky picked bass, tight drum kit, call-and-response chorus",
+      "groove": "mid-tempo morlam funk, syncopated kick",
+      "mix": "warm analog mix, phasin up front, light tape saturation"
+    },
+    {
+      "id": "morlam-pin-lead",
+      "genre": "morlam",
+      "instruments": "phin lead trading with the vocal, khaen pad, round bass, rim-click kit",
+      "groove": "slow morlam sway, kick on 1 and 3",
+      "mix": "intimate mix, close vocal, gentle room tail"
+    },
+    {
+      "id": "morlam-night-bazaar",
+      "genre": "morlam",
+      "instruments": "khaen drone, phin runs, driving bass, tambourine and claps",
+      "groove": "driving morlam stomp, four-on-the-floor with offbeat claps",
+      "mix": "open-air bazaar mix, wide stereo, vocal centred"
+    },
+    {
+      "id": "citypop-synth-breeze",
+      "genre": "citypop",
+      "instruments": "FM electric piano, chorused synth pads, slap bass, gated snare",
+      "groove": "mid-tempo city-pop groove, snare on 2 and 4",
+      "mix": "glossy 80s mix, wide chorus, bright top end"
+    },
+    {
+      "id": "citypop-fm-bass-groove",
+      "genre": "citypop",
+      "instruments": "FM bass lead, glassy synth bells, electric piano chords, tight kit",
+      "groove": "bouncy city-pop shuffle, syncopated bass",
+      "mix": "clean radio mix, bass forward, shimmer reverb"
+    },
+    {
+      "id": "citypop-electric-piano-night",
+      "genre": "citypop",
+      "instruments": "electric piano lead, soft synth strings, fretless bass, brushed kit",
+      "groove": "relaxed night-drive groove, kick on 1",
+      "mix": "smooth midnight mix, soft highs, vocal close"
+    },
+    {
+      "id": "citypop-gated-snare-drive",
+      "genre": "citypop",
+      "instruments": "synth brass stabs, arpeggio pad, driving bass, gated snare",
+      "groove": "uptempo city-pop drive, straight eighths",
+      "mix": "punchy 80s mix, big snare, vocal doubled"
+    },
+    {
+      "id": "synthpop-arpeggio-shine",
+      "genre": "synthpop",
+      "instruments": "bright synth arpeggio lead, analog pad, square-wave bass, drum machine",
+      "groove": "steady synthpop pulse, four-on-the-floor kick",
+      "mix": "shiny modern mix, wide arpeggio, vocal layered"
+    },
+    {
+      "id": "synthpop-analog-pad-anthem",
+      "genre": "synthpop",
+      "instruments": "analog pad swell lead, brass synth stabs, pulsing bass, tom-heavy kit",
+      "groove": "anthemic synthpop, half-time chorus",
+      "mix": "big arena mix, wide pads, vocal huge"
+    },
+    {
+      "id": "synthpop-tom-fill-rush",
+      "genre": "synthpop",
+      "instruments": "plucky synth lead, tom-fill groove, octave bass, chime accents",
+      "groove": "rushing synthpop, driving toms",
+      "mix": "energetic mix, tight low end, vocal upfront"
+    },
+    {
+      "id": "synthpop-sequencer-pulse",
+      "genre": "synthpop",
+      "instruments": "sequencer bassline lead, glass synth chords, rim-shot kit, handclaps",
+      "groove": "hypnotic synthpop pulse, steady eighth bass",
+      "mix": "crisp electronic mix, deep bass, vocal dry"
+    },
+    {
+      "id": "rnb-smooth-keys",
+      "genre": "rnb",
+      "instruments": "warm electric piano lead, soft synth pad, round bass, finger-snap kit",
+      "groove": "slow-jam rnb groove, kick on 1 and 3",
+      "mix": "silky mix, vocal forward, subtle reverb"
+    },
+    {
+      "id": "rnb-slow-jam-guitar",
+      "genre": "rnb",
+      "instruments": "clean electric guitar lead, rhodes pad, sub bass, brushed kit",
+      "groove": "laid-back slow jam, lazy backbeat",
+      "mix": "intimate mix, guitar warm, vocal close"
+    },
+    {
+      "id": "rnb-trap-hat-soul",
+      "genre": "rnb",
+      "instruments": "rhodes chords lead, rolling trap hats, sub bass, sparse 808",
+      "groove": "modern rnb, trap hi-hat rolls over a slow backbeat",
+      "mix": "deep low end, wide vocal, airy top"
+    },
+    {
+      "id": "rnb-neo-soul-brass",
+      "genre": "rnb",
+      "instruments": "neo-soul brass stabs, rhodes lead, walking bass, live kit",
+      "groove": "neo-soul groove, swung sixteenths",
+      "mix": "live-band mix, brass punchy, vocal rich"
+    },
+    {
+      "id": "lofi-dusty-piano-loop",
+      "genre": "lofi",
+      "instruments": "dusty piano loop lead, soft pad, muted bass, laid-back drum break",
+      "groove": "slow lofi head-nod, kick on 1 and 3",
+      "mix": "tape-warm mix, rolled-off highs, vinyl hiss"
+    },
+    {
+      "id": "lofi-vinyl-crackle-beat",
+      "genre": "lofi",
+      "instruments": "sampled guitar lead, vinyl crackle, upright bass, lazy breakbeat",
+      "groove": "relaxed lofi groove, shuffled hats",
+      "mix": "dusty mix, narrow stereo, vocal soft"
+    },
+    {
+      "id": "lofi-jazz-guitar-chill",
+      "genre": "lofi",
+      "instruments": "mellow jazz guitar lead, rhodes pad, walking bass, brush kit",
+      "groove": "chill lofi swing, brushed backbeat",
+      "mix": "warm jazz-club mix, guitar forward, room tail"
+    },
+    {
+      "id": "lofi-tape-wobble-night",
+      "genre": "lofi",
+      "instruments": "tape-wobbled synth lead, soft keys, round bass, sparse kit",
+      "groove": "slow night-time lofi, kick on 1",
+      "mix": "hazy mix, wobble and hiss, vocal distant"
+    },
+    {
+      "id": "edm-festival-drop",
+      "genre": "edm",
+      "instruments": "supersaw lead, big kick, sidechained bass, riser and drop",
+      "groove": "festival edm build and drop, four-on-the-floor",
+      "mix": "loud club mix, wide supersaw, vocal on the drop"
+    },
+    {
+      "id": "edm-deep-house-groove",
+      "genre": "edm",
+      "instruments": "plucked synth lead, deep sub bass, shuffling house kit, vocal chops",
+      "groove": "deep house shuffle, offbeat open hat",
+      "mix": "warm club mix, deep bass, spacious reverb"
+    },
+    {
+      "id": "edm-trance-arpeggio",
+      "genre": "edm",
+      "instruments": "trance arpeggio lead, supersaw pad, rolling bass, driving kick",
+      "groove": "uplifting trance, rolling sixteenth bass",
+      "mix": "epic mix, wide pads, long reverb tail"
+    },
+    {
+      "id": "jazz-upright-swing",
+      "genre": "jazz",
+      "instruments": "upright bass lead, brushed kit, piano comping, muted trumpet",
+      "groove": "swinging jazz, walking bass",
+      "mix": "live jazz-club mix, room ambience, vocal natural"
+    },
+    {
+      "id": "jazz-late-night-trio",
+      "genre": "jazz",
+      "instruments": "piano trio lead, soft brushes, upright bass, muted guitar",
+      "groove": "slow late-night jazz, sparse comping",
+      "mix": "intimate mix, close mics, warm lows"
+    },
+    {
+      "id": "jazz-bossa-brush",
+      "genre": "jazz",
+      "instruments": "nylon guitar lead, brushed kit, soft bass, flute pad",
+      "groove": "bossa nova groove, gentle syncopation",
+      "mix": "breezy mix, nylon guitar forward, light reverb"
+    },
+    {
+      "id": "acoustic-fingerpicked-guitar",
+      "genre": "acoustic",
+      "instruments": "fingerpicked acoustic guitar lead, light strings, soft bass, shaker",
+      "groove": "gentle acoustic groove, steady eighths",
+      "mix": "natural mix, guitar close, minimal processing"
+    },
+    {
+      "id": "acoustic-campfire-strum",
+      "genre": "acoustic",
+      "instruments": "strummed acoustic guitar lead, harmonica, hand percussion, soft bass",
+      "groove": "campfire strum, kick on 1 and 3",
+      "mix": "warm live mix, group vocal feel, room reverb"
+    },
+    {
+      "id": "acoustic-piano-and-strings",
+      "genre": "acoustic",
+      "instruments": "solo piano lead, warm string pad, soft bass, sparse kit",
+      "groove": "slow acoustic ballad, arpeggiated piano",
+      "mix": "intimate ballad mix, piano forward, soft strings"
+    },
+    {
+      "id": "country-pedal-steel",
+      "genre": "country",
+      "instruments": "pedal steel lead, acoustic guitar, walking bass, brushed kit",
+      "groove": "country shuffle, kick on 1 and 3",
+      "mix": "warm country mix, steel forward, vocal honest"
+    },
+    {
+      "id": "country-banjo-roll",
+      "genre": "country",
+      "instruments": "banjo roll lead, fiddle, upright bass, tight kit",
+      "groove": "uptempo country roll, driving eighths",
+      "mix": "bright country mix, banjo crisp, vocal upfront"
+    },
+    {
+      "id": "country-slide-guitar-waltz",
+      "genre": "country",
+      "instruments": "slide guitar lead, acoustic guitar, soft bass, waltz kit",
+      "groove": "country waltz in three, gentle sway",
+      "mix": "warm waltz mix, slide forward, vocal close"
+    }
   ]
 }

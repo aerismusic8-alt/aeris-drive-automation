@@ -1,0 +1,84 @@
+name: AX Music Produce (continuous raw material)
+
+# Keeps making new songs as raw material for other AIs to build clips from.
+#
+# K: "งานเพลงต้องสร้างต่อเนื่องไว้เป็นวัตถุดิบให้ ai เอาไปสร้างคลิปด้วยแล้วล่ะ".
+#
+# Why GitHub Actions and not the OpenHands sandbox: the lyric channel that needs
+# no login (Duck.ai) is driven over the cloud desktop's CDP port, so on a bare
+# runner it is unreachable — but pollinations is plain HTTP, and the master is
+# synthesised with ffmpeg and the cover drawn with PIL, none of which need a
+# browser or a credential. So a runner can produce a song on its own. It runs on
+# ubuntu-latest (free minutes on a public repo), not the self-hosted Windows box.
+#
+# The keyless lane only. A Flow Music vocal render needs the signed-in desktop
+# and is never attempted here; the loop treats it as a bonus lane.
+#
+# Each run: draft one lyric -> synthesise the master -> draw the cover -> upload
+# the media to the public `media-938` release -> commit the refreshed share
+# catalog. No secret beyond the job's own GITHUB_TOKEN, which is why this can
+# never be blocked by an expired PAT.
+
+on:
+  schedule:
+    # Every 4 hours. One song per run is ~6/day, which is more than the release
+    # rail consumes, so the material always leads demand — but not so fast that
+    # the theme pool (12 themes) empties in two days. GitHub drops a scheduled
+    # run when the queue is busy, so a missed tick costs one song, not the rail.
+    - cron: '17 */4 * * *'
+  workflow_dispatch:
+    inputs:
+      count:
+        description: "Songs to produce this run"
+        default: "1"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: ax-music-produce
+  cancel-in-progress: false
+
+jobs:
+  produce:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install ffmpeg and Pillow
+        run: |
+          set -euo pipefail
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq ffmpeg fonts-noto-core
+          python3 -m pip install --quiet --disable-pip-version-check Pillow
+
+      - name: Produce the next song (keyless lane)
+        working-directory: music938-1
+        env:
+          AX_GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          python3 scripts/produce_loop.py --count "${{ github.event.inputs.count || '1' }}"
+
+      - name: Upload the media to the public release
+        env:
+          AX_GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          python3 music938-1/scripts/publish_media.py
+
+      - name: Commit the refreshed share catalog
+        run: |
+          set -euo pipefail
+          git config user.name  "aeris-music-bot"
+          git config user.email "bot@users.noreply.github.com"
+          git add -f share/aeris-music/catalog.json share/aeris-music/catalog.csv
+          git add -A music938-1/lyrics music938-1/work/produce-queue.json \
+                     music938-1/library/covers 2>/dev/null || true
+          if git diff --cached --quiet; then
+            echo "nothing new to commit"
+          else
+            git commit -m "produce: new song + refreshed share catalog"
+            git push
+          fi

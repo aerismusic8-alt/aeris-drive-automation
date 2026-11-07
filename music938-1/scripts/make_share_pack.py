@@ -22,11 +22,18 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import re
 import shutil
 import subprocess
 import sys
 from pathlib import Path
+
+# ffmpeg/ffprobe are not in the image; setup-pod.sh installs a static build under
+# /workspace/ax-tools/bin, which is not on PATH by default.
+_BIN = "/workspace/ax-tools/bin"
+if Path(_BIN, "ffmpeg").exists() and _BIN not in os.environ.get("PATH", ""):
+    os.environ["PATH"] = _BIN + os.pathsep + os.environ.get("PATH", "")
 
 ROOT = Path(__file__).resolve().parent.parent
 REPO = ROOT.parent
@@ -82,19 +89,58 @@ def probe(path: Path) -> float:
         return 0.0
 
 
-def catalogue() -> list[dict]:
+# The durable, public store for the audio itself. A fresh pod has an empty
+# `library/`, so the GitHub Release is the only place the songs exist outside the
+# build host — and it needs no login, which is what makes it shareable to another
+# AI. `publish_media.py` uploads here; the catalog links here.
+RELEASE = "media-938"
+RELEASE_URL = ("https://github.com/aerismusic8-alt/aeris-drive-automation/"
+               "releases/download/media-938")
+
+
+def _public(name: str) -> str:
+    return f"{RELEASE_URL}/{name}"
+
+
+def release_song_names(tok: str = "") -> list[str]:
+    """The song mp3 names that exist in the public release.
+
+    The catalog must list every song, but a CI runner that just produced one song
+    has only that one on disk. Building from the disk alone would then commit a
+    catalog of one and hide the other 21. The release is the durable store, so it
+    is the union's second half. Returns [] on any failure — a local, offline run
+    still works off the disk.
+    """
+    import urllib.request
+    url = f"https://api.github.com/repos/aerismusic8-alt/aeris-drive-automation/releases/tags/{RELEASE}"
+    req = urllib.request.Request(url, headers={"Accept": "application/vnd.github+json"})
+    if tok:
+        req.add_header("Authorization", f"token {tok}")
+    try:
+        with urllib.request.urlopen(req, timeout=20) as r:
+            data = json.loads(r.read())
+    except Exception:  # noqa: BLE001
+        return []
+    return sorted(a["name"] for a in data.get("assets", [])
+                  if re.match(r"song-.*\.mp3$", a["name"]))
+
+
+def catalogue(extra_songs: list[str] | None = None) -> list[dict]:
     manifest = {}
     mpath = SONGS / "manifest.json"
     if mpath.exists():
         manifest = {e["id"]: e for e in json.loads(mpath.read_text(encoding="utf-8"))["entries"]}
+    names = {f.name for f in SONGS.glob("song-*.mp3")}
+    names |= set(extra_songs or [])
     rows = []
-    for f in sorted(SONGS.glob("song-*.mp3")):
-        slug = f.stem[len("song-"):]
+    for name in sorted(names):
+        slug = name[len("song-"):-len(".mp3")]
         lid = f"song-{slug}"
         ent = manifest.get(lid, {})
         lm = lyric_meta(slug)
         mood = (ent.get("mood") or lm.get("mood") or "").lower() or "unspecified"
         tempo = lm.get("tempo") or ""
+        local = SONGS / name
         row = {
             "id": lid,
             "title": ent.get("title") or lm.get("title") or slug,
@@ -104,15 +150,20 @@ def catalogue() -> list[dict]:
             "key": ent.get("key") or lm.get("key") or "",
             "tempo_bpm": int(tempo) if str(tempo).isdigit() else None,
             "voice": ent.get("voice") or lm.get("voice") or "",
-            "duration_seconds": ent.get("duration_seconds") or probe(f),
-            "file": f"music/{f.name}",
+            "duration_seconds": ent.get("duration_seconds") or (probe(local) if local.exists() else None),
+            # `file` is the local path inside the pack; `url` is the public one an
+            # agent that never sees this disk can fetch.
+            "file": f"music/{name}",
+            "url": _public(name),
             "instrumental": f"music/karaoke-{slug}.mp3",
+            "instrumental_url": _public(f"karaoke-{slug}.mp3"),
             "has_instrumental": (SONGS / f"karaoke-{slug}.mp3").exists(),
             "lyrics": f"../music938-1/lyrics/{slug}.txt",
         }
         cover = COVERS / f"cover-{slug[3:]}.jpg"
         if cover.exists():
             row["cover"] = f"covers/{cover.name}"
+            row["cover_url"] = _public(cover.name)
         rows.append(row)
     return rows
 
@@ -144,8 +195,10 @@ def build_beds(duration: float) -> list[dict]:
 
 
 PROMPT_TH = """คุณคือผู้ช่วยทำคลิปวิดีโอ ฉันมีชุดเพลงให้ใช้เป็นดนตรีประกอบฟรี
-แหล่งข้อมูล: https://github.com/aerismusic8-alt/aeris-drive-automation
-โฟลเดอร์แชร์: share/aeris-music/ (มี catalog.json, music/, beds/, LICENSE.txt)
+ดัชนีเพลง (อ่านอันนี้ก่อน): https://raw.githubusercontent.com/aerismusic8-alt/aeris-drive-automation/main/share/aeris-music/catalog.json
+ลิงก์โหลดตรงทุกเพลงอยู่ในฟิลด์ url / instrumental_url ของแต่ละรายการ (โหลดได้เลย ไม่ต้องล็อกอิน)
+บรรเลงล้วน (สำหรับคลิปที่มีเสียงพูด) โหลดได้ที่ (แทน <mood> ด้วย calm/warm/sad/hopeful/mystic/epic):
+  https://raw.githubusercontent.com/aerismusic8-alt/aeris-drive-automation/main/share/aeris-music/beds/<mood>.mp3
 
 อ่าน catalog.json ก่อน แล้วเลือกเพลงตามอารมณ์ของคลิป โดยดู 2 ค่า:
 - mood / mood_th  = อารมณ์ (sad=เศร้า, calm=สงบ, warm=อบอุ่น, hopeful=มีหวัง, mystic=ลึกลับ, epic=ยิ่งใหญ่)
@@ -180,7 +233,7 @@ def main() -> int:
     args = ap.parse_args()
 
     OUT.mkdir(parents=True, exist_ok=True)
-    rows = catalogue()
+    rows = catalogue(extra_songs=release_song_names(os.environ.get("AX_GH_TOKEN", "")))
     beds = build_beds(args.bed_duration) if args.beds else []
     print(f"catalogue: {len(rows)} songs, {len(beds)} beds")
 
@@ -188,6 +241,8 @@ def main() -> int:
         (OUT / "music").mkdir(exist_ok=True)
         for r in rows:
             src = SONGS / Path(r["file"]).name
+            if not src.exists():  # on the release but not on this disk (CI run)
+                continue
             shutil.copy2(src, OUT / r["file"])
             if r["has_instrumental"]:
                 shutil.copy2(SONGS / Path(r["instrumental"]).name, OUT / r["instrumental"])
@@ -201,11 +256,11 @@ def main() -> int:
                     "credit": "AERIS Music (youtube.com/@aerismusicth)",
                     "songs": rows, "beds": beds},
                    ensure_ascii=False, indent=2), encoding="utf-8")
-    csv = ["id,title,mood,tempo_bpm,key,duration_seconds,file,instrumental"]
+    csv = ["id,title,mood,tempo_bpm,key,duration_seconds,url,instrumental_url"]
     for r in rows:
         csv.append(",".join(str(r.get(k, "")) for k in
                             ("id", "title", "mood", "tempo_bpm", "key",
-                             "duration_seconds", "file", "instrumental")))
+                             "duration_seconds", "url", "instrumental_url")))
     (OUT / "catalog.csv").write_text("\n".join(csv) + "\n", encoding="utf-8")
     (OUT / "LICENSE.txt").write_text(LICENSE, encoding="utf-8")
     (OUT / "PROMPT-TH.md").write_text(PROMPT_TH, encoding="utf-8")

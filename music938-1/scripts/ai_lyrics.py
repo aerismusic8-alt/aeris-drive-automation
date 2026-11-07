@@ -297,7 +297,23 @@ def _drive_duck(prompt: str, timeout_s: int = 300) -> str:
     return duck_ask.ask(prompt, timeout=timeout_s)
 
 
-DRAFTERS = {"gemini": _drive_gemini, "chatgpt": _drive_chatgpt, "duck": _drive_duck}
+def _drive_pollinations(prompt: str, timeout_s: int = 180) -> str:
+    """Draft over plain HTTP — no browser, so it works where Duck.ai cannot.
+
+    Duck.ai is driven through the cloud desktop's CDP port, so on a machine with
+    no desktop (a GitHub Actions runner) the whole lyric rail stops. Pollinations
+    is plain HTTP with no key and no login, so it survives a runner. Its Thai is
+    weaker (measured 2026-11-07) and it rate-limits to one reply per ~45s, so it
+    is the fallback channel; `lint_sections` still decides what may be used.
+    """
+    sys.path.insert(0, str(ROOT.parent / "ops"))
+    import pollinations_ask  # noqa: PLC0415
+
+    return pollinations_ask.ask(prompt, timeout=timeout_s)
+
+
+DRAFTERS = {"gemini": _drive_gemini, "chatgpt": _drive_chatgpt,
+            "duck": _drive_duck, "pollinations": _drive_pollinations}
 
 
 def draft(meta: dict, angle: str = "", drafter: str = "chatgpt"

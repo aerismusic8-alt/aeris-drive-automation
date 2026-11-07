@@ -1,6 +1,8 @@
 คุณคือผู้ช่วยทำคลิปวิดีโอ ฉันมีชุดเพลงให้ใช้เป็นดนตรีประกอบฟรี
-แหล่งข้อมูล: https://github.com/aerismusic8-alt/aeris-drive-automation
-โฟลเดอร์แชร์: share/aeris-music/ (มี catalog.json, music/, beds/, LICENSE.txt)
+ดัชนีเพลง (อ่านอันนี้ก่อน): https://raw.githubusercontent.com/aerismusic8-alt/aeris-drive-automation/main/share/aeris-music/catalog.json
+ลิงก์โหลดตรงทุกเพลงอยู่ในฟิลด์ url / instrumental_url ของแต่ละรายการ (โหลดได้เลย ไม่ต้องล็อกอิน)
+บรรเลงล้วน (สำหรับคลิปที่มีเสียงพูด) โหลดได้ที่ (แทน <mood> ด้วย calm/warm/sad/hopeful/mystic/epic):
+  https://raw.githubusercontent.com/aerismusic8-alt/aeris-drive-automation/main/share/aeris-music/beds/<mood>.mp3
 
 อ่าน catalog.json ก่อน แล้วเลือกเพลงตามอารมณ์ของคลิป โดยดู 2 ค่า:
 - mood / mood_th  = อารมณ์ (sad=เศร้า, calm=สงบ, warm=อบอุ่น, hopeful=มีหวัง, mystic=ลึกลับ, epic=ยิ่งใหญ่)

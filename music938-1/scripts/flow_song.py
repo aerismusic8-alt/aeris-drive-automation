@@ -754,9 +754,16 @@ def _offline_bed(slug: str, force: bool = False) -> dict:
     key = (meta.get("key") or "C").strip() or "C"
     bed = make_music.make(mood, key, duration=210.0, force=force)
     src = Path(make_music.__file__).resolve().parent.parent / bed["entry"]["file"]
-    out = OUT_DIR / f"{slug}.mp3"
+    # The `song-` prefix is not decoration: the catalogue, the share pack, the
+    # media release and release.py all key off `song-<slug>.mp3`. A bare
+    # `<slug>.mp3` is invisible to every one of them, so the keyless lane looked
+    # like it worked and produced nothing the rest of the pipeline could see.
+    out = OUT_DIR / f"song-{slug}.mp3"
     out.parent.mkdir(parents=True, exist_ok=True)
     shutil.copyfile(src, out)
+    # The synth master has no vocal, so it is also the instrumental bed a clip
+    # with narration wants.
+    shutil.copyfile(src, OUT_DIR / f"karaoke-{slug}.mp3")
     rec = {"slug": slug, "status": "OFFLINE_BED", "source": "ffmpeg-synth",
            "mood": mood, "file": str(out)}
     print(json.dumps(rec, ensure_ascii=False))

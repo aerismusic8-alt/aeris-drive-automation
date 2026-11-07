@@ -14,7 +14,9 @@
       "voice": "female",
       "duration_seconds": 232.2,
       "file": "music/song-01-khon-di-thi-chak-pai.mp3",
+      "url": "https://github.com/aerismusic8-alt/aeris-drive-automation/releases/download/media-938/song-01-khon-di-thi-chak-pai.mp3",
       "instrumental": "music/karaoke-01-khon-di-thi-chak-pai.mp3",
+      "instrumental_url": "https://github.com/aerismusic8-alt/aeris-drive-automation/releases/download/media-938/karaoke-01-khon-di-thi-chak-pai.mp3",
       "has_instrumental": true,
       "lyrics": "../music938-1/lyrics/01-khon-di-thi-chak-pai.txt"
     },
@@ -29,7 +31,9 @@
       "voice": "female",
       "duration_seconds": 212.5,
       "file": "music/song-02-rak-thi-mai-mi-wan-chop.mp3",
+      "url": "https://github.com/aerismusic8-alt/aeris-drive-automation/releases/download/media-938/song-02-rak-thi-mai-mi-wan-chop.mp3",
       "instrumental": "music/karaoke-02-rak-thi-mai-mi-wan-chop.mp3",
+      "instrumental_url": "https://github.com/aerismusic8-alt/aeris-drive-automation/releases/download/media-938/karaoke-02-rak-thi-mai-mi-wan-chop.mp3",
       "has_instrumental": true,
       "lyrics": "../music938-1/lyrics/02-rak-thi-mai-mi-wan-chop.txt"
     },
@@ -44,7 +48,9 @@
       "voice": "female",
       "duration_seconds": 211.1,
       "file": "music/song-03-khit-thueng-thoe-thuk-khuen.mp3",
+      "url": "https://github.com/aerismusic8-alt/aeris-drive-automation/releases/download/media-938/song-03-khit-thueng-thoe-thuk-khuen.mp3",
       "instrumental": "music/karaoke-03-khit-thueng-thoe-thuk-khuen.mp3",
+      "instrumental_url": "https://github.com/aerismusic8-alt/aeris-drive-automation/releases/download/media-938/karaoke-03-khit-thueng-thoe-thuk-khuen.mp3",
       "has_instrumental": true,
       "lyrics": "../music938-1/lyrics/03-khit-thueng-thoe-thuk-khuen.txt"
     },
@@ -59,7 +65,9 @@
       "voice": "female",
       "duration_seconds": 210.1,
       "file": "music/song-04-saeng-chao-wan-mai.mp3",
+      "url": "https://github.com/aerismusic8-alt/aeris-drive-automation/releases/download/media-938/song-04-saeng-chao-wan-mai.mp3",
       "instrumental": "music/karaoke-04-saeng-chao-wan-mai.mp3",
+      "instrumental_url": "https://github.com/aerismusic8-alt/aeris-drive-automation/releases/download/media-938/karaoke-04-saeng-chao-wan-mai.mp3",
       "has_instrumental": true,
       "lyrics": "../music938-1/lyrics/04-saeng-chao-wan-mai.txt"
     },
@@ -74,7 +82,9 @@
       "voice": "female",
       "duration_seconds": 212.2,
       "file": "music/song-05-fon-tok-nai-chai.mp3",
+      "url": "https://github.com/aerismusic8-alt/aeris-drive-automation/releases/download/media-938/song-05-fon-tok-nai-chai.mp3",
       "instrumental": "music/karaoke-05-fon-tok-nai-chai.mp3",
+      "instrumental_url": "https://github.com/aerismusic8-alt/aeris-drive-automation/releases/download/media-938/karaoke-05-fon-tok-nai-chai.mp3",
       "has_instrumental": true,
       "lyrics": "../music938-1/lyrics/05-fon-tok-nai-chai.txt"
     },
@@ -89,7 +99,9 @@
       "voice": "female",
       "duration_seconds": 239.0,
       "file": "music/song-06-doen-khon-diao.mp3",
+      "url": "https://github.com/aerismusic8-alt/aeris-drive-automation/releases/download/media-938/song-06-doen-khon-diao.mp3",
       "instrumental": "music/karaoke-06-doen-khon-diao.mp3",
+      "instrumental_url": "https://github.com/aerismusic8-alt/aeris-drive-automation/releases/download/media-938/karaoke-06-doen-khon-diao.mp3",
       "has_instrumental": true,
       "lyrics": "../music938-1/lyrics/06-doen-khon-diao.txt"
     },
@@ -104,7 +116,9 @@
       "voice": "female",
       "duration_seconds": 211.4,
       "file": "music/song-07-huachai-si-thao.mp3",
+      "url": "https://github.com/aerismusic8-alt/aeris-drive-automation/releases/download/media-938/song-07-huachai-si-thao.mp3",
       "instrumental": "music/karaoke-07-huachai-si-thao.mp3",
+      "instrumental_url": "https://github.com/aerismusic8-alt/aeris-drive-automation/releases/download/media-938/karaoke-07-huachai-si-thao.mp3",
       "has_instrumental": true,
       "lyrics": "../music938-1/lyrics/07-huachai-si-thao.txt"
     },
@@ -119,7 +133,9 @@
       "voice": "female",
       "duration_seconds": 212.0,
       "file": "music/song-08-klap-ban-rao.mp3",
+      "url": "https://github.com/aerismusic8-alt/aeris-drive-automation/releases/download/media-938/song-08-klap-ban-rao.mp3",
       "instrumental": "music/karaoke-08-klap-ban-rao.mp3",
+      "instrumental_url": "https://github.com/aerismusic8-alt/aeris-drive-automation/releases/download/media-938/karaoke-08-klap-ban-rao.mp3",
       "has_instrumental": true,
       "lyrics": "../music938-1/lyrics/08-klap-ban-rao.txt"
     },
@@ -134,7 +150,9 @@
       "voice": "female",
       "duration_seconds": 211.1,
       "file": "music/song-09-phleng-khong-khon-nueai.mp3",
+      "url": "https://github.com/aerismusic8-alt/aeris-drive-automation/releases/download/media-938/song-09-phleng-khong-khon-nueai.mp3",
       "instrumental": "music/karaoke-09-phleng-khong-khon-nueai.mp3",
+      "instrumental_url": "https://github.com/aerismusic8-alt/aeris-drive-automation/releases/download/media-938/karaoke-09-phleng-khong-khon-nueai.mp3",
       "has_instrumental": true,
       "lyrics": "../music938-1/lyrics/09-phleng-khong-khon-nueai.txt"
     },
@@ -149,7 +167,9 @@
       "voice": "female",
       "duration_seconds": 210.9,
       "file": "music/song-10-dok-mai-rim-thang.mp3",
+      "url": "https://github.com/aerismusic8-alt/aeris-drive-automation/releases/download/media-938/song-10-dok-mai-rim-thang.mp3",
       "instrumental": "music/karaoke-10-dok-mai-rim-thang.mp3",
+      "instrumental_url": "https://github.com/aerismusic8-alt/aeris-drive-automation/releases/download/media-938/karaoke-10-dok-mai-rim-thang.mp3",
       "has_instrumental": true,
       "lyrics": "../music938-1/lyrics/10-dok-mai-rim-thang.txt"
     },
@@ -164,7 +184,9 @@
       "voice": "female",
       "duration_seconds": 210.6,
       "file": "music/song-11-sanya-chak-chai.mp3",
+      "url": "https://github.com/aerismusic8-alt/aeris-drive-automation/releases/download/media-938/song-11-sanya-chak-chai.mp3",
       "instrumental": "music/karaoke-11-sanya-chak-chai.mp3",
+      "instrumental_url": "https://github.com/aerismusic8-alt/aeris-drive-automation/releases/download/media-938/karaoke-11-sanya-chak-chai.mp3",
       "has_instrumental": true,
       "lyrics": "../music938-1/lyrics/11-sanya-chak-chai.txt"
     },
@@ -179,7 +201,9 @@
       "voice": "female",
       "duration_seconds": 222.7,
       "file": "music/song-12-khuen-thi-mai-mi-dao.mp3",
+      "url": "https://github.com/aerismusic8-alt/aeris-drive-automation/releases/download/media-938/song-12-khuen-thi-mai-mi-dao.mp3",
       "instrumental": "music/karaoke-12-khuen-thi-mai-mi-dao.mp3",
+      "instrumental_url": "https://github.com/aerismusic8-alt/aeris-drive-automation/releases/download/media-938/karaoke-12-khuen-thi-mai-mi-dao.mp3",
       "has_instrumental": true,
       "lyrics": "../music938-1/lyrics/12-khuen-thi-mai-mi-dao.txt"
     },
@@ -194,7 +218,9 @@
       "voice": "female",
       "duration_seconds": 237.9,
       "file": "music/song-13-rak-thi-chak-pai.mp3",
+      "url": "https://github.com/aerismusic8-alt/aeris-drive-automation/releases/download/media-938/song-13-rak-thi-chak-pai.mp3",
       "instrumental": "music/karaoke-13-rak-thi-chak-pai.mp3",
+      "instrumental_url": "https://github.com/aerismusic8-alt/aeris-drive-automation/releases/download/media-938/karaoke-13-rak-thi-chak-pai.mp3",
       "has_instrumental": true,
       "lyrics": "../music938-1/lyrics/13-rak-thi-chak-pai.txt"
     },
@@ -209,7 +235,9 @@
       "voice": "female",
       "duration_seconds": 211.1,
       "file": "music/song-14-phleng-klom-khong-mae.mp3",
+      "url": "https://github.com/aerismusic8-alt/aeris-drive-automation/releases/download/media-938/song-14-phleng-klom-khong-mae.mp3",
       "instrumental": "music/karaoke-14-phleng-klom-khong-mae.mp3",
+      "instrumental_url": "https://github.com/aerismusic8-alt/aeris-drive-automation/releases/download/media-938/karaoke-14-phleng-klom-khong-mae.mp3",
       "has_instrumental": true,
       "lyrics": "../music938-1/lyrics/14-phleng-klom-khong-mae.txt"
     },
@@ -224,7 +252,9 @@
       "voice": "female",
       "duration_seconds": 211.2,
       "file": "music/song-15-thanon-sai-kao.mp3",
+      "url": "https://github.com/aerismusic8-alt/aeris-drive-automation/releases/download/media-938/song-15-thanon-sai-kao.mp3",
       "instrumental": "music/karaoke-15-thanon-sai-kao.mp3",
+      "instrumental_url": "https://github.com/aerismusic8-alt/aeris-drive-automation/releases/download/media-938/karaoke-15-thanon-sai-kao.mp3",
       "has_instrumental": true,
       "lyrics": "../music938-1/lyrics/15-thanon-sai-kao.txt"
     },
@@ -239,7 +269,9 @@
       "voice": "female",
       "duration_seconds": 238.7,
       "file": "music/song-16-khwam-fan-thi-yang-mai-tai.mp3",
+      "url": "https://github.com/aerismusic8-alt/aeris-drive-automation/releases/download/media-938/song-16-khwam-fan-thi-yang-mai-tai.mp3",
       "instrumental": "music/karaoke-16-khwam-fan-thi-yang-mai-tai.mp3",
+      "instrumental_url": "https://github.com/aerismusic8-alt/aeris-drive-automation/releases/download/media-938/karaoke-16-khwam-fan-thi-yang-mai-tai.mp3",
       "has_instrumental": true,
       "lyrics": "../music938-1/lyrics/16-khwam-fan-thi-yang-mai-tai.txt"
     },
@@ -254,7 +286,9 @@
       "voice": "male",
       "duration_seconds": 210.1,
       "file": "music/song-17-wan-thi-fa-pen-chai.mp3",
+      "url": "https://github.com/aerismusic8-alt/aeris-drive-automation/releases/download/media-938/song-17-wan-thi-fa-pen-chai.mp3",
       "instrumental": "music/karaoke-17-wan-thi-fa-pen-chai.mp3",
+      "instrumental_url": "https://github.com/aerismusic8-alt/aeris-drive-automation/releases/download/media-938/karaoke-17-wan-thi-fa-pen-chai.mp3",
       "has_instrumental": true,
       "lyrics": "../music938-1/lyrics/17-wan-thi-fa-pen-chai.txt"
     },
@@ -269,7 +303,9 @@
       "voice": "male",
       "duration_seconds": 235.7,
       "file": "music/song-18-khon-thi-chan-khoei-rak.mp3",
+      "url": "https://github.com/aerismusic8-alt/aeris-drive-automation/releases/download/media-938/song-18-khon-thi-chan-khoei-rak.mp3",
       "instrumental": "music/karaoke-18-khon-thi-chan-khoei-rak.mp3",
+      "instrumental_url": "https://github.com/aerismusic8-alt/aeris-drive-automation/releases/download/media-938/karaoke-18-khon-thi-chan-khoei-rak.mp3",
       "has_instrumental": true,
       "lyrics": "../music938-1/lyrics/18-khon-thi-chan-khoei-rak.txt"
     },
@@ -284,7 +320,9 @@
       "voice": "female",
       "duration_seconds": 212.6,
       "file": "music/song-19-lom-nao-kap-khwam-khit-thueng.mp3",
+      "url": "https://github.com/aerismusic8-alt/aeris-drive-automation/releases/download/media-938/song-19-lom-nao-kap-khwam-khit-thueng.mp3",
       "instrumental": "music/karaoke-19-lom-nao-kap-khwam-khit-thueng.mp3",
+      "instrumental_url": "https://github.com/aerismusic8-alt/aeris-drive-automation/releases/download/media-938/karaoke-19-lom-nao-kap-khwam-khit-thueng.mp3",
       "has_instrumental": true,
       "lyrics": "../music938-1/lyrics/19-lom-nao-kap-khwam-khit-thueng.txt"
     },
@@ -299,7 +337,9 @@
       "voice": "male",
       "duration_seconds": 238.1,
       "file": "music/song-20-khop-khun-thi-yang-hai-chai.mp3",
+      "url": "https://github.com/aerismusic8-alt/aeris-drive-automation/releases/download/media-938/song-20-khop-khun-thi-yang-hai-chai.mp3",
       "instrumental": "music/karaoke-20-khop-khun-thi-yang-hai-chai.mp3",
+      "instrumental_url": "https://github.com/aerismusic8-alt/aeris-drive-automation/releases/download/media-938/karaoke-20-khop-khun-thi-yang-hai-chai.mp3",
       "has_instrumental": true,
       "lyrics": "../music938-1/lyrics/20-khop-khun-thi-yang-hai-chai.txt"
     },
@@ -314,7 +354,9 @@
       "voice": "female",
       "duration_seconds": 233.9,
       "file": "music/song-21-sao-na-khoi-phi.mp3",
+      "url": "https://github.com/aerismusic8-alt/aeris-drive-automation/releases/download/media-938/song-21-sao-na-khoi-phi.mp3",
       "instrumental": "music/karaoke-21-sao-na-khoi-phi.mp3",
+      "instrumental_url": "https://github.com/aerismusic8-alt/aeris-drive-automation/releases/download/media-938/karaoke-21-sao-na-khoi-phi.mp3",
       "has_instrumental": true,
       "lyrics": "../music938-1/lyrics/21-sao-na-khoi-phi.txt"
     },
@@ -329,59 +371,29 @@
       "voice": "male",
       "duration_seconds": 212.5,
       "file": "music/song-24-yut-mai-yom.mp3",
+      "url": "https://github.com/aerismusic8-alt/aeris-drive-automation/releases/download/media-938/song-24-yut-mai-yom.mp3",
       "instrumental": "music/karaoke-24-yut-mai-yom.mp3",
+      "instrumental_url": "https://github.com/aerismusic8-alt/aeris-drive-automation/releases/download/media-938/karaoke-24-yut-mai-yom.mp3",
       "has_instrumental": true,
       "lyrics": "../music938-1/lyrics/24-yut-mai-yom.txt"
-    }
-  ],
-  "beds": [
+    },
     {
-      "id": "bed-calm",
+      "id": "song-25-thai-5bcb50c5",
+      "title": "คืนที่ยังไม่หลับ",
       "mood": "calm",
       "mood_th": "สงบ ผ่อนคลาย เบา ๆ กล่อม",
-      "file": "beds/calm.mp3",
-      "duration_seconds": 120.0,
-      "note": "instrumental bed, no vocals — loop or trim to length"
-    },
-    {
-      "id": "bed-warm",
-      "mood": "warm",
-      "mood_th": "อบอุ่น ครอบครัว บ้าน หมู่บ้าน",
-      "file": "beds/warm.mp3",
-      "duration_seconds": 120.0,
-      "note": "instrumental bed, no vocals — loop or trim to length"
-    },
-    {
-      "id": "bed-sad",
-      "mood": "sad",
-      "mood_th": "เศร้า โศก เสียใจ จากลา อกหัก",
-      "file": "beds/sad.mp3",
-      "duration_seconds": 120.0,
-      "note": "instrumental bed, no vocals — loop or trim to length"
-    },
-    {
-      "id": "bed-hopeful",
-      "mood": "hopeful",
-      "mood_th": "มีความหวัง สว่าง กำลังใจ เดินทาง",
-      "file": "beds/hopeful.mp3",
-      "duration_seconds": 120.0,
-      "note": "instrumental bed, no vocals — loop or trim to length"
-    },
-    {
-      "id": "bed-mystic",
-      "mood": "mystic",
-      "mood_th": "ลึกลับ ขลัง ความจำ เงียบขรึม",
-      "file": "beds/mystic.mp3",
-      "duration_seconds": 120.0,
-      "note": "instrumental bed, no vocals — loop or trim to length"
-    },
-    {
-      "id": "bed-epic",
-      "mood": "epic",
-      "mood_th": "ยิ่งใหญ่ สงคราม ฮีโร่ ตื่นเต้น",
-      "file": "beds/epic.mp3",
-      "duration_seconds": 120.0,
-      "note": "instrumental bed, no vocals — loop or trim to length"
+      "genre": "lofi",
+      "key": "C",
+      "tempo_bpm": 72,
+      "voice": "female",
+      "duration_seconds": 210.4,
+      "file": "music/song-25-thai-5bcb50c5.mp3",
+      "url": "https://github.com/aerismusic8-alt/aeris-drive-automation/releases/download/media-938/song-25-thai-5bcb50c5.mp3",
+      "instrumental": "music/karaoke-25-thai-5bcb50c5.mp3",
+      "instrumental_url": "https://github.com/aerismusic8-alt/aeris-drive-automation/releases/download/media-938/karaoke-25-thai-5bcb50c5.mp3",
+      "has_instrumental": true,
+      "lyrics": "../music938-1/lyrics/25-thai-5bcb50c5.txt"
     }
-  ]
+  ],
+  "beds": []
 }

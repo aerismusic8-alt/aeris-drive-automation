@@ -92,3 +92,4 @@ ops/out/
 share/aeris-music/music/
 share/aeris-music/covers/*.jpg
 !share/aeris-music/beds/
+!music938-1/work/produce-queue.json

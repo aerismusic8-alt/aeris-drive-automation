@@ -766,6 +766,13 @@ def test_arrangement_no_repeat() -> None:
         check(f"{a['id']}: has mix", bool(a.get("mix")))
     ids = [a["id"] for a in A.signatures()]
     check("arrangement ids are unique", len(ids) == len(set(ids)))
+    # Every planned genre must own arrangements, or a new genre silently borrows
+    # another genre's sound (which is how a lofi song came out lukthung).
+    import genres as G
+    planned = {g["id"] for g in G.genres()}
+    have = {a.get("genre") for a in A.signatures()}
+    check("every planned genre has its own arrangements",
+          planned <= have, str(sorted(planned - have)))
 
     # Pentatonic: every song resolves to a scale and it reaches the style prompt.
     for s in cat:
@@ -809,7 +816,9 @@ def test_song_analysis() -> None:
     tagged = [r for r in pending if r["genre"] != "(none)"]
     check("every unreleased song is genre-tagged", len(tagged) == len(pending),
           f"{len(tagged)}/{len(pending)} tagged")
-    check("the unreleased catalogue is 17 songs", len(pending) == 17, str(len(pending)))
+    # The floor, not a frozen number: the produce loop adds songs, and a test
+    # that pins the count turns every new song into a false failure.
+    check("the unreleased catalogue has 17+ songs", len(pending) >= 17, str(len(pending)))
 
 
 def test_thumb_contrast() -> None:
@@ -2303,6 +2312,53 @@ def test_brand_identity() -> None:
     check("banner writer refuses a stripped PUT", "no description" in art)
 
 
+def test_produce_loop() -> None:
+    """The production loop must be able to run with no login and no quota.
+
+    K: "งานเพลงต้องสร้างต่อเนื่องไว้เป็นวัตถุดิบให้ ai เอาไปสร้างคลิปด้วยแล้วล่ะ".
+    The thing that stops a song from being made is a login, so the loop must
+    have a keyless lane that never blocks (Duck.ai lyric -> ffmpeg master -> PIL
+    cover) and treat a Flow Music render as a bonus, not a requirement. This pins
+    that shape plus the two ways it could silently do the wrong thing: produce an
+    identical song every run, or file a vocal render as an instrumental.
+    """
+    section("produce loop (continuous, keyless)")
+    src = (ROOT / "scripts" / "produce_loop.py").read_text()
+    check("drafts the lyric on a keyless channel",
+          '"duck"' in src and '"pollinations"' in src and "for drafter in" in src)
+    check("a browser-less channel is available (CI has no desktop)",
+          "_drive_pollinations" in (ROOT / "scripts" / "ai_lyrics.py").read_text())
+    check("makes the master offline before trying Flow",
+          src.index("--offline") < src.index('"--force"]'))
+    check("a Flow render is opt-in, not required", "--flow" in src)
+    check("writes the lyric before spending any render", "render_file" in src)
+    check("refreshes the share pack for other AIs", "make_share_pack.py" in src)
+    check("needs no credential to run", "get_secret" not in src and "secrets." not in src)
+
+    sys.path.insert(0, str(ROOT / "scripts"))
+    import produce_loop as pl  # noqa: E402
+
+    # A theme pool, not one hard-coded song: a loop that always makes the same
+    # song is a loop that produces nothing new.
+    check("has a theme pool", len(pl.THEMES) >= 8)
+    check("the pool spans several moods",
+          len({t[3] for t in pl.THEMES}) >= 4)
+    # Every theme must name a genre the plan knows, or the style prompt is blank.
+    known = {g["id"] for g in pl.G.genres()}
+    check("every theme names a planned genre",
+          all(t[0] in known for t in pl.THEMES))
+    # Rotation: a used title must not be picked again.
+    first = pl.pick_theme(set())
+    second = pl.pick_theme({first[2]})
+    check("the picker skips a title already used", first[2] != second[2])
+    check("the picker exhausts rather than repeats",
+          pl.pick_theme({t[2] for t in pl.THEMES}) is None)
+    # Slugs must be filename-safe and stable (a save/playlist keys off them).
+    s1, s2 = pl._slugify("ไฟนีออนกับใจที่ล้า"), pl._slugify("ไฟนีออนกับใจที่ล้า")
+    check("a Thai title yields a stable slug", s1 == s2 and s1.isascii())
+    check("the slug has no path characters", "/" not in s1 and " " not in s1)
+
+
 def test_share_pack() -> None:
     """The pack must let another AI pick a track, so it must carry the *why*.
 
@@ -2341,8 +2397,10 @@ def test_share_pack() -> None:
           len({r["mood"] for r in rows}) >= 3)
     # No secrets, no K: this is what makes it shareable.
     blob = src.lower()
-    check("building the pack needs no credential",
-          "get_secret" not in blob and "token" not in blob.replace("tt_client", ""))
+    # The release listing may use a token, but it must be *optional*: a run with
+    # no credential must still build the pack from the disk.
+    check("the release listing is optional, not required",
+          'AX_GH_TOKEN", ""' in src and "get_secret" not in blob)
     check("the audio is gitignored (only the small files commit)",
           "share/aeris-music/music/" in (ROOT.parent / ".gitignore").read_text())
 
@@ -2803,6 +2861,7 @@ def main() -> int:
     test_phone_login()
     test_heartbeat_repair_signal()
     test_consult_gate()
+    test_produce_loop()
     test_share_pack()
     test_k_free_status()
     test_vault_key_fallback()
