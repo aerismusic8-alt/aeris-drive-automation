@@ -35,11 +35,20 @@ from make_karaoke import (  # noqa: E402  reuse the lyric engine
     FONT, LEAD, OUTLINE, PRIMARY, SECONDARY, _duration, _escape, _ts,
     _words, ass_filter, estimate, load_lyrics,
 )
+import release  # noqa: E402  the hook titles live with the rest of the copy
 
 W, H = 1080, 1920
 FPS = 30
 MAX_SECONDS = 58.0        # under the 60s Shorts ceiling, with margin
 HOOK_PAD = 0.6            # a beat of lead-in so the hook does not start on frame 0
+
+# The opening card. Every platform's ranking leans hardest on the first two
+# seconds — a scroll is decided before the chorus lands — and the file used to
+# open on the cover art with no words at all. This draws the one line that gives
+# the viewer a reason to stay: the same short hook the title and the caption
+# carry, so the promise matches what the clip delivers.
+HOOK_CARD_SECONDS = 2.0
+HOOK_CARD_FADE = 0.25
 
 
 def chorus_spans(slug: str) -> list[tuple[float, float]]:
@@ -108,7 +117,8 @@ def _pick_window(slug: str, duration: float) -> tuple[float, float]:
 
 
 def build_ass(slug: str, lines: list[str], meta: dict, start: float,
-              length: float, duration: float, captions: bool = False) -> str:
+              length: float, duration: float, captions: bool = False,
+              hook: int = 1) -> str:
     """Vertical overlay: the title card and a watermark, and optionally the
     per-line lyric sweep.
 
@@ -128,6 +138,7 @@ YCbCr Matrix: TV.709
 [V4+ Styles]
 Format: Name, Fontname, Fontsize, PrimaryColour, SecondaryColour, OutlineColour, BackColour, Bold, Italic, Underline, StrikeOut, ScaleX, ScaleY, Spacing, Angle, BorderStyle, Outline, Shadow, Alignment, MarginL, MarginR, MarginV, Encoding
 Style: Hook,{FONT},88,{PRIMARY},{SECONDARY},{OUTLINE},&H80000000,1,0,0,0,100,100,0.5,0,1,6,3,2,70,70,430,1
+Style: HookCard,{FONT},104,{PRIMARY},{PRIMARY},{OUTLINE},&H64000000,1,0,0,0,100,100,0.5,0,1,7,3,5,50,50,0,1
 Style: Cap,{FONT},38,&H00FFFFFF,&H00FFFFFF,{OUTLINE},&H80000000,1,0,0,0,100,100,1,0,1,4,2,8,70,70,310,1
 Style: Brand,{FONT},40,&H00DDFFFF,&H00DDFFFF,{OUTLINE},&H80000000,1,0,0,0,100,100,1,0,1,4,2,7,44,44,40,1
 Style: Title,{FONT},64,&H00FFFFFF,&H00FFFFFF,{OUTLINE},&H80000000,1,0,0,0,100,100,1,0,1,5,2,7,44,44,34,1
@@ -138,6 +149,16 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
     # Timing is estimated over the WHOLE song, then shifted into the window.
     full = estimate(lines, duration)
     events: list[str] = []
+
+    # The hook card, at the very top of the clip. It is the only text a viewer is
+    # guaranteed to see, so it carries the one line that earns the next few
+    # seconds; it is not the song title, which the cover art already shows.
+    card = release.hook_title(hook)
+    if card:
+        events.append(
+            f"Dialogue: 0,0.00,{HOOK_CARD_SECONDS:.2f},HookCard,,0,0,0,,"
+            f"{{\\fad({int(HOOK_CARD_FADE*1000)},{int(HOOK_CARD_FADE*1000)})}}"
+            f"{_escape(card)}")
 
     # No overlay text at all. K (2026-11-04): the drifting lyric sweep did not
     # match the sung line, so every song looked like it was lying to the viewer,
@@ -229,7 +250,7 @@ def render(slug: str, *, mix: str = "song", out_dir: Path | None = None,
         suffix = f"-h{i}" if multi else ""
         ass_path = work / f"short-{mix}{suffix}.ass"
         ass_path.write_text(build_ass(slug, lines, meta, start, length, duration,
-                                      captions=captions),
+                                      captions=captions, hook=i),
                             encoding="utf-8")
         out = out_dir / f"short-{mix}{suffix}-{slug}.mp4"
         args = ["-loop", "1", "-i", str(cover),

@@ -586,6 +586,7 @@ def test_level_ordering() -> None:
 def test_shorts() -> None:
     section("shorts (discovery rail)")
     import make_short
+    import release
     # The hook must land on the chorus, not the intro. Song 01's first chorus
     # begins at ~20% of the sung lines; a wrong section model would put it at 0.
     start_frac, len_frac = make_short.chorus_span("01-khon-di-thi-chak-pai")
@@ -603,6 +604,21 @@ def test_shorts() -> None:
             check(f"short <= 60s at {dur:.0f}s song", length <= 60.0, f"{length:.1f}")
     # Vertical canvas, or YouTube will not treat it as a Short.
     check("vertical canvas", (make_short.W, make_short.H) == (1080, 1920))
+    # The first two seconds decide the scroll, and the file used to open on the
+    # cover art with no words. Every hook must now carry a card that names the
+    # hook, so the promise on screen matches the title and the caption.
+    meta, lines = make_short.load_lyrics("01-khon-di-thi-chak-pai")
+    for hook in (1, 2, 3):
+        ass = make_short.build_ass("01-khon-di-thi-chak-pai", lines, meta,
+                                   20.0, 30.0, 178.7, hook=hook)
+        card = release.hook_title(hook)
+        check(f"hook {hook} opens with a card",
+              f"HookCard,,0,0,0,," in ass and card in ass)
+        check(f"hook {hook} card starts at t=0",
+              any(ln.startswith("Dialogue: 0,0.00,") and "HookCard" in ln
+                  for ln in ass.splitlines()))
+    check("the card is short enough to earn the chorus",
+          make_short.HOOK_CARD_SECONDS <= 3.0, f"{make_short.HOOK_CARD_SECONDS}")
 
 
 def test_provenance() -> None:
