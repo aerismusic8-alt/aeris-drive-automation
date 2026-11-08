@@ -2294,12 +2294,14 @@ def test_phone_login() -> None:
     # page sends them into a slide puzzle they did not expect.
     hints = {k: v[2] for k, v in phone_login.SURFACES.items()}
     check("Shopee warns about the slide puzzle", "สไลด์" in hints["shopee"])
-    # Facebook is now a one-time token job, not a recurring sign-in: the button
-    # goes to Business Settings -> System Users, and the hint says so.
-    check("Facebook goes to the System Users page",
-          "system-users" in phone_login.SURFACES["facebook"][1])
-    check("Facebook hint describes the one-time token",
-          "ผู้ใช้ระบบ" in hints["facebook"] and "Never" in hints["facebook"])
+    # Facebook is now a one-time token job, not a recurring sign-in. The account
+    # has no Business Portfolio and is not a developer, so the button starts at
+    # the developer registration (the first of two gates) and the hint names the
+    # whole path, ending in a never-expiring token.
+    check("Facebook starts at developer registration",
+          "developers.facebook.com" in phone_login.SURFACES["facebook"][1])
+    check("Facebook hint describes the one-time token path",
+          "System User" in hints["facebook"] and "Never" in hints["facebook"])
     check("the easy surfaces say so", "กดปุ๊บ" in hints["flow"])
     # The pack uses two Google accounts (music/Drive = aerismusic8, Shopee =
     # kongkeat.p3), so the page must let K pick one without the agent ever typing
