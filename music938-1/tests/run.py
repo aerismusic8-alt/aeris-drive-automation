@@ -1476,9 +1476,13 @@ def test_api_posting_route() -> None:
     for f in ("fb_graph.py", "tiktok_api.py", "token_heartbeat.py"):
         check(f"ops/{f} exists", (ops / f).is_file())
 
-    # With no token configured, api_poster falls back to the browser.
-    check("no FB token -> browser poster", crosspost.api_poster("facebook") is None)
-    check("no TikTok token -> browser poster", crosspost.api_poster("tiktok") is None)
+    # api_poster follows credential availability: a configured token selects the
+    # headless API poster, its absence falls back to the browser. Pinning the
+    # decision to `available()` keeps this true whether or not a token exists.
+    check("fb poster follows fb_graph.available()",
+          (crosspost.api_poster("facebook") is not None) == crosspost.fb_graph.available())
+    check("tiktok poster follows tiktok_api.available()",
+          (crosspost.api_poster("tiktok") is not None) == crosspost.tiktok_api.available())
 
     # A Reel is a three-call flow; the finish call must PUBLISH, not just upload.
     fb = (ops / "fb_graph.py").read_text()

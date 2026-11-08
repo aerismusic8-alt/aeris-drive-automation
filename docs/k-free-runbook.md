@@ -42,6 +42,24 @@ Token → **Expiration: Never** → tick `pages_manage_posts`,
 Then set `FB_PAGE_TOKEN`, `FB_APP_ID`, `FB_APP_SECRET` as Actions secrets.
 Verify: `python3 ops/fb_graph.py status` prints the Page name.
 
+**DONE 2026-11-05.** `FB_PAGE_TOKEN` is provisioned: a System User token for
+`ax-poster` with `pages_manage_posts`, `pages_read_engagement`, `pages_show_list`,
+`pages_manage_engagement`, `business_management`; `debug_token` reports
+`type=SYSTEM_USER`, `expires_at=0` (never). Stored in the Actions secret
+`FB_PAGE_TOKEN` and in the vault `axsecrets:fb-page-token`. `FB_APP_ID` /
+`FB_APP_SECRET` are **not** required: `ops/fb_graph.py::debug_token` self-inspects
+when app credentials are absent.
+
+Two facts learned doing it, worth keeping:
+
+- **The Graph Page node id is `1349201551618019`, not `61595890900382`.** The
+  latter is the *public profile* id on the profile URL; Graph answers it with
+  "Object with ID … does not exist". `fb_graph.PAGE_ID` and
+  `phone_login._verify_token` now default to `1349201551618019`.
+- **The permission picker is a virtualized list.** Its 43 options only exist in
+  the DOM once scrolled into view, so `innerText` shows just the first 15. Scroll
+  it (mouse wheel over the listbox) before reading or clicking an option.
+
 If Meta only offers 60 days, that is still fine: `ops/token_heartbeat.py
 --refresh --push-secrets --repo aerismusic8-alt/aeris-drive-automation` renews it
 and publishes the new value to CI in one step, so the next run is not left with a

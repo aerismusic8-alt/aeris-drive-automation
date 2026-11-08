@@ -38,7 +38,11 @@ from pathlib import Path
 
 GRAPH = "https://graph.facebook.com/v21.0"
 RUPLOAD = "https://rupload.facebook.com/video-upload/v21.0"
-PAGE_ID = os.environ.get("FB_PAGE_ID", "61595890900382")
+# Graph API node id, verified 2026-11-05 with the System User token. The number
+# on the public profile URL (61595890900382) is *not* a Graph node — the Page
+# node is the id Business Suite shows as the asset (1349201551618019). Passing
+# the profile id to Graph returns "Object with ID ... does not exist".
+PAGE_ID = os.environ.get("FB_PAGE_ID", "1349201551618019")
 TIMEOUT = 120
 
 
@@ -172,13 +176,20 @@ def refresh() -> str:
 
 
 def debug_token() -> dict:
-    """Report expiry so the heartbeat can warn *before* the token dies."""
+    """Report expiry so the heartbeat can warn *before* the token dies.
+
+    Prefers app-credential inspection, but falls back to self-inspection
+    (`input_token == access_token`) when no app id/secret is stored. Self-debug
+    still returns `expires_at` and `type`, which is all the heartbeat needs, and
+    it keeps the rail working when only the Page token was provisioned.
+    """
     t = page_token()
+    if not t:
+        return {"ok": False, "error": "no token"}
     app_id, app_secret = app_creds()
-    if not (t and app_id and app_secret):
-        return {"ok": False, "error": "missing token or app credentials"}
+    inspector = f"{app_id}|{app_secret}" if (app_id and app_secret) else t
     url = f"{GRAPH}/debug_token?" + urllib.parse.urlencode({
-        "input_token": t, "access_token": f"{app_id}|{app_secret}"})
+        "input_token": t, "access_token": inspector})
     try:
         with urllib.request.urlopen(url, timeout=30) as r:
             return {"ok": True, "data": json.loads(r.read().decode()).get("data", {})}

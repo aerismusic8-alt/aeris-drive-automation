@@ -144,7 +144,8 @@ def _verify_token(token: str) -> dict:
     A wrong token (personal, expired, wrong Page) must be caught here, while K is
     still looking at the screen — not discovered hours later when a Reel fails.
     """
-    page_id = os.environ.get("FB_PAGE_ID", "61595890900382")
+    # Graph node id (asset id), not the public profile id — see fb_graph.PAGE_ID.
+    page_id = os.environ.get("FB_PAGE_ID", "1349201551618019")
     url = (f"https://graph.facebook.com/v21.0/{page_id}?"
            + urllib.parse.urlencode({"fields": "id,name", "access_token": token}))
     try:

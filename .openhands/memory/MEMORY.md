@@ -745,6 +745,18 @@ true-instrumental karaoke mix, cover art, a 1920x1080 word-synced video.
 - **Facebook Page id is `61595890900382`; `1349201551618019` is the Business Suite
   *asset* id** (composer URL only). Building the Reels list from the asset id
   answers "page not available", so `newest_post_url` never reads a post back.
+- **But for the Graph API the roles are reversed: the Page node is
+  `1349201551618019`.** The public profile id `61595890900382` is not a Graph
+  node — Graph answers it "Object with ID … does not exist". So the browser
+  poster uses `61595890900382` and `ops/fb_graph.py::PAGE_ID` uses
+  `1349201551618019`. Verified live 2026-11-05 with the System User token.
+- **Meta system-user token is provisioned (2026-11-05)**: `FB_PAGE_TOKEN`
+  (Actions secret + vault `axsecrets:fb-page-token`), `type=SYSTEM_USER`,
+  `expires_at=0` never, scopes include `pages_manage_posts`. The Facebook rail is
+  now API-only; no K login needed. Two setup traps: the app needed the
+  **Facebook Login for Business** product before `pages_*` appeared, and the
+  permission picker is a **virtualized list** (43 options, only 15 in the DOM
+  until you wheel-scroll the listbox).
 - **A `return None` from a poster prints "not signed in" for every failure**, which
   hid three Facebook bugs at once. Put the real reason in the abort line and keep
   the caller message generic ("not published — left pending").
