@@ -150,19 +150,25 @@ def main() -> int:
         print("--- progress ---")
         print(prog.read_text(encoding="utf-8").strip())
 
-    if rc == 3:
-        print("quota already spent today; nothing to do")
-        return 0
-    if rc != 0:
-        print(f"release returned {rc}", file=sys.stderr)
-        return rc
     if args.dry_run:
         return 0
 
+    # Write the ledger for EVERY return code, before deciding what to report.
+    # rc 3 means the batch stopped early (the day's upload slots ran out, or the
+    # shared pool was too low to start), but whatever DID upload is already in
+    # the local ledger and must reach `main`. Dropping it is what made the rail
+    # re-upload the same product card on every run: the 2 cards a capped batch
+    # had just published were forgotten, so the next run planned them again.
     after = ledger.read_bytes() if ledger.exists() else before
     if after != before:
         if not write_ledger(tok, after, "release: daily batch (automated)"):
             return 1
+    if rc == 3:
+        print("batch stopped early (day's upload slots spent); ledger saved")
+        return 0
+    if rc != 0:
+        print(f"release returned {rc}", file=sys.stderr)
+        return rc
     refresh_site(root, tok)
 
     # Upgrade the videos that went live before the per-surface product link

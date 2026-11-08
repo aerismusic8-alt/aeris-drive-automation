@@ -467,6 +467,33 @@ def test_affiliate_reserve() -> None:
           "affiliate_pending" in rv)
 
 
+def test_daily_release_saves_ledger_on_early_stop() -> None:
+    """A batch that stops early must still write the ledger back.
+
+    `daily_release.py` calls `release.py --next --count N`; `release.py` returns
+    3 as soon as the day's upload slots are spent. The driver used to `return 0`
+    on rc 3 *before* writing the ledger, so the items the batch had just
+    uploaded were dropped — and the next run planned them again. The live
+    symptom was the same affiliate product card uploaded on four consecutive
+    runs (the channel carried the title 4 times) while the ledger on `main` held
+    zero affiliate rows. The fix moves the write above the rc check, so the
+    order of "save" and "decide what to report" is what this pins.
+    """
+    section("daily release saves the ledger on an early stop")
+    src = (ROOT / "scripts" / "daily_release.py").read_text(encoding="utf-8")
+    save = src.find("write_ledger(tok, after,")
+    early = src.find("if rc == 3:")
+    check("the driver writes the ledger at all", save != -1)
+    check("the ledger write is before the rc==3 early return",
+          save != -1 and early != -1 and save < early,
+          f"save@{save} early@{early}")
+    # The old code returned on rc 3 before the write; assert that exact shape is
+    # gone, because a reorder that keeps both would pass the position check
+    # above only by accident.
+    check("rc==3 no longer returns before the ledger write",
+          "if rc == 3:\n        print(\"quota already spent today" not in src)
+
+
 def test_outputs() -> None:
     section("rendered output")
     songs = sorted((common.LIBRARY / "songs").glob("song-*.mp3"))
@@ -3130,6 +3157,7 @@ def main() -> int:
     test_affiliate_release()
     test_plan_rotates_songs()
     test_affiliate_reserve()
+    test_daily_release_saves_ledger_on_early_stop()
     test_youtube_quota_ledger()
     test_outputs()
     print(f"\n{PASS} passed, {FAIL} failed")
