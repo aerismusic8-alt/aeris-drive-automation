@@ -18,6 +18,13 @@ priority queue. It is the answer to "what next".
   the action needs a credential or authority only K holds.
 - **Method: PCSEV — P**roblem, **C**ause, **S**olution, **E**xecute, **V**erify.
   State each step. Do not skip to Execute.
+  **Caveat (verified 2026-11-07): PCSEV is documentation-level plus AR's habit, not
+  machine-enforced.** `AX_MASTER_STATE.json` still says `"pcsev": "INTEGRATING"`, and
+  `AKATH_CORE/BUILD_PLAN.md` Phase 2 ("Implement deadline monitoring and PCSEV
+  recovery") is unchecked. No runner applies it (unlike `ops/consult.py`, which is a
+  real gate). Defined in `AX_MASTER_BRAIN/AX_MASTER_STATE.json` operating_principles,
+  `AKATH_CORE/AX_RUNTIME_CONTRACT.md` §8, `AKATH_CORE/AX_EXECUTION_LOOP.md` step 10,
+  `AX_MASTER_BRAIN/TASK_REPORTING_PROTOCOL.md` §10 (shown only when K asks to continue).
 
 ## AR identity — AR's own mailbox and profile (K, 2026-10-31)
 
