@@ -301,25 +301,17 @@ PAGE = """<!doctype html><html lang="th"><head>
   a.grab {{ display:block; text-align:center; margin-top:12px; padding:18px; font-size:19px;
             font-weight:800; background:#1f9d63; color:#04140c; border-radius:14px;
             text-decoration:none; }}
+  a.big {{ display:block; text-align:center; margin:0 0 18px; padding:22px 16px; font-size:21px;
+           font-weight:900; background:#f5b301; color:#1a1200; border-radius:18px;
+           text-decoration:none; box-shadow:0 4px 0 #a97c00; }}
 </style></head><body>
 <header><h1>AERIS — เข้าสู่ระบบ</h1>
 <div class="sub">แตะปุ่ม = เปิดหน้านั้นในเครื่อง แล้วเข้า noVNC อัตโนมัติ</div></header>
+<a class="big" href="/pass">🔑 พิมพ์รหัส Facebook (ครั้งเดียว)</a>
 <div class="acct">บัญชีที่ใช้บ่อย: <b>{account}</b><br><span style="font-size:13px;color:#b9aecb">
 อยากใช้บัญชีอื่น (เช่น <b>kongkeat.p3@gmail.com</b>) กดปุ่ม "สลับบัญชี Google" ล่างสุด
 แล้วเลือกอีเมลในหน้าจอเครื่อง · หากรหัสค้างอยู่ กด "ล็อกอิน" ได้เลย</span></div>
 <div class="grid">{buttons}</div>
-<div class="tok">
-  <h2>รหัส Facebook — พิมพ์ครั้งเดียว</h2>
-  <div class="tokhint">พิมพ์รหัส (รหัสเมลเดียวกับ Facebook) ที่นี่ <b>ครั้งเดียว</b> — ระบบเก็บไว้ใน
-  vault ส่วนตัว (ที่เดียวกับ token ของ K) แล้วพิมพ์ลงช่องยืนยันบนจอให้เอง จากนี้ไม่ต้องพิมพ์อีก</div>
-  <form method="POST" action="/fb-pass">
-    <input type="password" name="password" placeholder="รหัส Facebook / เมล"
-           autocomplete="current-password" style="width:100%;padding:14px;border-radius:12px;
-           border:1px solid #4a3d63;background:#1b1726;color:#fff;font-size:16px">
-    <button type="submit">เก็บรหัส + กรอกให้เลย</button>
-  </form>
-  <a class="grab" href="/fb-type" style="background:#2c6b4f">กรอกซ้ำอีกครั้ง (ใช้รหัสที่เก็บไว้)</a>
-</div>
 <div class="tok">
   <h2>Facebook token — ครั้งเดียว</h2>
   <div class="tokhint">1) กดปุ่ม Facebook ด้านบน → ล็อกอิน → เพิ่มผู้ใช้ระบบ → <b>Generate Token</b> → ตั้ง Never<br>
@@ -334,6 +326,32 @@ PAGE = """<!doctype html><html lang="th"><head>
 <div class="note">รหัส VNC: <b>{vncpass}</b><br>
 desktop: <b>{desktop}</b> · CDP: <b>{cdp}</b><br>
 ลิงก์นี้ตายเมื่อ pod recycle — เปิดใหม่ด้วย <code>bootstrap.py --url</code></div>
+</body></html>"""
+
+
+PAGE_PASS = """<!doctype html><html lang="th"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>AERIS — รหัส Facebook</title>
+<style>body{{margin:0;background:#14121a;color:#f2eef7;
+font:18px/1.6 system-ui,sans-serif;padding:24px 18px;max-width:520px;margin:0 auto}}
+h1{{font-size:22px;margin:8px 0 4px}} p{{color:#c9bfe0;font-size:15px}}
+input{{width:100%;box-sizing:border-box;padding:20px;font-size:22px;border-radius:14px;
+border:2px solid #f5b301;background:#1b1726;color:#fff;margin:14px 0}}
+button{{width:100%;padding:22px;font-size:21px;font-weight:900;border:0;border-radius:16px;
+background:#1f9d63;color:#04140c}}
+a{{display:block;text-align:center;margin-top:18px;color:#9f93c0;font-size:15px}}
+.bad{{background:#3a1e1e;color:#ffd9d9;padding:14px;border-radius:12px;font-size:15px}}</style>
+</head><body>
+<h1>🔑 พิมพ์รหัส Facebook</h1>
+<p>รหัสเมลตัวเดียวกับ Facebook · พิมพ์ครั้งเดียว ระบบเก็บใน vault แล้วพิมพ์ลงช่องบนจอให้เอง</p>
+{bad}
+<form method="POST" action="/fb-pass">
+  <input type="password" name="password" placeholder="รหัสผ่าน" autocomplete="current-password"
+         autofocus inputmode="text">
+  <button type="submit">เก็บรหัส + กรอกให้เลย</button>
+</form>
+<a href="/fb-type">กรอกซ้ำ (ใช้รหัสที่เก็บไว้)</a>
+<a href="/">← กลับหน้าหลัก</a>
 </body></html>"""
 
 
@@ -384,9 +402,10 @@ color:#fff;text-decoration:none;border-radius:14px;text-align:center;font-weight
                 return self._result("บันทึกรหัสแล้ว และกรอกให้เลย ✅", True,
                                     "เก็บรหัสไว้ใน vault (ครั้งเดียว) แล้วพิมพ์ลงช่องยืนยันบนจอให้ "
                                     "· จากนี้ไม่ต้องขอรหัสอีก")
-            return self._result("บันทึกรหัสแล้ว ✅", True,
-                                f"เก็บรหัสไว้ใน vault เรียบร้อย<br>แต่ยังกรอกบนจอไม่ได้ตอนนี้ "
-                                f"({t.get('error','')}) — เปิดหน้ายืนยันค้างไว้แล้วกดปุ่มนี้ซ้ำได้")
+            return self._result("บันทึกรหัสแล้ว ✅ แต่ยังกรอกบนจอไม่ได้", True,
+                                f"สาเหตุ: {t.get('error','')}<br><br>"
+                                'กด <a href="/fb-type">กรอกซ้ำ (ใช้รหัสที่เก็บไว้)</a> '
+                                "อีกครั้งเมื่อหน้า ยืนยัน บนจอเปิดค้างไว้")
         if parsed.path != "/fb-token":
             return self._send(404, b"not found", "text/plain")
         n = int(self.headers.get("Content-Length", "0") or "0")
@@ -424,6 +443,9 @@ color:#fff;text-decoration:none;border-radius:14px;text-align:center;font-weight
             # The surface is now the active tab in the desktop; drop the phone
             # straight into noVNC so the operator only has to sign in.
             return self._redirect(novnc_url())
+        if parsed.path == "/pass":
+            html = PAGE_PASS.format(bad="").encode()
+            return self._send(200, html, "text/html; charset=utf-8")
         if parsed.path == "/fb-type":
             t = type_password_into_dialog()
             if t.get("ok"):
