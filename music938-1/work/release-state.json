@@ -393,8 +393,8 @@
    "at": "2026-11-06T14:43:33+00:00",
    "public": true,
    "replaces": "-6RdLKwxykk",
-   "thumb_ok": false,
-   "playlist_ok": false
+   "thumb_ok": true,
+   "playlist_ok": true
   },
   {
    "slug": "03-khit-thueng-thoe-thuk-khuen",
@@ -404,8 +404,8 @@
    "at": "2026-11-06T14:43:51+00:00",
    "public": true,
    "replaces": "iLwzR8A_1uw",
-   "thumb_ok": false,
-   "playlist_ok": false
+   "thumb_ok": true,
+   "playlist_ok": true
   },
   {
    "slug": "04-saeng-chao-wan-mai",
@@ -415,8 +415,8 @@
    "at": "2026-11-06T14:44:01+00:00",
    "public": true,
    "replaces": "FsO5qmneeEQ",
-   "thumb_ok": false,
-   "playlist_ok": false
+   "thumb_ok": true,
+   "playlist_ok": true
   },
   {
    "slug": "04-saeng-chao-wan-mai",
@@ -426,8 +426,8 @@
    "at": "2026-11-06T14:44:19+00:00",
    "public": true,
    "replaces": "STQsMvhb0yk",
-   "thumb_ok": false,
-   "playlist_ok": false
+   "thumb_ok": true,
+   "playlist_ok": true
   },
   {
    "slug": "06-doen-khon-diao",
@@ -436,8 +436,8 @@
    "video_id": "A3jr9T148Q8",
    "at": "2026-11-06T18:39:59+00:00",
    "public": true,
-   "thumb_ok": false,
-   "playlist_ok": false
+   "thumb_ok": true,
+   "playlist_ok": true
   },
   {
    "slug": "hp-budget-01",
