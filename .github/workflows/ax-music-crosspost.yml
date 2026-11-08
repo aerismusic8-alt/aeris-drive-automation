@@ -19,9 +19,14 @@ name: AX Music Crosspost (FB Reels + TikTok)
 #   TT_CLIENT_KEY + TT_CLIENT_SECRET + TT_REFRESH_TOKEN -> TikTok
 # Both are optional. With neither, everything below behaves exactly as before.
 #
-# Pacing lives in `crosspost.py` (20-min gap, 4 posts/platform/day). A run posts
-# at most one per platform because the second is inside the gap; run every 2
-# hours and the daily cap is what limits throughput, not the schedule.
+# Pacing lives in `crosspost.py` (1-hour gap; 4 posts/day on TikTok, 3 on
+# Facebook, at most 1 link post/day). A run posts at most one per platform
+# because the second is inside the gap; run every 2 hours and the daily cap is
+# what limits throughput, not the schedule.
+#
+# The Facebook rail posts a mix, not only Reels: the queue interleaves cover-art
+# photos and Shopee link posts among the Reels, and `crosspost.py` dispatches by
+# the item's `kind` (see docs/k-free-runbook.md).
 
 on:
   schedule:
