@@ -35,11 +35,12 @@
    "kind": "song",
    "variant": "",
    "video_id": "ASuxGEvJBlw",
-   "at": "2026-10-30T16:11:39+00:00",
+   "at": "2026-10-30T16:57:04+00:00",
    "public": true,
+   "replaces": "oliw1meKfcQ",
+   "retired_at": "2026-11-04T07:54:25+00:00",
    "replaced_at": "2026-10-30T16:57:06+00:00",
-   "replaced_from": "oliw1meKfcQ",
-   "retired_at": "2026-11-04T07:54:25+00:00"
+   "replaced_from": "oliw1meKfcQ"
   },
   {
    "slug": "01-khon-di-thi-chak-pai",
@@ -49,16 +50,6 @@
    "at": "2026-10-30T16:11:47+00:00",
    "public": true,
    "retired_at": "2026-11-01T09:09:40+00:00"
-  },
-  {
-   "slug": "01-khon-di-thi-chak-pai",
-   "kind": "song",
-   "variant": "",
-   "video_id": "ASuxGEvJBlw",
-   "at": "2026-10-30T16:57:04+00:00",
-   "public": true,
-   "replaces": "oliw1meKfcQ",
-   "retired_at": "2026-11-04T07:54:25+00:00"
   },
   {
    "slug": "02-rak-thi-mai-mi-wan-chop",
