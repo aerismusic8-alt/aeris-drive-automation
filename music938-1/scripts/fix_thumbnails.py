@@ -40,31 +40,16 @@ def write_ledger(content: bytes) -> bool:
     its own write-back, so a repair recorded only in the working copy would be
     lost at the end of the job — and the same videos would be "repaired" again
     every run.
-    """
-    import base64 as _b64
-    import daily_release  # the Contents API helper, and the token
 
-    tok = daily_release.token()
-    st, cur = daily_release.api(f"/repos/{daily_release.REPO}/contents/{LEDGER}", tok)
-    sha = cur.get("sha") if st == 200 else None
-    # Skip a no-op write. A run that repaired nothing (the pool was spent, so the
-    # repair never ran) would otherwise add an empty "repairs" commit to main on
-    # every tick — real history noise with nothing in it.
-    if sha and cur.get("content"):
-        try:
-            if _b64.b64decode(cur["content"]) == content:
-                print(f"{LEDGER} unchanged; no commit")
-                return True
-        except Exception:  # noqa: BLE001
-            pass
-    body = {"message": "release: ledger after thumbnail/playlist repairs",
-            "content": base64.b64encode(content).decode(), "branch": "main"}
-    if sha:
-        body["sha"] = sha
-    st, res = daily_release.api(f"/repos/{daily_release.REPO}/contents/{LEDGER}",
-                                tok, "PUT", body)
-    print(f"{LEDGER} write: {st}")
-    return st in (200, 201)
+    Delegates to `daily_release.write_ledger`, which merges into the version on
+    `main` and skips a no-op write. Writing a bare local snapshot here is what
+    clobbered the 2026-11-08 release rows: the repair step's checkout predated
+    the release step's own write, so its PUT dropped three just-recorded songs.
+    """
+    import daily_release  # the Contents API helper, the merge, and the token
+    return daily_release.write_ledger(
+        daily_release.token(), content,
+        "release: ledger after thumbnail/playlist repairs")
 
 
 def thumb_for(entry: dict) -> Path:

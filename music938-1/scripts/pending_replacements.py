@@ -99,8 +99,12 @@ def main() -> int:
                  f"replacements: {done} wrong-render video(s) fixed")
         ledger = music / "work" / "release-state.json"
         if ledger.exists():
-            put_file(tok, LEDGER, ledger.read_bytes(),
-                     "release: ledger after replacements")
+            # Merge into the version on `main` rather than PUT a raw snapshot:
+            # this step's checkout predates the repair step's own write, so a
+            # bare overwrite would drop rows that step just recorded.
+            daily_release.write_ledger(
+                tok, ledger.read_bytes(),
+                "release: ledger after replacements")
     print(f"{done} replaced, {len(left)} left")
     return 0
 

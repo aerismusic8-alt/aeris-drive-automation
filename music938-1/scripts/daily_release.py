@@ -28,6 +28,7 @@ import json
 import os
 import subprocess
 import sys
+import time
 import tarfile
 import tempfile
 import urllib.error
@@ -83,16 +84,77 @@ def fetch_tree(tok: str, dest: Path) -> None:
     os.unlink(tmp)
 
 
+def merge_ledger_rows(local: dict, remote: dict) -> dict:
+    """Union two ledger states by video_id, so no writer's upload is lost.
+
+    Every ledger writer PUTs its whole working copy. A run whose checkout
+    predates another writer's upload therefore overwrites it with a stale
+    snapshot — this is exactly how the 2026-11-08 songs 06/07/08 vanished from
+    `main` minutes after they were recorded (the repair step wrote a checkout
+    taken before the release step's own write). Merge the two states instead of
+    replacing: the union of rows, with the local copy winning on a shared id and
+    the remote copy keeping fields the local one never saw (e.g. `retired_at`).
+    """
+    def key(r: dict) -> str:
+        return (r.get("video_id")
+                or f"{r.get('kind')}:{r.get('slug')}:{r.get('variant', '')}")
+
+    merged: dict[str, dict] = {}
+    for r in (remote.get("released") or []):
+        merged[key(r)] = dict(r)
+    for r in (local.get("released") or []):
+        k = key(r)
+        row = dict(merged.get(k, {}))
+        row.update(r)
+        merged[k] = row
+    out = dict(remote)
+    out.update({k: v for k, v in local.items() if k != "released"})
+    out["released"] = list(merged.values())
+    playlists = dict(remote.get("playlists") or {})
+    playlists.update(local.get("playlists") or {})
+    out["playlists"] = playlists
+    return out
+
+
 def write_ledger(tok: str, content: bytes, message: str) -> bool:
-    """Create or update the release ledger through the Contents API."""
-    st, cur = api(f"/repos/{REPO}/contents/{LEDGER}", tok)
-    sha = cur.get("sha") if st == 200 else None
-    body = {"message": message, "content": base64.b64encode(content).decode(), "branch": "main"}
-    if sha:
-        body["sha"] = sha
-    st, res = api(f"/repos/{REPO}/contents/{LEDGER}", tok, "PUT", body)
-    print(f"ledger write: {st} {res.get('commit', {}).get('sha', res.get('error', ''))}")
-    return st in (200, 201)
+    """Create or update the release ledger through the Contents API.
+
+    Merges the local state into the version on `main` first, so a concurrent
+    writer's rows are not clobbered (see `merge_ledger_rows`). Retries the whole
+    read-merge-write when the PUT loses the sha race, which is the other way two
+    runs of the release workflow can overwrite each other.
+    """
+    for attempt in range(4):
+        st, cur = api(f"/repos/{REPO}/contents/{LEDGER}", tok)
+        sha = cur.get("sha") if st == 200 else None
+        body_content = content
+        if sha and cur.get("content"):
+            try:
+                remote_bytes = base64.b64decode(cur["content"])
+                remote = json.loads(remote_bytes)
+                merged = merge_ledger_rows(json.loads(content), remote)
+                body_content = json.dumps(merged, ensure_ascii=False, indent=1).encode("utf-8")
+                # Skip a write that changes nothing, so a repair run that fixed
+                # nothing does not add an empty commit on every tick.
+                if remote == merged:
+                    print(f"{LEDGER} unchanged; no commit")
+                    return True
+            except Exception as exc:  # noqa: BLE001 - a merge failure must not block the write
+                print(f"ledger merge skipped: {exc}", file=sys.stderr)
+        body = {"message": message,
+                "content": base64.b64encode(body_content).decode(), "branch": "main"}
+        if sha:
+            body["sha"] = sha
+        st, res = api(f"/repos/{REPO}/contents/{LEDGER}", tok, "PUT", body)
+        if st in (200, 201):
+            print(f"ledger write: {st} {res.get('commit', {}).get('sha', '')}")
+            return True
+        print(f"ledger write attempt {attempt + 1} failed: {st} "
+              f"{res.get('error', '')}", file=sys.stderr)
+        if st not in (409, 422):  # only a sha race is worth retrying
+            break
+        time.sleep(2 * (attempt + 1))
+    return False
 
 
 def refresh_site(root: Path, tok: str) -> None:

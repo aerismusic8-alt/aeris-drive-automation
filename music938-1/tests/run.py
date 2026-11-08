@@ -534,6 +534,40 @@ def test_release_tolerates_transient_errors() -> None:
           "uploadLimitExceeded" in src and "return 3" in src)
 
 
+def test_ledger_write_merges_instead_of_clobbering() -> None:
+    """A ledger writer must union with `main`, never overwrite a stale snapshot.
+
+    On 2026-11-08 the repair step's checkout predated the release step's write,
+    so its whole-file PUT dropped songs 06/07/08 minutes after they were
+    recorded. `merge_ledger_rows` is the fix: the union of rows, local winning on
+    a shared id, remote keeping fields the local copy never saw.
+    """
+    section("ledger write merges instead of clobbering")
+    import daily_release
+    remote = {"released": [
+        {"slug": "a", "kind": "short", "video_id": "AAA", "at": "t1"},
+        {"slug": "b", "kind": "short", "video_id": "BBB", "at": "t2",
+         "retired_at": "t3"},
+    ], "playlists": {"ch3": "P1"}}
+    local = {"released": [
+        {"slug": "b", "kind": "short", "video_id": "BBB", "at": "t2"},
+        {"slug": "c", "kind": "song", "video_id": "CCC", "at": "t4"},
+    ], "playlists": {"ch3": "P1", "ch4": "P2"}}
+    m = daily_release.merge_ledger_rows(local, remote)
+    ids = {r["video_id"] for r in m["released"]}
+    check("the remote-only row survives", "AAA" in ids)
+    check("the local-only row is added", "CCC" in ids)
+    check("a shared row is kept once", len(m["released"]) == 3)
+    row_b = next(r for r in m["released"] if r["video_id"] == "BBB")
+    check("the remote's extra field (retired_at) is kept",
+          row_b.get("retired_at") == "t3")
+    check("playlists are unioned",
+          m["playlists"].get("ch4") == "P2" and m["playlists"].get("ch3") == "P1")
+    src = (ROOT / "scripts" / "daily_release.py").read_text(encoding="utf-8")
+    check("write_ledger calls the merge", "merge_ledger_rows(" in src)
+    check("a sha race is retried", "for attempt in range(4)" in src)
+
+
 def test_outputs() -> None:
     section("rendered output")
     songs = sorted((common.LIBRARY / "songs").glob("song-*.mp3"))
@@ -3200,6 +3234,7 @@ def main() -> int:
     test_daily_release_saves_ledger_on_early_stop()
     test_batch_survives_a_missing_asset()
     test_release_tolerates_transient_errors()
+    test_ledger_write_merges_instead_of_clobbering()
     test_youtube_quota_ledger()
     test_outputs()
     print(f"\n{PASS} passed, {FAIL} failed")
