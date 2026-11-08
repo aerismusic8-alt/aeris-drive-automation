@@ -1,5 +1,5 @@
 {
-  "made": 3,
+  "made": 4,
   "log": [
     {
       "slug": "25-thai-5bcb50c5",
@@ -37,6 +37,17 @@
       "audio": "flow",
       "flow_rc": 0,
       "instrumental": true
+    },
+    {
+      "slug": "28-khuen-thi-yang-mai-lap-v28",
+      "title": "คืนที่ยังไม่หลับในฝัน",
+      "genre": "lofi",
+      "mood": "calm",
+      "result": "lyric",
+      "flow": false,
+      "audio": "none",
+      "offline_rc": 1,
+      "instrumental": false
     }
   ]
 }
