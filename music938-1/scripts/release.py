@@ -640,19 +640,39 @@ def _media_assets() -> dict:
 
 
 def fetch_media(path: Path) -> Path:
-    """Download one media file from the release if it is not on disk yet."""
+    """Download one media file from the release if it is not on disk yet.
+
+    Retried, because the media CDN returns a transient 504 under load and an
+    uncaught one used to abort the whole daily batch: the 2026-11-08 run died
+    mid-item on a 504 for a thumbnail, uploaded nothing, and the workflow went
+    red — the same fragility that made the rail run once in three days. After
+    the retries the file is simply left missing, which `release_one` already
+    turns into a clean rc 2 ("missing video") instead of a traceback.
+    """
     if path is None or path.exists():
         return path
+    import time
     import urllib.request
     info = _media_assets().get(path.name)
     if not info:
         return path
     url, size = info
     path.parent.mkdir(parents=True, exist_ok=True)
-    with urllib.request.urlopen(urllib.request.Request(
-            url, headers={"User-Agent": "ax-release"}), timeout=300) as r, path.open("wb") as fh:
-        fh.write(r.read())
-    print(f"  fetched {path.name} ({size / 1e6:.1f} MB)")
+    last: Exception | None = None
+    for attempt in range(3):
+        try:
+            with urllib.request.urlopen(urllib.request.Request(
+                    url, headers={"User-Agent": "ax-release"}), timeout=300) as r:
+                data = r.read()
+            path.write_bytes(data)
+            print(f"  fetched {path.name} ({size / 1e6:.1f} MB)")
+            return path
+        except Exception as exc:  # noqa: BLE001 - a CDN blip must not abort the batch
+            last = exc
+            if attempt < 2:
+                time.sleep(5 * (attempt + 1))
+    print(f"  could not fetch {path.name} after 3 tries ({last}); skipping",
+          file=sys.stderr)
     return path
 
 
@@ -833,6 +853,15 @@ def main() -> int:
                  f"release {i + 1}/{args.count} {item['kind']} {item['slug']}")
         rc = release_one(item, args)
         progress(args.progress_file, f"  -> rc {rc}")
+        # rc 2 is one item whose media could not be fetched — a missing asset,
+        # not a spent day. Skip it and try the next, or one bad thumbnail ends
+        # the whole batch (the 2026-11-08 run uploaded nothing for exactly this
+        # reason). rc 3 means the day's slots are gone, so the batch is over.
+        if rc == 2:
+            print(f"skipping {item['kind']} {item['slug']} (no media); "
+                  f"continuing the batch", file=sys.stderr)
+            rc = 0
+            continue
         if rc != 0:
             break
     return rc

@@ -494,6 +494,26 @@ def test_daily_release_saves_ledger_on_early_stop() -> None:
           "if rc == 3:\n        print(\"quota already spent today" not in src)
 
 
+def test_batch_survives_a_missing_asset() -> None:
+    """A transient CDN error on one item must not end the whole batch.
+
+    The 2026-11-08 release run died mid-item on a 504 from the media CDN while
+    fetching a thumbnail: `fetch_media` had no retry, the traceback escaped
+    `release_one`, and the batch uploaded nothing. The fix retries the fetch and
+    treats a still-missing asset as rc 2, which the batch loop now skips rather
+    than stops on. Pin both, because either half alone leaves the failure.
+    """
+    section("release batch survives a missing asset")
+    src = (ROOT / "scripts" / "release.py").read_text(encoding="utf-8")
+    fm = src[src.find("def fetch_media"):src.find("def release_one")]
+    check("fetch_media retries the download", "for attempt in range" in fm)
+    check("a failed fetch returns a missing path, not an exception",
+          "return path" in fm and "raise" not in fm)
+    loop = src[src.find("for i, item in enumerate(batch)"):]
+    check("the batch loop skips an item with no media (rc 2)",
+          "if rc == 2:" in loop and "continue" in loop)
+
+
 def test_outputs() -> None:
     section("rendered output")
     songs = sorted((common.LIBRARY / "songs").glob("song-*.mp3"))
@@ -3158,6 +3178,7 @@ def main() -> int:
     test_plan_rotates_songs()
     test_affiliate_reserve()
     test_daily_release_saves_ledger_on_early_stop()
+    test_batch_survives_a_missing_asset()
     test_youtube_quota_ledger()
     test_outputs()
     print(f"\n{PASS} passed, {FAIL} failed")
