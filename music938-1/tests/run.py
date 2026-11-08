@@ -2294,7 +2294,12 @@ def test_phone_login() -> None:
     # page sends them into a slide puzzle they did not expect.
     hints = {k: v[2] for k, v in phone_login.SURFACES.items()}
     check("Shopee warns about the slide puzzle", "สไลด์" in hints["shopee"])
-    check("Facebook mentions the saved password", "รหัสที่บันทึก" in hints["facebook"])
+    # Facebook is now a one-time token job, not a recurring sign-in: the button
+    # goes to Business Settings -> System Users, and the hint says so.
+    check("Facebook goes to the System Users page",
+          "system-users" in phone_login.SURFACES["facebook"][1])
+    check("Facebook hint describes the one-time token",
+          "ผู้ใช้ระบบ" in hints["facebook"] and "Never" in hints["facebook"])
     check("the easy surfaces say so", "กดปุ๊บ" in hints["flow"])
     # The pack uses two Google accounts (music/Drive = aerismusic8, Shopee =
     # kongkeat.p3), so the page must let K pick one without the agent ever typing
@@ -2317,6 +2322,19 @@ def test_phone_login() -> None:
     # fills it inside noVNC; the agent never handles a credential.
     check("never collects a password", "type=\"password\"" not in src
           and "<input" not in src)
+    # The one-time Facebook token: K pastes it once, the page verifies it against
+    # the real Page and writes the Actions secret itself. This is the whole point
+    # — K does one action and is never asked again.
+    check("has a Facebook token form", 'action="/fb-token"' in src)
+    check("verifies the token before storing it", "_verify_token" in src
+          and "graph.facebook.com" in src)
+    check("writes the Actions secret itself", "_set_actions_secret" in src
+          and "gh" in src and "secret" in src)
+    check("stores the secret the rail reads", 'FB_PAGE_TOKEN' in src)
+    # The no-copy path: the agent reads the token off the desktop screen so K does
+    # not have to copy a long string out of noVNC into a phone form.
+    check("can grab the token off the desktop", "/fb-grab" in src
+          and "grab_fb_token" in src and "connect_over_cdp" in src)
 
 
 def test_heartbeat_repair_signal() -> None:
