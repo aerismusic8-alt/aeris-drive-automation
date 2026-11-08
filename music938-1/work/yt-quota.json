@@ -14,7 +14,7 @@
     "playlistItems.insert": 5,
     "thumbnails.set": 12
    },
-   "updated": "2026-11-08T14:59:01+00:00",
+   "updated": "2026-11-08T14:59:05+00:00",
    "reserves": [
     {
      "purpose": "release 6 item(s)",
@@ -30,6 +30,11 @@
      "purpose": "release 6 item(s)",
      "units": 600,
      "at": "2026-11-08T09:51:18+00:00"
+    },
+    {
+     "purpose": "release 6 item(s)",
+     "units": 600,
+     "at": "2026-11-08T14:59:05+00:00"
     }
    ]
   }
