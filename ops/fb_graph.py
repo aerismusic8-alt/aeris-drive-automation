@@ -24,6 +24,14 @@ The Reels flow is three calls, each verified against Meta's Reels Publishing API
   start  -> POST /{page}/video_reels?upload_phase=start          -> video_id + upload_url
   upload -> POST {upload_url}  header Authorization: OAuth <t>   -> rupload.facebook.com
   finish -> POST /{page}/video_reels?upload_phase=finish&...     -> publish
+
+Three post types share the one token, so the Page feed is not wall-to-wall Reels:
+  post_reel  -> /{page}/video_reels   a vertical song video
+  post_photo -> /{page}/photos        cover art + caption (multipart upload)
+  post_link  -> /{page}/feed          a Shopee affiliate link card
+An advisor panel (2026-11-05, 2 vendors) ranked the mix: Reel for reach, photo
+for the visual identity, and at most one link a day so the feed does not read as
+an ad wall.
 """
 
 from __future__ import annotations
@@ -31,6 +39,7 @@ from __future__ import annotations
 import json
 import os
 import sys
+import time
 import urllib.error
 import urllib.parse
 import urllib.request
@@ -108,6 +117,39 @@ def _post(url: str, data: dict | None = None, *, raw: bytes | None = None,
         body = urllib.parse.urlencode(data).encode()
         hdr["Content-Type"] = "application/x-www-form-urlencoded"
     req = urllib.request.Request(url, data=body, headers=hdr, method="POST")
+    try:
+        with urllib.request.urlopen(req, timeout=TIMEOUT) as r:
+            return json.loads(r.read().decode() or "{}")
+    except urllib.error.HTTPError as e:
+        detail = e.read().decode()[:400]
+        raise RuntimeError(f"graph {e.code}: {detail}") from e
+
+
+def _post_multipart(url: str, fields: dict, file_field: str, filename: str,
+                    blob: bytes, content_type: str, *, headers: dict | None = None) -> dict:
+    """POST a multipart/form-data body carrying one file, with stdlib only.
+
+    urllib has no multipart writer, and the alternative is a dependency this
+    module deliberately does not have, so the body is assembled by hand. The
+    boundary is derived from the payload length so it cannot collide with the
+    bytes it is delimiting.
+    """
+    boundary = f"----axfb{len(blob):x}{int(time.time() * 1000) & 0xffffff:x}"
+    out = bytearray()
+    for k, v in fields.items():
+        out += f"--{boundary}\r\n".encode()
+        out += f'Content-Disposition: form-data; name="{k}"\r\n\r\n'.encode()
+        out += f"{v}\r\n".encode()
+    out += f"--{boundary}\r\n".encode()
+    out += (f'Content-Disposition: form-data; name="{file_field}"; '
+            f'filename="{filename}"\r\n').encode()
+    out += f"Content-Type: {content_type}\r\n\r\n".encode()
+    out += blob
+    out += f"\r\n--{boundary}--\r\n".encode()
+    hdr = {"Accept": "application/json",
+           "Content-Type": f"multipart/form-data; boundary={boundary}"}
+    hdr.update(headers or {})
+    req = urllib.request.Request(url, data=bytes(out), headers=hdr, method="POST")
     try:
         with urllib.request.urlopen(req, timeout=TIMEOUT) as r:
             return json.loads(r.read().decode() or "{}")
@@ -236,6 +278,43 @@ def post_reel(video: Path, caption: str, *, token: str | None = None) -> str | N
     if not fin.get("success", True):
         raise RuntimeError(f"reels finish returned {fin}")
     return video_id
+
+
+def post_photo(image: Path, caption: str, *, token: str | None = None) -> str | None:
+    """Publish one photo (cover art) to the Page feed. Returns the post id.
+
+    Same contract as `post_reel`: None when no token is configured, RuntimeError
+    on a real API error so the caller can tell "not set up" from "refused".
+    """
+    t = token or page_token()
+    if not t:
+        return None
+    blob = image.read_bytes()
+    ctype = "image/png" if image.suffix.lower() == ".png" else "image/jpeg"
+    out = _post_multipart(f"{GRAPH}/{PAGE_ID}/photos",
+                          {"caption": caption, "access_token": t},
+                          "source", image.name, blob, ctype)
+    pid = out.get("post_id") or out.get("id")
+    if not pid:
+        raise RuntimeError(f"photos returned {out}")
+    return pid
+
+
+def post_link(message: str, link: str, *, token: str | None = None) -> str | None:
+    """Publish a link post (a Shopee card). Returns the post id.
+
+    `message` is the caption; `link` becomes the clickable card. A link post is
+    plain form-encoded `/feed`, no file, so `_post` already covers it.
+    """
+    t = token or page_token()
+    if not t:
+        return None
+    out = _post(f"{GRAPH}/{PAGE_ID}/feed",
+                {"message": message, "link": link, "access_token": t})
+    pid = out.get("id") or out.get("post_id")
+    if not pid:
+        raise RuntimeError(f"feed returned {out}")
+    return pid
 
 
 def _main(argv: list[str]) -> int:

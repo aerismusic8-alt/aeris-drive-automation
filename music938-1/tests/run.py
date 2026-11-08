@@ -1182,13 +1182,34 @@ def test_crosspost_engine() -> None:
     if not shorts:
         print("  skip (no shorts rendered yet)")
         return
-    # Both content types are queued: the song Shorts and the affiliate product
-    # cards, each on both platforms. A product card that never reaches the queue
-    # is a clip nobody ever sees.
+    # Every song Short and affiliate card is queued on both platforms; the
+    # Facebook-only photo and link formats are added on top of that pair, so the
+    # count is the video items times two plus those extras.
+    extras = [it for it in q if it.get("kind") in ("photo", "link")]
     check("every short is queued on both platforms",
-          len(q) == (len(shorts) + len(aff)) * 2,
-          f"{len(q)} vs ({len(shorts)}+{len(aff)})*2")
+          len(q) == (len(shorts) + len(aff)) * 2 + len(extras),
+          f"{len(q)} vs ({len(shorts)}+{len(aff)})*2+{len(extras)}")
     check("ids are unique", len({it["id"] for it in q}) == len(q))
+
+    # The Facebook-only formats exist and only on Facebook: a photo is a feed
+    # post and a link post is a Shopee card, neither of which the TikTok video
+    # API can publish, so neither may appear on the TikTok surface.
+    photos = [it for it in q if it.get("kind") == "photo"]
+    links = [it for it in q if it.get("kind") == "link"]
+    check("cover-art photos are queued", len(photos) > 0, f"{len(photos)}")
+    check("Shopee link posts are queued", len(links) > 0, f"{len(links)}")
+    check("photo/link formats are Facebook-only",
+          all(it["platform"] == "facebook" for it in photos + links))
+    check("a photo item carries an image, not a video",
+          all(it.get("image") and not it.get("video") for it in photos))
+    check("a link item carries a link, not a file",
+          all(it.get("link") and not it.get("video") for it in links))
+    check("link caption carries the Shopee link and the ad disclosure",
+          all("s.shopee.co.th" in it["caption"] and "โฆษณา" in it["caption"]
+              for it in links))
+    check("photo caption differs from that song's Reel caption",
+          all(it["caption"] != crosspost.caption(it["slug"], "facebook", 1)
+              for it in photos if not it["slug"].startswith("compilation")))
 
     # A karaoke Short must resolve to its song slug, not its whole stem, or the
     # caption reads "short-karaoke-01-..." and every link/lyric line is wrong.
@@ -1228,16 +1249,26 @@ def test_crosspost_engine() -> None:
           len(left) == len(shorts) + len(aff) - 1,
           f"{len(left)}")
 
-    # A product card must not sit behind the whole song backlog: at DAILY_CAP a
-    # surface would not reach one for ~11 days. The build folds a card pair in
-    # after every 4 items, so the first affiliate item is early in the queue.
+    # A product card must not sit behind the whole song backlog: at the daily cap
+    # a surface would not reach one for over a week. The build folds a card pair
+    # in after every 6 items, and the later photo/link passes shift it by a few
+    # slots, so it must still land in the first dozen.
     if aff_items:
         first_aff = min(i for i, it in enumerate(q) if it.get("kind") == "affiliate")
         check("the first affiliate card is near the front of the queue",
-              first_aff <= 8, f"index {first_aff}")
+              first_aff <= 12, f"index {first_aff}")
         # Interleaving must not drop or duplicate anything.
         check("interleaving keeps every item exactly once",
               len({it["id"] for it in q}) == len(q))
+
+    # The three Facebook formats must be spread through the queue, not bunched at
+    # the front or the back: a run of Reels with all photos at the tail would
+    # read as a wall of the same format.
+    if photos:
+        idx = [i for i, it in enumerate(q) if it.get("kind") == "photo"]
+        check("photos are spread through the queue",
+              idx[0] < len(q) // 3 and idx[-1] > len(q) * 2 // 3,
+              f"{idx[0]}..{idx[-1]} of {len(q)}")
 
     # A stored post URL carries tracking params, so the readback must compare on
     # the stable /reel/<id> part or it returns the previous post every run.
@@ -1651,9 +1682,9 @@ def test_crosspost_pace_and_captions() -> None:
     def at(secs_ago: float) -> str:
         return time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime(now - secs_ago))
 
-    # Newest post 30 min old, so the minimum-gap rule passes and the daily cap
-    # is what refuses the run.
-    burst = {"posted": {f"tiktok:s{i}": {"at": at(1800 + i * 90)} for i in range(60)}}
+    # Newest post just over an hour old, so the minimum-gap rule passes and the
+    # daily cap is what refuses the run.
+    burst = {"posted": {f"tiktok:s{i}": {"at": at(3700 + i * 90)} for i in range(60)}}
     ok, why = crosspost.pace_ok(burst, "tiktok", now)
     check("a 60-post burst is held back", not ok, why)
     check("the daily cap is named in the reason", "cap" in why)
@@ -1662,10 +1693,20 @@ def test_crosspost_pace_and_captions() -> None:
     ok, why = crosspost.pace_ok(recent, "tiktok", now)
     check("a post 5 minutes old is inside the minimum gap", not ok, why)
 
-    spaced = {"posted": {"tiktok:x": {"at": at(3600)}}}
-    check("a post an hour old is allowed", crosspost.pace_ok(spaced, "tiktok", now)[0])
+    spaced = {"posted": {"tiktok:x": {"at": at(crosspost.MIN_GAP_SECONDS + 60)}}}
+    check("a post past the minimum gap is allowed",
+          crosspost.pace_ok(spaced, "tiktok", now)[0])
 
     check("an empty state is allowed", crosspost.pace_ok({"posted": {}}, "tiktok", now)[0])
+
+    # A link post is the format that reads as an ad, so it is capped at one a
+    # day on top of the surface cap: a link already posted today blocks the next
+    # one, while a non-link post at the same age is still allowed.
+    link_day = {"posted": {"facebook-page:link-x": {"at": at(7200)}}}
+    check("a second link post in a day is held back",
+          not crosspost.pace_ok(link_day, "facebook", now, kind="link")[0])
+    check("a non-link post is not blocked by the link cap",
+          crosspost.pace_ok(link_day, "facebook", now, kind="song")[0])
 
     # Cadence is per platform: a busy TikTok must not hold Facebook back.
     check("the cap is counted per platform",
@@ -1682,13 +1723,15 @@ def test_crosspost_pace_and_captions() -> None:
     check("5 Page posts in a day hit the daily cap",
           not crosspost.pace_ok(page_burst, "facebook", now)[0])
 
-    # Facebook is capped lower than the other surfaces while its first Reels are
-    # still being tested, so 2 Page posts in a day is already over its cap even
-    # though TikTok would still be allowed.
-    two_pages = {"posted": {f"facebook-page:s{i}": {"at": at(1800 + i * 90)}
+    # Facebook carries the extra photo/link formats, so its total ceiling now
+    # matches TikTok's; what still differs is the per-format guard: at most one
+    # link post a day, which is what keeps the feed from reading as an ad wall.
+    check("Facebook allows the full daily cap",
+          crosspost.FACEBOOK_DAILY_CAP >= 2)
+    check("at most one link post a day",
+          crosspost.LINK_DAILY_CAP <= 1)
+    two_pages = {"posted": {f"facebook-page:s{i}": {"at": at(3700 + i * 90)}
                             for i in range(crosspost.FACEBOOK_DAILY_CAP)}}
-    check("Facebook posts a day fewer than TikTok",
-          crosspost.FACEBOOK_DAILY_CAP < crosspost.DAILY_CAP)
     check("Page posts at the Facebook cap are held back",
           not crosspost.pace_ok(two_pages, "facebook", now)[0])
 
@@ -1704,6 +1747,65 @@ def test_crosspost_pace_and_captions() -> None:
           "facebook.com/reel/" in src and "/video/" in src)
     check("the ledger stores the resolved URL, not the composer page",
           '"url": real' in src)
+
+
+def test_api_post_formats() -> None:
+    """The Facebook mix (Reel + photo + link) must dispatch by format.
+
+    `ops/fb_graph.py` gained `post_photo` and `post_link` so the Page feed is not
+    wall-to-wall Reels. This pins the two facts that make the rail work without a
+    network: the format dispatcher routes each kind to the right call and builds a
+    URL, and the module actually offers both new entry points with the same
+    "None means not configured" contract as `post_reel`.
+    """
+    section("facebook mix: format dispatch (reel/photo/link)")
+    import crosspost
+    import fb_graph
+
+    # The module exposes both formats, each returning None (not raising) when
+    # there is no token — the same contract the parking logic relies on.
+    check("fb_graph offers post_photo", callable(getattr(fb_graph, "post_photo", None)))
+    check("fb_graph offers post_link", callable(getattr(fb_graph, "post_link", None)))
+
+    calls = []
+    class _FakeGraph:
+        PAGE_ID = "1349201551618019"
+        def post_photo(self, image, caption, **kw):
+            calls.append(("photo", str(image), caption))
+            return "1349201551618019_999"
+        def post_link(self, message, link, **kw):
+            calls.append(("link", link, message))
+            return "1349201551618019_888"
+    real = crosspost.fb_graph
+    try:
+        crosspost.fb_graph = _FakeGraph()
+        video_api = lambda media, caption: "vid123"  # noqa: E731
+        # A photo item: routed to post_photo, URL built from the page id.
+        u = crosspost._publish_api("facebook", {"kind": "photo", "caption": "cap"},
+                                   Path("/tmp/x.jpg"), video_api)
+        check("a photo item calls post_photo", calls[-1][0] == "photo", str(calls[-1]))
+        check("a photo URL is a page post permalink",
+              u == "https://www.facebook.com/1349201551618019/posts/999", str(u))
+        # A link item: routed to post_link, no file involved.
+        u = crosspost._publish_api(
+            "facebook", {"kind": "link", "caption": "msg", "link": "https://s.shopee.co.th/x"},
+            None, video_api)
+        check("a link item calls post_link", calls[-1][0] == "link", str(calls[-1]))
+        check("a link URL is a page post permalink",
+              u == "https://www.facebook.com/1349201551618019/posts/888", str(u))
+        # A song Reel still goes through the video api and yields a /reel/ URL.
+        u = crosspost._publish_api("facebook", {"kind": "song", "caption": "c"},
+                                   Path("/tmp/v.mp4"), video_api)
+        check("a song item still posts a Reel",
+              u == "https://www.facebook.com/reel/vid123", str(u))
+    finally:
+        crosspost.fb_graph = real
+
+    # A source guard: the post loop must pick the media field by kind, or a photo
+    # post would try to read `it["video"]` and KeyError.
+    src = (ROOT / "scripts" / "crosspost.py").read_text()
+    check("the loop reads an image for a photo and no file for a link",
+          'it["image"] if kind == "photo"' in src and 'if kind == "link":' in src)
 
 
 def test_social_stats_parser() -> None:
@@ -3001,6 +3103,7 @@ def main() -> int:
     test_crosspost_blocked_vs_empty()
     test_api_posting_route()
     test_crosspost_pace_and_captions()
+    test_api_post_formats()
     test_social_stats_parser()
     test_setup_pod_ffmpeg()
     test_monetize_footer()

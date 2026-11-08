@@ -56,6 +56,7 @@ except Exception:  # noqa: BLE001
 WORK = ROOT / "work"
 SHORTS = ROOT / "library" / "shorts"
 AFF_SHORTS = ROOT / "library" / "affiliate"
+COVERS = ROOT / "library" / "covers"
 QUEUE = WORK / "crosspost-queue.json"
 STATE = WORK / "crosspost-state.json"
 
@@ -145,6 +146,46 @@ def caption(slug: str, platform: str, hook: int = 0, kind: str = "song") -> str:
             f"#fyp #เพลงไทย #เพลงใหม่ #ร้องต่อไหม #TikTokเพลงไทย #ค่ายเพลงAI")
 
 
+def photo_caption(slug: str, platform: str = "facebook") -> str:
+    """Caption for a single-photo post (a song's cover art).
+
+    A photo is the visual identity of the song, not another cut of the clip, so
+    it leads with the title and the artwork and asks for the follow rather than
+    replaying the Reel's chorus prompt. Distinct from the song's Reel caption on
+    purpose, so the two do not read as a duplicate post.
+    """
+    h = release.parse_lyrics(slug)
+    title = h.get("TITLE", slug)
+    tagline = release.TAGLINE.get(h.get("MOOD", "calm"), release.TAGLINE["calm"])
+    shopee = monetize.link("facebook")
+    return (f"🎨 {title}\n"
+            f"🎵 {tagline}\n"
+            f"{release.LABEL}\n"
+            f"❤️ กดติดตามเพจ ฟังเพลงใหม่ทุกวัน\n"
+            f"🎧 ฟังเต็ม ๆ: YouTube {YOUTUBE_HANDLE} · TikTok {TIKTOK_HANDLE}\n"
+            f"🛒 ของน่าซื้อ 👉 {shopee}\n"
+            f"#เพลงไทย #เพลงใหม่ #AERISMusic #ค่ายเพลงAI")
+
+
+def link_caption(product: dict, platform: str = "facebook") -> str:
+    """Caption for a link post: the product card as a clickable link.
+
+    The link post is the one format whose whole job is the click, so it leads
+    with the buying points and the URL and carries the mandatory disclosure. At
+    most one a day (see `_link_ok`), so the feed does not become an ad wall.
+    """
+    title = product["title"]
+    price = product.get("price", "")
+    bullets = " · ".join(product.get("bullets", [])[:3])
+    url = monetize.link("facebook")
+    return (f"🛒 {title} {price}".strip() + "\n"
+            f"• {bullets}\n"
+            f"👉 ดูราคา/สั่งซื้อ: {url}\n"
+            f"⚠️ โฆษณา · ได้ค่าคอมมิชชันจากการซื้อผ่านลิงก์นี้\n"
+            f"🎵 เพลงจาก AERIS Music\n"
+            f"#ของน่าซื้อ #Shopee #AERISMusic")
+
+
 def refresh_captions() -> int:
     """Rewrite the pending captions in the committed queue, leave posted ones.
 
@@ -170,6 +211,16 @@ def refresh_captions() -> int:
                 by_id = {p["id"]: p for p in aff.load_products()}
                 product = by_id.get(item["slug"])
                 want = aff.caption(product, item["platform"]) if product else item["caption"]
+            except ImportError:
+                want = item["caption"]
+        elif item.get("kind") == "photo":
+            want = photo_caption(item["slug"], item["platform"])
+        elif item.get("kind") == "link":
+            try:
+                import make_affiliate_short as aff
+                by_id = {p["id"]: p for p in aff.load_products()}
+                product = by_id.get(item["slug"])
+                want = link_caption(product) if product else item["caption"]
             except ImportError:
                 want = item["caption"]
         else:
@@ -257,7 +308,61 @@ def build_queue() -> list[dict]:
     # One product card pair (both surfaces) after every 6 queue items — 3 song
     # clips — which is the 25% product share PLAN-30D-AI asks for, and still
     # puts the first affiliate post on day one rather than after the backlog.
-    return interleave(items, affiliate_items(), every=6, chunk=2)
+    base = interleave(items, affiliate_items(), every=6, chunk=2)
+    # Facebook also gets a cover-art photo and a Shopee link post, so its feed is
+    # not wall-to-wall Reels (advisor panel 2026-11-05: Reel for reach, photo for
+    # identity, <=1 link a day). A photo lands after every 3 items and a link
+    # after every 8, which at 4 posts/day is well under one link a day.
+    base = interleave(base, photo_items(), every=3, chunk=1)
+    return interleave(base, link_items(), every=8, chunk=1)
+
+
+def photo_items() -> list[dict]:
+    """Cover-art photo posts, Facebook only.
+
+    A photo is a feed post, not a Reel, and the TikTok API path only publishes
+    video — so this format exists only where it can actually be posted. The
+    image lives in `library/covers/`, gitignored like every other asset, so on a
+    fresh pod the image is pulled from the media release by `fetch_media`.
+    """
+    items = []
+    for cov in sorted(COVERS.glob("cover-*.jpg")):
+        slug = cov.stem[len("cover-"):]
+        items.append({
+            "id": f"facebook-page:photo-{slug}",
+            "platform": "facebook",
+            "slug": slug,
+            "hook": 0,
+            "kind": "photo",
+            "image": str(cov.relative_to(ROOT)),
+            "caption": photo_caption(slug),
+        })
+    return items
+
+
+def link_items() -> list[dict]:
+    """Shopee link posts, Facebook only. One per product, guarded to <=1/day.
+
+    The link post is the format whose whole job is the click, so it is the one
+    that must not repeat too often; the cadence guard in `post()` enforces the
+    daily ceiling on top of this spacing.
+    """
+    try:
+        import make_affiliate_short as aff
+    except ImportError:
+        return []
+    items = []
+    for product in aff.load_products():
+        items.append({
+            "id": f"facebook-page:link-{product['id']}",
+            "platform": "facebook",
+            "slug": product["id"],
+            "hook": 0,
+            "kind": "link",
+            "link": monetize.link("facebook"),
+            "caption": link_caption(product),
+        })
+    return items
 
 
 def affiliate_items() -> list[dict]:
@@ -335,15 +440,28 @@ def pending(queue: list[dict], state: dict, platform: str | None) -> list[dict]:
 # now paces itself. The numbers are deliberately conservative and cheap to
 # relax: one post per platform per interval, and a daily ceiling well under what
 # a spam filter would notice.
-MIN_GAP_SECONDS = 20 * 60
+#
+# The gap used to be a flat 20 minutes. The advisor panel (2026-11-05, 2
+# vendors) said a 20-minute gap is fine but recommended ~1 hour between posts so
+# the feed does not read as a burst, and ranked 2-3 posts/day safest for a new
+# page with 4/day acceptable once there is engagement. Facebook, still the
+# surface with the least history, sits at the safe end of that; TikTok, which
+# has more posts behind it, keeps the higher ceiling.
+MIN_GAP_SECONDS = 60 * 60
 DAILY_CAP = 4
 
-# The Facebook Page is still being judged by the recommender, and 4 near-identical
-# Reels a day both risk reading as repetitive and make it impossible to tell which
-# edit earned its reach. A 10-advisor panel (2026-11-06) said the same thing: post
-# fewer, more distinct clips and read each one's insights. Facebook is the only
-# surface capped lower until the first Reels show they are being tested.
-FACEBOOK_DAILY_CAP = 2
+# Facebook carries the extra formats (cover-art photos and Shopee link posts)
+# that the other surfaces do not, so K's "too few posts a day" is answered by
+# more *variety* first. The advisor panel (2026-11-05, 2 vendors) put the safe
+# band for a brand-new page at 2-3 a day, with 4 only once posts are drawing
+# engagement — so the Page sits at 3, up from 2, and the *link* cap below is what
+# keeps the feed from reading as an ad wall.
+FACEBOOK_DAILY_CAP = 3
+
+# At most one *link* post a day. A link post is the format that reads as an ad,
+# so the panel's rule was "never two links in a row, <=1 a day"; a photo or a
+# Reel between links is what keeps the feed from looking like an ad wall.
+LINK_DAILY_CAP = 1
 
 
 def _daily_cap(platform: str) -> int:
@@ -376,12 +494,14 @@ def _parse_ts(s: str) -> float:
     return calendar.timegm(time.strptime(s, "%Y-%m-%dT%H:%M:%SZ"))
 
 
-def pace_ok(state: dict, platform: str, now: float | None = None) -> tuple[bool, str]:
+def pace_ok(state: dict, platform: str, now: float | None = None,
+            kind: str | None = None) -> tuple[bool, str]:
     """May one more post go out on `platform` right now?
 
     Returns (allowed, reason). Two rules, both from the observed burst:
     at least MIN_GAP_SECONDS since the last post, and at most DAILY_CAP in the
-    trailing 24 h.
+    trailing 24 h. A `kind` of "link" adds a third: at most LINK_DAILY_CAP link
+    posts a day, because that is the format that reads as an ad.
     """
     now = time.time() if now is None else now
     times = _posted_times(state, platform)
@@ -394,7 +514,32 @@ def pace_ok(state: dict, platform: str, now: float | None = None) -> tuple[bool,
     cap = _daily_cap(platform)
     if len(day) >= cap:
         return False, f"{len(day)} posts in the last 24h (cap {cap})"
+    if kind == "link":
+        links = _posted_link_times(state, platform, now)
+        if len(links) >= LINK_DAILY_CAP:
+            return False, f"{len(links)} link posts in the last 24h (cap {LINK_DAILY_CAP})"
     return True, "ok"
+
+
+def _posted_link_times(state: dict, platform: str, now: float) -> list[float]:
+    """Epoch seconds of this platform's link posts in the trailing 24 h.
+
+    A link post's id is `<state_key>:link-<product>`, so the id alone identifies
+    the format without a separate ledger.
+    """
+    sk = PLATFORMS.get(platform, {}).get("state_key", platform)
+    prefix = f"{sk}:link-"
+    out = []
+    for key, rec in state.get("posted", {}).items():
+        if not key.startswith(prefix):
+            continue
+        try:
+            t = _parse_ts(rec.get("at", ""))
+        except ValueError:
+            continue
+        if now - t < 86400:
+            out.append(t)
+    return out
 
 
 # --- desktop -----------------------------------------------------------------
@@ -699,6 +844,31 @@ def api_poster(platform: str):
     return None
 
 
+def _publish_api(platform: str, it: dict, media, api) -> str | None:
+    """Publish one queue item through the headless API; return its public URL.
+
+    Three formats share the Facebook surface: a Reel (video), a cover-art photo,
+    and a Shopee link post (no file). The video path stays on the `api` callable
+    `api_poster` already chose, so the TikTok route is untouched; only the two
+    Facebook-only formats are special-cased here.
+    """
+    kind = it.get("kind") or "song"
+    if platform == "facebook" and kind in ("photo", "link"):
+        if kind == "photo":
+            pid = fb_graph.post_photo(media, it["caption"])
+        else:
+            pid = fb_graph.post_link(it["caption"], it["link"])
+        # A feed post id is "<page>_<post>"; the canonical permalink uses the
+        # page node and the post half.
+        return (f"https://www.facebook.com/{fb_graph.PAGE_ID}/posts/"
+                f"{pid.split('_')[-1]}") if pid else None
+    vid = api(media, it["caption"])
+    if not vid:
+        return None
+    return (f"https://www.facebook.com/reel/{vid}" if platform == "facebook"
+            else f"https://www.tiktok.com/@aeris.music4/video/{vid}")
+
+
 def post(platform: str, limit: int) -> int:
     state = load_state()
     queue = load_queue()
@@ -706,6 +876,9 @@ def post(platform: str, limit: int) -> int:
     if not todo:
         print("nothing pending")
         return 0
+    # Base surface rules only (hourly gap + daily cap). The per-format link cap
+    # is checked per item, so a link-blocked head of the queue does not abort a
+    # run that could still post a photo or a Reel.
     allowed, why = pace_ok(state, platform)
     if not allowed:
         print(f"held back by cadence: {why}")
@@ -730,32 +903,41 @@ def post(platform: str, limit: int) -> int:
     with ctxmgr as p:
         ctx = None if api is not None else B.connect(p)[1]
         for it in todo:
+            kind = it.get("kind") or "song"
             # Re-check before each item: one run must not be able to burst.
-            allowed, why = pace_ok(load_state(), platform)
+            allowed, why = pace_ok(load_state(), platform, kind=kind)
             if not allowed:
+                # A link post blocked by its own daily cap must not stall the
+                # whole queue: skip it and keep going, or the rail posts nothing
+                # for a day while photos and Reels sit ready behind it. Any other
+                # hold (the hourly gap, or the surface cap) stops the run.
+                if kind == "link" and "link posts" in why:
+                    print(f"  skip {it['id']}: {why}")
+                    continue
                 print(f"stopping: {why}")
                 break
-            video = ROOT / it["video"]
-            # A fresh pod has no library/, so pull the Short from the media
-            # release on demand rather than skipping the post.
-            if not video.exists():
-                video = release.fetch_media(video)
-            if not video.exists():
-                print(f"  skip {it['id']}: {video} missing")
-                continue
+            # A photo carries an image, a link carries no file at all, and every
+            # other format is a video.
+            if kind == "link":
+                media = None
+            else:
+                media = ROOT / (it["image"] if kind == "photo" else it["video"])
+                # A fresh pod has no library/, so pull the asset from the media
+                # release on demand rather than skipping the post.
+                if not media.exists():
+                    media = release.fetch_media(media)
+                if not media.exists():
+                    print(f"  skip {it['id']}: {media} missing")
+                    continue
             pg = ctx.new_page() if ctx is not None else None
             try:
                 print(f"  posting {it['id']} ...", flush=True)
                 if api is not None:
-                    # The API returns a video id; the browser poster returns the
-                    # page URL it landed on. Normalise to a URL for the ledger.
-                    vid = api(video, it["caption"])
-                    url = None
-                    if vid:
-                        url = (f"https://www.facebook.com/reel/{vid}" if platform == "facebook"
-                               else f"https://www.tiktok.com/@aeris.music4/video/{vid}")
+                    # The API returns an id; the browser poster returns the page
+                    # URL it landed on. Normalise to a URL for the ledger.
+                    url = _publish_api(platform, it, media, api)
                 else:
-                    url = POSTERS[it["platform"]](pg, video, it["caption"])
+                    url = POSTERS[it["platform"]](pg, media, it["caption"])
                 if url is None:
                     print(f"  {it['id']}: not published — left pending "
                           f"(reason in the abort line above)")
@@ -782,6 +964,27 @@ def post(platform: str, limit: int) -> int:
 
 
 # --- cli --------------------------------------------------------------------
+
+def augment_formats() -> int:
+    """Insert the Facebook-only photo and link formats into the committed queue.
+
+    `build_queue()` enumerates gitignored media, so on a fresh pod it cannot
+    reconstruct the committed song backlog — it would only see whatever happens
+    to be on disk. This migrates the backlog in place instead: it keeps every
+    existing item and its order, strips any photo/link items from a previous run
+    (so it is idempotent), and re-inserts them interleaved. Returns the number of
+    format items now in the queue.
+    """
+    if not QUEUE.exists():
+        return 0
+    cur = json.loads(QUEUE.read_text(encoding="utf-8"))
+    base = [it for it in cur if it.get("kind") not in ("photo", "link")]
+    base = interleave(base, photo_items(), every=3, chunk=1)
+    base = interleave(base, link_items(), every=8, chunk=1)
+    QUEUE.write_text(json.dumps(base, ensure_ascii=False, indent=2) + "\n",
+                     encoding="utf-8")
+    return len([it for it in base if it.get("kind") in ("photo", "link")])
+
 
 def merge_queue(fresh: list[dict]) -> int:
     """Add items the queue does not yet carry, keep everything already in it.
@@ -825,6 +1028,8 @@ def main() -> int:
     ap.add_argument("--rebuild-queue", action="store_true")
     ap.add_argument("--merge-queue", action="store_true",
                     help="append newly rendered Shorts without dropping the backlog")
+    ap.add_argument("--augment-formats", action="store_true",
+                    help="insert the Facebook photo/link formats into the queue")
     ap.add_argument("--refresh-captions", action="store_true",
                     help="rewrite pending captions in the committed queue")
     args = ap.parse_args()
@@ -834,6 +1039,10 @@ def main() -> int:
     if args.refresh_captions:
         n = refresh_captions()
         print(f"refreshed {n} pending caption(s)")
+        return 0
+    if args.augment_formats:
+        n = augment_formats()
+        print(f"queue: {n} photo/link item(s) present")
         return 0
     if args.merge_queue:
         n = merge_queue(build_queue())

@@ -757,6 +757,31 @@ true-instrumental karaoke mix, cover art, a 1920x1080 word-synced video.
   **Facebook Login for Business** product before `pages_*` appeared, and the
   permission picker is a **virtualized list** (43 options, only 15 in the DOM
   until you wheel-scroll the listbox).
+- **The Page feed is a mix, not only Reels (2026-11-08).** `ops/fb_graph.py` has
+  three post types through the one token: `post_reel` (video), `post_photo`
+  (`/{page}/photos`, multipart) and `post_link` (`/{page}/feed`). The queue item
+  `kind` selects the media field — `image` (photo), `link` (link), else `video` —
+  and `_publish_api()` dispatches on kind. `photo_caption()`/`link_caption()` keep
+  the new captions distinct from the Reel caption.
+- **A photo/link item needs an explicit `hook: 0`.** Tests index `it["hook"]`
+  unconditionally, so an item without it raises KeyError; affiliate items already
+  carried the field, the new kinds must too.
+- **Reading a feed post by its post-half id alone fails with Graph #12** ("singular
+  statuses API is deprecated"). Use the page-prefixed node id
+  (`<page>_<post>`) or the `/{page}/feed` edge. `_publish_api` builds the
+  permalink as `facebook.com/{PAGE_ID}/posts/{post-half}`.
+- **`crosspost.py --augment-formats` migrates the committed queue in place** and is
+  idempotent (strips then re-inserts the photo/link items). A fresh pod has no
+  `library/`, so the queue cannot be rebuilt from disk there; this is the only way
+  to add the new formats to the committed backlog.
+- **A per-format cap must skip, not stop, the loop.** A link item blocked by
+  `LINK_DAILY_CAP` is skipped (`continue`); treating it as a cadence stop makes the
+  rail post nothing for a day while photos/Reels wait behind it. The top-level gate
+  checks base rules only, and `pace_ok(..., kind="link")` adds the link rule.
+- **FB cadence (advisor panel 2026-11-05, duck+pollinations): 2-3/day safe for a
+  new page, 4 only after engagement, ~1h apart, <=1 link/day, never two links in a
+  row.** Implemented as `MIN_GAP_SECONDS=1h`, `FACEBOOK_DAILY_CAP=3`,
+  `LINK_DAILY_CAP=1` (TikTok `DAILY_CAP=4` unchanged).
 - **A `return None` from a poster prints "not signed in" for every failure**, which
   hid three Facebook bugs at once. Put the real reason in the abort line and keep
   the caller message generic ("not published — left pending").

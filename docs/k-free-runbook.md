@@ -145,3 +145,29 @@ longer has a browser path for Facebook at all.
 What is left needing K repeatedly is only the **TikTok browser fallback**, and
 only until the Content Posting API app is audited; after that it is one-time too.
 
+### The Page feed is a mix, not only Reels
+
+The Page used to publish Reels and nothing else, which read as a wall of the same
+format. `ops/fb_graph.py` now posts three formats through the one token:
+
+| Format | Call | What it is |
+| --- | --- | --- |
+| Reel | `POST /{page}/video_reels` | a vertical song video (the reach driver) |
+| Photo | `POST /{page}/photos` (multipart) | the song's cover art (the identity) |
+| Link | `POST /{page}/feed` | a Shopee card (the click driver) |
+
+- The queue builder (`crosspost.build_queue`) interleaves cover-art photos and
+  Shopee link posts into the Facebook side of the queue. Photo/link items carry
+  `kind` and an `image` (photo) or `link` (link) field instead of `video`, and
+  the post loop picks the field by `kind`.
+- The committed queue is migrated in place with
+  `python3 music938-1/scripts/crosspost.py --augment-formats`. It is idempotent
+  (it strips and re-inserts the photo/link items), and it exists because a fresh
+  pod has no `library/` and so cannot rebuild the queue from disk.
+- Cadence: `MIN_GAP_SECONDS` is one hour. `DAILY_CAP` (TikTok) is 4;
+  `FACEBOOK_DAILY_CAP` is 3. A separate `LINK_DAILY_CAP = 1` keeps the feed from
+  reading as an ad wall, which is the concern a low total cap used to stand in for.
+- The advisor panel (2026-11-05, 2 vendors) ranked the mix: Reel for reach,
+  photo for identity, at most one link a day. That is the source of these
+  numbers, and it is recorded in `ops/consult-log.jsonl`.
+
