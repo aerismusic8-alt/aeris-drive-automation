@@ -14,7 +14,14 @@
     "playlistItems.insert": 5,
     "thumbnails.set": 1
    },
-   "updated": "2026-11-08T09:31:14+00:00"
+   "updated": "2026-11-08T09:31:19+00:00",
+   "reserves": [
+    {
+     "purpose": "release 6 item(s)",
+     "units": 600,
+     "at": "2026-11-08T09:31:19+00:00"
+    }
+   ]
   }
  }
 }
