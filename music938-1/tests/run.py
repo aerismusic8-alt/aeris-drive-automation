@@ -514,6 +514,26 @@ def test_batch_survives_a_missing_asset() -> None:
           "if rc == 2:" in loop and "continue" in loop)
 
 
+def test_release_tolerates_transient_errors() -> None:
+    """Transient API/CDN errors must not turn a live video into a lost one.
+
+    A 409 SERVICE_UNAVAILABLE on the playlist insert and an
+    `uploadLimitExceeded` from the channel cap are both things the rail sees in
+    production. Neither is a defect: the first should be retried (the video is
+    already uploaded), the second means the day is done and the workflow must
+    stay green.
+    """
+    section("release tolerates transient errors")
+    src = (ROOT / "scripts" / "release.py").read_text(encoding="utf-8")
+    pl = src[src.find("def add_to_playlist"):src.find("def plan(")]
+    check("a transient playlist error is retried",
+          "for attempt in range" in pl and "409, 500, 502, 503, 504" in pl)
+    check("a real quota 403 is not retried",
+          "transient = e.code in" in pl)
+    check("uploadLimitExceeded stops the day cleanly (rc 3)",
+          "uploadLimitExceeded" in src and "return 3" in src)
+
+
 def test_outputs() -> None:
     section("rendered output")
     songs = sorted((common.LIBRARY / "songs").glob("song-*.mp3"))
@@ -3179,6 +3199,7 @@ def main() -> int:
     test_affiliate_reserve()
     test_daily_release_saves_ledger_on_early_stop()
     test_batch_survives_a_missing_asset()
+    test_release_tolerates_transient_errors()
     test_youtube_quota_ledger()
     test_outputs()
     print(f"\n{PASS} passed, {FAIL} failed")

@@ -497,6 +497,7 @@ def ensure_playlist(state: dict, kind: str, ch: str) -> str | None:
 def add_to_playlist(playlist_id: str, video_id: str, ch: str) -> bool:
     sys.path.insert(0, str(OPS))
     import yt_auth  # noqa: E402
+    import time  # noqa: E402
     import urllib.request  # noqa: E402
     import urllib.error  # noqa: E402
     tok = yt_auth.access_token(ch)
@@ -504,17 +505,32 @@ def add_to_playlist(playlist_id: str, video_id: str, ch: str) -> bool:
         "snippet": {"playlistId": playlist_id,
                     "resourceId": {"kind": "youtube#video", "videoId": video_id}},
     }).encode("utf-8")
-    req = urllib.request.Request(
-        "https://www.googleapis.com/youtube/v3/playlistItems?part=snippet",
-        data=body, method="POST",
-        headers={"Authorization": f"Bearer {tok}", "Content-Type": "application/json"})
-    try:
-        with urllib.request.urlopen(req) as r:
-            r.read()
-        return True
-    except urllib.error.HTTPError as e:
-        print(f"playlist insert failed: HTTP {e.code} {e.read()[:200]}", file=sys.stderr)
-        return False
+    # A 409 SERVICE_UNAVAILABLE / 5xx here is transient — the video is already
+    # uploaded, so losing the playlist row costs a discovery slot on a video that
+    # is otherwise live. Retry those; a real 403 (quota) still returns at once so
+    # the caller's reservation logic is not stalled.
+    for attempt in range(3):
+        req = urllib.request.Request(
+            "https://www.googleapis.com/youtube/v3/playlistItems?part=snippet",
+            data=body, method="POST",
+            headers={"Authorization": f"Bearer {tok}", "Content-Type": "application/json"})
+        try:
+            with urllib.request.urlopen(req) as r:
+                r.read()
+            return True
+        except urllib.error.HTTPError as e:
+            detail = e.read()[:200]
+            transient = e.code in (409, 500, 502, 503, 504)
+            print(f"playlist insert failed: HTTP {e.code} {detail}", file=sys.stderr)
+            if not transient or attempt == 2:
+                return False
+            time.sleep(2 * (attempt + 1))
+        except Exception as exc:  # noqa: BLE001 - a socket blip must not lose the row
+            print(f"playlist insert error: {exc}", file=sys.stderr)
+            if attempt == 2:
+                return False
+            time.sleep(2 * (attempt + 1))
+    return False
 
 
 def plan(days: int, shorts: bool = False, spread: float = 0,
@@ -760,6 +776,14 @@ def release_one(item: dict, args) -> int:
     sys.stdout.write(proc.stdout)
     sys.stderr.write(proc.stderr)
     if proc.returncode != 0:
+        # A channel-level cap, distinct from the API's 100/day insert bucket:
+        # YouTube throttles how many videos an account may upload in a day and
+        # returns `uploadLimitExceeded`. There is no point trying the rest of the
+        # batch, and it is not a defect to report — treat it as the day being
+        # done (rc 3), the same as a spent cadence, so the workflow stays green.
+        if "uploadLimitExceeded" in proc.stdout or "uploadLimitExceeded" in proc.stderr:
+            print("upload limit reached for today; stopping the batch", file=sys.stderr)
+            return 3
         return proc.returncode
     m = re.search(r"video id (\S+)", proc.stdout)
     vid = m.group(1) if m else None
