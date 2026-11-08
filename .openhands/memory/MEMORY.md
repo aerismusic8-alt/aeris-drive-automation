@@ -805,6 +805,11 @@ true-instrumental karaoke mix, cover art, a 1920x1080 word-synced video.
 - **A classic PAT with `repo,workflow` is in KV at `axsecrets:gh-workflow-token`**
   (login `aerismusic8-alt`). `git push https://x-access-token:$TOKEN@github.com/...`
   writes; the sandbox `GITHUB_TOKEN` cannot. Reset the remote URL after pushing.
+  The KV value is a **dict** `{token, login, scopes, note}` — read the token with
+  `ax_vault.kv_get(ax_vault.find_anchor(), "axsecrets:gh-workflow-token")["token"]`.
+  It is the only local token that can push a `.github/workflows/*` change;
+  `AX_GH_TOKEN` writes ordinary files but is refused a workflow file ("OAuth App …
+  without `workflow` scope").
 - **A source-check test that pins an exact old string will fail on a legitimate
   fix.** The pin-badge test pinned `'ปักหมุดโดย'`; making the check locale-tolerant
   broke it. Update the test to pin the *behaviour* (both locales present), not one
