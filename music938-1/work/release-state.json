@@ -102,7 +102,8 @@
    "variant": "",
    "video_id": "ohmKsjI5Sq8",
    "at": "2026-10-31T07:01:47+00:00",
-   "public": true
+   "public": true,
+   "retired_at": "2026-11-08T09:30:00+00:00"
   },
   {
    "slug": "03-khit-thueng-thoe-thuk-khuen",
@@ -120,7 +121,8 @@
    "video_id": "4xcbYYhFP3A",
    "at": "2026-11-01T09:09:40+00:00",
    "public": true,
-   "replaces": "SWS1vJJgkow"
+   "replaces": "SWS1vJJgkow",
+   "retired_at": "2026-11-08T09:30:00+00:00"
   },
   {
    "slug": "01-khon-di-thi-chak-pai",
@@ -185,7 +187,8 @@
    "variant": "",
    "video_id": "MEwzH-g07kA",
    "at": "2026-11-02T07:06:22+00:00",
-   "public": true
+   "public": true,
+   "retired_at": "2026-11-08T09:30:00+00:00"
   },
   {
    "slug": "04-saeng-chao-wan-mai",
@@ -228,7 +231,8 @@
    "variant": "",
    "video_id": "jgBTOGWyBp8",
    "at": "2026-11-03T09:57:45+00:00",
-   "public": true
+   "public": true,
+   "retired_at": "2026-11-08T09:30:00+00:00"
   },
   {
    "slug": "05-fon-tok-nai-chai",
@@ -269,7 +273,8 @@
    "variant": "",
    "video_id": "t6NIvNjJtEQ",
    "at": "2026-11-03T09:58:14+00:00",
-   "public": true
+   "public": true,
+   "retired_at": "2026-11-08T09:30:00+00:00"
   },
   {
    "slug": "01-khon-di-thi-chak-pai",
@@ -323,7 +328,8 @@
    "video_id": "zNqUTtCaYxY",
    "at": "2026-11-04T07:55:12+00:00",
    "public": true,
-   "replaces": "TISzvF9AQig"
+   "replaces": "TISzvF9AQig",
+   "retired_at": "2026-11-08T09:30:00+00:00"
   },
   {
    "slug": "01-khon-di-thi-chak-pai",
@@ -432,6 +438,26 @@
    "public": true,
    "thumb_ok": false,
    "playlist_ok": false
+  },
+  {
+   "slug": "hp-budget-01",
+   "kind": "affiliate",
+   "variant": "short-aff-hp-budget-01",
+   "video_id": "X3A5PMMNgfU",
+   "at": "2026-11-07T15:20:36+00:00",
+   "public": true,
+   "thumb_ok": true,
+   "playlist_ok": true
+  },
+  {
+   "slug": "hp-anc-02",
+   "kind": "affiliate",
+   "variant": "short-aff-hp-anc-02",
+   "video_id": "y-Y2DNmopHk",
+   "at": "2026-11-07T15:20:36+00:00",
+   "public": true,
+   "thumb_ok": true,
+   "playlist_ok": true
   }
  ],
  "playlists": {
