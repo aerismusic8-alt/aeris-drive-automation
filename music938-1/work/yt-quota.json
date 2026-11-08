@@ -6,6 +6,15 @@
     "_observed": 1
    },
    "updated": "2026-11-07T23:09:50+00:00"
+  },
+  "2026-11-08": {
+   "units": 305,
+   "calls": {
+    "playlistItems.list": 5,
+    "playlistItems.insert": 5,
+    "thumbnails.set": 1
+   },
+   "updated": "2026-11-08T09:31:14+00:00"
   }
  }
 }
