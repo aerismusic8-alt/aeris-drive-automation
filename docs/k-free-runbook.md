@@ -99,11 +99,31 @@ place K still has to type.
 
 ## What can never be fully automatic (do not pretend otherwise)
 
-- **First credentials need a human.** No API mints its own first token.
+- **First credentials need a human.** No API mints its own first token. The
+  advisor panel (2026-11-07, 4 vendors) was unanimous: there is no route that
+  both needs no owner action and legitimately posts to the owner's own account.
 - **TikTok public posting needs app audit** — a business gate, not a bug.
 - **Meta can revoke a token** if the app, Page, or Business changes; the
   heartbeat catches it on the next run and that is a genuine K moment.
 - **The YouTube avatar needs a Studio click** — no API exists.
 - **A browser snapshot expiring is not a route.** Keep-alive reduces it; it never
-  removes it, and a dead snapshot is a K sign-in, which is why every fallback
-  here has a K-free primary in front of it.
+  removes it, and a dead snapshot is a K sign-in.
+
+## The Facebook rail is API-only now (this is the "cut K out" change)
+
+Facebook's browser fallback was the one thing that kept pulling K back in: the
+cookie session dies every few weeks and restoring it is a K sign-in. The rail no
+longer has a browser path for Facebook at all.
+
+- `crosspost.API_ONLY = {"facebook"}`. With no token, `post` **parks** the queue
+  (`rc 3`) and prints the one-time setup; `probe` reports `PARKED` (`rc 3`).
+- The workflow treats `PARKED` as *not blocked*: no red run, no ntfy ping, no K.
+  It resumes by itself the moment `FB_PAGE_TOKEN` exists. Only a genuinely dead
+  **browser** session (TikTok's fallback) still raises an alert.
+- So a missing Facebook token is a **one-time setup**, never a recurring need.
+  `python3 ops/k_free_status.py` reports it under "one-time setup", and
+  `--check` no longer counts it against you.
+
+What is left needing K repeatedly is only the **TikTok browser fallback**, and
+only until the Content Posting API app is audited; after that it is one-time too.
+

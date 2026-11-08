@@ -1278,6 +1278,19 @@ def test_crosspost_engine() -> None:
     check("publish is confirmed by the dialog or a navigation",
           "กำลังประมวลผลคลิป Reels" in body and "reels_composer" in body)
 
+    # Facebook is API-only: with no token the rail must park, never open a browser
+    # to a cookie session that dies and needs K. This is the guard that keeps K out.
+    check("facebook is an API-only surface", "facebook" in crosspost.API_ONLY)
+    check("api_poster returns None for facebook without a token",
+          crosspost.api_poster("facebook") is None or
+          crosspost.fb_graph.available())
+    parked = src.split("if platform in API_ONLY and api is None:", 1)
+    check("post() parks an API-only surface before opening any browser",
+          len(parked) == 2 and "return 3" in parked[1].split("print(f\"posting", 1)[0])
+    probe_body = src.split("def probe(", 1)[1].split("\ndef ", 1)[0]
+    check("probe reports a parked surface instead of a dead session",
+          "parked" in probe_body and "return 3 if parked else 0" in probe_body)
+
 
 def test_browser_ci_storage_state() -> None:
     """`browser.connect` must offer a CI mode that needs no cloud desktop.
@@ -2559,8 +2572,17 @@ def test_k_free_status() -> None:
               by0[("facebook", "Page Reels")]["one_time"])
         check("with no tokens, every api/oneshot rail is a one-time need",
               rep0["needs_k_once"] == 6)
-        check("with no tokens, the fallbacks become recurring",
-              rep0["needs_k"] == 2 and rep0["k_free_all"] is False)
+        # Facebook has no browser fallback any more: it parks instead of opening a
+        # browser, so a missing token is a one-time setup, never a recurring need.
+        # TikTok still has its browser fallback (its API needs an app audit first),
+        # so with no tokens that one is the only recurring K-dependency.
+        check("a parked API-only surface is never recurring",
+              not by0[("facebook", "Page Reels")]["needs_k"])
+        check("with no tokens, only the tiktok fallback is recurring",
+              rep0["needs_k"] == 1 and rep0["k_free_all"] is False)
+        check("facebook is reported as a one-time setup, not a blocker",
+              ("facebook", "Page Reels") not in
+              {(b["surface"], b["rail"]) for b in rep0["blocked"]})
     finally:
         kfs.get_secret = real
 

@@ -56,10 +56,9 @@ RAILS: list[tuple[str, str, str, list[str], str, tuple[str, str] | None]] = [
     ("youtube", "channel avatar", "oneshot", [],
      "no avatar API exists; one Studio click, then the vault keeps the session", None),
     ("facebook", "Page Reels", "api",
-     ["FB_PAGE_TOKEN"], "Meta System User token: K provisions it once, then never", None),
-    ("facebook", "Page Reels (fallback)", "browser",
-     ["AERIS_STORAGE_STATE_B64"], "expires; a dead snapshot is a K sign-in",
-     ("facebook", "Page Reels")),
+     ["FB_PAGE_TOKEN"], "Meta System User token: K provisions it once, then never. "
+     "API-only — the browser fallback was removed so a dead cookie can never ask K again",
+     None),
     ("tiktok", "Short posting", "api",
      ["TT_REFRESH_TOKEN", "TT_CLIENT_KEY", "TT_CLIENT_SECRET"],
      "Content Posting API; K authorizes the app once, a job rotates the token", None),

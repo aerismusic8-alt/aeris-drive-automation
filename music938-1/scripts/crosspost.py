@@ -423,11 +423,17 @@ def probe(platform: str | None = None) -> int:
     # must not report a healthy API surface as dead just because the cookie
     # session it no longer uses has expired.
     api_names = {n for n in names if api_poster(n) is not None}
+    # An API-only surface with no token is *parked*, not signed out: it will never
+    # use the browser, so there is no session to check and no K sign-in to ask for.
+    # Report it as its own state (rc 3) so the rail can stay green.
+    parked = {n for n in names if n in API_ONLY and n not in api_names}
+    for n in sorted(parked):
+        print(f"PARKED {n:9} API-only; one-time token not set (no browser session)")
     if api_names:
         print(f"API-token surfaces (no browser needed): {', '.join(sorted(api_names))}")
-    browser_names = [n for n in names if n not in api_names]
+    browser_names = [n for n in names if n not in api_names and n not in parked]
     if not browser_names:
-        return 0
+        return 3 if parked else 0
     with _connect() as p:
         br, ctx = B.connect(p)
         for name in browser_names:
@@ -597,6 +603,13 @@ def post_facebook(page, video: Path, text: str) -> str | None:
 
 POSTERS = {"tiktok": post_tiktok, "facebook": post_facebook}
 
+# Surfaces that post ONLY through their API. Facebook is here on purpose: its
+# browser fallback was the one thing that kept pulling K back in — the cookie
+# session dies every few weeks and restoring it is a K sign-in. With no token the
+# rail parks the queue and says so; it never opens a browser for Facebook, so it
+# never needs K again. `ops/k_free_status.py` reports it as a one-time setup.
+API_ONLY = {"facebook"}
+
 # Where each platform lists its own posts, newest first. `post_*` used to return
 # `page.url`, which after publishing is the studio/composer page - so 114 of the
 # first 122 records stored a URL that identifies nothing and the surface could
@@ -699,6 +712,16 @@ def post(platform: str, limit: int) -> int:
         return 1
     posted = 0
     api = api_poster(platform)
+    if platform in API_ONLY and api is None:
+        # Park, do not fall back to the browser. This is the deliberate end of the
+        # K loop: a missing Facebook token holds the queue quietly and prints the
+        # one-time setup, instead of driving a cookie session that dies and needs
+        # K to sign in again. `--pending-count` still reports the backlog, so the
+        # rail can tell "parked" from "empty".
+        print(f"{platform}: parked — API-only surface, no token configured "
+              f"({len(todo)} pending). One-time Meta System User token; see "
+              f"docs/k-free-runbook.md. Not opening a browser.")
+        return 3
     print(f"posting {platform} via {'Graph/Content API' if api else 'browser session'}")
     # With an API token there is no browser to launch at all — that is the point
     # of the API route, and it is what lets the rail run on a runner with no

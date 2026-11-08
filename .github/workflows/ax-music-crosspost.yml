@@ -85,12 +85,19 @@ jobs:
             exit 1
           fi
           for p in facebook tiktok; do
-            if python3 music938-1/scripts/crosspost.py --probe --platform "$p"; then
-              echo "$p=SIGNED_IN" >> "$GITHUB_OUTPUT"
-            else
-              echo "$p=SIGNED_OUT" >> "$GITHUB_OUTPUT"
-              echo "::warning::$p session is dead — posting will skip it"
-            fi
+            python3 music938-1/scripts/crosspost.py --probe --platform "$p"
+            rc=$?
+            # rc 0 = signed in; rc 3 = an API-only surface with no token, which is
+            # parked on purpose and must NOT count as blocked (a red run would make
+            # ntfy ask K to sign in — the exact loop we removed); anything else is
+            # a dead browser session.
+            case "$rc" in
+              0) echo "$p=SIGNED_IN" >> "$GITHUB_OUTPUT" ;;
+              3) echo "$p=PARKED" >> "$GITHUB_OUTPUT"
+                 echo "::notice::$p is API-only and has no token yet — parked, no K needed" ;;
+              *) echo "$p=SIGNED_OUT" >> "$GITHUB_OUTPUT"
+                 echo "::warning::$p session is dead — posting will skip it" ;;
+            esac
           done
 
       - name: Post the pending Shorts
@@ -120,6 +127,13 @@ jobs:
               facebook) state="${FB_STATE:-}" ;;
               tiktok)   state="${TK_STATE:-}" ;;
             esac
+            if [ "$state" = "PARKED" ]; then
+              # API-only surface with no token. Parked, not broken: stay quiet and
+              # green. It resumes by itself the moment the one-time token exists.
+              n=$(python3 music938-1/scripts/crosspost.py --pending-count --platform "$p" | tail -1)
+              echo "--- $p: parked (API-only, no token; $n pending) — no K needed ---"
+              continue
+            fi
             if [ "$PLAT" = "all" ] && [ "$state" != "SIGNED_IN" ]; then
               # Blocked, not empty: there is work waiting and the session cannot
               # carry it. Record the count so the final gate can fail the run.
@@ -189,7 +203,7 @@ jobs:
           # tap-first page, which opens the surface in the signed-in desktop.
           LINK="${{ vars.AX_LOGIN_URL }}"
           [ -n "$LINK" ] || LINK="(set the AX_LOGIN_URL repo variable to the work-2 host)"
-          curl -sS --max-time 20 -H "Title: AERIS — ต้องล็อกอิน Facebook + TikTok ใหม่" \
+          curl -sS --max-time 20 -H "Title: AERIS — session ที่ต้องล็อกอินใหม่" \
             -H "Tags: warning" -H "Priority: high" \
-            -d "session ของ Facebook และ TikTok หมดอายุ มีโพสต์ค้างอยู่. แตะปุ่มเดียวจบที่ ${LINK} — ล็อกอิน 2 หน้า: Facebook Page (AERIS Music) และ TikTok @aeris.music4. หลังล็อกอิน ระบบโพสต์ต่อเองในรอบถัดไป (ทุก 2 ชม.). ถ้าเพิ่งล็อกอินแล้วยังแดง ให้รัน ops/login_vault.py save และ ops/save_storage_state.py แล้วตั้ง secret AERIS_STORAGE_STATE_B64 ใหม่" \
+            -d "session ของ surface ที่ยังใช้ browser หมดอายุ มีโพสต์ค้างอยู่. แตะปุ่มเดียวจบที่ ${LINK} — ล็อกอินเฉพาะ surface ที่แจ้ง (ปกติคือ TikTok @aeris.music4). Facebook เป็น API-only แล้ว: ถ้ายังไม่มี token มันจะ park ไว้เงียบ ๆ ไม่แจ้งเตือน และกลับมาโพสต์เองเมื่อตั้ง FB_PAGE_TOKEN ครั้งเดียว (ดู docs/k-free-runbook.md). ถ้าเพิ่งล็อกอินแล้วยังแดง ให้รัน ops/login_vault.py save และ ops/save_storage_state.py แล้วตั้ง secret AERIS_STORAGE_STATE_B64 ใหม่" \
             "https://ntfy.sh/${TOPIC}" || echo "ntfy push failed (non-fatal)"
