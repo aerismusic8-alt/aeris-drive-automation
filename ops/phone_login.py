@@ -173,6 +173,60 @@ def _set_actions_secret(name: str, value: str) -> dict:
         return {"ok": False, "error": f"{type(e).__name__}: {e}"}
 
 
+def _vault_kv(name: str, value: str | None = None):
+    """Read or write one secret in the durable KV store (same place as the PAT).
+
+    K's standing instruction (2026-11-07): the Facebook password is the same as
+    the mail password and is typed ONCE. It is kept here, account-scoped and
+    outside the repo, so no later step ever has to ask for it again.
+    """
+    import ax_vault  # noqa: PLC0415  (ops/ is on sys.path)
+
+    aid = ax_vault.ensure_anchor()
+    key = f"axsecrets:{name}"
+    if value is None:
+        return ax_vault.kv_get(aid, key)
+    ax_vault.kv_put(aid, key, value)
+    return True
+
+
+def type_password_into_dialog() -> dict:
+    """Type the vaulted password into Meta's re-auth dialog and submit it.
+
+    The agent never sees the password: it comes out of the KV store and goes
+    straight into the field over CDP.
+    """
+    pw = _vault_kv("fb-password")
+    if not pw:
+        return {"ok": False, "error": "ยังไม่มีรหัสใน vault"}
+    try:
+        from playwright.sync_api import sync_playwright  # noqa: PLC0415
+    except Exception as e:  # noqa: BLE001
+        return {"ok": False, "error": f"playwright unavailable: {e}"}
+    try:
+        with sync_playwright() as p:
+            br = p.chromium.connect_over_cdp(CDP)
+            for ctx in br.contexts:
+                for pg in ctx.pages:
+                    try:
+                        f = pg.locator("input[type='password']")
+                        if not f.count():
+                            continue
+                        f.first.click(timeout=5000)
+                        f.first.fill(pw)
+                        for lbl in ("ส่ง", "Submit", "Continue", "ยืนยัน"):
+                            b = pg.get_by_role("button", name=lbl)
+                            if b.count() and b.first.is_visible():
+                                b.first.click(timeout=6000)
+                                return {"ok": True, "page": pg.url[:80]}
+                        return {"ok": False, "error": "ไม่พบปุ่มส่ง"}
+                    except Exception:  # noqa: BLE001
+                        continue
+        return {"ok": False, "error": "ไม่พบช่องรหัสบนจอ (เปิดหน้ายืนยันก่อน)"}
+    except Exception as e:  # noqa: BLE001
+        return {"ok": False, "error": f"{type(e).__name__}: {e}"}
+
+
 def grab_fb_token() -> dict:
     """Read the token K just generated straight off the desktop screen.
 
@@ -255,6 +309,18 @@ PAGE = """<!doctype html><html lang="th"><head>
 แล้วเลือกอีเมลในหน้าจอเครื่อง · หากรหัสค้างอยู่ กด "ล็อกอิน" ได้เลย</span></div>
 <div class="grid">{buttons}</div>
 <div class="tok">
+  <h2>รหัส Facebook — พิมพ์ครั้งเดียว</h2>
+  <div class="tokhint">พิมพ์รหัส (รหัสเมลเดียวกับ Facebook) ที่นี่ <b>ครั้งเดียว</b> — ระบบเก็บไว้ใน
+  vault ส่วนตัว (ที่เดียวกับ token ของ K) แล้วพิมพ์ลงช่องยืนยันบนจอให้เอง จากนี้ไม่ต้องพิมพ์อีก</div>
+  <form method="POST" action="/fb-pass">
+    <input type="password" name="password" placeholder="รหัส Facebook / เมล"
+           autocomplete="current-password" style="width:100%;padding:14px;border-radius:12px;
+           border:1px solid #4a3d63;background:#1b1726;color:#fff;font-size:16px">
+    <button type="submit">เก็บรหัส + กรอกให้เลย</button>
+  </form>
+  <a class="grab" href="/fb-type" style="background:#2c6b4f">กรอกซ้ำอีกครั้ง (ใช้รหัสที่เก็บไว้)</a>
+</div>
+<div class="tok">
   <h2>Facebook token — ครั้งเดียว</h2>
   <div class="tokhint">1) กดปุ่ม Facebook ด้านบน → ล็อกอิน → เพิ่มผู้ใช้ระบบ → <b>Generate Token</b> → ตั้ง Never<br>
   2) กลับมาที่หน้านี้ กดปุ่มเขียวด้านล่าง (ไม่ต้อง copy อะไร)</div>
@@ -303,6 +369,24 @@ color:#fff;text-decoration:none;border-radius:14px;text-align:center;font-weight
 
     def do_POST(self) -> None:  # noqa: N802
         parsed = urllib.parse.urlparse(self.path)
+        if parsed.path == "/fb-pass":
+            n = int(self.headers.get("Content-Length", "0") or "0")
+            raw = self.rfile.read(n).decode() if n else ""
+            pw = urllib.parse.parse_qs(raw).get("password", [""])[0]
+            if not pw:
+                return self._result("ยังไม่ได้กรอกรหัส", False, "กรอกช่องรหัสก่อนกดปุ่ม")
+            try:
+                _vault_kv("fb-password", pw)
+            except Exception as e:  # noqa: BLE001
+                return self._result("เก็บรหัสไม่ได้", False, f"{type(e).__name__}: {e}")
+            t = type_password_into_dialog()
+            if t.get("ok"):
+                return self._result("บันทึกรหัสแล้ว และกรอกให้เลย ✅", True,
+                                    "เก็บรหัสไว้ใน vault (ครั้งเดียว) แล้วพิมพ์ลงช่องยืนยันบนจอให้ "
+                                    "· จากนี้ไม่ต้องขอรหัสอีก")
+            return self._result("บันทึกรหัสแล้ว ✅", True,
+                                f"เก็บรหัสไว้ใน vault เรียบร้อย<br>แต่ยังกรอกบนจอไม่ได้ตอนนี้ "
+                                f"({t.get('error','')}) — เปิดหน้ายืนยันค้างไว้แล้วกดปุ่มนี้ซ้ำได้")
         if parsed.path != "/fb-token":
             return self._send(404, b"not found", "text/plain")
         n = int(self.headers.get("Content-Length", "0") or "0")
@@ -340,6 +424,12 @@ color:#fff;text-decoration:none;border-radius:14px;text-align:center;font-weight
             # The surface is now the active tab in the desktop; drop the phone
             # straight into noVNC so the operator only has to sign in.
             return self._redirect(novnc_url())
+        if parsed.path == "/fb-type":
+            t = type_password_into_dialog()
+            if t.get("ok"):
+                return self._result("กรอกรหัสให้แล้ว ✅", True,
+                                    f"พิมพ์รหัสจาก vault ลงช่องยืนยันให้เรียบร้อย ({t.get('page','')})")
+            return self._result("ยังกรอกไม่ได้", False, f"{t.get('error','')}")
         if parsed.path == "/fb-grab":
             g = grab_fb_token()
             if not g.get("ok"):

@@ -2320,10 +2320,17 @@ def test_phone_login() -> None:
     check("opens the surface in the desktop over CDP", "/json/new?" in src)
     check("hands the phone to noVNC after a tap", "novnc_url()" in src)
     check("asks for remote resize", "resize=remote" in src)
-    # The page must not carry a password field — the operator's password manager
-    # fills it inside noVNC; the agent never handles a credential.
-    check("never collects a password", "type=\"password\"" not in src
-          and "<input" not in src)
+    # K's standing instruction (2026-11-07): the Facebook password is the same as
+    # the mail password and is typed ONCE. The page may collect it, but only into
+    # the durable vault (never the repo), and the agent still never reads it out.
+    check("collects the password once into the vault", 'action="/fb-pass"' in src
+          and "_vault_kv" in src and "ax_vault" in src)
+    check("the password only reaches the vault, never a file",
+          "kv_put" in src and "open(" not in src.split("def _vault_kv")[1].split("def ")[0])
+    check("can retype the vaulted password", "/fb-type" in src
+          and "type_password_into_dialog" in src)
+    check("does not print the vaulted password", "print(pw" not in src
+          and "print(password" not in src)
     # The one-time Facebook token: K pastes it once, the page verifies it against
     # the real Page and writes the Actions secret itself. This is the whole point
     # — K does one action and is never asked again.
