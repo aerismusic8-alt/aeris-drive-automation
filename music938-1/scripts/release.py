@@ -607,20 +607,33 @@ def progress(path: str | None, line: str) -> None:
         pass
 
 
-def _media_assets() -> dict:
-    """Name -> download URL for the media release, fetched once per process."""
-    global _ASSET_CACHE
-    if _ASSET_CACHE is not None:
-        return _ASSET_CACHE
-    import urllib.request
+def _gh_headers(accept: str = "application/vnd.github+json") -> dict:
     tok = os.environ.get("AX_GH_TOKEN") or ""
     if not tok:
         f = Path(os.environ.get("AX_GH_TOKEN_FILE", "/workspace/ax-tools/ar-identity/gh-token"))
         if f.exists():
             tok = f.read_text().strip()
-    hdrs = {"User-Agent": "ax-release", "Accept": "application/vnd.github+json"}
+    h = {"User-Agent": "ax-release", "Accept": accept}
     if tok:
-        hdrs["Authorization"] = f"token {tok}"
+        h["Authorization"] = f"token {tok}"
+    return h
+
+
+def _media_assets() -> dict:
+    """Name -> (download URL, size, asset id) for the media release.
+
+    Fetched once per process. The asset id is kept because the release's
+    `browser_download_url` 302-redirects to a separate CDN host that returns
+    transient 504s under load — that is what killed the 2026-11-08 batch. The
+    API's own `releases/assets/<id>` endpoint streams the same bytes with no
+    redirect and measured ~35x faster (0.3s vs 10.9s), so `fetch_media`
+    prefers it and keeps the browser URL as a fallback.
+    """
+    global _ASSET_CACHE
+    if _ASSET_CACHE is not None:
+        return _ASSET_CACHE
+    import urllib.request
+    hdrs = _gh_headers()
     base = f"https://api.github.com/repos/{MEDIA_REPO}/releases/tags/{MEDIA_RELEASE}"
     with urllib.request.urlopen(urllib.request.Request(base, headers=hdrs), timeout=60) as r:
         rid = json.load(r)["id"]
@@ -631,7 +644,7 @@ def _media_assets() -> dict:
         with urllib.request.urlopen(urllib.request.Request(url, headers=hdrs), timeout=60) as r:
             batch = json.load(r)
         for a in batch:
-            out[a["name"]] = (a["browser_download_url"], a["size"])
+            out[a["name"]] = (a["browser_download_url"], a["size"], a["id"])
         if len(batch) < 100:
             break
         page += 1
@@ -642,12 +655,11 @@ def _media_assets() -> dict:
 def fetch_media(path: Path) -> Path:
     """Download one media file from the release if it is not on disk yet.
 
-    Retried, because the media CDN returns a transient 504 under load and an
-    uncaught one used to abort the whole daily batch: the 2026-11-08 run died
-    mid-item on a 504 for a thumbnail, uploaded nothing, and the workflow went
-    red — the same fragility that made the rail run once in three days. After
-    the retries the file is simply left missing, which `release_one` already
-    turns into a clean rc 2 ("missing video") instead of a traceback.
+    The API asset endpoint is tried first, then the browser URL, and each is
+    retried. A transient 504 from the media CDN used to escape as a traceback
+    and abort the whole daily batch — the 2026-11-08 run uploaded nothing for
+    exactly that reason. After the retries the file is left missing, which
+    `release_one` turns into a clean rc 2 that the batch loop skips.
     """
     if path is None or path.exists():
         return path
@@ -656,13 +668,17 @@ def fetch_media(path: Path) -> Path:
     info = _media_assets().get(path.name)
     if not info:
         return path
-    url, size = info
+    browser_url, size, asset_id = info
+    api_url = (f"https://api.github.com/repos/{MEDIA_REPO}/releases/assets/{asset_id}")
     path.parent.mkdir(parents=True, exist_ok=True)
+    attempts = [(api_url, _gh_headers("application/octet-stream")),
+                (browser_url, {"User-Agent": "ax-release"})]
     last: Exception | None = None
     for attempt in range(3):
+        url, hdrs = attempts[min(attempt, len(attempts) - 1)]
         try:
             with urllib.request.urlopen(urllib.request.Request(
-                    url, headers={"User-Agent": "ax-release"}), timeout=300) as r:
+                    url, headers=hdrs), timeout=300) as r:
                 data = r.read()
             path.write_bytes(data)
             print(f"  fetched {path.name} ({size / 1e6:.1f} MB)")
