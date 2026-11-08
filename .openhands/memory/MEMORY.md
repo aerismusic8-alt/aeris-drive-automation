@@ -1198,6 +1198,19 @@ true-instrumental karaoke mix, cover art, a 1920x1080 word-synced video.
   `videos.insert` bucket.** It means the day is done, not that the code is broken.
   Do not dispatch extra release runs to "verify" a fix: each dispatch spends this
   budget and the next scheduled tick then uploads nothing. Treat it as rc 3.
+- **The local quota ledger under-counts; trust the live 403.** `work/yt-quota.json`
+  only records calls that *reserve* against the pool, so a day can show "815 used,
+  9185 left" while a 1-unit `channels.list` returns `quotaExceeded` — the day's
+  real spend (other writers, other channels) is not in the file. When YouTube
+  refuses, read the HTTP reason, not the ledger.
+- **A song K hands over must be *pinned* to go first.** The plan is a rotation
+  (one chorus per song per round), so a new song lands days deep. Put its slug in
+  `music938-1/work/release-priority.json` (`{"songs": ["29-takorn-kong-fa"]}`);
+  `release.plan` moves that song's main release + first Short to the front, only
+  reordering, and goes inert once the main release is live. The file must be
+  **tracked** (`.gitignore` `!` rule) or the runner, which fetches `main`, never
+  sees it. Facebook stayed parked (`API_ONLY`, no Meta token); only TikTok was an
+  open surface that day.
 - **A transient 409/5xx on `playlistItems.insert` is retryable**; the video is
   already uploaded, so losing the row costs a discovery slot. Retry 409/500/502/
   503/504; let a 403 (quota) return at once.
