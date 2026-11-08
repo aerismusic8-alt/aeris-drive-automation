@@ -1179,3 +1179,29 @@ true-instrumental karaoke mix, cover art, a 1920x1080 word-synced video.
   for a song and makes none, it must exit non-zero — the 2026-11-07 CI run went
   green with `produced: []` because `pollinations_ask` POSTed a shape that 400s.
   Details in `.openhands/memory/2026-11-07.md`.
+
+## The release engine lost every upload it made (2026-11-08) — durable facts
+- **The ledger write must precede the rc-3 early return.** `daily_release.py`
+  wrote `release-state.json` to `main` only on `rc == 0`, so a batch capped at the
+  day's slot count uploaded videos and then returned *before* the write. The ledger
+  never learned about them, so the next run re-planned and re-uploaded the same
+  items. Live symptom: the same affiliate card was on the channel 4× while the
+  ledger held 0 affiliate rows. This one bug is why the rail looked "stuck on the
+  same 6 songs" and why the channel stopped growing.
+- **`browser_download_url` is not the way to fetch a release asset.** It
+  302-redirects to a separate CDN host that returns transient 504s under load; a
+  single one used to abort the whole batch. Use the API's
+  `repos/<r>/releases/assets/<id>` endpoint with
+  `Accept: application/octet-stream` — same bytes, no redirect, measured 0.4s vs
+  10.9s. Keep the asset id in `_media_assets()` for this.
+- **`uploadLimitExceeded` is a *channel-level* cap, separate from the API's 100/day
+  `videos.insert` bucket.** It means the day is done, not that the code is broken.
+  Do not dispatch extra release runs to "verify" a fix: each dispatch spends this
+  budget and the next scheduled tick then uploads nothing. Treat it as rc 3.
+- **A transient 409/5xx on `playlistItems.insert` is retryable**; the video is
+  already uploaded, so losing the row costs a discovery slot. Retry 409/500/502/
+  503/504; let a 403 (quota) return at once.
+- **Reconcile the ledger to the channel, not the other way round.** After any
+  cleanup that deletes videos, retire those rows and record the survivors, or the
+  rail re-uploads them. `music938-1/scripts/reconcile_ledger.py` does this and is
+  idempotent.
