@@ -393,8 +393,8 @@
    "at": "2026-11-06T14:43:33+00:00",
    "public": true,
    "replaces": "-6RdLKwxykk",
-   "thumb_ok": true,
-   "playlist_ok": true
+   "thumb_ok": false,
+   "playlist_ok": false
   },
   {
    "slug": "03-khit-thueng-thoe-thuk-khuen",
@@ -404,8 +404,8 @@
    "at": "2026-11-06T14:43:51+00:00",
    "public": true,
    "replaces": "iLwzR8A_1uw",
-   "thumb_ok": true,
-   "playlist_ok": true
+   "thumb_ok": false,
+   "playlist_ok": false
   },
   {
    "slug": "04-saeng-chao-wan-mai",
@@ -415,8 +415,8 @@
    "at": "2026-11-06T14:44:01+00:00",
    "public": true,
    "replaces": "FsO5qmneeEQ",
-   "thumb_ok": true,
-   "playlist_ok": true
+   "thumb_ok": false,
+   "playlist_ok": false
   },
   {
    "slug": "04-saeng-chao-wan-mai",
@@ -426,8 +426,8 @@
    "at": "2026-11-06T14:44:19+00:00",
    "public": true,
    "replaces": "STQsMvhb0yk",
-   "thumb_ok": true,
-   "playlist_ok": true
+   "thumb_ok": false,
+   "playlist_ok": false
   },
   {
    "slug": "06-doen-khon-diao",
@@ -436,8 +436,8 @@
    "video_id": "A3jr9T148Q8",
    "at": "2026-11-06T18:39:59+00:00",
    "public": true,
-   "thumb_ok": true,
-   "playlist_ok": true
+   "thumb_ok": false,
+   "playlist_ok": false
   },
   {
    "slug": "hp-budget-01",
@@ -455,36 +455,6 @@
    "variant": "short-aff-hp-anc-02",
    "video_id": "y-Y2DNmopHk",
    "at": "2026-11-07T15:20:36+00:00",
-   "public": true,
-   "thumb_ok": true,
-   "playlist_ok": true
-  },
-  {
-   "slug": "06-doen-khon-diao",
-   "kind": "short",
-   "variant": "short-song-h1-06-doen-khon-diao",
-   "video_id": "a8l2L2LBdy4",
-   "at": "2026-11-08T09:40:10+00:00",
-   "public": true,
-   "thumb_ok": true,
-   "playlist_ok": true
-  },
-  {
-   "slug": "07-huachai-si-thao",
-   "kind": "short",
-   "variant": "short-song-h1-07-huachai-si-thao",
-   "video_id": "pFEZLvawdEY",
-   "at": "2026-11-08T09:41:08+00:00",
-   "public": true,
-   "thumb_ok": true,
-   "playlist_ok": true
-  },
-  {
-   "slug": "08-klap-ban-rao",
-   "kind": "short",
-   "variant": "short-song-h1-08-klap-ban-rao",
-   "video_id": "617KdPPgK60",
-   "at": "2026-11-08T09:42:03+00:00",
    "public": true,
    "thumb_ok": true,
    "playlist_ok": true
