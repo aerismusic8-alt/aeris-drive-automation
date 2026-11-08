@@ -49,6 +49,7 @@ AFF_DIR = ROOT / "library" / "affiliate"
 THUMBS = ROOT / "library" / "thumbs"
 AFF_PRODUCTS = ROOT / "work" / "affiliate-products.json"
 STATE = ROOT / "work" / "release-state.json"
+PRIORITY = ROOT / "work" / "release-priority.json"
 
 # The affiliate disclosure is mandatory on every card (COMPLIANCE.md).
 AFF_DISCLOSURE = "ลิงก์พันธมิตร Shopee — เราอาจได้ค่าคอมมิชชัน"
@@ -533,6 +534,55 @@ def add_to_playlist(playlist_id: str, video_id: str, ch: str) -> bool:
     return False
 
 
+def pinned_songs() -> list[str]:
+    """Songs K asked to publish next, in order (work/release-priority.json).
+
+    A normal release is a rotation: one chorus per song per round, so a new song
+    waits behind the whole catalogue. When K hands over one finished song and
+    says "post it now", that rotation would delay it days. The pin moves the
+    named song's items to the front of the *pending* queue only — it reorders,
+    it does not add or skip anything, so the cadence and the ledger are
+    untouched and the file can be emptied once the song is live.
+    """
+    try:
+        data = json.loads(PRIORITY.read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return []
+    songs = data.get("songs", data) if isinstance(data, dict) else data
+    return [s for s in songs if isinstance(s, str)]
+
+
+def _pin_front(todo: list[dict], pins: list[str]) -> list[dict]:
+    """Move the pinned songs' items to the front of the pending queue.
+
+    The rotation interleaves one Short per song per round, so a brand-new song
+    waits behind the whole catalogue; K's "post it now" needs it ahead of that.
+    The pin promotes the song's main release and its first Short, and leaves its
+    remaining Shorts in their rotation slots — promoting all of them would put
+    three takes of one song back to back, which the 2026-11-05 panel called a
+    repost. It only reorders; nothing is added or skipped.
+    """
+    if not pins:
+        return todo
+    rank = {s: i for i, s in enumerate(pins)}
+    front: list[dict] = []
+    rest: list[dict] = []
+    took_short: set[str] = set()
+    for it in todo:
+        s = it["slug"]
+        if s in rank:
+            if it["kind"] == "short" and s in took_short:
+                rest.append(it)
+                continue
+            if it["kind"] == "short":
+                took_short.add(s)
+            front.append(it)
+        else:
+            rest.append(it)
+    front.sort(key=lambda it: (rank[it["slug"]], 0 if it["kind"] == "song" else 1))
+    return front + rest
+
+
 def plan(days: int, shorts: bool = False, spread: float = 0,
          kind: str | None = None, slug: str | None = None) -> list[dict]:
     """Pair each built song with its karaoke into a dated release list.
@@ -599,6 +649,11 @@ def plan(days: int, shorts: bool = False, spread: float = 0,
         todo = [i for i in todo if i["kind"] == kind]
     if slug:
         todo = [i for i in todo if i["slug"] == slug]
+    # A pin is only live while the song's main release is still pending: once it
+    # is uploaded the file is inert, so the song's remaining Shorts fall back
+    # into their rotation slots instead of leading every day.
+    pending_songs = {i["slug"] for i in todo if i["kind"] == "song"}
+    todo = _pin_front(todo, [s for s in pinned_songs() if s in pending_songs])
     start = datetime.now(timezone.utc)
     for i, item in enumerate(todo):
         if spread:

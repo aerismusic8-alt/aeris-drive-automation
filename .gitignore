@@ -44,6 +44,10 @@ music938-1/work/*
 # record of what is already on Reels/TikTok, so it must survive a recycle.
 !music938-1/work/crosspost-queue.json
 !music938-1/work/crosspost-state.json
+# The release pin: songs K asked to publish next. The daily runner fetches `main`
+# and only a tracked file reaches it, so an ignored pin would never fire. The pin
+# is inert once the song's main release is live (see release.plan).
+!music938-1/work/release-priority.json
 # The playlist id per bucket. Without it a fresh clone would create a duplicate
 # playlist on the first run instead of adding to the one that already exists.
 !music938-1/work/playlist-state.json

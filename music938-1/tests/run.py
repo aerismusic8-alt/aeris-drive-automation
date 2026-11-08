@@ -436,6 +436,49 @@ def test_plan_rotates_songs() -> None:
               release.plan(0, kind="song", slug="no-such-song") == [])
 
 
+def test_priority_pin() -> None:
+    """A pinned song's release leads the plan, without breaking the rotation.
+
+    K hands over one finished song and says "post it now"; the normal rotation
+    would put it days behind the catalogue. The pin promotes that song's main
+    release and its first Short to the front, and leaves the rest of the queue in
+    order. Pin *only* reorders — it must not change the item count.
+    """
+    section("release priority pin")
+    import release
+
+    pins = release.pinned_songs()
+    base = release.plan(0)
+    if not pins:
+        print("  skip (no pinned song right now)")
+        return
+    pinned = pins[0]
+    first = base[0]
+    check("a pinned song leads the plan",
+          first["slug"] == pinned, f"head is {first['slug']}")
+    check("the pinned song's main release is first",
+          first["kind"] == "song", f"head kind is {first['kind']}")
+    check("the pinned song's first Short is second",
+          base[1]["slug"] == pinned and base[1]["kind"] == "short",
+          f"second is {base[1]['slug']}/{base[1]['kind']}")
+    shorts = [i["slug"] for i in base if i["kind"] == "short"]
+    consecutive = [a for a, b in zip(shorts, shorts[1:]) if a == b]
+    check("the pin does not put two same-song Shorts in a row",
+          not consecutive, f"repeats: {sorted(set(consecutive))}")
+
+    # The pin is a reorder, never an add or a drop: same items, same order
+    # otherwise. Compare against a plan built with the pin file hidden.
+    saved = release.PRIORITY
+    try:
+        release.PRIORITY = release.ROOT / "work" / "no-such-priority.json"
+        unpinned = release.plan(0)
+    finally:
+        release.PRIORITY = saved
+    check("the pin does not change how many items are planned",
+          len(base) == len(unpinned), f"{len(base)} vs {len(unpinned)}")
+    check("the pin does not change which items are planned",
+          sorted((i["slug"], i["kind"], i.get("variant", "")) for i in base)
+          == sorted((i["slug"], i["kind"], i.get("variant", "")) for i in unpinned))
 
 
 def test_affiliate_reserve() -> None:
@@ -3230,6 +3273,7 @@ def main() -> int:
     test_affiliate_short()
     test_affiliate_release()
     test_plan_rotates_songs()
+    test_priority_pin()
     test_affiliate_reserve()
     test_daily_release_saves_ledger_on_early_stop()
     test_batch_survives_a_missing_asset()
