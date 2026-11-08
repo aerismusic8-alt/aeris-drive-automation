@@ -1205,3 +1205,12 @@ true-instrumental karaoke mix, cover art, a 1920x1080 word-synced video.
   cleanup that deletes videos, retire those rows and record the survivors, or the
   rail re-uploads them. `music938-1/scripts/reconcile_ledger.py` does this and is
   idempotent.
+- **Several writers PUT the whole release ledger; the write must be
+  read-merge-write.** `fix_thumbnails`, `pending_replacements` and
+  `daily_release` each write `release-state.json` from the job's start-of-run
+  checkout, so a later step's PUT silently drops a row an earlier step just
+  added (2026-11-08: the repair step dropped songs 06/07/08 minutes after the
+  release step recorded them). `daily_release.merge_ledger_rows()` unions by
+  `video_id` (local wins on a shared id, remote keeps `retired_at` etc.);
+  every writer must go through `daily_release.write_ledger`. Same failure shape
+  as the rc-3 ledger loss: state written from a stale view.
