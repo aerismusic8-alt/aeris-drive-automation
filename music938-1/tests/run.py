@@ -2230,6 +2230,13 @@ def test_monetize_footer() -> None:
     # line sat at the very bottom of the description, past YouTube's "Show
     # more" fold. A description CTA must lead with the link, and the link must
     # be a product/search page, not the storefront root.
+    #
+    # 2026-11-08: the fold test passed but the goal did not move — the only ask
+    # above the fold sent the viewer off-platform to the Facebook Page, so the
+    # channel never asked for the one action that advances the 1,000-sub gate.
+    # The advisors (2/2, duck + pollinations) put the YouTube subscribe first;
+    # the Page and the product link follow. Order is the invariant, not one
+    # literal position.
     import release
     monetize.CACHE = None
     cta = monetize.cta("youtube")
@@ -2237,14 +2244,24 @@ def test_monetize_footer() -> None:
           per.get("youtube", "") and per["youtube"] in cta)
     check("cta asks for a follow", "กดติดตาม" in cta)
     page = json.loads((ROOT / "channel" / "monetization.json").read_text(encoding="utf-8")).get("facebook", "")
-    check("cta leads with the Page, not the product link",
-          page and page in cta and cta.index(page) < cta.index(per["youtube"]))
+    channel = json.loads((ROOT / "channel" / "monetization.json").read_text(encoding="utf-8")).get("youtube", "")
+    check("cta leads with the YouTube subscribe, not the Page",
+          channel and channel in cta and (not page or cta.index(channel) < cta.index(page)),
+          "subscribe must come first")
+    check("cta keeps the Page after the subscribe",
+          page and page in cta)
     _t, desc, _tg = release.describe("01-khon-di-thi-chak-pai", "song", "")
-    check("cta survives the description fold (within the first 200 chars)",
-          per.get("youtube", "") and desc.index(per["youtube"]) < 200,
-          f"link at {desc.index(per['youtube'])}")
-    check("the Page link is also above the fold",
-          page and desc.index(page) < 200, f"page at {desc.index(page)}" if page else "no page")
+    check("the subscribe ask survives the description fold (within the first 200 chars)",
+          channel and channel in desc and desc.index(channel) < 200,
+          f"subscribe at {desc.index(channel)}" if channel in desc else "no channel link")
+    check("the Page link follows the subscribe",
+          page and page in desc and (not channel or desc.index(page) > desc.index(channel)))
+    # The product link is no longer the lead CTA, but it must still sit high in
+    # the description — before the hashtag block — not buried under the socials
+    # footer as it was before 2026-11-03.
+    check("the product link still sits above the hashtags",
+          per.get("youtube", "") in desc and desc.index(per["youtube"]) < desc.index("#AERISMusic"),
+          f"product at {desc.index(per['youtube'])}")
     mint_src = (ROOT.parent / "ops" / "shopee_mint.py").read_text()
     check("mint tool exists for re-pointing the links",
           "custom_link" in mint_src)
@@ -2261,9 +2278,33 @@ def test_monetize_footer() -> None:
     check("refresh drops the old channel-only CTA",
           "กดติดตามช่องนะครับ" not in fixed)
     check("refresh lifts the cta above the fold",
-          fixed.index(per["youtube"]) < 160, f"{fixed.index(per['youtube'])}")
+          fixed.index(channel) < 160, f"{fixed.index(channel)}")
+    check("refresh keeps the subscribe ahead of the Page",
+          fixed.index(channel) < fixed.index(page),
+          f"sub {fixed.index(channel)} page {fixed.index(page)}")
     check("refresh is idempotent",
           monetize.refresh_description(fixed, "youtube") == fixed)
+
+    # A video live between 2026-11-05 and 2026-11-08 carries the Page-first
+    # block, not the old channel-only line. `refresh_description` must replace it
+    # with the subscribe-first block, exactly once, and stay idempotent — the
+    # Page and product lines are adjacent in the new block too, so an unguarded
+    # second pass would strip them and duplicate the subscribe ask.
+    pagefirst = (f"🎵 เพลงเก่า\n\nเพลงผ่อนคลาย\n\n"
+                 f"❤️ กดติดตามเพจ Facebook 👉 {page}\n"
+                 f"🛒 ของน่าซื้อ 👉 {per['youtube']}\n\n"
+                 f"#AERISMusic #Shorts")
+    migrated = monetize.refresh_description(pagefirst, "youtube")
+    check("refresh adds the subscribe to a Page-first description",
+          channel in migrated)
+    check("refresh puts the subscribe ahead of the Page",
+          migrated.index(channel) < migrated.index(page))
+    check("refresh does not duplicate the subscribe ask",
+          migrated.count("กดติดตามช่อง") == 1, f"{migrated.count('กดติดตามช่อง')}")
+    check("refresh does not duplicate the Page ask",
+          migrated.count("กดติดตามเพจ") == 1, f"{migrated.count('กดติดตามเพจ')}")
+    check("refresh of a Page-first description is idempotent",
+          monetize.refresh_description(migrated, "youtube") == migrated)
     monetize.CACHE = None
 
 

@@ -53,15 +53,24 @@ def link(surface: str = "") -> str:
 def cta(surface: str = "youtube") -> str:
     """The above-the-fold call to action for a description.
 
-    Two actions, in priority order. First the Page: 861 views / 28 days with one
-    follower meant reach was never the problem, so the fold has to ask for the
-    follow and hand over the link directly. Then the product link, which used to
-    be the whole CTA and earned nothing from the bottom of the description.
+    Three actions, in priority order. First the YouTube subscribe: the stated
+    gate is 1,000 *YouTube* subscribers, but until 2026-11-08 the only ask above
+    the fold sent the viewer off-platform to the Facebook Page, so the channel
+    never asked for the one action that advances the goal. A subscribe is one
+    tap, in-platform, and free. Then the Page, which still matters for the
+    commission offer. Then the product link, which used to be the whole CTA and
+    earned nothing from the bottom of the description.
+
     Returns "" when nothing is configured, so a description degrades cleanly.
     """
-    page = config().get("facebook", "")
+    c = config()
+    yt = c.get("youtube", "")
+    page = c.get("facebook", "")
     shopee = link(surface)
     lines = []
+    if yt:
+        sub = yt if "sub_confirmation" in yt else yt + "?sub_confirmation=1"
+        lines.append(f"🔔 กดติดตามช่อง (Subscribe) 👉 {sub}")
     if page:
         lines.append(f"❤️ กดติดตามเพจ Facebook 👉 {page}")
     if shopee:
@@ -75,6 +84,12 @@ _S_SHOPEE = re.compile(r"https://s\.shopee\.co\.th/\w+")
 # and buried the Page, so `refresh_description` replaces it rather than leaving a
 # description with two different follow asks.
 _OLD_CTA = re.compile(r"^🎧 ฟังเพลิน ๆ แล้วกดติดตามช่องนะครับ · ของน่าซื้อ 👉 https://\S+$", re.M)
+
+# The Page-first CTA block (2026-11-05..2026-11-08): a Page follow and the
+# product link, with no YouTube subscribe ask. `refresh_description` drops it so
+# the subscribe-first block replaces it instead of leaving two follow asks.
+_OLD_PAGE_CTA = re.compile(
+    r"^❤️ กดติดตามเพจ Facebook 👉 \S+\n🛒 ของน่าซื้อ 👉 \S+\n?", re.M)
 
 
 def refresh_description(desc: str, surface: str = "youtube",
@@ -94,9 +109,18 @@ def refresh_description(desc: str, surface: str = "youtube",
     """
     shopee = link(surface)
     line = cta(surface)
+    sub_line = line.splitlines()[0] if line else ""
     if shopee:
         desc = _S_SHOPEE.sub(shopee, desc)
     desc = _OLD_CTA.sub("", desc)
+    # The Page-first block carries the same Page and product links as the new
+    # block, so it must go or the description would ask twice and still never
+    # ask for the YouTube subscribe. Only strip it while the subscribe ask is
+    # absent: the Page and product lines are adjacent in the *new* block too, so
+    # an unguarded second pass would strip them and re-insert the block, leaving
+    # a duplicate subscribe line.
+    if sub_line and sub_line not in desc:
+        desc = _OLD_PAGE_CTA.sub("", desc)
     desc = re.sub(r"\n{3,}", "\n\n", desc)
     if with_offer:
         offer = commission_block().strip()
