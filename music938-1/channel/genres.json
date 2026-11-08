@@ -117,6 +117,15 @@
       "style": "country folk, acoustic guitar and slide, walking bass, warm harmonized lead vocal singing in Thai",
       "hashtags": ["country", "เพลงคันทรี", "เพลงเล่าเรื่อง"],
       "planned": 3
+    },
+    {
+      "id": "symphonic",
+      "name_th": "ซิมโฟนิกร็อก",
+      "name_en": "Symphonic Rock",
+      "tagline": "ซิมโฟนิกร็อก อลังการ ดุดัน ทรงพลัง",
+      "style": "epic symphonic rock, rock orchestra, aggressive distorted electric guitar riff, soaring orchestral strings, dramatic brass fanfare, powerful choir, driving double-kick drums, theatrical and dark, powerful gritty lead vocal singing in Thai",
+      "hashtags": ["เพลงร็อก", "ซิมโฟนิกร็อก", "RockOrchestra"],
+      "planned": 3
     }
   ]
 }

@@ -399,6 +399,13 @@
       "instruments": "slide guitar lead, acoustic guitar, soft bass, waltz kit",
       "groove": "country waltz in three, gentle sway",
       "mix": "warm waltz mix, slide forward, vocal close"
+    },
+    {
+      "id": "symphonic-orchestra-shred",
+      "genre": "symphonic",
+      "instruments": "lead distorted electric guitar trading with a full string section, brass stabs, choir pad, timpani rolls, double-kick kit",
+      "groove": "march-like 120 bpm rock groove, half-time verse lifting to a driving double-kick chorus",
+      "mix": "wide cinematic orchestral depth, guitars and strings in the same space, powerful lead vocal sitting above the wall of sound"
     }
   ]
 }
