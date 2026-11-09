@@ -1277,3 +1277,34 @@ Answer read straight from YouTube's own pages (Tavily was out of quota):
   `music938-1/channel/COVER-LICENSE-YOUTUBE-POLICY-2026-11-09.md`.
 - **Tavily search is out of quota** in this account; read policy pages directly
   with `curl -sL -A Mozilla/5.0` and extract the `<article>` block.
+
+## Shopee affiliate funnel — durable facts (2026-11-09)
+- **The $500 goal rides on Shopee Affiliate** (the only surface that pays with
+  no follower gate). TikTok Creator Rewards has no Thailand; TikTok Shop
+  Affiliate needs 1,000 followers; FB monetization is invite-only; YouTube needs
+  1,000 subs + 4,000 hrs. So every other number is a means to that end.
+- **The funnel was 0 clicks for a real reason, not bad luck:** the compilation —
+  the channel's most-watched video (268 views vs a 24 median) and the only
+  long-form one whose description is clickable and above the fold —
+  `compilation_description()` wrote **no subscribe ask and no Shopee link at
+  all**. A Short's description is below the fold and unclickable in-feed, so the
+  cards that *did* carry the link could not be clicked. Fixed 2026-11-09.
+- **Fix shape:** `compile_album.compilation_description()` now inserts
+  `monetize.cta("youtube")` (subscribe + Page + Shopee) above the chapter list,
+  wrapped in try/except so a description never breaks. `scripts/fix_compilation_cta.py`
+  repairs the live video in place, idempotent (`_insert_cta` returns the input
+  untouched when the link is present), backs up to `work/description-backup.json`.
+  Wired into `ax-music-release.yml` early, on the fresh quota pool, next to the
+  thumbnail repair.
+- **Advisor panel split, and the tie-break:** duck said fix the existing top video
+  first (c); pollinations said build a long-form buying guide (a). Chose (c)
+  first: free, in-repo, reversible, and it produces the fit-vs-reach data (a)
+  would need. (a) is the follow-up if (c) earns clicks but no orders.
+- **`monetize.link()` only attributes with the long `s.shopee.co.th/...?sub_id=`
+  links.** The short `th.shp.ee/...` form drops `sub_id` (verified against the
+  live redirect), so per-surface attribution silently fails with it.
+- **YouTube Data API quota is per-project, resets midnight Pacific.** A release
+  batch + thumbnail repairs spend the shared 10,000 units, then `videos.update`
+  and even `channels.list mine=true` return 403 `quotaExceeded` (not a scope or
+  token problem — check the error body before debugging auth). Repairs that need
+  quota go into `ax-music-release.yml`, which runs at 08:05 UTC on the fresh pool.

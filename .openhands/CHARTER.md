@@ -182,6 +182,19 @@ four jobs above — nothing else appears here.
    rail pushes the click count to K's phone. Shopee's dashboard blocks a fresh
    automated browser with a captcha, so a scheduled read falls back to the last
    desktop reading (labelled with its date) — the desktop path is the only live one.
+   **2026-11-09 — the funnel had 0 clicks, root-caused and fixed.** The compilation
+   (the most-watched video, the only long-form one whose description is clickable
+   and above the fold) carried *no* subscribe ask and *no* Shopee link:
+   `compilation_description()` never added one. Advisor panel (duck + pollinations,
+   quorum PASS) chose "fix the existing top video first" over building a new
+   long-form guide — free, reversible, and it tests audience-product *fit* before
+   spending effort on more cards. Shipped: the CTA is now in
+   `compilation_description()` (self-heals every future album) plus
+   `scripts/fix_compilation_cta.py` to repair the already-live video in place
+   (idempotent), wired early into `ax-music-release.yml` on the fresh quota pool.
+   **Next: read the Shopee click count after ~7 days.** Clicks-but-no-orders → the
+   product/offer is the problem (build the dedicated buying guide, pollinations'
+   option a). Still zero clicks → reach, not the CTA.
 5. **Measure the four.** `aeris938-2/scripts/report.py` → `growth-report.md`.
    YouTube via API; FB/TikTok/Shopee via the desktop dashboards.
 
