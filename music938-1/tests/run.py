@@ -2152,8 +2152,8 @@ def test_merge_queue_keeps_the_backlog() -> None:
             ids = [it["id"] for it in got]
             check("the old backlog item is still there",
                   "tiktok:short-song-x" in ids)
-            check("the new item was appended",
-                  ids[-1] == "tiktok:short-karaoke-x")
+            check("the new item was added",
+                  "tiktok:short-karaoke-x" in ids)
             check("re-merging the same list adds nothing",
                   crosspost.merge_queue(fresh) == 0)
     finally:

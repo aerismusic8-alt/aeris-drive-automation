@@ -60,6 +60,12 @@ SURREAL = ROOT / "library" / "surreal"
 MOODS = ROOT / "library" / "moods"
 COVERS = ROOT / "library" / "covers"
 QUEUE = WORK / "crosspost-queue.json"
+
+# How far apart freshly merged items are spread through the backlog. At the
+# per-surface cadence (~3-4 posts/day) one item every 8 positions reaches the
+# first new clip in about a day, so a newly rendered lane is live now rather
+# than weeks out; see `merge_queue`.
+NEW_FORMAT_EVERY = 8
 STATE = WORK / "crosspost-state.json"
 
 # The upload entry points. Kept here so a UI change is a one-line fix.
@@ -1103,8 +1109,13 @@ def merge_queue(fresh: list[dict]) -> int:
 
     A plain rebuild enumerates `library/shorts/` and replaces the committed
     backlog, so new karaoke clips would silently drop the 83 pending posts. This
-    appends only genuinely new (platform, video) pairs and never removes an item,
-    so the backlog survives and the new format joins the end of the rotation.
+    adds only genuinely new (platform, video) pairs and never removes an item.
+
+    The new items are *spread through* the backlog, not appended to it. Appending
+    put a fresh format behind the whole pending queue, which at the post cadence
+    is weeks away — the same trap `interleave` was written to fix for the product
+    cards. Folding them in every `NEW_FORMAT_EVERY` positions reaches the first
+    one in about a day, so a newly rendered lane is live now, not next month.
     Returns the number of items added.
     """
     if not QUEUE.exists():
@@ -1119,7 +1130,8 @@ def merge_queue(fresh: list[dict]) -> int:
     seen = {it["id"] for it in cur}
     added = [it for it in fresh if it["id"] not in seen]
     if added:
-        QUEUE.write_text(json.dumps(cur + added, ensure_ascii=False, indent=2) + "\n",
+        merged = interleave(cur, added, every=NEW_FORMAT_EVERY, chunk=1)
+        QUEUE.write_text(json.dumps(merged, ensure_ascii=False, indent=2) + "\n",
                          encoding="utf-8")
     return len(added)
 
