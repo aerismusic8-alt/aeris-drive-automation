@@ -195,7 +195,7 @@ def build_midi(mood: str, *, bars: int, path: Path) -> dict:
 
     # A motif is a short shape of scale degrees, phrased over two bars; it is
     # transposed to each chord so the line follows the harmony instead of
-    # sitting on one scale run (the "howl" the drone comment warns about).
+    # sitting on one scale run (which would read as a drone).
     motif = [(0, 0.0, 1.0), (2, 1.0, 0.5), (1, 1.5, 0.5),
              (3, 2.0, 1.0), (2, 3.0, 1.0)]
 
