@@ -168,10 +168,26 @@ def compilation_description(name: str, slugs: list[str],
                             use_case: str = "") -> str:
     """Description with the chapter list, which is what enables song skipping."""
     lead = f"🎧 {use_case}\n\n" if use_case else ""
+    # The compilation is the channel's most-watched video (268 views vs a 24
+    # median, 2026-11-09) yet its description carried no subscribe or affiliate
+    # ask at all — the only revenue surface that pays without a follower gate is
+    # Shopee Affiliate, and the card Shorts that carry it are below the fold and
+    # unclickable in-feed. The advisor panel (2026-11-09, duck+pollinations) put
+    # the CTA on the existing top video first, because it is free, fast and tests
+    # whether the bottleneck is audience-product *fit* rather than card count.
+    # `monetize.cta` leads with the subscribe (the actual 1,000-sub gate) then
+    # the Shopee link; it degrades to "" so a description never breaks.
+    try:
+        import monetize
+        cta = monetize.cta("youtube")
+    except Exception:
+        cta = ""
+    cta_block = f"{cta}\n\n" if cta else ""
     return (
         f"🎵 {name} — รวม {len(slugs)} เพลงไทย\n\n"
         f"{lead}"
         f"🤖 AERIS Music — ค่ายเพลง AI สร้างเพลงและเสียงร้องด้วย AI\n\n"
+        f"{cta_block}"
         f"👉 กดเลือกเพลงที่อยากฟังได้จากรายการด้านล่าง\n\n"
         f"⏱️ รายการเพลง\n{build_chapters(slugs)}\n\n"
         f"🎧 ฟังเพลิน ๆ ได้ทั้งวัน ไม่ต้องกดเปลี่ยน\n"

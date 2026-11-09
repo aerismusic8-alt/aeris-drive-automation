@@ -75,6 +75,22 @@ jobs:
           set -euo pipefail
           cd music938-1 && python3 scripts/fix_thumbnails.py --ch ch3 || true
 
+      # The compilation is the most-watched video and the only long-form one whose
+      # description is clickable and above the fold, yet it shipped with no
+      # subscribe and no Shopee ask at all (found 2026-11-09: the $500 funnel had
+      # 0 clicks). This inserts the CTA when it is missing and is idempotent, so
+      # it heals the live video once and then does nothing. Runs early, like the
+      # thumbnail repair, to take the fresh quota pool.
+      - name: Repair the compilation's missing revenue ask
+        env:
+          YT_CLIENT_ID: ${{ secrets.YT_CLIENT_ID }}
+          YT_CLIENT_SECRET: ${{ secrets.YT_CLIENT_SECRET }}
+          YT_CH3_REFRESH_TOKEN: ${{ secrets.YT_CH3_REFRESH_TOKEN }}
+          AX_GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          cd music938-1 && python3 scripts/fix_compilation_cta.py --apply || true
+
       - name: Fix the wrong-render backlog first
         env:
           YT_CLIENT_ID: ${{ secrets.YT_CLIENT_ID }}

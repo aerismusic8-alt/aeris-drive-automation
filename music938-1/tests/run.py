@@ -1236,12 +1236,55 @@ def test_compilation() -> None:
     desc = compile_album.compilation_description(
         "รวมเพลงไทยเพื่อชีวิต", ["01-khon-di-thi-chak-pai"])
     check("description carries a 00:00 chapter", "\n00:00 " in desc, desc[:50])
+    # The compilation is the most-watched video, so its description must carry
+    # the revenue ask. Before 2026-11-09 it had none, which is where the 0-click
+    # affiliate funnel went wrong. The ask leads with the subscribe (the 1,000-sub
+    # gate) and carries the Shopee link.
+    check("description carries the subscribe ask",
+          "sub_confirmation=1" in desc, desc[:120])
+    check("description carries the Shopee link", "shopee" in desc.lower(),
+          desc[:120])
     # render() used to rewrite the description as a bare tracklist, which
     # silently dropped the timestamps the title promises. It must keep chapters.
     render_body = (ROOT / "scripts" / "compile_album.py").read_text().split(
         "def render(", 1)[1].split("\ndef ", 1)[0]
     check("render keeps the chaptered description",
           "compilation_description" in render_body)
+
+
+def test_compilation_cta_repair() -> None:
+    """The live compilation's missing revenue ask must be repairable, safely.
+
+    The compilation is the channel's most-watched video and the only long-form
+    one whose description is clickable in-feed, but it shipped with no subscribe
+    and no Shopee ask (found 2026-11-09, $500 funnel at 0 clicks). The repair
+    inserts the CTA above the chapter list without disturbing the timestamps the
+    `(เลือกเพลงฟังได้)` title promises, and it must be idempotent so the daily
+    workflow step is a no-op once the video is healed.
+    """
+    section("compilation CTA repair")
+    import importlib.util
+    spec = importlib.util.spec_from_file_location(
+        "fix_cta", ROOT / "scripts" / "fix_compilation_cta.py")
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    bare = ("🎵 รวมเพลงไทย — รวม 16 เพลงไทย\n\n"
+            "🤖 AERIS Music — ค่ายเพลง AI\n\n"
+            "👉 กดเลือกเพลงที่อยากฟังได้จากรายการด้านล่าง\n\n"
+            "⏱️ รายการเพลง\n00:00 01. คนดีที่จากไป\n03:48 02. รักที่ไม่มีวันจบ\n")
+    check("a description without the link is flagged", mod._needs_cta(bare), "bare")
+    import monetize
+    healed = mod._insert_cta(bare, monetize.cta("youtube"))
+    check("repair adds the Shopee link", "shopee" in healed.lower(), healed[:80])
+    check("repair adds the subscribe ask",
+          "sub_confirmation=1" in healed, healed[:80])
+    check("repair keeps the 00:00 chapter", "\n00:00 " in healed, healed[:200])
+    check("repair is idempotent", not mod._needs_cta(healed), "healed")
+    # A second insert must not duplicate the block.
+    twice = mod._insert_cta(healed, monetize.cta("youtube"))
+    check("repair does not double-insert",
+          twice.lower().count("shopee") == healed.lower().count("shopee"),
+          str(twice.lower().count("shopee")))
 
 
 def test_themed_compilations() -> None:
@@ -3377,6 +3420,7 @@ def main() -> int:
     test_thumbnail_repair()
     test_titles()
     test_compilation()
+    test_compilation_cta_repair()
     test_themed_compilations()
     test_song_title_search_intent()
     test_competitor_scanner_parsers()
