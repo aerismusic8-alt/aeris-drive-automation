@@ -873,6 +873,14 @@ def test_follow_end_card() -> None:
     check("there is a follow ask", bool(release.FOLLOW_ASK.strip()))
     check("the ask is Thai", has_thai(release.FOLLOW_ASK))
     check("the ask names the channel", "AERIS" in release.FOLLOW_ASK)
+    # The card also carries the reason to return. Both advisors on the 2026-11-09
+    # panel put "a clear reason to come back" first among the things that turn a
+    # first-time viewer into a follower, so the ask is not a bare command.
+    check("the card promises what is next", bool(release.FOLLOW_PROMISE.strip()))
+    check("the promise is Thai", has_thai(release.FOLLOW_PROMISE))
+    check("the promise has no emoji (burned font cannot render one)",
+          not any(ord(c) > 0x2000 and not (0x0E00 <= ord(c) <= 0x0E7F)
+                  for c in release.FOLLOW_PROMISE))
 
     meta, lines = make_short.load_lyrics("01-khon-di-thi-chak-pai")
     length = 58.0
@@ -888,6 +896,11 @@ def test_follow_end_card() -> None:
         check("the ask lands in the last seconds", secs >= length - 3.5,
               f"{start_s} of {length:.1f}s")
         check("the ask carries the copy", release.FOLLOW_ASK in follow[0])
+    promise = [ln for ln in ass.splitlines() if "FollowSub,,0,0,0,," in ln]
+    check("the promise line is drawn with the ask", len(promise) == 1)
+    if promise:
+        check("the promise carries the copy",
+              release.FOLLOW_PROMISE in promise[0])
     check("the ask is held briefly, not the whole clip",
           make_short.FOLLOW_CARD_SECONDS <= 3.0,
           f"{make_short.FOLLOW_CARD_SECONDS}")

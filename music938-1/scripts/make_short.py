@@ -191,6 +191,7 @@ Style: Cap,{FONT},38,&H00FFFFFF,&H00FFFFFF,{OUTLINE},&H80000000,1,0,0,0,100,100,
 Style: Brand,{FONT},40,&H00DDFFFF,&H00DDFFFF,{OUTLINE},&H80000000,1,0,0,0,100,100,1,0,1,4,2,7,44,44,40,1
 Style: Title,{FONT},64,&H00FFFFFF,&H00FFFFFF,{OUTLINE},&H80000000,1,0,0,0,100,100,1,0,1,5,2,7,44,44,34,1
 Style: Follow,{FONT},72,&H0020E0FF,&H0020E0FF,{OUTLINE},&H00000000,1,0,0,0,100,100,0.5,0,1,8,4,2,60,60,260,1
+Style: FollowSub,{FONT},54,&H00E8E8E8,&H00E8E8E8,{OUTLINE},&H00000000,0,0,0,0,100,100,0.5,0,1,6,3,2,60,60,190,1
 
 [Events]
 Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
@@ -250,6 +251,11 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
         events.append(
             f"Dialogue: 0,{_ts(start_at)},{_ts(start_at + hold)},Follow,,0,0,0,,"
             f"{{\\fad(200,300)}}{_escape(release.FOLLOW_ASK)}")
+        # The reason to return, under the ask. Both advisors put this first, and
+        # the two lines share one card so the prompt is not just a bare command.
+        events.append(
+            f"Dialogue: 0,{_ts(start_at)},{_ts(start_at + hold)},FollowSub,,0,0,0,,"
+            f"{{\\fad(200,300)}}{_escape(release.FOLLOW_PROMISE)}")
     return head + "\n".join(events) + "\n"
 
 

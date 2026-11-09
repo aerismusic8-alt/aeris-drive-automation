@@ -165,6 +165,11 @@ LABEL = "🤖 AERIS Music — ค่ายเพลง AI สร้างเพ�
 # (duck + pollinations, quorum PASS) warned that a persistent button clutters the
 # song and can cost retention, and retention is reach.
 FOLLOW_ASK = "กดติดตาม AERIS Music"
+# The second line of the card. Both advisors put a *reason to return* first among
+# the things that turn a first-time viewer into a follower, and the channel does
+# publish daily — so the ask names the reward instead of asking into the void.
+# It also stays true: the daily release rail posts a new song every day.
+FOLLOW_PROMISE = "เพลงใหม่ทุกวัน"
 
 
 def parse_lyrics(slug: str) -> dict:
