@@ -41,6 +41,11 @@ def group_of(name: str) -> str | None:
     # not shorts/, so the surreal lane and the song rail never cross.
     if name.startswith("surreal-") and name.endswith(".mp4"):
         return "surreal"
+    # The six real-instrument mood clips. Without this the clips never come back
+    # on a fresh pod, so `make_mood_short --once` re-renders all six every run
+    # and the crosspost rail has no file to post.
+    if name.startswith("mood-") and name.endswith(".mp4"):
+        return "moods"
     if name.startswith("cover-") and name.endswith(".jpg"):
         return "covers"
     if name.startswith("thumb-") and name.endswith(".png"):

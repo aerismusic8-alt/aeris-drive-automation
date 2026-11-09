@@ -64,6 +64,13 @@ jobs:
         working-directory: music938-1
         env:
           AX_GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        # A rejected lyric draft exits 1, which used to skip every step below —
+        # the mood render, the publish and the queue merge all live *after* this
+        # one, so a bad draft also froze the mood clips (found 2026-11-09: two
+        # produce runs failed and the approved clips never reached the release).
+        # The draft is raw material, not a gate: let it fail without taking the
+        # rest of the run with it.
+        continue-on-error: true
         run: |
           set -euo pipefail
           # --pack-only rebuilds the share catalog from the release union; the
@@ -77,6 +84,16 @@ jobs:
       # wasted runner time, so `--once` records what it built in a committed state
       # file and only fills the gaps. Bump STATE_VERSION in the script (or delete
       # the state file) to force a re-render after a renderer change.
+      - name: Pull the mood clips already on the release
+        # `--once` keys off the clip being on disk, and a fresh checkout has an
+        # empty library/, so without this pull every run re-renders all six and
+        # re-uploads them. With it, `--once` skips and the run stays cheap.
+        env:
+          AX_GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          python3 music938-1/scripts/pull_media.py --only moods
+
       - name: Render the mood clips (once)
         working-directory: music938-1
         run: |

@@ -102,9 +102,11 @@ def existing_assets(rid: int, tok: str) -> dict[str, int]:
     return out
 
 
-def wanted() -> list[Path]:
+def wanted(only: set[str] | None = None) -> list[Path]:
     files: list[Path] = []
     for sub, pat in SOURCES:
+        if only and sub not in only:
+            continue
         files.extend(sorted((LIB / sub).glob(pat)))
     return files
 
@@ -112,13 +114,16 @@ def wanted() -> list[Path]:
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument("--release", default="media-938")
+    ap.add_argument("--only", help="comma-separated source dirs to upload "
+                                   "(e.g. moods) — default is every source")
     ap.add_argument("--token-file", help="file holding the GitHub token")
     ap.add_argument("--dry-run", action="store_true")
     args = ap.parse_args()
     if args.token_file:
         os.environ["AX_GH_TOKEN_FILE"] = args.token_file
 
-    files = wanted()
+    only = {s.strip() for s in args.only.split(",")} if args.only else None
+    files = wanted(only)
     total = sum(f.stat().st_size for f in files)
     print(f"{len(files)} media files, {total / 1e6:.1f} MB")
     if args.dry_run:
