@@ -399,6 +399,39 @@ def test_affiliate_release() -> None:
     check("affiliate description is Thai", has_thai(d))
     check("affiliate tags are present", bool(tags))
 
+
+def test_affiliate_render_rail() -> None:
+    """The product cards must have a *producer*, not only consumers.
+
+    `release.py` and `crosspost.py` both read `library/affiliate/short-aff-*.mp4`,
+    but nothing ever rendered those clips, so the directory stayed empty and the
+    funnel published nothing — the consumers were wired to a producer that did
+    not exist. This pins the rail that closes the loop: a workflow that renders
+    the cards and pushes them to the media store before the posting rails run.
+    """
+    section("affiliate render rail")
+    wf = (ROOT.parent / ".github" / "workflows" / "ax-music-affiliate-render.yml")
+    check("the affiliate render rail exists", wf.exists(), str(wf))
+    if not wf.exists():
+        return
+    src = wf.read_text(encoding="utf-8")
+    check("the rail renders the cards", "make_affiliate_short.py --all" in src)
+    check("the rail pulls the song masters", "pull_media.py --only songs" in src)
+    check("the rail pushes the clips to the media store",
+          "publish_media.py" in src)
+    check("the rail feeds the crosspost queue",
+          "crosspost.py --merge-queue" in src)
+
+    # The consumers point at the same directory the producer writes, or the loop
+    # is still broken in a way a passing render would not reveal.
+    import release
+    import crosspost
+    check("release reads the affiliate clips", release.AFF_DIR.name == "affiliate",
+          str(release.AFF_DIR))
+    check("crosspost reads the affiliate clips",
+          crosspost.AFF_SHORTS.name == "affiliate", str(crosspost.AFF_SHORTS))
+
+
 def test_plan_rotates_songs() -> None:
     """Consecutive Shorts must come from *different* songs.
 
@@ -3463,6 +3496,7 @@ def main() -> int:
     test_playlist_patch_is_idempotent()
     test_affiliate_short()
     test_affiliate_release()
+    test_affiliate_render_rail()
     test_plan_rotates_songs()
     test_priority_pin()
     test_affiliate_reserve()

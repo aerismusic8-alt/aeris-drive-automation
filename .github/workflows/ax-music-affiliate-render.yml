@@ -1,0 +1,92 @@
+name: AX Music Affiliate Render
+
+# Renders the Shopee product-card Shorts so the affiliate funnel finally has
+# content whose *intent* is a purchase. Every clip on the channel so far is a
+# song, and a song gives nobody a reason to buy, so the reported clicks were 0.
+#
+# The cards are already designed in `music938-1/work/affiliate-products.json`,
+# and both consumers already read `library/affiliate/short-aff-*.mp4`:
+#   * `release.py` plans them for YouTube (AFFILIATE_RESERVE holds 2 slots/day)
+#   * `crosspost.py` captions them per surface and posts to Facebook + TikTok
+# but nothing rendered the clips, so that directory was always empty and the
+# funnel never had anything to publish. This rail is that missing step.
+#
+# It renders from media the `media-938` release already holds (song masters +
+# covers) and pushes the clips back, so it needs no build pod and no login. The
+# safety gate lives in `make_affiliate_short.py`: a card that carries a banned
+# claim (รวย/กำไร/100%/…) or has no per-surface affiliate link is refused, not
+# rendered, so a rule-breaking or dead-link clip cannot reach the channel.
+#
+# It runs before the karaoke render and the crosspost so a fresh card can enter
+# that day's queue.
+
+on:
+  schedule:
+    # 05:30 UTC — before the karaoke render (06:30) and the crosspost (07:00),
+    # clear of the release rail's 09:00 upload window.
+    - cron: '30 5 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: ax-music-affiliate-render
+  cancel-in-progress: false
+
+jobs:
+  render:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install ffmpeg
+        run: |
+          set -euo pipefail
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq ffmpeg
+
+      - name: Pull the song masters and covers
+        env:
+          AX_GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          python3 music938-1/scripts/pull_media.py --only songs
+          python3 music938-1/scripts/pull_media.py --only covers
+
+      - name: Render the product cards (safety gate inside)
+        run: |
+          set -euo pipefail
+          cd music938-1
+          # A card that fails the gate is refused, not forced; the loop keeps
+          # going so one bad card cannot stop the batch.
+          python3 scripts/make_affiliate_short.py --all
+
+      - name: Push the new clips back to the media store
+        env:
+          AX_GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          python3 music938-1/scripts/publish_media.py
+
+      - name: Add the new clips to the crosspost queue
+        run: |
+          set -euo pipefail
+          # --merge-queue appends only new (platform, video) ids, so the pending
+          # backlog is never dropped when a new format joins the rotation.
+          python3 music938-1/scripts/crosspost.py --merge-queue
+
+      - name: Commit the queue
+        run: |
+          set -euo pipefail
+          git config user.name  "ax-music-affiliate"
+          git config user.email "ax-music-affiliate@users.noreply.github.com"
+          git add music938-1/work/crosspost-queue.json
+          if git diff --cached --quiet; then
+            echo "no change to record"
+            exit 0
+          fi
+          git commit -m "data(music): affiliate render $(date -u +%Y-%m-%dT%H:%MZ)"
+          git pull --rebase --autostash origin "${GITHUB_REF_NAME}"
+          git push
