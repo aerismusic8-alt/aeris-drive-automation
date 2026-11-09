@@ -96,6 +96,12 @@ sessions: `git remote set-url origin https://github.com/OWNER/REPO.git`.
 `AKATH_CORE/CANONICAL_TASK_REGISTRY.json` and must not be closed as ordinary
 tasks: a game anyone can enter and play, and real revenue from it.
 
+**Parked 2026-11-09.** K set the focus to the four aeris938-2 jobs (Facebook,
+TikTok, YouTube `@aerismusicth`, Shopee Affiliate); the Roblox goals are `PARKED`,
+not closed — `AKATH_CORE/park_roblox_goals.py` sets that state and the registry's
+`focus` block names the four jobs. Resume by setting the status back to
+`IN_PROGRESS`. The runtime only claims `PENDING` tasks, so a parked goal is inert.
+
 The shape that matters:
 
 - `roblox/src/shared/` is pure Luau with no Roblox globals, so it runs under

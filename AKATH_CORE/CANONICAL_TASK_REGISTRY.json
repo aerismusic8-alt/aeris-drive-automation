@@ -1002,7 +1002,7 @@
       "title": "Ship a Roblox game anyone can enter and play",
       "capability": "product",
       "action": "roblox_game_playable_by_all",
-      "status": "IN_PROGRESS",
+      "status": "PARKED",
       "created_at": "2026-10-18T00:00:00.000Z",
       "deadline_at": null,
       "milestones": [
@@ -1067,7 +1067,9 @@
       "started_at": "2026-10-18T00:00:00.000Z",
       "attempt": 2,
       "result": null,
-      "verified_at": null
+      "verified_at": null,
+      "parked_at": "2026-11-09T03:54:23Z",
+      "parked_reason": "Parked 2026-11-09 by K's instruction: focus the four aeris938-2 jobs (Facebook, TikTok, YouTube @aerismusicth, Shopee Affiliate) and set the rest aside for now. This is a standing goal, so it is parked, not closed — all evidence and history are kept, and it resumes by setting status back to IN_PROGRESS."
     },
     {
       "task_id": "AKATH-ROBLOX-GOAL-REVENUE-001",
@@ -1075,7 +1077,7 @@
       "title": "Generate real revenue from the Roblox game",
       "capability": "product",
       "action": "roblox_game_revenue",
-      "status": "IN_PROGRESS",
+      "status": "PARKED",
       "created_at": "2026-10-18T00:00:00.000Z",
       "deadline_at": null,
       "milestones": [
@@ -1157,7 +1159,9 @@
       "started_at": "2026-10-18T00:00:00.000Z",
       "attempt": 2,
       "result": null,
-      "verified_at": null
+      "verified_at": null,
+      "parked_at": "2026-11-09T03:54:23Z",
+      "parked_reason": "Parked 2026-11-09 by K's instruction: focus the four aeris938-2 jobs (Facebook, TikTok, YouTube @aerismusicth, Shopee Affiliate) and set the rest aside for now. This is a standing goal, so it is parked, not closed — all evidence and history are kept, and it resumes by setting status back to IN_PROGRESS."
     },
     {
       "task_id": "AKATH-ROBLOX-GOAL-REACH-002",
@@ -1165,7 +1169,7 @@
       "title": "Get real players into the game (distribution and reach)",
       "capability": "product",
       "action": "roblox_game_distribution",
-      "status": "IN_PROGRESS",
+      "status": "PARKED",
       "created_at": "2026-10-28T00:00:00.000Z",
       "deadline_at": null,
       "milestones": [
@@ -1209,7 +1213,9 @@
       "started_at": "2026-10-28T00:00:00.000Z",
       "attempt": 1,
       "result": null,
-      "verified_at": null
+      "verified_at": null,
+      "parked_at": "2026-11-09T03:54:23Z",
+      "parked_reason": "Parked 2026-11-09 by K's instruction: focus the four aeris938-2 jobs (Facebook, TikTok, YouTube @aerismusicth, Shopee Affiliate) and set the rest aside for now. This is a standing goal, so it is parked, not closed — all evidence and history are kept, and it resumes by setting status back to IN_PROGRESS."
     },
     {
       "task_id": "AKATH-ROBLOX-MONITOR-HOURLY-003",
@@ -1217,7 +1223,7 @@
       "title": "Sample the live state of every Roblox experience hourly",
       "capability": "ops",
       "action": "roblox_live_state_hourly",
-      "status": "IN_PROGRESS",
+      "status": "PARKED",
       "created_at": "2026-10-28T00:00:00.000Z",
       "deadline_at": null,
       "milestones": [
@@ -1264,7 +1270,9 @@
       "started_at": "2026-10-28T00:00:00.000Z",
       "attempt": 1,
       "result": null,
-      "verified_at": null
+      "verified_at": null,
+      "parked_at": "2026-11-09T03:54:23Z",
+      "parked_reason": "Parked 2026-11-09 by K's instruction: focus the four aeris938-2 jobs (Facebook, TikTok, YouTube @aerismusicth, Shopee Affiliate) and set the rest aside for now. This is a standing goal, so it is parked, not closed — all evidence and history are kept, and it resumes by setting status back to IN_PROGRESS."
     },
     {
       "task_id": "AKATH-GROWTH-YOUTUBE-001",
@@ -1570,5 +1578,16 @@
     "planner": "autonomous-planner.mjs",
     "specialist_registry": "specialist-registry.mjs",
     "requires_human_per_cycle": false
+  },
+  "focus": {
+    "scope": "aeris938-2",
+    "tasks": [
+      "AKATH-GROWTH-FACEBOOK-001",
+      "AKATH-GROWTH-TIKTOK-001",
+      "AKATH-GROWTH-YOUTUBE-001",
+      "AKATH-REVENUE-SHOPEE-001"
+    ],
+    "note": "K 2026-11-09: the four jobs below are the focus; everything else (Roblox standing goals) is parked.",
+    "updated_at": "2026-11-09T03:54:23Z"
   }
 }

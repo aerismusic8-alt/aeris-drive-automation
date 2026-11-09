@@ -2,7 +2,9 @@
 
 Answers to the three questions, each with the evidence behind it. Measured
 2026-10-28 UTC. The standing goals in `AKATH_CORE/CANONICAL_TASK_REGISTRY.json`
-(`AKATH-ROBLOX-GOAL-PLAYABLE-001`, `AKATH-ROBLOX-GOAL-REVENUE-001`) stay open.
+(`AKATH-ROBLOX-GOAL-PLAYABLE-001`, `AKATH-ROBLOX-GOAL-REVENUE-001`) stay open —
+parked, not closed: K's 2026-11-09 focus is the four aeris938-2 jobs, so these are
+`PARKED` until resumed (`AKATH_CORE/park_roblox_goals.py`).
 
 ## 1. Login as @navintas938 — DONE
 

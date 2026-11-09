@@ -164,8 +164,15 @@ contain the four jobs at all. Reconciled by `AKATH_CORE/reconcile_growth_scope.p
 (idempotent): the four surfaces + the measurement rail are now canonical tasks
 (`AKATH-GROWTH-YOUTUBE/FACEBOOK/TIKTOK-001`, `AKATH-REVENUE-SHOPEE-001`,
 `AKATH-GROWTH-MEASURE-001`), the 5 stale PC1 tasks are SUPERSEDED (cut, not
-failed), the 4 Roblox standing goals are untouched, and `current_work` points at
-grow-YouTube. `report.py` / `goal_watch.py` remain the live per-surface tracker.
+failed), and `current_work` points at grow-YouTube. `report.py` / `goal_watch.py`
+remain the live per-surface tracker.
+
+**Focus = the four (2026-11-09).** K: focus the four aeris938-2 jobs, park the
+rest. `AKATH_CORE/park_roblox_goals.py` sets the 4 Roblox standing goals to
+`PARKED` (not closed — evidence kept, resumes at `IN_PROGRESS`) and writes a
+`focus` block naming the four. Advisor quorum PASS (duck + pollinations, both
+chose PARKED). The runtime only claims `PENDING`, so parked goals are inert.
+**Work only the four below until K says otherwise.**
 
 1. **Grow YouTube (`@aerismusicth`, one channel).** The release rail puts songs
    on it; `aeris938-2/scripts/grow.py youtube` handles brand + community. Songs

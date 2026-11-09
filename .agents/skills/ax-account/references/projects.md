@@ -23,6 +23,8 @@ The AX control plane. Everything else is reached from here.
 
 **Two standing goals live in the registry and must never be closed as ordinary
 tasks:** a Roblox game anyone can enter and play, and real revenue from it.
+**Both are `PARKED` as of 2026-11-09** (K set the focus to the four aeris938-2
+jobs) — parked, not closed; resume by setting the status back to `IN_PROGRESS`.
 
 **Roblox specifics** (see the repo's `AGENTS.md` for the full list):
 - `roblox/src/shared/` must not call Roblox APIs — that constraint is what makes
