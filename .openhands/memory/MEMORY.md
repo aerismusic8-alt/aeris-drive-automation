@@ -1532,3 +1532,23 @@ from a real/virtual-instrument generator only.**
   has no file swap, so `refresh_sleep_video.py` uploads the corrected render then
   deletes the old one, guarded by `instrument: soundfont` in the state file.
   Wired into ax-music-compilation.yml (Monday 10:00 UTC, or manual dispatch).
+
+## Music-only + mood clips (K, 2026-11-09) — durable facts
+K: "เอาแต่ดนตรี แล้วเสียงคลื่นเอาออกไปเลย เสียงดนตรีใช้ได้ รวมทั้งเสียง6แบบด้วย
+เอาไปทำคลิปเลย" — keep only the music, drop the rain/wave bed, and make clips
+from the six approved instrument moods.
+- `ambient_loop.py` no longer mixes rain: the `rain` preset and `--rain` flag are
+  gone, and the audio is the single instrument bed (`-stream_loop -1` once). The
+  sleep video was re-rendered music-only (8 h, ~605 MB, `gmsfqVjSsTo` still the
+  old live copy until the Monday refresh swaps it).
+- `make_mood_short.py` turns each of the six moods into a 45 s 9:16 clip: audio =
+  the shared SoundFont bed (`ensure_bed`), picture = ffmpeg `gradients` source in
+  the mood's `covers.PALETTES` colour, plus a mood card, the AI-performance
+  disclosure (`AI_NOTE`), brand mark and the follow end card. No login, no cost.
+  `--once` skips a mood already rendered at `STATE_VERSION` (state file
+  `work/mood-clips-state.json` is gitignored-exempt so the guard survives CI).
+- The produce rail (`.github/workflows/ax-music-produce.yml`) renders the clips
+  once, publishes the media, and `crosspost.py --merge-queue`s them into the
+  committed queue. `crosspost.mood_items`/`mood_caption` queue them on FB+TikTok.
+- To force a mood re-render after a renderer change: bump `STATE_VERSION`.
+- `publish_media.py` now uploads `library/moods/*.mp4` too.
