@@ -1356,3 +1356,26 @@ Answer read straight from YouTube's own pages (Tavily was out of quota):
   allow an OAuth App to create or update workflow". Use
   `/workspace/ax-tools/ar-identity/gh-workflow-token` (`repo, workflow`).
   `push-via-pc1.sh` is the fallback but hangs when PC1's Tailscale MCP is down.
+
+## Search-first packaging & the dead compilation rail (2026-11-09)
+- **Google Suggest is the fastest free test of whether a tag matches buying
+  intent.** Keyless: `http://suggestqueries.google.com/complete/search?client=firefox&hl=th&gl=th&q=<urlencoded>`.
+  It showed the affiliate funnel's core tag `ของน่าซื้อ` is a **souvenir/gift**
+  query (ของน่าซื้อญี่ปุ่น/เกาหลี/ดองกิ) — not a headphone term — so every card was
+  tagged for people who were not shopping. Real buyer queries:
+  `หูฟังบลูทูธ ยี่ห้อไหนดี`, `หูฟัง ตัดเสียงรบกวน ยี่ห้อไหนดี`, `หูฟัง ราคาไม่เกิน 500`,
+  `หู ฟัง ใส่ นอน ไม่ เจ็บ`, `ลำโพงบลูทูธ ยี่ห้อไหนดี`. Each card now carries a
+  `search` field and the title/hashtags are built from it
+  (`release.describe_affiliate`, `make_affiliate_short.caption`,
+  `crosspost.link_caption`). Titles/hashtags are metadata only — the burned
+  pixels use `hookline`+`bullets`, so a packaging change needs **no re-render**;
+  `crosspost.py --refresh-captions` rewrites the *pending* queue in place.
+- **A scheduled rail can be "green" and still have produced nothing.** The
+  compilation workflow (the #1 watch-hour lever) never installed **Pillow**, so
+  `brand.py` died at `ModuleNotFoundError: No module named 'PIL'` before building
+  an album — **no themed compilation ever shipped**. And `pull_media.py` fetched
+  each asset through `browser_download_url` (the 302→CDN route), so a single
+  transient 504 aborted the whole pull. Both fixed (install Pillow; use the
+  release API `releases/assets/<id>` + retry 429/5xx). First album now live:
+  `wDvzfG9XDfk` (ch3, 29.6 min). **Lesson: verify the artifact appeared, not the
+  run conclusion** — read the log for a step that succeeds *before* the real work.

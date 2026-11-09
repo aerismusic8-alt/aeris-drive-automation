@@ -1306,7 +1306,8 @@
         "notes": [
           "One channel only — ch1/ch2/ch4 are explicitly out of scope.",
           "The channel avatar has no API; it is Studio-only.",
-          "YPP thresholds rise 2027-02-01 to 8,000 hours or 20M Shorts views."
+          "YPP thresholds rise 2027-02-01 to 8,000 hours or 20M Shorts views.",
+          "2026-11-09: the compilation rail — the #1 watch-hour lever — was silently dead. The workflow never installed Pillow, so brand.py died at \"No module named 'PIL'\" before building an album and no themed compilation ever shipped. Fixed (install Pillow + pull_media retry on transient 504). Dispatched green: the first themed album is live, video_id wDvzfG9XDfk, 'อกหัก คิดถึงคนเก่า ฟังตอนดึก | รวมเพลงเศร้าไทย 8 เพลง (เลือกเพลงฟังได้)', 29.6 min. Themes sad/chill/power now ship one a week."
         ]
       },
       "verification": {
@@ -1484,7 +1485,8 @@
         "notes": [
           "Shopee is the only surface that pays immediately, with no follower gate.",
           "The 2026-11-09 fix put the CTA + link into the top compilation's description (the only long-form video whose link is above the fold); read the click count again after ~7 days.",
-          "2026-11-09: the funnel had consumers but no producer — release.py and crosspost.py both read library/affiliate/short-aff-*.mp4, but nothing rendered them, so the directory was always empty and 0 clicks followed. Fixed: .github/workflows/ax-music-affiliate-render.yml renders the 5 product cards, publishes them, and feeds the crosspost queue; ran green on Actions 2026-11-09 (rendered 5, published 10 assets). Cards are now in the FB/TikTok queue (interleaved, first at position 7) and the YouTube release reserves 2 slots/day for them. Read clicks again after ~7 days."
+          "2026-11-09: the funnel had consumers but no producer — release.py and crosspost.py both read library/affiliate/short-aff-*.mp4, but nothing rendered them, so the directory was always empty and 0 clicks followed. Fixed: .github/workflows/ax-music-affiliate-render.yml renders the 5 product cards, publishes them, and feeds the crosspost queue; ran green on Actions 2026-11-09 (rendered 5, published 10 assets). Cards are now in the FB/TikTok queue (interleaved, first at position 7) and the YouTube release reserves 2 slots/day for them. Read clicks again after ~7 days.",
+          "2026-11-09 (search-first): a free keyless Google Suggest pull showed the funnel's core tag `ของน่าซื้อ` is a souvenir/gift query, NOT a headphone-buying term — so every affiliate clip was tagged for an audience that was not shopping. On a zero-follower channel search is the only free discovery path. Fixed: each card now carries `search`, the real query it answers (หูฟัง ราคาไม่เกิน 500; หูฟัง ตัดเสียงรบกวน ยี่ห้อไหนดี), and release.describe_affiliate / make_affiliate_short.caption / crosspost link_caption build the title + hashtags from it. The 10 pending queue captions were refreshed (live posts untouched); 1571 tests pass."
         ]
       },
       "verification": {
