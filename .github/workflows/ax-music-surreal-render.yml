@@ -1,0 +1,102 @@
+name: AX Music Surreal Render
+
+# Renders the absurdist "exhibit" clips for the Facebook + TikTok surfaces.
+#
+# K (2026-11-09): "อยากให้ทำช่อง fb tk แบบไม่ต้องสนใจแบบแปนอะไรแล้ว เอาแบบสุดโต่ง
+# แต่ไม่ผิดกฏ บ้าๆบอๆหลุดโลกไปเลย แบบศิลปะขั้นหลุดโลก" — turn FB/TK into an
+# unhinged art project. `surreal.py` is the identity and `crosspost.py` already
+# captions and queues the exhibits, but nothing rendered the clips, so
+# `library/surreal/` was always empty and the identity never reached a feed.
+# This rail is that missing step, the same gap the affiliate cards had.
+#
+# The art is ffmpeg filters over covers the `media-938` release already holds, so
+# it needs no build pod, no download and no login — Rule #1 holds. The safety
+# gate lives in `make_surreal_short.py` + `surreal.claim_problem`: an exhibit
+# whose text carries a banned claim is refused, not rendered, and every clip
+# discloses the AI content.
+#
+# Three exhibits a day, not the whole gallery: both advisors warned that a wall
+# of near-identical clips is the "low-quality / look-alike" pattern that kills
+# reach, and the queue folds them in singly anyway. `--skip-existing` means a
+# re-run or a retry never re-renders one already on disk.
+
+on:
+  schedule:
+    # 05:00 UTC — before the affiliate render (05:30) and the crosspost (every
+    # 2 h), so a fresh exhibit can enter that day's queue.
+    - cron: '0 5 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: ax-music-surreal-render
+  cancel-in-progress: false
+
+jobs:
+  render:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install ffmpeg
+        run: |
+          set -euo pipefail
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq ffmpeg
+
+      - name: Pull the song masters and covers
+        env:
+          AX_GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          python3 music938-1/scripts/pull_media.py --only songs
+          python3 music938-1/scripts/pull_media.py --only covers
+
+      - name: Pull the exhibits already on the release
+        env:
+          AX_GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          # `--skip-existing` keys off the clip being on disk, and a fresh
+          # checkout has an empty library/, so without this every run re-renders
+          # the whole gallery and re-uploads it.
+          python3 music938-1/scripts/pull_media.py --only surreal
+
+      - name: Render the new exhibits (safety gate inside)
+        run: |
+          set -euo pipefail
+          cd music938-1
+          # A song that fails the gate is refused, not forced; the loop keeps
+          # going so one bad exhibit cannot stop the batch.
+          python3 scripts/make_surreal_short.py --all --skip-existing --limit 3
+
+      - name: Push the new clips back to the media store
+        env:
+          AX_GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          python3 music938-1/scripts/publish_media.py
+
+      - name: Add the new clips to the crosspost queue
+        run: |
+          set -euo pipefail
+          # --merge-queue appends only new (platform, video) ids, so the pending
+          # backlog is never dropped when a new format joins the rotation.
+          python3 music938-1/scripts/crosspost.py --merge-queue
+
+      - name: Commit the queue
+        run: |
+          set -euo pipefail
+          git config user.name  "ax-music-surreal"
+          git config user.email "ax-music-surreal@users.noreply.github.com"
+          git add music938-1/work/crosspost-queue.json
+          if git diff --cached --quiet; then
+            echo "no change to record"
+            exit 0
+          fi
+          git commit -m "data(music): surreal render $(date -u +%Y-%m-%dT%H:%MZ)"
+          git pull --rebase --autostash origin "${GITHUB_REF_NAME}"
+          git push

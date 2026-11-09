@@ -211,6 +211,10 @@ def main() -> int:
     ap.add_argument("slug", nargs="?")
     ap.add_argument("--all", action="store_true", help="every song on disk")
     ap.add_argument("--plan", action="store_true", help="show the exhibits, render nothing")
+    ap.add_argument("--skip-existing", action="store_true",
+                    help="skip a slug whose exhibit is already rendered")
+    ap.add_argument("--limit", type=int, default=0,
+                    help="render at most N new exhibits (0 = no limit)")
     args = ap.parse_args()
 
     if args.all or (args.plan and not args.slug):
@@ -228,6 +232,17 @@ def main() -> int:
             thing, feeling = surreal.pair(slug)
             print(f"{surreal.exhibit_no(slug):14} {recipe_for(slug):7} "
                   f"{thing} : {feeling}")
+        return 0
+
+    # A daily rail must not re-render the whole gallery, and the panel warned
+    # that mass-producing look-alikes reads as spam. So the batch is capped and
+    # already-rendered exhibits are skipped, leaving the pace to the schedule.
+    if args.skip_existing:
+        slugs = [s for s in slugs if not (OUT_DIR / f"surreal-{s}.mp4").exists()]
+    if args.limit:
+        slugs = slugs[:args.limit]
+    if not slugs:
+        print("nothing new to render")
         return 0
 
     rc = 0
