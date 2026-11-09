@@ -1573,6 +1573,13 @@ K approved the hum-free sound ("แบบนี้แหล่ะถึงจะ
 - **`pull_media.py` had no `moods` group**, so a fresh pod never got the clips
   back and `make_mood_short --once` (which keys off the file being on disk)
   re-rendered all six every run. Added the group + a "Pull the mood clips" step.
+- **Neither music workflow installed `numpy`**, but `soundfont._read_wav_f32`
+  imports it, so *no* SoundFont bed could ever render on a runner: the sleep
+  refresh died with `ModuleNotFoundError` and the mood render would have too
+  (masked by the `|| echo`). Added `numpy` to ax-music-compilation.yml and
+  ax-music-produce.yml. The sleep swap then succeeded: `VDXpmjBr4KI` is live and
+  the old synth `gmsfqVjSsTo` was deleted (state `instrument:
+  soundfont-instrument2`).
 - `publish_media.py` gained `--only <dirs>` so one source can be uploaded alone;
   it already replaces an asset when the size differs (delete-then-upload).
 - **Published by hand** (`publish_media.py --only moods`) so the rail could post
