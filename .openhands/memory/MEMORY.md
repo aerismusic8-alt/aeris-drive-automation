@@ -1254,3 +1254,26 @@ true-instrumental karaoke mix, cover art, a 1920x1080 word-synced video.
   is a classic PAT (`token` key inside the JSON value) with `repo,workflow`.
   `ax_vault.kv_get(aid,key)` returns the value directly. Remote had diverged with
   automation data commits → fetch → rebase → push, then reset the remote URL.
+
+## Cover songs + YouTube money — durable facts (2026-11-09)
+K asked: if a cover's licence is checked, does it pass and does YouTube pay?
+Answer read straight from YouTube's own pages (Tavily was out of quota):
+- **A cover only earns for us if the PUBLISHER claims it via Content ID and
+  turns on "Sharing ad earnings".** We are then paid a **pro-rata** share, not
+  the whole ad revenue. A licence alone gives NO revenue-sharing route — with a
+  licence but no claim, the cover earns nothing. (answer/3301938)
+- **Claim outcomes (answer/6013276):** a claimed video >3 min stays up but the
+  claimant takes the money; a claimed video 1–3 min is **blocked outright**. No
+  strike for a claim, but the revenue (or the video) is gone.
+- **YPP thresholds rise 2027-02-01**: 8,000 watch-hours or 20M Shorts views;
+  Shorts ad revenue needs >=10M qualified Shorts views/90 days. (answer/72851,
+  12504220)
+- **"inauthentic content"** (was "repetitious") = mass-produced/repetitive =
+  ineligible to monetize (answer/1311392).
+- Panel 2/2 (duck, pollinations): covers are a poor core bet for a tiny channel;
+  keep the originals + themed albums + search-intent titles strategy.
+- Decision recorded: **do not build on covers of known hits.** Only if K obtains
+  mechanical+sync licences AND accepts the pro-rata split. Doc:
+  `music938-1/channel/COVER-LICENSE-YOUTUBE-POLICY-2026-11-09.md`.
+- **Tavily search is out of quota** in this account; read policy pages directly
+  with `curl -sL -A Mozilla/5.0` and extract the `<article>` block.
