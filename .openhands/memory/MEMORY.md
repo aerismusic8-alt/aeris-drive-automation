@@ -1308,3 +1308,37 @@ Answer read straight from YouTube's own pages (Tavily was out of quota):
   and even `channels.list mine=true` return 403 `quotaExceeded` (not a scope or
   token problem — check the error body before debugging auth). Repairs that need
   quota go into `ax-music-release.yml`, which runs at 08:05 UTC on the fresh pool.
+
+## The tracking system drifted from the work (2026-11-09) — durable facts
+- **There are two trackers, and they had diverged.** `AKATH_CORE/CANONICAL_TASK_REGISTRY.json`
+  is the canonical task catalog (read by `AKATH_CORE/runtime`), and it was frozen
+  at 2026-09-19: it still described the September PC1 programme as current work and
+  contained **none** of the live jobs (`grep aeris938` = 0). The live tracker is
+  `aeris938-2/scripts/report.py` -> `work/growth-report.md` + `history.jsonl`
+  (four surfaces) and `goal_watch.py` (the daily bottleneck), on the
+  `AX Music Daily Dashboard` rail. Keep them in step; a registry that lags is the
+  tracker lying by omission.
+- **`add_roblox_goals.py` is NOT safe to re-run.** It does a full `update` of each
+  Roblox goal from a hard-coded September snapshot, so it **reverts newer live
+  evidence** (published_versions, live ids, the corrected blocker text). An
+  "idempotent" seed script that hard-codes a whole record clobbers updates to that
+  record — make it merge, or don't run it after the record has moved on. Recovered
+  2026-11-09 by restoring the pre-run backup and re-running only the new reconcile.
+- **Reconciling the registry is a one-command, idempotent job:**
+  `python3 AKATH_CORE/reconcile_growth_scope.py` adds the four growth surfaces +
+  the measurement rail as canonical tasks, marks the 5 stale PC1 tasks SUPERSEDED
+  (reason: cut by K's 2026-11-02 scope, *not* failed), leaves the 4 Roblox standing
+  goals untouched, and sets `current_work` to the live top priority. Result:
+  29 tasks (14 DONE / 9 IN_PROGRESS / 6 SUPERSEDED / 0 PENDING-OVERDUE), so the
+  runtime's auto-OVERDUE sweep has nothing stale to mark.
+- **Advisor panel quorum (duck + pollinations) both chose "reconcile", not
+  "freeze"** — the registry is a current-state catalog, so it must carry the current
+  work. Consult is required before a non-trivial change; a failed quorum (Duck
+  needs a `duck.ai` CDP tab — open it with
+  `curl -X PUT 'http://127.0.0.1:9222/json/new?https://duck.ai/'`) is not a pass.
+- **This pod's checkout can start dirty.** `git status` showed
+  `.openhands/memory/MEMORY.md` modified (-81 lines vs HEAD) before any action;
+  `git checkout -- <file>` cleans it. Check `git status` before committing.
+- **The runtime unit suite has 7 pre-existing failures on Linux** (self-contained
+  fixtures + `runtime-registry.test.mjs` asserting a Windows path). They are the
+  same before and after a registry change — not a regression signal.
