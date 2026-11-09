@@ -110,8 +110,20 @@ def check_video(v: dict, exp: dict, comps: dict[str, int]) -> list[str]:
 
 
 def read_live() -> list[dict]:
+    """Every live upload, or QuotaError when the pool is spent.
+
+    `all_upload_ids` walks channels.list + playlistItems.list, which index
+    `body["items"]` directly; a 403 quota body has no `items`, so that surfaces
+    as a KeyError rather than an HTTP status. Treat it as "quota", not a crash.
+    """
     tok = yt_auth.access_token("ch3")
-    ids = yt_auth.all_upload_ids(tok)
+    try:
+        ids = yt_auth.all_upload_ids(tok)
+    except KeyError:
+        raise QuotaError("channels.list/playlistItems.list returned no items "
+                         "(quota spent or API error)")
+    if not ids:
+        return []
     st, body = yt_auth.api_get("videos", tok, part="snippet,status",
                                id=",".join(ids))
     if st != 200:
