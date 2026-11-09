@@ -1424,3 +1424,36 @@ Answer read straight from YouTube's own pages (Tavily was out of quota):
 - **`consult.note_applied` keys off the problem TEXT, not its digest.** Pass the
   exact `problem` string from the log row; passing the digest records nothing
   (silently returns 0).
+
+## Followers are the metric (K, 2026-11-09) — durable facts
+- **K: "followers = a chance to show the product"** and he is on a **phone**, so any
+  fix that needs his action is out of bounds. Re-minting an OAuth token (Google Cloud
+  Console) and signing a desktop into a Google product are both phone-hostile → treat
+  as unavailable, do not ask.
+- **The channel had no on-screen follow prompt at all.** Shorts render no text and the
+  description sits below the fold, so a viewer could love the song and leave with no
+  ask. Fixed 2026-11-09: `release.FOLLOW_ASK` burned as a 2s **end card** by
+  `make_short.build_ass` (fades in 1.6s before the end, releases 0.4s early). Advisor
+  panel (duck + pollinations, quorum PASS) was explicit: a whole-length subscribe
+  button clutters the song and can cost retention, and retention is reach. Never move
+  it to the front.
+- **Text only in burned ASS — no emoji.** The font is Noto Sans Thai; an emoji renders
+  tofu. `•` and `»` are safe.
+- **How to verify a burn without eyeballing:** render the same Short with the constant
+  blanked, then diff the frame at the card's timestamp and at mid-clip. The card frame
+  must differ (found it at y≈1634, the style's MarginV band) and the mid-clip frame
+  must be identical. My first check sampled the wrong second because the clip is
+  `MAX_SECONDS` (58s), not the window length — read the real duration first.
+- **The karaoke-render rail is the Shorts producer** (`make_short.py --all --mix
+  karaoke --skip-existing`), daily at 06:30 UTC; it publishes to `media-938` and
+  `--merge-queue`s the crosspost queue. So a renderer change reaches live clips on the
+  next rail run, not immediately — existing files on disk are not re-rendered.
+- **`post_community.py` is blocked on the desktop YouTube session**, not on code: the
+  profile has Google cookies but youtube.com shows no avatar and no create button, so
+  it is signed out. `check_login.py` says SIGNED_IN because it reads Google, not
+  YouTube. Do not wire the rail until a real YouTube sign-in exists.
+- **A pod recycle takes the consult panel down in two ways:** `websocket-client` is
+  missing (restore from `music938-1/scripts/setup-pod.sh`) and the cloud desktop is
+  down so duck.ai has no tab (`bootstrap.py` brings it up; open
+  `curl -X PUT 'http://127.0.0.1:9222/json/new?https://duck.ai/'` before asking).
+  Quorum needs 2 vendors; pollinations alone always answers and never satisfies it.
