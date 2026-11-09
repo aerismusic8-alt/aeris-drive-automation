@@ -1387,3 +1387,40 @@ Answer read straight from YouTube's own pages (Tavily was out of quota):
   path that is not gated on followers. `channel_uploads_rss()` is the free
   keyless fallback for `youtube.com/feeds/videos.xml?channel_id=<id>`; the Data
   API is often 403 quotaExceeded, and the site must still refresh.
+
+## Daily verification + review loop (K, 2026-11-09) — durable facts
+- **"Tests pass" is not "the product is correct".** 1555 green tests coexisted with
+  a live top video carrying no affiliate link and no subscribe ask for weeks,
+  because the tests checked the *generator* (`compile_album.py`), never the
+  *published artifact*. `aeris938-2/scripts/live_audit.py` is the missing check:
+  it reads every live upload and diffs it against intent taken from
+  `channel/monetization.json` + the upload state records — deliberately NOT from
+  the publishing code, so it is not "the code agreeing with itself". First run
+  found 25 real gaps. Alerts only on a *new* failure (compares to the previous
+  run's set) so a daily check does not cry wolf.
+- **A tool that exists is not a tool that runs.** `apply_monetize.py` (the live
+  description repair) existed for weeks and was wired to *no* workflow, so it
+  never ran and the live CTAs stayed stale. Before trusting any repair, grep the
+  workflows for its name: `grep -rl <script> .github/`.
+- **One description writer, not two.** `monetize.refresh_description` is canonical
+  (re-points the old homepage link, drops the superseded page-first CTA block,
+  inserts the subscribe-first ask, idempotent, and already unit-tested). The
+  `live_audit` repair and `fix_compilation_cta` both delegate to it now. A second
+  hand-rolled inserter drifted (it added the new block but left the old one).
+- **The daily review loop is the response to a flat day** (`experiment_loop.py`).
+  Flow: goal_watch names the constraint → if an experiment is RUNNING and inside
+  its window, keep it (a flat day is a review, not permission to churn — a tiny
+  audience needs exposure first) → else judge it WIN/FAILED/INCONCLUSIVE, never
+  calling a low-exposure test a loss → open ONE new hypothesis for the constraint,
+  rejecting a duplicate by key or Jaccard≥0.6 of the hypothesis → report
+  exhaustion rather than re-run a loser. Ledger `aeris938-2/work/experiments.jsonl`
+  (committed, so a fresh pod sees it). First experiment: `shorts-hook-framing`.
+- **A rebase can silently un-commit your work if you don't check.** `git rebase`
+  after a fetch left HEAD detached at FETCH_HEAD with the branch pointer one
+  commit back; the push then said "up-to-date" while my commit sat on `main` only.
+  After any rebase, verify `git merge-base --is-ancestor <sha> HEAD` before
+  trusting a push. The conflict was the append-only `ops/consult-log.jsonl` —
+  resolve it as a deduplicated union of both sides, never "ours" or "theirs".
+- **`consult.note_applied` keys off the problem TEXT, not its digest.** Pass the
+  exact `problem` string from the log row; passing the digest records nothing
+  (silently returns 0).

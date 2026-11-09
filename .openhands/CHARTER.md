@@ -145,9 +145,17 @@ tasks. The loop, in order, each pass:
 2. **Assets** — per song: cover, karaoke mix, word-synced video, Shorts.
 3. **Release** — `AX Music Daily Release`, 6 uploads/Pacific day, Shorts-first.
 4. **Measure** — `market.py` daily: stats, diff, Thai report.
-5. **Promote** — promo page refreshed daily.
-6. **Strategise** — weekly LLM pass opens one PR with the next moves.
-7. **Watch** — `AX YouTube Activity Monitor` hourly; it flags a stalled channel.
+5. **Verify** — `aeris938-2/scripts/live_audit.py` daily: diff the *published*
+   channel against intent (not the generator) and repair the deterministic
+   misses. Code that passes its tests can still ship a video with no revenue ask;
+   this is the check that reads the product.
+6. **Experiment** — `aeris938-2/scripts/experiment_loop.py` daily: on a flat day,
+   open ONE new hypothesis for the named constraint, keep it until its window
+   ends, judge it, and never re-run a loser. K, 2026-11-09: a day with no
+   movement must produce a *new* method, not "post more".
+7. **Promote** — promo page refreshed daily.
+8. **Strategise** — weekly LLM pass opens one PR with the next moves.
+9. **Watch** — `AX YouTube Activity Monitor` hourly; it flags a stalled channel.
 
 After all 20 songs ship: build the compilation (title carries `เลือกเพลงฟังได้`,
 chapters, >=12 tracks), then keep the cadence at ~4 uploads/week — cadence is the
@@ -222,6 +230,28 @@ chose PARKED). The runtime only claims `PENDING`, so parked goals are inert.
    option a). Still zero clicks → reach, not the CTA.
 5. **Measure the four.** `aeris938-2/scripts/report.py` → `growth-report.md`.
    YouTube via API; FB/TikTok/Shopee via the desktop dashboards.
+6. **Verify the live product + run the review loop (2026-11-09).** K: "the system
+   is not stable enough to wait 7 days; a 100% check still shows same-day errors,
+   so re-audit daily" and "each day with no movement, search for data, meet, look
+   at how competitors attract followers, and try a NEW method until one works."
+   Both run on the dashboard rail (`ax-music-dashboard.yml`, 3 ticks/day):
+   - `live_audit.py` reads every live upload and diffs it against intent from
+     `channel/monetization.json` + the upload state records — sources of truth
+     that are *not* the publishing code. It repairs the deterministic miss (the
+     description ask) with the canonical `monetize.refresh_description`, and
+     alerts only on a *new* failure so it does not cry wolf. First run found 25
+     real gaps (every video missing the subscribe ask; the compilation missing
+     the affiliate link too). This is the check that was missing when 1555 green
+     tests coexisted with a top video that carried no revenue ask for weeks.
+   - `experiment_loop.py` turns `goal_watch.py`'s constraint into a decision:
+     keep the running experiment until its window ends, then judge it
+     WIN/FAILED/INCONCLUSIVE (never calling a low-exposure test a loss), then
+     open ONE new hypothesis for the constraint, refusing a duplicate by key or
+     hypothesis similarity, and reporting exhaustion rather than re-running a
+     loser. Ledger: `aeris938-2/work/experiments.jsonl`. First experiment opened
+     2026-11-09 (`shorts-hook-framing`, 14 days, floor 200 views).
+   `fix_compilation_cta.py` now delegates to `refresh_description` so there is one
+   description writer, not two that can drift.
 
 **Blocked, needs K (one action each):**
 - **One cloud-desktop sign-in (2026-11-03).** After a pod recycle the desktop lost
