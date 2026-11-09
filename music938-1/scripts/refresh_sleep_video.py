@@ -129,7 +129,40 @@ def _delete(video_id: str) -> bool:
     return proc.returncode == 0
 
 
+def _ensure_render(state: dict) -> None:
+    """Build the corrected render if it is not on disk.
+
+    CI cannot rely on the once-step having left the file: that step is guarded by
+    the same state file, so on the run that swaps the video it skips and the
+    corrected mp4 was never built. Render it here instead. The bed caches by
+    mood+key, so a re-run is cheap.
+    """
+    mp4, _, _ = _paths()
+    if mp4.exists():
+        return
+    minutes = state.get("minutes", 480)
+    print(f"refresh: no corrected render; building {minutes:g} min now")
+    proc = subprocess.run(
+        [sys.executable, str(Path(__file__).resolve().parent / "ambient_loop.py"),
+         "--preset", "sleep", "--minutes", str(minutes), "--rain", "--render"],
+        cwd=str(ROOT), text=True)
+    if proc.returncode != 0 or not mp4.exists():
+        raise SystemExit("refresh: could not build the corrected render")
+
+
 def apply() -> int:
+    if not STATE.exists():
+        print("refresh: skip — no state file; the once-step owns it")
+        return 0
+    state = json.loads(STATE.read_text(encoding="utf-8"))
+    if not state.get("video_id"):
+        print("refresh: skip — no video_id in state")
+        return 0
+    if state.get("instrument") == MARKER:
+        print(f"refresh: skip — already {MARKER}")
+        return 0
+    # Only now pay for the render: everything above says the swap is wanted.
+    _ensure_render(state)
     decision = plan()
     if decision["action"] == "skip":
         print(f"refresh: skip — {decision['why']}")
@@ -142,7 +175,6 @@ def apply() -> int:
         return 1
     print(f"refresh: uploaded {new}; deleting the old render {old}")
     _delete(old)
-    state = json.loads(STATE.read_text(encoding="utf-8"))
     state.update({"video_id": new, "instrument": MARKER, "replaced": old,
                   "minutes": round(decision["minutes"], 1),
                   "at": datetime.now(timezone.utc).isoformat(timespec="seconds")})

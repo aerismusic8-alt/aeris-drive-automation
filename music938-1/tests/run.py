@@ -1157,6 +1157,14 @@ def test_refresh_sleep_video() -> None:
     check("the decision names the old id",
           R.decide({"video_id": "gmsfqVjSsTo"}, 480, True)["old"] == "gmsfqVjSsTo")
 
+    # apply() must build the render before it uploads. In CI the once-step is
+    # skipped by the same state file, so the corrected mp4 is absent unless
+    # apply() renders it — and the upload would then fail on a missing file.
+    import inspect
+    src = inspect.getsource(R.apply)
+    check("apply renders the bed before uploading",
+          src.index("_ensure_render") < src.index("_upload"), "order")
+
 
 def test_provenance() -> None:
     section("provenance (WIRING: retired Piper engine must not ship)")
