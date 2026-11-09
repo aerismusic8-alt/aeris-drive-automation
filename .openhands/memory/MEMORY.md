@@ -1516,3 +1516,19 @@ paying for the encode.
   `ax_vault.kv_get(anchor, key)` returns a **dict** `{token, login, scopes}` with
   `repo,workflow`. `git push https://x-access-token:$TOKEN@github.com/...` then works.
 
+
+## Real-instrument music (K, 2026-11-09) — durable facts
+K rejected the ffmpeg sine/tremolo synth ("sounds fake") for the sleep/lullaby
+audio and the FB/TikTok beds: **visuals may be any free art; the MUSIC must come
+from a real/virtual-instrument generator only.**
+- The renderer is `music938-1/scripts/soundfont.py`: mido writes a MIDI
+  arrangement, fluidsynth plays it through a SoundFont of real recorded
+  instruments (`MuseScore_General_Full.sf3`). Free, offline, no login. Both
+  `ambient_loop` and `make_music` call it. apt: `fluidsynth fluid-soundfont-gm
+  musescore-general-soundfont`; pip: `mido`.
+- **A SoundFont GM pad (programs 88-95) is itself a synth** — K's rule excludes
+  them, so MOODS use only acoustic programs; a test fails if any mood names one.
+- The already-live sleep video (`gmsfqVjSsTo`) was the old synth render. YouTube
+  has no file swap, so `refresh_sleep_video.py` uploads the corrected render then
+  deletes the old one, guarded by `instrument: soundfont` in the state file.
+  Wired into ax-music-compilation.yml (Monday 10:00 UTC, or manual dispatch).
