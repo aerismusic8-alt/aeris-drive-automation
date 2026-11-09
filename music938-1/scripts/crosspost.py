@@ -57,6 +57,7 @@ WORK = ROOT / "work"
 SHORTS = ROOT / "library" / "shorts"
 AFF_SHORTS = ROOT / "library" / "affiliate"
 SURREAL = ROOT / "library" / "surreal"
+MOODS = ROOT / "library" / "moods"
 COVERS = ROOT / "library" / "covers"
 QUEUE = WORK / "crosspost-queue.json"
 STATE = WORK / "crosspost-state.json"
@@ -223,6 +224,11 @@ def refresh_captions() -> int:
                 want = surreal.caption(item["slug"], item["platform"])
             except ImportError:
                 want = item["caption"]
+        elif item.get("kind") == "mood":
+            try:
+                want = mood_caption(item["slug"], item["platform"])
+            except Exception:  # noqa: BLE001
+                want = item["caption"]
         elif item.get("kind") == "link":
             try:
                 import make_affiliate_short as aff
@@ -323,6 +329,11 @@ def build_queue() -> list[dict]:
     # than published as a burst. The id is per-exhibit, so a posted one never
     # returns; a fresh pod with no rendered exhibits simply adds none.
     base = interleave(base, surreal_items(), every=5, chunk=1)
+    # The mood clips — the real-instrument beds K approved (2026-11-09) turned
+    # into 9:16 clips. They are folded in one at a time and spaced, for the same
+    # reason as the exhibits: six clips that share a shape must not land as a
+    # burst. A fresh pod with no rendered mood clips simply adds none.
+    base = interleave(base, mood_items(), every=6, chunk=1)
     # Facebook also gets a cover-art photo and a Shopee link post, so its feed is
     # not wall-to-wall Reels (advisor panel 2026-11-05: Reel for reach, photo for
     # identity, <=1 link a day). A photo lands after every 3 items and a link
@@ -441,6 +452,61 @@ def surreal_items() -> list[dict]:
                 "kind": "surreal",
                 "video": str(clip.relative_to(ROOT)),
                 "caption": surreal.caption(slug, platform),
+            })
+    return items
+
+
+def mood_caption(mood: str, platform: str) -> str:
+    """Caption for a mood clip.
+
+    A mood clip is instrumental, so there are no lyrics to quote and no chorus
+    prompt to reuse; the caption sells the *feeling* and the listening occasion
+    instead. Both surfaces carry the Shopee link and the AI-performance
+    disclosure, because the music is a synthetic performance of a written
+    arrangement (COMPLIANCE.md) even though the instruments are real.
+    """
+    import make_mood_short as M  # noqa: PLC0415
+
+    info = M.MOODS[mood]
+    title = f"เพลง{info['name']} (เครื่องดนตรีจริง)"
+    if platform == "facebook":
+        shopee = monetize.link("facebook")
+        return (f"🎵 {title}\n"
+                f"🎧 {info['tagline']}\n"
+                f"{M.AI_NOTE}\n"
+                f"❤️ กดติดตามเพจ · ของน่าซื้อ 👉 {shopee}\n"
+                f"🎬 ดูใหม่ทุกวัน: YouTube {YOUTUBE_HANDLE} · TikTok {TIKTOK_HANDLE}\n"
+                f"#เพลงบรรเลง #เพลงผ่อนคลาย #AERISMusic #ค่ายเพลงAI")
+    shopee = monetize.link("tiktok")
+    return (f"🎵 {title}\n"
+            f"🎧 {info['tagline']}\n"
+            f"{M.AI_NOTE}\n"
+            f"🎧 กดติดตาม · ของน่าซื้อ 👉 {shopee}\n"
+            f"🎬 ฟังเต็ม ๆ ได้ที่ YouTube {YOUTUBE_HANDLE} · เพจ FB AERIS Music\n"
+            f"#fyp #เพลงบรรเลง #เพลงผ่อนคลาย #AERISMusic #TikTokเพลงไทย #ค่ายเพลงAI")
+
+
+def mood_items() -> list[dict]:
+    """The real-instrument mood clips, captioned by `mood_caption`.
+
+    K (2026-11-09) approved the six instrument beds and asked for clips. The id
+    is stable (`<state_key>:mood-<mood>`), so a posted clip never re-enters. A
+    fresh pod with no rendered clips adds none.
+    """
+    if not MOODS.exists():
+        return []
+    items = []
+    for clip in sorted(MOODS.glob("mood-*.mp4")):
+        mood = clip.stem[len("mood-"):]
+        for platform, cfg in PLATFORMS.items():
+            items.append({
+                "id": f"{cfg['state_key']}:{clip.stem}",
+                "platform": platform,
+                "slug": mood,
+                "hook": 0,
+                "kind": "mood",
+                "video": str(clip.relative_to(ROOT)),
+                "caption": mood_caption(mood, platform),
             })
     return items
 

@@ -72,6 +72,18 @@ jobs:
           python3 scripts/produce_loop.py --no-flow \
             --count "${{ github.event.inputs.count || '1' }}" --pack-only
 
+      # The six real-instrument mood clips K approved (2026-11-09). They are
+      # deterministic and cost nothing, but re-rendering all six every 4 hours is
+      # wasted runner time, so `--once` records what it built in a committed state
+      # file and only fills the gaps. Bump STATE_VERSION in the script (or delete
+      # the state file) to force a re-render after a renderer change.
+      - name: Render the mood clips (once)
+        working-directory: music938-1
+        run: |
+          set -euo pipefail
+          python3 scripts/make_mood_short.py --all --once || \
+            echo "mood clips: render skipped or failed; will retry next run"
+
       - name: Upload the media to the public release
         env:
           AX_GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -86,6 +98,7 @@ jobs:
           git config user.email "bot@users.noreply.github.com"
           git add -f share/aeris-music/catalog.json share/aeris-music/catalog.csv
           git add -A music938-1/lyrics music938-1/work/produce-queue.json \
+                     music938-1/work/mood-clips-state.json \
                      music938-1/library/covers 2>/dev/null || true
           if git diff --cached --quiet; then
             echo "nothing new to commit"

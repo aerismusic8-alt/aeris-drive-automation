@@ -144,7 +144,7 @@ def _ensure_render(state: dict) -> None:
     print(f"refresh: no corrected render; building {minutes:g} min now")
     proc = subprocess.run(
         [sys.executable, str(Path(__file__).resolve().parent / "ambient_loop.py"),
-         "--preset", "sleep", "--minutes", str(minutes), "--rain", "--render"],
+         "--preset", "sleep", "--minutes", str(minutes), "--render"],
         cwd=str(ROOT), text=True)
     if proc.returncode != 0 or not mp4.exists():
         raise SystemExit("refresh: could not build the corrected render")

@@ -1012,9 +1012,13 @@ def test_ambient_loop() -> None:
         check(f"{pname}: title is Thai", has_thai(preset["title"]))
         check(f"{pname}: title states the length", "{hours}" in preset["title"])
         check(f"{pname}: has a mood preset", preset["mood"] in ("calm", "warm", "mystic"))
+    # The "rain" preset named a rain sound and mixed a rain bed. K (2026-11-09)
+    # ordered the audio to be music only, so that preset is gone; a reappearance
+    # would publish a "เสียงฝน" title over music.
+    check("the rain preset is gone (music only)", "rain" not in A.PRESETS)
 
     # An 8-hour plan, built without rendering.
-    p = A.plan("sleep", mood="calm", key="C", minutes=480, rain=True,
+    p = A.plan("sleep", mood="calm", key="C", minutes=480,
                title_tmpl=A.PRESETS["sleep"]["title"],
                use_case=A.PRESETS["sleep"]["use_case"], stem="ambient-sleep")
     check("the plan names an 8-hour title", "8 ชั่วโมง" in p["title"], p["title"])
@@ -1023,11 +1027,14 @@ def test_ambient_loop() -> None:
     # The bed is a short loop tiled to length, not an 8-hour synthesis.
     check("the bed is stream-looped, not re-rendered long",
           "-stream_loop" in p["cmd"])
-    check("one bed is looped when there is no rain",
-          A.plan("sleep", mood="calm", key="C", minutes=480, rain=False,
-                 title_tmpl=A.PRESETS["sleep"]["title"],
-                 use_case="x", stem="ambient-sleep")["cmd"].count("-stream_loop") == 1)
-    check("rain adds a second looped bed", p["cmd"].count("-stream_loop") == 2)
+    # K (2026-11-09): music only. The audio is the single instrument bed; there
+    # is no second audio input (the rain/wave mix is gone), so exactly one
+    # `-stream_loop` (the bed) and one `-loop` (the still) appear.
+    check("the audio is the instrument bed and nothing else",
+          p["cmd"].count("-stream_loop") == 1,
+          "a second stream-loop means a non-music bed crept back in")
+    check("no rain/noise source is mixed in",
+          not any("rain" in str(a) or "anoisesrc" in str(a) for a in p["cmd"]))
     check("the picture is a single held still", "-loop" in p["cmd"])
     # The still does not need 25 fps; a held frame at 1 fps keeps an 8-hour
     # encode to minutes and the file to a few hundred MB.
@@ -1036,7 +1043,7 @@ def test_ambient_loop() -> None:
     check("the stem keys the output path", p["out"].name == "ambient-sleep.mp4")
     # A stem mismatch here is exactly the bug that made the CLI report success
     # while checking a file it never wrote.
-    p2 = A.plan("เพลงกล่อมนอน", mood="calm", key="C", minutes=480, rain=True,
+    p2 = A.plan("เพลงกล่อมนอน", mood="calm", key="C", minutes=480,
                 title_tmpl=A.PRESETS["sleep"]["title"], use_case="x",
                 stem="ambient-sleep")
     check("a Thai display name does not change the output path",
@@ -1077,7 +1084,7 @@ def test_ambient_loop() -> None:
           "afade" not in inspect.getsource(SF.render_bed))
 
     try:
-        A.plan("x", mood="calm", key="C", minutes=0, rain=False,
+        A.plan("x", mood="calm", key="C", minutes=0,
                title_tmpl="{hours}", use_case="", stem="s")
         check("a zero-length plan is refused", False)
     except ValueError:
@@ -1132,6 +1139,61 @@ def test_soundfont_renderer() -> None:
     src = inspect.getsource(SF.render_bed)
     check("render_bed does not fade per tile", "afade" not in src)
     check("render_bed normalises to a real target", "loudnorm=I=-20" in src)
+
+
+def test_mood_short() -> None:
+    section("mood clips (each approved instrument bed -> a vertical clip)")
+    import make_mood_short as M
+
+    # All six approved moods must be present, each with a Thai name and its own
+    # key; a missing mood silently drops a clip from the batch.
+    for mood in ("calm", "warm", "sad", "hopeful", "mystic", "epic"):
+        check(f"mood {mood} has a clip preset", mood in M.MOODS)
+        check(f"mood {mood} name is Thai", has_thai(M.MOODS[mood]["name"]))
+        check(f"mood {mood} tagline is Thai", has_thai(M.MOODS[mood]["tagline"]))
+    check("six moods are offered", len(M.MOODS) == 6)
+
+    # Every mood the clip rail names must be a mood the bed renderer can make, or
+    # the clip render dies at the sampler.
+    import soundfont as SF
+    for mood in M.MOODS:
+        check(f"mood {mood} is a renderable bed", mood in SF.MOODS)
+
+    # The plan is pure: it names the bed, the art source and the output without
+    # touching ffmpeg or the network.
+    p = M.plan("calm")
+    check("the plan names the instrument bed", "instrument-calm-C.wav" in str(p["bed"]))
+    check("the art is the ffmpeg gradients source", p["art"].startswith("gradients="))
+    check("the art is the vertical frame", f"{M.W}x{M.H}" in p["art"])
+    check("the clip is under the 60s Shorts ceiling", p["seconds"] < 60)
+    check("the title says the music is real instruments",
+          "เครื่องดนตรีจริง" in p["title"])
+    check("the title is Thai", has_thai(p["title"]))
+
+    # Each mood paints a different field, or the grid reads as one clip repeated.
+    colors = {m: M.art_colors(m) for m in M.MOODS}
+    check("every mood paints a distinct colour pair",
+          len(set(colors.values())) == len(M.MOODS))
+
+    # The card and the AI disclosure are Thai and the disclosure is on the clip
+    # (COMPLIANCE.md): a synthetic performance must say so.
+    ass = M.build_ass("calm", 45.0)
+    check("the card carries the mood name", M.MOODS["calm"]["name"] in ass)
+    check("the clip discloses the AI performance", M.AI_NOTE in ass)
+    check("the disclosure is Thai", has_thai(M.AI_NOTE))
+    check("the follow ask is on the clip", "กดติดตาม" in ass)
+    # The end card must be released before the clip ends, not left on the last
+    # frame, so it reads as a sign-off rather than a frozen banner. With a 45 s
+    # clip and a 0.4 s lead the card ends at 44.60 s, not 45.00 s.
+    check("the follow card ends before the clip does",
+          "0:00:44.60" in ass)
+
+    # The music is the bed and nothing else (K: music only): no rain/noise input
+    # is named anywhere in this rail.
+    import inspect
+    src = inspect.getsource(M.render)
+    check("the clip mixes no rain/noise source",
+          "rain" not in src and "anoisesrc" not in src)
 
 
 def test_refresh_sleep_video() -> None:
@@ -1826,17 +1888,32 @@ def test_crosspost_engine() -> None:
     shorts = list((ROOT / "library" / "shorts").glob("short-*.mp4"))
     aff = list((ROOT / "library" / "affiliate").glob("short-aff-*.mp4"))
     sur = list((ROOT / "library" / "surreal").glob("surreal-*.mp4"))
+    moods = list((ROOT / "library" / "moods").glob("mood-*.mp4"))
     if not shorts:
         print("  skip (no shorts rendered yet)")
         return
-    # Every song Short, affiliate card and surreal exhibit is queued on both
-    # platforms; the Facebook-only photo and link formats are added on top of
+    # Every song Short, affiliate card, surreal exhibit and mood clip is queued on
+    # both platforms; the Facebook-only photo and link formats are added on top of
     # that pair, so the count is the video items times two plus those extras.
     extras = [it for it in q if it.get("kind") in ("photo", "link")]
     check("every short is queued on both platforms",
-          len(q) == (len(shorts) + len(aff) + len(sur)) * 2 + len(extras),
-          f"{len(q)} vs ({len(shorts)}+{len(aff)}+{len(sur)})*2+{len(extras)}")
+          len(q) == (len(shorts) + len(aff) + len(sur) + len(moods)) * 2 + len(extras),
+          f"{len(q)} vs ({len(shorts)}+{len(aff)}+{len(sur)}+{len(moods)})*2+{len(extras)}")
     check("ids are unique", len({it["id"] for it in q}) == len(q))
+
+    # The mood clips (K's approved real-instrument beds) must be queued on both
+    # surfaces, carry the AI-performance disclosure, and caption in Thai.
+    mood_items = [it for it in q if it.get("kind") == "mood"]
+    if moods:
+        check("mood clips are queued on both platforms",
+              len(mood_items) == len(moods) * 2, f"{len(mood_items)}")
+        check("mood caption discloses the AI performance",
+              all("สร้างด้วย AI" in it["caption"] for it in mood_items))
+        check("mood caption is Thai",
+              all(any("\u0e00" <= ch <= "\u0e7f" for ch in it["caption"])
+                  for it in mood_items))
+        check("mood caption carries the Shopee link",
+              all("s.shopee.co.th" in it["caption"] for it in mood_items))
 
     # The Facebook-only formats exist and only on Facebook: a photo is a feed
     # post and a link post is a Shopee card, neither of which the TikTok video
@@ -1893,7 +1970,7 @@ def test_crosspost_engine() -> None:
     left = crosspost.pending(q, state, "tiktok")
     check("posted items are excluded", t["id"] not in {it["id"] for it in left})
     check("facebook still pending",
-          len(left) == len(shorts) + len(aff) + len(sur) - 1,
+          len(left) == len(shorts) + len(aff) + len(sur) + len(moods) - 1,
           f"{len(left)}")
 
     # The absurdist exhibits (K's FB/TK rebrand) are captioned by the surreal
@@ -3796,6 +3873,7 @@ def main() -> int:
     test_follow_end_card()
     test_ambient_loop()
     test_soundfont_renderer()
+    test_mood_short()
     test_refresh_sleep_video()
     test_provenance()
     test_genres()

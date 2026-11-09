@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Build a long ambient / sleep video from a keyless synth bed.
+"""Build a long ambient / sleep video from a real-instrument bed.
 
 Why this exists. The 2026-11-09 YouTube scan was blunt: a 4-minute song gets
 ~500 views, a 2-hour Thai compilation gets 6-17 million, and sleep / ambient
@@ -9,16 +9,17 @@ container we can, for free, with no login and no K action:
 
   * the music is a real-instrument SoundFont bed rendered with `soundfont` (no
     Flow Music, no quota, no login),
-  * the rain is ffmpeg's own noise generator, so there is no CC0 download and no
-    license to track,
   * the picture is one still held for hours, which is what the sleep channels do.
+
+K (2026-11-09): the audio must be music only. An earlier version mixed in a
+rain/wave bed; that is gone, so nothing here adds a sound the instruments did not
+make.
 
 A short bed is looped to the full length with `-stream_loop -1`, so an 8-hour
 video costs one short synth pass, not eight hours of synthesis.
 
     python3 scripts/ambient_loop.py --plan --minutes 30     # what it would build
     python3 scripts/ambient_loop.py --minutes 480 --render  # an 8-hour sleep loop
-    python3 scripts/ambient_loop.py --minutes 480 --rain --render
 
 The output lands in `library/compilations/` with a `.title` and a `.txt`, so the
 existing `upload_compilation.py --stem ambient-<name>` publishes it unchanged.
@@ -49,7 +50,6 @@ W, H = 1920, 1080
 # frame, so nothing is lost.
 FPS = 1
 BED_SECONDS = 180.0  # the loop unit; the bed is synthesised once and tiled
-RAIN_SECONDS = 60.0
 
 # The sleep lane is its own search intent, and the winning videos name it: calm
 # music plus a length. Keep the title in Thai, say the length, and promise the
@@ -69,40 +69,11 @@ PRESETS: dict[str, dict] = {
         "use_case": "ทำงาน อ่านหนังสือ นั่งสมาธิ",
         "title": "เพลงผ่อนคลาย {hours} ชั่วโมง | ทำงาน อ่านหนังสือ นั่งสมาธิ AERIS Music",
     },
-    "rain": {
-        "name": "เสียงฝน",
-        "mood": "mystic",
-        "key": "A",
-        "use_case": "เสียงฝนตก หลับสบาย",
-        "title": "เสียงฝนตก {hours} ชั่วโมง | ฝนตกเบา ๆ หลับสบาย AERIS Music",
-    },
 }
 
 
 def _run(args: list[str], **kw) -> subprocess.CompletedProcess:
     return subprocess.run(args, capture_output=True, text=True, **kw)
-
-
-def _stitch(src: str, dst: str, duration: float, xfade: float = 1.0) -> str:
-    """A seamless-loop filter tail, used only for the rain bed.
-
-    A noise bed has no phase to snap, so it is looped the standard way: the loop
-    starts at `xfade`, and the tail is crossfaded into the head.
-
-      loop = S[xfade : T]  ++  crossfade(S[T-xfade : T], S[0 : xfade])
-
-    There is no fade in the body (a fade would dip the volume once per loop; the
-    finished video gets its own fade at the very ends, in `plan`). `acrossfade`
-    concatenates, so the two pieces are joined with `concat`, and the three
-    slices come from one `asplit`.
-    """
-    d = xfade
-    return (f"[{src}]asplit=3[{src}a][{src}b][{src}c];"
-            f"[{src}a]atrim=start={d},asetpts=PTS-STARTPTS[p1];"
-            f"[{src}b]atrim=start={duration - d},asetpts=PTS-STARTPTS[tail];"
-            f"[{src}c]atrim=end={d},asetpts=PTS-STARTPTS[head];"
-            f"[tail][head]acrossfade=d={d}:c1=tri:c2=tri[xf];"
-            f"[p1][xf]concat=n=2:v=0:a=1[{dst}]")
 
 
 def _render_bed(mood: str, key: str, out: Path, duration: float) -> None:
@@ -140,40 +111,12 @@ def ensure_bed(mood: str, key: str) -> Path:
     return dest
 
 
-def ensure_rain() -> Path:
-    """A short rain bed from ffmpeg's own noise source — no download, no license.
-
-    No fade in or out: the bed is looped for hours, so a per-tile fade would dip
-    the rain once a minute. The end fades are applied to the *finished* video
-    instead (see `plan`). Loudness is set once here, before the loop stitch.
-    """
-    BEDS.mkdir(parents=True, exist_ok=True)
-    dest = BEDS / "rain.wav"
-    if dest.exists() and dest.stat().st_size > 44100 * 2 * RAIN_SECONDS * 0.9:
-        return dest
-    # Brown noise through a band-pass reads as steady rain; the light tremolo
-    # keeps it from sounding like a hiss.
-    filt = (
-        f"anoisesrc=color=brown:amplitude=0.06:duration={RAIN_SECONDS},"
-        f"lowpass=f=1400,highpass=f=180,tremolo=f=0.2:d=0.15,"
-        f"loudnorm=I=-18:TP=-2:LRA=6[ln];"
-        f"[ln]aresample=44100[full];"
-        + _stitch("full", "out", RAIN_SECONDS)
-    )
-    res = _run(["ffmpeg", "-y", "-hide_banner", "-loglevel", "error",
-                "-filter_complex", filt, "-map", "[out]",
-                "-c:a", "pcm_s16le", str(dest)])
-    if res.returncode != 0 or not dest.exists():
-        raise RuntimeError(f"rain synth failed: {res.stderr.strip()[-500:]}")
-    return dest
-
-
 def _hours_label(minutes: float) -> str:
     h = minutes / 60.0
     return f"{h:g}"
 
 
-def plan(name: str, *, mood: str, key: str, minutes: float, rain: bool,
+def plan(name: str, *, mood: str, key: str, minutes: float,
          title_tmpl: str, use_case: str, still: Path | None = None,
          stem: str | None = None) -> dict:
     """The ffmpeg command and the sidecar text, with nothing executed.
@@ -181,6 +124,9 @@ def plan(name: str, *, mood: str, key: str, minutes: float, rain: bool,
     Pure on purpose: a test can assert the shape (length, loops, maps, title)
     without paying for an 8-hour encode. `stem` keys both the output path and the
     state file, so the caller must pass the same one it will later check for.
+
+    The audio is the instrument bed and nothing else (K, 2026-11-09: music only),
+    so there is no second input to mix.
     """
     if minutes <= 0:
         raise ValueError("minutes must be positive")
@@ -193,25 +139,18 @@ def plan(name: str, *, mood: str, key: str, minutes: float, rain: bool,
         still = COVERS / "cover-01-khon-di-thi-chak-pai.jpg"
 
     cmd = ["ffmpeg", "-y", "-hide_banner", "-loglevel", "error"]
-    # Loop the short beds to the full length; the still is held the same way.
+    # Loop the short bed to the full length; the still is held the same way.
     cmd += ["-stream_loop", "-1", "-i", str(BEDS / f"instrument-{mood}-{key}.wav")]
-    if rain:
-        cmd += ["-stream_loop", "-1", "-i", str(BEDS / "rain.wav")]
     cmd += ["-loop", "1", "-framerate", str(FPS), "-i", str(still)]
     cmd += ["-t", f"{secs:.3f}"]
 
-    still_idx = 2 if rain else 1
-    vf = (f"[{still_idx}:v]scale={W}:{H},format=yuv420p[v]")
+    vf = f"[1:v]scale={W}:{H},format=yuv420p[v]"
     # Fades belong to the finished video, not to each looped tile: fading the bed
     # would dip the volume once per loop. A final gentle lowpass removes any high
     # ring the layers picked up, so nothing whistles across the eight hours.
     fade = 5.0
-    tail = (f"lowpass=f=8000,afade=t=in:d={fade},"
-            f"afade=t=out:st={max(0.0, secs - fade):.2f}:d={fade}[a]")
-    if rain:
-        af = f"[0:a][1:a]amix=inputs=2:normalize=0:duration=first,{tail}"
-    else:
-        af = f"[0:a]{tail}"
+    af = (f"[0:a]lowpass=f=8000,afade=t=in:d={fade},"
+          f"afade=t=out:st={max(0.0, secs - fade):.2f}:d={fade}[a]")
     cmd += ["-filter_complex", f"{vf};{af}", "-map", "[v]", "-map", "[a]"]
     cmd += ["-c:v", "libx264", "-preset", "veryfast", "-crf", "26",
             "-pix_fmt", "yuv420p", "-r", str(FPS),
@@ -267,7 +206,6 @@ def main() -> int:
     ap.add_argument("--mood", default=None)
     ap.add_argument("--key", default=None)
     ap.add_argument("--minutes", type=float, default=480.0, help="target length")
-    ap.add_argument("--rain", action="store_true")
     ap.add_argument("--plan", action="store_true", help="print, render nothing")
     ap.add_argument("--render", action="store_true")
     args = ap.parse_args()
@@ -280,8 +218,6 @@ def main() -> int:
 
     if args.render:
         ensure_bed(mood, key)
-        if args.rain:
-            ensure_rain()
 
     # The still is the video, so make it first and feed it to the render. The
     # title here is the full "N ชั่วโมง" line, which is what the frame should
@@ -289,7 +225,7 @@ def main() -> int:
     title = preset["title"].format(hours=_hours_label(args.minutes))[:100]
     still = thumbnail(stem, title, mood) if args.render else None
 
-    p = plan(name, mood=mood, key=key, minutes=args.minutes, rain=args.rain,
+    p = plan(name, mood=mood, key=key, minutes=args.minutes,
              title_tmpl=preset["title"], use_case=preset["use_case"],
              still=still, stem=stem)
     print(f"length : {args.minutes / 60:g} h ({args.minutes:g} min)")

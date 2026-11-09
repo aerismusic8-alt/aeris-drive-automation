@@ -38,6 +38,7 @@ SOURCES = [
     ("shorts", "*.mp4"),
     ("affiliate", "*.mp4"),
     ("surreal", "*.mp4"),
+    ("moods", "*.mp4"),
     ("covers", "*.jpg"),
     ("thumbs", "*.png"),
 ]

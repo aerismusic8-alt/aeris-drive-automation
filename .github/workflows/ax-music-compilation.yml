@@ -76,10 +76,9 @@ jobs:
       # views, a 2-hour Thai compilation 6-17M, and a sleep/ambient loop of 8-12
       # hours 100-221M. The *container* is what the algorithm rewards, and this
       # is the biggest one we can build for free: the bed is real instruments
-      # (fluidsynth + SoundFont — no Flow Music, no login), the rain is ffmpeg's
-      # own noise (no download, no licence), and the picture is one held still,
-      # so the encode is minutes. One upload, then the state file stops a re-run
-      # from doubling it.
+      # (fluidsynth + SoundFont — no Flow Music, no login), music only, and the
+      # picture is one held still, so the encode is minutes. One upload, then the
+      # state file stops a re-run from doubling it.
       - name: Build and upload the sleep/ambient loop (once)
         env:
           YT_CLIENT_ID: ${{ secrets.YT_CLIENT_ID }}
@@ -92,7 +91,7 @@ jobs:
           if [ -f "$state" ] && grep -q '"video_id": *"[^"]' "$state"; then
             echo "ambient sleep loop already live — skipping"
           else
-            python3 scripts/ambient_loop.py --preset sleep --minutes 480 --rain --render
+            python3 scripts/ambient_loop.py --preset sleep --minutes 480 --render
             python3 scripts/upload_compilation.py --upload --ch ch3 \
               --stem ambient-sleep \
               --thumb library/thumbs/thumb-ambient-sleep.png \
