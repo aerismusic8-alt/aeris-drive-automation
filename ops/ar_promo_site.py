@@ -89,6 +89,32 @@ def channel_uploads(channel: str, limit: int = 9) -> list[dict]:
     return out
 
 
+def channel_uploads_rss(limit: int = 9) -> list[dict]:
+    """The channel's newest uploads from the public RSS feed.
+
+    Free, keyless, no quota — so the buying-guide section can ship even on a day
+    the Data API is refused (403 quotaExceeded). The feed only carries recent
+    public uploads and no privacy field, which is all the site needs; the API
+    path stays first because it also confirms `public`.
+    """
+    import xml.etree.ElementTree as ET
+    url = f"https://www.youtube.com/feeds/videos.xml?channel_id={CHANNEL_ID}"
+    req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0"})
+    with urllib.request.urlopen(req, timeout=30) as r:
+        root = ET.fromstring(r.read())
+    ns = {"a": "http://www.w3.org/2005/Atom"}
+    out = []
+    for e in root.findall("a:entry", ns):
+        vid = e.findtext("a:id", default="", namespaces=ns).split(":")[-1]
+        title = e.findtext("a:title", default="", namespaces=ns)
+        if vid:
+            out.append({"id": vid, "title": title,
+                        "published": e.findtext("a:published", default="", namespaces=ns)})
+        if len(out) >= limit:
+            break
+    return out
+
+
 def esc(s: str) -> str:
     return (s.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
              .replace('"', "&quot;"))
@@ -106,7 +132,78 @@ PAGE_URL = "https://www.facebook.com/profile.php?id=61595890900382"
 TIKTOK_URL = "https://www.tiktok.com/@aeris.music4"
 
 
+# Buying-guide pages. Social reach is tiny and slow; a search-indexable page
+# needs no audience — a searcher who types one of these queries is already
+# shopping, which is where affiliate revenue actually comes from. The queries
+# are real: pulled free from Google Suggest (hl=th, gl=th, 2026-11-09), not
+# guessed. Each guide carries the Shopee affiliate link (the site is a YouTube
+# surface, so it uses the youtube Sub_id link).
+SHOPEE_URL = "https://s.shopee.co.th/8pn3G4alfI"
+GUIDES: list[dict] = [
+    {"q": "หูฟังบลูทูธ ยี่ห้อไหนดี",
+     "title": "หูฟังบลูทูธ ยี่ห้อไหนดี — เลือกแบบไหนให้คุ้ม",
+     "intro": "ก่อนซื้อหูฟังบลูทูธ ดู 3 อย่างนี้ก่อน แล้วจะเลือกได้ง่ายขึ้นมาก",
+     "points": ["แบตอึดกี่ชั่วโมง — ใช้จริงต่อวันกี่ชั่วโมง",
+                "ตัดเสียงรบกวน (ANC) จำเป็นกับคุณไหม",
+                "ใส่สบายนานแค่ไหน — น้ำหนักและจุกหู"]},
+    {"q": "หูฟัง ตัดเสียงรบกวน ยี่ห้อไหนดี",
+     "title": "หูฟังตัดเสียงรบกวน (ANC) คุ้มกับเงินที่จ่ายไหม",
+     "intro": "หูฟังตัดเสียงรบกวนช่วยตอนนั่งรถ เครื่องบิน หรือทำงานในที่เสียงดัง",
+     "points": ["ดูค่า ANC ตอนเปิด — บางรุ่นตัดได้แค่เสียงทุ้ม",
+                "โหมดเปิดฟังเสียงรอบตัว (Transparency) สำคัญในเมือง",
+                "ลองเทียบรุ่นก่อนตัดสินใจ"]},
+    {"q": "หูฟัง ราคาไม่เกิน 500",
+     "title": "หูฟังราคาไม่เกิน 500 — ได้อะไรบ้าง",
+     "intro": "งบหลักร้อยเลือกได้ ถ้ารู้ว่าอะไรสำคัญกับคุณจริง ๆ",
+     "points": ["ดูสเปกแบตและระยะเชื่อมต่อก่อนยี่ห้อ",
+                "งานประกอบและสายชาร์จเป็นจุดที่มักประหยัดต้นทุน",
+                "อ่านรีวิวรุ่นที่จะซื้อจริง"]},
+    {"q": "หู ฟัง ใส่ นอน ไม่ เจ็บ",
+     "title": "หูฟังใส่นอน ไม่เจ็บ — ต้องดู 3 อย่างนี้",
+     "intro": "หูฟังสำหรับใส่นอนต้องบาง เบา และไม่กดหูเวลาเอียง",
+     "points": ["รูปแบบนอนหงาย/ตะแคง — แบบบุใน vs แบบคล้องหู",
+                "ความหนาของตัวหูฟังตอนตะแคง",
+                "เสียงไม่ต้องดังมาก แต่ต้องนุ่ม"]},
+    {"q": "ลำโพงบลูทูธ ยี่ห้อไหนดี",
+     "title": "ลำโพงบลูทูธ ยี่ห้อไหนดี — ตามขนาดห้อง",
+     "intro": "ลำโพงบลูทูธเลือกตามขนาดห้อง ไม่ใช่ตามราคา",
+     "points": ["ห้องเล็ก 10-20 วัตต์ก็พอ",
+                "ดูการเชื่อมต่อและแบตก่อน",
+                "วางใกล้นอนเลือกเสียงนุ่ม"]},
+]
+
+
+def _guides_html() -> tuple[str, str]:
+    """The buying-guide section + its FAQPage JSON-LD.
+
+    Headings and the FAQ answers carry the exact query (`g["q"]`) so the page
+    can rank for it, and each card links to the Shopee affiliate link.
+    """
+    cards, faqs = [], []
+    for g in GUIDES:
+        pts = "".join(f"<li>{esc(p)}</li>" for p in g["points"])
+        cards.append(
+            f'    <article class="guide">\n'
+            f'      <h3>{esc(g["title"])}</h3>\n'
+            f'      <p class="sub" style="margin:6px 0 12px">{esc(g["intro"])}</p>\n'
+            f'      <ul>{pts}</ul>\n'
+            f'      <a class="btn btn-primary" href="{SHOPEE_URL}" target="_blank" '
+            f'rel="nofollow sponsored noopener">ดูรุ่นที่แนะนำบน Shopee</a>\n'
+            f'    </article>')
+        faqs.append({"@type": "Question", "name": g["q"],
+                     "acceptedAnswer": {"@type": "Answer",
+                                        "text": g["intro"] + " " + " ".join(g["points"])}})
+    section = (
+        '  <h2>คู่มือเลือกซื้อ หูฟัง &amp; ลำโพง</h2>\n'
+        '  <p class="sub">รวมคำถามที่คนถามบ่อยก่อนซื้อ — เลือกให้ตรงกับที่ใช้จริง</p>\n'
+        '  <div class="grid">\n' + "\n".join(cards) + "\n  </div>")
+    ld = json.dumps({"@context": "https://schema.org", "@type": "FAQPage",
+                     "mainEntity": faqs}, ensure_ascii=False)
+    return section, f'<script type="application/ld+json">{ld}</script>'
+
+
 def render(videos: list[dict], channel_url: str) -> str:
+    guide_section, guide_ld = _guides_html()
     cards = []
     for v in videos:
         title = esc(v["title"])
@@ -121,10 +218,11 @@ def render(videos: list[dict], channel_url: str) -> str:
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>AERIS Music — เพลงไทยต้นฉบับ · ติดตามเพจ</title>
-<meta name="description" content="AERIS Music — เพลงไทยต้นฉบับ เพลงเศร้า เพื่อชีวิต ลูกทุ่ง และคาราโอเกะ ติดตามเพจไว้ไม่พลาดเพลงใหม่">
+<meta name="description" content="AERIS Music — เพลงไทยต้นฉบับ เพลงเศร้า เพื่อชีวิต ลูกทุ่ง คาราโอเกะ พร้อมคู่มือเลือกซื้อหูฟังบลูทูธและลำโพงก่อนตัดสินใจ">
 <meta property="og:title" content="AERIS Music — เพลงไทยต้นฉบับ">
 <meta property="og:description" content="เพลงไทยหลากหลายอารมณ์ พร้อมเวอร์ชันคาราโอเกะ ติดตามเพจไว้ไม่พลาดเพลงใหม่">
 <meta property="og:type" content="website">
+{guide_ld}
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Thai:wght@300;400;600;700&display=swap" rel="stylesheet">
@@ -165,6 +263,10 @@ footer{{border-top:1px solid #1e1e2e;padding:34px 0;color:var(--dim);font-size:.
 .socials{{display:flex;gap:16px;justify-content:center;margin-bottom:16px;flex-wrap:wrap}}
 .socials a{{color:var(--dim);border-bottom:1px solid transparent}}
 .socials a:hover{{color:var(--fg);border-color:var(--accent)}}
+.guide{{background:var(--card);border:1px solid #24243a;border-radius:16px;padding:22px}}
+.guide h3{{font-size:1.12rem;font-weight:600;line-height:1.5}}
+.guide ul{{margin:0 0 16px;padding-left:20px;color:var(--dim)}}
+.guide li{{margin:4px 0}}
 </style>
 </head>
 <body>
@@ -191,6 +293,9 @@ footer{{border-top:1px solid #1e1e2e;padding:34px 0;color:var(--dim);font-size:.
     <div class="card"><div class="body"><div class="t">🌾 ลูกทุ่ง</div><p class="sub" style="margin:8px 0 0">กลิ่นอายบ้านเรา</p></div></div>
     <div class="card"><div class="body"><div class="t">🎤 คาราโอเกะ</div><p class="sub" style="margin:8px 0 0">สำหรับคนที่อยากร้องตาม</p></div></div>
   </div>
+</section>
+<section class="wrap">
+{guide_section}
 </section>
 <section id="music" class="wrap">
   <h2>ผลงานล่าสุด</h2>
@@ -259,7 +364,11 @@ def main(argv=None) -> int:
     p.add_argument("--out", default="/tmp/aeris-promo-site.html")
     args = p.parse_args(argv)
 
-    videos = channel_uploads(args.channel, args.limit)
+    try:
+        videos = channel_uploads(args.channel, args.limit)
+    except Exception as exc:  # noqa: BLE001 - the RSS fallback must always be tried
+        print(f"Data API unavailable ({exc}); falling back to the RSS feed")
+        videos = channel_uploads_rss(args.limit)
     channel_url = "https://www.youtube.com/@aerismusicth"
     html = render(videos, channel_url)
     Path(args.out).write_text(html)

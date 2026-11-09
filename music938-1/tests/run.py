@@ -3443,6 +3443,18 @@ def test_promo_site_converts_to_the_page() -> None:
     check("the first button is the Page, not YouTube",
           html.index("facebook.com/profile.php?id=") < html.index("sub_confirmation=1"))
     check("says what a follower gets", "คาราโอเกะ" in html)
+    # Search-first (2026-11-09): the page carries a buying-guide section whose
+    # headings/FAQ answer the real Thai queries, each linking the affiliate URL.
+    # Social reach is tiny; a search-indexable page needs no audience, so this is
+    # where the affiliate funnel can actually get found. A page that lost the
+    # section or the links would silently stop being a revenue surface.
+    for g in P.GUIDES:
+        check(f'guide covers "{g["q"]}"', g["q"] in html)
+    check("guides link the affiliate URL", P.SHOPEE_URL in html)
+    check("the affiliate link is nofollow+sponsored",
+          'rel="nofollow sponsored noopener"' in html)
+    check("FAQ structured data is present",
+          '"@type": "FAQPage"' in html or '"@type":"FAQPage"' in html)
 
 
 def main() -> int:
