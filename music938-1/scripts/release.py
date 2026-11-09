@@ -428,7 +428,12 @@ def describe(slug: str, kind: str, variant: str = "") -> tuple[str, str, list[st
         # comment box something answerable to ask for.
         hm = re.search(r"-h(\d+)-", variant)
         hk = int(hm.group(1)) if hm else 1
-        title = f"{title_th} | {hook_title(hk)} #Shorts"
+        # The scan's winners use `|` in 8% of titles, the sub-1k videos in 38.9%;
+        # the em dash is the shape the song titles already use, so the Short
+        # matches them instead of carrying the losing separator. `#เพลงไทย` is the
+        # tag the round's fastest-growing Short carried (market-report.md), and it
+        # costs no characters worth keeping — the title stays well under 60.
+        title = f"{title_th} — {hook_title(hk)} #เพลงไทย #Shorts"
         angle = hook_angle(hk)
         desc = (
             f"🎵 {title_th} — {hook_title(hk)}\n"

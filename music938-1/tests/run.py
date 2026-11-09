@@ -1215,6 +1215,16 @@ def test_titles() -> None:
     # The Short must still be discoverable as a Short.
     st, _, _ = release.describe(slug, "short", "")
     check("short title carries #Shorts", "#Shorts" in st, st)
+    # The scan's losers use `|` 5x more often than the winners (38.9% vs 8.0%),
+    # so the Short must not carry it: the em dash matches the song titles and
+    # keeps the title in one shape. `#เพลงไทย` is the tag the round's
+    # fastest-growing Short carried (market-report.md, 2026-11-07).
+    for hook in (1, 2, 3):
+        t, _, _ = release.describe(
+            slug, "short", f"short-song-h{hook}-{slug}")
+        check(f"short h{hook} title drops the `|` separator", "|" not in t, t)
+        check(f"short h{hook} title carries #เพลงไทย", "#เพลงไทย" in t, t)
+        check(f"short h{hook} title <= 60 chars", len(t) <= 60, f"{len(t)}: {t}")
 
 
 def test_compilation() -> None:
