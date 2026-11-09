@@ -58,7 +58,7 @@ jobs:
             fluid-soundfont-gm musescore-general-soundfont
           # The offline bed is now real instruments via fluidsynth (K rejected
           # the ffmpeg tone synth as "fake", 2026-11-09); mido writes the MIDI.
-          python3 -m pip install --quiet --disable-pip-version-check Pillow mido
+          python3 -m pip install --quiet --disable-pip-version-check Pillow mido numpy
 
       - name: Produce the next bed (no Flow, no login)
         working-directory: music938-1

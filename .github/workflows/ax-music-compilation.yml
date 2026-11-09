@@ -57,7 +57,7 @@ jobs:
           # "fake", 2026-11-09). mido writes the MIDI the sampler plays.
           sudo apt-get install -y -qq ffmpeg fluidsynth \
             fluid-soundfont-gm musescore-general-soundfont
-          python3 -m pip install --quiet --disable-pip-version-check Pillow mido
+          python3 -m pip install --quiet --disable-pip-version-check Pillow mido numpy
 
       - name: Pull the song masters and covers
         env:
