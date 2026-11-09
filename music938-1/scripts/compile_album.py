@@ -36,6 +36,32 @@ CROSSFADE = 4.0  # seconds of overlap between tracks
 # compilations carry 32-110 songs; 12 is a floor for a "รวมเพลง" to feel real.
 MIN_TRACKS = 12
 
+# A themed compilation is a real album at a lower count than the full-catalogue
+# dump. The winning "รวมเพลงเศร้า" channels ship 30-100 songs, but 8 Thai songs
+# at ~3.5 minutes each is already ~28 minutes of continuous listening, and the
+# title's "N เพลง" stays honest. The full dump keeps the higher floor so it
+# never ships half-empty.
+MIN_THEME_TRACKS = 8
+
+# Themed compilations, keyed off the `# MOOD:` the lyric already carries.
+#
+# Why more than one. The 2026-11-08 competitor scan (10 real Thai channels, no
+# API quota) found the winning channels publish *many* long-form compilations,
+# each titled for a search intent — "เพลงเศร้าไทย", "ฟังเพลงไทยเพราะๆ ขับรถ
+# ทำงาน อ่านหนังสือ คาเฟ่". A single generic compilation leaves the watch-hour
+# lever unused; one video per intent gives a searcher a video that names their
+# moment. The mood sets are disjoint, so no song lands in two themes: the
+# compilations are genuinely different, not one tracklist re-titled, which is
+# what the advisor panel warned YouTube's originality review would punish.
+THEMES: dict[str, dict] = {
+    "sad": {"name": "รวมเพลงเศร้าไทย", "use_case": "อกหัก คิดถึงคนเก่า ฟังตอนดึก",
+            "moods": ("sad", "mystic")},
+    "chill": {"name": "เพลงไทยฟังสบาย", "use_case": "ขับรถ ทำงาน อ่านหนังสือ คาเฟ่",
+              "moods": ("calm", "warm")},
+    "power": {"name": "เพลงไทยให้กำลังใจ", "use_case": "เริ่มวันใหม่ สู้ต่อ ไม่ยอมแพ้",
+              "moods": ("hopeful", "epic")},
+}
+
 
 def parse_lyrics(slug: str) -> dict:
     hdr: dict[str, str] = {}
@@ -68,10 +94,19 @@ def available_songs() -> list[str]:
     return slugs
 
 
-def pick(max_minutes: float) -> list[str]:
-    """Fill up to max_minutes with songs, in catalogue order."""
+def pick(max_minutes: float, theme: str | None = None) -> list[str]:
+    """Fill up to max_minutes with songs, in catalogue order.
+
+    With a `theme`, only songs whose `# MOOD:` is in that theme are eligible.
+    The theme sets are disjoint, so two themed compilations never share a song
+    and the result is a genuinely different album rather than one tracklist
+    re-titled.
+    """
+    moods = set(THEMES[theme]["moods"]) if theme else None
     chosen, total = [], 0.0
     for slug in available_songs():
+        if moods is not None and parse_lyrics(slug).get("MOOD") not in moods:
+            continue
         d = duration(SONGS / f"song-{slug}.mp3")
         if not d:
             continue
@@ -111,20 +146,31 @@ def build_chapters(slugs: list[str]) -> str:
     return "\n".join(lines)
 
 
-def compilation_title(name: str, n_tracks: int) -> str:
+def compilation_title(name: str, n_tracks: int, use_case: str = "") -> str:
     """The title shape the scan says wins: `<theme> <n> เพลง (เลือกเพลงฟังได้)`.
 
     The three highest-viewed videos in the dataset are all this shape and all run
     past 2 hours. Keep it under 60 characters so nothing is truncated.
+
+    A themed compilation prepends the listening occasion ("ขับรถ ทำงาน อ่านหนังสือ
+    คาเฟ่"), which is what the winning titles lead with — a searcher types a
+    moment, not a mood word. It is dropped from the tail when the 60-char budget
+    runs out, so the honest `(เลือกเพลงฟังได้)` promise always survives.
     """
-    title = f"{name} {n_tracks} เพลง (เลือกเพลงฟังได้)"
+    head = f"{use_case} | " if use_case else ""
+    title = f"{head}{name} {n_tracks} เพลง (เลือกเพลงฟังได้)"
+    if len(title) > 100:
+        title = f"{name} {n_tracks} เพลง (เลือกเพลงฟังได้)"
     return title[:100]
 
 
-def compilation_description(name: str, slugs: list[str]) -> str:
+def compilation_description(name: str, slugs: list[str],
+                            use_case: str = "") -> str:
     """Description with the chapter list, which is what enables song skipping."""
+    lead = f"🎧 {use_case}\n\n" if use_case else ""
     return (
         f"🎵 {name} — รวม {len(slugs)} เพลงไทย\n\n"
+        f"{lead}"
         f"🤖 AERIS Music — ค่ายเพลง AI สร้างเพลงและเสียงร้องด้วย AI\n\n"
         f"👉 กดเลือกเพลงที่อยากฟังได้จากรายการด้านล่าง\n\n"
         f"⏱️ รายการเพลง\n{build_chapters(slugs)}\n\n"
@@ -135,7 +181,8 @@ def compilation_description(name: str, slugs: list[str]) -> str:
     )
 
 
-def render(name: str, slugs: list[str], *, out_name: str | None = None) -> Path:
+def render(name: str, slugs: list[str], *, out_name: str | None = None,
+           use_case: str = "") -> Path:
     if not slugs:
         raise SystemExit("no songs to compile — nothing built yet")
     COMPILED.mkdir(parents=True, exist_ok=True)
@@ -177,20 +224,30 @@ def render(name: str, slugs: list[str], *, out_name: str | None = None) -> Path:
     # first and this used to overwrite it, which silently dropped the timestamps
     # that the `(เลือกเพลงฟังได้)` title promises. Chapters are the point.
     (COMPILED / f"{out_name or 'compilation'}.txt").write_text(
-        compilation_description(name, slugs), encoding="utf-8")
+        compilation_description(name, slugs, use_case), encoding="utf-8")
     return out
 
 
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument("--name", default="รวมเพลงไทยเพื่อชีวิต")
+    ap.add_argument("--theme", choices=sorted(THEMES),
+                    help="build a themed album from one mood set (sad/chill/power)")
     ap.add_argument("--max", type=float, default=60.0, help="target minutes")
     ap.add_argument("--list", action="store_true", help="show the tracklist, render nothing")
     ap.add_argument("--render", action="store_true")
     ap.add_argument("--out", default=None)
     args = ap.parse_args()
 
-    slugs = pick(args.max)
+    theme = args.theme
+    if theme:
+        args.name = THEMES[theme]["name"]
+    use_case = THEMES[theme]["use_case"] if theme else ""
+    # A theme's stem keys the state file, so `upload_compilation.py` can tell a
+    # published sad album from a chill one and never re-upload the same theme.
+    stem = args.out or (f"compilation-{theme}" if theme else "compilation")
+
+    slugs = pick(args.max, theme)
     if not slugs:
         print("nothing built yet — no song-*.mp3 with a cover on disk")
         return 0
@@ -198,25 +255,27 @@ def main() -> int:
     # "N เพลง" and a viewer who opens it for 3 minutes feels misled. The scan's
     # winning compilations carry 32-110 songs. Hold the shape until the
     # catalogue can support it rather than shipping a thin one under a big title.
-    if len(slugs) < MIN_TRACKS:
-        print(f"only {len(slugs)} song(s) on disk; a compilation needs at least "
-              f"{MIN_TRACKS} for the title to be honest. Nothing written.")
+    floor = MIN_THEME_TRACKS if theme else MIN_TRACKS
+    if len(slugs) < floor:
+        print(f"only {len(slugs)} song(s) eligible; a compilation needs at least "
+              f"{floor} for the title to be honest. Nothing written.")
         return 0
     total = sum(duration(SONGS / f"song-{s}.mp3") for s in slugs) - CROSSFADE * (len(slugs) - 1)
-    title = compilation_title(args.name, len(slugs))
+    title = compilation_title(args.name, len(slugs), use_case)
     print(f"{title}\n{len(slugs)} tracks, ~{total/60:.1f} min\n")
     print(build_tracklist(slugs))
     # The description and the chapter list are what let a viewer skip to a song,
     # so they are written next to the render and handed to yt_publish.py.
-    desc_file = COMPILED / f"{args.out or 'compilation'}.txt"
+    desc_file = COMPILED / f"{stem}.txt"
     desc_file.parent.mkdir(parents=True, exist_ok=True)
-    desc_file.write_text(compilation_description(args.name, slugs), encoding="utf-8")
-    (COMPILED / f"{args.out or 'compilation'}.title").write_text(title, encoding="utf-8")
+    desc_file.write_text(compilation_description(args.name, slugs, use_case),
+                         encoding="utf-8")
+    (COMPILED / f"{stem}.title").write_text(title, encoding="utf-8")
     print(f"\ntitle: {title}\ndesc -> {desc_file}")
     if args.list or not args.render:
         print("\n(pass --render to build it)")
         return 0
-    out = render(args.name, slugs, out_name=args.out)
+    out = render(args.name, slugs, out_name=stem, use_case=use_case)
     print(f"\n{out}  ({out.stat().st_size/1e6:.1f} MB)")
     return 0
 

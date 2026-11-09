@@ -453,6 +453,14 @@ def test_priority_pin() -> None:
         print("  skip (no pinned song right now)")
         return
     pinned = pins[0]
+    # A pin is only live while the song's main release is still pending: once it
+    # is uploaded the file is inert and the song's remaining Shorts fall back
+    # into their rotation slots (see `_pin_front` / `plan`). The automation can
+    # publish the pinned song between runs, so check which state is current
+    # instead of assuming the pin is still pending.
+    if not any(i["slug"] == pinned and i["kind"] == "song" for i in base):
+        print(f"  skip ({pinned} already released — the pin is inert)")
+        return
     first = base[0]
     check("a pinned song leads the plan",
           first["slug"] == pinned, f"head is {first['slug']}")
@@ -1234,6 +1242,101 @@ def test_compilation() -> None:
         "def render(", 1)[1].split("\ndef ", 1)[0]
     check("render keeps the chaptered description",
           "compilation_description" in render_body)
+
+
+def test_themed_compilations() -> None:
+    """Themed albums must be disjoint and lead with a search intent.
+
+    The 2026-11-08 competitor scan (10 real Thai channels, no API quota) found
+    the winning channels publish many long-form compilations, each titled for a
+    search intent. The lever only holds if the albums are genuinely different:
+    if two themes share songs, we are re-titling one tracklist, which is what the
+    advisor panel warned a channel-level originality review would punish. So the
+    mood sets must not overlap, each theme must reach the honest track floor, and
+    the title must carry the listening occasion.
+    """
+    section("themed compilations (competitor lever)")
+    import compile_album
+    check("at least three themes are defined", len(compile_album.THEMES) >= 3,
+          str(list(compile_album.THEMES)))
+    picked = {t: set(compile_album.pick(60, t)) for t in compile_album.THEMES}
+    for a in compile_album.THEMES:
+        for b in compile_album.THEMES:
+            if a < b:
+                overlap = picked[a] & picked[b]
+                check(f"themes {a} and {b} share no song", not overlap,
+                      str(sorted(overlap)))
+    for t, slugs in picked.items():
+        check(f"theme {t} reaches the honest floor",
+              len(slugs) >= compile_album.MIN_THEME_TRACKS, f"{len(slugs)}")
+    title = compile_album.compilation_title(
+        compile_album.THEMES["chill"]["name"], 9,
+        compile_album.THEMES["chill"]["use_case"])
+    check("themed title leads with the occasion",
+          title.startswith(compile_album.THEMES["chill"]["use_case"]), title)
+    check("themed title keeps the honest promise",
+          "เลือกเพลงฟังได้" in title, title)
+    check("themed title fits 100 chars", len(title) <= 100, f"{len(title)}")
+
+
+def test_song_title_search_intent() -> None:
+    """A song title must name a search intent, not just a mood adjective.
+
+    The scan's winners title for the listening moment ("ขับรถ ทำงาน ..."). The
+    intent tail carries the genre keyword and the occasion; the mood tagline
+    stays in the description. It must always fit the ~60-char truncation, falling
+    back to the tagline when it would not.
+    """
+    section("song titles (search intent)")
+    import release
+    for slug in ("01-khon-di-thi-chak-pai", "05-fon-tok-nai-chai",
+                 "06-doen-khon-diao", "09-phleng-khong-khon-nueai"):
+        h = release.parse_lyrics(slug)
+        mood = h.get("MOOD", "calm")
+        title, _desc, _tags = release.describe(slug, "song", "")
+        check(f"{slug}: title <= 60 chars", len(title) <= 60, f"{len(title)}: {title}")
+        want = release.TITLE_INTENT.get(mood, "")
+        check(f"{slug}: title carries the search intent", want in title, title)
+    # A very long title keeps the tagline rather than truncating.
+    long_th = "ก" * 55
+    t = release.song_title(long_th, "เพลงเศร้า ที่เข้าใจความเสียใจ", "sad")
+    check("long title falls back to the tagline", t.endswith("เพลงเศร้า ที่เข้าใจความเสียใจ"), t)
+
+
+def test_competitor_scanner_parsers() -> None:
+    """The no-quota channel scanner must parse the numbers real pages carry.
+
+    Three bugs cost a debug cycle each on the first live run (2026-11-08) and
+    none of them raised: a non-greedy regex truncated `ytInitialData`, the
+    `videos` tab had moved to `lockupViewModel` so every renderer lookup came
+    back empty, and the subscriber label is Thai so a leading-`\\d+` parse read
+    "1.3 หมื่น" (13,000) as 1. This pins the parser behaviour on the exact strings
+    the pages return.
+    """
+    section("competitor scanner (no-quota parsers)")
+    sys.path.insert(0, str(ROOT.parent / "ops"))
+    import yt_public_scan as scan
+    check("Thai พัน scales to thousands", scan._parse_int("ผู้ติดตาม 8.8 พัน คน") == 8800,
+          str(scan._parse_int("ผู้ติดตาม 8.8 พัน คน")))
+    check("Thai หมื่น scales to ten-thousands",
+          scan._parse_int("ผู้ติดตาม 1.3 หมื่น คน") == 13000,
+          str(scan._parse_int("ผู้ติดตาม 1.3 หมื่น คน")))
+    check("Thai ล้าน scales to millions",
+          scan._parse_int("ผู้ติดตาม 2.5 ล้าน คน") == 2500000,
+          str(scan._parse_int("ผู้ติดตาม 2.5 ล้าน คน")))
+    check("plain Thai count parses", scan._parse_int("ผู้ติดตาม 7 คน") == 7,
+          str(scan._parse_int("ผู้ติดตาม 7 คน")))
+    check("Latin M scales", scan._parse_int("1.2M subscribers") == 1200000,
+          str(scan._parse_int("1.2M subscribers")))
+    check("view count parses", scan._parse_int("1,234 views") == 1234)
+    check("h:mm:ss converts to seconds", scan._hms("1:02:03") == 3723)
+    check("m:ss converts to seconds", scan._hms("4:00") == 240)
+    check("empty duration is None", scan._hms("") is None)
+    # Brace matching must survive a nested object followed by a `};</script>`.
+    html = 'var ytInitialData = {"a":{"b":1},"c":"};</script>"};</script>'
+    data = scan.initial_data(html)
+    check("brace-matched ytInitialData keeps the nested object",
+          data.get("a", {}).get("b") == 1, str(data))
 
 
 def test_flow_extend_kinds() -> None:
@@ -3274,6 +3377,9 @@ def main() -> int:
     test_thumbnail_repair()
     test_titles()
     test_compilation()
+    test_themed_compilations()
+    test_song_title_search_intent()
+    test_competitor_scanner_parsers()
     test_flow_extend_kinds()
     test_market_report()
     test_market_plugin_wiring()

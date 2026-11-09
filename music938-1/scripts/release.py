@@ -92,6 +92,37 @@ TAGLINE = {
 HASHTAGS = ("#AERISMusic #เพลงไทย #ศิลปินไทย #เพลงใหม่ #เพลงเพื่อชีวิต "
             "#เพลงเพราะ #ค่ายเพลงAI #AIMusic")
 
+# The search-intent title tail, keyed by mood. The 2026-11-08 competitor scan
+# (10 real Thai channels, no API quota): the winning music titles lead with *when*
+# and *why* the listener wants the song — "ฟังเพลงไทยเพราะๆ ขับรถ ทำงาน อ่านหนังสือ
+# คาเฟ่" — not an abstract mood word, because a searcher types their moment. This
+# tail carries both the genre keyword and the occasion, so it replaces the mood
+# tagline in the *title* (the tagline still opens the description). It is shorter
+# than the tagline, which leaves room under the ~60-char truncation instead of
+# spending it on a value line the title does not need.
+TITLE_INTENT = {
+    "sad": "เพลงเศร้าอกหัก ฟังตอนดึก",
+    "warm": "เพลงอบอุ่น ฟังอยู่บ้าน",
+    "hopeful": "เพลงให้กำลังใจ เริ่มวันใหม่",
+    "calm": "เพลงฟังสบาย ขับรถ ทำงาน",
+    "mystic": "เพลงชิลล์ ฟังยามค่ำคืน",
+    "epic": "เพลงปลุกใจ ออกกำลังกาย",
+}
+
+
+def song_title(title_th: str, tagline: str, mood: str) -> str:
+    """`<song> — <search intent>`, falling back to the tagline if it is too long.
+
+    The intent tail is preferred because it names the genre and the moment a
+    viewer searches for. A song whose title plus intent still runs past 60
+    characters keeps the tagline instead, so nothing is ever truncated.
+    """
+    intent = TITLE_INTENT.get(mood, "")
+    if intent and len(f"{title_th} — {intent}") <= 60:
+        return f"{title_th} — {intent}"
+    return f"{title_th} — {tagline}"
+
+
 # One song yields three Shorts, one per chorus. The 2026-11-05 advisor panel
 # (3/3) on the growth stall: a numbered "(ท่อนที่ 2)" label reads as "part 2 of
 # the same clip" and gives a viewer no reason to watch this one — but so does
@@ -420,7 +451,7 @@ def describe(slug: str, kind: str, variant: str = "") -> tuple[str, str, list[st
             f"{HASHTAGS}"
         )
     else:
-        title = f"{title_th} — {tagline}"
+        title = song_title(title_th, tagline, mood)
         desc = (
             f"🎵 {title_th}\n\n"
             f"{tagline}\n"

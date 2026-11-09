@@ -90,8 +90,11 @@ def main() -> int:
 
     dur = duration(mp4)
     print(f"compilation: {dur / 60:.1f} min, {mp4.stat().st_size / 1e6:.0f} MB")
-    if dur < 30 * 60:
-        print("refusing to upload: under 30 minutes, the title would over-promise",
+    # The title's promise is the track count, not the runtime, so a themed album
+    # of 8 songs at ~3.7 min each is honest at ~30 minutes. The floor only guards
+    # against a truncated render; 25 minutes is well past "album".
+    if dur < 25 * 60:
+        print("refusing to upload: under 25 minutes, the title would over-promise",
               file=sys.stderr)
         return 3
 

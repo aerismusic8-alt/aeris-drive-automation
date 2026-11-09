@@ -13,15 +13,17 @@ name: AX Music Compilation Release
 # on the one channel (splitting would just dilute the subscriber count), and give
 # it a real chapter list so the "(เลือกเพลงฟังได้)" title is honest.
 #
-# It runs monthly, not daily: the video is ~142 MB and one upload is enough. The
-# upload is guarded by `compilation-state-<stem>.json`, so a retry never doubles
-# it. Free minutes only — no pod, no browser, no paid anything.
+# It runs weekly, not daily: each video is ~30-60 minutes and one upload is
+# enough. The upload is guarded by `compilation-state-<stem>.json`, so a retry
+# never doubles it and a theme that is already live is skipped. With three
+# themes defined it ships one a week for three weeks, then no-ops. Free minutes
+# only — no pod, no browser, no paid anything.
 
 on:
   schedule:
-    # 10:00 UTC on the 1st. After the 09:00 daily-release tick, so the two
+    # 10:00 UTC on Mondays. After the 09:00 daily-release tick, so the two
     # uploads do not fight for the same quota pool.
-    - cron: '0 10 1 * *'
+    - cron: '0 10 * * 1'
   workflow_dispatch:
 
 permissions:
@@ -38,34 +40,21 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      # A compilation is a long-form album, not a daily upload. Publishing a new
-      # near-identical one every month is exactly the "flood the channel with
-      # interchangeable uploads" the advisor panel warned about, and it is a
-      # channel-level monetization risk. So the job stops the moment one is
-      # already live. To refresh it on purpose, delete the state file (or clear
-      # its video_id) and re-dispatch.
-      - name: Skip when a compilation is already published
-        id: gate
-        run: |
-          set -euo pipefail
-          state=music938-1/work/compilation-state-compilation.json
-          if [ -f "$state" ] && grep -q '"video_id": *"[^"]' "$state"; then
-            vid=$(python3 -c "import json;print(json.load(open('$state'))['video_id'])")
-            echo "compilation already live: $vid — nothing to do"
-            echo "skip=true" >> "$GITHUB_OUTPUT"
-          else
-            echo "skip=false" >> "$GITHUB_OUTPUT"
-          fi
-
+      # One long-form album per theme that is not live yet. The 2026-11-08
+      # competitor scan (10 real Thai channels, no API quota) found the winning
+      # channels publish *many* long-form compilations, each titled for a search
+      # intent. The theme mood-sets are disjoint, so the albums are genuinely
+      # different and not one tracklist re-titled — which is what the advisor
+      # panel warned a channel-level originality review would punish. A theme
+      # whose state file already carries a video_id is skipped, so a re-run or a
+      # retry never re-uploads.
       - name: Install ffmpeg
-        if: steps.gate.outputs.skip != 'true'
         run: |
           set -euo pipefail
           sudo apt-get update -qq
           sudo apt-get install -y -qq ffmpeg
 
       - name: Pull the song masters and covers
-        if: steps.gate.outputs.skip != 'true'
         env:
           AX_GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
@@ -73,23 +62,12 @@ jobs:
           python3 music938-1/scripts/pull_media.py --only songs
           python3 music938-1/scripts/pull_media.py --only covers
 
-      - name: Build the compilation video
-        if: steps.gate.outputs.skip != 'true'
-        run: |
-          set -euo pipefail
-          cd music938-1
-          # 60 minutes of songs, crossfaded, on one still. Under 12 tracks it
-          # refuses on purpose: a "N เพลง" title over three songs misleads.
-          python3 scripts/compile_album.py --name "รวมเพลงไทยเพื่อชีวิต" --max 60 --render
-
       - name: Build the 16:9 thumbnail
-        if: steps.gate.outputs.skip != 'true'
         run: |
           set -euo pipefail
           cd music938-1 && python3 scripts/brand.py
 
-      - name: Upload to AERIS Music (ch3)
-        if: steps.gate.outputs.skip != 'true'
+      - name: Build and upload each themed album not yet live
         env:
           YT_CLIENT_ID: ${{ secrets.YT_CLIENT_ID }}
           YT_CLIENT_SECRET: ${{ secrets.YT_CLIENT_SECRET }}
@@ -97,10 +75,32 @@ jobs:
         run: |
           set -euo pipefail
           cd music938-1
-          python3 scripts/upload_compilation.py --upload --ch ch3
+          # One album per run, not all three. `videos.insert` is its own 100/day
+          # bucket, so the pool is not the constraint — but three long-form
+          # albums landing the same day reads as a burst, and the whole point of
+          # the weekly cadence is one album a week for three weeks. A theme too
+          # thin to publish falls through to the next one instead of blocking it.
+          for theme in sad chill power; do
+            state="work/compilation-state-compilation-${theme}.json"
+            if [ -f "$state" ] && grep -q '"video_id": *"[^"]' "$state"; then
+              vid=$(python3 -c "import json;print(json.load(open('$state'))['video_id'])")
+              echo "theme ${theme} already live: ${vid} — skipping"
+              continue
+            fi
+            echo "=== building theme: ${theme} ==="
+            # The theme sets the name, the listening-occasion line in the title
+            # and the mood filter. It refuses under 8 eligible tracks so the
+            # "N เพลง" title stays honest.
+            python3 scripts/compile_album.py --theme "$theme" --max 60 --render
+            python3 scripts/upload_compilation.py --upload --ch ch3 \
+              --stem "compilation-${theme}" || echo "theme ${theme}: upload skipped"
+            if [ -f "$state" ] && grep -q '"video_id": *"[^"]' "$state"; then
+              echo "published theme ${theme}; stopping this run"
+              break
+            fi
+          done
 
-      - name: Record the upload
-        if: steps.gate.outputs.skip != 'true'
+      - name: Record the uploads
         run: |
           set -euo pipefail
           git config user.name  "ax-music-compilation"
