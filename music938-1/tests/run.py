@@ -1046,32 +1046,35 @@ def test_ambient_loop() -> None:
     check("8h renders as '8', not '8.0'", A._hours_label(480) == "8")
     check("a 90-min loop still reads honestly", A._hours_label(90) == "1.5")
 
-    # The bed is a sleep drone, not the story-video arpeggio. The first version
-    # reused `make_music._synthesise`, whose plucked arpeggio repeats a phrase
-    # every beat — K heard it as a "howl" that never lets you sleep. The bed file
-    # is now a distinct drone, and the plan must loop *that*.
-    check("the plan loops the drone bed, not the story bed",
-          "drone-" in " ".join(p["cmd"]), "drone bed not in plan")
+    # The bed is real instruments now, not a sine drone. K (2026-11-09) rejected
+    # the ffmpeg synth as "fake"; `soundfont` renders a SoundFont of recorded
+    # instruments through fluidsynth. The plan must loop *that* bed.
+    check("the plan loops the instrument bed, not the old synth bed",
+          "instrument-" in " ".join(p["cmd"]), "instrument bed not in plan")
     # A looping bed must not fade per tile, or the volume dips once a loop. The
     # fade belongs on the finished video, so the plan carries one in/out at the
-    # very ends and the bed synth (checked below) carries none.
+    # very ends and the bed renderer (checked below) carries none.
     check("the finished video fades at its ends",
           "afade" in " ".join(p["cmd"]))
-    # Seamless loop: the wrap is crossfaded (tail blended into head) and the
-    # tones are phase-snapped to a whole, even number of cycles in the tile.
-    cycles = A._snap(130.81, 180.0) * 180.0
-    check("snap lands on a whole, even cycle count",
-          abs(cycles - round(cycles)) < 1e-6 and round(cycles) % 2 == 0,
-          f"{cycles}")
-    check("the stitch crossfades the wrap", "acrossfade" in A._stitch("x", "y", 180.0))
+    # Seamless loop: the wrap is crossfaded (tail blended into head). The stitch
+    # is now exact arithmetic in `soundfont.crossfade_loop`, so check that the
+    # wrap joins adjacent samples instead of a filter string.
+    import soundfont as SF
+    import numpy as _np
+    _take = _np.sin(_np.linspace(0, 40, 44100 * 8, dtype="<f4"))[:, None]
+    _loop = SF.crossfade_loop(_take, 1.5)
+    _seam = abs(float(_loop[0, 0] - _loop[-1, 0]))
+    check("the crossfade makes the wrap seamless", _seam < 1e-4, f"seam={_seam:.6f}")
+    check("the crossfade shortens the loop by the xfade",
+          abs(_loop.shape[0] - (44100 * 8 - int(1.5 * 44100))) <= 1)
     # The bed is loud enough to actually be heard: the first version sat at
     # -32 LUFS, which is barely audible. The normaliser target must be in the
     # source, not only in a docstring.
     import inspect
     check("the bed is normalised to a real target",
-          "loudnorm=I=-16" in inspect.getsource(A._synth_drone))
-    check("the bed does not fade per tile",
-          "afade" not in inspect.getsource(A._synth_drone))
+          "loudnorm=I=-20" in inspect.getsource(SF.render_bed))
+    check("the bed renderer does not fade per tile",
+          "afade" not in inspect.getsource(SF.render_bed))
 
     try:
         A.plan("x", mood="calm", key="C", minutes=0, rain=False,
@@ -1079,6 +1082,80 @@ def test_ambient_loop() -> None:
         check("a zero-length plan is refused", False)
     except ValueError:
         check("a zero-length plan is refused", True)
+
+
+def test_soundfont_renderer() -> None:
+    section("soundfont (real-instrument bed, K rejected the tone synth)")
+    import soundfont as SF
+
+    # Every mood the ambient lane offers must have a preset, or a preset that
+    # asks for a mood the renderer does not know dies mid-render.
+    for mood in ("calm", "warm", "sad", "hopeful", "mystic", "epic"):
+        check(f"mood {mood} has an instrument preset", mood in SF.MOODS)
+
+    # The timbres must be real GM programs, not a raw oscillator. A program of
+    # 0 (Acoustic Grand) is fine; what is NOT fine is a preset that names a
+    # synth lead/effect, which is the "fake" sound K asked us to stop using.
+    SYNTHY = {80, 81, 82, 83, 84, 85, 86, 87, 88, 89, 90, 91, 92, 93, 94, 95,
+              96, 97, 98, 99, 100, 101, 102, 103}
+    for mood, preset in SF.MOODS.items():
+        progs = [preset[k] for k in ("melody", "pad", "bass", "arp") if k in preset]
+        check(f"{mood} uses only real-instrument programs",
+              all(p not in SYNTHY for p in progs), f"{progs}")
+
+    # A SoundFont must be discoverable, or every render fails at the sampler.
+    sf = SF.find_soundfont()
+    check("a SoundFont is installed and found", bool(sf) and Path(sf).exists(), sf)
+
+    # build_midi is pure (no fluidsynth) and its reported length must match the
+    # requested bar count, or a bed comes out the wrong length.
+    import tempfile
+    with tempfile.TemporaryDirectory() as td:
+        info = SF.build_midi("calm", bars=4, path=Path(td) / "t.mid")
+        check("build_midi reports 4 bars", info["bars"] == 4)
+        beat = 60.0 / info["bpm"]
+        check("build_midi length matches the bars", abs(info["seconds"] - 16 * beat) < 1e-6)
+        check("the midi file was written", (Path(td) / "t.mid").stat().st_size > 0)
+
+    # The crossfade is the seamless-loop fix: the wrap must join adjacent
+    # samples, and the loop must be shorter than the source by exactly the xfade.
+    x = np.sin(np.linspace(0, 40, 44100 * 6, dtype="<f4"))[:, None]
+    loop = SF.crossfade_loop(x, 1.5)
+    seam = abs(float(loop[0, 0] - loop[-1, 0]))
+    check("the crossfade wrap is seamless", seam < 1e-4, f"seam={seam:.6f}")
+    check("the crossfade trims exactly the xfade",
+          abs(loop.shape[0] - (44100 * 6 - int(1.5 * 44100))) <= 1)
+
+    # render_bed must not fade per tile (a fade dips the volume once a loop) and
+    # must normalise to a real, audible target.
+    import inspect
+    src = inspect.getsource(SF.render_bed)
+    check("render_bed does not fade per tile", "afade" not in src)
+    check("render_bed normalises to a real target", "loudnorm=I=-20" in src)
+
+
+def test_refresh_sleep_video() -> None:
+    section("refresh sleep video (replace the old synth render once)")
+    import refresh_sleep_video as R
+
+    # Nothing live yet -> the once-step owns it, the refresh must not act.
+    check("no state -> skip",
+          R.decide(None, 480, True)["action"] == "skip")
+    # Already replaced -> skip, so a retry never double-uploads.
+    check("already soundfont -> skip",
+          R.decide({"video_id": "x", "instrument": "soundfont"}, 480, True)["action"]
+          == "skip")
+    # The old synth render -> replace.
+    check("old synth + render present -> replace",
+          R.decide({"video_id": "gmsfqVjSsTo"}, 480, True)["action"] == "replace")
+    # A missing or too-short render must never trigger an upload.
+    check("no render on disk -> skip",
+          R.decide({"video_id": "x"}, 0, False)["action"] == "skip")
+    check("a short render -> skip",
+          R.decide({"video_id": "x"}, 30, True)["action"] == "skip")
+    # The decision carries the id it means to delete.
+    check("the decision names the old id",
+          R.decide({"video_id": "gmsfqVjSsTo"}, 480, True)["old"] == "gmsfqVjSsTo")
 
 
 def test_provenance() -> None:
@@ -3710,6 +3787,8 @@ def main() -> int:
     test_shorts()
     test_follow_end_card()
     test_ambient_loop()
+    test_soundfont_renderer()
+    test_refresh_sleep_video()
     test_provenance()
     test_genres()
     test_arrangement_no_repeat()

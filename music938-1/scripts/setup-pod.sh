@@ -17,7 +17,7 @@ mkdir -p "$BIN"
 # script that needs numpy/Pillow/pythainlp/playwright dies until it is redone.
 PYLIBS=/workspace/ax-tools/pylibs
 python3 -m pip install -q --target="$PYLIBS" \
-  numpy pythainlp python-crfsuite pillow playwright websocket-client 2>&1 | tail -2
+  numpy pythainlp python-crfsuite pillow playwright websocket-client mido 2>&1 | tail -2
 # A .pth in site-packages makes every `python3` find the durable libs without a
 # PYTHONPATH export, so an unattended cron script cannot miss them. The system
 # site-packages is root-owned in this image, so fall back to the user site dir
@@ -50,3 +50,15 @@ fi
 "$BIN/ffmpeg" -version 2>/dev/null | head -1
 echo
 echo "add to PATH before building:  export PATH=$BIN:\$PATH"
+
+# The music bed is rendered with real instruments via fluidsynth (K rejected the
+# ffmpeg tone synth as "fake", 2026-11-09). These are apt packages, not pip, and
+# they live under /usr — which a pod recycle *does* keep (only $HOME is wiped),
+# so this only reinstalls when a fresh image lacks them.
+if ! command -v fluidsynth >/dev/null 2>&1; then
+  echo "installing fluidsynth + soundfonts..."
+  sudo apt-get update -qq &&
+    sudo apt-get install -y -qq fluidsynth fluid-soundfont-gm \
+      musescore-general-soundfont
+fi
+fluidsynth --version 2>/dev/null | head -1

@@ -50,12 +50,15 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Install ffmpeg and Pillow
+      - name: Install ffmpeg, the SoundFont sampler, and Pillow
         run: |
           set -euo pipefail
           sudo apt-get update -qq
-          sudo apt-get install -y -qq ffmpeg fonts-noto-core
-          python3 -m pip install --quiet --disable-pip-version-check Pillow
+          sudo apt-get install -y -qq ffmpeg fonts-noto-core fluidsynth \
+            fluid-soundfont-gm musescore-general-soundfont
+          # The offline bed is now real instruments via fluidsynth (K rejected
+          # the ffmpeg tone synth as "fake", 2026-11-09); mido writes the MIDI.
+          python3 -m pip install --quiet --disable-pip-version-check Pillow mido
 
       - name: Produce the next bed (no Flow, no login)
         working-directory: music938-1

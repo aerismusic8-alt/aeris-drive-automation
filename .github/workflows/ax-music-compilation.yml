@@ -48,15 +48,16 @@ jobs:
       # panel warned a channel-level originality review would punish. A theme
       # whose state file already carries a video_id is skipped, so a re-run or a
       # retry never re-uploads.
-      - name: Install ffmpeg and Pillow
+      - name: Install ffmpeg, the SoundFont sampler, and Pillow
         run: |
           set -euo pipefail
           sudo apt-get update -qq
-          sudo apt-get install -y -qq ffmpeg
-          # brand.py builds the 16:9 thumbnail with PIL. Without this the run
-          # died at "No module named 'PIL'" before building a single album, so
-          # the themed compilations never shipped (fixed 2026-11-09).
-          python3 -m pip install --quiet --disable-pip-version-check Pillow
+          # fluidsynth + a MuseScore/FluidR3 SoundFont render the sleep bed with
+          # real recorded instruments (K rejected the old ffmpeg tone synth as
+          # "fake", 2026-11-09). mido writes the MIDI the sampler plays.
+          sudo apt-get install -y -qq ffmpeg fluidsynth \
+            fluid-soundfont-gm musescore-general-soundfont
+          python3 -m pip install --quiet --disable-pip-version-check Pillow mido
 
       - name: Pull the song masters and covers
         env:
@@ -74,10 +75,11 @@ jobs:
       # The sleep/ambient lane. The 2026-11-09 scan: a 4-minute single gets ~500
       # views, a 2-hour Thai compilation 6-17M, and a sleep/ambient loop of 8-12
       # hours 100-221M. The *container* is what the algorithm rewards, and this
-      # is the biggest one we can build for free: the bed is our own synth (no
-      # Flow Music, no login), the rain is ffmpeg's own noise (no download, no
-      # licence), and the picture is one held still, so the encode is minutes.
-      # One upload, then the state file stops a re-run from doubling it.
+      # is the biggest one we can build for free: the bed is real instruments
+      # (fluidsynth + SoundFont — no Flow Music, no login), the rain is ffmpeg's
+      # own noise (no download, no licence), and the picture is one held still,
+      # so the encode is minutes. One upload, then the state file stops a re-run
+      # from doubling it.
       - name: Build and upload the sleep/ambient loop (once)
         env:
           YT_CLIENT_ID: ${{ secrets.YT_CLIENT_ID }}
@@ -96,6 +98,22 @@ jobs:
               --thumb library/thumbs/thumb-ambient-sleep.png \
               || echo "ambient sleep: upload skipped"
           fi
+
+      - name: Replace the sleep loop if it was the old synth render
+        env:
+          YT_CLIENT_ID: ${{ secrets.YT_CLIENT_ID }}
+          YT_CLIENT_SECRET: ${{ secrets.YT_CLIENT_SECRET }}
+          YT_CH3_REFRESH_TOKEN: ${{ secrets.YT_CH3_REFRESH_TOKEN }}
+        run: |
+          set -euo pipefail
+          cd music938-1
+          # The sleep video that is live was made by the ffmpeg tone synth K
+          # rejected (2026-11-09). The once-step above is guarded by the state
+          # file, so it will not re-render; this uploads the corrected
+          # real-instrument render and deletes the old one. Idempotent: once the
+          # state carries "instrument": "soundfont" it skips on every later run.
+          python3 scripts/refresh_sleep_video.py --apply || \
+            echo "sleep refresh: skipped or failed; will retry next run"
 
       - name: Build and upload each themed album not yet live
         env:
