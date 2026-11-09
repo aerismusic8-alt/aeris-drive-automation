@@ -1342,3 +1342,17 @@ Answer read straight from YouTube's own pages (Tavily was out of quota):
 - **The runtime unit suite has 7 pre-existing failures on Linux** (self-contained
   fixtures + `runtime-registry.test.mjs` asserting a Windows path). They are the
   same before and after a registry change — not a regression signal.
+
+## Producer/consumer gaps & workflow pushes (2026-11-09)
+- **Check for a *producer*, not just consumers, when a metric is flat.** Shopee
+  clicks were 0 for weeks because `release.py` + `crosspost.py` both read
+  `music938-1/library/affiliate/short-aff-*.mp4` while **nothing rendered them**.
+  Fixed with `.github/workflows/ax-music-affiliate-render.yml` (renders the 5
+  product cards → `publish_media.py` → `crosspost.py --merge-queue`), verified
+  green on Actions. `pull_media.py`/`publish_media.py` already knew the
+  `affiliate` group; only the render step was missing.
+- **A push touching `.github/workflows/` needs a token with `workflow` scope.**
+  The App/`AX_GH_TOKEN` classic PAT (`repo` only) is rejected with "refusing to
+  allow an OAuth App to create or update workflow". Use
+  `/workspace/ax-tools/ar-identity/gh-workflow-token` (`repo, workflow`).
+  `push-via-pc1.sh` is the fallback but hangs when PC1's Tailscale MCP is down.
