@@ -1538,7 +1538,8 @@ from a real/virtual-instrument generator only.**
   renderer cannot keep looping a stale bed from disk.
 - The already-live sleep video (`gmsfqVjSsTo`) was the old synth render. YouTube
   has no file swap, so `refresh_sleep_video.py` uploads the corrected render then
-  deletes the old one, guarded by `instrument: soundfont` in the state file.
+  deletes the old one, guarded by `instrument: soundfont-<BED_TAG>` in the state
+  file (versioned, so a later timbre change re-swaps instead of skipping).
   Wired into ax-music-compilation.yml (Monday 10:00 UTC, or manual dispatch).
 
 ## Music-only + mood clips (K, 2026-11-09) — durable facts
