@@ -378,17 +378,23 @@ def describe_affiliate(card: dict) -> tuple[str, str, list[str]]:
     hookline = card.get("hookline") or card["title"]
     bullets = "\n".join(f"• {b}" for b in card.get("bullets", [])[:3])
     link = monetize.link("youtube")
-    title = f"{card['title']} #ของน่าซื้อ #Shorts"
+    # Search-first packaging (2026-11-09). A Google Suggest pull showed
+    # `ของน่าซื้อ` is a souvenir/gift term, not a headphone-buying term, so the
+    # old tag reached nobody who was shopping. The title and the hashtags now
+    # carry the card's real query (`card["search"]`), because on a zero-follower
+    # channel search is the only free discovery path.
+    title = f"{card['title']} | #Shorts"
+    search = card.get("search", "หูฟังบลูทูธ")
     desc = (
         f"⚠️ {AFF_DISCLOSURE}\n"
         f"🛒 ดูสินค้า/สั่งซื้อ: กดลิงก์ Shopee ที่หน้าโปรไฟล์ช่อง 👉 {link}\n\n"
         f"🎬 {hookline}\n"
         f"{bullets}\n"
         f"🎵 เพลงจาก AERIS Music — ค่ายเพลง AI\n\n"
-        f"#ของน่าซื้อ #หูฟัง #Shopee #AERISMusic #Shorts"
+        f"#{search.replace(' ', '')} #หูฟังบลูทูธ #ยี่ห้อไหนดี #Shopee #AERISMusic #Shorts"
     )
-    tags = ["ของน่าซื้อ", "หูฟัง", "ลำโพงบลูทูธ", "Shopee", "รีวิวสินค้า",
-            "AERISMusic", "เพลงไทย", "shorts"]
+    tags = [search, "หูฟังบลูทูธ", "หูฟัง", "ลำโพงบลูทูธ", "ยี่ห้อไหนดี",
+            "รีวิวหูฟัง", "Shopee", "AERISMusic", "shorts"]
     return title[:100], desc[:4900], tags[:30]
 
 
@@ -486,8 +492,9 @@ def playlist_for(kind: str) -> tuple[str, str]:
                 "รวมทุกเพลงในชุดเป็นเวอร์ชันคาราโอเกะ ไม่มีเสียงร้อง ร้องตามได้เลย\n\n"
                 "AERIS Music · ค่ายเพลง AI")
     if kind == "affiliate":
-        return ("ของน่าซื้อ — คลิปสินค้าพร้อมลิงก์",
-                "รวมคลิปสินค้าพร้อมลิงก์พันธมิตร Shopee — ดูราคา/สั่งซื้อได้จากลิงก์ในคำอธิบาย\n\n"
+        return ("รีวิว/ก่อนซื้อ — หูฟัง & ลำโพง (คลิปพร้อมลิงก์)",
+                "รวมคลิปให้ความรู้ก่อนซื้อหูฟังและลำโพง พร้อมลิงก์พันธมิตร Shopee — "
+                "ดูราคา/สั่งซื้อได้จากลิงก์ในคำอธิบาย\n\n"
                 "AERIS Music · ค่ายเพลง AI")
     return ("เพลงไทยเพื่อชีวิต — รวมทุกเพลง",
             "รวมทุกเพลงไทยเพื่อชีวิตของ AERIS Music เนื้อร้องและทำนองใหม่\n\n"

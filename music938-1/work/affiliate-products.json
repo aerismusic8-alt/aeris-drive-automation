@@ -4,12 +4,14 @@
     "No first-hand claim: we have not tested these products, so the card gives buying guidance, not a review.",
     "No over-claim (รวย/กำไร/100%/ดีที่สุด) — make_affiliate_short.py refuses a card that carries one.",
     "Every caption carries the affiliate disclosure line (COMPLIANCE.md).",
-    "Target category matches the minted links: Bluetooth headphones / listening gear (หูฟังบลูทูธ)."
+    "Target category matches the minted links: Bluetooth headphones / listening gear (หูฟังบลูทูธ).",
+    "Packaging is search-first. A 2026-11-09 Google Suggest pull showed `ของน่าซื้อ` is a souvenir/gift term (ของน่าซื้อญี่ปุ่น/เกาหลี/ดองกิ), NOT a headphone-buying term, so tagging the funnel with it reached nobody who was shopping. Each card now carries a `search` field: the real Thai query it answers (หูฟังบลูทูธ ยี่ห้อไหนดี, หูฟัง ตัดเสียงรบกวน ยี่ห้อไหนดี, หูฟัง ราคาไม่เกิน 500, หู ฟัง ใส่ นอน ไม่ เจ็บ). The title and tags are built from that query, because on a zero-follower channel search is the only free discovery path."
   ],
   "products": [
     {
       "id": "hp-budget-01",
-      "title": "3 จุดที่ควรดู ก่อนซื้อหูฟังบลูทูธ",
+      "title": "หูฟังบลูทูธ ราคาไม่เกิน 500 เลือกยังไง",
+      "search": "หูฟัง ราคาไม่เกิน 500",
       "bullets": [
         "แบตอึดกี่ชั่วโมง",
         "ตัดเสียงรบกวนจริงไหม",
@@ -21,7 +23,8 @@
     },
     {
       "id": "hp-anc-02",
-      "title": "หูฟังตัดเสียงรบกวน คุ้มกับเงินที่จ่ายไหม",
+      "title": "หูฟังตัดเสียงรบกวน ยี่ห้อไหนดี ดู 3 จุดนี้",
+      "search": "หูฟัง ตัดเสียงรบกวน ยี่ห้อไหนดี",
       "bullets": [
         "ช่วยตอนนั่งรถ/เครื่องบิน",
         "ฟังเพลงเบา ๆ ได้ชัดขึ้น",
@@ -33,7 +36,8 @@
     },
     {
       "id": "spk-bedroom-03",
-      "title": "เลือกลำโพงบลูทูธให้เหมาะกับห้องนอน",
+      "title": "ลำโพงบลูทูธ ยี่ห้อไหนดี สำหรับห้องนอน",
+      "search": "ลำโพงบลูทูธ ยี่ห้อไหนดี",
       "bullets": [
         "ห้องเล็กใช้ 10-20 วัตต์พอ",
         "ดูการเชื่อมต่อ/แบต",
@@ -45,7 +49,8 @@
     },
     {
       "id": "desk-setup-04",
-      "title": "จัดโต๊ะฟังเพลงด้วยงบหลักร้อย",
+      "title": "จัดโต๊ะฟังเพลง งบหลักร้อย ทำได้จริง",
+      "search": "จัดโต๊ะ ฟังเพลง",
       "bullets": [
         "ขาตั้ง/แผ่นรองช่วยลดเสียงสั่น",
         "จัดสายให้เป็นระเบียบ",
@@ -57,7 +62,8 @@
     },
     {
       "id": "sleep-listen-05",
-      "title": "เพลงก่อนนอน ควรฟังกับหูฟังแบบไหน",
+      "title": "หูฟังใส่นอน ไม่เจ็บ เลือกแบบไหนดี",
+      "search": "หู ฟัง ใส่ นอน ไม่ เจ็บ",
       "bullets": [
         "เลือกแบบใส่สบายนอนได้",
         "เสียงไม่ต้องดังมาก",

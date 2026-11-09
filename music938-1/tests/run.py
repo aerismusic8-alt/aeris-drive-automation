@@ -313,6 +313,11 @@ def test_affiliate_short() -> None:
         check(f"{p['id']}: hookline is Thai", has_thai(p.get("hookline", "")))
         check(f"{p['id']}: hookline differs from the title",
               p.get("hookline") != p.get("title"))
+        # Search-first packaging: the card must name the real query it answers,
+        # or the funnel's title/hashtags fall back to the wrong-intent tag.
+        check(f"{p['id']}: names its search query", bool(p.get("search")),
+              str(p.get("search")))
+        check(f"{p['id']}: search query is Thai", has_thai(p.get("search", "")))
 
     # The link is resolved per surface, not stored on the card: a card that
     # stored one link would tag every sale to the same surface.
@@ -374,12 +379,21 @@ def test_affiliate_release() -> None:
     check("product cards are readable from the tracked file", len(cards) >= 5,
           f"{len(cards)}")
     title, _desc = release.playlist_for("affiliate")
-    check("affiliate playlist is named", "ของน่าซื้อ" in title, title)
+    check("affiliate playlist names the category", "หูฟัง" in title, title)
 
     if not cards:
         return
     monetize.CACHE = None
     t, d, tags = release.describe_affiliate(cards[0])
+    # Search-first packaging (2026-11-09): `ของน่าซื้อ` is a souvenir/gift term in
+    # Google Suggest, not a headphone-buying term, so the title must carry the
+    # card's real query instead. Search matches on the query's terms, so every
+    # token of `search` must appear in the title; a title that dropped one would
+    # silently stop matching the funnel's only free discovery path.
+    q_tokens = [w for w in cards[0].get("search", "").split() if w]
+    missing = [w for w in q_tokens if w not in t]
+    check("affiliate title covers the card's search query", not missing,
+          f"missing {missing} from {t}")
     check("affiliate title fits 60 chars", len(t) <= 60, f"{len(t)}: {t}")
     check("affiliate title is a Short", "#Shorts" in t, t)
     check("affiliate description carries the youtube link",

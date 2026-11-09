@@ -103,23 +103,27 @@ def caption(product: dict, platform: str = "tiktok") -> str:
     bullets = " · ".join(product.get("bullets", [])[:2])
     url = link_for(platform)
     head = f"{title} {price}".strip()
+    # The hashtag is the card's real search query, not the old `#ของน่าซื้อ` —
+    # a Google Suggest pull (2026-11-09) showed that term is a souvenir/gift
+    # query, so it sent the funnel to nobody who was shopping for audio gear.
+    stag = "#" + product.get("search", "หูฟังบลูทูธ").replace(" ", "")
     if platform == "facebook":
         return (f"{head}\n{bullets}\n"
                 f"🛒 ดูราคา/สั่งซื้อ 👉 {url}\n"
                 f"⚠️ {DISCLOSURE}\n"
                 f"🎬 เพลงประกอบจาก AERIS Music · YouTube @aerismusicth\n"
-                f"#ของน่าซื้อ #หูฟัง #Shopee #AERISMusic")
+                f"{stag} #หูฟังบลูทูธ #Shopee #AERISMusic")
     if platform == "youtube":
         return (f"{head}\n{bullets}\n"
                 f"🛒 ลิงก์สินค้า 👉 {url}\n"
                 f"⚠️ {DISCLOSURE}\n"
                 f"🎵 เพลงจาก AERIS Music\n"
-                f"#ของน่าซื้อ #หูฟัง #Shopee #AERISMusic")
+                f"{stag} #หูฟังบลูทูธ #Shopee #AERISMusic")
     return (f"{head}\n{bullets}\n"
             f"🛒 กดลิงก์ 👉 {url}\n"
             f"⚠️ {DISCLOSURE}\n"
             f"🎵 เพลงจาก AERIS Music\n"
-            f"#ของน่าซื้อ #หูฟัง #Shopee #TikTokของน่าซื้อ")
+            f"{stag} #หูฟังบลูทูธ #Shopee #AERISMusic")
 
 
 def _esc(text: str) -> str:

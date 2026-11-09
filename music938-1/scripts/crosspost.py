@@ -178,12 +178,13 @@ def link_caption(product: dict, platform: str = "facebook") -> str:
     price = product.get("price", "")
     bullets = " · ".join(product.get("bullets", [])[:3])
     url = monetize.link("facebook")
+    stag = "#" + product.get("search", "หูฟังบลูทูธ").replace(" ", "")
     return (f"🛒 {title} {price}".strip() + "\n"
             f"• {bullets}\n"
             f"👉 ดูราคา/สั่งซื้อ: {url}\n"
             f"⚠️ โฆษณา · ได้ค่าคอมมิชชันจากการซื้อผ่านลิงก์นี้\n"
             f"🎵 เพลงจาก AERIS Music\n"
-            f"#ของน่าซื้อ #Shopee #AERISMusic")
+            f"{stag} #หูฟังบลูทูธ #Shopee #AERISMusic")
 
 
 def refresh_captions() -> int:
