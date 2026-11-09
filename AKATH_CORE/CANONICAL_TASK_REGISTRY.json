@@ -6,9 +6,9 @@
   "managed_by": "AX",
   "status": "READY_FOR_AUTONOMOUS_EXECUTION",
   "current_work": {
-    "active": false,
-    "task_id": "AKATH-PC1-MEDIA-PRODUCTION-001",
-    "completed_at": "2026-09-19T20:08:55.484Z"
+    "active": true,
+    "task_id": "AKATH-GROWTH-YOUTUBE-001",
+    "updated_at": "2026-11-09T03:17:18Z"
   },
   "tasks": [
     {
@@ -259,7 +259,7 @@
       "title": "PC1 allowlisted PowerShell control bridge smoke",
       "capability": "control",
       "action": "pc1_status",
-      "status": "PENDING",
+      "status": "SUPERSEDED",
       "created_at": "2026-09-17T04:50:00.000Z",
       "deadline_at": "2026-09-17T06:30:00.000Z",
       "milestones": [
@@ -289,7 +289,9 @@
         "canonical": true,
         "autonomous": true,
         "security": "allowlist-only"
-      }
+      },
+      "correction": "Cut by K's scope reduction 2026-11-02: the work is now exactly four growth jobs in aeris938-2 (Facebook, TikTok, YouTube @aerismusicth, Shopee Affiliate). This task is outside that scope; it did not fail. Retained for the record, superseded rather than deleted.",
+      "superseded_at": "2026-11-09T03:17:18Z"
     },
     {
       "task_id": "AKATH-AX-PC1-REMOTE-POWERSHELL-GATE-001",
@@ -352,11 +354,11 @@
       "title": "AX to PC1 bridge proof â€” second autonomous control command",
       "capability": "control",
       "action": "runtime_status",
-      "status": "PENDING",
+      "status": "SUPERSEDED",
       "created_at": "2026-09-17T02:20:00.000Z",
       "deadline_at": "2026-09-17T08:30:00.000Z",
       "deadline_reviewed_at": "2026-09-17T08:00:00.000Z",
-      "correction": "deadline_review_and_requeue_after_live_gate",
+      "correction": "Cut by K's scope reduction 2026-11-02: the work is now exactly four growth jobs in aeris938-2 (Facebook, TikTok, YouTube @aerismusicth, Shopee Affiliate). This task is outside that scope; it did not fail. Retained for the record, superseded rather than deleted.",
       "milestones": [
         "AX writes canonical control task",
         "PC1 pulls task",
@@ -389,7 +391,8 @@
         "issued_by": "AX",
         "bridge_proof": true,
         "objective": "prove AX itself can write and issue a second PowerShell control task to PC1 without K typing the command"
-      }
+      },
+      "superseded_at": "2026-11-09T03:17:18Z"
     },
     {
       "task_id": "AKATH-JUMPTASK-AI-FIRST-001",
@@ -454,7 +457,7 @@
       "title": "PC1 live autonomous execution gate",
       "capability": "execution",
       "action": "pc1_execution_live_gate",
-      "status": "OVERDUE",
+      "status": "SUPERSEDED",
       "created_at": "2026-09-18T04:05:19.015Z",
       "deadline_at": "2026-09-18T05:05:19.020Z",
       "milestones": [
@@ -481,7 +484,8 @@
         "objective": "prove the live PC1 autonomous execution loop can claim, execute, persist evidence, verify, and complete a fresh canonical task"
       },
       "overdue_at": "2026-09-18T05:35:00.000Z",
-      "correction": "superseded_by_fresh_live_task"
+      "correction": "Cut by K's scope reduction 2026-11-02: the work is now exactly four growth jobs in aeris938-2 (Facebook, TikTok, YouTube @aerismusicth, Shopee Affiliate). This task is outside that scope; it did not fail. Retained for the record, superseded rather than deleted.",
+      "superseded_at": "2026-11-09T03:17:18Z"
     },
     {
       "task_id": "AKATH-PC1-CONTROL-BRIDGE-LIVE-004",
@@ -489,7 +493,7 @@
       "title": "PC1 live allowlisted PowerShell control bridge",
       "capability": "control",
       "action": "pc1_status",
-      "status": "OVERDUE",
+      "status": "SUPERSEDED",
       "created_at": "2026-09-18T03:10:00.000Z",
       "deadline_at": "2026-09-18T04:10:00.000Z",
       "milestones": [
@@ -524,7 +528,8 @@
         "objective": "prove the live AX-to-PC1 control bridge executes an allowlisted PowerShell command without K typing the command"
       },
       "overdue_at": "2026-09-18T05:35:00.000Z",
-      "correction": "superseded_by_fresh_live_task"
+      "correction": "Cut by K's scope reduction 2026-11-02: the work is now exactly four growth jobs in aeris938-2 (Facebook, TikTok, YouTube @aerismusicth, Shopee Affiliate). This task is outside that scope; it did not fail. Retained for the record, superseded rather than deleted.",
+      "superseded_at": "2026-11-09T03:17:18Z"
     },
     {
       "task_id": "AKATH-PC1-FIRST-PRODUCTIVE-AI-001",
@@ -532,7 +537,7 @@
       "title": "AERIS first productive AI production task",
       "capability": "ai",
       "action": "ai_first_productive_work",
-      "status": "OVERDUE",
+      "status": "SUPERSEDED",
       "created_at": "2026-09-18T04:36:19.179Z",
       "deadline_at": "2026-09-18T05:36:19.183Z",
       "milestones": [
@@ -565,7 +570,8 @@
         "system_instruction": "You are the AERIS MUSIC production AI specialist. Produce factual operational output only. Do not claim actions you did not perform."
       },
       "overdue_at": "2026-09-18T05:35:00.000Z",
-      "correction": "superseded_by_fresh_live_task"
+      "correction": "Cut by K's scope reduction 2026-11-02: the work is now exactly four growth jobs in aeris938-2 (Facebook, TikTok, YouTube @aerismusicth, Shopee Affiliate). This task is outside that scope; it did not fail. Retained for the record, superseded rather than deleted.",
+      "superseded_at": "2026-11-09T03:17:18Z"
     },
     {
       "task_id": "AKATH-PC1-AI-LIVE-RUN-002",
@@ -1259,6 +1265,287 @@
       "attempt": 1,
       "result": null,
       "verified_at": null
+    },
+    {
+      "task_id": "AKATH-GROWTH-YOUTUBE-001",
+      "type": "PRODUCT",
+      "title": "Grow the one YouTube channel @aerismusicth",
+      "capability": "growth",
+      "action": "grow_youtube",
+      "status": "IN_PROGRESS",
+      "created_at": "2026-11-02T00:00:00.000Z",
+      "deadline_at": null,
+      "milestones": [
+        "Channel brand complete (banner + description); avatar has no API",
+        "Steady cadence: daily Shorts for reach + long-form for watch-hours",
+        "Reach the YPP gate (1,000 subs + 4,000 public watch-hours)"
+      ],
+      "completion_criteria": [
+        "Subscribers and watch-hours grow week over week",
+        "1,000 subscribers and 4,000 public watch-hours reached"
+      ],
+      "evidence": {
+        "channel": "@aerismusicth (ch3)",
+        "channelId": "UCm44BjAn03ruOF-WaA3ZRww",
+        "subscribers": 7,
+        "videos": 31,
+        "views": 1214,
+        "gate": "1,000 subs + 4,000 public watch-hours in 12 months (YPP)",
+        "driver": "aeris938-2/scripts/grow.py youtube",
+        "releaseRail": ".github/workflows/ax-music-release.yml",
+        "measuredAt": "2026-11-09T03:08:25Z",
+        "source": "aeris938-2/work/history.jsonl (latest row)",
+        "notes": [
+          "One channel only — ch1/ch2/ch4 are explicitly out of scope.",
+          "The channel avatar has no API; it is Studio-only.",
+          "YPP thresholds rise 2027-02-01 to 8,000 hours or 20M Shorts views."
+        ]
+      },
+      "verification": {
+        "verified": false,
+        "reasons": [
+          "7 / 1,000 subscribers; the gate is far off and reach is flat"
+        ]
+      },
+      "completed_at": null,
+      "payload": {
+        "action": "grow_youtube",
+        "capability": "growth",
+        "canonical": true,
+        "autonomous": true,
+        "standing_goal": true,
+        "scope": "aeris938-2",
+        "repo": "aerismusic8-alt/aeris-drive-automation",
+        "target": {
+          "subscribers": 1000,
+          "watchHours": 4000
+        },
+        "blocker": null,
+        "source": "aeris938-2/work/growth-report.md"
+      }
+    },
+    {
+      "task_id": "AKATH-GROWTH-FACEBOOK-001",
+      "type": "PRODUCT",
+      "title": "Grow the AERIS Music Facebook Page",
+      "capability": "growth",
+      "action": "grow_facebook",
+      "status": "IN_PROGRESS",
+      "created_at": "2026-11-02T00:00:00.000Z",
+      "deadline_at": null,
+      "milestones": [
+        "Page profile complete (avatar, cover, bio)",
+        "Reels/Shorts posted continuously from the committed queue",
+        "First non-owner follower and first readable 28-day views"
+      ],
+      "completion_criteria": [
+        "Page has followers > 0 and 28-day views > 0",
+        "Reels post continuously from the queue without a pod"
+      ],
+      "evidence": {
+        "pageId": "61595890900382",
+        "followers": 1,
+        "queue": {
+          "posted": 11,
+          "pending": 100
+        },
+        "views28d": null,
+        "driver": "aeris938-2/scripts/grow.py facebook",
+        "rails": [
+          ".github/workflows/ax-music-admin.yml (FB Page watch + draft)",
+          ".github/workflows/ax-music-crosspost.yml (FB Reels)"
+        ],
+        "measuredAt": "2026-11-09T02:39:09Z",
+        "source": "aeris938-2/work/admin-log.jsonl (latest row)",
+        "notes": [
+          "28-day views are only readable inside Business Suite; UNKNOWN here, not guessed.",
+          "The Page posts by itself through the crosspost rail; a Meta System User token would make it API-only (one K action, documented)."
+        ]
+      },
+      "verification": {
+        "verified": false,
+        "reasons": [
+          "1 follower and 0 readable views; the Page has not started growing"
+        ]
+      },
+      "completed_at": null,
+      "payload": {
+        "action": "grow_facebook",
+        "capability": "growth",
+        "canonical": true,
+        "autonomous": true,
+        "standing_goal": true,
+        "scope": "aeris938-2",
+        "repo": "aerismusic8-alt/aeris-drive-automation",
+        "target": {
+          "followers": 1,
+          "views28d": 1
+        },
+        "blocker": "A Meta System User token is the one K action that removes the browser fallback.",
+        "source": "aeris938-2/work/growth-report.md"
+      }
+    },
+    {
+      "task_id": "AKATH-GROWTH-TIKTOK-001",
+      "type": "PRODUCT",
+      "title": "Grow the AERIS Music TikTok account",
+      "capability": "growth",
+      "action": "grow_tiktok",
+      "status": "IN_PROGRESS",
+      "created_at": "2026-11-02T00:00:00.000Z",
+      "deadline_at": null,
+      "milestones": [
+        "Profile complete (avatar + bio)",
+        "Shorts posted continuously from the queue",
+        "First follower and first readable 7-day views"
+      ],
+      "completion_criteria": [
+        "Followers > 0 and 7-day views > 0",
+        "1,000 followers reached so TikTok Shop Affiliate unlocks"
+      ],
+      "evidence": {
+        "account": "@aeris.music4",
+        "followers": 0,
+        "views7d": 447,
+        "queue": {
+          "posted": 16,
+          "pending": 63
+        },
+        "gate": "1,000 followers + age/identity check (TikTok Shop Affiliate, pays in TH)",
+        "driver": "aeris938-2/scripts/grow.py tiktok",
+        "rail": ".github/workflows/ax-music-crosspost.yml",
+        "measuredAt": "2026-11-09T03:08:25Z",
+        "source": "aeris938-2/work/growth-report.md"
+      },
+      "verification": {
+        "verified": false,
+        "reasons": [
+          "0 followers despite 447 7-day views; views are not converting to follows"
+        ]
+      },
+      "completed_at": null,
+      "payload": {
+        "action": "grow_tiktok",
+        "capability": "growth",
+        "canonical": true,
+        "autonomous": true,
+        "standing_goal": true,
+        "scope": "aeris938-2",
+        "repo": "aerismusic8-alt/aeris-drive-automation",
+        "target": {
+          "followers": 1000
+        },
+        "blocker": "TikTok Content Posting API needs a one-time app review for API posting.",
+        "source": "aeris938-2/work/growth-report.md"
+      }
+    },
+    {
+      "task_id": "AKATH-REVENUE-SHOPEE-001",
+      "type": "PRODUCT",
+      "title": "Earn the first Shopee Affiliate commission",
+      "capability": "revenue",
+      "action": "grow_shopee",
+      "status": "IN_PROGRESS",
+      "created_at": "2026-11-02T00:00:00.000Z",
+      "deadline_at": null,
+      "milestones": [
+        "Affiliate account onboarded and per-surface tracking links minted",
+        "Every video description carries the right surface's link",
+        "First click, then first order"
+      ],
+      "completion_criteria": [
+        "Orders > 0 and commission > 0",
+        "Accumulated commission reaches the $500 goal (THB 16,780)"
+      ],
+      "evidence": {
+        "account": "navintas",
+        "clicks": 0,
+        "orders": 0,
+        "commissionThb": 0.0,
+        "targetThb": 16780,
+        "links": {
+          "youtube": "https://s.shopee.co.th/8pn3G4alfI",
+          "tiktok": "https://s.shopee.co.th/60SrsstoP6",
+          "facebook": "https://s.shopee.co.th/2qVq75ACtW"
+        },
+        "driver": "aeris938-2/scripts/grow.py shopee",
+        "rail": ".github/workflows/ax-music-dashboard.yml",
+        "measuredAt": "2026-11-09T03:08:25Z",
+        "source": "aeris938-2/work/growth-report.md",
+        "notes": [
+          "Shopee is the only surface that pays immediately, with no follower gate.",
+          "The 2026-11-09 fix put the CTA + link into the top compilation's description (the only long-form video whose link is above the fold); read the click count again after ~7 days."
+        ]
+      },
+      "verification": {
+        "verified": false,
+        "reasons": [
+          "0 clicks, 0 orders, THB 0 commission — the funnel has no traffic yet"
+        ]
+      },
+      "completed_at": null,
+      "payload": {
+        "action": "grow_shopee",
+        "capability": "revenue",
+        "canonical": true,
+        "autonomous": true,
+        "standing_goal": true,
+        "scope": "aeris938-2",
+        "repo": "aerismusic8-alt/aeris-drive-automation",
+        "target": {
+          "commissionThb": 16780,
+          "orders": 1
+        },
+        "blocker": null,
+        "source": "aeris938-2/work/growth-report.md"
+      }
+    },
+    {
+      "task_id": "AKATH-GROWTH-MEASURE-001",
+      "type": "OPS",
+      "title": "Track the four surfaces daily and name the bottleneck",
+      "capability": "ops",
+      "action": "growth_measure_daily",
+      "status": "IN_PROGRESS",
+      "created_at": "2026-11-02T00:00:00.000Z",
+      "deadline_at": null,
+      "milestones": [
+        "A reporter that reads all four surfaces and writes one report",
+        "A daily watcher that names the one constraint blocking revenue",
+        "A schedule that runs with no sandbox and no K"
+      ],
+      "completion_criteria": [
+        "A reading is recorded every day without manual action",
+        "The report distinguishes a real number from an unreadable one (UNKNOWN)"
+      ],
+      "evidence": {
+        "report": "aeris938-2/scripts/report.py -> aeris938-2/work/growth-report.md",
+        "watch": "aeris938-2/scripts/goal_watch.py -> aeris938-2/work/goal-watch.md",
+        "series": "aeris938-2/work/history.jsonl",
+        "rail": ".github/workflows/ax-music-dashboard.yml",
+        "schedule": "30 8,14,20 * * * (UTC)",
+        "latestBottleneck": "reach",
+        "measuredAt": "2026-11-09T03:08:25Z",
+        "source": "aeris938-2/work/growth-report.md"
+      },
+      "verification": {
+        "verified": false,
+        "reasons": [
+          "The report runs and commits, but Facebook/TikTok/Shopee read only through the desktop, so a surface is UNKNOWN whenever it is down."
+        ]
+      },
+      "completed_at": null,
+      "payload": {
+        "action": "growth_measure_daily",
+        "capability": "ops",
+        "canonical": true,
+        "autonomous": true,
+        "standing_goal": true,
+        "scope": "aeris938-2",
+        "repo": "aerismusic8-alt/aeris-drive-automation",
+        "blocker": null,
+        "source": "aeris938-2/work/growth-report.md"
+      }
     }
   ],
   "task_identity_policy": "1 task_id = 1 canonical task record",
