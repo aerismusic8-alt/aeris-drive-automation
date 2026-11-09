@@ -48,11 +48,15 @@ jobs:
       # panel warned a channel-level originality review would punish. A theme
       # whose state file already carries a video_id is skipped, so a re-run or a
       # retry never re-uploads.
-      - name: Install ffmpeg
+      - name: Install ffmpeg and Pillow
         run: |
           set -euo pipefail
           sudo apt-get update -qq
           sudo apt-get install -y -qq ffmpeg
+          # brand.py builds the 16:9 thumbnail with PIL. Without this the run
+          # died at "No module named 'PIL'" before building a single album, so
+          # the themed compilations never shipped (fixed 2026-11-09).
+          python3 -m pip install --quiet --disable-pip-version-check Pillow
 
       - name: Pull the song masters and covers
         env:
