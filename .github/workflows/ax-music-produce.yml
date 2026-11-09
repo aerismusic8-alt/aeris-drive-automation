@@ -91,6 +91,13 @@ jobs:
           set -euo pipefail
           python3 music938-1/scripts/publish_media.py
 
+      - name: Add the mood clips to the crosspost queue
+        run: |
+          set -euo pipefail
+          # --merge-queue appends only new (platform, video) ids, so the pending
+          # backlog is never dropped when a new format joins the rotation.
+          python3 music938-1/scripts/crosspost.py --merge-queue
+
       - name: Commit the refreshed share catalog
         run: |
           set -euo pipefail
@@ -99,10 +106,12 @@ jobs:
           git add -f share/aeris-music/catalog.json share/aeris-music/catalog.csv
           git add -A music938-1/lyrics music938-1/work/produce-queue.json \
                      music938-1/work/mood-clips-state.json \
+                     music938-1/work/crosspost-queue.json \
                      music938-1/library/covers 2>/dev/null || true
           if git diff --cached --quiet; then
             echo "nothing new to commit"
           else
             git commit -m "produce: new song + refreshed share catalog"
+            git pull --rebase --autostash origin "${GITHUB_REF_NAME}"
             git push
           fi
