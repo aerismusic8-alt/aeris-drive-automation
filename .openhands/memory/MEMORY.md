@@ -1457,3 +1457,29 @@ Answer read straight from YouTube's own pages (Tavily was out of quota):
   down so duck.ai has no tab (`bootstrap.py` brings it up; open
   `curl -X PUT 'http://127.0.0.1:9222/json/new?https://duck.ai/'` before asking).
   Quorum needs 2 vendors; pollinations alone always answers and never satisfies it.
+
+## What actually gets a million views (research, 2026-11-09) — durable facts
+Scanned YouTube live via `ops/yt_public_scan.py` (free, no API quota). The
+`--query` flag resolves channels; sort-by-view needs `&sp=CAMSAhAB` on the
+results URL and reading `videoRenderer` from `initialData`.
+- **The million-view lane is long-form, not the song.** Thai `รวมเพลง` compilations
+  do 6M–17M views at 1–3 hours (e.g. `20 เพลงฮิต` 17.8M/1:23, `รวมเพลงเพราะ 2:41`
+  16.2M, `เพลงกล่อมนอน 2 ชั่วโมง` 15.7M). Sleep/ambient loops do 100M–221M at 8–12
+  hours. **The same song gets ~500 views at 4 min and millions inside a 2-hour
+  playlist** — the container (length, playlist intent, calm) is what the algorithm
+  rewards, not the track.
+- **AI-music channels that chase the single-song format sit at median 4–4,300
+  views.** `@ai.music.matrix` (157K subs) does 90-min relax BGM at 2K–6K/video and
+  posts **zero Shorts**. `@BURNINBRIDGESAiMusic` runs a daily themed series
+  (Halloween night N) at ~500–1,100/video. A big sub count does not mean big views.
+- **We cannot replicate the 180M–570M Official-MV lane** — those are real artists
+  (Cocktail, Aun, LOMOSONIC) with a label and a fanbase. Do not aim there.
+- **Two lanes we CAN enter, free, no K action:** (1) long Thai compilations — the
+  rail already exists (`ax-music-compilation.yml`, weekly, 3 themes) and
+  `compile_album.py --max` takes minutes; 57 min → 2–3 h is a flag change;
+  (2) sleep/relax/ambient loops — an AI ambient bed + CC0 rain/nature, black screen,
+  1–8 h. The ambient lane is the 100M+ one and has **no vocals, so the AI-vocal
+  exposure that caps the song lane does not apply**.
+- **Honest ceiling:** the million-view videos belong to years-old channels with long
+  watch-time history. Entering the lane is cheap and worth doing; expecting millions
+  in a week is not.
