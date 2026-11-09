@@ -1528,6 +1528,14 @@ from a real/virtual-instrument generator only.**
   musescore-general-soundfont`; pip: `mido`.
 - **A SoundFont GM pad (programs 88-95) is itself a synth** — K's rule excludes
   them, so MOODS use only acoustic programs; a test fails if any mood names one.
+- **A *sustained* acoustic pad (strings 48-51, choir 52-54) is the "hum"**
+  (K, 2026-11-09 night: "มันมีเสียงฮัม เอาแต่ดนตรีสิ"). A chord held under every
+  bar reads as a drone even when the instrument is real. Every voice must be
+  struck or plucked and decay; the chord is voiced as a harp arpeggio, the bass
+  is struck short. Detect a drone by per-bin *on-time* (fraction of STFT frames a
+  strong bin is within ~12 dB of its max): a held pad is ~47%, a decaying note
+  2-7%. The bed cache tag is versioned (`ambient_loop.BED_TAG`) so a fixed
+  renderer cannot keep looping a stale bed from disk.
 - The already-live sleep video (`gmsfqVjSsTo`) was the old synth render. YouTube
   has no file swap, so `refresh_sleep_video.py` uploads the corrected render then
   deletes the old one, guarded by `instrument: soundfont` in the state file.
