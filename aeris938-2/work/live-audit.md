@@ -1,6 +1,6 @@
 # ตรวจของจริงบนช่อง — AERIS Music
 
-ตรวจเมื่อ: 2026-11-09T11:11:12Z
+ตรวจเมื่อ: 2026-11-09T19:03:11Z
 
 ⚠️ อ่านไม่ได้วันนี้: channels.list/playlistItems.list returned no items (quota spent or API error)
 
