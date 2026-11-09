@@ -38,26 +38,24 @@ STATE = WORK / "compilation-state-compilation.json"
 
 
 def _needs_cta(desc: str) -> bool:
-    # The Shopee link is the tell: the subscribe ask and the link arrive together
-    # from monetize.cta(), so its absence means the whole block is missing.
-    return "shopee" not in desc.lower()
+    """True when the description still lacks the subscribe-first ask.
+
+    The ask's first line is the tell: `refresh_description` inserts the whole
+    block at once, so its absence means the block is missing.
+    """
+    first = monetize.cta("youtube").splitlines()
+    return bool(first) and first[0] not in desc
 
 
 def _insert_cta(desc: str, cta: str) -> str:
-    """Put the CTA under the channel blurb, above the chapter list.
+    """Upgrade a live description with the canonical `monetize.refresh_description`.
 
-    The blurb line (`AERIS Music — ค่ายเพลง AI`) is the natural seam: the ask
-    lands near the top, before YouTube's "Show more" fold, and the chapters stay
-    exactly where they were so the timestamps still work. Idempotent: a
-    description that already carries the ask is returned untouched.
+    That function is the single description writer: it re-points the old
+    homepage link, drops the superseded page-first CTA block, and inserts the
+    subscribe-first ask before the fold — all idempotently. Delegating here keeps
+    one writer instead of two that can drift.
     """
-    if not _needs_cta(desc):
-        return desc
-    block = f"{cta}\n\n"
-    marker = "\n👉 กดเลือกเพลง"
-    if marker in desc:
-        return desc.replace(marker, "\n" + block + marker.lstrip("\n"), 1)
-    return block + desc
+    return monetize.refresh_description(desc, "youtube")
 
 
 def main() -> int:

@@ -71,6 +71,20 @@ jobs:
           # one constraint blocking revenue. Exits 0 on bad news by design.
           python3 aeris938-2/scripts/goal_watch.py --no-push \
             || echo "goal_watch.py skipped"
+          # The daily review loop: on a flat day, pick ONE new experiment that
+          # matches the constraint and has not been tried, and remember it. It
+          # never repeats a loser and never switches away from a running test
+          # before its window. A flat day is the trigger; the ledger is why it
+          # cannot "forget". K, 2026-11-09.
+          python3 aeris938-2/scripts/experiment_loop.py --run --no-push \
+            || echo "experiment_loop.py skipped"
+          # Audit the LIVE channel against intent, not the code. This is the
+          # check that was missing when 1555 green tests coexisted with a
+          # top video that carried no revenue ask for weeks. It reads every
+          # upload and repairs the deterministic misses (the description ask),
+          # alerting only on a new failure.
+          python3 aeris938-2/scripts/live_audit.py --repair --no-push \
+            || echo "live_audit.py skipped (quota or transient API error)"
 
       - name: Commit the dashboard
         run: |
@@ -80,7 +94,9 @@ jobs:
           git add music938-1/work/market-report.md music938-1/work/market-snapshot.json \
                   music938-1/channel/PROGRESS.md \
                   aeris938-2/work/growth-report.md aeris938-2/work/history.jsonl \
-                  aeris938-2/work/goal-watch.md
+                  aeris938-2/work/goal-watch.md \
+                  aeris938-2/work/experiments.jsonl aeris938-2/work/experiment-state.json \
+                  aeris938-2/work/live-audit.md aeris938-2/work/live-audit-state.json
           if git diff --cached --quiet; then
             echo "no change to record"
             exit 0

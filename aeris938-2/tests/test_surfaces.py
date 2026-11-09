@@ -319,6 +319,136 @@ def test_stall_detection_fires_on_a_page_that_never_grew():
     assert admin._stall([]) is None
 
 
+# --- The daily review loop (K, 2026-11-09) --------------------------------
+# K: on a flat day, search for data, meet, and try a NEW way until one works.
+# These pin the loop's brain: it must never repeat a loser, never churn a
+# running test, and never call a test a loss before it had exposure.
+
+import experiment_loop as loop  # noqa: E402
+
+
+def test_experiment_library_covers_every_constraint():
+    """A constraint with no hypothesis would silently stall the loop."""
+    for c in ("reach", "conversion", "offer", "income"):
+        assert loop.LIBRARY.get(c), f"no experiments for constraint {c}"
+        for e in loop.LIBRARY[c]:
+            for f in ("key", "title", "hypothesis", "variable", "peer",
+                      "metric", "guardrail"):
+                assert e.get(f), f"{c}/{e.get('key')} missing {f}"
+
+
+def test_loop_starts_the_first_experiment_on_an_empty_ledger():
+    d = loop.decide([], "reach")
+    assert d["action"] == "start"
+    assert d["experiment"]["key"] == loop.LIBRARY["reach"][0]["key"]
+
+
+def test_loop_keeps_a_running_experiment_inside_its_window():
+    """A flat day is a review, not permission to switch — tiny audiences need
+    exposure before a verdict."""
+    exp = loop.record(loop.LIBRARY["reach"][0], "reach", None)
+    d = loop.decide([exp], "reach")
+    assert d["action"] == "keep"
+    assert d["experiment"]["key"] == exp["key"]
+
+
+def test_loop_closes_and_moves_on_when_the_window_elapsed():
+    exp = loop.record(loop.LIBRARY["reach"][0], "reach", None)
+    exp["start"] = "2020-01-01T00:00:00Z"   # long past the window
+    d = loop.decide([exp], "reach", [])
+    assert d["action"] == "start"
+    assert d["close"]["status"] in ("WIN", "FAILED", "INCONCLUSIVE")
+    # It must pick a *different* experiment, not re-pick the one just closed.
+    assert d["experiment"]["key"] != exp["key"]
+
+
+def test_loop_never_repeats_a_key_or_a_reworded_hypothesis():
+    first = loop.record(loop.LIBRARY["reach"][0], "reach", None)
+    assert loop.is_duplicate(loop.LIBRARY["reach"][0], [first]) is not None
+    # A reworded version of the same idea is still a duplicate.
+    reword = {"key": "something-new",
+              "hypothesis": loop.LIBRARY["reach"][0]["hypothesis"] + " (ลองใหม่)"}
+    assert loop.is_duplicate(reword, [first]) is not None
+    # A genuinely different experiment is not.
+    other = loop.LIBRARY["reach"][1]
+    assert loop.is_duplicate(other, [first]) is None
+
+
+def test_loop_reports_exhaustion_rather_than_reusing_a_loser():
+    tried = [loop.record(c, "reach", None) for c in loop.LIBRARY["reach"]]
+    for t in tried:
+        t["status"] = "FAILED"
+    d = loop.decide(tried, "reach", [])
+    assert d["action"] == "exhausted"
+
+
+def test_loop_verdict_never_calls_a_low_exposure_test_a_loss():
+    exp = loop.record(loop.LIBRARY["reach"][0], "reach", None)
+    exp["start"] = "2026-11-01T00:00:00Z"
+    # Plenty of views, subscribers flat -> a real loss.
+    strong = [{"at": "2026-11-01T00:00:00Z", "yt_subs": 7, "yt_views": 1214},
+              {"at": "2026-11-10T00:00:00Z", "yt_subs": 7, "yt_views": 1600}]
+    assert loop.evaluate(exp, strong)[0] == "FAILED"
+    # Too little exposure to read -> inconclusive, NOT a loss.
+    weak = [{"at": "2026-11-01T00:00:00Z", "yt_subs": 7, "yt_views": 1214},
+            {"at": "2026-11-10T00:00:00Z", "yt_subs": 7, "yt_views": 1250}]
+    assert loop.evaluate(exp, weak)[0] == "INCONCLUSIVE"
+    # A subscriber gain is a win whatever else is flat.
+    win = [{"at": "2026-11-01T00:00:00Z", "yt_subs": 7, "yt_views": 1214},
+           {"at": "2026-11-10T00:00:00Z", "yt_subs": 9, "yt_views": 1250}]
+    assert loop.evaluate(exp, win)[0] == "WIN"
+
+
+# --- The live-artifact audit (K, 2026-11-09) ------------------------------
+# The bug that survived 1555 green tests: the published video carried no
+# revenue ask. These pin the check that looks at the *product*, not the code.
+
+import live_audit as audit  # noqa: E402
+
+
+def test_audit_expectation_comes_from_config_not_the_generator():
+    exp = audit.expected()
+    assert exp["affiliate"] and exp["affiliate"].startswith("https://s.shopee.co.th/")
+    assert exp["youtube"].startswith("https://www.youtube.com/@aerismusicth")
+
+
+def test_audit_flags_the_exact_bug_that_survived_the_tests():
+    """A live video with no affiliate link and no subscribe ask must fail, even
+    though every unit test passed — that is the whole point of the audit."""
+    exp = audit.expected()
+    bad = {"id": "X", "snippet": {"title": "เพลงเศร้า", "description": "เพลงเศร้า"}}
+    fails = audit.check_video(bad, exp, {})
+    assert "revenue_ask_missing" in fails
+    assert "subscribe_ask_missing" in fails
+
+
+def test_audit_passes_a_video_that_carries_the_ask():
+    exp = audit.expected()
+    good = {"id": "X", "snippet": {
+        "title": "รวมเพลงไทย 15 เพลง",
+        "description": audit.monetize.cta("youtube") + "\n\n0:00 a\n1:00 b"}}
+    assert audit.check_video(good, exp, {}) == []
+
+
+def test_audit_flags_an_empty_description_and_a_losing_title():
+    exp = audit.expected()
+    empty = {"id": "X", "snippet": {"title": "x", "description": ""}}
+    assert "description_empty" in audit.check_video(empty, exp, {})
+    losing = {"id": "X", "snippet": {
+        "title": "เพลงเศร้า | AERIS Music",
+        "description": audit.monetize.cta("youtube")}}
+    assert "losing_title_shape" in audit.check_video(losing, exp, {})
+
+
+def test_audit_requires_chapters_on_a_compilation():
+    exp = audit.expected()
+    comp = {"id": "C", "snippet": {
+        "title": "รวมเพลงไทย",
+        "description": audit.monetize.cta("youtube") + "\n\n0:00 a\n1:00 b"}}
+    fails = audit.check_video(comp, exp, {"C": 15})
+    assert any(f.startswith("chapters_missing") for f in fails)
+
+
 if __name__ == "__main__":
     fns = [v for k, v in sorted(globals().items()) if k.startswith("test_")]
     for fn in fns:
