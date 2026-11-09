@@ -30,13 +30,17 @@ import sys
 from datetime import datetime, timezone
 from pathlib import Path
 
+import ambient_loop  # the shared bed tag; scripts/ is on sys.path when run here
+
 ROOT = Path(__file__).resolve().parent.parent
 OPS = ROOT.parent / "ops"
 STATE = ROOT / "work" / "compilation-state-ambient-sleep.json"
 STEM = "ambient-sleep"
 CHANNEL = "ch3"
-# The corrected render is the real-instrument one; this marker says so.
-MARKER = "soundfont"
+# The corrected render is the real-instrument one; this marker says which timbre
+# version is live. It carries `BED_TAG`, so a later sound change (a new bed tag)
+# makes the marker stale and the swap runs again instead of skipping.
+MARKER = f"soundfont-{ambient_loop.BED_TAG}"
 MIN_MINUTES = 4 * 60   # the sleep title promises length; a short file is a lie
 
 

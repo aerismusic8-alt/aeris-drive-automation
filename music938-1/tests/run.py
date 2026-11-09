@@ -1215,7 +1215,7 @@ def test_refresh_sleep_video() -> None:
           R.decide(None, 480, True)["action"] == "skip")
     # Already replaced -> skip, so a retry never double-uploads.
     check("already soundfont -> skip",
-          R.decide({"video_id": "x", "instrument": "soundfont"}, 480, True)["action"]
+          R.decide({"video_id": "x", "instrument": R.MARKER}, 480, True)["action"]
           == "skip")
     # The old synth render -> replace.
     check("old synth + render present -> replace",
@@ -1228,6 +1228,11 @@ def test_refresh_sleep_video() -> None:
     # The decision carries the id it means to delete.
     check("the decision names the old id",
           R.decide({"video_id": "gmsfqVjSsTo"}, 480, True)["old"] == "gmsfqVjSsTo")
+    # The marker carries the bed tag, so a later sound change (a new BED_TAG)
+    # makes the live video stale and the swap runs again instead of skipping.
+    import ambient_loop as A
+    check("the refresh marker is versioned by the bed tag",
+          A.BED_TAG in R.MARKER, R.MARKER)
 
     # apply() must build the render before it uploads. In CI the once-step is
     # skipped by the same state file, so the corrected mp4 is absent unless
