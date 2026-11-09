@@ -1561,3 +1561,24 @@ from the six approved instrument moods.
   committed queue. `crosspost.mood_items`/`mood_caption` queue them on FB+TikTok.
 - To force a mood re-render after a renderer change: bump `STATE_VERSION`.
 - `publish_media.py` now uploads `library/moods/*.mp4` too.
+
+## Getting the approved clips out (K, 2026-11-09 night) — durable facts
+K approved the hum-free sound ("แบบนี้แหล่ะถึงจะหลับ") and said **"วางแผนโพสต์เลย"**
+— plan the posting. Three faults had kept the clips from ever reaching FB/TikTok:
+- **`produce_loop.py` exits 1 on a rejected lyric draft**, and in
+  `ax-music-produce.yml` every step *after* it (mood render, publish, merge-queue)
+  was skipped — so two produce runs (06:33, 18:50) failed and the approved clips
+  never reached the release. Fixed with `continue-on-error: true` on the draft
+  step: the draft is raw material, not a gate.
+- **`pull_media.py` had no `moods` group**, so a fresh pod never got the clips
+  back and `make_mood_short --once` (which keys off the file being on disk)
+  re-rendered all six every run. Added the group + a "Pull the mood clips" step.
+- `publish_media.py` gained `--only <dirs>` so one source can be uploaded alone;
+  it already replaces an asset when the size differs (delete-then-upload).
+- **Published by hand** (`publish_media.py --only moods`) so the rail could post
+  now, not after the next produce run. Crosspost posts one item/platform per run;
+  FB ~3/day, TikTok ~4/day, 1-h gap → the 6 mood clips spread over ~2-3 days.
+- The **sleep video swap** (`refresh_sleep_video.py`, compilation workflow) had to
+  be dispatched by hand to leave Monday; marker is now `soundfont-<BED_TAG>` so a
+  later timbre change re-swaps instead of skipping.
+- Session health: FB + TikTok both `SIGNED_IN` and posting (verified live).
