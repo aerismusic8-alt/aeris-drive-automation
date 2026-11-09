@@ -71,6 +71,32 @@ jobs:
           set -euo pipefail
           cd music938-1 && python3 scripts/brand.py
 
+      # The sleep/ambient lane. The 2026-11-09 scan: a 4-minute single gets ~500
+      # views, a 2-hour Thai compilation 6-17M, and a sleep/ambient loop of 8-12
+      # hours 100-221M. The *container* is what the algorithm rewards, and this
+      # is the biggest one we can build for free: the bed is our own synth (no
+      # Flow Music, no login), the rain is ffmpeg's own noise (no download, no
+      # licence), and the picture is one held still, so the encode is minutes.
+      # One upload, then the state file stops a re-run from doubling it.
+      - name: Build and upload the sleep/ambient loop (once)
+        env:
+          YT_CLIENT_ID: ${{ secrets.YT_CLIENT_ID }}
+          YT_CLIENT_SECRET: ${{ secrets.YT_CLIENT_SECRET }}
+          YT_CH3_REFRESH_TOKEN: ${{ secrets.YT_CH3_REFRESH_TOKEN }}
+        run: |
+          set -euo pipefail
+          cd music938-1
+          state="work/compilation-state-ambient-sleep.json"
+          if [ -f "$state" ] && grep -q '"video_id": *"[^"]' "$state"; then
+            echo "ambient sleep loop already live — skipping"
+          else
+            python3 scripts/ambient_loop.py --preset sleep --minutes 480 --rain --render
+            python3 scripts/upload_compilation.py --upload --ch ch3 \
+              --stem ambient-sleep \
+              --thumb library/thumbs/thumb-ambient-sleep.png \
+              || echo "ambient sleep: upload skipped"
+          fi
+
       - name: Build and upload each themed album not yet live
         env:
           YT_CLIENT_ID: ${{ secrets.YT_CLIENT_ID }}

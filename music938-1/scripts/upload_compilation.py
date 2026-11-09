@@ -78,6 +78,8 @@ def main() -> int:
     ap.add_argument("--ch", default="ch3")
     ap.add_argument("--stem", default="compilation",
                     help="compile_album.py output stem (e.g. compilation-20)")
+    ap.add_argument("--thumb", default=None,
+                    help="thumbnail png (default: thumb-compilation.png)")
     args = ap.parse_args()
 
     mp4, txt, title_file = _paths(args.stem)
@@ -93,9 +95,14 @@ def main() -> int:
     # The title's promise is the track count, not the runtime, so a themed album
     # of 8 songs at ~3.7 min each is honest at ~30 minutes. The floor only guards
     # against a truncated render; 25 minutes is well past "album".
-    if dur < 25 * 60:
-        print("refusing to upload: under 25 minutes, the title would over-promise",
-              file=sys.stderr)
+    #
+    # An ambient/sleep loop is the other shape: it promises *length*, so a short
+    # one is the lie. It ships at hours, so only guard against a truncated file.
+    is_ambient = args.stem.startswith("ambient-")
+    floor = 4 * 60 if is_ambient else 25 * 60
+    if dur < floor:
+        print(f"refusing to upload: under {floor // 60} minutes, the title would "
+              f"over-promise", file=sys.stderr)
         return 3
 
     # The render's own title is the truth (it counts the tracks); only fall back
@@ -135,8 +142,9 @@ def main() -> int:
            "--video", str(mp4), "--title", title,
            "--desc-file", str(desc_file), "--tags-file", str(tags_file),
            "--category", "10", "--privacy", "public"]
-    if THUMB.exists():
-        cmd += ["--thumb", str(THUMB)]
+    thumb = Path(args.thumb) if args.thumb else THUMB
+    if thumb.exists():
+        cmd += ["--thumb", str(thumb)]
     print(" ".join(cmd))
     proc = subprocess.run(cmd, text=True, capture_output=True)
     sys.stdout.write(proc.stdout)

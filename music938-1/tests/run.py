@@ -902,6 +902,59 @@ def test_follow_end_card() -> None:
           "Follow,,0,0,0,," not in short)
 
 
+def test_ambient_loop() -> None:
+    section("ambient/sleep lane (the million-view container)")
+    import ambient_loop as A
+
+    # The 2026-11-09 scan: sleep/ambient loops of 8-12 hours do 100-221M views
+    # while a 4-minute single does ~500. This lane builds that container from a
+    # keyless synth bed, so it must not need a login and must not stretch runtime
+    # by re-encoding audio for hours.
+    for pname, preset in A.PRESETS.items():
+        check(f"{pname}: title is Thai", has_thai(preset["title"]))
+        check(f"{pname}: title states the length", "{hours}" in preset["title"])
+        check(f"{pname}: has a mood preset", preset["mood"] in ("calm", "warm", "mystic"))
+
+    # An 8-hour plan, built without rendering.
+    p = A.plan("sleep", mood="calm", key="C", minutes=480, rain=True,
+               title_tmpl=A.PRESETS["sleep"]["title"],
+               use_case=A.PRESETS["sleep"]["use_case"], stem="ambient-sleep")
+    check("the plan names an 8-hour title", "8 ชั่วโมง" in p["title"], p["title"])
+    check("the plan targets the requested length",
+          f"{480 * 60:.3f}" in " ".join(p["cmd"]), "missing -t 28800")
+    # The bed is a short loop tiled to length, not an 8-hour synthesis.
+    check("the bed is stream-looped, not re-rendered long",
+          "-stream_loop" in p["cmd"])
+    check("one bed is looped when there is no rain",
+          A.plan("sleep", mood="calm", key="C", minutes=480, rain=False,
+                 title_tmpl=A.PRESETS["sleep"]["title"],
+                 use_case="x", stem="ambient-sleep")["cmd"].count("-stream_loop") == 1)
+    check("rain adds a second looped bed", p["cmd"].count("-stream_loop") == 2)
+    check("the picture is a single held still", "-loop" in p["cmd"])
+    # The still does not need 25 fps; a held frame at 1 fps keeps an 8-hour
+    # encode to minutes and the file to a few hundred MB.
+    check("the still is held at 1 fps", "1" == str(A.FPS))
+    check("the description says what it is", has_thai(p["desc"]))
+    check("the stem keys the output path", p["out"].name == "ambient-sleep.mp4")
+    # A stem mismatch here is exactly the bug that made the CLI report success
+    # while checking a file it never wrote.
+    p2 = A.plan("เพลงกล่อมนอน", mood="calm", key="C", minutes=480, rain=True,
+                title_tmpl=A.PRESETS["sleep"]["title"], use_case="x",
+                stem="ambient-sleep")
+    check("a Thai display name does not change the output path",
+          p2["out"].name == "ambient-sleep.mp4")
+
+    # The title counts hours, and the renderer must say a whole number for 8h.
+    check("8h renders as '8', not '8.0'", A._hours_label(480) == "8")
+    check("a 90-min loop still reads honestly", A._hours_label(90) == "1.5")
+    try:
+        A.plan("x", mood="calm", key="C", minutes=0, rain=False,
+               title_tmpl="{hours}", use_case="", stem="s")
+        check("a zero-length plan is refused", False)
+    except ValueError:
+        check("a zero-length plan is refused", True)
+
+
 def test_provenance() -> None:
     section("provenance (WIRING: retired Piper engine must not ship)")
     import provenance
@@ -3516,6 +3569,7 @@ def main() -> int:
     test_level_ordering()
     test_shorts()
     test_follow_end_card()
+    test_ambient_loop()
     test_provenance()
     test_genres()
     test_arrangement_no_repeat()

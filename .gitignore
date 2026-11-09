@@ -83,6 +83,8 @@ music938-1/library/thumbs/*.png
 music938-1/library/covers/*.jpg
 # The compilation render is a 200 MB+ artifact; keep the .txt/.title (chapters) but not the video.
 music938-1/library/compilations/*.mp4
+# The ambient beds are ffmpeg synth, regenerated on demand; only the sidecars ship.
+music938-1/library/ambient/*.mp3
 
 # Quarantined media is the rejected Piper engine, kept only for audit. Never
 # publish it and never commit it (see scripts/provenance.py).
