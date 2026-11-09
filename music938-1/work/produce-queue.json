@@ -48,6 +48,14 @@
       "audio": "none",
       "offline_rc": 1,
       "instrumental": false
+    },
+    {
+      "slug": "30-khuen-thi-yang-mai-lap-v30",
+      "result": "no-draft",
+      "problems": [
+        "[verse] line is 39 Thai chars: 'ฟุ้งกรามเสียงกระตุ้นกล้ามเนื้อพยายามวัน'",
+        "[verse] line is 36 Thai chars: 'จอแสงสร้างให้เห็นฝันควบคู่อิโลโอเดย์'"
+      ]
     }
   ]
 }
