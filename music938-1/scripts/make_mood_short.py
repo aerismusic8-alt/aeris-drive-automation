@@ -31,7 +31,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 import covers  # noqa: E402  the mood palettes
 import release  # noqa: E402  the follow copy
 import surreal  # noqa: E402  the AI-disclosure line
-from ambient_loop import BEDS, ensure_bed  # noqa: E402  the shared bed cache
+from ambient_loop import ensure_bed, bed_path  # noqa: E402  the shared bed cache
 from make_karaoke import FONT, OUTLINE, _duration  # noqa: E402
 
 OUT_DIR = ROOT / "library" / "moods"
@@ -39,7 +39,7 @@ THUMBS = ROOT / "library" / "thumbs"
 STATE = ROOT / "work" / "mood-clips-state.json"
 # Bump to force a re-render after a renderer change; `--once` skips a mood whose
 # clip is already on disk at this version.
-STATE_VERSION = 2
+STATE_VERSION = 3
 
 W, H, FPS = 1080, 1920, 30
 # Well under the 60 s Shorts ceiling; long enough to hear the harmony turn once.
@@ -163,7 +163,7 @@ def plan(mood: str, *, seconds: float = CLIP_SECONDS) -> dict:
     """Everything the render needs, with nothing executed or downloaded."""
     if mood not in MOODS:
         raise ValueError(f"unknown mood {mood!r}; choose from {sorted(MOODS)}")
-    bed = BEDS / f"instrument-{mood}-{MOODS[mood]['key']}.wav"
+    bed = bed_path(mood, MOODS[mood]["key"])
     return {
         "mood": mood,
         "name": MOODS[mood]["name"],

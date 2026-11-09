@@ -46,14 +46,13 @@ SOUNDFONTS = [
 # to smear the beat.
 XFADE_SECONDS = 1.5
 
-# General MIDI programs. A real recording sits behind each number.
+# General MIDI programs. A real recording sits behind each number. Every one
+# here is struck or plucked, so its notes decay — no sustained pad (K: "the hum").
 P_MUSICBOX = 10
 P_PIANO = 0
 P_NYLON = 24
-P_STRINGS = 48
+P_HARP = 46
 P_BASS = 32
-P_CELLO = 42
-P_CHOIR = 52
 
 # Pentatonic sets: any note in the set is consonant with any other, so a random
 # walk still lands in key. Offsets are semitones from the root.
@@ -70,41 +69,46 @@ CHORD = {"maj": [0, 4, 7], "min": [0, 3, 7], "sus": [0, 5, 7]}
 # voice it. `prog` is a list of (semitone offset from the tonic, quality); the
 # tonic offsets are the classic I-vi-IV-V family, which is why any rotation of
 # it still sounds settled. The melody reads the pentatonic `scale` on top.
+#
+# K (2026-11-09): "มันมีเสียงฮัม เอาแต่ดนตรีสิ" — a held chord under everything
+# reads as a hum/drone, not music. Every voice here is a *struck or plucked*
+# instrument whose notes decay (music box, piano, nylon guitar, harp, plucked
+# bass). There is no sustained string/choir pad: that was the hum.
 MOODS: dict[str, dict] = {
     "calm": {
         "root": 60, "scale": "major", "bpm": 56,
         "prog": [(0, "maj"), (9, "min"), (5, "maj"), (7, "maj")],
-        "melody": P_MUSICBOX, "pad": P_STRINGS, "bass": P_BASS, "arp": P_PIANO,
+        "melody": P_MUSICBOX, "harp": P_HARP, "bass": P_BASS, "arp": P_PIANO,
         "gain": 0.85,
     },
     "warm": {
         "root": 57, "scale": "major", "bpm": 62,
         "prog": [(0, "maj"), (5, "maj"), (7, "maj"), (9, "min")],
-        "melody": P_MUSICBOX, "pad": P_STRINGS, "bass": P_BASS, "arp": P_NYLON,
+        "melody": P_MUSICBOX, "harp": P_HARP, "bass": P_BASS, "arp": P_NYLON,
         "gain": 0.85,
     },
     "sad": {
         "root": 57, "scale": "minor", "bpm": 50,
         "prog": [(0, "min"), (8, "maj"), (3, "maj"), (7, "min")],
-        "melody": P_MUSICBOX, "pad": P_STRINGS, "bass": P_CELLO, "arp": P_PIANO,
+        "melody": P_MUSICBOX, "harp": P_HARP, "bass": P_BASS, "arp": P_PIANO,
         "gain": 0.82,
     },
     "hopeful": {
         "root": 62, "scale": "major", "bpm": 66,
         "prog": [(0, "maj"), (5, "maj"), (9, "min"), (7, "maj")],
-        "melody": P_MUSICBOX, "pad": P_STRINGS, "bass": P_BASS, "arp": P_PIANO,
+        "melody": P_MUSICBOX, "harp": P_HARP, "bass": P_BASS, "arp": P_PIANO,
         "gain": 0.85,
     },
     "mystic": {
         "root": 55, "scale": "yin", "bpm": 48,
         "prog": [(0, "min"), (5, "min"), (3, "maj"), (7, "maj")],
-        "melody": P_MUSICBOX, "pad": P_CHOIR, "bass": P_CELLO, "arp": P_NYLON,
+        "melody": P_MUSICBOX, "harp": P_HARP, "bass": P_BASS, "arp": P_NYLON,
         "gain": 0.80,
     },
     "epic": {
         "root": 53, "scale": "minor", "bpm": 76,
         "prog": [(0, "min"), (8, "maj"), (5, "min"), (7, "maj")],
-        "melody": P_STRINGS, "pad": P_STRINGS, "bass": P_CELLO, "arp": P_PIANO,
+        "melody": P_MUSICBOX, "harp": P_HARP, "bass": P_BASS, "arp": P_PIANO,
         "gain": 0.85,
     },
 }
@@ -140,13 +144,15 @@ def _chord_tones(offset: int, quality: str, root: int) -> list[int]:
 def build_midi(mood: str, *, bars: int, path: Path) -> dict:
     """Write a 4/4 MIDI arrangement for `mood` and return its description.
 
-    Four voices, all real instruments:
-      * bass   — one root per bar, soft and low
-      * pad    — the sustained triad, the harmonic bed
+    Four voices, all real instruments, every note struck or plucked so it decays:
+      * bass   — the chord root, short, low and soft
+      * harp   — the chord tones plucked across the bar, the harmonic bed
       * arp    — an eighth-note broken chord on a soft piano/guitar
       * melody — a slow music-box line over the top, phrased in two-bar cells
-    Humanisation (velocity and a few ticks of timing jitter) is what stops a
-    sampler from reading as a sequencer.
+
+    There is deliberately no sustained pad: a chord held under the whole bed is
+    what K heard as "เสียงฮัม" (a hum). Humanisation (velocity and a few ticks of
+    timing jitter) is what stops a sampler from reading as a sequencer.
     """
     import mido  # local import: keeps --list and --help working without it
 
@@ -168,7 +174,7 @@ def build_midi(mood: str, *, bars: int, path: Path) -> dict:
                                   tempo=mido.bpm2tempo(bpm), time=0))
 
     # Channels 0-3 carry the four voices. Program changes at time 0.
-    for ch, prog_num in ((0, preset["melody"]), (1, preset["pad"]),
+    for ch, prog_num in ((0, preset["melody"]), (1, preset["harp"]),
                          (2, preset["bass"]), (3, preset["arp"])):
         track.append(mido.Message("program_change", channel=ch,
                                   program=prog_num, time=0))
@@ -199,12 +205,14 @@ def build_midi(mood: str, *, bars: int, path: Path) -> dict:
         t0 = b * bar_ticks
         chord = _chord_tones(offset, quality, root)
 
-        # bass: the chord root, held the whole bar, low and quiet
-        note(2, root - 12 + offset, t0, int(bar_ticks * 0.96), 52)
+        # bass: the chord root, struck short so it decays instead of droning
+        note(2, root - 12 + offset, t0, int(bar_ticks * 0.5), 50)
 
-        # pad: sustained triad, one long note per bar
-        for p in chord:
-            note(1, p, t0, int(bar_ticks * 0.98), 44)
+        # harp: the chord tones plucked across the bar. Every note decays, so the
+        # harmony moves instead of holding — a held chord is the "hum" K heard.
+        for i, p in enumerate(chord):
+            start = t0 + i * (bar_ticks // 4)
+            note(1, p, start, int(bar_ticks * 0.5), 42)
 
         # arp: broken chord, eighth notes, soft, alternating up/down
         shape = [chord[0], chord[1], chord[2], chord[1]]

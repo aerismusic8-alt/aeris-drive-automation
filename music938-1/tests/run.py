@@ -1057,7 +1057,7 @@ def test_ambient_loop() -> None:
     # the ffmpeg synth as "fake"; `soundfont` renders a SoundFont of recorded
     # instruments through fluidsynth. The plan must loop *that* bed.
     check("the plan loops the instrument bed, not the old synth bed",
-          "instrument-" in " ".join(p["cmd"]), "instrument bed not in plan")
+          "instrument2-" in " ".join(p["cmd"]), "instrument bed not in plan")
     # A looping bed must not fade per tile, or the volume dips once a loop. The
     # fade belongs on the finished video, so the plan carries one in/out at the
     # very ends and the bed renderer (checked below) carries none.
@@ -1105,10 +1105,20 @@ def test_soundfont_renderer() -> None:
     # synth lead/effect, which is the "fake" sound K asked us to stop using.
     SYNTHY = {80, 81, 82, 83, 84, 85, 86, 87, 88, 89, 90, 91, 92, 93, 94, 95,
               96, 97, 98, 99, 100, 101, 102, 103}
+    # Sustained ensembles hold a chord under the whole bed, which K (2026-11-09)
+    # heard as a hum: "มันมีเสียงฮัม เอาแต่ดนตรีสิ". Every voice must be a struck
+    # or plucked instrument. The sustained families are bowed strings (40-44),
+    # string ensembles (48-51), choir/voice (52-54) and the synth pads (88-95).
+    # Orchestral Harp (46), Timpani (47) and Pizzicato (45) are struck/plucked,
+    # so they are allowed.
+    SUSTAINED = {40, 41, 42, 43, 44, 48, 49, 50, 51, 52, 53, 54} | set(range(88, 96))
     for mood, preset in SF.MOODS.items():
-        progs = [preset[k] for k in ("melody", "pad", "bass", "arp") if k in preset]
+        progs = [preset[k] for k in ("melody", "harp", "bass", "arp") if k in preset]
         check(f"{mood} uses only real-instrument programs",
               all(p not in SYNTHY for p in progs), f"{progs}")
+        check(f"{mood} has no sustained pad (the hum)",
+              all(p not in SUSTAINED for p in progs), f"{progs}")
+        check(f"{mood} carries no pad voice at all", "pad" not in preset)
 
     # A SoundFont must be discoverable, or every render fails at the sampler.
     sf = SF.find_soundfont()
@@ -1162,7 +1172,7 @@ def test_mood_short() -> None:
     # The plan is pure: it names the bed, the art source and the output without
     # touching ffmpeg or the network.
     p = M.plan("calm")
-    check("the plan names the instrument bed", "instrument-calm-C.wav" in str(p["bed"]))
+    check("the plan names the instrument bed", "instrument2-calm-C.wav" in str(p["bed"]))
     check("the art is the ffmpeg gradients source", p["art"].startswith("gradients="))
     check("the art is the vertical frame", f"{M.W}x{M.H}" in p["art"])
     check("the clip is under the 60s Shorts ceiling", p["seconds"] < 60)

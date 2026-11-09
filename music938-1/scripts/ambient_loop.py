@@ -50,6 +50,17 @@ W, H = 1920, 1080
 # frame, so nothing is lost.
 FPS = 1
 BED_SECONDS = 180.0  # the loop unit; the bed is synthesised once and tiled
+# The bed cache name carries a timbre version. A cached file outlives the code
+# that made it, so when the arrangement changed (K, 2026-11-09: drop the held
+# pad that read as a hum) the old `instrument-*` beds had to stop being reused —
+# otherwise the "fix" would still ship the pad from disk. Bump this whenever the
+# sound changes.
+BED_TAG = "instrument2"
+
+
+def bed_path(mood: str, key: str) -> Path:
+    return BEDS / f"{BED_TAG}-{mood}-{key}.wav"
+
 
 # The sleep lane is its own search intent, and the winning videos name it: calm
 # music plus a length. Keep the title in Thai, say the length, and promise the
@@ -96,14 +107,14 @@ def _render_bed(mood: str, key: str, out: Path, duration: float) -> None:
 def ensure_bed(mood: str, key: str) -> Path:
     """A short real-instrument bed, rendered once and cached by mood+key.
 
-    The cache name is `instrument-*`, not `drone-*`: the earlier lane cached a
-    sine drone (and before that the story-video arpeggio), and reusing either
-    cache would keep the fake timbre even after the synthesis changed. A cached
-    file is trusted only if it is close to a whole tile long — a truncated one
-    from an interrupted run would loop a fragment.
+    The cache name carries `BED_TAG`: the earlier lane cached a sine drone, then
+    an instrument bed with a sustained pad (K heard it as a hum), and reusing
+    either cache would keep the wrong timbre even after the synthesis changed. A
+    cached file is trusted only if it is close to a whole tile long — a truncated
+    one from an interrupted run would loop a fragment.
     """
     BEDS.mkdir(parents=True, exist_ok=True)
-    dest = BEDS / f"instrument-{mood}-{key}.wav"
+    dest = BEDS / f"{BED_TAG}-{mood}-{key}.wav"
     floor = 44100 * 2 * 2 * (BED_SECONDS - 3) * 0.9   # stereo 16-bit, minus the xfade
     if dest.exists() and dest.stat().st_size > floor:
         return dest
@@ -140,7 +151,7 @@ def plan(name: str, *, mood: str, key: str, minutes: float,
 
     cmd = ["ffmpeg", "-y", "-hide_banner", "-loglevel", "error"]
     # Loop the short bed to the full length; the still is held the same way.
-    cmd += ["-stream_loop", "-1", "-i", str(BEDS / f"instrument-{mood}-{key}.wav")]
+    cmd += ["-stream_loop", "-1", "-i", str(BEDS / f"{BED_TAG}-{mood}-{key}.wav")]
     cmd += ["-loop", "1", "-framerate", str(FPS), "-i", str(still)]
     cmd += ["-t", f"{secs:.3f}"]
 
