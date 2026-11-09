@@ -1379,3 +1379,11 @@ Answer read straight from YouTube's own pages (Tavily was out of quota):
   release API `releases/assets/<id>` + retry 429/5xx). First album now live:
   `wDvzfG9XDfk` (ch3, 29.6 min). **Lesson: verify the artifact appeared, not the
   run conclusion** — read the log for a step that succeeds *before* the real work.
+- **The promo site is a revenue surface, not just a hub.** `ops/ar_promo_site.py`
+  publishes to the agent-owned GitHub Pages site (`aerismusic8-alt/site-aeris-music`)
+  and now carries a **buying-guide section + FAQPage JSON-LD** for the real Thai
+  queries, each with the Shopee link (`rel="nofollow sponsored"`). A
+  search-indexable page needs no audience — the channel's only free discovery
+  path that is not gated on followers. `channel_uploads_rss()` is the free
+  keyless fallback for `youtube.com/feeds/videos.xml?channel_id=<id>`; the Data
+  API is often 403 quotaExceeded, and the site must still refresh.
