@@ -14,6 +14,7 @@ import argparse
 import json
 import os
 import sys
+import time
 import urllib.error
 import urllib.request
 from pathlib import Path
@@ -52,26 +53,47 @@ def token() -> str | None:
     return tok or None
 
 
+def _get(url: str, tok: str | None, *, accept: str, timeout: int,
+         attempts: int = 4) -> bytes:
+    """GET with a retry, for the endpoints that hiccup under load.
+
+    `browser_download_url` 302-redirects to a separate CDN host that returns
+    transient 504s, and the release API itself can 502/503. A single blip used
+    to abort the whole pull (2026-11-09: a 504 on the first asset failed the
+    compilation run before a single song was fetched). Retry the transient
+    statuses only; a 4xx is real and returns at once.
+    """
+    last: Exception | None = None
+    for attempt in range(attempts):
+        req = urllib.request.Request(url, headers={"User-Agent": "ax-media-pull",
+                                                   "Accept": accept})
+        if tok:
+            req.add_header("Authorization", f"token {tok}")
+        try:
+            with urllib.request.urlopen(req, timeout=timeout) as r:
+                return r.read()
+        except urllib.error.HTTPError as exc:
+            last = exc
+            if exc.code not in (429, 500, 502, 503, 504) or attempt == attempts - 1:
+                raise
+            time.sleep(2 * (attempt + 1))
+        except (urllib.error.URLError, TimeoutError) as exc:
+            last = exc
+            if attempt == attempts - 1:
+                raise
+            time.sleep(2 * (attempt + 1))
+    raise last  # type: ignore[misc]
+
+
 def assets(tok: str | None) -> list[dict]:
     out: list[dict] = []
     page = 1
+    rid = json.loads(_get(f"{API}/repos/{REPO}/releases/tags/media-938", tok,
+                          accept="application/vnd.github+json", timeout=60))["id"]
     while True:
-        url = f"{API}/repos/{REPO}/releases/tags/media-938"
-        req = urllib.request.Request(url, headers={"User-Agent": "ax-media-pull",
-                                                   "Accept": "application/vnd.github+json"})
-        if tok:
-            req.add_header("Authorization", f"token {tok}")
-        with urllib.request.urlopen(req, timeout=60) as r:
-            rid = json.load(r)["id"]
-        break
-    while True:
-        url = f"{API}/repos/{REPO}/releases/{rid}/assets?per_page=100&page={page}"
-        req = urllib.request.Request(url, headers={"User-Agent": "ax-media-pull",
-                                                   "Accept": "application/vnd.github+json"})
-        if tok:
-            req.add_header("Authorization", f"token {tok}")
-        with urllib.request.urlopen(req, timeout=60) as r:
-            batch = json.load(r)
+        batch = json.loads(_get(
+            f"{API}/repos/{REPO}/releases/{rid}/assets?per_page=100&page={page}",
+            tok, accept="application/vnd.github+json", timeout=60))
         out.extend(batch)
         if len(batch) < 100:
             break
@@ -95,12 +117,12 @@ def main() -> int:
         if dest.exists() and dest.stat().st_size == a["size"]:
             skip += 1
             continue
-        req = urllib.request.Request(a["browser_download_url"],
-                                     headers={"User-Agent": "ax-media-pull"})
-        if tok:
-            req.add_header("Authorization", f"token {tok}")
-        with urllib.request.urlopen(req, timeout=300) as r, dest.open("wb") as fh:
-            fh.write(r.read())
+        # Fetch through the release-asset API, not `browser_download_url`: the
+        # latter 302-redirects to a CDN host that returns transient 504s under
+        # load, which is what failed the 2026-11-09 compilation run.
+        blob = _get(f"{API}/repos/{REPO}/releases/assets/{a['id']}", tok,
+                    accept="application/octet-stream", timeout=300)
+        dest.write_bytes(blob)
         got += 1
         print(f"  got {g}/{a['name']} ({a['size'] / 1e6:.1f} MB)")
     print(f"downloaded {got}, {skip} already present")
