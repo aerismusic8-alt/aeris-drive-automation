@@ -82,38 +82,130 @@ def _run(args: list[str], **kw) -> subprocess.CompletedProcess:
     return subprocess.run(args, capture_output=True, text=True, **kw)
 
 
-def ensure_bed(mood: str, key: str) -> Path:
-    """A short synth bed, synthesised once and cached by mood+key."""
-    BEDS.mkdir(parents=True, exist_ok=True)
-    dest = BEDS / f"ambient-{mood}-{key}.mp3"
-    if dest.exists() and dest.stat().st_size > 0:
-        return dest
-    sys.path.insert(0, str(AERIS / "scripts"))
-    import make_music  # noqa: PLC0415
+def _snap(freq: float, duration: float) -> float:
+    """Nearest frequency that completes a whole, even number of cycles in `duration`.
 
-    if mood not in make_music.MOODS:
-        mood = "calm"
-    # `_synthesise` rather than `make`: `make` also files the bed in the shared
-    # music manifest, which would point at an ignored mp3 and couple the ambient
-    # lane to the story-video library for no reason.
-    make_music._synthesise(mood, dest, BED_SECONDS)
+    Even, not odd, so the half-frequency below it (the sub) is also a whole number
+    of cycles. A sine whose period does not divide the loop length lands at a
+    different phase each time the tile restarts, and the step is a click — every
+    loop, all night, on an 8-hour video.
+    """
+    k = round(freq * duration)
+    k += k % 2
+    return k / duration
+
+
+def _stitch(src: str, dst: str, duration: float, xfade: float = 1.0) -> str:
+    """A seamless-loop filter tail: the loop starts at `xfade`, tail blended to head.
+
+    Phase-snapping makes the *tones* continuous across the wrap, but the pink
+    noise and any filter tail still leave a hairline step. The fix is the standard
+    loop crossfade, built so the length is unchanged and the wrap is smooth:
+
+      loop = S[xfade : T]  ++  crossfade(S[T-xfade : T], S[0 : xfade])
+
+    The loop now begins at `S(xfade)` and ends on the crossfade's last sample,
+    which is `S(xfade)` again — the two sides of the wrap are the *same value*, so
+    it cannot click, and there is no fade in the body (a fade would dip the volume
+    once per loop; the finished video gets its own fade at the very ends, in
+    `plan`). `acrossfade` concatenates, so the two pieces are joined with
+    `concat`, and the three slices come from one `asplit`.
+    """
+    d = xfade
+    return (f"[{src}]asplit=3[{src}a][{src}b][{src}c];"
+            f"[{src}a]atrim=start={d},asetpts=PTS-STARTPTS[p1];"
+            f"[{src}b]atrim=start={duration - d},asetpts=PTS-STARTPTS[tail];"
+            f"[{src}c]atrim=end={d},asetpts=PTS-STARTPTS[head];"
+            f"[tail][head]acrossfade=d={d}:c1=tri:c2=tri[xf];"
+            f"[p1][xf]concat=n=2:v=0:a=1[{dst}]")
+
+
+def _synth_drone(mood: str, key: str, out: Path, duration: float) -> None:
+    """A sleep drone: low sustained tones that swell slowly, nothing else.
+
+    The story-video bed (`make_music._synthesise`) layers a *plucked arpeggio* —
+    one note per beat, cycling the scale — because a story needs a melody. Inside
+    an 8-hour sleep loop that melody repeats forever and reads as a "howl": the
+    listener is played the same phrase on a 3-second cycle all night. This is a
+    different bed for a different job.
+
+    What is here instead: a low root, its fifth and its octave held under a slow
+    tremolo (a 10-second breath), a sub an octave below, and a whisper of pink
+    noise as "air". The tone is one `aevalsrc` expression, so the layers are
+    summed exactly rather than mixed from separate decoders, and the loop is made
+    seamless in two ways: every frequency is snapped to a whole number of cycles
+    in `duration` (so the wrap is phase-continuous), and the result is
+    crossfaded against its own shifted copy (`_stitch`). Loudness is normalised
+    to a real target — the first version of this bed sat at -32 LUFS, which is
+    barely audible — and the normalise happens *before* the stitch, so the two
+    sides of the crossfade carry the same level.
+    """
+    roots = {"C": 130.81, "D": 146.83, "E": 164.81, "F": 174.61,
+             "G": 196.00, "A": 220.00, "B": 246.94}
+    r = _snap(roots.get(key, 130.81), duration)
+    sub, fifth, octave = _snap(r / 2, duration), _snap(r * 1.5, duration), _snap(r * 2, duration)
+    trem = max(0.1, round(0.1 * duration) / duration)   # 0.1 Hz is tremolo's floor
+    tone = (f"0.20*sin(2*PI*{sub:.4f}*t)+0.30*sin(2*PI*{r:.4f}*t)"
+            f"+0.20*sin(2*PI*{fifth:.4f}*t)+0.12*sin(2*PI*{octave:.4f}*t)")
+    expr = f"(0.80+0.20*sin(2*PI*{trem:.5f}*t))*({tone})"
+    filt = (
+        f"aevalsrc=exprs={expr}:d={duration}:s=44100,"
+        f"lowpass=f=700[pad];"
+        f"anoisesrc=color=pink:amplitude=0.02:duration={duration},"
+        f"lowpass=f=700,highpass=f=60,volume=0.55[air];"
+        f"[pad][air]amix=inputs=2:normalize=0,"
+        f"loudnorm=I=-16:TP=-2:LRA=5[ln];"
+        f"[ln]aresample=44100[full];"
+        + _stitch("full", "out", duration)
+    )
+    out.parent.mkdir(parents=True, exist_ok=True)
+    res = _run(["ffmpeg", "-y", "-hide_banner", "-loglevel", "error",
+                "-filter_complex", filt, "-map", "[out]",
+                "-c:a", "pcm_s16le", str(out)])
+    if res.returncode != 0 or not out.exists() or out.stat().st_size == 0:
+        raise RuntimeError(f"drone synthesis failed: {res.stderr.strip()[-600:]}")
+
+
+def ensure_bed(mood: str, key: str) -> Path:
+    """A short sleep drone, synthesised once and cached by mood+key.
+
+    The cache name is `drone-*`, not the old `ambient-*`: the first version of
+    this lane cached the story-video bed, and reusing that cache would keep the
+    arpeggio (and the howl) even after the synthesis changed. A cached file is
+    trusted only if it is a whole tile long — a truncated one from an interrupted
+    run would loop a fragment.
+    """
+    BEDS.mkdir(parents=True, exist_ok=True)
+    dest = BEDS / f"drone-{mood}-{key}.wav"
+    if dest.exists() and dest.stat().st_size > 44100 * 2 * BED_SECONDS * 0.9:
+        return dest
+    _synth_drone(mood, key, dest, BED_SECONDS)
     return dest
 
 
 def ensure_rain() -> Path:
-    """A short rain bed from ffmpeg's own noise source — no download, no license."""
+    """A short rain bed from ffmpeg's own noise source — no download, no license.
+
+    No fade in or out: the bed is looped for hours, so a per-tile fade would dip
+    the rain once a minute. The end fades are applied to the *finished* video
+    instead (see `plan`). Loudness is set once here, before the loop stitch.
+    """
     BEDS.mkdir(parents=True, exist_ok=True)
-    dest = BEDS / "rain.mp3"
-    if dest.exists() and dest.stat().st_size > 0:
+    dest = BEDS / "rain.wav"
+    if dest.exists() and dest.stat().st_size > 44100 * 2 * RAIN_SECONDS * 0.9:
         return dest
     # Brown noise through a band-pass reads as steady rain; the light tremolo
     # keeps it from sounding like a hiss.
-    fc = (f"anoisesrc=color=brown:amplitude=0.06:duration={RAIN_SECONDS},"
-          "lowpass=f=1400,highpass=f=180,tremolo=f=0.2:d=0.15,"
-          "afade=t=in:d=2,afade=t=out:st={:.1f}:d=2".format(RAIN_SECONDS - 2))
+    filt = (
+        f"anoisesrc=color=brown:amplitude=0.06:duration={RAIN_SECONDS},"
+        f"lowpass=f=1400,highpass=f=180,tremolo=f=0.2:d=0.15,"
+        f"loudnorm=I=-18:TP=-2:LRA=6[ln];"
+        f"[ln]aresample=44100[full];"
+        + _stitch("full", "out", RAIN_SECONDS)
+    )
     res = _run(["ffmpeg", "-y", "-hide_banner", "-loglevel", "error",
-                "-f", "lavfi", "-i", fc, "-c:a", "libmp3lame", "-b:a", "192k",
-                str(dest)])
+                "-filter_complex", filt, "-map", "[out]",
+                "-c:a", "pcm_s16le", str(dest)])
     if res.returncode != 0 or not dest.exists():
         raise RuntimeError(f"rain synth failed: {res.stderr.strip()[-500:]}")
     return dest
@@ -145,18 +237,24 @@ def plan(name: str, *, mood: str, key: str, minutes: float, rain: bool,
 
     cmd = ["ffmpeg", "-y", "-hide_banner", "-loglevel", "error"]
     # Loop the short beds to the full length; the still is held the same way.
-    cmd += ["-stream_loop", "-1", "-i", str(BEDS / f"ambient-{mood}-{key}.mp3")]
+    cmd += ["-stream_loop", "-1", "-i", str(BEDS / f"drone-{mood}-{key}.wav")]
     if rain:
-        cmd += ["-stream_loop", "-1", "-i", str(BEDS / "rain.mp3")]
+        cmd += ["-stream_loop", "-1", "-i", str(BEDS / "rain.wav")]
     cmd += ["-loop", "1", "-framerate", str(FPS), "-i", str(still)]
     cmd += ["-t", f"{secs:.3f}"]
 
     still_idx = 2 if rain else 1
     vf = (f"[{still_idx}:v]scale={W}:{H},format=yuv420p[v]")
+    # Fades belong to the finished video, not to each looped tile: fading the bed
+    # would dip the volume once per loop. A final gentle lowpass removes any high
+    # ring the layers picked up, so nothing whistles across the eight hours.
+    fade = 5.0
+    tail = (f"lowpass=f=8000,afade=t=in:d={fade},"
+            f"afade=t=out:st={max(0.0, secs - fade):.2f}:d={fade}[a]")
     if rain:
-        af = "[0:a][1:a]amix=inputs=2:normalize=0:duration=first[a]"
+        af = f"[0:a][1:a]amix=inputs=2:normalize=0:duration=first,{tail}"
     else:
-        af = "[0:a]anull[a]"
+        af = f"[0:a]{tail}"
     cmd += ["-filter_complex", f"{vf};{af}", "-map", "[v]", "-map", "[a]"]
     cmd += ["-c:v", "libx264", "-preset", "veryfast", "-crf", "26",
             "-pix_fmt", "yuv420p", "-r", str(FPS),

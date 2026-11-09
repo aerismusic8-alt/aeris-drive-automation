@@ -79,12 +79,22 @@ music938-1/library/songs/clipmeta-*.json
 # lives in the GitHub Release (see the 24h release mechanism).
 music938-1/library/shorts/*.mp4
 music938-1/library/affiliate/*.mp4
+# The absurdist "exhibit" clips (K's FB/TK rebrand) are regenerable ffmpeg
+# renders over the covers we already own; the durable copy is the media release.
+music938-1/library/surreal/*.mp4
 music938-1/library/thumbs/*.png
 music938-1/library/covers/*.jpg
 # The compilation render is a 200 MB+ artifact; keep the .txt/.title (chapters) but not the video.
 music938-1/library/compilations/*.mp4
 # The ambient beds are ffmpeg synth, regenerated on demand; only the sidecars ship.
+# They are WAV now (sample-exact, so the loop crossfade is seamless), not MP3.
 music938-1/library/ambient/*.mp3
+music938-1/library/ambient/*.wav
+# Local review pages; they point at multi-hundred-MB renders and are regenerated
+# on demand when K wants to see a batch before it is published.
+music938-1/library/preview.html
+music938-1/library/ambient-preview.html
+music938-1/library/surreal/preview.html
 
 # Quarantined media is the rejected Piper engine, kept only for audit. Never
 # publish it and never commit it (see scripts/provenance.py).

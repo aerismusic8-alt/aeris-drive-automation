@@ -37,6 +37,10 @@ def group_of(name: str) -> str | None:
         return "affiliate"
     if name.startswith("short-") and name.endswith(".mp4"):
         return "shorts"
+    # The absurdist "exhibit" clips (K's FB/TK rebrand) live in their own group,
+    # not shorts/, so the surreal lane and the song rail never cross.
+    if name.startswith("surreal-") and name.endswith(".mp4"):
+        return "surreal"
     if name.startswith("cover-") and name.endswith(".jpg"):
         return "covers"
     if name.startswith("thumb-") and name.endswith(".png"):

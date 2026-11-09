@@ -56,6 +56,7 @@ except Exception:  # noqa: BLE001
 WORK = ROOT / "work"
 SHORTS = ROOT / "library" / "shorts"
 AFF_SHORTS = ROOT / "library" / "affiliate"
+SURREAL = ROOT / "library" / "surreal"
 COVERS = ROOT / "library" / "covers"
 QUEUE = WORK / "crosspost-queue.json"
 STATE = WORK / "crosspost-state.json"
@@ -216,6 +217,12 @@ def refresh_captions() -> int:
                 want = item["caption"]
         elif item.get("kind") == "photo":
             want = photo_caption(item["slug"], item["platform"])
+        elif item.get("kind") == "surreal":
+            try:
+                import surreal
+                want = surreal.caption(item["slug"], item["platform"])
+            except ImportError:
+                want = item["caption"]
         elif item.get("kind") == "link":
             try:
                 import make_affiliate_short as aff
@@ -310,6 +317,12 @@ def build_queue() -> list[dict]:
     # clips — which is the 25% product share PLAN-30D-AI asks for, and still
     # puts the first affiliate post on day one rather than after the backlog.
     base = interleave(items, affiliate_items(), every=6, chunk=2)
+    # The absurdist exhibits, one at a time and spread out. Both advisors warned
+    # that a wall of near-identical surreal clips is exactly the "low-quality /
+    # look-alike" pattern that kills reach, so they are folded in singly rather
+    # than published as a burst. The id is per-exhibit, so a posted one never
+    # returns; a fresh pod with no rendered exhibits simply adds none.
+    base = interleave(base, surreal_items(), every=5, chunk=1)
     # Facebook also gets a cover-art photo and a Shopee link post, so its feed is
     # not wall-to-wall Reels (advisor panel 2026-11-05: Reel for reach, photo for
     # identity, <=1 link a day). A photo lands after every 3 items and a link
@@ -396,6 +409,38 @@ def affiliate_items() -> list[dict]:
                 "kind": "affiliate",
                 "video": str(clip.relative_to(ROOT)),
                 "caption": aff.caption(product, platform),
+            })
+    return items
+
+
+def surreal_items() -> list[dict]:
+    """The absurdist "exhibit" clips, captioned by the surreal identity module.
+
+    K (2026-11-09): the FB/TK surfaces become an unhinged art project. Each clip
+    is one song turned into a moving painting, filed as an exhibit. It carries
+    the museum-label caption from `surreal.py`, which is the same on both
+    surfaces except for the cross-promo line, so the identity reads as one
+    project and not two feeds. The id is stable (`<state_key>:surreal-<slug>`),
+    so a posted exhibit never re-enters.
+    """
+    try:
+        import surreal
+    except ImportError:
+        return []
+    if not SURREAL.exists():
+        return []
+    items = []
+    for clip in sorted(SURREAL.glob("surreal-*.mp4")):
+        slug = clip.stem[len("surreal-"):]
+        for platform, cfg in PLATFORMS.items():
+            items.append({
+                "id": f"{cfg['state_key']}:{clip.stem}",
+                "platform": platform,
+                "slug": slug,
+                "hook": 0,
+                "kind": "surreal",
+                "video": str(clip.relative_to(ROOT)),
+                "caption": surreal.caption(slug, platform),
             })
     return items
 

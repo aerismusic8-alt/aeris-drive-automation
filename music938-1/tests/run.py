@@ -359,6 +359,91 @@ def test_affiliate_short() -> None:
     monetize.CACHE = None
 
 
+def test_surreal_lane() -> None:
+    """The absurdist FB/TK identity must be intentional, safe and varied.
+
+    K's directive (2026-11-09) was to make the Facebook + TikTok surfaces a
+    deliberately unhinged art project — "สุดโต่งแต่ไม่ผิดกฏ". The advisor panel
+    named the two failure modes this test pins:
+
+      * randomness with no rule reads as noise, so the identity must carry one
+        recognisable, repeated ritual;
+      * a caption that drifts into a real-world claim, or a wall of identical
+        clips, is what gets a new account limited — so the premise comes from a
+        closed vocabulary with a banned-substring guard, and the art recipe
+        differs per song.
+    """
+    section("surreal lane (absurd FB/TK identity)")
+    import surreal
+    import make_surreal_short as ms
+
+    # The identity itself: Thai, and a rule a stranger can recognise.
+    for name, val in (("slogan", surreal.SLOGAN), ("project", surreal.PROJECT),
+                      ("ritual", surreal.RITUAL), ("ask", surreal.RITUAL_ASK),
+                      ("ai note", surreal.AI_NOTE)):
+        check(f"identity {name} is Thai", has_thai(val), val)
+    check("vocabulary is non-empty",
+          len(surreal.ORDINARY) >= 8 and len(surreal.IMPOSSIBLE) >= 8)
+    check("every ordinary thing is Thai",
+          all(has_thai(x) for x in surreal.ORDINARY))
+    check("every impossible feeling is Thai",
+          all(has_thai(x) for x in surreal.IMPOSSIBLE))
+
+    slugs = ["01-khon-di-thi-chak-pai", "02-rak-thi-mai-mi-wan-chop",
+             "07-huachai-si-thao", "11-dao-nai-mueang", "29-takorn-kong-fa"]
+    for slug in slugs:
+        thing, feeling = surreal.pair(slug)
+        check(f"{slug}: pair comes from the closed vocabulary",
+              thing in surreal.ORDINARY and feeling in surreal.IMPOSSIBLE)
+        check(f"{slug}: pair is deterministic",
+              surreal.pair(slug) == surreal.pair(slug))
+        check(f"{slug}: exhibit number is stable",
+              surreal.exhibit_no(slug) == surreal.exhibit_no(slug))
+
+    # The caption is the same project on both surfaces, disclosed and safe.
+    for slug in slugs[:2]:
+        for platform in ("facebook", "tiktok"):
+            cap = surreal.caption(slug, platform, "เพลงทดสอบ")
+            check(f"{slug}/{platform}: caption is Thai", has_thai(cap))
+            check(f"{slug}/{platform}: caption discloses AI",
+                  surreal.AI_NOTE in cap)
+            check(f"{slug}/{platform}: caption carries the ritual ask",
+                  surreal.RITUAL_ASK in cap)
+            check(f"{slug}/{platform}: caption is rule-safe",
+                  surreal.claim_problem(cap) is None)
+    # Cross-promo must differ by surface, or the two feeds read as one duplicate.
+    check("facebook and tiktok captions differ",
+          surreal.caption(slugs[0], "facebook") != surreal.caption(slugs[0], "tiktok"))
+
+    # The guard actually guards.
+    check("a banned over-claim is refused",
+          surreal.claim_problem("รวยแน่นอน กับเพลงนี้") == "รวยแน่นอน")
+    check("a clean line passes the guard",
+          surreal.claim_problem("ตู้เย็น : ความคิดถึงที่ไม่เคยส่งถึง") is None)
+
+    # The art varies per song, or the grid is the look-alike pattern the panel
+    # warned about. Five recipes exist and the songs must not all draw one.
+    check("recipes are defined", len(ms.RECIPES) >= 4, f"{len(ms.RECIPES)}")
+    used = {ms.recipe_for(s) for s in slugs}
+    check("recipe varies across songs", len(used) >= 3, f"{used}")
+    check("every chosen recipe exists",
+          all(ms.recipe_for(s) in ms.RECIPES for s in slugs))
+
+    # The burned label is positioned (or libass overprints), emoji-free (the
+    # bundled Thai font has no emoji glyph) and inside the frame.
+    ass = ms.build_ass(slugs[0], "เพลงทดสอบ", 28.0)
+    dialogue = [ln for ln in ass.splitlines() if ln.startswith("Dialogue:")]
+    check("label draws number + title + feeling + ask + note",
+          len(dialogue) >= 5, f"{len(dialogue)}")
+    check("every label line is positioned", all("\\pos(" in ln for ln in dialogue))
+    ys = [int(re.search(r"\\pos\(\d+,(\d+)\)", ln).group(1)) for ln in dialogue]
+    check("label lines do not share a y", len(set(ys)) == len(ys), f"{ys}")
+    check("label lines are inside the frame", all(0 < y < ms.H for y in ys))
+    check("no emoji in the burned text",
+          not any(0x1F300 <= ord(c) <= 0x1FAFF for c in ass))
+    check("clip stays short", ms.MAX_SECONDS <= 30.0, f"{ms.MAX_SECONDS}")
+
+
 def test_affiliate_release() -> None:
     """The affiliate lane must exist on the YouTube rail, not only the card renderer.
 
@@ -960,6 +1045,34 @@ def test_ambient_loop() -> None:
     # The title counts hours, and the renderer must say a whole number for 8h.
     check("8h renders as '8', not '8.0'", A._hours_label(480) == "8")
     check("a 90-min loop still reads honestly", A._hours_label(90) == "1.5")
+
+    # The bed is a sleep drone, not the story-video arpeggio. The first version
+    # reused `make_music._synthesise`, whose plucked arpeggio repeats a phrase
+    # every beat — K heard it as a "howl" that never lets you sleep. The bed file
+    # is now a distinct drone, and the plan must loop *that*.
+    check("the plan loops the drone bed, not the story bed",
+          "drone-" in " ".join(p["cmd"]), "drone bed not in plan")
+    # A looping bed must not fade per tile, or the volume dips once a loop. The
+    # fade belongs on the finished video, so the plan carries one in/out at the
+    # very ends and the bed synth (checked below) carries none.
+    check("the finished video fades at its ends",
+          "afade" in " ".join(p["cmd"]))
+    # Seamless loop: the wrap is crossfaded (tail blended into head) and the
+    # tones are phase-snapped to a whole, even number of cycles in the tile.
+    cycles = A._snap(130.81, 180.0) * 180.0
+    check("snap lands on a whole, even cycle count",
+          abs(cycles - round(cycles)) < 1e-6 and round(cycles) % 2 == 0,
+          f"{cycles}")
+    check("the stitch crossfades the wrap", "acrossfade" in A._stitch("x", "y", 180.0))
+    # The bed is loud enough to actually be heard: the first version sat at
+    # -32 LUFS, which is barely audible. The normaliser target must be in the
+    # source, not only in a docstring.
+    import inspect
+    check("the bed is normalised to a real target",
+          "loudnorm=I=-16" in inspect.getsource(A._synth_drone))
+    check("the bed does not fade per tile",
+          "afade" not in inspect.getsource(A._synth_drone))
+
     try:
         A.plan("x", mood="calm", key="C", minutes=0, rain=False,
                title_tmpl="{hours}", use_case="", stem="s")
@@ -1627,16 +1740,17 @@ def test_crosspost_engine() -> None:
     q = crosspost.build_queue()
     shorts = list((ROOT / "library" / "shorts").glob("short-*.mp4"))
     aff = list((ROOT / "library" / "affiliate").glob("short-aff-*.mp4"))
+    sur = list((ROOT / "library" / "surreal").glob("surreal-*.mp4"))
     if not shorts:
         print("  skip (no shorts rendered yet)")
         return
-    # Every song Short and affiliate card is queued on both platforms; the
-    # Facebook-only photo and link formats are added on top of that pair, so the
-    # count is the video items times two plus those extras.
+    # Every song Short, affiliate card and surreal exhibit is queued on both
+    # platforms; the Facebook-only photo and link formats are added on top of
+    # that pair, so the count is the video items times two plus those extras.
     extras = [it for it in q if it.get("kind") in ("photo", "link")]
     check("every short is queued on both platforms",
-          len(q) == (len(shorts) + len(aff)) * 2 + len(extras),
-          f"{len(q)} vs ({len(shorts)}+{len(aff)})*2+{len(extras)}")
+          len(q) == (len(shorts) + len(aff) + len(sur)) * 2 + len(extras),
+          f"{len(q)} vs ({len(shorts)}+{len(aff)}+{len(sur)})*2+{len(extras)}")
     check("ids are unique", len({it["id"] for it in q}) == len(q))
 
     # The Facebook-only formats exist and only on Facebook: a photo is a feed
@@ -1694,8 +1808,21 @@ def test_crosspost_engine() -> None:
     left = crosspost.pending(q, state, "tiktok")
     check("posted items are excluded", t["id"] not in {it["id"] for it in left})
     check("facebook still pending",
-          len(left) == len(shorts) + len(aff) - 1,
+          len(left) == len(shorts) + len(aff) + len(sur) - 1,
           f"{len(left)}")
+
+    # The absurdist exhibits (K's FB/TK rebrand) are captioned by the surreal
+    # identity module: Thai, rule-safe, and AI-disclosed. They must be the same
+    # project on both surfaces, so the caption comes from one function.
+    sur_items = [it for it in q if it.get("kind") == "surreal"]
+    if sur:
+        check("surreal exhibits are queued on both platforms",
+              len(sur_items) == len(sur) * 2, f"{len(sur_items)}")
+        check("surreal caption carries the AI disclosure",
+              all("AI" in it["caption"] for it in sur_items))
+        check("surreal caption is Thai",
+              all(any("\u0e00" <= ch <= "\u0e7f" for ch in it["caption"])
+                  for it in sur_items))
 
     # A product card must not sit behind the whole song backlog: at the daily cap
     # a surface would not reach one for over a week. The build folds a card pair
@@ -3634,6 +3761,7 @@ def main() -> int:
     test_fill_playlists()
     test_playlist_patch_is_idempotent()
     test_affiliate_short()
+    test_surreal_lane()
     test_affiliate_release()
     test_affiliate_render_rail()
     test_plan_rotates_songs()
