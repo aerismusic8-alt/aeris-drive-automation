@@ -208,6 +208,15 @@ chose PARKED). The runtime only claims `PENDING`, so parked goals are inert.
    `compilation_description()` (self-heals every future album) plus
    `scripts/fix_compilation_cta.py` to repair the already-live video in place
    (idempotent), wired early into `ax-music-release.yml` on the fresh quota pool.
+   **Fixed 2026-11-09 (PCSEV Execute).** The funnel had consumers but no producer:
+   `release.py` and `crosspost.py` both read `library/affiliate/short-aff-*.mp4`,
+   but nothing rendered those clips, so the directory was always empty and 0 clicks
+   followed. `.github/workflows/ax-music-affiliate-render.yml` now renders the 5
+   product cards, publishes them to `media-938`, and feeds the crosspost queue;
+   ran green on Actions (rendered 5, published 10 assets). Cards are in the
+   FB/TikTok queue (interleaved, first at position 7) and YouTube reserves 2
+   slots/day for them. The old CTA fix (`fix_compilation_cta`) stays.
+
    **Next: read the Shopee click count after ~7 days.** Clicks-but-no-orders → the
    product/offer is the problem (build the dedicated buying guide, pollinations'
    option a). Still zero clicks → reach, not the CTA.

@@ -78,6 +78,20 @@ git push "https://x-access-token:${TOKEN}@github.com/aerismusic8-alt/aeris-drive
 `create_pr` and similar tools use the read-only token and will 403. Create PRs
 via the REST API with the app token instead.
 
+**Workflow files need a `workflow` scope the App token does not have.** A push
+that touches `.github/workflows/` is rejected with `refusing to allow an OAuth
+App to create or update workflow ... without 'workflow' scope`. Use the classic
+token at `/workspace/ax-tools/ar-identity/gh-workflow-token` (scopes
+`repo, workflow`) for those pushes; everything else uses the App token.
+
+```bash
+WFT=$(cat /workspace/ax-tools/ar-identity/gh-workflow-token)
+git push "https://x-access-token:${WFT}@github.com/OWNER/REPO.git" main:main
+```
+
+`scripts/push-via-pc1.sh` is the older route and needs PC1's Tailscale endpoint
+up; when it is down the push hangs on the MCP call.
+
 Two helpers exist so this is not hand-rolled each time:
 
 ```bash

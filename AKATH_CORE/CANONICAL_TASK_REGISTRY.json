@@ -1457,7 +1457,8 @@
       "created_at": "2026-11-02T00:00:00.000Z",
       "deadline_at": null,
       "milestones": [
-        "Affiliate account onboarded and per-surface tracking links minted",
+        "Affiliate account onboarded and per-surface tracking links minted — DONE",
+        "Product-card Shorts rendered + published + queued (the missing producer) — DONE 2026-11-09",
         "Every video description carries the right surface's link",
         "First click, then first order"
       ],
@@ -1482,7 +1483,8 @@
         "source": "aeris938-2/work/growth-report.md",
         "notes": [
           "Shopee is the only surface that pays immediately, with no follower gate.",
-          "The 2026-11-09 fix put the CTA + link into the top compilation's description (the only long-form video whose link is above the fold); read the click count again after ~7 days."
+          "The 2026-11-09 fix put the CTA + link into the top compilation's description (the only long-form video whose link is above the fold); read the click count again after ~7 days.",
+          "2026-11-09: the funnel had consumers but no producer — release.py and crosspost.py both read library/affiliate/short-aff-*.mp4, but nothing rendered them, so the directory was always empty and 0 clicks followed. Fixed: .github/workflows/ax-music-affiliate-render.yml renders the 5 product cards, publishes them, and feeds the crosspost queue; ran green on Actions 2026-11-09 (rendered 5, published 10 assets). Cards are now in the FB/TikTok queue (interleaved, first at position 7) and the YouTube release reserves 2 slots/day for them. Read clicks again after ~7 days."
         ]
       },
       "verification": {
