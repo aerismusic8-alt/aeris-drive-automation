@@ -157,6 +157,15 @@ def hook_title(hook: int) -> str:
 # generated — and a viewer who noticed would be right to feel misled.
 LABEL = "🤖 AERIS Music — ค่ายเพลง AI สร้างเพลงและเสียงร้องด้วย AI"
 
+# The follow ask burned onto the end of every Short. Shorts are the channel's
+# only reach tool and its description sits below the fold, so until now a viewer
+# was never asked to follow anywhere they would see it. Text only, no emoji: the
+# burned-in font is Noto Sans Thai, which has no emoji glyph and renders tofu.
+# A short end card, not a whole-length banner — the 2026-11-09 advisor panel
+# (duck + pollinations, quorum PASS) warned that a persistent button clutters the
+# song and can cost retention, and retention is reach.
+FOLLOW_ASK = "กดติดตาม AERIS Music"
+
 
 def parse_lyrics(slug: str) -> dict:
     """Read the `# KEY: value` header block off a lyric file."""

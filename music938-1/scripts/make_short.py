@@ -51,6 +51,15 @@ HOOK_PAD = 0.6            # a beat of lead-in so the hook does not start on fram
 HOOK_CARD_SECONDS = 2.0
 HOOK_CARD_FADE = 0.25
 
+# The follow end card. Held for two seconds and released a beat before the clip
+# ends, so it reads as a sign-off rather than a banner over the song. See
+# `release.FOLLOW_ASK` for why it is an end card and not a whole-length button.
+FOLLOW_CARD_SECONDS = 2.0
+FOLLOW_CARD_LEAD = 0.4
+# Below this the card would dominate the clip, so it is left off entirely rather
+# than crammed in. Real Shorts are ~58s; this only guards a degenerate input.
+FOLLOW_MIN_CLIP = 8.0
+
 # K, 2026-11-07: "a karaoke clip whose words do not match the song is worse than
 # no clip." We cannot machine-check syllable timing for free, but we can refuse
 # the gross errors — a missing karaoke mix, a mix whose length differs from the
@@ -181,6 +190,7 @@ Style: HookCard,{FONT},104,{PRIMARY},{PRIMARY},{OUTLINE},&H64000000,1,0,0,0,100,
 Style: Cap,{FONT},38,&H00FFFFFF,&H00FFFFFF,{OUTLINE},&H80000000,1,0,0,0,100,100,1,0,1,4,2,8,70,70,310,1
 Style: Brand,{FONT},40,&H00DDFFFF,&H00DDFFFF,{OUTLINE},&H80000000,1,0,0,0,100,100,1,0,1,4,2,7,44,44,40,1
 Style: Title,{FONT},64,&H00FFFFFF,&H00FFFFFF,{OUTLINE},&H80000000,1,0,0,0,100,100,1,0,1,5,2,7,44,44,34,1
+Style: Follow,{FONT},72,&H0020E0FF,&H0020E0FF,{OUTLINE},&H00000000,1,0,0,0,100,100,0.5,0,1,8,4,2,60,60,260,1
 
 [Events]
 Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
@@ -227,6 +237,19 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
             parts.append(f"{{\\kf{cs}}}{_escape(w)}")
         events.append(f"Dialogue: 0,{_ts(s)},{_ts(e + 0.2)},Hook,,0,0,0,,"
                       f"{{\\fad(90,120)}}{''.join(parts)}")
+
+    # The follow ask, as a short end card. It is the only on-screen ask on the
+    # channel and it is placed at the end, where it cannot cost the first-two-
+    # seconds decision that decides whether the clip is watched at all. Held for
+    # FOLLOW_CARD_SECONDS and no longer: the 2026-11-09 panel warned that a
+    # persistent banner clutters the song and can pull retention down, and
+    # retention is what buys reach.
+    hold = min(FOLLOW_CARD_SECONDS, max(0.0, length - FOLLOW_CARD_LEAD))
+    if length >= FOLLOW_MIN_CLIP and hold >= 0.5:
+        start_at = max(0.0, length - FOLLOW_CARD_LEAD - hold)
+        events.append(
+            f"Dialogue: 0,{_ts(start_at)},{_ts(start_at + hold)},Follow,,0,0,0,,"
+            f"{{\\fad(200,300)}}{_escape(release.FOLLOW_ASK)}")
     return head + "\n".join(events) + "\n"
 
 

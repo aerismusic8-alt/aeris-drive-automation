@@ -857,6 +857,51 @@ def test_shorts() -> None:
             make_short.ROOT, make_short._duration = old_root, old_dur
 
 
+
+def test_follow_end_card() -> None:
+    section("follow ask (the only on-screen follow prompt)")
+    import make_short
+    import release
+
+    # Shorts are the channel's only reach tool and their description sits below
+    # the fold, so until 2026-11-09 a viewer was never asked to follow anywhere
+    # they would see it. The fix is a short end card. Two things must stay true:
+    # the ask exists, and it sits at the END so it cannot cost the first-two-
+    # seconds decision that decides whether the clip is watched at all (the
+    # 2026-11-09 panel: a whole-length button clutters the song and can pull
+    # retention down, and retention is reach).
+    check("there is a follow ask", bool(release.FOLLOW_ASK.strip()))
+    check("the ask is Thai", has_thai(release.FOLLOW_ASK))
+    check("the ask names the channel", "AERIS" in release.FOLLOW_ASK)
+
+    meta, lines = make_short.load_lyrics("01-khon-di-thi-chak-pai")
+    length = 58.0
+    ass = make_short.build_ass("01-khon-di-thi-chak-pai", lines, meta,
+                               20.0, length, 178.7)
+    follow = [ln for ln in ass.splitlines() if "Follow,,0,0,0,," in ln]
+    check("the end card is drawn", len(follow) == 1)
+    if follow:
+        fields = follow[0].split(",", 3)
+        start_s = fields[1]
+        parts = start_s.split(":")[2].split(".")
+        secs = int(parts[0]) + int(parts[1]) / 100.0
+        check("the ask lands in the last seconds", secs >= length - 3.5,
+              f"{start_s} of {length:.1f}s")
+        check("the ask carries the copy", release.FOLLOW_ASK in follow[0])
+    check("the ask is held briefly, not the whole clip",
+          make_short.FOLLOW_CARD_SECONDS <= 3.0,
+          f"{make_short.FOLLOW_CARD_SECONDS}")
+    # No emoji: the burned font is Noto Sans Thai, which has no emoji glyph.
+    check("the ask has no emoji (burned font cannot render one)",
+          not any(ord(c) > 0x2000 and not (0x0E00 <= ord(c) <= 0x0E7F)
+                  for c in release.FOLLOW_ASK))
+    # A clip too short to hold the card must simply omit it, not clip it.
+    short = make_short.build_ass("01-khon-di-thi-chak-pai", lines, meta,
+                                 20.0, 2.0, 178.7)
+    check("a 2s clip omits the card rather than cramming it",
+          "Follow,,0,0,0,," not in short)
+
+
 def test_provenance() -> None:
     section("provenance (WIRING: retired Piper engine must not ship)")
     import provenance
@@ -3470,6 +3515,7 @@ def main() -> int:
     test_normalize_floor()
     test_level_ordering()
     test_shorts()
+    test_follow_end_card()
     test_provenance()
     test_genres()
     test_arrangement_no_repeat()
