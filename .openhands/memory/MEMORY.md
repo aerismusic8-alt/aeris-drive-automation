@@ -1643,3 +1643,38 @@ K approved the hum-free sound ("แบบนี้แหล่ะถึงจะ
   render, not by reading the code.
 - **Open blocker:** re-provision `FB_PAGE_TOKEN` (new System User token, expiration Never)
   + vault `axsecrets:fb-page-token`. The rail resumes by itself once set.
+
+## Tavily has no quota; use `ops/websearch.py` instead (2026-11-09) — durable
+- K: "Tavily คืออะไร ใช้ย่อยแล้วโควต้าหมดตลอด ทำไมไม่หาอะไรมาแทน". Tavily is a paid
+  search API whose free tier has a hard monthly cap; when hit, every
+  `tavily_search`/`tavily_extract` returns HTTP 432 and the agent is blind.
+- **Free replacement shipped: `ops/websearch.py`** — `search()` = DuckDuckGo via the
+  `ddgs` pip package (no key, no account, no quota; retries `auto`→`html`→`lite`
+  because DDG sometimes answers an empty page), `read()` = `trafilatura` page
+  extraction, with a keyless Wikipedia MediaWiki fallback. Use it for any web lookup.
+- `pip install ddgs trafilatura` on a fresh pod. Usage:
+  `python3 ops/websearch.py "query"`, `python3 ops/websearch.py --read=URL`.
+
+## The concert lane must use REAL recordings, not ffmpeg noise (2026-11-09) — durable
+- K rejected the first "live concert" mix: the hall was a decaying pink-noise impulse
+  and the applause was band-limited noise, so it read as a hiss, not a room of people.
+  "ใช้โปรแกรมอะไรทำ แย่มาก".
+- **Fix: `music938-1/assets/concert/` (committed).** `hall-ir.wav` = a measured
+  concert-hall impulse response from **OpenAIR** (Univ of York, Creative Commons,
+  commercial use OK — ships in Ableton/Reason/Studio One and Codemasters games);
+  `applause.wav` = a real **CC0** applause recording (Freesound `Sandermotions` 277021
+  via Wikimedia Commons). `concert.mix_filter` now convolves the real IR with `afir`
+  and loops the real applause (`-stream_loop -1`), replacing all `anoisesrc`.
+- **A real crowd has transients; noise does not — that is the measurable tell.** The
+  intro-only crest factor went 3.9 (old noise mix) → 7.1 (real claps). Use
+  `astats=metadata=1` crest factor to prove a crowd bed is real.
+- Pori/Aalto concert-hall IRs are **non-commercial only** — do not use. OpenAIR is the
+  commercially-safe source. `1st-baptist-nashville_far_wide.wav` downsampled to 48 kHz.
+- The reference K pointed at (`youtu.be/yTxEWswuPPg`, 37M views, UNHEARD MUSIC) is
+  **itself an AI song** (DistroKid, Suno-class folk-rock) — the gap was never "AI vs
+  real", it was that our post-processing used synthetic noise. `youtube.com` audio
+  download from this datacenter IP is blocked (403 on googlevideo; pytubefix SABR/PoToken).
+- **Fresh-pod setup**: `sudo apt-get update && sudo apt-get install -y fluidsynth
+  fluid-soundfont-gm musescore-general-soundfont` (see `music938-1/scripts/setup-pod.sh`);
+  then the SoundFont test (`test_soundfont_renderer`) passes and the sleep bed renders
+  with real sampled instruments.
