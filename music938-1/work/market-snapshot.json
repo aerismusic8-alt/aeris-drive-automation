@@ -1,10 +1,10 @@
 {
-  "at": "2026-11-07T12:53:15+00:00",
+  "at": "2026-11-10T16:33:58+00:00",
   "channel": "ch3",
   "channel_stats": {
-    "subs": 7,
-    "views": 1214,
-    "videos": 31
+    "subs": 8,
+    "views": 1585,
+    "videos": 51
   },
   "videos": {
     "TISzvF9AQig": {
@@ -14,7 +14,7 @@
       "public": true,
       "title": "คนดีที่จากไป (ท่อนที่ 1) #เพลงไทย #Shorts",
       "published": "2026-11-01T09:09:57Z",
-      "views": 179,
+      "views": 183,
       "likes": 0,
       "comments": 1
     },
@@ -25,7 +25,7 @@
       "public": true,
       "title": "คิดถึงเธอทุกคืน (ท่อนที่ 2) #เพลงไทย #Shorts",
       "published": "2026-11-01T09:10:49Z",
-      "views": 234,
+      "views": 238,
       "likes": 5,
       "comments": 0
     },
@@ -36,7 +36,7 @@
       "public": true,
       "title": "คิดถึงเธอทุกคืน (ท่อนที่ 3) #เพลงไทย #Shorts",
       "published": "2026-11-01T13:10:49Z",
-      "views": 155,
+      "views": 156,
       "likes": 1,
       "comments": 0
     },
@@ -47,7 +47,7 @@
       "public": true,
       "title": "แสงเช้าวันใหม่ (ท่อนที่ 1) #เพลงไทย #Shorts",
       "published": "2026-11-02T15:06:11Z",
-      "views": 10,
+      "views": 11,
       "likes": 0,
       "comments": 0
     },
@@ -58,7 +58,7 @@
       "public": true,
       "title": "แสงเช้าวันใหม่ (ท่อนที่ 2) #เพลงไทย #Shorts",
       "published": "2026-11-02T19:06:11Z",
-      "views": 29,
+      "views": 30,
       "likes": 0,
       "comments": 0
     },
@@ -69,7 +69,7 @@
       "public": true,
       "title": "แสงเช้าวันใหม่ (ท่อนที่ 3) #เพลงไทย #Shorts",
       "published": "2026-11-02T23:06:42Z",
-      "views": 38,
+      "views": 39,
       "likes": 0,
       "comments": 0
     },
@@ -80,7 +80,7 @@
       "public": true,
       "title": "ฝนตกในใจ (ท่อนที่ 1) #เพลงไทย #Shorts",
       "published": "2026-11-03T13:57:57Z",
-      "views": 21,
+      "views": 22,
       "likes": 0,
       "comments": 0
     },
@@ -91,7 +91,7 @@
       "public": true,
       "title": "ฝนตกในใจ (ท่อนที่ 2) #เพลงไทย #Shorts",
       "published": "2026-11-03T17:58:08Z",
-      "views": 25,
+      "views": 26,
       "likes": 0,
       "comments": 0
     },
@@ -102,7 +102,7 @@
       "public": true,
       "title": "ฝนตกในใจ (ท่อนที่ 3) #เพลงไทย #Shorts",
       "published": "2026-11-03T21:57:46Z",
-      "views": 23,
+      "views": 25,
       "likes": 1,
       "comments": 0
     },
@@ -113,7 +113,7 @@
       "public": true,
       "title": "คนดีที่จากไป — เพลงเศร้า ที่เข้าใจความเสียใจ",
       "published": "2026-11-04T07:54:44Z",
-      "views": 4,
+      "views": 5,
       "likes": 0,
       "comments": 0
     },
@@ -161,17 +161,6 @@
       "likes": 0,
       "comments": 0
     },
-    "zNqUTtCaYxY": {
-      "video_id": "zNqUTtCaYxY",
-      "slug": "01-khon-di-thi-chak-pai",
-      "kind": "short",
-      "public": true,
-      "title": "คนดีที่จากไป (ท่อนที่ 1) #เพลงไทย #Shorts",
-      "published": "2026-11-04T07:55:26Z",
-      "views": 21,
-      "likes": 0,
-      "comments": 0
-    },
     "du1CFiAiffo": {
       "video_id": "du1CFiAiffo",
       "slug": "01-khon-di-thi-chak-pai",
@@ -179,7 +168,7 @@
       "public": true,
       "title": "คนดีที่จากไป (ท่อนที่ 2) #เพลงไทย #Shorts",
       "published": "2026-11-05T15:04:42Z",
-      "views": 19,
+      "views": 17,
       "likes": 0,
       "comments": 0
     },
@@ -190,7 +179,7 @@
       "public": true,
       "title": "คนดีที่จากไป (ท่อนที่ 3) #เพลงไทย #Shorts",
       "published": "2026-11-05T15:05:04Z",
-      "views": 22,
+      "views": 24,
       "likes": 0,
       "comments": 0
     },
@@ -201,7 +190,7 @@
       "public": true,
       "title": "รักที่ไม่มีวันจบ (ท่อนที่ 1) #เพลงไทย #Shorts",
       "published": "2026-11-05T15:05:13Z",
-      "views": 18,
+      "views": 19,
       "likes": 0,
       "comments": 0
     },
@@ -212,7 +201,7 @@
       "public": true,
       "title": "รักที่ไม่มีวันจบ (ท่อนที่ 2) #เพลงไทย #Shorts",
       "published": "2026-11-05T15:05:40Z",
-      "views": 38,
+      "views": 56,
       "likes": 0,
       "comments": 0
     },
@@ -223,7 +212,7 @@
       "public": true,
       "title": "รักที่ไม่มีวันจบ (ท่อนที่ 3) #เพลงไทย #Shorts",
       "published": "2026-11-05T15:05:51Z",
-      "views": 35,
+      "views": 42,
       "likes": 2,
       "comments": 0
     },
@@ -234,7 +223,7 @@
       "public": true,
       "title": "คิดถึงเธอทุกคืน (ท่อนที่ 1) #เพลงไทย #Shorts",
       "published": "2026-11-05T15:06:16Z",
-      "views": 22,
+      "views": 27,
       "likes": 0,
       "comments": 0
     },
@@ -245,8 +234,8 @@
       "public": true,
       "title": "คิดถึงเธอทุกคืน | ท่อนนี้คิดถึงใคร? #Shorts",
       "published": "2026-11-06T14:43:48Z",
-      "views": 17,
-      "likes": 1,
+      "views": 60,
+      "likes": 2,
       "comments": 0
     },
     "mgYLmXTMOy0": {
@@ -256,7 +245,7 @@
       "public": true,
       "title": "คิดถึงเธอทุกคืน | ร้องต่อท่อนต่อไป #Shorts",
       "published": "2026-11-06T14:43:59Z",
-      "views": 11,
+      "views": 17,
       "likes": 0,
       "comments": 0
     },
@@ -267,7 +256,7 @@
       "public": true,
       "title": "แสงเช้าวันใหม่ | ร้องต่อไหม? #Shorts",
       "published": "2026-11-06T14:44:18Z",
-      "views": 8,
+      "views": 9,
       "likes": 0,
       "comments": 0
     },
@@ -278,7 +267,7 @@
       "public": true,
       "title": "แสงเช้าวันใหม่ | ท่อนนี้คิดถึงใคร? #Shorts",
       "published": "2026-11-06T14:44:29Z",
-      "views": 9,
+      "views": 10,
       "likes": 0,
       "comments": 0
     },
@@ -289,7 +278,183 @@
       "public": true,
       "title": "เดินคนเดียว — อินดี้ อบอุ่น จริงใจ ฟังได้ทุกวัน",
       "published": "2026-11-06T18:40:16Z",
+      "views": 3,
+      "likes": 0,
+      "comments": 0
+    },
+    "X3A5PMMNgfU": {
+      "video_id": "X3A5PMMNgfU",
+      "slug": "hp-budget-01",
+      "kind": "affiliate",
+      "public": true,
+      "title": "3 จุดที่ควรดู ก่อนซื้อหูฟังบลูทูธ #ของน่าซื้อ #Shorts",
+      "published": "2026-11-06T14:44:54Z",
+      "views": 27,
+      "likes": 0,
+      "comments": 0
+    },
+    "y-Y2DNmopHk": {
+      "video_id": "y-Y2DNmopHk",
+      "slug": "hp-anc-02",
+      "kind": "affiliate",
+      "public": true,
+      "title": "หูฟังตัดเสียงรบกวน คุ้มกับเงินที่จ่ายไหม #ของน่าซื้อ #Shorts",
+      "published": "2026-11-06T18:44:44Z",
+      "views": 25,
+      "likes": 0,
+      "comments": 0
+    },
+    "a8l2L2LBdy4": {
+      "video_id": "a8l2L2LBdy4",
+      "slug": "06-doen-khon-diao",
+      "kind": "short",
+      "public": true,
+      "title": "เดินคนเดียว | ร้องต่อไหม? #Shorts",
+      "published": "2026-11-08T21:38:21Z",
+      "views": 8,
+      "likes": 1,
+      "comments": 0
+    },
+    "pFEZLvawdEY": {
+      "video_id": "pFEZLvawdEY",
+      "slug": "07-huachai-si-thao",
+      "kind": "short",
+      "public": true,
+      "title": "หัวใจสีเทา | ร้องต่อไหม? #Shorts",
+      "published": "2026-11-09T01:38:04Z",
+      "views": 3,
+      "likes": 0,
+      "comments": 0
+    },
+    "617KdPPgK60": {
+      "video_id": "617KdPPgK60",
+      "slug": "08-klap-ban-rao",
+      "kind": "short",
+      "public": true,
+      "title": "กลับบ้านเรา | ร้องต่อไหม? #Shorts",
+      "published": "2026-11-09T05:37:58Z",
+      "views": 6,
+      "likes": 0,
+      "comments": 0
+    },
+    "XMbDw6ggVe4": {
+      "video_id": "XMbDw6ggVe4",
+      "slug": "spk-bedroom-03",
+      "kind": "affiliate",
+      "public": true,
+      "title": "เลือกลำโพงบลูทูธให้เหมาะกับห้องนอน #ของน่าซื้อ #Shorts",
+      "published": "2026-11-08T09:51:48Z",
+      "views": 4,
+      "likes": 0,
+      "comments": 0
+    },
+    "eozvJ2kwqIc": {
+      "video_id": "eozvJ2kwqIc",
+      "slug": "29-takorn-kong-fa",
+      "kind": "song",
+      "public": true,
+      "title": "ตะโกนก้องฟ้า — ซิมโฟนิกร็อก อลังการ ดุดัน ทรงพลัง",
+      "published": "2026-11-08T14:59:40Z",
+      "views": 2,
+      "likes": 0,
+      "comments": 0
+    },
+    "aazNGu-8z2A": {
+      "video_id": "aazNGu-8z2A",
+      "slug": "29-takorn-kong-fa",
+      "kind": "short",
+      "public": true,
+      "title": "ตะโกนก้องฟ้า | ร้องต่อไหม? #Shorts",
+      "published": "2026-11-08T18:59:31Z",
+      "views": 11,
+      "likes": 1,
+      "comments": 0
+    },
+    "n8At2UBF5Aw": {
+      "video_id": "n8At2UBF5Aw",
+      "slug": "desk-setup-04",
+      "kind": "affiliate",
+      "public": true,
+      "title": "จัดโต๊ะฟังเพลง งบหลักร้อย ทำได้จริง | #Shorts",
+      "published": "2026-11-09T18:40:04Z",
+      "views": 2,
+      "likes": 0,
+      "comments": 0
+    },
+    "cxATfEGoD0Q": {
+      "video_id": "cxATfEGoD0Q",
+      "slug": "sleep-listen-05",
+      "kind": "affiliate",
+      "public": true,
+      "title": "หูฟังใส่นอน ไม่เจ็บ เลือกแบบไหนดี | #Shorts",
+      "published": "2026-11-09T22:39:57Z",
       "views": 1,
+      "likes": 0,
+      "comments": 0
+    },
+    "4AjCA6Zj3S8": {
+      "video_id": "4AjCA6Zj3S8",
+      "slug": "09-phleng-khong-khon-nueai",
+      "kind": "short",
+      "public": true,
+      "title": "เพลงของคนเหนื่อย | ร้องต่อไหม? #Shorts",
+      "published": "2026-11-10T02:40:12Z",
+      "views": 1,
+      "likes": 0,
+      "comments": 0
+    },
+    "XSDoniGA4nk": {
+      "video_id": "XSDoniGA4nk",
+      "slug": "10-dok-mai-rim-thang",
+      "kind": "short",
+      "public": true,
+      "title": "ดอกไม้ริมทาง | ร้องต่อไหม? #Shorts",
+      "published": "2026-11-10T06:39:57Z",
+      "views": 13,
+      "likes": 0,
+      "comments": 0
+    },
+    "vjzxRMkZtao": {
+      "video_id": "vjzxRMkZtao",
+      "slug": "11-sanya-chak-chai",
+      "kind": "short",
+      "public": true,
+      "title": "สัญญาจากใจ | ร้องต่อไหม? #Shorts",
+      "published": "2026-11-10T10:39:40Z",
+      "views": 243,
+      "likes": 0,
+      "comments": 0
+    },
+    "LubwBgOrfBM": {
+      "video_id": "LubwBgOrfBM",
+      "slug": "12-khuen-thi-mai-mi-dao",
+      "kind": "short",
+      "public": true,
+      "title": "คืนที่ไม่มีดาว | ร้องต่อไหม? #Shorts",
+      "published": "2026-11-10T14:39:39Z",
+      "views": 1,
+      "likes": 0,
+      "comments": 0
+    },
+    "OrXLDpIq7s4": {
+      "video_id": "OrXLDpIq7s4",
+      "slug": "13-rak-thi-chak-pai",
+      "kind": "short",
+      "public": true,
+      "title": "รักที่จากไป | ร้องต่อไหม? #Shorts",
+      "published": "2026-11-10T16:23:37Z",
+      "views": 0,
+      "likes": 0,
+      "comments": 0
+    },
+    "VszxlNEpS_w": {
+      "video_id": "VszxlNEpS_w",
+      "slug": "14-phleng-klom-khong-mae",
+      "kind": "short",
+      "public": true,
+      "title": "เพลงกล่อมของแม่ | ร้องต่อไหม? #Shorts",
+      "published": "2026-11-10T16:23:09Z",
+      "views": 0,
       "likes": 0,
       "comments": 0
     }
