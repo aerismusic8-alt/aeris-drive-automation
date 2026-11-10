@@ -1,6 +1,7 @@
 {
-  "at": "2026-11-10T07:54:32Z",
+  "at": "2026-11-10T15:57:29Z",
   "winner": null,
+  "trailing": null,
   "stats": {
     "song": {
       "n": 15,
@@ -12,7 +13,7 @@
     },
     "surreal": {
       "n": 2,
-      "median_per_day": 12.0
+      "median_per_day": 1.4082919757286971
     }
   }
 }
