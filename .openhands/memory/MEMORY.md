@@ -1486,15 +1486,19 @@ results URL and reading `videoRenderer` from `initialData`.
 
 ## The ambient/sleep lane shipped (2026-11-09) — durable facts
 `music938-1/scripts/ambient_loop.py` builds the million-view *container* for free:
-a bed from our own `make_music` synth (no Flow Music, no login), rain from ffmpeg's
-own `anoisesrc` (no download, no licence to track), and one held still at **1 fps**
-so the encode is minutes not hours. **An 8-hour 1080p loop renders in ~9 min and
-ships ~600 MB.** The short bed is `-stream_loop -1`-tiled to length, never
-re-synthesised long. `--plan` is pure (no ffmpeg), so tests pin the shape without
-paying for the encode.
-- Gotcha: call `make_music._synthesise(mood, dest, secs)` directly, **not**
-  `make_music.make(...)` — `make()` also files the bed in the shared music manifest,
-  which then points at an ignored mp3 and pollutes the story-video library.
+a bed from **real instruments** — `soundfont.render_bed(mood, key, ...)` renders it
+with `fluidsynth` + a GM SoundFont (no Flow Music, no login, no synth tone), rain
+from ffmpeg's own `anoisesrc` (no download, no licence to track), and one held still
+at **1 fps** so the encode is minutes not hours. **An 8-hour 1080p loop renders in
+~9 min and ships ~600 MB.** The short bed is `-stream_loop -1`-tiled to length,
+never re-synthesised long. `--plan` is pure (no ffmpeg), so tests pin the shape
+without paying for the encode.
+- **Correction (2026-11-09, verified):** this lane does **not** use `make_music`.
+  There is no `make_music.py` in this repo and no ffmpeg-tone bed anywhere —
+  `grep -rln 'aevalsrc\|sine=frequency' music938-1/scripts` is empty. The bed path
+  is `soundfont.render_bed`, and `_render_bed` documents it. K's "เลิกใช้โปรแกรม
+  synth เสียงกล่อมนอน" rule is already satisfied here; the earlier note that named
+  `make_music._synthesise` was wrong and is deleted.
 - Gotcha: the output path is keyed by the **stem** (`ambient-<preset>`), not the Thai
   display name. Building the path from the name made the CLI report success while
   checking a file it never wrote. `plan(..., stem=...)` is explicit for this reason.
@@ -1516,6 +1520,31 @@ paying for the encode.
   `ax_vault.kv_get(anchor, key)` returns a **dict** `{token, login, scopes}` with
   `repo,workflow`. `git push https://x-access-token:$TOKEN@github.com/...` then works.
 
+## The live-concert lane (K, 2026-11-09) — durable facts
+K: "ทำเพลงที่ใช้เสียงร้องแบบแสดงสดคอนเสิร์ต... เห็นคลิปใช้เทคนิคนี้คนดูเป็นล้านเลย".
+The "live vocal" is post-processing over a real sung vocal, not a different voice:
+our own Flow Music songs run through a hall reverb + an arena PA + a generated
+audience + room tone. Everything is ffmpeg's own sources, so no download, no login,
+free — Rule #1 holds.
+- `music938-1/scripts/concert.py` owns the identity, `mix_filter()` (the graph as a
+  string, so a test pins it without encoding) and `render()` (two-pass loudnorm to
+  the repo's **-14 LUFS**). `make_concert_short.py` is the 9:16 renderer (stage
+  lights = `gradients` screen-blended over the darkened cover, slow `zoompan`,
+  burned Thai card). Renders land in `library/concert/` (gitignored; the release is
+  the durable copy).
+- **`afir` dry/wet is capped at 10** — wet=20 → "out of range [0 - 10]", exit 222.
+  Use `afir=dry=1:wet=3:irgain=0.5` for the wet return, `amix` it under the dry.
+- Wired into `crosspost.py` (`concert_items()`, a `concert` caption path, the
+  build_queue fold, `--promote-concert` via a generic `_promote_kind`),
+  `publish_media.py`/`pull_media.py` (its own `concert` group) and the daily rail
+  `.github/workflows/ax-music-concert-render.yml` (05:15 UTC). The caption resolves
+  the song title from `release.parse_lyrics` so a build and a `--refresh-captions`
+  run are byte-identical.
+- **Fresh-pod test setup needs the SoundFonts too**, not just `setup-pod.sh`:
+  `sudo apt-get install -y fluidsynth musescore-general-soundfont fluid-soundfont-gm`
+  or `test_soundfont_renderer` aborts the suite. Also restore numpy:
+  `echo /workspace/ax-tools/pylibs > $(python3 -m site --user-site)/ax-pylibs.pth`.
+  Suite then **1852 passed, 0 failed**.
 
 ## Real-instrument music (K, 2026-11-09) — durable facts
 K rejected the ffmpeg sine/tremolo synth ("sounds fake") for the sleep/lullaby
@@ -1523,9 +1552,11 @@ audio and the FB/TikTok beds: **visuals may be any free art; the MUSIC must come
 from a real/virtual-instrument generator only.**
 - The renderer is `music938-1/scripts/soundfont.py`: mido writes a MIDI
   arrangement, fluidsynth plays it through a SoundFont of real recorded
-  instruments (`MuseScore_General_Full.sf3`). Free, offline, no login. Both
-  `ambient_loop` and `make_music` call it. apt: `fluidsynth fluid-soundfont-gm
-  musescore-general-soundfont`; pip: `mido`.
+  instruments (`MuseScore_General_Full.sf3`). Free, offline, no login. Callers:
+  `music938-1/scripts/ambient_loop.py` (`render_bed`) and the mood lane; note
+  `make_music.py` lives in the sibling `aeris938-1/` tree, **not** in
+  `music938-1/` (there is no `make_music.py` under `music938-1/scripts/`). apt:
+  `fluidsynth fluid-soundfont-gm musescore-general-soundfont`; pip: `mido`.
 - **A SoundFont GM pad (programs 88-95) is itself a synth** — K's rule excludes
   them, so MOODS use only acoustic programs; a test fails if any mood names one.
 - **A *sustained* acoustic pad (strings 48-51, choir 52-54) is the "hum"**
