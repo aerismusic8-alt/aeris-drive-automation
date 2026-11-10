@@ -731,16 +731,16 @@ def _karaoke_only(slug: str) -> int:
 
 
 def _offline_bed(slug: str, force: bool = False) -> dict:
-    """A keyless song master: lyrics + an ffmpeg-synth bed, no Flow Music.
+    """A keyless song master: lyrics + a real-instrument bed, no Flow Music.
 
     Flow Music has no API and its browser session expires, so on a fresh pod the
     release rail stops at "sign in" — a K-dependency in the song engine itself.
-    This is the Rule #1 fallback: `aeris938-1/scripts/make_music.py` synthesises a
-    mood bed offline (deterministic, royalty-free, no login), and the existing
+    This is the Rule #1 fallback: `aeris938-1/scripts/make_music.py` renders a
+    mood bed offline with `soundfont` (a SoundFont of recorded instruments
+    through fluidsynth — deterministic, royalty-free, no login), and the existing
     karaoke path still burns the lyrics onto it. It is deliberately opt-in
     (`--offline`) so a normal run never silently downgrades a real Flow render to
-    a synth bed; a release that *has* to happen, however, no longer has to wait
-    for K.
+    a bed; a release that *has* to happen, however, no longer has to wait for K.
     """
     import make_music  # noqa: PLC0415
 
@@ -761,10 +761,10 @@ def _offline_bed(slug: str, force: bool = False) -> dict:
     out = OUT_DIR / f"song-{slug}.mp3"
     out.parent.mkdir(parents=True, exist_ok=True)
     shutil.copyfile(src, out)
-    # The synth master has no vocal, so it is also the instrumental bed a clip
-    # with narration wants.
+    # The bed has no vocal, so it is also the instrumental bed a clip with
+    # narration wants.
     shutil.copyfile(src, OUT_DIR / f"karaoke-{slug}.mp3")
-    rec = {"slug": slug, "status": "OFFLINE_BED", "source": "ffmpeg-synth",
+    rec = {"slug": slug, "status": "OFFLINE_BED", "source": "soundfont-fluidsynth",
            "mood": mood, "file": str(out)}
     print(json.dumps(rec, ensure_ascii=False))
     return rec
@@ -775,7 +775,7 @@ def main() -> int:
     ap.add_argument("slug", nargs="?")
     ap.add_argument("--force", action="store_true")
     ap.add_argument("--offline", action="store_true",
-                    help="make a keyless ffmpeg-synth master (no Flow Music, no login)")
+                    help="make a keyless real-instrument master (no Flow Music, no login)")
     ap.add_argument("--list", action="store_true")
     ap.add_argument("--karaoke-only", action="store_true",
                     help="rebuild the karaoke mix from local stems/song; no Flow, no credits")

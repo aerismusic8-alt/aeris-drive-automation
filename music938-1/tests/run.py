@@ -1150,6 +1150,24 @@ def test_soundfont_renderer() -> None:
     check("render_bed does not fade per tile", "afade" not in src)
     check("render_bed normalises to a real target", "loudnorm=I=-20" in src)
 
+    # render_backing is the song bed: it must follow the caller's own chords (not
+    # invent a progression), use only real-instrument programs, and return a mono
+    # array exactly as long as asked so it drops into the mix unchanged.
+    with tempfile.TemporaryDirectory() as td:
+        chords = music.progression(60, music.MINOR, music.MOODS["calm"]["prog"], 8)
+        info = SF.build_backing_midi("calm", chords, spb=0.6, total=9.6,
+                                     path=Path(td) / "b.mid", feel="mid")
+        check("backing midi length matches the request",
+              abs(info["seconds"] - 9.6) < 0.01, f"{info['seconds']:.3f}")
+        progs = [SF.MOODS["calm"][k] for k in ("arp", "harp", "bass")]
+        check("backing uses only real-instrument programs",
+              all(p not in SYNTHY for p in progs), f"{progs}")
+    src_b = inspect.getsource(SF.render_backing)
+    check("render_backing returns mono at the song sample rate",
+          "mean(axis=1)" in src_b and "44100" in src_b)
+    check("render_backing trims/pads to the requested length",
+          "want = int(round(total * 44100))" in src_b)
+
 
 def test_mood_short() -> None:
     section("mood clips (each approved instrument bed -> a vertical clip)")
@@ -2066,21 +2084,25 @@ def test_crosspost_engine() -> None:
     check("publish is confirmed by the dialog or a navigation",
           "กำลังประมวลผลคลิป Reels" in body and "reels_composer" in body)
 
-    # Facebook is API-only: with no token the rail must park, never open a browser
-    # to a cookie session that dies and needs K. This is the guard that keeps K out.
-    check("facebook is an API-only surface", "facebook" in crosspost.API_ONLY)
-    check("api_poster returns None for facebook without a token",
+    # Facebook used to be API-only, parked rather than opening a browser that
+    # dies and needs K. That is no longer the trade: ops/login_vault.py restores
+    # the cookie session on a fresh pod without K, and a rejected Graph token
+    # parked the whole queue (2026-11-08). Facebook now falls back to the
+    # signed-in browser like TikTok; the API is still preferred when its token is
+    # live. These guards pin the new shape so it is not silently reverted.
+    check("facebook is no longer an API-only surface",
+          "facebook" not in crosspost.API_ONLY)
+    check("api_poster returns None for facebook without a live token",
           crosspost.api_poster("facebook") is None or
           crosspost.fb_graph.available())
-    parked = src.split("if platform in API_ONLY and api is None:", 1)
-    check("post() parks an API-only surface before opening any browser",
-          len(parked) == 2 and "return 3" in parked[1].split("print(f\"posting", 1)[0])
+    # The browser poster drives only the Reels composer, so a Facebook-only
+    # photo/link item must be skipped there, not abort the run of videos.
+    check("photo/link items are skipped on the browser path",
+          'if api is None and kind in ("photo", "link")' in src)
+    # A token that is present but rejected is still reported as an outage by the
+    # probe, not hidden behind a green run — that is what let a dead Facebook
+    # token pass unnoticed from 2026-11-08.
     probe_body = src.split("def probe(", 1)[1].split("\ndef ", 1)[0]
-    check("probe reports a parked surface instead of a dead session",
-          "parked" in probe_body and "return rc or (3 if no_token else 0)" in probe_body)
-    # A token that is present but rejected is an outage, not a park. If the probe
-    # collapses the two, a dead Facebook token hides behind a green run — which is
-    # exactly what happened from 2026-11-08.
     check("probe fails on a rejected token but stays green on a missing one",
           "rejected" in probe_body and "rc = 1" in probe_body)
 
@@ -3645,14 +3667,15 @@ def test_k_free_status() -> None:
               by0[("facebook", "Page Reels")]["one_time"])
         check("with no tokens, every api/oneshot rail is a one-time need",
               rep0["needs_k_once"] == 6)
-        # Facebook has no browser fallback any more: it parks instead of opening a
-        # browser, so a missing token is a one-time setup, never a recurring need.
-        # TikTok still has its browser fallback (its API needs an app audit first),
-        # so with no tokens that one is the only recurring K-dependency.
-        check("a parked API-only surface is never recurring",
-              not by0[("facebook", "Page Reels")]["needs_k"])
-        check("with no tokens, only the tiktok fallback is recurring",
-              rep0["needs_k"] == 1 and rep0["k_free_all"] is False)
+        # Facebook is no longer API-only: with no token it falls back to the
+        # signed-in browser, exactly like TikTok. Neither browser fallback is
+        # K-free on its own (a snapshot can expire), and with no token neither
+        # primary covers it, so both are the honest recurring K-dependency.
+        check("facebook falls back to the browser, not a park",
+              not by0[("facebook", "Page Reels")]["needs_k"]
+              and by0[("facebook", "Reels (browser fallback)")]["needs_k"])
+        check("with no tokens, the two browser fallbacks are recurring",
+              rep0["needs_k"] == 2 and rep0["k_free_all"] is False)
         check("facebook is reported as a one-time setup, not a blocker",
               ("facebook", "Page Reels") not in
               {(b["surface"], b["rail"]) for b in rep0["blocked"]})

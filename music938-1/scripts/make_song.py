@@ -342,52 +342,35 @@ def _duck(backing: np.ndarray, vocal: np.ndarray, amount: float = 0.42) -> np.nd
 
 
 def _backing(sections, chords, spb, total, mood, rng) -> np.ndarray:
-    n = int((total + 1) * SR)
-    pad = np.zeros(n, dtype=np.float32)
-    keys = np.zeros(n, dtype=np.float32)
-    bass = np.zeros(n, dtype=np.float32)
-    drums = np.zeros(n, dtype=np.float32)
-    feel = music.MOODS[mood]["feel"]
-    bar = 4 * spb
+    """The instrument bed: a real-instrument SoundFont render of the chords.
 
+    K (2026-11-09): the additive ffmpeg synth that used to build this "sounds
+    fake — stop using it, find a program that makes realistic sound." `soundfont`
+    renders the song's own progression through fluidsynth, so every voice is a
+    recording of a real instrument (piano, nylon guitar, harp, plucked bass, a
+    real drum kit). The section levels stay here so an intro/outro still sits
+    under the verse.
+    """
+    import soundfont  # noqa: PLC0415  (imported here so --help needs no sampler)
+
+    feel = music.MOODS[mood]["feel"]
+    bed = soundfont.render_backing(mood, chords, spb=spb, total=total + 1.0,
+                                   feel=feel).astype(np.float32)
+    n = len(bed)
+    if not sections:
+        return bed
+    env = np.ones(n, dtype=np.float32)
+    bar = 4 * spb
     for sec in sections:
-        name = sec["name"]
-        level = 0.6 if name in ("intro", "outro") else 1.0
+        if sec["name"] not in ("intro", "outro"):
+            continue
         n_bars = int(sec["beats"] // 4)
         for b in range(n_bars):
-            bar_start = sec["start_beats"] * spb + b * bar
-            idx = int((sec["start_beats"] + b * 4) // 4)
-            chord = chords[min(idx, len(chords) - 1)]
-            i0 = int(bar_start * SR)
-            # Pad: the triad held for the bar.
-            for m in chord.notes:
-                audio.add_at(pad, audio.tone(music.midi_to_freq(m + 12), bar * 1.02,
-                                             "pad", amp=0.10 * level, attack=0.35,
-                                             release=0.6, vibrato=0.004), i0)
-            # Keys: an arpeggio on the beats.
-            arp = [chord.notes[0], chord.notes[1], chord.notes[2], chord.notes[1]]
-            for k in range(4):
-                audio.add_at(keys, audio.pluck(music.midi_to_freq(arp[k] + 12),
-                                               spb * 0.9, amp=0.09 * level),
-                             int((bar_start + k * spb) * SR))
-            # Bass: root on 1 and 3.
-            for k in (0, 2):
-                audio.add_at(bass, audio.tone(music.midi_to_freq(chord.root - 12),
-                                              spb * 1.6, "bass", amp=0.16 * level,
-                                              attack=0.01, release=0.3),
-                             int((bar_start + k * spb) * SR))
-            if feel != "ballad" and name not in ("intro", "outro"):
-                audio.add_at(drums, audio.kick(amp=0.4 * level), int(bar_start * SR))
-                audio.add_at(drums, audio.kick(amp=0.32 * level), int((bar_start + 2 * spb) * SR))
-                audio.add_at(drums, audio.snare(rng=rng, amp=0.22 * level),
-                             int((bar_start + spb) * SR))
-                audio.add_at(drums, audio.snare(rng=rng, amp=0.22 * level),
-                             int((bar_start + 3 * spb) * SR))
-            for k in range(8):
-                audio.add_at(drums, audio.hihat(rng=rng, amp=0.05 * level),
-                             int((bar_start + k * spb / 2) * SR))
-
-    return pad + keys + bass + drums
+            i0 = int((sec["start_beats"] * spb + b * bar) * SR)
+            i1 = int((sec["start_beats"] * spb + (b + 1) * bar) * SR)
+            if 0 <= i0 < n:
+                env[i0:min(i1, n)] = 0.6
+    return bed * env
 
 
 def _measure_loudnorm(src: Path, *, target: float = TARGET_LUFS) -> dict:

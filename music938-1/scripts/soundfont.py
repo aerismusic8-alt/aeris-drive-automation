@@ -326,6 +326,140 @@ def _probe_seconds(path: Path) -> float:
         return 0.0
 
 
+# General MIDI percussion (channel 9). Real drum samples, so the beat is a
+# recorded kit and not the additive-synth kick/snare/hihat the story bed used.
+DRUM_KICK = 36
+DRUM_SNARE = 38
+DRUM_HIHAT = 42
+
+
+def build_backing_midi(mood: str, chords, *, spb: float, total: float,
+                       path: Path, feel: str = "mid") -> dict:
+    """Write a MIDI backing for an existing chord progression (a song's own).
+
+    Unlike `build_midi`, the harmony is supplied rather than invented: `chords`
+    is the per-bar progression `make_song` already computed, so the instrument
+    bed follows the vocal's chords exactly. Voices mirror that arrangement —
+    plucked keys on the beats, harp on the chord tones, a short root bass — plus
+    a real drum kit on GM channel 9 when the feel is not a ballad. No sustained
+    pad: a held chord is the hum K rejected.
+
+    Each `chords` entry needs `.notes` (MIDI, low to high) and `.root`; a plain
+    (notes, root) pair is accepted too.
+    """
+    import mido  # local import: keeps --list and --help working without it
+
+    preset = MOODS[mood]
+    ticks_per_beat = 480
+    beat = spb
+    mid = mido.MidiFile(ticks_per_beat=ticks_per_beat)
+    track = mido.MidiTrack()
+    mid.tracks.append(track)
+    track.append(mido.MetaMessage("set_tempo", tempo=mido.bpm2tempo(60.0 / beat),
+                                  time=0))
+    # 0 keys, 1 harp, 2 bass, 9 percussion.
+    for ch, prog_num in ((0, preset["arp"]), (1, preset["harp"]),
+                         (2, preset["bass"])):
+        track.append(mido.Message("program_change", channel=ch,
+                                  program=prog_num, time=0))
+    for ch in (0, 1, 2):
+        track.append(mido.Message("control_change", channel=ch, control=91,
+                                  value=70, time=0))
+        track.append(mido.Message("control_change", channel=ch, control=93,
+                                  value=25, time=0))
+
+    events: list[tuple[int, mido.Message]] = []
+
+    def note(ch: int, pitch: int, start: int, dur: int, vel: int) -> None:
+        events.append((start, mido.Message("note_on", channel=ch, note=pitch,
+                                           velocity=vel, time=0)))
+        events.append((start + dur, mido.Message("note_off", channel=ch,
+                                                 note=pitch, velocity=0, time=0)))
+
+    def sec(t: float) -> int:
+        return int(round(t / beat * ticks_per_beat))
+
+    def _parts(c):
+        if isinstance(c, (tuple, list)):
+            notes, root = c[0], c[1]
+        else:
+            notes, root = c.notes, c.root
+        return list(notes), int(root)
+
+    bar = 4 * beat
+    bar_ticks = ticks_per_beat * 4
+    eighth = ticks_per_beat // 2
+    n_bars = max(1, int(round(total / bar)))
+    drums = feel != "ballad"
+    for b in range(n_bars):
+        notes, root = _parts(chords[min(b, len(chords) - 1)])
+        t0 = b * bar_ticks
+        # keys: the chord tones arpeggiated once per beat, an octave up
+        shape = [notes[0], notes[1 % len(notes)], notes[2 % len(notes)],
+                 notes[1 % len(notes)]]
+        for k in range(4):
+            pitch = shape[k] + 12
+            jitter = ((k * 7 + b * 3) % 5) - 2
+            note(0, pitch, t0 + k * ticks_per_beat + jitter,
+                 int(ticks_per_beat * 0.9), 44 + ((k + b) % 3) * 4)
+        # harp: the chord tones plucked across the bar
+        for i, p in enumerate(notes):
+            start = t0 + i * (bar_ticks // max(1, len(notes)))
+            note(1, p, start, int(bar_ticks * 0.5), 40)
+        # bass: the root on 1 and 3, short so it decays
+        for k in (0, 2):
+            note(2, root - 12, t0 + k * ticks_per_beat,
+                 int(ticks_per_beat * 1.6), 52)
+        if drums:
+            for k in (0, 2):
+                note(9, DRUM_KICK, t0 + k * ticks_per_beat, 30, 96)
+            for k in (1, 3):
+                note(9, DRUM_SNARE, t0 + k * ticks_per_beat, 30, 78)
+            for k in range(8):
+                note(9, DRUM_HIHAT, t0 + k * eighth, 20, 52)
+
+    events.sort(key=lambda e: e[0])
+    prev = 0
+    for tick, msg in events:
+        msg.time = max(0, tick - prev)
+        track.append(msg)
+        prev = tick
+    track.append(mido.MetaMessage("end_of_track", time=ticks_per_beat * 2))
+    path.parent.mkdir(parents=True, exist_ok=True)
+    mid.save(str(path))
+    return {"bars": n_bars, "bpm": 60.0 / beat, "seconds": n_bars * bar}
+
+
+def render_backing(mood: str, chords, *, spb: float, total: float,
+                   feel: str = "mid", gain: float | None = None):
+    """Render a song's chord progression as a real-instrument backing.
+
+    Returns a mono float32 array at 44.1 kHz, exactly `total` seconds long, so
+    `make_song` can drop it in where its additive-synth bed used to be. The MIDI
+    and the sampler's raw take are written to temp files and removed, leaving no
+    artefact next to the caller's own output.
+    """
+    import numpy as np
+    import tempfile
+
+    preset = MOODS[mood]
+    with tempfile.TemporaryDirectory() as td:
+        midi = Path(td) / "backing.mid"
+        raw = Path(td) / "backing.wav"
+        build_backing_midi(mood, chords, spb=spb, total=total, path=midi,
+                           feel=feel)
+        _render_midi(midi, raw, find_soundfont(),
+                     gain if gain is not None else preset["gain"])
+        x = _read_wav_f32(raw)
+    if x.ndim > 1:
+        x = x.mean(axis=1)
+    x = x.astype(np.float32)
+    want = int(round(total * 44100))
+    if x.shape[0] < want:
+        x = np.pad(x, (0, want - x.shape[0]))
+    return x[:want]
+
+
 def render_bed(mood: str, key: str, out: Path, *, seconds: float = 180.0,
                gain: float | None = None) -> dict:
     """Render a loopable real-instrument bed to `out` (16-bit WAV).
