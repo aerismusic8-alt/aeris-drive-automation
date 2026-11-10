@@ -1141,9 +1141,12 @@ def test_ambient_loop() -> None:
 
     # The bed is real instruments now, not a sine drone. K (2026-11-09) rejected
     # the ffmpeg synth as "fake"; `soundfont` renders a SoundFont of recorded
-    # instruments through fluidsynth. The plan must loop *that* bed.
+    # instruments through fluidsynth, then (2026-11-09, later) through the sfizz
+    # sampler when its real banks are present. The plan must loop *that* bed, so
+    # check against the live BED_TAG rather than a frozen name — the tag moves
+    # whenever the timbre changes, which is the point of carrying it.
     check("the plan loops the instrument bed, not the old synth bed",
-          "instrument2-" in " ".join(p["cmd"]), "instrument bed not in plan")
+          A.BED_TAG in " ".join(p["cmd"]), "instrument bed not in plan")
     # A looping bed must not fade per tile, or the volume dips once a loop. The
     # fade belongs on the finished video, so the plan carries one in/out at the
     # very ends and the bed renderer (checked below) carries none.
@@ -1255,6 +1258,66 @@ def test_soundfont_renderer() -> None:
           "want = int(round(total * 44100))" in src_b)
 
 
+def test_sampler_renderer() -> None:
+    section("sampler (real instrument recordings, K: 'find a realistic program')")
+    import sampler as SP
+
+    # K (2026-11-09): the GM SoundFont "sounds fake — find a program that makes
+    # realistic sound." The realistic path is a real sampler over recordings, and
+    # it must be wired but optional: on a bare pod with no bank, `available()`
+    # returns False and the GM path still renders, so nothing hard-fails.
+    check("sampler.available is a bool", isinstance(SP.available(), bool))
+
+    # The role table is what maps a MIDI channel to a recorded instrument; every
+    # role the renderers name must exist as a key, or the voice is silently
+    # dropped (the same shape of bug as the archetype-id drop-table miss).
+    for role in ("piano", "harp", "strings", "bass"):
+        check(f"sampler knows the {role} role", role in SP.ROLES)
+
+    if not SP.available():
+        note("no sfizz sampler or real bank on this pod; GM fallback is in use")
+        return
+
+    # The bed and backing channel maps must name roles the sampler can resolve,
+    # or a channel renders as nothing.
+    import soundfont as SF
+    for ch, role in SF._BED_CHANNEL_ROLES.items():
+        check(f"bed channel {ch} maps to a known role", role in SP.ROLES)
+    for ch, role in SF._BACKING_CHANNEL_ROLES.items():
+        check(f"backing channel {ch} maps to a known role", role in SP.ROLES)
+
+    # Every mapped role must resolve to an existing .sfz, or the render dies.
+    for role in set(SF._BED_CHANNEL_ROLES.values()) | set(SF._BACKING_CHANNEL_ROLES.values()):
+        p = SP.find_program(role)
+        check(f"role {role} resolves to a real .sfz", bool(p) and Path(p).exists(), str(p))
+
+    # A real render of one note must produce audible, non-silent audio.
+    import tempfile as _tf
+    import mido
+    with _tf.TemporaryDirectory() as td:
+        prog = SP.find_program("harp")
+        m = mido.MidiFile()
+        t = mido.MidiTrack()
+        m.tracks.append(t)
+        for n in (60, 64, 67):
+            t.append(mido.Message("note_on", note=n, velocity=75, time=0))
+            t.append(mido.Message("note_off", note=n, velocity=0, time=960))
+        mp = Path(td) / "n.mid"
+        m.save(str(mp))
+        wp = Path(td) / "n.wav"
+        SP.render(mp, wp, prog)
+        check("the sampler wrote audio", wp.exists() and wp.stat().st_size > 1000)
+        import wave
+        w = wave.open(str(wp))
+        frames = np.frombuffer(w.readframes(w.getnframes()), dtype=np.int16)
+        check("the sampler output is not silence",
+              float(np.abs(frames).max()) > 500, f"peak={np.abs(frames).max()}")
+
+    # The real path must be reachable and report which bank each voice used.
+    check("real_instruments_enabled reflects the env switch",
+          SF.real_instruments_enabled() is True)
+
+
 def test_mood_short() -> None:
     section("mood clips (each approved instrument bed -> a vertical clip)")
     import make_mood_short as M
@@ -1270,13 +1333,14 @@ def test_mood_short() -> None:
     # Every mood the clip rail names must be a mood the bed renderer can make, or
     # the clip render dies at the sampler.
     import soundfont as SF
+    import ambient_loop as A
     for mood in M.MOODS:
         check(f"mood {mood} is a renderable bed", mood in SF.MOODS)
 
     # The plan is pure: it names the bed, the art source and the output without
     # touching ffmpeg or the network.
     p = M.plan("calm")
-    check("the plan names the instrument bed", "instrument2-calm-C.wav" in str(p["bed"]))
+    check("the plan names the instrument bed", A.BED_TAG in str(p["bed"]))
     check("the art is the ffmpeg gradients source", p["art"].startswith("gradients="))
     check("the art is the vertical frame", f"{M.W}x{M.H}" in p["art"])
     check("the clip is under the 60s Shorts ceiling", p["seconds"] < 60)
@@ -4280,6 +4344,7 @@ def main() -> int:
     test_follow_end_card()
     test_ambient_loop()
     test_soundfont_renderer()
+    test_sampler_renderer()
     test_mood_short()
     test_refresh_sleep_video()
     test_provenance()

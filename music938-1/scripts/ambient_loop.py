@@ -55,7 +55,13 @@ BED_SECONDS = 180.0  # the loop unit; the bed is synthesised once and tiled
 # pad that read as a hum) the old `instrument-*` beds had to stop being reused —
 # otherwise the "fix" would still ship the pad from disk. Bump this whenever the
 # sound changes.
-BED_TAG = "instrument2"
+#
+# K (2026-11-09): "the sleep music — what program is it made with? Stop using it.
+# Find a program that makes realistic sound." The `instrument2-*` beds are
+# fluidsynth General-MIDI, which is what he rejected; `sampler1` renders the same
+# arrangement through real instrument recordings (see `sampler`), so the tag
+# moves again to retire the GM cache from disk.
+BED_TAG = "sampler1"
 
 
 def bed_path(mood: str, key: str) -> Path:

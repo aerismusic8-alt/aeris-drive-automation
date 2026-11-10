@@ -27,6 +27,7 @@ import os
 import shutil
 import subprocess
 import sys
+import tempfile
 from pathlib import Path
 
 # fluidsynth and the soundfonts are apt packages; the static ffmpeg lives under
@@ -258,6 +259,94 @@ def _render_midi(midi: Path, out_wav: Path, soundfont: str, gain: float) -> None
         raise RuntimeError(f"fluidsynth failed: {res.stderr.strip()[-600:]}")
 
 
+# ── real-instrument rendering (sfizz) ─────────────────────────────────────────
+# A General-MIDI SoundFont is one thin sample stretched across the keyboard; it
+# is what K heard as "fake". When the sfizz sampler and its real banks are
+# present the bed and the song backing render through multi-velocity recordings
+# of actual instruments instead. `USE_REAL_INSTRUMENTS=0` forces the GM path.
+_REAL_ENV = "USE_REAL_INSTRUMENTS"
+
+# MIDI channel -> instrument role, matching the channel layout the two MIDI
+# builders below write. Channel 9 is the GM drum kit, which has no SFZ bank, so
+# it stays on fluidsynth and is mixed under the sampled voices.
+_BED_CHANNEL_ROLES = {0: "harp", 1: "harp", 2: "bass", 3: "piano"}
+_BACKING_CHANNEL_ROLES = {0: "piano", 1: "harp", 2: "bass"}
+
+
+def real_instruments_enabled() -> bool:
+    if os.environ.get(_REAL_ENV, "").strip().lower() in ("0", "false", "no"):
+        return False
+    try:
+        import sampler  # noqa: PLC0415
+    except Exception:  # noqa: BLE001
+        return False
+    return sampler.available()
+
+
+def _mix_wavs(parts: list[Path], out_wav: Path) -> None:
+    if len(parts) == 1:
+        shutil.copy(parts[0], out_wav)
+        return
+    cmd = ["ffmpeg", "-y", "-hide_banner", "-loglevel", "error"]
+    for p in parts:
+        cmd += ["-i", str(p)]
+    cmd += ["-filter_complex",
+            "".join(f"[{i}:a]" for i in range(len(parts)))
+            + f"amix=inputs={len(parts)}:normalize=0[a]",
+            "-map", "[a]", "-c:a", "pcm_s16le", str(out_wav)]
+    res = subprocess.run(cmd, capture_output=True, text=True)
+    if res.returncode != 0:
+        raise RuntimeError(f"mix failed: {res.stderr.strip()[-600:]}")
+
+
+def _render_real(midi: Path, out_wav: Path, channel_roles: dict[int, str],
+                 gains: dict[int, float], *, drums_gain: float | None = None) -> dict:
+    """Render tonal channels through real instruments; keep drums on GM.
+
+    Returns the sampler's own report so the caller can log which bank each voice
+    used. Drums (channel 9) have no SFZ bank, so they render through fluidsynth
+    and mix under the sampled voices; when the MIDI carries no drums this is a
+    pure sampled render.
+    """
+    import sampler  # noqa: PLC0415
+
+    with tempfile.TemporaryDirectory() as td:
+        tdp = Path(td)
+        tonal = tdp / "tonal.wav"
+        report = sampler.render_multichannel(midi, tonal, channel_roles,
+                                             gains=gains)
+        drum_midi = _only_channel(midi, 9)
+        parts = [tonal]
+        if drum_midi is not None:
+            dp = tdp / "drums.wav"
+            _render_midi(drum_midi, dp, find_soundfont(),
+                         drums_gain if drums_gain is not None else 0.7)
+            parts.append(dp)
+        _mix_wavs(parts, out_wav)
+        report["drums"] = drum_midi is not None
+    return report
+
+
+def _only_channel(midi: Path, ch: int) -> Path | None:
+    """Return a temp MIDI with only channel `ch` (None if it has no notes)."""
+    import mido  # noqa: PLC0415
+
+    src = mido.MidiFile(str(midi))
+    has = any(getattr(m, "channel", None) == ch and m.type == "note_on"
+              for m in src.tracks[0])
+    if not has:
+        return None
+    out = mido.MidiFile(ticks_per_beat=src.ticks_per_beat)
+    track = mido.MidiTrack()
+    out.tracks.append(track)
+    for m in src.tracks[0]:
+        if getattr(m, "channel", None) == ch or m.is_meta:
+            track.append(m.copy())
+    dest = Path(tempfile.mkstemp(suffix=".mid")[1])
+    out.save(str(dest))
+    return dest
+
+
 def _read_wav_f32(path: Path) -> "np.ndarray":
     """Decode a WAV to a float32 array of shape (frames, channels)."""
     import numpy as np
@@ -448,8 +537,13 @@ def render_backing(mood: str, chords, *, spb: float, total: float,
         raw = Path(td) / "backing.wav"
         build_backing_midi(mood, chords, spb=spb, total=total, path=midi,
                            feel=feel)
-        _render_midi(midi, raw, find_soundfont(),
-                     gain if gain is not None else preset["gain"])
+        gains = {ch: 1.0 for ch in _BACKING_CHANNEL_ROLES}
+        if real_instruments_enabled():
+            _render_real(midi, raw, _BACKING_CHANNEL_ROLES, gains,
+                         drums_gain=preset["gain"])
+        else:
+            _render_midi(midi, raw, find_soundfont(),
+                         gain if gain is not None else preset["gain"])
         x = _read_wav_f32(raw)
     if x.ndim > 1:
         x = x.mean(axis=1)
@@ -479,7 +573,12 @@ def render_bed(mood: str, key: str, out: Path, *, seconds: float = 180.0,
     out.parent.mkdir(parents=True, exist_ok=True)
 
     build_midi(mood, bars=bars, path=midi)
-    _render_midi(midi, raw, find_soundfont(), gain if gain is not None else preset["gain"])
+    g = gain if gain is not None else preset["gain"]
+    if real_instruments_enabled():
+        _render_real(midi, raw, _BED_CHANNEL_ROLES,
+                     {ch: g for ch in _BED_CHANNEL_ROLES})
+    else:
+        _render_midi(midi, raw, find_soundfont(), g)
 
     # Trim fluidsynth's long reverb tail (~25s past the last note) to the written
     # musical length, then normalise to a sleep-appropriate level.

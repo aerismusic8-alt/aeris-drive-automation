@@ -10,6 +10,7 @@
 set -u
 
 BIN=/workspace/ax-tools/bin
+REPO=$(cd "$(dirname "$0")/.." && pwd)
 mkdir -p "$BIN"
 
 # Install *under /workspace*, not into $HOME. A pod recycle keeps /workspace and
@@ -62,3 +63,14 @@ if ! command -v fluidsynth >/dev/null 2>&1; then
       musescore-general-soundfont
 fi
 fluidsynth --version 2>/dev/null | head -1
+
+# K (2026-11-09, later): the GM SoundFont "sounds fake — find a program that
+# makes realistic sound." sfizz plays multi-velocity recordings of real
+# instruments; it and its CC0 banks live under /workspace and are fetched by a
+# separate script so this stays fast when they are already present.
+if [ ! -x "$REPO/tools/sfizz/sfizz_render" ] || \
+   [ ! -e /workspace/ax-tools/instruments/salamander/"Salamander Grand Piano V3.sfz" ]; then
+  echo "installing the realistic-sound sampler (sfizz)..."
+  bash "$(dirname "$0")/install-sfizz.sh" || \
+    echo "[warn] sfizz install failed; beds fall back to the GM SoundFont"
+fi
