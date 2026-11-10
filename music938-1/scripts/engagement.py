@@ -22,7 +22,9 @@ So the loop ranks the formats by the median views/day of the TikTok posts we hav
 actually published, and only acts when the signal is strong enough to mean something:
 too few posts, or a dead heat, and it leaves the varied rotation alone rather than
 churning on noise. When one format clearly leads it is boosted — posted more often —
-and the rest recede, which is "repeat the format that responded".
+and when one clearly lags it is demoted to the back of the queue, which is K's
+"แนวโน้มไม่ดีให้เปลี่ยนรูปแบบใหม่": the working formats, and the fresh ones behind
+them, reach the feed before a lane that is not responding.
 
     python3 scripts/engagement.py            # report what the formats are doing
     python3 scripts/engagement.py --apply    # retune the committed queue
@@ -57,6 +59,9 @@ RACING = ("song", "karaoke", "surreal", "mood", "affiliate")
 # days, which is fast enough to matter and slow enough to be real.
 MIN_SAMPLES = 3
 LEAD_RATIO = 1.3
+# How far *behind* the pack a format must be before its remaining items stop
+# leading the feed ("แนวโน้มไม่ดี → เปลี่ยนรูปแบบ"). The mirror of LEAD_RATIO.
+LAG_RATIO = 1.3
 
 # Only posts from the last WINDOW_DAYS are re-read each run, and their last count is
 # cached, so a run reads a handful of pages, not every post ever made. A post's
@@ -171,27 +176,63 @@ def leader(stats: dict[str, dict], *, min_samples: int = MIN_SAMPLES,
     return ranked[0][0] if top >= second * lead_ratio else None
 
 
-def retune(queue: list[dict], winner: str | None, every: int = 3) -> list[dict]:
-    """Boost `winner` through the queue so it is posted more often.
+def trailer(stats: dict[str, dict], *, min_samples: int = MIN_SAMPLES,
+            lag_ratio: float = LAG_RATIO) -> str | None:
+    """The format clearly *behind* the pack, or None when the signal is too thin.
+
+    The mirror of `leader`, for K's "ถ้าแนวโน้มไม่ดีให้เปลี่ยนรูปแบบ": a lane whose
+    median views/day is at most `1/lag_ratio` of the best lane's is not responding,
+    so its remaining items should stop leading the feed. Needs at least two formats
+    with enough samples — a lone format cannot be behind itself — and refuses a dead
+    heat the same way `leader` does.
+    """
+    ranked = sorted(((k, s) for k, s in stats.items() if s["n"] >= min_samples),
+                    key=lambda kv: -kv[1]["median_per_day"])
+    if len(ranked) < 2:
+        return None
+    top = ranked[0][1]["median_per_day"]
+    worst_k, worst_v = ranked[-1]
+    if top <= 0:
+        return None
+    if worst_v["median_per_day"] * lag_ratio <= top:
+        return worst_k
+    return None
+
+
+def retune(queue: list[dict], winner: str | None, every: int = 3,
+           trailing: str | None = None) -> list[dict]:
+    """Steer the queue toward the format that is working and away from the one that is not.
 
     The winner is folded in every `every` positions — roughly one post in four — and
     everything else keeps its order, so the feed leans into the format that is working
     without becoming only that format (the advisor warning about a look-alike wall).
-    With no winner the queue is returned untouched: no signal, no change.
+
+    K (2026-11-10): "ถ้าแนวโน้มไม่ดีให้เปลี่ยนรูปแบบใหม่". A format that is clearly
+    *behind* the others is the case a pure boost does not cover — early on, when no
+    format has enough samples to lead, the loop used to leave everything alone even
+    though one lane was plainly dying. `trailing` names that lane, and its items are
+    pushed to the back so the working lanes (and the fresh formats behind them) reach
+    the feed first. With neither a winner nor a trailing lane the queue is untouched:
+    no signal, no change.
     """
-    if not winner:
-        return queue
-    win = [it for it in queue if kind_of(it) == winner]
-    if not win:
-        return queue
-    rest = [it for it in queue if kind_of(it) != winner]
-    # local import keeps this module importable without the crosspost stack
-    sys.path.insert(0, str(Path(__file__).resolve().parent))
-    import crosspost  # noqa: PLC0415
-    return crosspost.interleave(rest, win, every=every, chunk=1)
+    out = queue
+    if winner:
+        win = [it for it in out if kind_of(it) == winner]
+        if win:
+            rest = [it for it in out if kind_of(it) != winner]
+            # local import keeps this module importable without the crosspost stack
+            sys.path.insert(0, str(Path(__file__).resolve().parent))
+            import crosspost  # noqa: PLC0415
+            out = crosspost.interleave(rest, win, every=every, chunk=1)
+    if trailing:
+        demoted = [it for it in out if kind_of(it) == trailing]
+        if demoted:
+            out = [it for it in out if kind_of(it) != trailing] + demoted
+    return out
 
 
-def report(stats: dict[str, dict], win: str | None) -> str:
+def report(stats: dict[str, dict], win: str | None,
+           lag: str | None = None) -> str:
     lines = ["# ผลตอบรับ FB/TikTok — AERIS Music", ""]
     if not stats:
         lines += ["ยังอ่านยอดดูไม่ได้ (TikTok ยังไม่มียอด หรือหน้าโหลดไม่ติด) "
@@ -206,6 +247,8 @@ def report(stats: dict[str, dict], win: str | None) -> str:
     else:
         lines.append("**ยังไม่มีรูปแบบที่นำชัด** — สัญญาณน้อยหรือสูสี "
                      "จึงคงการหมุนเดิม (ไม่ปรับจากสัญญาณรบกวน)")
+    if lag:
+        lines.append(f"**รูปแบบที่ตามหลัง:** {lag} — จะลดความถี่ลง (แนวโน้มไม่ดี → เปลี่ยนรูปแบบ)")
     lines.append("")
     return "\n".join(lines)
 
@@ -275,26 +318,34 @@ def main() -> int:
                      encoding="utf-8")
     stats = kind_stats(state, queue, counts, now)
     win = leader(stats)
+    lag = trailer(stats)
 
     if args.json:
-        print(json.dumps({"stats": stats, "winner": win}, ensure_ascii=False, indent=1))
+        print(json.dumps({"stats": stats, "winner": win, "trailing": lag},
+                         ensure_ascii=False, indent=1))
         return 0
 
     if args.apply:
-        newq = retune(queue, win)
+        newq = retune(queue, win, trailing=lag)
         if newq != queue:
+            bits = []
+            if win:
+                bits.append(f"boosted {win}")
+            if lag:
+                bits.append(f"demoted {lag}")
             QUEUE.write_text(json.dumps(newq, ensure_ascii=False, indent=2) + "\n",
                              encoding="utf-8")
-            print(f"retuned: boosted {win}")
+            print("retuned: " + ", ".join(bits))
         else:
             print(f"no retune ({win or 'no clear leader'})")
         DECISION.write_text(json.dumps(
             {"at": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime(now)),
-             "winner": win, "stats": stats}, ensure_ascii=False, indent=2) + "\n",
+             "winner": win, "trailing": lag, "stats": stats},
+            ensure_ascii=False, indent=2) + "\n",
             encoding="utf-8")
         return 0
 
-    print(report(stats, win))
+    print(report(stats, win, lag))
     return 0
 
 

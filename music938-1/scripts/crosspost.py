@@ -62,9 +62,11 @@ COVERS = ROOT / "library" / "covers"
 QUEUE = WORK / "crosspost-queue.json"
 
 # How far apart freshly merged items are spread through the backlog. At the
-# per-surface cadence (~3-4 posts/day) one item every 8 positions reaches the
-# first new clip in about a day, so a newly rendered lane is live now rather
-# than weeks out; see `merge_queue`.
+# per-surface cadence (~11-12 posts/day at a 2 h gap) one item every 8 positions
+# reaches the first new clip in about a day, so a newly rendered lane is live now
+# rather than weeks out; see `merge_queue`. A lane that must *lead* the feed
+# (the surreal exhibits) is not left to this — `promote_surreal` moves it to the
+# front; see `crosspost.py --promote-surreal`.
 NEW_FORMAT_EVERY = 8
 STATE = WORK / "crosspost-state.json"
 
@@ -565,24 +567,19 @@ def pending(queue: list[dict], state: dict, platform: str | None) -> list[dict]:
 
 # --- cadence ----------------------------------------------------------------
 
-# K (2026-11-09): "อัพเดทโพสต์ทุก 2-5 ชั่วโมง สลับเวลากันโพสต์ เอาให้เนียนเหมือนมนุษย์ทำ"
-# — post every 2-5 hours, vary the times, make it look human.
-#
-# A brand-new account that fired 60 clips in 98 minutes (the 2026-11-01 run) is
-# the most plausible cause of the flat views, so the rail paces itself. But a
-# *fixed* gap is its own tell: a post every 120 minutes on the dot is as
-# obviously automated as a burst. So the interval is drawn from a 2-5 h band per
-# post, and the interval, the time of day and the daily count all vary the way a
-# person's do.
+# K (2026-11-10): "ระยะห่างกัน 2 ชั่วโมง" — a steady two-hour rhythm: post, wait
+# two hours, read how the clip did, post the next. This supersedes the 2026-11-09
+# 2-5 h band. A small jitter (up to +15 min) keeps the feed off an exact
+# metronome, which the burst analysis flagged as a tell, while still landing
+# "about every two hours".
 MIN_GAP_SECONDS = 2 * 60 * 60
-MAX_GAP_SECONDS = 5 * 60 * 60
+MAX_GAP_SECONDS = 2 * 60 * 60 + 15 * 60
 
-# A hard ceiling, not the pacing. At a 2-5 h gap a surface naturally posts ~5-8
-# times a day, so this only stops a retry storm or a manual burst from emptying
-# a whole day's queue at once. It sits above the natural rate, so K's band is
-# what paces the feed and this is only the safety net.
-DAILY_CAP = 8
-FACEBOOK_DAILY_CAP = 8
+# A hard ceiling, not the pacing. At a 2 h gap a surface naturally posts ~11-12
+# times a day, so this sits just above that and only stops a retry storm or a
+# manual burst from emptying a whole day's queue at once.
+DAILY_CAP = 12
+FACEBOOK_DAILY_CAP = 12
 
 # At most one *link* post a day. A link post is the format that reads as an ad,
 # so the rule is "never two links in a row, <=1 a day"; a photo or a Reel
@@ -666,8 +663,8 @@ def pace_ok(state: dict, platform: str, now: float | None = None,
     """May one more post go out on `platform` right now?
 
     Returns (allowed, reason). Two rules, both from the observed burst: at least
-    the *humanised* gap since the last post (2-5 h, drawn from the last post's id
-    so it varies post to post), and at most DAILY_CAP in the trailing 24 h. A
+    the *humanised* gap since the last post (~2 h, drawn from the last post's id
+    so it jitters by a few minutes), and at most DAILY_CAP in the trailing 24 h. A
     `kind` of "link" adds a third: at most LINK_DAILY_CAP link posts a day,
     because that is the format that reads as an ad.
     """

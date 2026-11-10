@@ -2512,7 +2512,7 @@ def test_crosspost_pace_and_captions() -> None:
         crosspost.load_state = real_load
 
     # Cadence: the shape of the 2026-11-01 run must now be refused. K (2026-11-09)
-    # set the band at 2-5 hours, jittered per post so the feed is not a metronome;
+    # set the band at ~2 hours, jittered per post so the feed is not a metronome;
     # sixty posts inside the last 24 h is over the daily cap, and a post an hour old
     # is inside the *minimum* of the band.
     now = time.time()
@@ -2527,20 +2527,22 @@ def test_crosspost_pace_and_captions() -> None:
     check("a 60-post burst is held back", not ok, why)
     check("the daily cap is named in the reason", "cap" in why)
 
-    # The band is 2-5 h: the minimum is two hours, so a post one hour old is held
-    # back however its own gap is drawn.
+    # The band is ~2 h: the minimum is two hours, so a post one hour old is held
+    # back however its own gap is drawn. K (2026-11-10): "ระยะห่างกัน 2 ชั่วโมง".
     recent = {"posted": {"tiktok:x": {"at": at(3600)}}}
     ok, why = crosspost.pace_ok(recent, "tiktok", now)
     check("a post 1 hour old is inside the minimum gap", not ok, why)
     check("the band floor is two hours",
           crosspost.MIN_GAP_SECONDS == 2 * 60 * 60, str(crosspost.MIN_GAP_SECONDS))
-    check("the band ceiling is five hours",
-          crosspost.MAX_GAP_SECONDS == 5 * 60 * 60, str(crosspost.MAX_GAP_SECONDS))
+    check("the band ceiling is two hours plus a little jitter",
+          2 * 60 * 60 <= crosspost.MAX_GAP_SECONDS <= 2 * 60 * 60 + 20 * 60,
+          str(crosspost.MAX_GAP_SECONDS))
 
-    # The gap is humanised: drawn per post, so it varies, but always inside the band.
+    # The gap is humanised: drawn per post, so it varies a little, but always lands
+    # within a few minutes of the two-hour rhythm.
     gaps = {crosspost._gap_for(f"tiktok:s{i}") for i in range(40)}
     check("the per-post gap varies (not a fixed interval)", len(gaps) > 3, str(len(gaps)))
-    check("every gap is inside the 2-5 h band",
+    check("every gap is inside the 2 h band",
           all(crosspost.MIN_GAP_SECONDS <= g <= crosspost.MAX_GAP_SECONDS for g in gaps))
     check("the gap is stable for the same post (no flap on re-run)",
           crosspost._gap_for("tiktok:s7") == crosspost._gap_for("tiktok:s7"))
@@ -2577,8 +2579,8 @@ def test_crosspost_pace_and_captions() -> None:
     page = {"posted": {"facebook-page:x": {"at": at(60)}}}
     check("a Page post 1 minute old holds Facebook back",
           not crosspost.pace_ok(page, "facebook", now)[0])
-    page_burst = {"posted": {f"facebook-page:s{i}": {"at": at(1800 + i * 90)}
-                             for i in range(5)}}
+    page_burst = {"posted": {f"facebook-page:s{i}": {"at": at(crosspost.MAX_GAP_SECONDS + 300 + i * 90)}
+                             for i in range(crosspost.FACEBOOK_DAILY_CAP + 1)}}
     check("a run of Page posts in a day hits the daily cap",
           not crosspost.pace_ok(page_burst, "facebook", now)[0])
 
@@ -2727,6 +2729,27 @@ def test_engagement_feedback() -> None:
           {it["id"] for it in boosted} == {it["id"] for it in queue})
     check("retune with no winner is a no-op", E.retune(queue, None) == queue)
 
+    # K (2026-11-10): "ถ้าแนวโน้มไม่ดีให้เปลี่ยนรูปแบบ" — a lane clearly behind the
+    # pack is named as the trailing format, and its items stop leading the feed.
+    behind = {"surreal": {"n": 4, "median_per_day": 500.0},
+              "song": {"n": 4, "median_per_day": 90.0}}
+    check("the clearly-behind format is named",
+          E.trailer(behind) == "song", str(E.trailer(behind)))
+    close = {"surreal": {"n": 4, "median_per_day": 500.0},
+             "song": {"n": 4, "median_per_day": 420.0}}
+    check("a format only slightly behind is not demoted",
+          E.trailer(close) is None, str(E.trailer(close)))
+    check("one format cannot be behind itself",
+          E.trailer({"surreal": {"n": 4, "median_per_day": 500.0}}) is None)
+    demoted = E.retune(queue, None, trailing="song")
+    check("demote keeps every item", len(demoted) == len(queue), str(len(demoted)))
+    check("demote pushes the trailing format to the back",
+          [it["id"] for it in demoted] == ["tiktok:sur-1", "tiktok:sur-2",
+                                           "tiktok:sur-3", "tiktok:song-1"],
+          str([it["id"] for it in demoted]))
+    check("demote with no trailing format is a no-op",
+          E.retune(queue, None, trailing=None) == queue)
+
     # The parser reads the count out of the stats block and refuses a page without
     # one (a captcha), so a blocked read is never a zero.
     import re as _re
@@ -2755,7 +2778,7 @@ def test_engagement_feedback() -> None:
           0 <= wf.find("engagement.py --apply") < wf.find("Post the pending Shorts"))
     check("the retuned queue is committed",
           "crosspost-queue.json" in wf and "engagement-cache.json" in wf)
-    check("the rail is scheduled hourly, so the 2-5 h gap can land off-beat",
+    check("the rail is scheduled hourly, so the 2 h gap can land off-beat",
           "'0 * * * *'" in wf)
 
     # The new format leads the queue: the exhibit is the first item, and the song

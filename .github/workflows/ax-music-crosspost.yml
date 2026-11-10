@@ -19,10 +19,10 @@ name: AX Music Crosspost (FB Reels + TikTok)
 #   TT_CLIENT_KEY + TT_CLIENT_SECRET + TT_REFRESH_TOKEN -> TikTok
 # Both are optional. With neither, everything below behaves exactly as before.
 #
-# Pacing lives in `crosspost.py` (1-hour gap; 4 posts/day on TikTok, 3 on
-# Facebook, at most 1 link post/day). A run posts at most one per platform
-# because the second is inside the gap; run every 2 hours and the daily cap is
-# what limits throughput, not the schedule.
+# Pacing lives in `crosspost.py` (~2 h gap; up to 12 posts/day per surface,
+# at most 1 link post/day). A run posts at most one per platform because the
+# second is inside the gap; run hourly and the gap is what limits throughput,
+# not the schedule.
 #
 # The Facebook rail posts a mix, not only Reels: the queue interleaves cover-art
 # photos and Shopee link posts among the Reels, and `crosspost.py` dispatches by
@@ -30,9 +30,10 @@ name: AX Music Crosspost (FB Reels + TikTok)
 
 on:
   schedule:
-    # Hourly, so the 2-5 h humanised gap between posts (see crosspost.pace_ok) can
-    # land at varied times of day instead of on a 2-hourly beat. The gap itself is
-    # what paces the feed; this only gives it the chance to fire off-beat.
+    # Hourly, so the ~2 h humanised gap between posts (see crosspost.pace_ok) can
+    # land at varied times of day instead of on an exact 2-hourly beat. The gap
+    # itself is what paces the feed; this only gives it the chance to fire
+    # off-beat, and it is also the tick that runs the read-then-retune step.
     - cron: '0 * * * *'
   workflow_dispatch:
     inputs:
