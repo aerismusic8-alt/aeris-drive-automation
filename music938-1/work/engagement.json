@@ -1,5 +1,5 @@
 {
-  "at": "2026-11-10T05:29:00Z",
+  "at": "2026-11-10T07:54:32Z",
   "winner": null,
   "stats": {
     "song": {
@@ -11,8 +11,8 @@
       "median_per_day": 0.0
     },
     "surreal": {
-      "n": 1,
-      "median_per_day": 0.0
+      "n": 2,
+      "median_per_day": 12.0
     }
   }
 }
