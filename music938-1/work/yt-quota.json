@@ -48,12 +48,17 @@
    "calls": {
     "thumbnails.set": 2
    },
-   "updated": "2026-11-10T02:38:53+00:00",
+   "updated": "2026-11-10T02:38:57+00:00",
    "reserves": [
     {
      "purpose": "release 6 item(s)",
      "units": 600,
      "at": "2026-11-09T18:39:35+00:00"
+    },
+    {
+     "purpose": "release 6 item(s)",
+     "units": 600,
+     "at": "2026-11-10T02:38:57+00:00"
     }
    ]
   }
