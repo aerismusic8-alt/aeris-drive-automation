@@ -444,6 +444,88 @@ def test_surreal_lane() -> None:
     check("clip stays short", ms.MAX_SECONDS <= 30.0, f"{ms.MAX_SECONDS}")
 
 
+def test_concert_lane() -> None:
+    """The live-concert lane must sound like a venue and stay honest.
+
+    K (2026-11-09): "ทำเพลงที่ใช้เสียงร้องแบบแสดงสดคอนเสิร์ต... เห็นคลิปใช้เทคนิคนี้
+    คนดูเป็นล้านเลย". The format is a real sung vocal pushed through a hall, an
+    arena PA and an audience. The failure modes this pins:
+
+      * the "concert" must be the post-processing, so the mix graph must actually
+        convolve a hall (`afir`), glue the PA (`acompressor`) and add a generated
+        audience (`anoisesrc`) — a dry song is not the format;
+      * the audience must swell in and out, or the clip reads as a studio take
+        with a noise floor;
+      * the voice and crowd are synthetic, so every clip and caption discloses
+        it, and the caption never drifts into a banned claim;
+      * a wall of identical clips is the reach-killing pattern, so the stage
+        palette varies per song.
+    """
+    section("concert lane (live-show vocals)")
+    import concert
+    import surreal
+    import make_concert_short as mcs
+
+    # The wordmark is Latin (a brand mark, like the burned "AERIS MUSIC"); the
+    # copy around it is Thai.
+    check("wordmark is a Latin brand mark", concert.NAME.isascii(), concert.NAME)
+    for name, val in (("project", concert.PROJECT),
+                      ("show line", concert.SHOW_LINE), ("ask", concert.SHOW_ASK)):
+        check(f"identity {name} is Thai", has_thai(val), val)
+    check("disclosure is shared with the exhibit lane",
+          concert.AI_NOTE == surreal.AI_NOTE, concert.AI_NOTE)
+
+    # The mix graph carries every element of the format.
+    graph = concert.mix_filter(30.0)
+    check("the hall is convolved (afir)", "afir=" in graph)
+    check("the PA glues the take (acompressor)", "acompressor=" in graph)
+    check("the audience is generated (anoisesrc)", "anoisesrc=" in graph)
+    check("the sum is brickwalled (alimiter)", "alimiter=" in graph)
+    check("the crowd swells at the intro",
+          "between(t,0," in graph, graph[-400:])
+    check("the mix names the song input", "[0:a]" in graph)
+    check("the mix graph is deterministic", concert.mix_filter(30.0) == graph)
+
+    # The caption: Thai, disclosed, per-surface, rule-safe.
+    slugs = ["01-khon-di-thi-chak-pai", "02-rak-thi-mai-mi-wan-chop",
+             "07-huachai-si-thao"]
+    for slug in slugs:
+        for platform in ("facebook", "tiktok"):
+            cap = concert.caption(slug, platform, "เพลงทดสอบ")
+            check(f"{slug}/{platform}: caption is Thai", has_thai(cap))
+            check(f"{slug}/{platform}: caption discloses AI",
+                  concert.AI_NOTE in cap)
+            check(f"{slug}/{platform}: caption carries the show ask",
+                  concert.SHOW_ASK in cap)
+            check(f"{slug}/{platform}: caption is rule-safe",
+                  surreal.claim_problem(cap) is None)
+    check("facebook and tiktok captions differ",
+          concert.caption(slugs[0], "facebook") != concert.caption(slugs[0], "tiktok"))
+
+    # The stage varies per song, or the grid is the look-alike pattern.
+    used = {mcs.palette_for(s) for s in slugs}
+    check("stage palette varies across songs", len(used) >= 2, f"{used}")
+    check("every chosen palette exists",
+          all(mcs.palette_for(s) in mcs.PALETTES for s in slugs))
+    check("palette is deterministic",
+          mcs.palette_for(slugs[0]) == mcs.palette_for(slugs[0]))
+
+    # The burned label is positioned, emoji-free and inside the frame.
+    ass = mcs.build_ass(slugs[0], "เพลงทดสอบ", 40.0)
+    dialogue = [ln for ln in ass.splitlines() if ln.startswith("Dialogue:")]
+    check("label draws wordmark + show line + song + brand + note + follow",
+          len(dialogue) >= 6, f"{len(dialogue)}")
+    check("every label line is positioned", all("\\pos(" in ln for ln in dialogue))
+    ys = [int(re.search(r"\\pos\(\d+,(\d+)\)", ln).group(1)) for ln in dialogue]
+    check("label lines do not share a y", len(set(ys)) == len(ys), f"{ys}")
+    check("label lines are inside the frame", all(0 < y < mcs.H for y in ys))
+    check("no emoji in the burned text",
+          not any(0x1F300 <= ord(c) <= 0x1FAFF for c in ass))
+    check("clip stays short", mcs.MAX_SECONDS <= 60.0, f"{mcs.MAX_SECONDS}")
+    check("a take is a hook, not a full set", concert.CLIP_SECONDS <= 60.0,
+          f"{concert.CLIP_SECONDS}")
+
+
 def test_affiliate_release() -> None:
     """The affiliate lane must exist on the YouTube rail, not only the card renderer.
 
@@ -1921,17 +2003,21 @@ def test_crosspost_engine() -> None:
     shorts = list((ROOT / "library" / "shorts").glob("short-*.mp4"))
     aff = list((ROOT / "library" / "affiliate").glob("short-aff-*.mp4"))
     sur = list((ROOT / "library" / "surreal").glob("surreal-*.mp4"))
+    con = list((ROOT / "library" / "concert").glob("concert-*.mp4"))
     moods = list((ROOT / "library" / "moods").glob("mood-*.mp4"))
     if not shorts:
         print("  skip (no shorts rendered yet)")
         return
-    # Every song Short, affiliate card, surreal exhibit and mood clip is queued on
-    # both platforms; the Facebook-only photo and link formats are added on top of
-    # that pair, so the count is the video items times two plus those extras.
+    # Every song Short, affiliate card, surreal exhibit, live-concert take and
+    # mood clip is queued on both platforms; the Facebook-only photo and link
+    # formats are added on top of that pair, so the count is the video items
+    # times two plus those extras.
     extras = [it for it in q if it.get("kind") in ("photo", "link")]
     check("every short is queued on both platforms",
-          len(q) == (len(shorts) + len(aff) + len(sur) + len(moods)) * 2 + len(extras),
-          f"{len(q)} vs ({len(shorts)}+{len(aff)}+{len(sur)}+{len(moods)})*2+{len(extras)}")
+          len(q) == (len(shorts) + len(aff) + len(sur) + len(con) + len(moods)) * 2
+          + len(extras),
+          f"{len(q)} vs ({len(shorts)}+{len(aff)}+{len(sur)}+{len(con)}+"
+          f"{len(moods)})*2+{len(extras)}")
     check("ids are unique", len({it["id"] for it in q}) == len(q))
 
     # The mood clips (K's approved real-instrument beds) must be queued on both
@@ -2008,7 +2094,7 @@ def test_crosspost_engine() -> None:
     left = crosspost.pending(q, state, "tiktok")
     check("posted items are excluded", t["id"] not in {it["id"] for it in left})
     check("facebook still pending",
-          len(left) == len(shorts) + len(aff) + len(sur) + len(moods) - 1,
+          len(left) == len(shorts) + len(aff) + len(sur) + len(con) + len(moods) - 1,
           f"{len(left)}")
 
     # The absurdist exhibits (K's FB/TK rebrand) are captioned by the surreal
@@ -2023,6 +2109,19 @@ def test_crosspost_engine() -> None:
         check("surreal caption is Thai",
               all(any("\u0e00" <= ch <= "\u0e7f" for ch in it["caption"])
                   for it in sur_items))
+
+    # The live-concert takes (K's "เสียงแสดงสด" lane) are captioned by the
+    # concert identity module: Thai, disclosed, and the same project on both
+    # surfaces.
+    con_items = [it for it in q if it.get("kind") == "concert"]
+    if con:
+        check("concert takes are queued on both platforms",
+              len(con_items) == len(con) * 2, f"{len(con_items)}")
+        check("concert caption carries the AI disclosure",
+              all("AI" in it["caption"] for it in con_items))
+        check("concert caption is Thai",
+              all(any("\u0e00" <= ch <= "\u0e7f" for ch in it["caption"])
+                  for it in con_items))
 
     # A product card must not sit behind the whole song backlog: at the daily cap
     # a surface would not reach one for over a week. The build folds a card pair
@@ -2234,6 +2333,58 @@ def test_promote_surreal_leads_the_feeds() -> None:
             check("promoting again is a no-op", crosspost.promote_surreal() == 0)
     finally:
         crosspost.QUEUE = real
+
+
+def test_promote_concert_leads_the_feeds() -> None:
+    """The live-concert take is a new form, so it must share the front.
+
+    K (2026-11-09): the concert lane joins the exhibits as a leading format.
+    `merge_queue` only folds it in every 8 positions, so `promote_concert` lifts
+    the whole lane to the front, grouped one slug at a time so the two feeds stay
+    in step, and is idempotent so the rail can call it every run. `concert_items`
+    must read the rendered clips and caption them per surface.
+    """
+    section("promote_concert leads the feeds with the live takes")
+    import crosspost
+    import tempfile
+
+    real = crosspost.QUEUE
+    try:
+        with tempfile.TemporaryDirectory() as d:
+            crosspost.QUEUE = Path(d) / "q.json"
+            q = [
+                {"id": "tiktok:song-a", "platform": "tiktok", "kind": "song",
+                 "slug": "a", "video": "a.mp4", "caption": "old"},
+                {"id": "facebook:concert-b", "platform": "facebook",
+                 "kind": "concert", "slug": "b", "video": "b.mp4", "caption": "live"},
+                {"id": "tiktok:concert-b", "platform": "tiktok",
+                 "kind": "concert", "slug": "b", "video": "b.mp4", "caption": "live"},
+                {"id": "facebook:surreal-c", "platform": "facebook",
+                 "kind": "surreal", "slug": "c", "video": "c.mp4", "caption": "art"},
+            ]
+            crosspost.QUEUE.write_text(json.dumps(q), encoding="utf-8")
+            n = crosspost.promote_concert()
+            check("promote reports the concert count", n == 2, str(n))
+            got = json.loads(crosspost.QUEUE.read_text(encoding="utf-8"))
+            check("the concert now leads the queue",
+                  got[0].get("kind") == "concert")
+            check("the same slug sits on both surfaces back to back",
+                  [it["slug"] for it in got[:2]] == ["b", "b"])
+            check("no item is dropped", len(got) == len(q))
+            check("non-concert items keep their order",
+                  [it["id"] for it in got[2:]] ==
+                  ["tiktok:song-a", "facebook:surreal-c"])
+            check("promoting again is a no-op", crosspost.promote_concert() == 0)
+    finally:
+        crosspost.QUEUE = real
+
+    # `concert_items` reads the rendered clips and captions them per surface.
+    src = (ROOT / "scripts" / "crosspost.py").read_text()
+    check("crosspost builds concert items", "def concert_items()" in src)
+    check("concert is a queue kind", '"kind": "concert"' in src)
+    check("the queue folds the concert lane in", "concert_items()" in src)
+    check("concert caption path exists",
+          'elif item.get("kind") == "concert"' in src)
 
 
 def test_state_files_are_addable() -> None:
@@ -4151,6 +4302,7 @@ def main() -> int:
     test_crosspost_uses_committed_queue()
     test_merge_queue_keeps_the_backlog()
     test_promote_surreal_leads_the_feeds()
+    test_promote_concert_leads_the_feeds()
     test_state_files_are_addable()
     test_crosspost_blocked_vs_empty()
     test_api_posting_route()
@@ -4181,6 +4333,7 @@ def main() -> int:
     test_playlist_patch_is_idempotent()
     test_affiliate_short()
     test_surreal_lane()
+    test_concert_lane()
     test_affiliate_release()
     test_affiliate_render_rail()
     test_plan_rotates_songs()

@@ -57,6 +57,7 @@ WORK = ROOT / "work"
 SHORTS = ROOT / "library" / "shorts"
 AFF_SHORTS = ROOT / "library" / "affiliate"
 SURREAL = ROOT / "library" / "surreal"
+CONCERT = ROOT / "library" / "concert"
 MOODS = ROOT / "library" / "moods"
 COVERS = ROOT / "library" / "covers"
 QUEUE = WORK / "crosspost-queue.json"
@@ -232,6 +233,12 @@ def refresh_captions() -> int:
                 want = surreal.caption(item["slug"], item["platform"])
             except ImportError:
                 want = item["caption"]
+        elif item.get("kind") == "concert":
+            try:
+                import concert
+                want = concert.caption(item["slug"], item["platform"])
+            except ImportError:
+                want = item["caption"]
         elif item.get("kind") == "mood":
             try:
                 want = mood_caption(item["slug"], item["platform"])
@@ -344,10 +351,19 @@ def build_queue() -> list[dict]:
     and the song Shorts, the mood beds and the funnel formats fold in behind it.
     The lead matters because the committed queue is what actually posts, and an
     appended lane (how the exhibits arrived before) sat weeks out and never ran.
+
+    K (2026-11-09, later): add the live-concert lane, so the queue now leads with
+    two new formats. The concert takes alternate with the exhibits near the top
+    (one every third item), then the song Shorts, the mood beds and the funnel
+    formats fold in behind them.
     """
     # The new format leads. One exhibit after every item of the song layer, so the
     # two alternate and an exhibit is reached within the first post of a run.
     base = interleave(surreal_items(), song_items(), every=1, chunk=1)
+    # The concert takes are the second new format: folded in one after every third
+    # item of the exhibit/song stream, so a live take is reached on the first day
+    # while the two new lanes share the top of the feed.
+    base = interleave(base, concert_items(), every=3, chunk=1)
     # The mood clips — the real-instrument beds K approved (2026-11-09) — one at a
     # time and spaced, so six clips that share a shape do not land as a burst.
     base = interleave(base, mood_items(), every=4, chunk=1)
@@ -472,6 +488,38 @@ def surreal_items() -> list[dict]:
                 "kind": "surreal",
                 "video": str(clip.relative_to(ROOT)),
                 "caption": surreal.caption(slug, platform),
+            })
+    return items
+
+
+def concert_items() -> list[dict]:
+    """The live-concert clips, captioned by the concert identity module.
+
+    K (2026-11-09): the surfaces should carry songs that sound like a live show.
+    Each clip is one of our own songs mixed through the hall/PA/crowd recipe
+    (`concert.py`) and filmed as a stage-light take. The caption is the live-show
+    identity, the same on both surfaces except the cross-promo line, so the two
+    feeds read as one project. The id is stable (`<state_key>:concert-<slug>`),
+    so a posted take never re-enters.
+    """
+    try:
+        import concert
+    except ImportError:
+        return []
+    if not CONCERT.exists():
+        return []
+    items = []
+    for clip in sorted(CONCERT.glob("concert-*.mp4")):
+        slug = clip.stem[len("concert-"):]
+        for platform, cfg in PLATFORMS.items():
+            items.append({
+                "id": f"{cfg['state_key']}:{clip.stem}",
+                "platform": platform,
+                "slug": slug,
+                "hook": 0,
+                "kind": "concert",
+                "video": str(clip.relative_to(ROOT)),
+                "caption": concert.caption(slug, platform),
             })
     return items
 
@@ -1238,15 +1286,34 @@ def promote_surreal() -> int:
     songs and karaoke still rotate underneath. Stable and idempotent: the
     relative order inside each group is preserved, so re-running is a no-op.
     """
+    return _promote_kind("surreal")
+
+
+def promote_concert() -> int:
+    """Move the live-concert takes to the front of the queue.
+
+    The same move as `promote_surreal`, for K's live-show lane (2026-11-09):
+    "ทำเพลงที่ใช้เสียงร้องแบบแสดงสดคอนเสิร์ต". Run after `promote_surreal` so the
+    two new lanes share the top of both feeds and the song backlog rotates below.
+    """
+    return _promote_kind("concert")
+
+
+def _promote_kind(kind: str) -> int:
+    """Front every queue item of `kind`, grouped slug-by-slug, both surfaces.
+
+    Stable and idempotent: the order inside the lane and inside the rest is
+    preserved, so re-running changes nothing.
+    """
     if not QUEUE.exists():
         return 0
     cur = json.loads(QUEUE.read_text(encoding="utf-8"))
-    exhibits = [it for it in cur if it.get("kind") == "surreal"]
-    rest = [it for it in cur if it.get("kind") != "surreal"]
+    lane = [it for it in cur if it.get("kind") == kind]
+    rest = [it for it in cur if it.get("kind") != kind]
     # A tidy gallery walk: the same slug on both surfaces back to back, slugs in
     # order, so the two feeds stay in step instead of the merge's scattered order.
     by_slug: dict[str, dict[str, dict]] = {}
-    for it in exhibits:
+    for it in lane:
         by_slug.setdefault(it["slug"], {})[it["platform"]] = it
     order: list[dict] = []
     for slug in sorted(by_slug):
@@ -1276,6 +1343,8 @@ def main() -> int:
                     help="append newly rendered Shorts without dropping the backlog")
     ap.add_argument("--promote-surreal", action="store_true",
                     help="lead both feeds with the absurdist exhibit clips")
+    ap.add_argument("--promote-concert", action="store_true",
+                    help="lead both feeds with the live-concert clips")
     ap.add_argument("--augment-formats", action="store_true",
                     help="insert the Facebook photo/link formats into the queue")
     ap.add_argument("--refresh-captions", action="store_true",
@@ -1299,6 +1368,10 @@ def main() -> int:
     if args.promote_surreal:
         n = promote_surreal()
         print(f"queue: {n} exhibit(s) moved to the front")
+        return 0
+    if args.promote_concert:
+        n = promote_concert()
+        print(f"queue: {n} concert take(s) moved to the front")
         return 0
     if args.rebuild_queue or not QUEUE.exists():
         q = build_queue()

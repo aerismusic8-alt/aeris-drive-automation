@@ -95,6 +95,9 @@ music938-1/library/surreal/*.mp4
 # The real-instrument mood clips (K approved the six beds, 2026-11-09) are
 # regenerable ffmpeg renders; the durable copy is the media release.
 music938-1/library/moods/*.mp4
+# The live-concert takes (K's "เสียงแสดงสด" lane) are regenerable ffmpeg renders
+# of our own songs through the hall/PA/crowd mix; the durable copy is the release.
+music938-1/library/concert/*.mp4
 music938-1/library/thumbs/*.png
 music938-1/library/covers/*.jpg
 # The compilation render is a 200 MB+ artifact; keep the .txt/.title (chapters) but not the video.

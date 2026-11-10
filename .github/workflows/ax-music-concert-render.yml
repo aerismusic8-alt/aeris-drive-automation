@@ -1,0 +1,103 @@
+name: AX Music Concert Render
+
+# Renders the "live concert" clips for the Facebook + TikTok surfaces.
+#
+# K (2026-11-09): "ทำเพลงที่ใช้เสียงร้องแบบแสดงสดคอนเสิร์ตหน่อยสิ เห็นคลิปใช้เทคนิค
+# นี้คนดูเป็นล้านเลย" — make songs that sound like a live concert performance.
+# `concert.py` owns the identity and the audio mix (hall + PA + crowd, all built
+# from ffmpeg's own sources) and `crosspost.py` already captions and queues the
+# takes, but nothing rendered the clips, so `library/concert/` was always empty.
+# This rail is that missing step.
+#
+# The audio is one of our own songs (a real Flow Music vocal) mixed through a
+# synthesised hall, an arena PA and a generated audience; the picture is the
+# cover under moving stage lights. Nothing is downloaded, nothing is paid for,
+# no login — Rule #1 holds. Every clip and every caption discloses the AI
+# performance.
+#
+# Two takes a day, not the whole catalogue: a wall of near-identical clips is the
+# "low-quality / look-alike" pattern that kills reach, and the queue folds them
+# in singly anyway. `--skip-existing` means a re-run or a retry never re-renders
+# one already on disk.
+
+on:
+  schedule:
+    # 05:15 UTC — after the surreal render (05:00) and before the crosspost
+    # (every 2 h), so a fresh take can enter that day's queue.
+    - cron: '15 5 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: ax-music-concert-render
+  cancel-in-progress: false
+
+jobs:
+  render:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install ffmpeg
+        run: |
+          set -euo pipefail
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq ffmpeg
+
+      - name: Pull the song masters and covers
+        env:
+          AX_GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          python3 music938-1/scripts/pull_media.py --only songs
+          python3 music938-1/scripts/pull_media.py --only covers
+
+      - name: Pull the takes already on the release
+        env:
+          AX_GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          # `--skip-existing` keys off the clip being on disk, and a fresh
+          # checkout has an empty library/, so without this every run re-renders
+          # the whole catalogue and re-uploads it.
+          python3 music938-1/scripts/pull_media.py --only concert
+
+      - name: Render the new takes
+        run: |
+          set -euo pipefail
+          cd music938-1
+          python3 scripts/make_concert_short.py --all --skip-existing --limit 2
+
+      - name: Push the new clips back to the media store
+        env:
+          AX_GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          python3 music938-1/scripts/publish_media.py
+
+      - name: Add the new clips to the crosspost queue
+        run: |
+          set -euo pipefail
+          # --merge-queue appends only new (platform, video) ids, so the pending
+          # backlog is never dropped when a new format joins the rotation.
+          python3 music938-1/scripts/crosspost.py --merge-queue
+          # K (2026-11-09): the live take is a *new* form, so it shares the front
+          # of both feeds with the exhibits; the songs still rotate underneath.
+          python3 music938-1/scripts/crosspost.py --promote-concert
+
+      - name: Commit the queue
+        run: |
+          set -euo pipefail
+          git config user.name  "ax-music-concert"
+          git config user.email "ax-music-concert@users.noreply.github.com"
+          git add music938-1/work/crosspost-queue.json
+          if git diff --cached --quiet; then
+            echo "no change to record"
+            exit 0
+          fi
+          git commit -m "data(music): concert render $(date -u +%Y-%m-%dT%H:%MZ)"
+          git pull --rebase --autostash origin "${GITHUB_REF_NAME}"
+          git push
