@@ -21,6 +21,7 @@ sys.path.insert(0, str(ROOT / "scripts"))
 sys.path.insert(0, str(ROOT.parent / "aeris938-1" / "scripts"))
 
 import browser as B  # noqa: E402
+import surreal  # noqa: E402
 
 AVATAR = ROOT / "channel" / "avatar-pro-800x800.png"
 COVER = ROOT / "channel" / "cover-pro-1640x624.png"
@@ -32,24 +33,14 @@ TIKTOK_URL = "https://www.tiktok.com/@aeris.music4"
 TIKTOK_BIO = ("🎵 เพลงไทยเพราะๆ ใหม่ทุกวัน\n"
               "🛒 ลิงก์พันธมิตร: https://s.shopee.co.th/60SrsstoP6")
 FACEBOOK_ID = "61595890900382"
-# The Page's own intro. A four-advisor panel (2026-11-06) said the intro must
-# answer "what do I get if I follow?" in the first line, so the benefit leads and
-# the follow ask closes it. Same voice as the YouTube description.
-FACEBOOK_BIO = ("🎵 เพลงไทยฟังเพลิน ร้องตามได้ 🎶\n"
-                "เพลงเศร้า · เพื่อชีวิต · ลูกทุ่ง · คาราโอเกะ เพลงใหม่เรื่อย ๆ\n"
-                "กดติดตามไว้ ไม่พลาดเพลงต่อไปครับ ❤️\n"
-                "▶️ ฟังเต็มที่ YouTube: @aerismusicth\n"
-                "🛒 ของน่าซื้อ (ลิงก์พันธมิตร): https://s.shopee.co.th/2qVq75ACtW")
-# The pinned "front door". A stranger who lands on the Page reads this before any
-# Reel, so it names the four things the Page posts and asks for the follow. The
-# first line is the whole pitch; the rest is scannable on a phone.
-WELCOME_POST = ("❤️ ยินดีต้อนรับสู่ AERIS Music\n"
-                "เพลงไทยหลากหลายอารมณ์ เพลงใหม่มาลงเรื่อย ๆ\n"
-                "🎵 เพลงเศร้า สำหรับวันที่คิดถึงใครบางคน\n"
-                "🎸 เพื่อชีวิต สำหรับวันที่ต้องการพลัง\n"
-                "🌾 ลูกทุ่ง กลิ่นอายบ้านเรา\n"
-                "🎤 คาราโอเกะ สำหรับคนที่อยากร้องตาม\n"
-                "กดติดตามเพจไว้ ไม่พลาดเพลงใหม่ครับ ❤️")
+# The Page's own intro and pinned post come from the surreal identity module, so
+# the front door wears the same voice as the Reels. A four-advisor panel
+# (2026-11-06) said the intro must answer "what do I get if I follow?" in the
+# first line; `surreal.BIO` does that and closes on the follow ask.
+import surreal  # noqa: E402  (scripts/ is already on sys.path)
+
+FACEBOOK_BIO = surreal.BIO
+WELCOME_POST = surreal.WELCOME
 # The AERIS Music *Page* (resolves to /people/AERIS-Music/61595890900382/), the
 # same Page crosspost.py posts Reels to. Do not point this at 61596276533369 —
 # that is K's personal profile ("Aeris-Ak Akath"), which cannot be branded and is
@@ -411,7 +402,7 @@ def welcome() -> int:
 
         already = pg.evaluate("""() => {
           const a=[...document.querySelectorAll('[role=article]')]
-            .find(x=>/ยินดีต้อนรับสู่ AERIS Music/.test(x.innerText||''));
+            .find(x=>/หอศิลป์ของเสียง/.test(x.innerText||''));
           return a ? 'found' : 'missing';
         }""")
         if already == "missing":
@@ -421,22 +412,47 @@ def welcome() -> int:
             pg.locator('[role=dialog] [contenteditable=true]').first.click()
             pg.wait_for_timeout(800)
             ctx.new_cdp_session(pg).send("Input.insertText", {"text": WELCOME_POST})
-            pg.wait_for_timeout(1200)
-            pg.evaluate("""() => {const d=document.querySelector('[role=dialog]');
-              const b=[...d.querySelectorAll('[role=button]')].find(x=>/^ถัดไป$/.test((x.innerText||'').trim()));
-              if(b)b.click();}""")
-            pg.wait_for_timeout(5000)
-            pg.evaluate("""() => {const d=document.querySelector('[role=dialog]');
-              const b=[...d.querySelectorAll('[role=button]')].find(x=>/^โพสต์$/.test((x.innerText||'').trim()));
-              if(b)b.click();}""")
-            pg.wait_for_timeout(9000)
-            print("welcome post: created")
+            pg.wait_for_timeout(1500)
+            # Two screens: the composer, then a "การตั้งค่าโพสต์" settings screen
+            # whose own "โพสต์" button publishes. Click by accessible role, not by
+            # the first [role=dialog] — that first dialog is the notifications
+            # panel, and targeting it is why the post silently never published.
+            try:
+                pg.get_by_role("button", name="ถัดไป", exact=True).first.click(timeout=6000)
+                pg.wait_for_timeout(6000)
+            except Exception as exc:
+                print(f"welcome post: could not reach the settings screen ({exc})")
+                pg.close()
+                return 1
+            # The settings screen shows the AI label off; turn it on so the post
+            # carries the platform's own disclosure as well as the caption's.
+            try:
+                pg.get_by_role("button", name="ป้าย AI ปิดอยู่").first.click(timeout=3000)
+                pg.wait_for_timeout(1500)
+            except Exception:
+                pass
+            try:
+                pg.get_by_role("button", name="โพสต์", exact=True).first.click(timeout=6000)
+                pg.wait_for_timeout(9000)
+            except Exception as exc:
+                print(f"welcome post: could not click โพสต์ ({exc})")
+                pg.close()
+                return 1
+            posted = pg.evaluate("""() => {
+              const a=[...document.querySelectorAll('[role=article]')]
+                .find(x=>/หอศิลป์ของเสียง/.test(x.innerText||''));
+              return a ? 'found' : 'missing';
+            }""")
+            if posted == "found":
+                print("welcome post: created")
+            else:
+                print("welcome post: NOT created (post did not appear)")
 
         # Pin it if it is not already pinned. The menu is opened on the post
         # itself; a pinned post's menu carries "เลิกปักหมุดโพสต์".
         state = pg.evaluate("""() => {
           const a=[...document.querySelectorAll('[role=article]')]
-            .find(x=>/ยินดีต้อนรับสู่ AERIS Music/.test(x.innerText||''));
+            .find(x=>/หอศิลป์ของเสียง/.test(x.innerText||''));
           const b=a&&[...a.querySelectorAll('[aria-label]')]
             .find(e=>/การดำเนินการสำหรับโพสต์นี้/.test(e.getAttribute('aria-label')||''));
           if(!b) return 'no-menu';

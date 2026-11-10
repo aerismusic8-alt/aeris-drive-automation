@@ -421,6 +421,33 @@ def test_surreal_lane() -> None:
     check("a clean line passes the guard",
           surreal.claim_problem("ตู้เย็น : ความคิดถึงที่ไม่เคยส่งถึง") is None)
 
+    # The front door (Page bio + pinned post) must wear the same identity as the
+    # Reels. It used to stay in the old polite-ballad voice while the clips went
+    # absurdist, so a stranger who tapped through saw a different Page and left.
+    for name, text in (("bio", surreal.BIO), ("welcome post", surreal.WELCOME)):
+        check(f"front door {name} is Thai", has_thai(text))
+        check(f"front door {name} carries the slogan", surreal.SLOGAN in text)
+        check(f"front door {name} carries the ritual", surreal.RITUAL in text)
+        check(f"front door {name} is rule-safe",
+              surreal.claim_problem(text) is None)
+    # The bio must answer "what do I get?" and still carry the follow ask, and
+    # the pinned post must state the rule so the strangeness reads as a project.
+    check("bio keeps the follow ask", "กดติดตาม" in surreal.BIO)
+    # Facebook silently drops a Page intro longer than 255 chars, so the write
+    # "succeeds" while the old bio stays. Pin the limit.
+    check("bio fits the Facebook intro limit",
+          len(surreal.BIO) <= surreal.BIO_MAX, f"{len(surreal.BIO)} chars")
+    check("welcome post keeps the follow ask", "กดติดตาม" in surreal.WELCOME)
+    check("welcome post states the one rule",
+          surreal.WELCOME.count(surreal.RITUAL) >= 1)
+    check("welcome post discloses AI", surreal.AI_NOTE in surreal.WELCOME)
+    # profile_setup must serve the identity module's copy, not its own stale copy.
+    import profile_setup as ps
+    check("profile_setup serves the surreal bio",
+          ps.FACEBOOK_BIO == surreal.BIO)
+    check("profile_setup serves the surreal welcome post",
+          ps.WELCOME_POST == surreal.WELCOME)
+
     # The art varies per song, or the grid is the look-alike pattern the panel
     # warned about. Five recipes exist and the songs must not all draw one.
     check("recipes are defined", len(ms.RECIPES) >= 4, f"{len(ms.RECIPES)}")
@@ -3490,14 +3517,16 @@ def test_profile_setup() -> None:
                       ("Facebook", profile_setup.FACEBOOK_BIO)):
         check(f"{name} bio discloses the affiliate link", "ลิงก์พันธมิตร" in bio)
     # The bio must answer "what do I get if I follow?" (the four-advisor panel's
-    # #1 fix) and the pinned welcome post must carry the same follow ask.
-    check("Facebook bio leads with the benefit, not the brand",
-          profile_setup.FACEBOOK_BIO.splitlines()[0].startswith("🎵"))
+    # #1 fix) and the pinned welcome post must state the project's one rule. The
+    # voice is now the absurdist identity (K, 2026-11-09), not the old polite
+    # ballad list, so the check is on the identity module, not the old keywords.
+    import surreal
+    check("Facebook bio leads with the project, not a mood list",
+          profile_setup.FACEBOOK_BIO.splitlines()[0] == surreal.SLOGAN)
     check("Facebook bio asks for the follow",
           "กดติดตาม" in profile_setup.FACEBOOK_BIO)
-    check("welcome post names the four content types",
-          all(k in profile_setup.WELCOME_POST for k in ("เพลงเศร้า", "เพื่อชีวิต", "ลูกทุ่ง", "คาราโอเกะ")))
-    check("welcome post asks for the follow", "กดติดตามเพจ" in profile_setup.WELCOME_POST)
+    check("welcome post states the one rule", surreal.RITUAL in profile_setup.WELCOME_POST)
+    check("welcome post asks for the follow", "กดติดตาม" in profile_setup.WELCOME_POST)
     # The Page composer drops execCommand input (1 char lands); only the CDP
     # Input.insertText works, so the welcome path must use it.
     psrc = (ROOT / "scripts" / "profile_setup.py").read_text()

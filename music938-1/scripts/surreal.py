@@ -163,6 +163,49 @@ def claim_problem(text: str) -> str | None:
     return None
 
 
+# ── the front door (Page bio + pinned post) ───────────────────────────────────
+# The Reels carry the absurdist caption, but a stranger who taps the Page lands
+# on the bio and the pinned post first. Those stayed in the old "polite Thai
+# ballad" voice ("เพลงเศร้า · เพื่อชีวิต · ลูกทุ่ง"), so the visitor saw a generic
+# music page and left — the identity on the converting surface did not match the
+# identity on the clip. Both are now built from the same constants above, so the
+# front door and the exhibits can never drift apart again.
+#
+# The bio must still answer "what do I get if I follow?" in its first line (the
+# 2026-11-06 panel's finding), so line 1 is the promise and the follow ask
+# closes it. No emoji in the burned ASS, but the Page bio is plain text on
+# Facebook, so the 🎵/👉 read fine here.
+
+# Facebook caps the Page intro ("คำอธิบายตัวเอง") at 255 characters; a longer
+# string makes the Save silently do nothing and the old bio stays. `tests/run.py`
+# pins the limit so this cannot regress.
+BIO_MAX = 255
+BIO = (
+    f"{SLOGAN}\n"
+    f"{PROJECT} · {RITUAL}\n"
+    "กดติดตามไว้ ดูของชิ้นถัดไปที่เราจะแปลง ❤️\n"
+    f"▶️ YouTube {HANDLES['youtube']}\n"
+    "🛒 ลิงก์พันธมิตร: https://s.shopee.co.th/2qVq75ACtW"
+)
+
+# The pinned "front door". A stranger reads this before any Reel, so it states
+# the one rule that makes the strangeness read as a project rather than noise,
+# shows two finished exhibits as proof, and asks the viewer to play.
+WELCOME = (
+    f"{SLOGAN}\n"
+    f"ที่นี่คือ {PROJECT} — หอศิลป์ของเสียง\n"
+    f"กติกามีข้อเดียว: {RITUAL}\n"
+    "\n"
+    "ตัวอย่างที่แขวนอยู่แล้ว:\n"
+    "🪑 เสาไฟฟ้าหน้าปากซอย : เวลาเดินถอยหลัง\n"
+    "🐟 ปลากัดในโหล : ความคิดถึงที่ทอดไข่ได้\n"
+    "\n"
+    f"💬 {RITUAL_ASK}\n"
+    "กดติดตามไว้ ดูของชิ้นถัดไปที่เราจะแปลง 👇\n"
+    f"⚠️ {AI_NOTE}"
+)
+
+
 # ── the idea feed (the "producer loop" entry point) ───────────────────────────
 # `ideas()` is what a producer step consumes: one row per song, each with the
 # absurd premise already resolved, so a renderer or a copywriter never has to
