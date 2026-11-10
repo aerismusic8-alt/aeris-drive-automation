@@ -475,11 +475,15 @@ def test_concert_lane() -> None:
     check("disclosure is shared with the exhibit lane",
           concert.AI_NOTE == surreal.AI_NOTE, concert.AI_NOTE)
 
-    # The mix graph carries every element of the format.
+    # The mix graph carries every element of the format, and the hall and the
+    # audience are REAL recordings (K rejected the first noise-based version).
     graph = concert.mix_filter(30.0)
     check("the hall is convolved (afir)", "afir=" in graph)
     check("the PA glues the take (acompressor)", "acompressor=" in graph)
-    check("the audience is generated (anoisesrc)", "anoisesrc=" in graph)
+    check("the audience is a real recording, not noise",
+          "[2:a]" in graph and "anoisesrc" not in graph, graph[:300])
+    check("the hall IR is a real asset", concert.HALL_IR.exists(), str(concert.HALL_IR))
+    check("the applause is a real asset", concert.APPLAUSE.exists(), str(concert.APPLAUSE))
     check("the sum is brickwalled (alimiter)", "alimiter=" in graph)
     check("the crowd swells at the intro",
           "between(t,0," in graph, graph[-400:])

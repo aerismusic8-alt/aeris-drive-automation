@@ -12,15 +12,25 @@ What the technique actually is, and what free tooling can honestly reach:
     retired). Nothing here synthesises a voice, so the honest core of the format
     is real singing.
   * the *concert* is post-processing: the studio master is pushed through a hall
-    (a long reverb tail), an arena PA (compression + a low-mid lift), an audience
-    (applause that swells at the top and the end, and a crowd bed that swells
-    under the chorus) and a room tone. All of it is built from ffmpeg's own
-    sources — pink/brown noise for the hall impulse response, the crowd and the
-    room — so nothing is downloaded, nothing is paid for, and no login is needed.
+    (a long reverb tail), an arena PA (compression + a low-mid lift) and an
+    audience (applause that swells at the top and the end, and a crowd bed that
+    swells under the chorus).
 
-The AI disclosure still holds: the voice and the crowd are synthetic, so
-`AI_NOTE` rides on every clip and every caption. The format is "จำลองบรรยากาศ
-คอนเสิร์ต" — simulate the concert, not claim a real show.
+The hall and the audience are REAL recordings, not noise. K rejected the first
+version (2026-11-09) precisely because the hall was a decaying pink-noise
+impulse and the applause was band-limited noise — it read as a hiss, not a room
+of people. So:
+
+  * `assets/concert/hall-ir.wav` is a measured concert-hall impulse response
+    (OpenAIR, University of York — Creative Commons, used in DAWs and games), so
+    `afir` convolves a venue that actually exists;
+  * `assets/concert/applause.wav` is a real CC0 applause recording, so the crowd
+    is people clapping and not a noise generator.
+
+Both are committed, so a fresh clone renders without a download. The AI
+disclosure still holds: the voice is synthetic, so `AI_NOTE` rides on every clip
+and every caption. The format is "จำลองบรรยากาศคอนเสิร์ต" — simulate the concert,
+not claim a real show.
 
 The mix is a single ffmpeg pass; `mix_filter()` returns the graph as a string so
 a test can pin the shape without encoding anything. Every constant a listener
@@ -65,10 +75,10 @@ HANDLES = surreal.HANDLES
 
 # ── the mix recipe ────────────────────────────────────────────────────────────
 # Every number a listener hears, named. The hall is the format: without a long
-# tail the vocal sits in a studio, not a venue.
-HALL_IR_SECONDS = 3.0        # length of the synthesised impulse response
-HALL_LOWPASS = 7000          # the hall absorbs the top end
-HALL_HIGHPASS = 180          # ...and muddies the very bottom
+# tail the vocal sits in a studio, not a venue. The hall and the audience are
+# real recordings (`assets/concert/`), not noise sources.
+HALL_IR = ROOT / "assets" / "concert" / "hall-ir.wav"   # measured venue (OpenAIR)
+APPLAUSE = ROOT / "assets" / "concert" / "applause.wav"  # real CC0 clapping
 HALL_WET = 0.85              # reverb return under the dry vocal
 HALL_IRGAIN = 0.5
 
@@ -81,7 +91,6 @@ PA_RELEASE = 160
 
 CROWD_LEVEL = 1.0            # applause return
 CROWD_BED = 0.22             # the low crowd under the whole take
-ROOM_LEVEL = 0.18            # room tone, so silence is never digital-dead
 INTRO_APPLAUSE = 4.5         # seconds of applause before the song
 OUTRO_APPLAUSE = 4.5         # ...and after the last note
 
@@ -91,41 +100,31 @@ LIMIT = 0.95                 # the brickwall that keeps the sum from clipping
 def mix_filter(seconds: float) -> str:
     """The single-pass ffmpeg graph that turns a song into a live take.
 
-    Input 0 is the song (already seeked). The hall impulse, the crowd and the
-    room are `anoisesrc`/lavfi sources created inside the graph, so the pass
-    needs no external asset and no download. The crowd swells in for the intro,
-    drops to a bed, then swells again for the outro (`between()` on `t`).
+    Input 0 is the song (already seeked); inputs 1 and 2 are the real hall
+    impulse and the real applause (`assets/concert/`). The hall is convolved
+    over the performance with `afir`, so the reverb is a venue that exists; the
+    applause loops under the intro/outro swells and drops to a bed in between.
+    Nothing is synthesised here.
     """
     end = max(0.0, seconds - 1.0)
     crowd_env = (f"0.95*between(t,0,{INTRO_APPLAUSE})"
                  f"+{CROWD_BED}"
                  f"+0.75*between(t,{max(0.0, seconds - OUTRO_APPLAUSE)},{seconds})")
     return (
-        # the hall impulse: decaying pink noise
-        f"anoisesrc=d={HALL_IR_SECONDS}:c=pink:a=0.6:r={SR},"
-        f"highpass=f={HALL_HIGHPASS},lowpass=f={HALL_LOWPASS},"
-        f"afade=t=out:st=0:d={HALL_IR_SECONDS}:curve=exp,volume=0.9[ir];"
-        # the audience: band-limited noise, combed by a chorus so many hands read
-        f"anoisesrc=d={seconds}:c=pink:a=0.7:r={SR},"
-        f"highpass=f=900,lowpass=f=6000,"
-        f"acompressor=threshold=0.03:ratio=6:attack=1:release=50,"
-        f"chorus=0.6:0.9:50|60:0.4|0.32:0.25|0.4:2|1.3,"
+        # the audience: a real applause recording, looped and swelled
+        f"[2:a]atrim=0:{seconds},asetpts=N/SR/TB,"
         f"volume='{crowd_env}':eval=frame,"
         f"afade=t=out:st={end}:d=1[crowd];"
-        # the room tone: a low brown-noise floor
-        f"anoisesrc=d={seconds}:c=brown:a=0.5:r={SR},"
-        f"lowpass=f=800,volume={ROOM_LEVEL}[room];"
         # the performance through the PA
         f"[0:a]highpass=f=70,"
         f"equalizer=f={PA_LOWMID_HZ}:t=q:w=1:g={PA_LOWMID_GAIN},"
         f"acompressor=threshold={PA_THRESHOLD}:ratio={PA_RATIO}:"
         f"attack={PA_ATTACK}:release={PA_RELEASE}[perf];"
         f"[perf]asplit=2[pdry][pwet];"
-        # the hall: the wet path convolved with the impulse
-        f"[pwet][ir]afir=dry=1:wet=3:irgain={HALL_IRGAIN}[reverb];"
+        # the hall: the wet path convolved with the measured impulse response
+        f"[pwet][1:a]afir=dry=1:wet=3:irgain={HALL_IRGAIN}[reverb];"
         f"[pdry][reverb]amix=inputs=2:weights=1 {HALL_WET}:normalize=0[hall];"
-        f"[hall][room]amix=inputs=2:weights=1 {ROOM_LEVEL}:normalize=0[withroom];"
-        f"[withroom][crowd]amix=inputs=2:weights=1 {CROWD_LEVEL}:normalize=0[full];"
+        f"[hall][crowd]amix=inputs=2:weights=1 {CROWD_LEVEL}:normalize=0[full];"
         f"[full]alimiter=limit={LIMIT}[out]"
     )
 
@@ -157,12 +156,16 @@ def render(slug: str, dest: Path, *, start: float = 0.0,
     p = plan(slug, seconds=seconds)
     if not p["song"].exists():
         raise FileNotFoundError(f"missing {p['song']}; pull media first")
+    for asset in (HALL_IR, APPLAUSE):
+        if not asset.exists():
+            raise FileNotFoundError(f"missing {asset}; the real concert assets ship with the repo")
     dest = Path(dest)
     dest.parent.mkdir(parents=True, exist_ok=True)
     raw = dest.with_name(dest.stem + "-raw.wav")
     subprocess.run(
         ["ffmpeg", "-y", "-hide_banner", "-loglevel", "error",
          "-ss", f"{start:.3f}", "-i", str(p["song"]),
+         "-i", str(HALL_IR), "-stream_loop", "-1", "-i", str(APPLAUSE),
          "-filter_complex", p["filter"],
          "-map", "[out]", "-t", f"{seconds:.3f}",
          "-ar", str(SR), "-ac", "2", "-c:a", "pcm_s16le", str(raw)],

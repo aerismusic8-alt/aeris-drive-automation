@@ -10,9 +10,10 @@ under moving stage lights (a warm gradient screen-blended on, a slow push-in, a
 vignette), so it reads as a venue and not a studio card. The burned label is the
 live card, the brand, the AI disclosure and the follow ask — Thai, no emoji.
 
-Everything is free and offline: the audience, the hall and the room tone are
-built from ffmpeg's own noise sources inside `concert.mix_filter`, and the lights
-are ffmpeg's `gradients` source. Nothing is downloaded, nothing is paid for.
+Everything is free: the hall is a real measured impulse response and the
+audience is a real CC0 applause recording (`assets/concert/`), both committed, so
+a fresh clone renders without a download; the lights are ffmpeg's `gradients`
+source. Nothing is paid for and no login is needed.
 
     python3 scripts/make_concert_short.py --plan
     python3 scripts/make_concert_short.py --all --once --limit 3
