@@ -2077,7 +2077,12 @@ def test_crosspost_engine() -> None:
           len(parked) == 2 and "return 3" in parked[1].split("print(f\"posting", 1)[0])
     probe_body = src.split("def probe(", 1)[1].split("\ndef ", 1)[0]
     check("probe reports a parked surface instead of a dead session",
-          "parked" in probe_body and "return 3 if parked else 0" in probe_body)
+          "parked" in probe_body and "return rc or (3 if no_token else 0)" in probe_body)
+    # A token that is present but rejected is an outage, not a park. If the probe
+    # collapses the two, a dead Facebook token hides behind a green run — which is
+    # exactly what happened from 2026-11-08.
+    check("probe fails on a rejected token but stays green on a missing one",
+          "rejected" in probe_body and "rc = 1" in probe_body)
 
 
 def test_browser_ci_storage_state() -> None:

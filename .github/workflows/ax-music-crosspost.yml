@@ -93,8 +93,12 @@ jobs:
             exit 1
           fi
           for p in facebook tiktok; do
-            python3 music938-1/scripts/crosspost.py --probe --platform "$p"
-            rc=$?
+            # GitHub runs this under `bash -e`, so a bare probe that returns 3
+            # (a parked API-only surface) aborts the step before the case below
+            # can read it — and this step is documented as one that never fails.
+            # `|| rc=$?` keeps the exit code without tripping `-e`.
+            rc=0
+            python3 music938-1/scripts/crosspost.py --probe --platform "$p" || rc=$?
             # rc 0 = signed in; rc 3 = an API-only surface with no token, which is
             # parked on purpose and must NOT count as blocked (a red run would make
             # ntfy ask K to sign in — the exact loop we removed); anything else is

@@ -738,18 +738,32 @@ def probe(platform: str | None = None) -> int:
     # must not report a healthy API surface as dead just because the cookie
     # session it no longer uses has expired.
     api_names = {n for n in names if api_poster(n) is not None}
-    # An API-only surface with no token is *parked*, not signed out: it will never
-    # use the browser, so there is no session to check and no K sign-in to ask for.
-    # Report it as its own state (rc 3) so the rail can stay green.
+    # An API-only surface with no live poster is one of two things, and they need
+    # different handling. With no token configured it is *parked*: it will never
+    # use the browser, nothing is broken, and rc 3 keeps the rail green. With a
+    # token configured but rejected (the Facebook one returned "API access
+    # blocked") it is *blocked*: the surface is down with work waiting and only a
+    # fresh token fixes it, so rc 1 must reach K. Collapsing the two hid a dead
+    # Facebook token behind a green run for days.
     parked = {n for n in names if n in API_ONLY and n not in api_names}
-    for n in sorted(parked):
-        print(f"PARKED {n:9} API-only; no live token (absent or rejected by the API) "
-              f"— see docs/k-free-runbook.md")
+    no_token, rejected = set(), set()
+    for n in parked:
+        if n == "facebook" and fb_graph is not None and fb_graph.available():
+            rejected.add(n)
+        else:
+            no_token.add(n)
+    for n in sorted(no_token):
+        print(f"PARKED {n:9} API-only; no token configured — set it once "
+              f"(docs/k-free-runbook.md), then it posts on its own")
+    for n in sorted(rejected):
+        print(f"BLOCKED {n:9} API-only; token present but rejected by the API "
+              f"(API access blocked / OAuthException) — re-provision the token")
+        rc = 1
     if api_names:
         print(f"API-token surfaces (no browser needed): {', '.join(sorted(api_names))}")
     browser_names = [n for n in names if n not in api_names and n not in parked]
     if not browser_names:
-        return 3 if parked else 0
+        return rc or (3 if no_token else 0)
     with _connect() as p:
         br, ctx = B.connect(p)
         for name in browser_names:
@@ -1066,6 +1080,13 @@ def post(platform: str, limit: int) -> int:
         # one-time setup, instead of driving a cookie session that dies and needs
         # K to sign in again. `--pending-count` still reports the backlog, so the
         # rail can tell "parked" from "empty".
+        if platform == "facebook" and fb_graph is not None and fb_graph.available():
+            # The token exists but was rejected. Saying "no token configured" here
+            # would send K to the wrong fix; the token must be re-provisioned.
+            print(f"{platform}: token present but rejected by the API "
+                  f"(API access blocked / OAuthException) — re-provision the token; "
+                  f"see docs/k-free-runbook.md. Not opening a browser.")
+            return 3
         print(f"{platform}: parked — API-only surface, no token configured "
               f"({len(todo)} pending). One-time Meta System User token; see "
               f"docs/k-free-runbook.md. Not opening a browser.")
