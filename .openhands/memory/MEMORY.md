@@ -1692,3 +1692,22 @@ K approved the hum-free sound ("แบบนี้แหล่ะถึงจะ
 - **A cached bed outlives the code that made it** — `ambient_loop.BED_TAG` must be
   bumped whenever the timbre changes or the old fake bed keeps shipping from disk.
   It is now `sampler1`. Tests assert the *live* tag, not a frozen name.
+
+## FB Page front door (2026-11-09, durable)
+- **The front door must wear the same identity as the Reels.** A visitor taps the
+  Page before any clip, so `surreal.BIO` (Page intro) and `surreal.WELCOME`
+  (pinned post) are the converting surfaces — `profile_setup.py` imports both, so
+  they cannot drift back to the old polite-ballad voice.
+- **Facebook caps the Page intro at 255 chars.** A longer string makes Save
+  silently no-op: the dialog stays open, the old bio survives, and the script
+  still prints "set". `surreal.BIO_MAX` + a test pin the cap.
+- **The FB composer is two screens** (write box → "การตั้งค่าโพสต์" settings with
+  its own "โพสต์"). Never target `document.querySelector('[role=dialog]')`: the
+  first dialog on a Page is the **notifications panel**, so the old code clicked
+  nothing and reported success. Click by role: `pg.get_by_role("button",
+  name="ถัดไป"/"โพสต์")`, and only trust it after the post appears in the feed.
+- **`get_by_role().click()` works where JS `.click()` and raw
+  `Input.dispatchMouseEvent` wedge the renderer.** A wedged FB tab also breaks
+  Playwright `connect_over_cdp` browser-wide (30s timeout) even while
+  `bootstrap.py --status` says UP; recover by closing FB tabs via
+  `/json/close/<id>` and opening a fresh one.
