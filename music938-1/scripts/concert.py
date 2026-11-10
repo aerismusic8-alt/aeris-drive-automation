@@ -40,6 +40,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import surreal  # noqa: E402  the shared guardrails + handles
+import release  # noqa: E402  the song title
 from make_song import _apply_loudnorm, _measure_loudnorm  # noqa: E402  the loudness contract
 
 SONGS = ROOT / "library" / "songs"
@@ -176,8 +177,15 @@ def caption(slug: str, platform: str, song_title: str = "") -> str:
     """The live-show caption. Thai, disclosed, rule-safe, per-surface.
 
     Same project on both surfaces, one line different (the cross-promo), so the
-    two feeds read as one identity and not two duplicates.
+    two feeds read as one identity and not two duplicates. The song's own title
+    is resolved from the lyric header so a `concert_items()` build and a
+    `--refresh-captions` run produce byte-identical text.
     """
+    if not song_title:
+        try:
+            song_title = release.parse_lyrics(slug).get("TITLE", "")
+        except Exception:  # noqa: BLE001
+            song_title = ""
     song = f"🎵 {song_title}" if song_title else ""
     if platform == "facebook":
         tail = (f"🎬 ดูคลิปอื่นที่ YouTube {HANDLES['youtube']} · "
