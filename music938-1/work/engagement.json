@@ -1,0 +1,18 @@
+{
+  "at": "2026-11-10T00:15:59Z",
+  "winner": null,
+  "stats": {
+    "song": {
+      "n": 15,
+      "median_per_day": 0.0
+    },
+    "affiliate": {
+      "n": 4,
+      "median_per_day": 0.0
+    },
+    "surreal": {
+      "n": 1,
+      "median_per_day": 0.0
+    }
+  }
+}

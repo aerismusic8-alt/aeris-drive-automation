@@ -2184,7 +2184,12 @@ def test_state_files_are_addable() -> None:
     files = ["music938-1/work/crosspost-state.json",
              "music938-1/work/crosspost-queue.json",
              "music938-1/work/release-state.json",
-             "music938-1/work/playlist-state.json"]
+             "music938-1/work/playlist-state.json",
+             # The response loop's memory. If these are ignored, the rail's
+             # `git add` silently drops them and the loop re-reads every post
+             # from scratch each run.
+             "music938-1/work/engagement-cache.json",
+             "music938-1/work/engagement.json"]
     for rel in files:
         try:
             r = subprocess.run(["git", "check-ignore", "-q", "--no-index", rel],

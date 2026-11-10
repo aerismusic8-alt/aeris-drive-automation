@@ -44,6 +44,12 @@ music938-1/work/*
 # record of what is already on Reels/TikTok, so it must survive a recycle.
 !music938-1/work/crosspost-queue.json
 !music938-1/work/crosspost-state.json
+# The response loop's memory: the last play-count per posted URL (so a run reads
+# only new posts, not every post ever made) and the decision it drew (so the next
+# run knows which format won). Without these the loop re-reads from scratch each
+# run and cannot tell whether a change helped.
+!music938-1/work/engagement-cache.json
+!music938-1/work/engagement.json
 # The release pin: songs K asked to publish next. The daily runner fetches `main`
 # and only a tracked file reaches it, so an ignored pin would never fire. The pin
 # is inert once the song's main release is live (see release.plan).
