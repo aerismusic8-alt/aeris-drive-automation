@@ -30,7 +30,10 @@ name: AX Music Crosspost (FB Reels + TikTok)
 
 on:
   schedule:
-    - cron: '0 */2 * * *'
+    # Hourly, so the 2-5 h humanised gap between posts (see crosspost.pace_ok) can
+    # land at varied times of day instead of on a 2-hourly beat. The gap itself is
+    # what paces the feed; this only gives it the chance to fire off-beat.
+    - cron: '0 * * * *'
   workflow_dispatch:
     inputs:
       platform:
@@ -105,6 +108,18 @@ jobs:
             esac
           done
 
+      - name: Read how the last posts are doing and retune the queue
+        # K (2026-11-09): before posting the next job, check how the last ones did;
+        # change a format that is not getting a response; keep looping until one
+        # responds, then repeat it. `engagement.py` reads the one free per-post
+        # number the FB/TK surfaces expose (the public TikTok play count), and only
+        # retunes when a format leads on a real sample. With no signal it changes
+        # nothing, so this step is safe to run every hour.
+        run: |
+          set -uo pipefail
+          python3 music938-1/scripts/engagement.py --apply \
+            || echo "engagement read skipped (no numbers yet or transient error)"
+
       - name: Post the pending Shorts
         env:
           AERIS_STORAGE_STATE_B64: ${{ secrets.AERIS_STORAGE_STATE_B64 }}
@@ -164,6 +179,12 @@ jobs:
           set -euo pipefail
           git config user.name  "ax-music-crosspost"
           git config user.email "ax-music-crosspost@users.noreply.github.com"
+          # Add each file on its own: `git add a b c` adds nothing if any path is
+          # missing, and the engagement files do not exist until the loop has run.
+          for f in crosspost-state.json crosspost-queue.json \
+                   engagement-cache.json engagement.json; do
+            git add "music938-1/work/$f" 2>/dev/null || true
+          done
           git add music938-1/work/crosspost-state.json
           if git diff --cached --quiet; then
             echo "no change to record"

@@ -1958,8 +1958,13 @@ def test_crosspost_engine() -> None:
     check("karaoke short carries no hook index",
           crosspost._hook_of("short-karaoke-01-khon-di-thi-chak-pai") == 0)
 
-    t = next(it for it in q if it["platform"] == "tiktok")
-    f = next(it for it in q if it["platform"] == "facebook")
+    # The #fyp tag belongs to the song/karaoke caption. The absurd exhibit leads
+    # the queue now and carries its own museum-label caption, so scope this to a
+    # song item rather than whichever item happens to be first.
+    t = next(it for it in q if it["platform"] == "tiktok"
+             and it.get("kind") in ("song", "karaoke"))
+    f = next(it for it in q if it["platform"] == "facebook"
+             and it.get("kind") in ("song", "karaoke"))
     check("tiktok caption carries #fyp", "#fyp" in t["caption"])
     check("facebook caption has no #fyp", "#fyp" not in f["caption"])
     for it in (t, f):
@@ -2427,42 +2432,65 @@ def test_crosspost_pace_and_captions() -> None:
         crosspost.QUEUE = real_q
         crosspost.load_state = real_load
 
-    # Cadence: the shape of the 2026-11-01 run must now be refused. Sixty
-    # posts inside the last 24 h is over the daily cap; a post 5 minutes old
-    # is inside the minimum gap; a post an hour old on an empty day is fine.
+    # Cadence: the shape of the 2026-11-01 run must now be refused. K (2026-11-09)
+    # set the band at 2-5 hours, jittered per post so the feed is not a metronome;
+    # sixty posts inside the last 24 h is over the daily cap, and a post an hour old
+    # is inside the *minimum* of the band.
     now = time.time()
     def at(secs_ago: float) -> str:
         return time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime(now - secs_ago))
 
-    # Newest post just over an hour old, so the minimum-gap rule passes and the
-    # daily cap is what refuses the run.
-    burst = {"posted": {f"tiktok:s{i}": {"at": at(3700 + i * 90)} for i in range(60)}}
+    # Newest post older than the maximum gap, so the gap rule passes and the daily
+    # cap is what refuses the run.
+    burst = {"posted": {f"tiktok:s{i}": {"at": at(crosspost.MAX_GAP_SECONDS + 300 + i * 90)}
+                        for i in range(60)}}
     ok, why = crosspost.pace_ok(burst, "tiktok", now)
     check("a 60-post burst is held back", not ok, why)
     check("the daily cap is named in the reason", "cap" in why)
 
-    recent = {"posted": {"tiktok:x": {"at": at(300)}}}
+    # The band is 2-5 h: the minimum is two hours, so a post one hour old is held
+    # back however its own gap is drawn.
+    recent = {"posted": {"tiktok:x": {"at": at(3600)}}}
     ok, why = crosspost.pace_ok(recent, "tiktok", now)
-    check("a post 5 minutes old is inside the minimum gap", not ok, why)
+    check("a post 1 hour old is inside the minimum gap", not ok, why)
+    check("the band floor is two hours",
+          crosspost.MIN_GAP_SECONDS == 2 * 60 * 60, str(crosspost.MIN_GAP_SECONDS))
+    check("the band ceiling is five hours",
+          crosspost.MAX_GAP_SECONDS == 5 * 60 * 60, str(crosspost.MAX_GAP_SECONDS))
 
-    spaced = {"posted": {"tiktok:x": {"at": at(crosspost.MIN_GAP_SECONDS + 60)}}}
-    check("a post past the minimum gap is allowed",
+    # The gap is humanised: drawn per post, so it varies, but always inside the band.
+    gaps = {crosspost._gap_for(f"tiktok:s{i}") for i in range(40)}
+    check("the per-post gap varies (not a fixed interval)", len(gaps) > 3, str(len(gaps)))
+    check("every gap is inside the 2-5 h band",
+          all(crosspost.MIN_GAP_SECONDS <= g <= crosspost.MAX_GAP_SECONDS for g in gaps))
+    check("the gap is stable for the same post (no flap on re-run)",
+          crosspost._gap_for("tiktok:s7") == crosspost._gap_for("tiktok:s7"))
+
+    spaced = {"posted": {"tiktok:x": {"at": at(crosspost.MAX_GAP_SECONDS + 60)}}}
+    check("a post past the maximum gap is allowed",
           crosspost.pace_ok(spaced, "tiktok", now)[0])
 
     check("an empty state is allowed", crosspost.pace_ok({"posted": {}}, "tiktok", now)[0])
 
     # A link post is the format that reads as an ad, so it is capped at one a
     # day on top of the surface cap: a link already posted today blocks the next
-    # one, while a non-link post at the same age is still allowed.
-    link_day = {"posted": {"facebook-page:link-x": {"at": at(7200)}}}
+    # one, while a non-link post at the same age is still allowed. The age is past
+    # the maximum gap so the gap rule is not what decides this case.
+    link_day = {"posted": {"facebook-page:link-x": {"at": at(crosspost.MAX_GAP_SECONDS + 120)}}}
     check("a second link post in a day is held back",
           not crosspost.pace_ok(link_day, "facebook", now, kind="link")[0])
     check("a non-link post is not blocked by the link cap",
           crosspost.pace_ok(link_day, "facebook", now, kind="song")[0])
 
-    # Cadence is per platform: a busy TikTok must not hold Facebook back.
+    # Cadence is per platform: a busy TikTok must not hold Facebook back. Both
+    # surfaces now share the same ceiling, so the test is a tiktok-only state:
+    # it blocks tiktok and leaves facebook (empty) allowed.
+    tt_only = {"posted": {f"tiktok:s{i}": {"at": at(crosspost.MAX_GAP_SECONDS + 300 + i * 90)}
+                          for i in range(crosspost.DAILY_CAP + 1)}}
+    check("a TikTok-only run at the cap blocks TikTok",
+          not crosspost.pace_ok(tt_only, "tiktok", now)[0])
     check("the cap is counted per platform",
-          crosspost.pace_ok(burst, "facebook", now)[0])
+          crosspost.pace_ok(tt_only, "facebook", now)[0])
 
     # A Page post is stored under the `facebook-page` state key, not `facebook`.
     # The guard must read that key, or it goes blind to Page posts — which is how
@@ -2472,7 +2500,7 @@ def test_crosspost_pace_and_captions() -> None:
           not crosspost.pace_ok(page, "facebook", now)[0])
     page_burst = {"posted": {f"facebook-page:s{i}": {"at": at(1800 + i * 90)}
                              for i in range(5)}}
-    check("5 Page posts in a day hit the daily cap",
+    check("a run of Page posts in a day hits the daily cap",
           not crosspost.pace_ok(page_burst, "facebook", now)[0])
 
     # Facebook carries the extra photo/link formats, so its total ceiling now
@@ -2482,7 +2510,7 @@ def test_crosspost_pace_and_captions() -> None:
           crosspost.FACEBOOK_DAILY_CAP >= 2)
     check("at most one link post a day",
           crosspost.LINK_DAILY_CAP <= 1)
-    two_pages = {"posted": {f"facebook-page:s{i}": {"at": at(3700 + i * 90)}
+    two_pages = {"posted": {f"facebook-page:s{i}": {"at": at(crosspost.MAX_GAP_SECONDS + 300 + i * 90)}
                             for i in range(crosspost.FACEBOOK_DAILY_CAP)}}
     check("Page posts at the Facebook cap are held back",
           not crosspost.pace_ok(two_pages, "facebook", now)[0])
@@ -2558,6 +2586,112 @@ def test_api_post_formats() -> None:
     src = (ROOT / "scripts" / "crosspost.py").read_text()
     check("the loop reads an image for a photo and no file for a link",
           'it["image"] if kind == "photo"' in src and 'if kind == "link":' in src)
+
+
+def test_engagement_feedback() -> None:
+    """The response loop must rank formats and only act on a real signal.
+
+    K (2026-11-09): check how the last posts did before the next one; change a
+    format that is not getting a response; keep looping until one responds, then
+    repeat it. The loop reads the one free per-post number the FB/TK surfaces
+    expose — the public TikTok play count — and must stay honest: an unreadable
+    page is not a zero, and a thin or tied sample changes nothing.
+    """
+    section("engagement feedback loop")
+    import engagement as E
+    import time
+
+    now = 1_700_000_000.0
+    def at(days_ago: float) -> str:
+        return time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime(now - days_ago * 86400))
+
+    queue = [
+        {"id": "tiktok:song-1", "platform": "tiktok", "kind": "song", "video": "a.mp4"},
+        {"id": "tiktok:sur-1", "platform": "tiktok", "kind": "surreal", "video": "b.mp4"},
+        {"id": "tiktok:sur-2", "platform": "tiktok", "kind": "surreal", "video": "c.mp4"},
+        {"id": "tiktok:sur-3", "platform": "tiktok", "kind": "surreal", "video": "d.mp4"},
+    ]
+    state = {"posted": {
+        "tiktok:song-1": {"at": at(2), "url": "https://www.tiktok.com/@x/video/1"},
+        "tiktok:sur-1": {"at": at(2), "url": "https://www.tiktok.com/@x/video/2"},
+        "tiktok:sur-2": {"at": at(2), "url": "https://www.tiktok.com/@x/video/3"},
+        "tiktok:sur-3": {"at": at(2), "url": "https://www.tiktok.com/@x/video/4"},
+    }}
+    # A format must not be judged on a page that did not load: video/1 is unreadable.
+    counts = {"https://www.tiktok.com/@x/video/1": None,
+              "https://www.tiktok.com/@x/video/2": 400,
+              "https://www.tiktok.com/@x/video/3": 420,
+              "https://www.tiktok.com/@x/video/4": 380}
+    stats = E.kind_stats(state, queue, counts, now)
+    check("an unreadable post is dropped, not counted as zero",
+          "song" not in stats, str(stats))
+    check("the readable format is measured",
+          stats.get("surreal", {}).get("n") == 3, str(stats))
+
+    # Three readable samples of one format beat a single readable sample of the
+    # other, so the format with enough samples leads.
+    check("a clear leader is named", E.leader(stats) == "surreal", str(E.leader(stats)))
+
+    # Thin sample: below MIN_SAMPLES nothing is acted on.
+    thin = {"song": {"n": 1, "median_per_day": 999.0}}
+    check("a thin sample changes nothing", E.leader(thin) is None, str(E.leader(thin)))
+
+    # A dead heat is not a signal.
+    tie = {"song": {"n": 5, "median_per_day": 100.0},
+           "surreal": {"n": 5, "median_per_day": 105.0}}
+    check("a dead heat is not a leader", E.leader(tie) is None, str(E.leader(tie)))
+
+    # Retune boosts the winner through the queue without dropping anything.
+    boosted = E.retune(queue, "surreal", every=1)
+    check("retune keeps every item", len(boosted) == len(queue), str(len(boosted)))
+    check("retune does not invent items",
+          {it["id"] for it in boosted} == {it["id"] for it in queue})
+    check("retune with no winner is a no-op", E.retune(queue, None) == queue)
+
+    # The parser reads the count out of the stats block and refuses a page without
+    # one (a captcha), so a blocked read is never a zero.
+    import re as _re
+    html = '{"statsV2":{"diggCount":"1","playCount":"1234"}}'
+    m = _re.search(r'"statsV2":\{[^}]*"playCount":"?(\d+)', html)
+    check("the play-count parser finds the number", bool(m) and m.group(1) == "1234")
+    check("a page with no stats block yields no number",
+          _re.search(r'"statsV2":\{[^}]*"playCount":"?(\d+)',
+                     "<html>captcha</html>") is None)
+
+    # The window keeps a run to recent posts, so a rail run does not read every
+    # post ever made.
+    recent = E.recent_tiktok(state, now, window_days=3)
+    check("recent posts are inside the window", len(recent) == 4, str(len(recent)))
+    old = {"posted": {"tiktok:x": {"at": at(40),
+                                   "url": "https://www.tiktok.com/@x/video/9"}}}
+    check("a post older than the window is not re-read",
+          E.recent_tiktok(old, now, window_days=14) == {})
+
+    # The loop must actually run in the rail, before the post step, and its
+    # decision files must be committed — or the retune would be thrown away.
+    wf = (ROOT.parent / ".github" / "workflows" / "ax-music-crosspost.yml").read_text()
+    check("the feedback loop runs in the crosspost rail",
+          "engagement.py --apply" in wf)
+    check("the feedback loop runs before the post step",
+          0 <= wf.find("engagement.py --apply") < wf.find("Post the pending Shorts"))
+    check("the retuned queue is committed",
+          "crosspost-queue.json" in wf and "engagement-cache.json" in wf)
+    check("the rail is scheduled hourly, so the 2-5 h gap can land off-beat",
+          "'0 * * * *'" in wf)
+
+    # The new format leads the queue: the exhibit is the first item, and the song
+    # layer follows it. This is the "tear down the old rotation" decision, pinned.
+    # Only asserted when exhibits exist — a fresh pod with none rendered has no
+    # exhibit to lead with, exactly as the other suites tolerate an empty library.
+    import crosspost
+    q = crosspost.build_queue()
+    sur = list((ROOT / "library" / "surreal").glob("surreal-*.mp4"))
+    if q and sur:
+        check("the queue leads with the new absurd-exhibit format",
+              (q[0].get("kind") or "song") == "surreal", str(q[0].get("kind")))
+        kinds = [it.get("kind") or "song" for it in q]
+        check("the song layer still follows the exhibit",
+              "song" in kinds or "karaoke" in kinds)
 
 
 def test_social_stats_parser() -> None:
@@ -3917,6 +4051,7 @@ def main() -> int:
     test_crosspost_blocked_vs_empty()
     test_api_posting_route()
     test_crosspost_pace_and_captions()
+    test_engagement_feedback()
     test_api_post_formats()
     test_social_stats_parser()
     test_setup_pod_ffmpeg()

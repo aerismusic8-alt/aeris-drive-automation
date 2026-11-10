@@ -308,7 +308,13 @@ def interleave(primary: list[dict], secondary: list[dict], every: int,
     return out
 
 
-def build_queue() -> list[dict]:
+def song_items() -> list[dict]:
+    """The song-chorus Shorts, one per surface. The supporting layer now.
+
+    These used to be the whole FB/TK rotation. K (2026-11-09) had the old system
+    torn down in favour of the absurd exhibit, so they are folded in as the varied
+    layer behind it rather than leading the queue.
+    """
     items = []
     for short in sorted(SHORTS.glob("short-*.mp4")):
         slug = _slug_of(short)
@@ -325,25 +331,31 @@ def build_queue() -> list[dict]:
                 "video": rel,
                 "caption": caption(slug, platform, hook, kind),
             })
-    # One product card pair (both surfaces) after every 6 queue items — 3 song
-    # clips — which is the 25% product share PLAN-30D-AI asks for, and still
-    # puts the first affiliate post on day one rather than after the backlog.
-    base = interleave(items, affiliate_items(), every=6, chunk=2)
-    # The absurdist exhibits, one at a time and spread out. Both advisors warned
-    # that a wall of near-identical surreal clips is exactly the "low-quality /
-    # look-alike" pattern that kills reach, so they are folded in singly rather
-    # than published as a burst. The id is per-exhibit, so a posted one never
-    # returns; a fresh pod with no rendered exhibits simply adds none.
-    base = interleave(base, surreal_items(), every=5, chunk=1)
-    # The mood clips — the real-instrument beds K approved (2026-11-09) turned
-    # into 9:16 clips. They are folded in one at a time and spaced, for the same
-    # reason as the exhibits: six clips that share a shape must not land as a
-    # burst. A fresh pod with no rendered mood clips simply adds none.
-    base = interleave(base, mood_items(), every=6, chunk=1)
+    return items
+
+
+def build_queue() -> list[dict]:
+    """The FB/TK queue, led by the new absurd-exhibit format.
+
+    K (2026-11-09): tear down the old rotation and adopt the new format. So the
+    exhibit is the primary lane — it leads the queue and is the largest share —
+    and the song Shorts, the mood beds and the funnel formats fold in behind it.
+    The lead matters because the committed queue is what actually posts, and an
+    appended lane (how the exhibits arrived before) sat weeks out and never ran.
+    """
+    # The new format leads. One exhibit after every item of the song layer, so the
+    # two alternate and an exhibit is reached within the first post of a run.
+    base = interleave(surreal_items(), song_items(), every=1, chunk=1)
+    # The mood clips — the real-instrument beds K approved (2026-11-09) — one at a
+    # time and spaced, so six clips that share a shape do not land as a burst.
+    base = interleave(base, mood_items(), every=4, chunk=1)
+    # One product card pair (both surfaces) after every 6 items — the ~25% product
+    # share PLAN-30D-AI asks for, still reaching the first affiliate post on day one.
+    base = interleave(base, affiliate_items(), every=6, chunk=2)
     # Facebook also gets a cover-art photo and a Shopee link post, so its feed is
     # not wall-to-wall Reels (advisor panel 2026-11-05: Reel for reach, photo for
-    # identity, <=1 link a day). A photo lands after every 3 items and a link
-    # after every 8, which at 4 posts/day is well under one link a day.
+    # identity, <=1 link a day). A photo lands after every 3 items and a link after
+    # every 8, which at the post cadence is well under one link a day.
     base = interleave(base, photo_items(), every=3, chunk=1)
     return interleave(base, link_items(), every=8, chunk=1)
 
@@ -553,37 +565,74 @@ def pending(queue: list[dict], state: dict, platform: str | None) -> list[dict]:
 
 # --- cadence ----------------------------------------------------------------
 
-# A brand-new account that fires 60 clips in 98 minutes (the 2026-11-01 run,
-# median gap 26 s) is the most plausible cause of the flat 0 views, so the rail
-# now paces itself. The numbers are deliberately conservative and cheap to
-# relax: one post per platform per interval, and a daily ceiling well under what
-# a spam filter would notice.
+# K (2026-11-09): "อัพเดทโพสต์ทุก 2-5 ชั่วโมง สลับเวลากันโพสต์ เอาให้เนียนเหมือนมนุษย์ทำ"
+# — post every 2-5 hours, vary the times, make it look human.
 #
-# The gap used to be a flat 20 minutes. The advisor panel (2026-11-05, 2
-# vendors) said a 20-minute gap is fine but recommended ~1 hour between posts so
-# the feed does not read as a burst, and ranked 2-3 posts/day safest for a new
-# page with 4/day acceptable once there is engagement. Facebook, still the
-# surface with the least history, sits at the safe end of that; TikTok, which
-# has more posts behind it, keeps the higher ceiling.
-MIN_GAP_SECONDS = 60 * 60
-DAILY_CAP = 4
+# A brand-new account that fired 60 clips in 98 minutes (the 2026-11-01 run) is
+# the most plausible cause of the flat views, so the rail paces itself. But a
+# *fixed* gap is its own tell: a post every 120 minutes on the dot is as
+# obviously automated as a burst. So the interval is drawn from a 2-5 h band per
+# post, and the interval, the time of day and the daily count all vary the way a
+# person's do.
+MIN_GAP_SECONDS = 2 * 60 * 60
+MAX_GAP_SECONDS = 5 * 60 * 60
 
-# Facebook carries the extra formats (cover-art photos and Shopee link posts)
-# that the other surfaces do not, so K's "too few posts a day" is answered by
-# more *variety* first. The advisor panel (2026-11-05, 2 vendors) put the safe
-# band for a brand-new page at 2-3 a day, with 4 only once posts are drawing
-# engagement — so the Page sits at 3, up from 2, and the *link* cap below is what
-# keeps the feed from reading as an ad wall.
-FACEBOOK_DAILY_CAP = 3
+# A hard ceiling, not the pacing. At a 2-5 h gap a surface naturally posts ~5-8
+# times a day, so this only stops a retry storm or a manual burst from emptying
+# a whole day's queue at once. It sits above the natural rate, so K's band is
+# what paces the feed and this is only the safety net.
+DAILY_CAP = 8
+FACEBOOK_DAILY_CAP = 8
 
 # At most one *link* post a day. A link post is the format that reads as an ad,
-# so the panel's rule was "never two links in a row, <=1 a day"; a photo or a
-# Reel between links is what keeps the feed from looking like an ad wall.
+# so the rule is "never two links in a row, <=1 a day"; a photo or a Reel
+# between links is what keeps the feed from looking like an ad wall.
 LINK_DAILY_CAP = 1
+
+
+def _seed(text: str) -> int:
+    """A small stable hash, so a value drawn from an id is the same on every pod.
+
+    The same trick `surreal._seed` uses: a rebuild on a fresh pod must produce
+    the identical schedule, or the cadence would drift run to run.
+    """
+    n = 0
+    for ch in text:
+        n = (n * 131 + ord(ch)) % (2 ** 31)
+    return n
+
+
+def _gap_for(key: str) -> int:
+    """The humanised interval to wait after the post keyed by `key`.
+
+    Drawn from the post's own id, so it is stable for that post — a re-run waits
+    the same amount and the guard does not flap — yet varies post to post, which
+    is what stops the feed reading as a metronome.
+    """
+    if MAX_GAP_SECONDS <= MIN_GAP_SECONDS:
+        return MIN_GAP_SECONDS
+    return MIN_GAP_SECONDS + (_seed(key) % (MAX_GAP_SECONDS - MIN_GAP_SECONDS + 1))
 
 
 def _daily_cap(platform: str) -> int:
     return FACEBOOK_DAILY_CAP if platform == "facebook" else DAILY_CAP
+
+
+def _last_post_key(state: dict, platform: str) -> str | None:
+    """The id of the newest post on `platform`, whose id seeds the next gap."""
+    sk = PLATFORMS.get(platform, {}).get("state_key", platform)
+    prefix = f"{sk}:"
+    best, best_t = None, -1.0
+    for key, rec in state.get("posted", {}).items():
+        if not key.startswith(prefix):
+            continue
+        try:
+            t = _parse_ts(rec.get("at", ""))
+        except ValueError:
+            continue
+        if t > best_t:
+            best_t, best = t, key
+    return best
 
 
 def _posted_times(state: dict, platform: str) -> list[float]:
@@ -616,18 +665,21 @@ def pace_ok(state: dict, platform: str, now: float | None = None,
             kind: str | None = None) -> tuple[bool, str]:
     """May one more post go out on `platform` right now?
 
-    Returns (allowed, reason). Two rules, both from the observed burst:
-    at least MIN_GAP_SECONDS since the last post, and at most DAILY_CAP in the
-    trailing 24 h. A `kind` of "link" adds a third: at most LINK_DAILY_CAP link
-    posts a day, because that is the format that reads as an ad.
+    Returns (allowed, reason). Two rules, both from the observed burst: at least
+    the *humanised* gap since the last post (2-5 h, drawn from the last post's id
+    so it varies post to post), and at most DAILY_CAP in the trailing 24 h. A
+    `kind` of "link" adds a third: at most LINK_DAILY_CAP link posts a day,
+    because that is the format that reads as an ad.
     """
     now = time.time() if now is None else now
     times = _posted_times(state, platform)
     if times:
         since = now - times[-1]
-        if since < MIN_GAP_SECONDS:
-            wait = int(MIN_GAP_SECONDS - since)
-            return False, f"last post {int(since)}s ago; wait {wait}s"
+        gap = _gap_for(_last_post_key(state, platform) or f"{platform}:?")
+        if since < gap:
+            wait = int(gap - since)
+            return False, (f"last post {int(since)}s ago; wait {wait}s "
+                           f"(humanised gap {gap}s)")
     day = [t for t in times if now - t < 86400]
     cap = _daily_cap(platform)
     if len(day) >= cap:
