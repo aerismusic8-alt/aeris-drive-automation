@@ -44,6 +44,9 @@ CDP = os.environ.get("AERIS_CDP", "http://127.0.0.1:9222").rstrip("/") + "/json"
 # carries the follower count.
 FB_PAGE = "https://www.facebook.com/profile.php?id=61595890900382"
 FB_INSIGHTS = "https://www.facebook.com/professional_dashboard/profile_insights/views/"
+FB_CONTENT = ("https://www.facebook.com/professional_dashboard/content/content_library/"
+              "?date_range=LAST_28D&post_type=ALL_CONTENT&sort_by=VIEWS"
+              "&sorting_method=METRICS_DESCENDING")
 FB_PAGE_ID = "61595890900382"
 TIKTOK_ANALYTICS = "https://www.tiktok.com/tiktokstudio/analytics"
 SHOPEE_AFFILIATE = "https://affiliate.shopee.co.th/dashboard"
@@ -260,6 +263,40 @@ def _fb_page_views(text: str):
     return "UNKNOWN"
 
 
+def _fb_content_rows(text: str) -> list[dict]:
+    """Per-post views from the content library, newest/most-viewed first.
+
+    The library lists each post as a block: a date line ("7 พ.ย. เวลา 01:31"),
+    then the metric columns in the order the header names them. The first bare
+    integer after the date line is views, the second is reach ("ผู้ชม"). A post
+    with no text ("ไม่มีเนื้อหาข้อความ") still carries its numbers, so the date
+    line — not the caption — is the anchor. Unreadable rows are skipped rather
+    than guessed.
+    """
+    import re
+    lines = [ln.strip() for ln in text.splitlines()]
+    date_re = re.compile(r"^(\d{1,2}\s+\S+\.?\s+เวลา\s+\d{1,2}:\d{2})$")
+    rows: list[dict] = []
+    for i, ln in enumerate(lines):
+        m = date_re.match(ln)
+        if not m:
+            continue
+        nums: list[int] = []
+        j = i + 1
+        while j < len(lines) and len(nums) < 2:
+            tok = lines[j].replace(",", "").strip()
+            if tok.isdigit():
+                nums.append(int(tok))
+            elif date_re.match(lines[j]):
+                break
+            j += 1
+        if nums:
+            rows.append({"at": m.group(1),
+                         "views": nums[0],
+                         "reach": nums[1] if len(nums) > 1 else "UNKNOWN"})
+    return rows
+
+
 def measure_facebook(desk: Desk) -> dict:
     """The Page numbers, read as the Page (never as the person).
 
@@ -296,10 +333,19 @@ def measure_facebook(desk: Desk) -> dict:
             "note": "insights route unavailable; followers read from the Page",
             "raw": t[:600],
         }
+    # Per-post views live on a second page. A failure there must not lose the
+    # window total, so it is best-effort and reported as an empty list.
+    posts: list[dict] = []
+    try:
+        desk.goto(FB_CONTENT, settle=16)
+        posts = _fb_content_rows(desk.text())
+    except Exception:  # noqa: BLE001
+        posts = []
     return {
         "reachable": True,
         "views_28d": _fb_page_views(t),
         "followers": followers,
+        "posts": posts,
         "raw": t[:600],
     }
 
@@ -497,6 +543,12 @@ def render(stats: dict) -> str:
     for name, d in stats.items():
         if not d.get("reachable"):
             lines += [f"**{name}:** อ่านไม่ได้ — {d.get('note', 'ไม่ทราบสาเหตุ')}", ""]
+    posts = fb.get("posts") or []
+    if posts:
+        lines += ["## รายคลิป Facebook (เรียงตามยอดดู)", "",
+                  "| เผยแพร่ | ยอดดู | ผู้ชม |", "| --- | ---: | ---: |"]
+        lines += [f"| {p['at']} | {p['views']} | {p['reach']} |" for p in posts]
+        lines += [""]
     if tk.get("detail_locked_under_100"):
         lines += ["**TikTok:** รายละเอียดยังถูกล็อก (ต้องถึง 100 ผู้ติดตาม) "
                   "— ค่านี้เป็นเหตุผลหนึ่งที่ต้องไปให้ถึง 100", ""]

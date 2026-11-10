@@ -3111,6 +3111,21 @@ def test_social_stats_parser() -> None:
     check("a dashboard with no range line is UNKNOWN",
           social_stats._fb_page_views("ยอดดู\n0\n") == "UNKNOWN")
 
+    # The content library anchors each post on its publish date line, then the
+    # metric columns follow in the header's order (views, reach). A caption is
+    # not required — a post with no text still carries its numbers — so the date
+    # line, not the caption, is what a row is keyed on.
+    lib = ("คลังเนื้อหา\nคอลัมน์\nยอดดู\nผู้ชม\n"
+           "ไม่มีเนื้อหาข้อความ\n\nเผยแพร่แล้ว •\n7 พ.ย. เวลา 01:31\n287\n258\n0\n0\n"
+           "🎧 เพลงไทย\n\nเผยแพร่แล้ว •\n2 พ.ย. เวลา 11:28\n233\n2\n0\n")
+    rows = social_stats._fb_content_rows(lib)
+    check("per-post rows are read", len(rows) == 2)
+    check("views and reach come from the right columns",
+          rows[0]["views"] == 287 and rows[0]["reach"] == 258)
+    check("a textless post still yields its numbers", rows[1]["views"] == 233)
+    check("no date lines means no rows",
+          social_stats._fb_content_rows("คลังเนื้อหา\nไม่มีอะไร\n") == [])
+
     # The report must render UNKNOWN for an unreadable surface, never a blank.
     md = social_stats.render({
         "facebook": {"reachable": False, "note": "not signed in"},
