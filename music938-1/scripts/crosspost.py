@@ -842,6 +842,11 @@ def post_tiktok(page, video: Path, text: str) -> str | None:
     page.wait_for_timeout(4000)
     if not _signed_in(page):
         return None
+    # The studio shell paints before the upload widget, so the file input is not
+    # in the DOM at first paint (it landed ~10 s in on 2026-11-09). Racing it with
+    # a bare `set_input_files` timed out at 30 s and looked like a signed-out
+    # session. Wait for the input to attach, then hand it the file.
+    page.wait_for_selector('input[type="file"]', timeout=60000, state="attached")
     page.locator('input[type="file"]').first.set_input_files(str(video))
     # The editor appears once the file is accepted; the caption box is a
     # contenteditable draft editor.
