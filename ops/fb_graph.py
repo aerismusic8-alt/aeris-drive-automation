@@ -108,6 +108,47 @@ def available() -> bool:
     return bool(page_token())
 
 
+def _get(url: str, data: dict | None = None) -> dict:
+    q = urllib.parse.urlencode(data) if data else ""
+    req = urllib.request.Request(f"{url}?{q}" if q else url,
+                                 headers={"Accept": "application/json"})
+    try:
+        with urllib.request.urlopen(req, timeout=TIMEOUT) as r:
+            return json.loads(r.read().decode() or "{}")
+    except urllib.error.HTTPError as e:
+        detail = e.read().decode()[:400]
+        raise RuntimeError(f"graph {e.code}: {detail}") from e
+
+
+_ALIVE: bool | None = None
+
+
+def token_alive(refresh: bool = False) -> bool:
+    """True only when Graph accepts the Page token right now.
+
+    `available()` says a token is *configured*; this says it *works*. A token
+    can be present and rejected — the stored one returned "API access blocked"
+    (OAuthException 200) from 2026-11-08 — and a caller that trusted `available()`
+    then failed every post while the probe still reported the surface healthy.
+    Only a Graph rejection means dead; a transport error is transient, so the
+    token is treated as alive and the post attempt is left to surface it.
+    """
+    global _ALIVE
+    if _ALIVE is not None and not refresh:
+        return _ALIVE
+    tok = page_token()
+    if not tok:
+        _ALIVE = False
+        return False
+    try:
+        d = _get(f"{GRAPH}/me", {"fields": "id", "access_token": tok})
+        _ALIVE = bool(d.get("id"))
+    except RuntimeError as e:
+        msg = str(e)
+        _ALIVE = not ("OAuthException" in msg or "access blocked" in msg)
+    return _ALIVE
+
+
 def _post(url: str, data: dict | None = None, *, raw: bytes | None = None,
           headers: dict | None = None) -> dict:
     hdr = {"Accept": "application/json"}

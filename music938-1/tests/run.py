@@ -2265,10 +2265,13 @@ def test_api_posting_route() -> None:
         check(f"ops/{f} exists", (ops / f).is_file())
 
     # api_poster follows credential availability: a configured token selects the
-    # headless API poster, its absence falls back to the browser. Pinning the
-    # decision to `available()` keeps this true whether or not a token exists.
-    check("fb poster follows fb_graph.available()",
-          (crosspost.api_poster("facebook") is not None) == crosspost.fb_graph.available())
+    # headless API poster, its absence falls back to the browser. It must ALSO
+    # require the token to be live: a token that is present but rejected (the
+    # Facebook one returned "API access blocked" from 2026-11-08) would otherwise
+    # select the API route and fail every post. Pinned as a source check so this
+    # unit test needs no network.
+    check("fb poster requires a live token, not just a present one",
+          "fb_graph.token_alive()" in (ROOT / "scripts" / "crosspost.py").read_text())
     check("tiktok poster follows tiktok_api.available()",
           (crosspost.api_poster("tiktok") is not None) == crosspost.tiktok_api.available())
 

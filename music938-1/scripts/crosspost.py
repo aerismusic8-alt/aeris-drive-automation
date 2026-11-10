@@ -743,7 +743,8 @@ def probe(platform: str | None = None) -> int:
     # Report it as its own state (rc 3) so the rail can stay green.
     parked = {n for n in names if n in API_ONLY and n not in api_names}
     for n in sorted(parked):
-        print(f"PARKED {n:9} API-only; one-time token not set (no browser session)")
+        print(f"PARKED {n:9} API-only; no live token (absent or rejected by the API) "
+              f"— see docs/k-free-runbook.md")
     if api_names:
         print(f"API-token surfaces (no browser needed): {', '.join(sorted(api_names))}")
     browser_names = [n for n in names if n not in api_names and n not in parked]
@@ -1003,11 +1004,15 @@ def api_poster(platform: str):
     """Return the headless API poster for a surface, or None to use the browser.
 
     The API route exists so the rail does not need K to sign in when a cookie
-    session dies. It is only used when its credentials are actually configured;
-    otherwise the browser path runs exactly as before, so a missing token never
-    breaks a run.
+    session dies. It is only used when its credentials are actually configured
+    *and* the surface's token is live; otherwise the browser path runs exactly as
+    before, so a missing token never breaks a run. The liveness check matters for
+    an API-only surface: a token can be present but rejected (the Facebook one
+    returned "API access blocked" from 2026-11-08), and treating that as
+    configured made the rail fail every post instead of parking quietly.
     """
-    if platform == "facebook" and fb_graph is not None and fb_graph.available():
+    if platform == "facebook" and fb_graph is not None \
+            and fb_graph.available() and fb_graph.token_alive():
         return fb_graph.post_reel
     if platform == "tiktok" and tiktok_api is not None and tiktok_api.available():
         return tiktok_api.post_video

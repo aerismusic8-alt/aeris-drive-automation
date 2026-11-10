@@ -55,6 +55,13 @@ WARN_DAYS = 7
 def check_facebook(*, refresh: bool) -> dict:
     if fb_graph is None or not fb_graph.available():
         return {"surface": "facebook", "state": "browser", "detail": "no FB_PAGE_TOKEN"}
+    if not fb_graph.token_alive(refresh=True):
+        # Present but rejected. This is what K must see: the token is not absent,
+        # it is blocked, so no amount of waiting fixes it — a fresh System User
+        # token does. Reported as its own state, not as "expired".
+        return {"surface": "facebook", "state": "blocked",
+                "detail": "token rejected by Graph (API access blocked / OAuthException) — "
+                          "re-provision the Page token"}
     new = fb_graph.refresh() if refresh else ""
     info = fb_graph.debug_token()
     data = info.get("data", {}) if info.get("ok") else {}
@@ -142,8 +149,10 @@ def main(argv: list[str]) -> int:
     if push and refresh and repo:
         push_secrets(repo)
     # A "browser" state is not a failure: the rail is still running, just without
-    # the API. Only an *expired* credential means K is needed.
-    bad = [r for r in rows if r["state"] == "expired"]
+    # the API. An *expired* credential means K is needed. So does a *blocked* one:
+    # the token is present but rejected, the surface is parked with work waiting,
+    # and only a fresh token fixes it — leaving it green hid 120 stuck posts.
+    bad = [r for r in rows if r["state"] in ("expired", "blocked")]
     if bad:
         print("::error::" + "; ".join(f"{r['surface']} {r['detail']}" for r in bad))
         print(json.dumps({"needs_human": [r["surface"] for r in bad]}))
