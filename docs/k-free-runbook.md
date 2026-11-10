@@ -50,6 +50,17 @@ Verify: `python3 ops/fb_graph.py status` prints the Page name.
 `FB_APP_SECRET` are **not** required: `ops/fb_graph.py::debug_token` self-inspects
 when app credentials are absent.
 
+**BLOCKED 2026-11-09 — the token is now rejected and must be re-provisioned.**
+From 2026-11-08 the stored token returns `API access blocked` (OAuthException 200)
+to *every* call, `debug_token` included, so the rail could not post to Facebook
+and 120 Reels queued up. A System User token that "never expires" can still be
+revoked (Business Settings change, password reset, policy) — expiry is not the
+only way it dies. The fix is the same one-time step above: generate a **new**
+System User token and set `FB_PAGE_TOKEN` (and the vault `axsecrets:fb-page-token`)
+again. `python3 ops/fb_graph.py status` is the check; `ops/token_heartbeat.py`
+reports the state as `blocked` and exits 1 so this surfaces instead of sitting
+green.
+
 Two facts learned doing it, worth keeping:
 
 - **The Graph Page node id is `1349201551618019`, not `61595890900382`.** The
@@ -136,9 +147,12 @@ longer has a browser path for Facebook at all.
 - `crosspost.API_ONLY = {"facebook"}`. With no token, `post` **parks** the queue
   (`rc 3`) and prints the one-time setup; `probe` reports `PARKED` (`rc 3`).
 - The workflow treats `PARKED` as *not blocked*: no red run, no ntfy ping, no K.
-  It resumes by itself the moment `FB_PAGE_TOKEN` exists. Only a genuinely dead
-  **browser** session (TikTok's fallback) still raises an alert.
-- So a missing Facebook token is a **one-time setup**, never a recurring need.
+  It resumes by itself the moment `FB_PAGE_TOKEN` exists. A token that *exists but
+  is rejected* is a different state (`BLOCKED`): that is a real outage with work
+  waiting, so it does raise the alert — K must generate a new token. Only a
+  genuinely dead **browser** session (TikTok's fallback) and a rejected API token
+  still raise an alert.
+- So a *missing* Facebook token is a **one-time setup**, never a recurring need.
   `python3 ops/k_free_status.py` reports it under "one-time setup", and
   `--check` no longer counts it against you.
 

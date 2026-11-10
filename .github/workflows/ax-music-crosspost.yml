@@ -235,5 +235,5 @@ jobs:
           [ -n "$LINK" ] || LINK="(set the AX_LOGIN_URL repo variable to the work-2 host)"
           curl -sS --max-time 20 -H "Title: AERIS — session ที่ต้องล็อกอินใหม่" \
             -H "Tags: warning" -H "Priority: high" \
-            -d "session ของ surface ที่ยังใช้ browser หมดอายุ มีโพสต์ค้างอยู่. แตะปุ่มเดียวจบที่ ${LINK} — ล็อกอินเฉพาะ surface ที่แจ้ง (ปกติคือ TikTok @aeris.music4). Facebook เป็น API-only แล้ว: ถ้ายังไม่มี token มันจะ park ไว้เงียบ ๆ ไม่แจ้งเตือน และกลับมาโพสต์เองเมื่อตั้ง FB_PAGE_TOKEN ครั้งเดียว (ดู docs/k-free-runbook.md). ถ้าเพิ่งล็อกอินแล้วยังแดง ให้รัน ops/login_vault.py save และ ops/save_storage_state.py แล้วตั้ง secret AERIS_STORAGE_STATE_B64 ใหม่" \
+            -d "session ของ surface ที่ยังใช้ browser หมดอายุ มีโพสต์ค้างอยู่. แตะปุ่มเดียวจบที่ ${LINK} — ล็อกอินเฉพาะ surface ที่แจ้ง (ปกติคือ TikTok @aeris.music4). ถ้า surface ที่แจ้งคือ Facebook: มันเป็น API-only ไม่มีหน้าให้ล็อกอิน — ต้องออก FB_PAGE_TOKEN ใหม่ (System User token) แล้วตั้งเป็น repo secret ตาม docs/k-free-runbook.md, ระบบจะกลับมาโพสต์เองทันที. ถ้าเพิ่งล็อกอินแล้วยังแดง ให้รัน ops/login_vault.py save และ ops/save_storage_state.py แล้วตั้ง secret AERIS_STORAGE_STATE_B64 ใหม่" \
             "https://ntfy.sh/${TOPIC}" || echo "ntfy push failed (non-fatal)"
