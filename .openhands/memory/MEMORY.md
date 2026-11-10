@@ -1678,3 +1678,17 @@ K approved the hum-free sound ("แบบนี้แหล่ะถึงจะ
   fluid-soundfont-gm musescore-general-soundfont` (see `music938-1/scripts/setup-pod.sh`);
   then the SoundFont test (`test_soundfont_renderer`) passes and the sleep bed renders
   with real sampled instruments.
+
+## Realistic sound: GM SoundFont → sfizz real-instrument sampler (2026-11-09, durable)
+- K rejected the **General-MIDI SoundFont** bed (fluidsynth + MuseScore_General.sf3)
+  as "fake — find a program that makes realistic sound." The realistic, free answer
+  is a **sampler over recordings**, not a synth: `music938-1/scripts/sampler.py` +
+  `tools/sfizz/sfizz_render` play real CC0 banks (Salamander Grand Piano V3 = a real
+  Yamaha C5; Sonatina Symphonic Orchestra). `soundfont.render_bed`/`render_backing`
+  use it when present, else fall back to GM. `USE_REAL_INSTRUMENTS=0` forces GM.
+- Banks + binary live under `/workspace/ax-tools/instruments` and
+  `music938-1/tools/sfizz` (gitignored, GB-scale). Rebuild with
+  `music938-1/scripts/install-sfizz.sh` (setup-pod.sh calls it).
+- **A cached bed outlives the code that made it** — `ambient_loop.BED_TAG` must be
+  bumped whenever the timbre changes or the old fake bed keeps shipping from disk.
+  It is now `sampler1`. Tests assert the *live* tag, not a frozen name.
