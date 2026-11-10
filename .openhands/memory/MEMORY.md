@@ -1589,3 +1589,26 @@ K approved the hum-free sound ("แบบนี้แหล่ะถึงจะ
   be dispatched by hand to leave Monday; marker is now `soundfont-<BED_TAG>` so a
   later timbre change re-swaps instead of skipping.
 - Session health: FB + TikTok both `SIGNED_IN` and posting (verified live).
+
+## FB/TK rail: a rejected API token is an outage, not a park (2026-11-09) — durable
+- **`available()` ≠ working.** `ops/fb_graph.py::available()` only says a token is
+  *configured*. The stored Facebook Page token has returned `API access blocked`
+  (OAuthException 200) to every call since **2026-11-08**, so the rail selected the API
+  route and failed every FB post while the probe still reported `SIGNED_IN` and healthy
+  TikTok kept the run green. Use `token_alive()` (asks Graph `/me`) before choosing the
+  API route; only a Graph rejection is dead, a transport error is transient.
+- **A System User token can be revoked even at `expires_at=0`.** "Never expires" is not
+  "never dies". `ops/token_heartbeat.py` now reports it as `blocked` and exits 1.
+- **`probe()` distinguishes PARKED (no token → rc 3, quiet) from BLOCKED (token present
+  but rejected → rc 1, alerts K).** Collapsing them hid the dead FB token for days.
+- **GitHub Actions runs `run:` under `bash -e`.** A step that means to read a command's
+  non-zero code must use `cmd || rc=$?`; otherwise `-e` aborts the step first. That is
+  why a probe step documented as "never fail here" failed and skipped the TikTok post.
+- **The crosspost rail's memory (`work/engagement-cache.json`, `work/engagement.json`)
+  must be allowlisted in `.gitignore`** or the workflow's `git add` silently drops them
+  and the response loop re-reads every post from scratch each run.
+- **K's rule (no ffmpeg tone synth; realistic instruments only) already holds**: `soundfont`
+  + fluidsynth renders `make_music`, `ambient_loop` and the mood lane. Verify with a live
+  render, not by reading the code.
+- **Open blocker:** re-provision `FB_PAGE_TOKEN` (new System User token, expiration Never)
+  + vault `axsecrets:fb-page-token`. The rail resumes by itself once set.
