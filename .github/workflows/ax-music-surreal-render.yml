@@ -86,6 +86,9 @@ jobs:
           # --merge-queue appends only new (platform, video) ids, so the pending
           # backlog is never dropped when a new format joins the rotation.
           python3 music938-1/scripts/crosspost.py --merge-queue
+          # K (2026-11-09): the absurdist exhibit is the *new* form, so it leads
+          # both feeds — the songs and karaoke still rotate underneath.
+          python3 music938-1/scripts/crosspost.py --promote-surreal
 
       - name: Commit the queue
         run: |

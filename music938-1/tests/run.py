@@ -2192,6 +2192,50 @@ def test_merge_queue_keeps_the_backlog() -> None:
         crosspost.QUEUE = real
 
 
+def test_promote_surreal_leads_the_feeds() -> None:
+    """The absurdist exhibit is the new form, so it must lead both feeds.
+
+    K (2026-11-09): "รื้อระบบเก่า แล้วเริ่มปรับเปลี่ยนรูปแบบใหม่". `merge_queue`
+    only folds the exhibit lane in every 8 positions, so at the post cadence the
+    first exhibit is still about a day out. `promote_surreal` lifts the whole
+    lane to the front, grouped one slug at a time so the two feeds stay in step,
+    and is idempotent so the rail can call it every run.
+    """
+    section("promote_surreal leads the feeds with the new form")
+    import crosspost
+    import tempfile
+
+    real = crosspost.QUEUE
+    try:
+        with tempfile.TemporaryDirectory() as d:
+            crosspost.QUEUE = Path(d) / "q.json"
+            q = [
+                {"id": "tiktok:song-a", "platform": "tiktok", "kind": "song",
+                 "slug": "a", "video": "a.mp4", "caption": "old"},
+                {"id": "facebook:surreal-b", "platform": "facebook",
+                 "kind": "surreal", "slug": "b", "video": "b.mp4", "caption": "art"},
+                {"id": "tiktok:surreal-b", "platform": "tiktok",
+                 "kind": "surreal", "slug": "b", "video": "b.mp4", "caption": "art"},
+                {"id": "facebook:karaoke-a", "platform": "facebook",
+                 "kind": "karaoke", "slug": "a", "video": "a.mp4", "caption": "old"},
+            ]
+            crosspost.QUEUE.write_text(json.dumps(q), encoding="utf-8")
+            n = crosspost.promote_surreal()
+            check("promote reports the exhibit count", n == 2, str(n))
+            got = json.loads(crosspost.QUEUE.read_text(encoding="utf-8"))
+            check("the exhibit now leads the queue",
+                  got[0].get("kind") == "surreal")
+            check("the same slug sits on both surfaces back to back",
+                  [it["slug"] for it in got[:2]] == ["b", "b"])
+            check("no item is dropped", len(got) == len(q))
+            check("non-exhibit items keep their order",
+                  [it["id"] for it in got[2:]] ==
+                  ["tiktok:song-a", "facebook:karaoke-a"])
+            check("promoting again is a no-op", crosspost.promote_surreal() == 0)
+    finally:
+        crosspost.QUEUE = real
+
+
 def test_state_files_are_addable() -> None:
     """Every durable state file must survive `git add` in a fresh checkout.
 
@@ -4083,6 +4127,7 @@ def main() -> int:
     test_browser_ci_storage_state()
     test_crosspost_uses_committed_queue()
     test_merge_queue_keeps_the_backlog()
+    test_promote_surreal_leads_the_feeds()
     test_state_files_are_addable()
     test_crosspost_blocked_vs_empty()
     test_api_posting_route()

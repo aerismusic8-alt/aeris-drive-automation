@@ -1225,6 +1225,37 @@ def merge_queue(fresh: list[dict]) -> int:
     return len(added)
 
 
+def promote_surreal() -> int:
+    """Move the absurdist exhibit clips to the front of the queue.
+
+    K (2026-11-09): "รื้อระบบเก่า แล้วเริ่มปรับเปลี่ยนรูปแบบใหม่" — tear the old
+    FB/TK system down and lead with the new form. `merge_queue` folds a new lane
+    in every `NEW_FORMAT_EVERY` positions, so at the post cadence the first
+    exhibit is still about a day out and the rest are weeks behind the song
+    backlog. Promoting makes the new form the *front* of both feeds while the
+    songs and karaoke still rotate underneath. Stable and idempotent: the
+    relative order inside each group is preserved, so re-running is a no-op.
+    """
+    if not QUEUE.exists():
+        return 0
+    cur = json.loads(QUEUE.read_text(encoding="utf-8"))
+    exhibits = [it for it in cur if it.get("kind") == "surreal"]
+    rest = [it for it in cur if it.get("kind") != "surreal"]
+    # A tidy gallery walk: the same slug on both surfaces back to back, slugs in
+    # order, so the two feeds stay in step instead of the merge's scattered order.
+    by_slug: dict[str, dict[str, dict]] = {}
+    for it in exhibits:
+        by_slug.setdefault(it["slug"], {})[it["platform"]] = it
+    order: list[dict] = []
+    for slug in sorted(by_slug):
+        order.extend(by_slug[slug][p] for p in sorted(by_slug[slug]))
+    if cur == order + rest:
+        return 0
+    QUEUE.write_text(json.dumps(order + rest, ensure_ascii=False, indent=2) + "\n",
+                     encoding="utf-8")
+    return len(order)
+
+
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__,
                                  formatter_class=argparse.RawDescriptionHelpFormatter)
@@ -1241,6 +1272,8 @@ def main() -> int:
     ap.add_argument("--rebuild-queue", action="store_true")
     ap.add_argument("--merge-queue", action="store_true",
                     help="append newly rendered Shorts without dropping the backlog")
+    ap.add_argument("--promote-surreal", action="store_true",
+                    help="lead both feeds with the absurdist exhibit clips")
     ap.add_argument("--augment-formats", action="store_true",
                     help="insert the Facebook photo/link formats into the queue")
     ap.add_argument("--refresh-captions", action="store_true",
@@ -1260,6 +1293,10 @@ def main() -> int:
     if args.merge_queue:
         n = merge_queue(build_queue())
         print(f"queue: added {n} new item(s)")
+        return 0
+    if args.promote_surreal:
+        n = promote_surreal()
+        print(f"queue: {n} exhibit(s) moved to the front")
         return 0
     if args.rebuild_queue or not QUEUE.exists():
         q = build_queue()
