@@ -56,12 +56,16 @@ def check_facebook(*, refresh: bool) -> dict:
     if fb_graph is None or not fb_graph.available():
         return {"surface": "facebook", "state": "browser", "detail": "no FB_PAGE_TOKEN"}
     if not fb_graph.token_alive(refresh=True):
-        # Present but rejected. This is what K must see: the token is not absent,
-        # it is blocked, so no amount of waiting fixes it — a fresh System User
-        # token does. Reported as its own state, not as "expired".
-        return {"surface": "facebook", "state": "blocked",
-                "detail": "token rejected by Graph (API access blocked / OAuthException) — "
-                          "re-provision the Page token"}
+        # Present but rejected ("API access blocked", 2026-11-08). This is NOT a
+        # K-needed outage any more: commit 8e6eaecf gave Facebook the same
+        # signed-in-browser fallback TikTok has, so the rail still posts Reels
+        # without the token. Paging K here was the exact false-alarm loop the API
+        # route was meant to remove, and K cannot clear an account-level block
+        # anyway. Reported as a degradation, so the run stays green.
+        return {"surface": "facebook", "state": "degraded",
+                "detail": "Graph token rejected (API access blocked / OAuthException); "
+                          "posting falls back to the browser — re-provision to restore "
+                          "the headless route"}
     new = fb_graph.refresh() if refresh else ""
     info = fb_graph.debug_token()
     data = info.get("data", {}) if info.get("ok") else {}
@@ -149,16 +153,20 @@ def main(argv: list[str]) -> int:
     if push and refresh and repo:
         push_secrets(repo)
     # A "browser" state is not a failure: the rail is still running, just without
-    # the API. An *expired* credential means K is needed. So does a *blocked* one:
-    # the token is present but rejected, the surface is parked with work waiting,
-    # and only a fresh token fixes it — leaving it green hid 120 stuck posts.
-    bad = [r for r in rows if r["state"] in ("expired", "blocked")]
+    # the API. A "degraded" Facebook token is also not a failure: the browser
+    # fallback posts Reels without it, so the surface is up — the headless route
+    # is just unavailable. Only an *expired* credential means K is needed (TikTok
+    # has no browser-free alternative and the refresh token is the only way back).
+    bad = [r for r in rows if r["state"] == "expired"]
     if bad:
         print("::error::" + "; ".join(f"{r['surface']} {r['detail']}" for r in bad))
         print(json.dumps({"needs_human": [r["surface"] for r in bad]}))
         return 1
-    if all(r["state"] == "browser" for r in rows):
-        print("no API tokens configured — crosspost runs on the browser session")
+    for r in rows:
+        if r["state"] == "degraded":
+            print(f"::warning::{r['surface']} degraded: {r['detail']}")
+    if all(r["state"] in ("browser", "degraded") for r in rows):
+        print("no live API tokens — crosspost runs on the browser session")
     return 0
 
 

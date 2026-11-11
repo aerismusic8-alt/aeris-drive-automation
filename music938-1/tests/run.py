@@ -2622,6 +2622,16 @@ def test_api_posting_route() -> None:
     check("heartbeat can push the rotated token back to CI",
           "--push-secrets" in hb and "gh-put-secrets.py" in hb)
 
+    # A rejected Facebook token is a *degradation*, not a K-needed outage: the
+    # signed-in-browser fallback (API_ONLY is empty) still posts Reels, and an
+    # account-level block is not something a sign-in can clear. Paging K every
+    # six hours for it was the false-alarm loop the API route was meant to remove,
+    # so the heartbeat must report "degraded" and only "expired" may fail the run.
+    check("a rejected FB token is reported as degraded, not blocked",
+          'state": "degraded"' in hb and '"blocked"' not in hb)
+    check("only an expired credential fails the heartbeat",
+          'r["state"] == "expired"' in hb)
+
     # Token rotation burns TikTok's stored refresh token, so it may only happen
     # where the new value can be written back. `_put` returns False with no vault
     # (CI), so every rotation site must be guarded by it.

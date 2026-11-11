@@ -62,5 +62,5 @@ jobs:
           set -uo pipefail
           [ -n "${TOPIC:-}" ] || { echo "no AX_NTFY_TOPIC set"; exit 0; }
           curl -sS --max-time 20 -H "Title: AERIS token expired" -H "Tags: warning" \
-            -d "A Facebook/TikTok API token has lapsed — the browser route still posts, but re-provision the token to keep K out of the loop." \
+            -d "A posting token has lapsed and the surface has no browser fallback left — re-provision it to keep K out of the loop. (A rejected Facebook token no longer pages here: the signed-in browser posts Reels without it.)" \
             "https://ntfy.sh/${TOPIC}" || echo "ntfy push failed (non-fatal)"
