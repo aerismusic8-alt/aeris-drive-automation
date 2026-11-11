@@ -629,6 +629,66 @@
    "public": true,
    "thumb_ok": false,
    "playlist_ok": false
+  },
+  {
+   "slug": "19-lom-nao-kap-khwam-khit-thueng",
+   "kind": "song",
+   "variant": "",
+   "video_id": "iv0tvVxLEX0",
+   "at": "2026-11-11T16:03:11+00:00",
+   "public": true,
+   "thumb_ok": false,
+   "playlist_ok": false
+  },
+  {
+   "slug": "20-khop-khun-thi-yang-hai-chai",
+   "kind": "song",
+   "variant": "",
+   "video_id": "-x5O8EJAoqQ",
+   "at": "2026-11-11T16:03:14+00:00",
+   "public": true,
+   "thumb_ok": false,
+   "playlist_ok": false
+  },
+  {
+   "slug": "21-sao-na-khoi-phi",
+   "kind": "song",
+   "variant": "",
+   "video_id": "2pte2hsHtGg",
+   "at": "2026-11-11T16:03:16+00:00",
+   "public": true,
+   "thumb_ok": false,
+   "playlist_ok": false
+  },
+  {
+   "slug": "24-yut-mai-yom",
+   "kind": "song",
+   "variant": "",
+   "video_id": "0odhiX5ZS94",
+   "at": "2026-11-11T16:03:19+00:00",
+   "public": true,
+   "thumb_ok": false,
+   "playlist_ok": false
+  },
+  {
+   "slug": "06-doen-khon-diao",
+   "kind": "short",
+   "variant": "short-song-h2-06-doen-khon-diao",
+   "video_id": "_PTmc1GJo1Y",
+   "at": "2026-11-11T16:03:22+00:00",
+   "public": true,
+   "thumb_ok": false,
+   "playlist_ok": false
+  },
+  {
+   "slug": "07-huachai-si-thao",
+   "kind": "short",
+   "variant": "short-song-h2-07-huachai-si-thao",
+   "video_id": "7OP5JOK9R2w",
+   "at": "2026-11-11T16:03:26+00:00",
+   "public": true,
+   "thumb_ok": false,
+   "playlist_ok": false
   }
  ],
  "playlists": {
