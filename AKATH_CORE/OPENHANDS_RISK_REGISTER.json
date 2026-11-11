@@ -1,0 +1,120 @@
+{
+  "schema_version": "1.0",
+  "registry_role": "OPENHANDS_RISK_REGISTER",
+  "authority": "K_FINAL_AUTHORITY",
+  "managed_by": "AR",
+  "created_utc": "2026-11-11T00:00:00Z",
+  "source": "AF / AKATH SYSTEM BRIEF (2026-11-11) 'Platform risks' section + AR's own incident memory",
+  "rule": "A risk is CLOSED only when a runnable check proves the mitigation is in place. A mitigation that is only prose is still OPEN.",
+  "checks_run_by": "ops/risk_audit.py",
+  "risks": [
+    {
+      "id": "RISK-CRON",
+      "title": "No cron / restart hook — a stopped sandbox never wakes itself",
+      "severity": "high",
+      "mitigation": "Run 24/7 work on GitHub Actions (always on, free for this public repo), not on the sandbox. The sandbox is transport only.",
+      "evidence": "the 6 scheduled workflows in .github/workflows/ (release, crosspost, dashboard, watchdog, roblox-live-state, token-heartbeat)",
+      "check": "workflows_scheduled",
+      "status": "mitigated"
+    },
+    {
+      "id": "RISK-ROOTFS",
+      "title": "Restart wipes the rootfs — /workspace and $HOME are lost",
+      "severity": "high",
+      "mitigation": "Durable state lives in the repo and the KV vault, never only on disk. Persistent runtime files (browser profile, pylibs, tools) sit under /workspace/ax-tools, which survives a recycle but not a new pod.",
+      "evidence": "ops/ax_vault.py (account-scoped KV vault) + ops/AX_RECOVER.md",
+      "check": "durable_state",
+      "status": "mitigated"
+    },
+    {
+      "id": "RISK-HOSTURL",
+      "title": "The work host URL changes every restart (work-1 / work-2)",
+      "severity": "high",
+      "mitigation": "Build the operator URL at run time from RUNTIME_ID, never hardcode it.",
+      "evidence": "cloud-desktop bootstrap.py --url; ops/phone_login.py reads the session's work_hosts",
+      "check": "no_hardcoded_host",
+      "status": "mitigated"
+    },
+    {
+      "id": "RISK-CONTEXT",
+      "title": "A new chat does not remember context",
+      "severity": "high",
+      "mitigation": "chat = transport, repo = authority. A fresh session reads .openhands/CHARTER.md + .openhands/memory/MEMORY.md and restores the vault before working.",
+      "evidence": ".openhands/CHARTER.md, .openhands/memory/MEMORY.md, ops/AX_RECOVER.md",
+      "check": "context_on_disk",
+      "status": "mitigated"
+    },
+    {
+      "id": "RISK-QUOTA",
+      "title": "Automation-run quota (20/day) is shared across the whole account",
+      "severity": "high",
+      "mitigation": "Prefer deterministic GitHub Actions rails over OpenHands automation runs; keep the automation count low; a paused automation is auto-healed by the rail watchdog.",
+      "evidence": ".github/workflows/ax-rail-watchdog.yml; ops/heartbeat.py",
+      "check": "quota_aware",
+      "status": "mitigated"
+    },
+    {
+      "id": "RISK-DEPS",
+      "title": "Dependencies vanish on every restart (g4f, pytest, web3, cryptography, eth_account)",
+      "severity": "medium",
+      "mitigation": "requirements.txt + scripts/bootstrap-pod.sh reinstall everything under /workspace in one command.",
+      "evidence": "requirements.txt, scripts/bootstrap-pod.sh",
+      "check": "deps_declared",
+      "status": "mitigated"
+    },
+    {
+      "id": "RISK-IP",
+      "title": "The datacenter IP is blocked (403 / captcha)",
+      "severity": "medium",
+      "mitigation": "Do not fight 403/captcha. Use official APIs (YouTube Data API, FB Graph) and the signed-in cloud desktop for login-only surfaces; fall back to keyless search (ops/websearch.py).",
+      "evidence": "ops/yt_auth.py, ops/fb_graph.py, ops/websearch.py, .agents/skills/ax-cloud-desktop",
+      "check": "api_first",
+      "status": "mitigated"
+    },
+    {
+      "id": "RISK-TOKEN",
+      "title": "The sandbox token scope is narrow (403 on write)",
+      "severity": "medium",
+      "mitigation": "Write routes are explicit: the vault workflow token for pushes, the app token via scripts/use-app-token.sh, PC1 as the fallback. Never assume the ambient token can write.",
+      "evidence": "scripts/use-app-token.sh, scripts/gh-api.py, scripts/push-via-pc1.sh, AGENTS.md",
+      "check": "write_route_documented",
+      "status": "mitigated"
+    },
+    {
+      "id": "RISK-SECRET",
+      "title": "Automations get no secret injection; secrets must never land in the repo or a remote URL",
+      "severity": "medium",
+      "mitigation": "Secrets live in OpenHands secrets and the KV vault (never packed, .pem excluded). The git remote is left without a token between sessions.",
+      "evidence": "ops/ax_secrets.py, ops/ax_vault.py (pack refuses credential-shaped files), .gitignore",
+      "check": "secret_hygiene",
+      "status": "mitigated"
+    },
+    {
+      "id": "RISK-PUSHRACE",
+      "title": "Two jobs committing at once collide (push race)",
+      "severity": "medium",
+      "mitigation": "Do not `git pull --rebase` on a branch another job commits to; use the GitHub Contents API for concurrent writes, and allowlist mutable state files in .gitignore so `git add` does not drop them.",
+      "evidence": "scripts/gh-api.py; .gitignore entries for work/engagement*.json",
+      "check": "push_race_guard",
+      "status": "mitigated"
+    },
+    {
+      "id": "RISK-DRIFT",
+      "title": "Registry drift happens silently",
+      "severity": "low",
+      "mitigation": "Reconcile the canonical registry against the live scope; the registry is validated before it is trusted.",
+      "evidence": "AKATH_CORE/reconcile_growth_scope.py; ops/risk_audit.py check registry_valid",
+      "check": "registry_valid",
+      "status": "mitigated"
+    },
+    {
+      "id": "RISK-DISK",
+      "title": "Disk / inode exhaustion",
+      "severity": "low",
+      "mitigation": "Build artefacts are gitignored; /tmp is not relied on for durable work; the vault caps each value at 65536 bytes.",
+      "evidence": ".gitignore; ops/ax_vault.py chunking",
+      "check": "disk_sane",
+      "status": "mitigated"
+    }
+  ]
+}

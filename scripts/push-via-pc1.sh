@@ -19,10 +19,10 @@ REPO="aerismusic8-alt/aeris-drive-automation"
 STATE=/tmp/serve
 
 # The pod's public URL, used to hand the bundle to PC1. The work host is per-pod and
-# changes on every recycle, so a hardcoded default goes stale and the script then hangs
-# on PC1's bundle download for its full timeout. Override with the live host from the
-# session's work_hosts: SANDBOX_URL=https://work-2-<host>.prod-runtime.all-hands.dev
-SANDBOX_URL="${SANDBOX_URL:-https://work-2-jhakqeqvkcqlwmjh.prod-runtime.all-hands.dev}"
+# changes on every recycle, so it is built from RUNTIME_ID (the string in the session's
+# work_hosts block). A hardcoded default would go stale and hang on PC1's bundle
+# download for its full timeout. Override with SANDBOX_URL when RUNTIME_ID is absent.
+SANDBOX_URL="${SANDBOX_URL:-https://work-2-${RUNTIME_ID:?RUNTIME_ID not set - export it, or pass SANDBOX_URL}.prod-runtime.all-hands.dev}"
 PC1_MCP="${PC1_MCP:-https://desktop-rgk6jkb.tail8740ad.ts.net/mcp}"
 
 cd "$REPO_DIR"

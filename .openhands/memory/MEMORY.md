@@ -1733,3 +1733,25 @@ K approved the hum-free sound ("แบบนี้แหล่ะถึงจะ
   Playwright `connect_over_cdp` browser-wide (30s timeout) even while
   `bootstrap.py --status` says UP; recover by closing FB tabs via
   `/json/close/<id>` and opening a fresh one.
+
+## OpenHands platform risks — register + runnable audit (2026-11-11) — durable
+- The AF brief's "Platform risks" list is now a **register with a check per risk**:
+  `AKATH_CORE/OPENHANDS_RISK_REGISTER.json` (12 risks) + `ops/risk_audit.py`
+  (`--strict`, `--json`). A mitigation is real only when its check is green; the
+  audit exits non-zero on any unproven high risk, and `test_risk_audit` pins it.
+- **Fresh-pod recovery is one command: `scripts/bootstrap-pod.sh`.** It restores
+  every python dep from `requirements.txt` into `/workspace/ax-tools/pylibs`
+  (durable), installs ffmpeg/fluidsynth/Thai-fonts/xvfb, then prints readiness.
+  `ops/risk_audit.py` check `deps_declared` fails if a third-party import has no
+  requirements.txt line — keep them in sync.
+- **A hardcoded per-pod host is a real bug, not a style nit.** Two files defaulted
+  to a dead `work-{1,2}-<id>.prod-runtime...` host; both now build it from
+  `$RUNTIME_ID` (`aeris938-1/scripts/login-link.sh`, `scripts/push-via-pc1.sh`).
+  `risk_audit` scans runnable files (.py/.sh/.yml) for a baked host.
+- **The 24/7 guard is `.github/workflows/ax-risk-audit.yml`** (daily, ubuntu, no
+  secrets) — the watcher must not share the sandbox failure it reports.
+- **Thai fonts matter: without tlwg the SVG renderer makes tofu, silently.**
+  `fonts-thai-tlwg-ttf`/`-otf`; readiness check is `system deps` thai_fonts.
+- Env: `RUNTIME_ID` is exported in the session and equals the `<id>` in the
+  work_hosts host, so a URL can be built instead of hardcoded. The workflow token
+  (vault `axsecrets:gh-workflow-token`) has `repo, workflow` scopes.

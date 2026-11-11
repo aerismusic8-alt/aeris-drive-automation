@@ -1,0 +1,38 @@
+# Python dependencies for AR's tools (ops/, aeris938-2/scripts/, music938-1/scripts/).
+#
+# Why this file exists: a pod recycle wipes $HOME, /tmp and every pip package.
+# Every dependency AR's code imports must be re-installable from here in one
+# command, so a fresh sandbox does not fail with ModuleNotFoundError on a rail
+# that was green before. Restore with scripts/bootstrap-pod.sh.
+#
+# Keep this list to what the code actually imports. It is verified against the
+# tree by ops/risk_audit.py (check "deps_declared"), which fails when a
+# third-party import has no line here.
+
+# --- advisors / web (keyless, no login) ---
+g4f                 # advisor quorum: without it the panel answers 1/6 = quorum FAIL
+ddgs                # DuckDuckGo search (no key, no quota) - ops/websearch.py
+trafilatura         # page extraction - ops/websearch.py
+
+# --- channel + media build ---
+numpy
+pillow
+pythainlp
+mido
+edge-tts
+imageio-ffmpeg
+fonttools
+playwright
+websocket-client
+
+# --- rails / secrets / signing ---
+cryptography
+PyNaCl
+fastmcp
+
+# --- wallet / crypto rail (brief lists it as a recurring missing dep) ---
+web3
+eth-account
+
+# --- tests ---
+pytest

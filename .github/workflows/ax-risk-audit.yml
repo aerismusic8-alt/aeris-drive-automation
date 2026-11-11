@@ -1,0 +1,41 @@
+name: AX Risk Audit
+
+# The brief (2026-11-11) lists the OpenHands platform risks that cost real time:
+# no cron, a wiped rootfs, a changing host URL, lost context, a shared quota,
+# deps that vanish, a blocked IP, a narrow token, no secret injection, a push
+# race. Each has a mitigation, and ops/risk_audit.py runs a check for each.
+#
+# This rail runs that audit on a schedule, so a mitigation that silently regresses
+# fails here — on a machine that is not the sandbox being audited. That is the
+# whole point: the watcher must not share the failure it reports. No secrets, no
+# sandbox, no LLM — a deterministic check on the repo itself.
+
+on:
+  schedule:
+    - cron: '17 6 * * *'   # daily, after the other rails have run
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  risk-audit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      # The audit is offline and stdlib-only, so no pip install is needed.
+      - name: Run the OpenHands risk audit
+        run: python3 ops/risk_audit.py --strict
+      - name: Summarise
+        if: always()
+        run: |
+          {
+            echo "## OpenHands risk audit"
+            echo
+            echo '```'
+            python3 ops/risk_audit.py
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"

@@ -4442,6 +4442,47 @@ def test_promo_site_converts_to_the_page() -> None:
           '"@type": "FAQPage"' in html or '"@type":"FAQPage"' in html)
 
 
+def test_risk_audit() -> None:
+    """The OpenHands platform risks must stay proven, not just documented.
+
+    The brief (2026-11-11) lists the platform risks that cost real time: no cron,
+    a wiped rootfs, a changing host URL, lost context, a shared quota, deps that
+    vanish, a blocked IP, a narrow token, no secret injection, a push race. Each
+    one has a mitigation, and `ops/risk_audit.py` runs a check for each so a
+    mitigation that quietly regresses (a hardcoded host creeps back in, a dep is
+    imported but not declared) fails a test instead of a rail. This pins that the
+    register and its checks agree and that the audit passes.
+    """
+    section("openhands risk audit")
+    sys.path.insert(0, str(ROOT.parent / "ops"))
+    import risk_audit  # noqa: E402
+
+    reg = json.loads((ROOT.parent / "AKATH_CORE" /
+                      "OPENHANDS_RISK_REGISTER.json").read_text())
+    risks = reg.get("risks", [])
+    check("the register lists every platform risk", len(risks) >= 12)
+    check("every risk names a check", all(r.get("check") for r in risks))
+    check("every risk names a mitigation", all(r.get("mitigation") for r in risks))
+    check("every check in the register is implemented",
+          all(r["check"] in risk_audit.CHECKS for r in risks))
+    # The audit must actually pass: a mitigation is only real when its check is
+    # green. This is the line that turns the register into a guard.
+    rep = risk_audit.audit()
+    check("no high-severity risk is unproven", rep["high_open"] == 0,
+          f"{rep['high_open']} high unproven: "
+          + ", ".join(x["id"] for x in rep["rows"] if not x["ok"]))
+    check("the audit passes in strict mode", rep["any_open"] == 0,
+          ", ".join(x["id"] for x in rep["rows"] if not x["ok"]))
+    # The deps check must actually find third-party imports, or it is vacuous.
+    check("the deps check sees real third-party imports",
+          len(risk_audit._third_party_imports()) >= 8)
+    check("requirements.txt exists and declares packages",
+          (ROOT.parent / "requirements.txt").exists()
+          and "numpy" in (ROOT.parent / "requirements.txt").read_text())
+    check("the one-command bootstrap exists",
+          (ROOT.parent / "scripts" / "bootstrap-pod.sh").exists())
+
+
 def main() -> int:
     test_lyrics()
     test_tokenizer()
@@ -4528,6 +4569,7 @@ def main() -> int:
     test_release_tolerates_transient_errors()
     test_ledger_write_merges_instead_of_clobbering()
     test_youtube_quota_ledger()
+    test_risk_audit()
     test_outputs()
     print(f"\n{PASS} passed, {FAIL} failed")
     if FAILURES:

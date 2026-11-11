@@ -5,6 +5,14 @@ AKATH_CORE/runtime/evidence.jsonl
 # Vendored tooling (fetch with scripts/install-luau.sh)
 tools/
 
+# Credentials must never be committed. They live in OpenHands secrets and the KV
+# vault, or on disk outside the repo (/workspace/.secrets, /workspace/ax-tools).
+# ops/risk_audit.py fails the "secret_hygiene" check if these rules are missing.
+.secrets/
+**/.secrets/
+*.pem
+*.p12
+
 # aeris938-1 pipeline: generated assets and renders are large; manifests are kept.
 aeris938-1/work/
 aeris938-1/library/img/*.png
