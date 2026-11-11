@@ -49,6 +49,16 @@ def section(title: str) -> None:
     print(f"\n{title}")
 
 
+def note(msg: str) -> None:
+    """An informational line that is not a pass or a fail.
+
+    Used when a capability is absent on this pod (no sampler bank, no Piper
+    voice) so the suite records the state without a false failure. A missing
+    helper used to crash the whole run the moment the branch was taken.
+    """
+    print(f"  --   {msg}")
+
+
 def has_thai(s: str) -> bool:
     return any("\u0e00" <= c <= "\u0e7f" for c in s)
 
@@ -3632,6 +3642,28 @@ def test_login_vault() -> None:
     check("has a session heartbeat", "def heartbeat" in src and '"heartbeat"' in src)
 
 
+def test_fb_relogin() -> None:
+    """A dead Facebook browser session must be revivable in one command.
+
+    The 2026-11-11 outage was a *browser* session Facebook rejected (it served the
+    logged-out page while holding c_user/xs) on top of the rejected Graph token.
+    The Graph block is the owner's to clear, but the browser route the rail falls
+    back to is AR's to heal — with the vaulted password, typed once, over CDP.
+    """
+    section("Facebook browser re-login (heal the fallback route)")
+    src = (ROOT.parent / "ops" / "fb_relogin.py").read_text()
+    check("reads the password from the vault, never the argv",
+          "axsecrets:fb-password" in src and "input[type=password]" in src)
+    check("verifies the real session, not just a cookie",
+          "def _has_session" in src and '"c_user"' in src)
+    check("saves the revived session back to the vault",
+          "login_vault" in src and "save()" in src)
+    check("can refresh the CI storage-state secret",
+          "AERIS_STORAGE_STATE_B64" in src and "gh-put-secrets.py" in src)
+    check("makes a single attempt, no password retry loop",
+          "--check" in src and "no retry" in src.lower())
+
+
 def test_operator_url() -> None:
     """The noVNC link must be built, not hand-copied, so it cannot be missed.
 
@@ -4439,6 +4471,7 @@ def main() -> int:
     test_desk_daily_orchestrator()
     test_profile_setup()
     test_login_vault()
+    test_fb_relogin()
     test_outreach()
     test_promo_site_converts_to_the_page()
     test_operator_url()

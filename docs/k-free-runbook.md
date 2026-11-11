@@ -65,6 +65,30 @@ posting Reels while the token is rejected — the only loss is the headless rout
 an account-level block is not something K can clear by signing in, so paging K
 every six hours was pure noise. `python3 ops/fb_graph.py status` is the check.
 
+**RESOLVED 2026-11-11 — the *browser* session, not the token, was the real outage.**
+Both routes were down at once on 2026-11-11: the Graph token rejected *and* the
+saved browser cookie session dead (Facebook served the logged-out page while still
+holding `c_user`/`xs`, so the 08:39Z crosspost run failed with 134 posts waiting).
+The two are independent, and only the second is AR's to fix:
+
+```bash
+python3 ops/fb_relogin.py --check        # is the browser session alive?
+python3 ops/fb_relogin.py --push-secret  # revive it + refresh the CI secret
+```
+
+`ops/fb_relogin.py` reads the Facebook password from the vault
+(`axsecrets:fb-password`, provisioned once), signs in over CDP in a single attempt
+(no retry loop — that is what triggers a checkpoint), verifies the real session,
+saves it back to `login_vault`, and — with `--push-secret` — refreshes
+`AERIS_STORAGE_STATE_B64` so the CI rail stops holding the stale blob. Verified:
+the 2026-11-11 11:37Z crosspost run posted a Facebook Reel
+(`facebook.com/reel/1818815976028171`) and stayed green.
+
+**Key finding: the account block does NOT block the browser route.** The Graph
+`API access blocked` is app/API-level; the web login still works with the stored
+password and no checkpoint. So the browser route is the reliable fallback while the
+Graph block stands, and the Graph fix remains a one-time owner action (above).
+
 Two facts learned doing it, worth keeping:
 
 - **The Graph Page node id is `1349201551618019`, not `61595890900382`.** The
