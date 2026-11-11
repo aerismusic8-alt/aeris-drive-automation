@@ -589,6 +589,46 @@
    "public": true,
    "thumb_ok": false,
    "playlist_ok": true
+  },
+  {
+   "slug": "15-thanon-sai-kao",
+   "kind": "short",
+   "variant": "short-song-h1-15-thanon-sai-kao",
+   "video_id": "k0Px6Gf2h4c",
+   "at": "2026-11-11T00:32:54+00:00",
+   "public": true,
+   "thumb_ok": false,
+   "playlist_ok": false
+  },
+  {
+   "slug": "16-khwam-fan-thi-yang-mai-tai",
+   "kind": "song",
+   "variant": "",
+   "video_id": "i0f6B26luaw",
+   "at": "2026-11-11T00:32:58+00:00",
+   "public": true,
+   "thumb_ok": false,
+   "playlist_ok": false
+  },
+  {
+   "slug": "17-wan-thi-fa-pen-chai",
+   "kind": "song",
+   "variant": "",
+   "video_id": "d0LS47XbbQo",
+   "at": "2026-11-11T00:33:02+00:00",
+   "public": true,
+   "thumb_ok": false,
+   "playlist_ok": false
+  },
+  {
+   "slug": "18-khon-thi-chan-khoei-rak",
+   "kind": "song",
+   "variant": "",
+   "video_id": "MGg7ngnaff0",
+   "at": "2026-11-11T00:33:06+00:00",
+   "public": true,
+   "thumb_ok": false,
+   "playlist_ok": false
   }
  ],
  "playlists": {
