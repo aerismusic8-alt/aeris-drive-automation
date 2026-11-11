@@ -385,7 +385,7 @@
    "public": true,
    "replaces": "-6RdLKwxykk",
    "thumb_ok": false,
-   "playlist_ok": false
+   "playlist_ok": true
   },
   {
    "slug": "03-khit-thueng-thoe-thuk-khuen",
@@ -396,7 +396,7 @@
    "public": true,
    "replaces": "iLwzR8A_1uw",
    "thumb_ok": false,
-   "playlist_ok": false
+   "playlist_ok": true
   },
   {
    "slug": "04-saeng-chao-wan-mai",
@@ -407,7 +407,7 @@
    "public": true,
    "replaces": "FsO5qmneeEQ",
    "thumb_ok": false,
-   "playlist_ok": false
+   "playlist_ok": true
   },
   {
    "slug": "04-saeng-chao-wan-mai",
@@ -418,7 +418,7 @@
    "public": true,
    "replaces": "STQsMvhb0yk",
    "thumb_ok": false,
-   "playlist_ok": false
+   "playlist_ok": true
   },
   {
    "slug": "06-doen-khon-diao",
@@ -428,7 +428,7 @@
    "at": "2026-11-06T18:39:59+00:00",
    "public": true,
    "thumb_ok": false,
-   "playlist_ok": false
+   "playlist_ok": true
   },
   {
    "slug": "hp-budget-01",
@@ -498,7 +498,7 @@
    "at": "2026-11-08T14:59:10+00:00",
    "public": true,
    "thumb_ok": false,
-   "playlist_ok": false
+   "playlist_ok": true
   },
   {
    "slug": "29-takorn-kong-fa",
@@ -508,7 +508,7 @@
    "at": "2026-11-08T14:59:14+00:00",
    "public": true,
    "thumb_ok": false,
-   "playlist_ok": false
+   "playlist_ok": true
   },
   {
    "slug": "desk-setup-04",
@@ -538,7 +538,7 @@
    "at": "2026-11-09T18:39:47+00:00",
    "public": true,
    "thumb_ok": false,
-   "playlist_ok": false
+   "playlist_ok": true
   },
   {
    "slug": "10-dok-mai-rim-thang",
@@ -548,7 +548,7 @@
    "at": "2026-11-09T18:39:51+00:00",
    "public": true,
    "thumb_ok": false,
-   "playlist_ok": false
+   "playlist_ok": true
   },
   {
    "slug": "11-sanya-chak-chai",
@@ -558,7 +558,7 @@
    "at": "2026-11-09T18:39:55+00:00",
    "public": true,
    "thumb_ok": false,
-   "playlist_ok": false
+   "playlist_ok": true
   },
   {
    "slug": "12-khuen-thi-mai-mi-dao",
@@ -568,7 +568,7 @@
    "at": "2026-11-09T18:39:59+00:00",
    "public": true,
    "thumb_ok": false,
-   "playlist_ok": false
+   "playlist_ok": true
   },
   {
    "slug": "13-rak-thi-chak-pai",
@@ -598,7 +598,7 @@
    "at": "2026-11-11T00:32:54+00:00",
    "public": true,
    "thumb_ok": false,
-   "playlist_ok": false
+   "playlist_ok": true
   },
   {
    "slug": "16-khwam-fan-thi-yang-mai-tai",
@@ -608,7 +608,7 @@
    "at": "2026-11-11T00:32:58+00:00",
    "public": true,
    "thumb_ok": false,
-   "playlist_ok": false
+   "playlist_ok": true
   },
   {
    "slug": "17-wan-thi-fa-pen-chai",
