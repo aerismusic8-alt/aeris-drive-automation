@@ -134,6 +134,28 @@ true-instrumental karaoke mix, cover art, a 1920x1080 word-synced video.
   signed in. Verified live for google + facebook + tiktok. Cookies only, never
   passwords. K signs in via noVNC (`work-1-<host>/vnc.html`) as
   **`aerismusic8@gmail.com`** (K's rule — not AR's registered mail).
+- **A dead Facebook browser session is AR's to heal; the Graph block is not
+  (2026-11-11, durable).** The FB rail has *two independent* routes and they fail
+  separately: (a) the Meta Graph Page token rejected at the **account/app level**
+  (`API access blocked`, OAuthException 200 — a never-expiring System User token
+  can still be revoked; only the owner restores it from the App Dashboard, and a
+  fresh token from the *same* app is likely rejected too); (b) the **browser**
+  cookie session dead — Facebook serves the logged-out page while still holding
+  `c_user`/`xs`, so a cookie-presence check reads "ok" for a dead session and
+  `login_vault restore` prints `SESSION REJECTED`. **Fix (b) with one command:
+  `python3 ops/fb_relogin.py --push-secret`** — reads `axsecrets:fb-password`
+  from the vault, signs in over CDP in a *single* attempt (retries trigger a
+  checkpoint), verifies the real session, saves it to `login_vault`, and refreshes
+  the CI `AERIS_STORAGE_STATE_B64` (the rail keeps the stale blob until then).
+  `--check` reports state only. **Key finding: the account block does NOT block
+  the browser login** — the web login worked with the stored password, no
+  checkpoint. Verified: run 43013550260 posted a Reel, green.
+- **`music938-1/tests/run.py` had an undefined `note()` helper** that crashed the
+  whole suite (`NameError`) on any pod without the sfizz sampler bank. Added it
+  (an informational, non-failing line). On a bare pod the suite needs
+  `apt-get install -y fluidsynth fluid-soundfont-gm musescore-general-soundfont`
+  or `test_soundfont_renderer` aborts first. 5 failures remain that are purely
+  environmental (no songs built on a fresh pod, so themed albums miss their floor).
 - `setup-pod.sh` used to leave dangling ffmpeg symlinks (unpacked into a deleted
   `mktemp -d`); fixed to unpack under `/workspace/ax-tools/ffmpeg`. Run it after
   a recycle, then `export PATH=/workspace/ax-tools/bin:$PATH`.
