@@ -4003,10 +4003,13 @@ def test_k_free_status() -> None:
     import k_free_status as kfs  # noqa: E402
 
     real = kfs.get_secret
+    real_vault = kfs._vault_has
     try:
         # Every credential present: the api primaries are K-free, so the browser
-        # fallbacks are covered and nothing needs K again.
+        # fallbacks are covered and nothing needs K again. The vault is stubbed so
+        # the suite never reads live state.
         kfs.get_secret = lambda name: "x"
+        kfs._vault_has = lambda key: True
         rep = kfs.audit()
         by = {(r["surface"], r["rail"]): r for r in rep["rails"]}
         check("an api rail with its token is K-free",
@@ -4028,6 +4031,7 @@ def test_k_free_status() -> None:
         # no credential to lose, so it stays K-free. With no tokens the browser
         # fallbacks have no primary, so K is pulled back in — the honest failure.
         kfs.get_secret = lambda name: ""
+        kfs._vault_has = lambda key: False
         rep0 = kfs.audit()
         by0 = {(r["surface"], r["rail"]): r for r in rep0["rails"]}
         check("with no secrets, no api rail is K-free",
@@ -4042,17 +4046,41 @@ def test_k_free_status() -> None:
         # Facebook is no longer API-only: with no token it falls back to the
         # signed-in browser, exactly like TikTok. Neither browser fallback is
         # K-free on its own (a snapshot can expire), and with no token neither
-        # primary covers it, so both are the honest recurring K-dependency.
+        # primary covers it. With no vaulted password, both are the honest
+        # recurring K-dependency.
         check("facebook falls back to the browser, not a park",
               not by0[("facebook", "Page Reels")]["needs_k"]
               and by0[("facebook", "Reels (browser fallback)")]["needs_k"])
-        check("with no tokens, the two browser fallbacks are recurring",
+        check("with no tokens and no vault, both browser fallbacks are recurring",
               rep0["needs_k"] == 2 and rep0["k_free_all"] is False)
         check("facebook is reported as a one-time setup, not a blocker",
               ("facebook", "Page Reels") not in
               {(b["surface"], b["rail"]) for b in rep0["blocked"]})
+
+        # The vault holds the Facebook password but not TikTok's: the agent
+        # revives Facebook itself (`ops/fb_relogin.py`), so only TikTok is left as
+        # a recurring K-dependency. This is the honesty the audit exists for — a
+        # revivable rail must not be reported as K-free (a checkpoint could still
+        # need a human), yet must stop being counted as recurring.
+        kfs.get_secret = lambda name: ""
+        kfs._vault_has = lambda key: key == "axsecrets:fb-password"
+        rep1 = kfs.audit()
+        by1 = {(r["surface"], r["rail"]): r for r in rep1["rails"]}
+        fb = by1[("facebook", "Reels (browser fallback)")]
+        check("a browser rail with a vaulted password is revivable",
+              fb["revivable"] and not fb["needs_k"] and not fb["k_free"])
+        check("a revivable rail is still not counted as K-free",
+              not fb["k_free"])
+        check("the revivable rail leaves only TikTok recurring",
+              rep1["needs_k"] == 1
+              and rep1["blocked"][0]["surface"] == "tiktok")
+        check("the revivable rail is reported in its own list",
+              [b["surface"] for b in rep1["revivable"]] == ["facebook"])
+        check("--check still fails while TikTok needs K",
+              rep1["k_free_all"] is False)
     finally:
         kfs.get_secret = real
+        kfs._vault_has = real_vault
 
 
 def test_vault_key_fallback() -> None:

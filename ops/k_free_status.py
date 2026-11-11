@@ -20,7 +20,10 @@ just because it works today:
 * **keyless** — no credential at all: a free endpoint reached over plain HTTP or
   CDP (Duck.ai, Pollinations). Nothing expires, so nothing can put K back.
 * **browser** — a Playwright session restored from a snapshot. It works until the
-  snapshot expires, and then it is a K sign-in, so it is *not* K-free.
+  snapshot expires, and then it is a K sign-in, so it is *not* K-free — *unless*
+  the vault holds the account password, in which case the agent re-logs in itself
+  (`ops/fb_relogin.py`) and the rail becomes **browser-revivable**: not K-free
+  (a checkpoint could still need a human) but not a recurring K-dependency either.
 * **oneshot** — K authorizes exactly once (provisions a token, or signs in once so
   the vault can hold the session) and never again. Not "K in the loop", but not
   zero-K either, so it is reported separately rather than hidden.
@@ -49,39 +52,45 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 from ax_secrets import get_secret  # noqa: E402
 
 # (surface, rail, auth-kind, [secret names that make it K-free], human note,
-#  superseded_by: (surface, rail) of the primary that covers this fallback)
-RAILS: list[tuple[str, str, str, list[str], str, tuple[str, str] | None]] = [
+#  superseded_by: (surface, rail) of the primary that covers this fallback,
+#  revivable_by: vault key whose presence lets the agent re-login a browser rail)
+RAILS: list[tuple[str, str, str, list[str], str, tuple[str, str] | None, str]] = [
     ("youtube", "upload + banner", "api",
-     ["YT_CH3_REFRESH_TOKEN"], "OAuth refresh token; re-minted by the token heartbeat", None),
+     ["YT_CH3_REFRESH_TOKEN"], "OAuth refresh token; re-minted by the token heartbeat",
+     None, ""),
     ("youtube", "channel avatar", "oneshot", [],
-     "no avatar API exists; one Studio click, then the vault keeps the session", None),
+     "no avatar API exists; one Studio click, then the vault keeps the session",
+     None, ""),
     ("facebook", "Page Reels", "api",
      ["FB_PAGE_TOKEN"], "Meta System User token: K provisions it once, then never. "
      "Preferred when live; the account-level block (2026-11-08) is what makes the "
      "browser fallback matter again",
-     None),
+     None, ""),
     ("facebook", "Reels (browser fallback)", "browser",
      ["AERIS_STORAGE_STATE_B64"],
-     "the signed-in desktop; `login_vault.py` restores the session on a fresh pod",
-     ("facebook", "Page Reels")),
+     "the signed-in desktop; a dead session is revived from the vault password by "
+     "`ops/fb_relogin.py` — no K needed (a checkpoint would still need K)",
+     ("facebook", "Page Reels"), "axsecrets:fb-password"),
     ("tiktok", "Short posting", "api",
      ["TT_REFRESH_TOKEN", "TT_CLIENT_KEY", "TT_CLIENT_SECRET"],
-     "Content Posting API; K authorizes the app once, a job rotates the token", None),
+     "Content Posting API; K authorizes the app once, a job rotates the token",
+     None, ""),
     ("tiktok", "Short posting (fallback)", "browser",
-     ["AERIS_STORAGE_STATE_B64"], "expires; a dead snapshot is a K sign-in",
-     ("tiktok", "Short posting")),
+     ["AERIS_STORAGE_STATE_B64"], "expires; no TikTok password is vaulted, so a dead "
+     "snapshot is still a K sign-in",
+     ("tiktok", "Short posting"), ""),
     ("lyrics", "Thai lyrics", "keyless", [],
-     "Duck.ai drafts with no login; the lint is the quality gate", None),
+     "Duck.ai drafts with no login; the lint is the quality gate", None, ""),
     ("music", "song beds (Flow render)", "browser", [],
      "flowmusic.app has no API; session only — an upgrade over the synth bed",
-     ("music", "song beds (offline)")),
+     ("music", "song beds (offline)"), ""),
     ("music", "song beds (offline)", "keyless", [],
      "real-instrument SoundFont master via `flow_song --offline`; no login, no key",
-     None),
+     None, ""),
     ("drive", "asset sync", "api", ["GDRIVE_REFRESH_TOKEN"],
-     "OAuth refresh token", None),
+     "OAuth refresh token", None, ""),
     ("vault", "login/state store", "api", ["OPENHANDS_API_KEY"],
-     "the KV store 401s without it, which kills scripts", None),
+     "the KV store 401s without it, which kills scripts", None, ""),
 ]
 
 
@@ -89,16 +98,36 @@ def _present(names: list[str]) -> bool:
     return all(bool(get_secret(n)) for n in names)
 
 
+def _vault_has(key: str) -> bool:
+    """True when the durable KV store holds `key`.
+
+    A browser rail with a vaulted password is *revivable*: the agent signs back in
+    itself (`ops/fb_relogin.py`) instead of waiting for K. The value is never
+    read here — only its presence matters, so no secret leaves the store.
+    """
+    if not key:
+        return False
+    try:
+        import ax_vault  # noqa: PLC0415
+
+        return bool(ax_vault.kv_get(ax_vault.ensure_anchor(), key))
+    except Exception:  # noqa: BLE001 — a missing vault must not crash the audit
+        return False
+
+
 def audit() -> dict:
     rows = []
-    for surface, rail, kind, names, note, sup in RAILS:
+    for surface, rail, kind, names, note, sup, revivable_by in RAILS:
         have = _present(names) if names else False
+        revivable = kind == "browser" and _vault_has(revivable_by)
         # keyless needs nothing; api/oneshot are K-free once the credential is
-        # here. A browser rail is never K-free: the snapshot working today does
-        # not stop it expiring.
+        # here. A browser rail is never K-free (the snapshot working today does
+        # not stop it expiring) but is no longer a *recurring* K-dependency when
+        # the agent can re-login it from a vaulted password.
         k_free = (kind == "keyless") or (have and kind in ("api", "oneshot"))
         rows.append({"surface": surface, "rail": rail, "auth": kind,
                      "needs": names, "present": have, "k_free": k_free,
+                     "revivable": revivable, "revivable_by": revivable_by,
                      "note": note, "superseded_by": sup})
 
     by_key = {(r["surface"], r["rail"]): r for r in rows}
@@ -111,15 +140,18 @@ def audit() -> dict:
     for r in rows:
         r["covered"] = covered(r)
         # An api/oneshot rail with its credential missing needs K *once* (to
-        # provision it), not repeatedly. A browser rail with no K-free primary is
-        # the only thing that pulls K back again and again.
+        # provision it), not repeatedly. A browser rail the agent can re-login
+        # from the vault is not a recurring K-dependency either; only a browser
+        # rail with no vaulted password pulls K back again and again.
         r["one_time"] = (r["auth"] in ("api", "oneshot") and not r["k_free"]
                          and not r["covered"])
-        r["needs_k"] = not r["k_free"] and not r["one_time"] and not r["covered"]
+        r["needs_k"] = (not r["k_free"] and not r["one_time"] and not r["covered"]
+                        and not r["revivable"])
 
     recurring = [r for r in rows if r["needs_k"]]
     once = [r for r in rows if r["one_time"]]
     k_free = [r for r in rows if r["k_free"]]
+    revivable = [r for r in rows if r["revivable"] and not r["needs_k"]]
 
     def brief(r: dict) -> dict:
         return {"surface": r["surface"], "rail": r["rail"], "auth": r["auth"],
@@ -133,6 +165,8 @@ def audit() -> dict:
         "needs_k": len(recurring),
         "blocked": [brief(r) for r in recurring],
         "one_time": [brief(r) for r in once],
+        "revivable": [brief(r) for r in revivable],
+        "needs_k_revivable": len(revivable),
         # The invariant K asked for: nothing pulls K back in repeatedly.
         "k_free_all": not recurring,
     }
@@ -154,6 +188,8 @@ def main() -> int:
                 mark = "K-FREE "
             elif r["one_time"]:
                 mark = "K x1   "
+            elif r["revivable"]:
+                mark = "AGENT  "
             elif r["covered"]:
                 mark = "covered"
             else:
@@ -161,9 +197,12 @@ def main() -> int:
             print(f"{mark}  {r['surface']:<9} {r['rail']:<26} [{r['auth']}]  {r['note']}")
         print(f"\nK-FREE: {rep['k_free']}/{rep['total']} rails"
               f"  |  K once: {rep['needs_k_once']}"
+              f"  |  agent-revivable: {rep['needs_k_revivable']}"
               f"  |  K repeatedly: {rep['needs_k']}")
         for b in rep["blocked"]:
             print(f"  needs K again: {b['surface']} — {b['rail']} ({b['auth']})")
+        for b in rep["revivable"]:
+            print(f"  agent-revivable: {b['surface']} — {b['rail']} (no K needed)")
         for b in rep["one_time"]:
             print(f"  one-time setup: {b['surface']} — {b['rail']}")
 

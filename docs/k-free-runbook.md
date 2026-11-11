@@ -21,6 +21,14 @@ python3 ops/k_free_status.py          # the honest table
 python3 ops/k_free_status.py --check   # exit 1 while K is needed again
 ```
 
+A **browser** rail is not K-free (its snapshot can expire), but it stops being a
+recurring K-dependency when the vault holds the account password, because the
+agent signs back in itself (`ops/fb_relogin.py`). The audit marks that case
+`AGENT` / *agent-revivable* — honest on both sides: it is not counted as K-free
+(a checkpoint could still need a human), and it no longer trips `--check`. Today
+Facebook qualifies (vaulted password); TikTok does not, so TikTok is the one
+remaining recurring K-dependency.
+
 ---
 
 ## The three one-time actions
