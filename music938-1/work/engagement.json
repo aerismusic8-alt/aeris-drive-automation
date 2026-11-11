@@ -1,5 +1,5 @@
 {
-  "at": "2026-11-10T21:38:14Z",
+  "at": "2026-11-11T00:37:13Z",
   "winner": null,
   "trailing": null,
   "stats": {
@@ -12,8 +12,8 @@
       "median_per_day": 0.0
     },
     "surreal": {
-      "n": 2,
-      "median_per_day": 0.8450644799982507
+      "n": 3,
+      "median_per_day": 0.0
     }
   }
 }
