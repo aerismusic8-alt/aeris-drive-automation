@@ -1755,3 +1755,23 @@ K approved the hum-free sound ("แบบนี้แหล่ะถึงจะ
 - Env: `RUNTIME_ID` is exported in the session and equals the `<id>` in the
   work_hosts host, so a URL can be built instead of hardcoded. The workflow token
   (vault `axsecrets:gh-workflow-token`) has `repo, workflow` scopes.
+
+## The loop's own health: read the rail, not the heartbeat file (2026-11-11, durable)
+- K: "งานเดินต่อได้เอง…ได้ยัง" — "does the loop reach the goal on its own?" Do not answer
+  from `data/heartbeat.json`: it was **9 days stale** (2026-11-03) while the pod was fine,
+  so it proved nothing. Query the last run of every workflow through the API
+  (`/repos/O/R/actions/runs?per_page=100`, group by name) — that is the real state.
+- Three rails were red on 2026-11-11 and all three were "the loop cannot walk":
+  **AX Rail Watchdog** (the self-healing watcher itself), **Concert Render**, **Karaoke
+  Render**. Fixed in `0ac4501`; dispatched each and got green (watchdog + concert).
+- **`ax_vault.ensure_anchor()` raises `SystemExit` (a BaseException) on a GitHub runner.**
+  Any `except Exception` around it is a no-op and, under `bash -e`, kills the whole job.
+  `fb_graph.py` already knew this; it was never propagated to `k_free_status.py`, which the
+  watchdog imports. Guard **`except BaseException`**. A test pins this for all three files.
+- **A render workflow must install what its script imports, and must not apt-install
+  ffmpeg** (ubuntu-latest already ships it). Concert died on `ModuleNotFoundError: numpy`
+  (via `make_song`); Karaoke died inside `apt-get` on a `security.ubuntu.com` DNS blip.
+  Now `command -v ffmpeg` gates the apt call. Guard: `test_render_workflow_deps()`.
+- A fresh pod has **none** of `requirements.txt` installed. Run `scripts/bootstrap-pod.sh`
+  first; it puts libs in `/workspace/ax-tools/pylibs` (durable) but the `.pth` lands in
+  `~/.local` (not durable) — so re-run it after every pod, or the suite dies on `numpy`.
