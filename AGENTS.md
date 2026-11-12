@@ -377,3 +377,32 @@ traverse parents of commit ..."). It also needs the pod reachable over HTTP, whi
 port-12001 server in `/tmp/serve` provides.
 
 Verified 2026-10-28: pushed 16 commits, `0001ef8d..90da7a80 main -> main`.
+
+## Persistent memory hygiene
+
+`.openhands/memory/MEMORY.md` is injected into every session prompt, so it is an
+**operating card capped at 6 KB** — not a transcript. On 2026-11-10 it had grown
+to 128 KB against that budget, and because the prompt truncates *from the top*,
+the operating method and Rule #1 (free only) were being dropped from context.
+
+The scheme (three tiers, each with a job):
+
+| File | Role | Bound |
+| --- | --- | --- |
+| `MEMORY.md` | rules + pointers, injected every session | **hard cap 6 KB** |
+| `MEMORY-ARCHIVE.md` | every memory ever written, reachable by grep | unbounded |
+| `YYYY-MM-DD.md` | session working notes, never injected | unbounded |
+
+Rules:
+
+- New durable learning goes to **today's daily log first**. Promote a line to
+  `MEMORY.md` only if it would change a future decision.
+- To shrink the index, **move** superseded lines into the archive and leave a
+  pointer — never delete. `MEMORY-ARCHIVE.md` already holds the full pre-2026-11-10
+  index as a snapshot.
+- `python3 ops/memory_guard.py` reports the sizes and **exits 1 over cap**;
+  `--check` is the quiet form. `music938-1/tests/run.py::test_memory_guard` pins
+  it, and `.github/workflows/ax-memory-guard.yml` turns a push that inflates the
+  index red. The guard is a pure reader, so it can never block the posting or
+  revenue rails.
+- Do **not** raise `CAP_BYTES` to make a red run pass — fold lines into the archive.

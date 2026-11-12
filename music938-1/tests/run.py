@@ -4099,6 +4099,34 @@ def test_vault_key_fallback() -> None:
           "from ax_secrets import get_secret" in src and "_get_secret(\"OPENHANDS_API_KEY\")" in src)
 
 
+def test_memory_guard() -> None:
+    """The injected memory index must stay under its cap.
+
+    By 2026-11-10 `.openhands/memory/MEMORY.md` had grown to 128 KB against the
+    ~6 KB its own header promised, so the *top* of the file — the operating
+    method and Rule #1 (free only) — was being truncated out of every prompt, and
+    nothing measured it. `ops/memory_guard.py` is the fix the advisors prescribed:
+    a reader that fails loudly when the index exceeds the cap. This pins the cap
+    value and the fact that the current index honours it, so a future session
+    cannot re-inflate the index without turning CI red.
+    """
+    section("memory guard (the injected index stays bounded)")
+    sys.path.insert(0, str(ROOT.parent / "ops"))
+    import memory_guard as mg  # noqa: E402
+
+    check("the cap is the documented ~6 KB", mg.CAP_BYTES == 6144)
+    m = mg.measure()
+    check("MEMORY.md is under the cap", not m["over_cap"],
+          f"{m['index_bytes']} > {m['cap_bytes']}")
+    # Rule #1 must survive in the injected card: it is the rule the owner cares
+    # about most, and truncation-from-the-top is exactly what threatened it.
+    idx = mg.INDEX.read_text(encoding="utf-8")
+    check("the injected index keeps Rule #1 (free only)",
+          "ฟรีเท่านั้น" in idx)
+    # The full history must remain reachable (moved, not deleted).
+    check("the archive exists as the unbounded store", mg.ARCHIVE.exists())
+
+
 def test_keyless_lyric_drafter() -> None:
     """The lyric rail must not depend on K's Google session.
 
@@ -4579,6 +4607,7 @@ def main() -> int:
     test_share_pack()
     test_k_free_status()
     test_vault_key_fallback()
+    test_memory_guard()
     test_keyless_lyric_drafter()
     test_brand_identity()
     test_watchdog()

@@ -1,0 +1,50 @@
+name: AX Memory Guard
+
+# Keeps the injected agent-memory index bounded.
+#
+# `.openhands/memory/MEMORY.md` is injected into every session prompt and its own
+# header promises it stays small ("a long one is truncated from the top"). By
+# 2026-11-10 it had grown to 128 KB against the ~6 KB budget, so the top of the
+# file — the operating method and Rule #1 (free only) — was being dropped from
+# context, and nothing measured it. Growth was invisible until it was a problem.
+#
+# This job is the automated check the advisors prescribed: a push that grows the
+# index past the cap turns red instead of being silently truncated. It is a pure
+# reader and needs no secret, so it can never block the posting or revenue rails.
+# A red run is fixed by folding the oldest durable lines into MEMORY-ARCHIVE.md
+# (moved, never deleted) — not by raising the cap.
+
+on:
+  push:
+    paths:
+      - '.openhands/memory/**'
+      - 'ops/memory_guard.py'
+      - '.github/workflows/ax-memory-guard.yml'
+  pull_request:
+    paths:
+      - '.openhands/memory/**'
+      - 'ops/memory_guard.py'
+  schedule:
+    # Daily safety net: a memory edit made without a push still gets checked.
+    - cron: '20 5 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  guard:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Check the memory index size
+        run: |
+          set -uo pipefail
+          python3 ops/memory_guard.py
