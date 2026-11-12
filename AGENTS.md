@@ -400,9 +400,23 @@ Rules:
 - To shrink the index, **move** superseded lines into the archive and leave a
   pointer — never delete. `MEMORY-ARCHIVE.md` already holds the full pre-2026-11-10
   index as a snapshot.
+- **Find anything** in any tier: `python3 ops/memory_search.py "<query>"` greps the
+  card, the archive and every daily log at once, grouped by section with line
+  numbers (so the next step is a plain `sed -n 'A,Bp' <file>`). `--titles` lists
+  every section. Use it instead of re-deriving what was already learned.
 - `python3 ops/memory_guard.py` reports the sizes and **exits 1 over cap**;
   `--check` is the quiet form. `music938-1/tests/run.py::test_memory_guard` pins
   it, and `.github/workflows/ax-memory-guard.yml` turns a push that inflates the
   index red. The guard is a pure reader, so it can never block the posting or
   revenue rails.
 - Do **not** raise `CAP_BYTES` to make a red run pass — fold lines into the archive.
+
+### More than one agent runs against this repo
+
+K's loop runs several AR sessions against the same branch at once. On 2026-11-12 two
+sessions were handed the same "the memory keeps growing" problem within minutes and
+produced two overlapping fixes; one merged first and the second rebased into a
+conflict. Before starting a non-trivial change, `git fetch` and check whether a
+parallel commit already did it — `git --no-pager log --oneline -5 FETCH_HEAD`. If it
+did, reconcile into **one** design (adopt what is better and fold in only what is
+missing) rather than merging two mechanisms that do the same job.

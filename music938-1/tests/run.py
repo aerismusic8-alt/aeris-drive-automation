@@ -4125,6 +4125,14 @@ def test_memory_guard() -> None:
           "ฟรีเท่านั้น" in idx)
     # The full history must remain reachable (moved, not deleted).
     check("the archive exists as the unbounded store", mg.ARCHIVE.exists())
+    # ...and reachable by a tool, not just in principle: the card is tiny, so
+    # almost everything lives in the archive/logs, and a search must find it.
+    import subprocess  # noqa: E402
+    s = subprocess.run([sys.executable, str(ROOT.parent / "ops" / "memory_search.py"),
+                        "ฟรีเท่านั้น"], capture_output=True, text=True, timeout=30)
+    check("memory_search finds a durable rule across the tiers",
+          s.returncode == 0 and "ฟรีเท่านั้น" in s.stdout,
+          s.stdout[-200:] or s.stderr[-200:])
 
 
 def test_keyless_lyric_drafter() -> None:
