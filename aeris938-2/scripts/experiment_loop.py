@@ -325,8 +325,13 @@ def decide(rows: list[dict], constraint: str, history: list[dict] | None = None,
     Order follows the panel: never switch away from a running test before its
     window (a flat day is a review, not a reason to churn); once the window is
     done, close it, judge it from the metrics, and pick the next untried
-    experiment for the constraint.
+    experiment for the constraint. On a blind day the constraint is "data", and
+    the loop holds: it neither closes nor opens a test on numbers it cannot read.
     """
+    if constraint == "data":
+        return {"action": "wait",
+                "why": ("ข้อมูลล่าสุดยังไม่น่าเชื่อถือ — ยังไม่ตัดสินและไม่เปิด "
+                        "การทดลองใหม่ รอการอ่านที่สดและครบก่อน")}
     act = active_experiment(rows)
     if act and act.get("status") == "RUNNING" and _age_days(act) < WINDOW_DAYS:
         return {"action": "keep", "experiment": act,
@@ -417,7 +422,9 @@ def render(decision: dict, scan: dict | None = None) -> str:
     lines = ["# ลูปทดลองรายวัน — AERIS Music", "",
              f"ตัดสินเมื่อ: {_now()}", ""]
     act = decision["action"]
-    if act == "keep":
+    if act == "wait":
+        lines += [f"**รอข้อมูล:** {decision['why']}"]
+    elif act == "keep":
         e = decision["experiment"]
         lines += [f"**คงการทดลองเดิม:** {e['title']}",
                   f"- ตัวแปรที่ทดลอง: {e['variable']}",
@@ -478,10 +485,11 @@ def main(argv=None) -> int:
                   f"{e.get('key','?'):24} {e.get('title','')}")
         return 0
 
-    diag = goal_watch.diagnose(goal_watch.load())
+    history = goal_watch.load()
+    diag = goal_watch.diagnose(history)
     constraint = args.constraint or diag.get("constraint", "reach")
     scan = None if args.no_scan else peer_scan()
-    decision = decide(rows, constraint, goal_watch.load())
+    decision = decide(rows, constraint, history)
     text = render(decision, scan)
     print(text)
 

@@ -462,6 +462,18 @@ def test_loop_verdict_is_inconclusive_on_missing_or_stale_evidence():
     assert loop.evaluate(off, shopee_blind, now=NOW)[0] == "INCONCLUSIVE"
 
 
+def test_loop_holds_when_data_is_unreliable():
+    """A blind day must not close or open an experiment.
+
+    goal_watch names the constraint "data" when the newest reading is missing or
+    stale. The loop must then hold — pick() has no library for "data" and would
+    otherwise report a misleading "library exhausted".
+    """
+    decision = loop.decide([], "data", [])
+    assert decision["action"] == "wait", decision
+    assert "รอข้อมูล" in loop.render(decision)
+
+
 def test_evidence_status_vocabulary():
     """The shared contract: fresh / stale / unknown, and usable only when fresh."""
     NOW = "2026-11-12T12:00:00Z"
