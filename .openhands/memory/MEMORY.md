@@ -41,7 +41,6 @@ Roblox game anyone can enter and play, and real revenue from it (Roblox
 ## The metric is followers (K, 2026-11-09)
 Views without follows is the failure. Send every surface to the Page; end every
 clip with `release.FOLLOW_ASK` + `release.FOLLOW_PROMISE` ("เพลงใหม่ทุกวัน").
-Measured 2026-11-10: FB 1,492 views/28d but **1 follower**; TikTok 73 views/7d.
 A post whose `reach≈2` is a **repost** of a clip already on the Page — stop it.
 
 ## Environment facts that cost time
@@ -75,10 +74,10 @@ A post whose `reach≈2` is a **repost** of a clip already on the Page — stop 
 - **`ops/websearch.py`** is the free web search (Tavily has no quota left).
 
 ## Real-instrument sound (K, 2026-11-09) — durable
-K rejected the ffmpeg tone synth and the GM SoundFont as "fake". Use the
-**sfizz** real-instrument sampler (`music938-1/scripts/install-sfizz.sh`, banks
-under `/workspace/ax-tools/instruments/`) for every music bed. Rails:
-`music938-1/scripts/ambient_loop.py` (sleep/ambient) and `flow_song.py` (songs).
+K rejected the ffmpeg tone synth and the GM SoundFont as "fake". Use the **sfizz**
+sampler (`install-sfizz.sh`). CI rails can't build it, so beds are pre-rendered on
+the pod and pulled from `media-938` (`pull_media.py --only ambient`, `sampler1-*.wav`);
+`AX_REQUIRE_REAL_INSTRUMENTS=1` makes a GM fallback **raise**, never ship silently.
 
 ## Growth lanes that work (research, 2026-11-09)
 Long-form Thai compilations (1–3 h) and sleep/ambient loops (1–8 h) are the lanes

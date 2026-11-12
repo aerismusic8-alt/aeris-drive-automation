@@ -6156,3 +6156,7 @@ K approved the hum-free sound ("แบบนี้แหล่ะถึงจะ
 - A fresh pod has **none** of `requirements.txt` installed. Run `scripts/bootstrap-pod.sh`
   first; it puts libs in `/workspace/ax-tools/pylibs` (durable) but the `.pth` lands in
   `~/.local` (not durable) — so re-run it after every pod, or the suite dies on `numpy`.
+
+## Trimmed from MEMORY.md 2026-11-12 (followers metric detail)
+Measured 2026-11-10: FB 1,492 views/28d but **1 follower**; TikTok 73 views/7d.
+(The card keeps the rule — send every surface to the Page, stop `reach≈2` reposts.)
