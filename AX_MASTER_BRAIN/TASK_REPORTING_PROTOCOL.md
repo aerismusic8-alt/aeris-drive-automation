@@ -2,6 +2,13 @@
 
 Effective: 2026-09-08
 
+## Time format (K, 2026-11-12)
+
+Every time stated in a report, dashboard, or summary uses **Thai time (UTC+7)** in
+**24-hour** form — e.g. `2026-11-12 19:05`. Do not report raw UTC or 12-hour AM/PM
+to K. Internally the rails stay on UTC; convert for the reader. A duration
+("9.6 วัน") is unchanged.
+
 ## Single master task rule
 
 `AX_MASTER_BRAIN/AX_MASTER_TASK_REGISTRY_v2.json` is the only authoritative task catalog for AKATH. A task exists only when it has a canonical `task_id` in the registry's `tasks` array.

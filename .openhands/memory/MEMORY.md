@@ -25,7 +25,9 @@ never rename a channel without K's approval.
 - **Method: PCSEV** (Problem, Cause, Solution, Execute, Verify) — a habit, not
   machine-enforced; `ops/consult.py` **is** a real gate.
 - **Consult before deciding** on any non-trivial problem: `ops/consult.py "…"`
-  (2 channels across 2 vendor families; pollinations + duck → `consult-log.jsonl`).
+  (pollinations + duck → `consult-log.jsonl`).
+- **Time format (K, 2026-11-12):** times shown to K use **Thai time (UTC+7)
+  24-hour** (`2026-11-12 19:05`) — never UTC or AM/PM. Rails stay UTC.
 
 ## What this project is (K's goal)
 K: "เราไม่ได้เป็นคนสร้างช่อง เราสร้าง ai openhands" — the deliverable is **the
@@ -33,21 +35,19 @@ agent**, built from free cloud tools. Scope = **4 channels**. Two goals in
 `AKATH_CORE/CANONICAL_TASK_REGISTRY.json` must never close as ordinary tasks: a
 Roblox game anyone can enter and play, and real revenue from it (Roblox
 **PARKED**). Focus (aeris938-2) = 4 jobs: Facebook, TikTok, YouTube
-`@aerismusicth`, Shopee Affiliate.
-- **Revenue gate = ch3 `@aerismusicth` `UCm44BjAn03ruOF-WaA3ZRww`**: pass YouTube's
-  **1,000 subs AND 4,000 watch-hours/12 mo**. Free lever = long-form volume
-  (`compile_album.py`; a 60-min compilation earns ~1 h/view vs 3 min for a song).
+`@aerismusicth`, Shopee Affiliate. **Revenue gate = ch3 `@aerismusicth`**
+`UCm44BjAn03ruOF-WaA3ZRww`: YouTube's **1,000 subs AND 4,000 watch-hours/12 mo**.
+Free lever = long-form volume (`compile_album.py`; ~1 h/view vs 3 min).
 
 ## The metric is followers (K, 2026-11-09)
 Views without follows is the failure. Send every surface to the Page; end every
 clip with `release.FOLLOW_ASK` + `release.FOLLOW_PROMISE` ("เพลงใหม่ทุกวัน").
-A post whose `reach≈2` is a **repost** of a clip already on the Page — stop it.
-(Measured 2026-11-10 baseline is in the archive.)
+A post whose `reach≈2` is a repost of a Page clip — stop it. (Baseline: archive.)
 
 ## Environment facts that cost time
 - **Fresh-pod recovery: `scripts/bootstrap-pod.sh`** — restores python deps +
   ffmpeg/fluidsynth/Thai-fonts/xvfb. Re-run after every pod (the `.pth` is
-  non-durable). Baked-host ban + what it installs: archive.
+  non-durable). Baked-host ban + installs: archive.
 - **24/7 runs on GitHub Actions, not the sandbox** (public repo → free minutes).
   Rails: `ax-music-release` 07:00 UTC, `ax-music-crosspost` 2-hourly,
   `ax-rail-watchdog` :15, `ax-music-dashboard` 08:30 UTC (ntfy topic
@@ -68,10 +68,10 @@ A post whose `reach≈2` is a **repost** of a clip already on the Page — stop 
 - **`ops/websearch.py`** is the free web search (Tavily has no quota left).
 
 ## Real-instrument sound (K, 2026-11-09) — durable
-K rejected the ffmpeg tone synth and the GM SoundFont as "fake". Use the **sfizz**
+K rejected the ffmpeg tone synth and the GM SoundFont as "fake": use the **sfizz**
 sampler (`install-sfizz.sh`). CI rails can't build it, so beds are pre-rendered on
-the pod and pulled from `media-938` (`sampler1-*.wav`); `AX_REQUIRE_REAL_INSTRUMENTS=1`
-makes a GM fallback **raise**, never ship silently. Free growth lanes: archive.
+the pod and pulled from `media-938` (`sampler1-*.wav`). `AX_REQUIRE_REAL_INSTRUMENTS=1`
+makes a GM fallback **raise**, never ship silently. (Growth lanes: archive.)
 
 ## Loop health & platform risks
 - Judge "does the loop reach the goal on its own?" from the **rail run history**,
