@@ -64,6 +64,17 @@ if ! command -v fluidsynth >/dev/null 2>&1; then
 fi
 fluidsynth --version 2>/dev/null | head -1
 
+# The song masters, karaoke tracks and covers are gitignored, so a fresh pod has
+# a manifest with no audio behind it — the suite then reports a dozen "missing
+# cover / theme below floor" failures that look like real defects but are just an
+# empty library (2026-11-12). They are not lost: they live in the `media-938`
+# release. Pull them so a fresh pod heals itself instead of looking broken.
+if [ -n "${AX_GH_TOKEN:-}${AX_GH_TOKEN_FILE:-}" ] || [ -f /workspace/ax-tools/ar-identity/gh-token ]; then
+  for grp in songs karaoke covers thumbs; do
+    python3 "$REPO/music938-1/scripts/pull_media.py" --only "$grp" 2>&1 | tail -1
+  done
+fi
+
 # K (2026-11-09, later): the GM SoundFont "sounds fake — find a program that
 # makes realistic sound." sfizz plays multi-velocity recordings of real
 # instruments; it and its CC0 banks live under /workspace and are fetched by a
