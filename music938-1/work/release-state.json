@@ -689,6 +689,66 @@
    "public": true,
    "thumb_ok": false,
    "playlist_ok": false
+  },
+  {
+   "slug": "08-klap-ban-rao",
+   "kind": "short",
+   "variant": "short-song-h2-08-klap-ban-rao",
+   "video_id": "9LxRp_Wkkxw",
+   "at": "2026-11-12T16:44:22+00:00",
+   "public": true,
+   "thumb_ok": false,
+   "playlist_ok": false
+  },
+  {
+   "slug": "09-phleng-khong-khon-nueai",
+   "kind": "short",
+   "variant": "short-song-h2-09-phleng-khong-khon-nueai",
+   "video_id": "XVCSobT5N0U",
+   "at": "2026-11-12T16:44:26+00:00",
+   "public": true,
+   "thumb_ok": false,
+   "playlist_ok": false
+  },
+  {
+   "slug": "10-dok-mai-rim-thang",
+   "kind": "short",
+   "variant": "short-song-h2-10-dok-mai-rim-thang",
+   "video_id": "XOZb9xxGDNA",
+   "at": "2026-11-12T16:44:29+00:00",
+   "public": true,
+   "thumb_ok": false,
+   "playlist_ok": false
+  },
+  {
+   "slug": "11-sanya-chak-chai",
+   "kind": "short",
+   "variant": "short-song-h2-11-sanya-chak-chai",
+   "video_id": "gV7c03moOdU",
+   "at": "2026-11-12T16:44:33+00:00",
+   "public": true,
+   "thumb_ok": false,
+   "playlist_ok": false
+  },
+  {
+   "slug": "12-khuen-thi-mai-mi-dao",
+   "kind": "short",
+   "variant": "short-song-h2-12-khuen-thi-mai-mi-dao",
+   "video_id": "lTemAM3S8L4",
+   "at": "2026-11-12T16:44:37+00:00",
+   "public": true,
+   "thumb_ok": false,
+   "playlist_ok": false
+  },
+  {
+   "slug": "13-rak-thi-chak-pai",
+   "kind": "short",
+   "variant": "short-song-h2-13-rak-thi-chak-pai",
+   "video_id": "y3zYXC-Rp8c",
+   "at": "2026-11-12T16:44:41+00:00",
+   "public": true,
+   "thumb_ok": false,
+   "playlist_ok": false
   }
  ],
  "playlists": {
