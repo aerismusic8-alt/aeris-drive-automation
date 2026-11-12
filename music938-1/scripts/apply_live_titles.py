@@ -40,10 +40,10 @@ def main() -> int:
     uploads = yt_auth.uploads_playlist(tok)
     ids = yt_auth.all_upload_ids(tok)
 
-    st, body = yt_auth.api_get(
-        "videos", tok, part="snippet,status,contentDetails", id=",".join(ids)
-    )
-    items = body.get("items", [])
+    st, items = yt_auth.get_videos(tok, ids, part="snippet,status,contentDetails")
+    if st != 200:
+        print(f"videos.list HTTP {st} ({len(ids)} uploads)")
+        return 1
     backup = []
     changed = 0
     for v in items:

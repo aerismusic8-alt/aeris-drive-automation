@@ -86,6 +86,31 @@ def api_post_json(path, token, payload, **params):
                              "Content-Type": "application/json"}, method="POST")
 
 
+# videos.list accepts at most 50 ids per call. A channel with more uploads than
+# that silently breaks any caller that joins every id into one request: the API
+# answers 400 "invalid filter parameter", which is easy to misread as a quota or
+# API outage. Chunk every multi-id videos.list through here.
+VIDEOS_LIST_MAX_IDS = 50
+
+
+def get_videos(token, ids, part="snippet,status"):
+    """Fetch video resources for many ids, chunked to the API's 50-id limit.
+
+    Returns (status, items). `status` is 200 when every chunk succeeded; on the
+    first failing chunk it is that chunk's HTTP status and `items` holds what was
+    gathered so far, so a caller can tell a real 400 (a bug) from a 403 (quota).
+    """
+    ids = list(ids)
+    items: list[dict] = []
+    for k in range(0, len(ids), VIDEOS_LIST_MAX_IDS):
+        st, body = api_get("videos", token, part=part,
+                           id=",".join(ids[k:k + VIDEOS_LIST_MAX_IDS]))
+        if st != 200:
+            return st, items
+        items += body.get("items", [])
+    return 200, items
+
+
 def api_request(path, token, payload, method="PUT", **params):
     """Generic write helper.
 

@@ -449,6 +449,55 @@ def test_audit_requires_chapters_on_a_compilation():
     assert any(f.startswith("chapters_missing") for f in fails)
 
 
+def test_videos_list_chunks_past_fifty_ids():
+    """videos.list takes at most 50 ids; a 62-video channel broke the daily audit
+    because every id was joined into one call and the API answered 400, which the
+    audit misread as 'quota'. get_videos must chunk, and a real non-200 must NOT
+    be swallowed as a quota state."""
+    import yt_auth
+    calls = []
+
+    def fake_api_get(path, token, **params):
+        ids = params["id"].split(",")
+        calls.append(len(ids))
+        assert len(ids) <= 50, f"a chunk of {len(ids)} ids exceeds the API limit"
+        return 200, {"items": [{"id": i} for i in ids]}
+
+    orig = yt_auth.api_get
+    yt_auth.api_get = fake_api_get
+    try:
+        st, items = yt_auth.get_videos("tok", [f"v{i}" for i in range(62)])
+    finally:
+        yt_auth.api_get = orig
+    assert st == 200 and len(items) == 62
+    assert calls == [50, 12], f"expected chunks [50, 12], got {calls}"
+
+
+def test_read_live_distinguishes_a_bug_from_a_quota():
+    """A 400 (a bug, e.g. a >50-id call) must raise RuntimeError; only a 403 is a
+    quota state. Mislabeling the bug is what hid this failure for days."""
+    import yt_auth
+    orig_ids, orig_get = yt_auth.all_upload_ids, yt_auth.get_videos
+    yt_auth.all_upload_ids = lambda tok: ["v1"]
+    try:
+        yt_auth.get_videos = lambda tok, ids, part="x": (400, [])
+        try:
+            audit.read_live()
+            assert False, "a 400 must not be reported as a quota state"
+        except audit.QuotaError:
+            assert False, "400 is a bug, not quota"
+        except RuntimeError:
+            pass
+        yt_auth.get_videos = lambda tok, ids, part="x": (403, [])
+        try:
+            audit.read_live()
+            assert False, "403 must raise QuotaError"
+        except audit.QuotaError:
+            pass
+    finally:
+        yt_auth.all_upload_ids, yt_auth.get_videos = orig_ids, orig_get
+
+
 if __name__ == "__main__":
     fns = [v for k, v in sorted(globals().items()) if k.startswith("test_")]
     for fn in fns:

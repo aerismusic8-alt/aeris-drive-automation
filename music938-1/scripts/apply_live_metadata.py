@@ -66,10 +66,10 @@ def main() -> int:
     apply = "--apply" in sys.argv
     tok = yt_auth.access_token("ch3")
     ids = yt_auth.all_upload_ids(tok)
-    st, body = yt_auth.api_get(
-        "videos", tok, part="snippet,status", id=",".join(ids)
-    )
-    items = body.get("items", [])
+    st, items = yt_auth.get_videos(tok, ids, part="snippet,status")
+    if st != 200:
+        print(f"videos.list HTTP {st} ({len(ids)} uploads)")
+        return 1
 
     backup = {}
     if BACKUP.exists():

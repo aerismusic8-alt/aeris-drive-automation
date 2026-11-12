@@ -6157,6 +6157,22 @@ K approved the hum-free sound ("แบบนี้แหล่ะถึงจะ
   first; it puts libs in `/workspace/ax-tools/pylibs` (durable) but the `.pth` lands in
   `~/.local` (not durable) — so re-run it after every pod, or the suite dies on `numpy`.
 
-## Trimmed from MEMORY.md 2026-11-12 (followers metric detail)
-Measured 2026-11-10: FB 1,492 views/28d but **1 follower**; TikTok 73 views/7d.
-(The card keeps the rule — send every surface to the Page, stop `reach≈2` reposts.)
+## Growth lanes that work (research, 2026-11-09) — folded from the card 2026-11-12
+Long-form Thai compilations (1–3 h) and sleep/ambient loops (1–8 h) are the lanes
+we can enter free; the single-song format caps at ~500 views. Do **not** stretch
+runtime just to chase views.
+
+## Followers baseline (measured 2026-11-10) — folded from the card 2026-11-12
+FB 1,492 views/28d but **1 follower**; TikTok 73 views/7d. Views without follows
+is the failure — the whole point of the follower metric section.
+
+## ax_vault.ensure_anchor gotcha — folded from the card 2026-11-12
+`ax_vault.ensure_anchor()` raises `SystemExit` (a BaseException), so a caller must
+guard `except BaseException`, not `except Exception`.
+
+## bootstrap-pod.sh detail — folded from the card 2026-11-12
+Restores python deps from `requirements.txt` into `/workspace/ax-tools/pylibs`
+(durable) and installs ffmpeg/fluidsynth/Thai-fonts/xvfb. The `.pth` lands in
+`~/.local` (NOT durable), so re-run after every pod or the suite dies on `numpy`.
+A hardcoded `work-{1,2}-<id>.prod-runtime…` host is a bug — build it from
+`$RUNTIME_ID` (`risk_audit` scans for a baked host).

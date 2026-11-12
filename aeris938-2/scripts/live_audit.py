@@ -115,6 +115,11 @@ def read_live() -> list[dict]:
     `all_upload_ids` walks channels.list + playlistItems.list, which index
     `body["items"]` directly; a 403 quota body has no `items`, so that surfaces
     as a KeyError rather than an HTTP status. Treat it as "quota", not a crash.
+
+    `videos.list` takes at most 50 ids per call, so a channel past 50 uploads
+    must be read in chunks (ops/yt_auth.get_videos). Joining every id into one
+    call returns HTTP 400 "invalid filter parameter" — a bug, not a quota state,
+    and it must not be reported as one.
     """
     tok = yt_auth.access_token("ch3")
     try:
@@ -124,11 +129,14 @@ def read_live() -> list[dict]:
                          "(quota spent or API error)")
     if not ids:
         return []
-    st, body = yt_auth.api_get("videos", tok, part="snippet,status",
-                               id=",".join(ids))
+    st, items = yt_auth.get_videos(tok, ids, part="snippet,status")
+    if st == 403:
+        raise QuotaError(f"videos.list HTTP {st} (quota spent)")
     if st != 200:
-        raise QuotaError(f"videos.list HTTP {st}: {body}")
-    return body.get("items", [])
+        raise RuntimeError(
+            f"videos.list HTTP {st} for {len(ids)} uploads — not a quota error, "
+            f"investigate (a >50-id call returns 400 'invalid filter parameter')")
+    return items
 
 
 def repair(video: dict, exp: dict) -> bool:
@@ -214,6 +222,15 @@ def main(argv=None) -> int:
         print(text)
         REPORT.write_text(text, encoding="utf-8")
         return 0
+    except RuntimeError as e:
+        # A non-quota read failure is a bug in this script, not a channel fault.
+        # Fail loudly (red rail) instead of writing a reassuring "quota" note.
+        text = ("# ตรวจของจริงบนช่อง — AERIS Music\n\n"
+                f"ตรวจเมื่อ: {time.strftime('%Y-%m-%dT%H:%M:%SZ', time.gmtime())}\n\n"
+                f"❌ ตรวจไม่ได้ (ข้อผิดพลาดของสคริปต์ ไม่ใช่ของช่อง): {e}\n")
+        print(text)
+        REPORT.write_text(text, encoding="utf-8")
+        return 1
 
     fails: dict[str, list[str]] = {}
     for v in items:

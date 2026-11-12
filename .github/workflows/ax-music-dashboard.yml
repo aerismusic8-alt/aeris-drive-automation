@@ -83,8 +83,10 @@ jobs:
           # top video that carried no revenue ask for weeks. It reads every
           # upload and repairs the deterministic misses (the description ask),
           # alerting only on a new failure.
-          python3 aeris938-2/scripts/live_audit.py --repair --no-push \
-            || echo "live_audit.py skipped (quota or transient API error)"
+          # The script exits 0 for a spent quota (it reports that itself); a
+          # non-zero exit means a real bug in the audit, so let it turn the rail
+          # red — a `|| echo` here once hid a broken audit for days.
+          python3 aeris938-2/scripts/live_audit.py --repair --no-push
 
       - name: Commit the dashboard
         run: |

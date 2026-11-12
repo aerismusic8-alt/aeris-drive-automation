@@ -42,14 +42,12 @@ Roblox game anyone can enter and play, and real revenue from it (Roblox
 Views without follows is the failure. Send every surface to the Page; end every
 clip with `release.FOLLOW_ASK` + `release.FOLLOW_PROMISE` ("เพลงใหม่ทุกวัน").
 A post whose `reach≈2` is a **repost** of a clip already on the Page — stop it.
+(Measured 2026-11-10 baseline is in the archive.)
 
 ## Environment facts that cost time
-- **Fresh-pod recovery: `scripts/bootstrap-pod.sh`.** Restores python deps from
-  `requirements.txt` into `/workspace/ax-tools/pylibs` (durable) and installs
-  ffmpeg/fluidsynth/Thai-fonts/xvfb. The `.pth` lands in `~/.local` (NOT durable),
-  so re-run after every pod or the suite dies on `numpy`. A hardcoded
-  `work-{1,2}-<id>.prod-runtime…` host is a bug — build it from `$RUNTIME_ID`
-  (`risk_audit` scans for a baked host).
+- **Fresh-pod recovery: `scripts/bootstrap-pod.sh`** — restores python deps +
+  ffmpeg/fluidsynth/Thai-fonts/xvfb. Re-run after every pod (the `.pth` is
+  non-durable). Baked-host ban + what it installs: archive.
 - **24/7 runs on GitHub Actions, not the sandbox** (public repo → free minutes).
   Rails: `ax-music-release` 07:00 UTC, `ax-music-crosspost` 2-hourly,
   `ax-rail-watchdog` :15, `ax-music-dashboard` 08:30 UTC (ntfy topic
@@ -66,8 +64,7 @@ A post whose `reach≈2` is a **repost** of a clip already on the Page — stop 
 - **Writes:** the app token can't touch `.github/workflows/` (no `workflow`
   scope) — read `axsecrets:gh-workflow-token` from the vault (name
   `OPENHANDS_API_KEY` in the command) and push with it; `GITHUB_TOKEN` is 403.
-  `ax_vault.ensure_anchor()` raises `SystemExit` (a BaseException) — guard
-  `except BaseException`, not `except Exception`.
+  (`ax_vault.ensure_anchor()` raises `SystemExit`, a BaseException — see archive.)
 - **Thai text** lives only in `roblox/src/shared/Text.luau` (Roblox) and
   `music938-1/fonts/NotoSansThai.ttf` (video); without `fonts-thai-tlwg` the SVG
   renderer makes tofu silently. Burned ASS text has no emoji glyph — use `•` / `»`.
@@ -78,15 +75,15 @@ K rejected the ffmpeg tone synth and the GM SoundFont as "fake". Use the **sfizz
 sampler (`install-sfizz.sh`). CI rails can't build it, so beds are pre-rendered on
 the pod and pulled from `media-938` (`pull_media.py --only ambient`, `sampler1-*.wav`);
 `AX_REQUIRE_REAL_INSTRUMENTS=1` makes a GM fallback **raise**, never ship silently.
-
-## Growth lanes that work (research, 2026-11-09)
-Long-form Thai compilations (1–3 h) and sleep/ambient loops (1–8 h) are the lanes
-we can enter free; the single-song format caps at ~500 views. Do **not** stretch
-runtime just to chase views.
+Free growth lanes (long-form compilations + ambient loops) are in the archive.
 
 ## Loop health & platform risks
 - Judge "does the loop reach the goal on its own?" from the **rail run history**,
   not `data/heartbeat.json`. A red rail is the loop failing to walk.
+- **`videos.list` takes ≤50 ids/call.** Past 50 uploads an all-ids call returns
+  HTTP 400, which `live_audit` mislabeled "quota" and hid for days. Chunk via
+  `ops/yt_auth.get_videos`; a non-403 error must fail the rail, never be swallowed
+  by `|| echo` (2026-11-12, found + repaired 28 live videos missing the ask).
 - Platform risks: `AKATH_CORE/OPENHANDS_RISK_REGISTER.json` + `ops/risk_audit.py`
   (`--strict`); the 24/7 guard is `.github/workflows/ax-risk-audit.yml`.
 
