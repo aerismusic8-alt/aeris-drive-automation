@@ -66,8 +66,14 @@ fetch_zip "https://github.com/sfzinstruments/SalamanderGrandPiano/archive/refs/h
   "$INST/salamander" "Salamander Grand Piano V3.sfz"
 
 # Sonatina Symphonic Orchestra — CC0 orchestral samples (Mattias Westlund).
+# The repo zip extracts to `sso-master/`, whose contents include the inner dir
+# `Sonatina Symphonic Orchestra/`. `fetch_zip` copies the zip's top-level dir's
+# contents into `$dest`, so `$dest` must be `$INST/sso` for the result to be
+# `$INST/sso/Sonatina Symphonic Orchestra/<program>.sfz` — the path
+# `scripts/sampler.py` resolves via `_SSO`. Pointing `$dest` one level deeper
+# produced a double-nested tree and every non-piano role read "no bank".
 fetch_zip "https://github.com/peastman/sso/archive/refs/heads/master.zip" \
-  "$INST/sso/Sonatina Symphonic Orchestra" "Concert Harp.sfz"
+  "$INST/sso" "Sonatina Symphonic Orchestra/Concert Harp.sfz"
 
 # --- 3. verify ----------------------------------------------------------------
 echo "--- probe ---"
