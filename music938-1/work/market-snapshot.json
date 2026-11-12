@@ -1,10 +1,10 @@
 {
-  "at": "2026-11-10T16:33:58+00:00",
+  "at": "2026-11-12T12:56:49+00:00",
   "channel": "ch3",
   "channel_stats": {
     "subs": 8,
-    "views": 1585,
-    "videos": 51
+    "views": 1949,
+    "videos": 62
   },
   "videos": {
     "TISzvF9AQig": {
@@ -113,7 +113,7 @@
       "public": true,
       "title": "คนดีที่จากไป — เพลงเศร้า ที่เข้าใจความเสียใจ",
       "published": "2026-11-04T07:54:44Z",
-      "views": 5,
+      "views": 6,
       "likes": 0,
       "comments": 0
     },
@@ -234,7 +234,7 @@
       "public": true,
       "title": "คิดถึงเธอทุกคืน | ท่อนนี้คิดถึงใคร? #Shorts",
       "published": "2026-11-06T14:43:48Z",
-      "views": 60,
+      "views": 61,
       "likes": 2,
       "comments": 0
     },
@@ -399,7 +399,7 @@
       "public": true,
       "title": "เพลงของคนเหนื่อย | ร้องต่อไหม? #Shorts",
       "published": "2026-11-10T02:40:12Z",
-      "views": 1,
+      "views": 6,
       "likes": 0,
       "comments": 0
     },
@@ -410,7 +410,7 @@
       "public": true,
       "title": "ดอกไม้ริมทาง | ร้องต่อไหม? #Shorts",
       "published": "2026-11-10T06:39:57Z",
-      "views": 13,
+      "views": 19,
       "likes": 0,
       "comments": 0
     },
@@ -421,7 +421,7 @@
       "public": true,
       "title": "สัญญาจากใจ | ร้องต่อไหม? #Shorts",
       "published": "2026-11-10T10:39:40Z",
-      "views": 243,
+      "views": 244,
       "likes": 0,
       "comments": 0
     },
@@ -432,7 +432,7 @@
       "public": true,
       "title": "คืนที่ไม่มีดาว | ร้องต่อไหม? #Shorts",
       "published": "2026-11-10T14:39:39Z",
-      "views": 1,
+      "views": 2,
       "likes": 0,
       "comments": 0
     },
@@ -443,7 +443,7 @@
       "public": true,
       "title": "รักที่จากไป | ร้องต่อไหม? #Shorts",
       "published": "2026-11-10T16:23:37Z",
-      "views": 0,
+      "views": 54,
       "likes": 0,
       "comments": 0
     },
@@ -453,7 +453,117 @@
       "kind": "short",
       "public": true,
       "title": "เพลงกล่อมของแม่ | ร้องต่อไหม? #Shorts",
-      "published": "2026-11-10T16:23:09Z",
+      "published": "2026-11-10T20:23:31Z",
+      "views": 1,
+      "likes": 0,
+      "comments": 0
+    },
+    "k0Px6Gf2h4c": {
+      "video_id": "k0Px6Gf2h4c",
+      "slug": "15-thanon-sai-kao",
+      "kind": "short",
+      "public": true,
+      "title": "ถนนสายเก่า | ร้องต่อไหม? #Shorts",
+      "published": "2026-11-11T00:33:20Z",
+      "views": 0,
+      "likes": 0,
+      "comments": 0
+    },
+    "i0f6B26luaw": {
+      "video_id": "i0f6B26luaw",
+      "slug": "16-khwam-fan-thi-yang-mai-tai",
+      "kind": "song",
+      "public": true,
+      "title": "ความฝันที่ยังไม่ตาย — เพลงปลุกใจ ออกกำลังกาย",
+      "published": "2026-11-11T04:33:03Z",
+      "views": 0,
+      "likes": 0,
+      "comments": 0
+    },
+    "d0LS47XbbQo": {
+      "video_id": "d0LS47XbbQo",
+      "slug": "17-wan-thi-fa-pen-chai",
+      "kind": "song",
+      "public": true,
+      "title": "วันที่ฟ้าเป็นใจ — เพลงให้กำลังใจ เริ่มวันใหม่",
+      "published": "2026-11-11T08:33:23Z",
+      "views": 0,
+      "likes": 0,
+      "comments": 0
+    },
+    "MGg7ngnaff0": {
+      "video_id": "MGg7ngnaff0",
+      "slug": "18-khon-thi-chan-khoei-rak",
+      "kind": "song",
+      "public": true,
+      "title": "คนที่ฉันเคยรัก — เพลงเศร้าอกหัก ฟังตอนดึก",
+      "published": "2026-11-11T12:33:02Z",
+      "views": 0,
+      "likes": 0,
+      "comments": 0
+    },
+    "iv0tvVxLEX0": {
+      "video_id": "iv0tvVxLEX0",
+      "slug": "19-lom-nao-kap-khwam-khit-thueng",
+      "kind": "song",
+      "public": true,
+      "title": "ลมหนาวกับความคิดถึง — เพลงชิลล์ ฟังยามค่ำคืน",
+      "published": "2026-11-11T16:03:35Z",
+      "views": 0,
+      "likes": 0,
+      "comments": 0
+    },
+    "-x5O8EJAoqQ": {
+      "video_id": "-x5O8EJAoqQ",
+      "slug": "20-khop-khun-thi-yang-hai-chai",
+      "kind": "song",
+      "public": true,
+      "title": "ขอบคุณที่ยังหายใจ — เพลงให้กำลังใจ เริ่มวันใหม่",
+      "published": "2026-11-11T20:03:36Z",
+      "views": 0,
+      "likes": 0,
+      "comments": 0
+    },
+    "2pte2hsHtGg": {
+      "video_id": "2pte2hsHtGg",
+      "slug": "21-sao-na-khoi-phi",
+      "kind": "song",
+      "public": true,
+      "title": "สาวนาคอยพี่ — เพลงให้กำลังใจ เริ่มวันใหม่",
+      "published": "2026-11-12T00:03:35Z",
+      "views": 1,
+      "likes": 0,
+      "comments": 0
+    },
+    "0odhiX5ZS94": {
+      "video_id": "0odhiX5ZS94",
+      "slug": "24-yut-mai-yom",
+      "kind": "song",
+      "public": true,
+      "title": "ยืนหยัดไม่ยอม — เพลงปลุกใจ ออกกำลังกาย",
+      "published": "2026-11-12T04:03:38Z",
+      "views": 2,
+      "likes": 0,
+      "comments": 0
+    },
+    "_PTmc1GJo1Y": {
+      "video_id": "_PTmc1GJo1Y",
+      "slug": "06-doen-khon-diao",
+      "kind": "short",
+      "public": true,
+      "title": "เดินคนเดียว | ท่อนนี้คิดถึงใคร? #Shorts",
+      "published": "2026-11-12T08:03:25Z",
+      "views": 0,
+      "likes": 0,
+      "comments": 0
+    },
+    "7OP5JOK9R2w": {
+      "video_id": "7OP5JOK9R2w",
+      "slug": "07-huachai-si-thao",
+      "kind": "short",
+      "public": true,
+      "title": "หัวใจสีเทา | ท่อนนี้คิดถึงใคร? #Shorts",
+      "published": "2026-11-12T12:03:38Z",
       "views": 0,
       "likes": 0,
       "comments": 0
