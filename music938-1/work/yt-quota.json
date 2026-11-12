@@ -109,7 +109,14 @@
    "calls": {
     "thumbnails.set": 1
    },
-   "updated": "2026-11-12T16:44:11+00:00"
+   "updated": "2026-11-12T16:44:16+00:00",
+   "reserves": [
+    {
+     "purpose": "release 6 item(s)",
+     "units": 600,
+     "at": "2026-11-12T16:44:16+00:00"
+    }
+   ]
   }
  }
 }
