@@ -39,9 +39,12 @@ sys.path.insert(0, str(HERE))
 CDP = os.environ.get("AERIS_CDP", "http://127.0.0.1:9222")
 # Surfaces the rails read, and whether AR can revive them with no human.
 # facebook: yes — a vaulted password and no per-login second factor in this setup.
-# the rest: no — Google asks for a device prompt and Shopee a slide puzzle, so a
-# dead session there is a real K task.
-AUTO_REVIVE = {"facebook"}
+# flow: yes — it signs in through Google SSO, and the vaulted google-password
+#   completes the chooser (verified 2026-11-12: a dead Flow session came back with
+#   no K). It must run on the desktop browser, not headless — Google blocks
+#   headless logins — so it heals whenever a pod is up.
+# the rest: no — a device prompt or a slide puzzle, so a dead session is a K task.
+AUTO_REVIVE = {"facebook", "flow"}
 
 
 def _surfaces() -> dict[str, bool]:
@@ -92,6 +95,10 @@ def run(check_only: bool = False, push: bool = True) -> int:
         if fb_relogin.relogin() == 0:
             revived = True
             state[".facebook.com"] = True
+    if ".flowmusic.app" in dead:
+        if _revive_flow():
+            revived = True
+            state[".flowmusic.app"] = True
 
     # Always refresh the vault session (that is what CI reads). Push the CI secret
     # only after a revive, so the fallback is refreshed exactly when it changed.
@@ -105,6 +112,69 @@ def run(check_only: bool = False, push: bool = True) -> int:
         return 1 if need_k else 0
     print("all surfaces alive after the revive" if revived else "all surfaces alive")
     return 0
+
+
+def _revive_flow() -> bool:
+    """Sign Flow Music back in through Google SSO, with the vaulted password.
+
+    Flow has no password of its own: it signs in through Google. The desktop
+    Google session still holds the account tile, so the whole revive is chooser ->
+    password -> back to Flow. Verified 2026-11-12: a dead Flow session returned
+    with no K. Runs only on the desktop — Google refuses a headless login — so it
+    is best-effort whenever a pod is up.
+    """
+    import ax_vault  # noqa: PLC0415
+    from playwright.sync_api import sync_playwright  # noqa: PLC0415
+
+    pw = ax_vault.kv_get(ax_vault.ensure_anchor(), "axsecrets:google-password")
+    if not pw:
+        print("no google-password in the vault; cannot revive Flow Music")
+        return False
+    email = "aerismusic8@gmail.com"
+
+    def _click_text(pg, text: str) -> bool:
+        try:
+            pg.evaluate("""(t) => {const e=[...document.querySelectorAll(
+                'a,button,[role=button]')].find(x=>(x.innerText||'').trim()===t);
+                if(e) e.click();}""", text)
+            return True
+        except Exception:  # noqa: BLE001
+            return False
+
+    with sync_playwright() as p:
+        br = p.chromium.connect_over_cdp(CDP)
+        ctx = br.contexts[0] if br.contexts else br.new_context()
+        pg = ctx.new_page()
+        try:
+            pg.goto("https://www.flowmusic.app/", wait_until="domcontentloaded",
+                    timeout=60000)
+            pg.wait_for_timeout(5000)
+            _click_text(pg, "Log in")
+            pg.wait_for_timeout(4000)
+            _click_text(pg, "Continue with Google")
+            pg.wait_for_timeout(7000)
+            pg.get_by_text(email).first.click(timeout=8000)
+            pg.wait_for_timeout(5000)
+            field = pg.locator("input[type=password]").first
+            field.click(timeout=8000)
+            field.fill(pw, timeout=8000)
+            pg.wait_for_timeout(800)
+            for lbl in ("Next", "ถัดไป"):
+                try:
+                    pg.get_by_role("button", name=lbl).first.click(timeout=5000)
+                    break
+                except Exception:  # noqa: BLE001
+                    continue
+            pg.wait_for_timeout(12000)
+            pg.goto("https://www.flowmusic.app/", wait_until="domcontentloaded",
+                    timeout=60000)
+            pg.wait_for_timeout(5000)
+            import login_vault  # noqa: PLC0415
+            ok = login_vault._signed_in(ctx, ".flowmusic.app")
+        finally:
+            pg.close()
+    print("flow music " + ("revived" if ok else "still signed out"))
+    return ok
 
 
 def _refresh(push: bool) -> None:
@@ -155,14 +225,17 @@ def run_headless() -> int:
     if exe:
         launch["executable_path"] = exe
 
+    # Only the surfaces the CI rails post to, and only Facebook is revivable
+    # headlessly. Google refuses a headless login and Flow is desktop-only, so
+    # checking them here would report a false "needs K".
+    watched = (".facebook.com", ".tiktok.com")
     alive: dict[str, bool] = {}
     with sync_playwright() as p:
         br = p.chromium.launch(**launch)
         ctx = br.new_context(storage_state=str(tmp), locale="th-TH",
                              viewport={"width": 1280, "height": 900})
-        for d in login_vault.WATCH:
-            if d in login_vault.PROBE:
-                alive[d] = login_vault._signed_in(ctx, d)
+        for d in watched:
+            alive[d] = login_vault._signed_in(ctx, d)
         br.close()
 
     for d, ok in sorted(alive.items()):

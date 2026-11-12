@@ -3798,6 +3798,16 @@ def test_login_vault() -> None:
     check("a '!' marker means signed-in-only-when-absent",
           login_vault.PROBE[".flowmusic.app"][1].startswith("!") and
           "startswith(\"!\")" in src)
+    # A probe can be all-negative (Flow has no reliable positive marker). The
+    # original code required a positive marker AND no negative one, so Flow could
+    # never report signed-in — it read as dead even while the studio was open,
+    # which would have kept paging K for a login that already worked.
+    import inspect as _inspect
+    si = _inspect.getsource(login_vault._signed_in)
+    check("an all-negative probe reports signed-in when the marker is gone",
+          "if want else True" in si)
+    check("Flow's probe has a negative marker",
+          any(m.startswith("!") for m in login_vault.PROBE[".flowmusic.app"][1:]))
     # Cookies are not the whole session: Google keeps its device-trust token in
     # localStorage, so a cookie-only restore still makes Google ask for the
     # device. The snapshot must also carry per-origin storage.
@@ -3856,8 +3866,10 @@ def test_session_guard() -> None:
     section("session guard (heal without K)")
     ops = ROOT.parent / "ops"
     src = (ops / "session_guard.py").read_text()
-    check("only Facebook is auto-revivable",
-          'AUTO_REVIVE = {"facebook"}' in src)
+    check("auto-revives Facebook and Flow Music",
+          'AUTO_REVIVE = {"facebook", "flow"}' in src)
+    check("revives Flow through Google SSO", "def _revive_flow" in src
+          and "axsecrets:google-password" in src)
     check("has a headless mode for CI", "def run_headless" in src and "--headless" in src)
     check("refreshes the vault session after a revive",
           "save_state" in src and "vault_session" in src)

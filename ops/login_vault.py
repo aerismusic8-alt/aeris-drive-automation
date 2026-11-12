@@ -94,7 +94,7 @@ PROBE = {
     # to re-sign a session that actually works (posting proves it does).
     ".facebook.com": ("https://www.facebook.com/", "ค้นหาเพื่อน", "เพื่อน"),
     ".tiktok.com": ("https://www.tiktok.com/foryou", "ค้นหา", "Search"),
-    ".flowmusic.app": ("https://www.flowmusic.app/", "!Log in"),
+    ".flowmusic.app": ("https://www.flowmusic.app/", "!Log in", "!Sign up"),
 }
 
 
@@ -423,12 +423,13 @@ def _signed_in(ctx, domain: str) -> bool:
         if "เข้าสู่ระบบ" in body[:200] and "รหัสผ่าน" in body:
             return False
         # "!marker" means the page is signed in only when the marker is gone
-        # (Flow Music keeps a "Log in" link on its landing page).
+        # (Flow Music keeps a "Log in" link on its landing page). A probe can be
+        # all-negative: then signed-in is simply "every marker is gone".
         want = [m for m in markers if not m.startswith("!")]
         gone = [m[1:] for m in markers if m.startswith("!")]
         if any(m in body for m in gone):
             return False
-        return any(m in body for m in want)
+        return all(m in body for m in want) if want else True
     except Exception:  # noqa: BLE001
         return False
     finally:

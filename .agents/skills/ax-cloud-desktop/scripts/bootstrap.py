@@ -332,6 +332,25 @@ def restore_login() -> None:
         print("[=] login restore FAILED:", (r.stderr or r.stdout or "").strip()[:300])
 
 
+def _heal_sessions() -> None:
+    """Revive any dead login it can, so a fresh pod does not page K.
+
+    Best-effort: the desktop is already up at this point, so a heal failure must
+    not fail the bring-up. Facebook and Flow Music revive from vaulted passwords;
+    TikTok/Shopee still need K and are reported, not guessed at.
+    """
+    guard = Path(__file__).resolve().parents[4] / "ops" / "session_guard.py"
+    if not guard.exists():
+        return
+    try:
+        r = sh([sys.executable, str(guard), "--no-push"], timeout=420)
+        out = (r.stdout or "").strip()
+        if out:
+            print(out)
+    except Exception as exc:  # noqa: BLE001
+        print("[=] session heal skipped:", exc)
+
+
 def operator_url() -> str | None:
     """The noVNC URL for this sandbox, built from the environment.
 
@@ -353,6 +372,8 @@ def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument("--status", action="store_true", help="report only")
     ap.add_argument("--url", action="store_true", help="print the operator URL and exit")
+    ap.add_argument("--heal", action="store_true",
+                    help="after bring-up, revive any dead login it can (ops/session_guard.py)")
     args = ap.parse_args()
     if args.url:
         url = operator_url()
@@ -370,6 +391,8 @@ def main() -> int:
     start()
     restore_login()
     restore_bookmarks()
+    if args.heal:
+        _heal_sessions()
     print()
     rc = status()
     print("\noperator URL (sign in here, inside the desktop):")
