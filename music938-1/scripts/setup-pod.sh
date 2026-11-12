@@ -79,8 +79,16 @@ fi
 # makes realistic sound." sfizz plays multi-velocity recordings of real
 # instruments; it and its CC0 banks live under /workspace and are fetched by a
 # separate script so this stays fast when they are already present.
+#
+# The guard checks BOTH banks, not just the piano. It used to test only the
+# Salamander piano, so a pod whose Sonatina tree was present-but-wrong (the
+# 2026-11-12 double-nested extraction) skipped the installer and every
+# orchestral role read "no bank" while the piano still played — a silent
+# half-broken sampler. `install-sfizz.sh` is idempotent, so re-running it when
+# the orchestral bank is missing is cheap and self-heals that case.
 if [ ! -x "$REPO/tools/sfizz/sfizz_render" ] || \
-   [ ! -e /workspace/ax-tools/instruments/salamander/"Salamander Grand Piano V3.sfz" ]; then
+   [ ! -e /workspace/ax-tools/instruments/salamander/"Salamander Grand Piano V3.sfz" ] || \
+   [ ! -e "/workspace/ax-tools/instruments/sso/Sonatina Symphonic Orchestra/Concert Harp.sfz" ]; then
   echo "installing the realistic-sound sampler (sfizz)..."
   bash "$(dirname "$0")/install-sfizz.sh" || \
     echo "[warn] sfizz install failed; beds fall back to the GM SoundFont"
