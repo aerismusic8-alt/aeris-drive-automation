@@ -73,7 +73,8 @@ jobs:
           AX_GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           set -euo pipefail
-          cd music938-1 && python3 scripts/fix_thumbnails.py --ch ch3 || true
+          cd music938-1 && python3 scripts/fix_thumbnails.py --ch ch3 \
+            || echo "::error::thumbnail repair failed — a live video may still show the wrong thumbnail"
 
       # The compilation is the most-watched video and the only long-form one whose
       # description is clickable and above the fold, yet it shipped with no
@@ -89,7 +90,8 @@ jobs:
           AX_GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           set -euo pipefail
-          cd music938-1 && python3 scripts/fix_compilation_cta.py --apply || true
+          cd music938-1 && python3 scripts/fix_compilation_cta.py --apply \
+            || echo "::error::revenue-ask repair failed — the compilation may still carry no subscribe/Shopee ask"
 
       - name: Fix the wrong-render backlog first
         env:

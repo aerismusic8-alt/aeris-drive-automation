@@ -60,8 +60,10 @@ jobs:
           set -euo pipefail
           cd music938-1
           # A song that fails the gate is skipped, not forced; the loop keeps
-          # going so one bad lyric cannot stop the batch.
-          python3 scripts/make_short.py --all --mix karaoke --skip-existing || true
+          # going so one bad lyric cannot stop the batch. Kept non-fatal on
+          # purpose, but a failure is surfaced instead of silently swallowed.
+          python3 scripts/make_short.py --all --mix karaoke --skip-existing \
+            || echo "::warning::karaoke render reported a failure — see log (batch continued)"
 
       - name: Push the new clips back to the media store
         env:
