@@ -283,19 +283,27 @@ def build_counts(state: dict, queue: list[dict], *, fetch=fetch_playcount,
     """Read the play count of each recent posted TikTok URL, reusing the cache.
 
     A URL already in the cache is not re-fetched: the count only needs refreshing
-    occasionally, and this is what keeps a rail run to a few requests. An unreadable
-    page stores `None`, which is dropped by `kind_stats` — never counted as zero.
+    occasionally, and this is what keeps a rail run to a few requests. An
+    unreadable page stores `None`, which is dropped by `kind_stats` — never
+    counted as zero. A `None` is deliberately NOT written to the cache, so a
+    transient block (a captcha, a network blip) is retried next run instead of
+    being frozen as "permanently unreadable" — the bug class the 2026-11-12
+    advisor panel flagged: a cached failure that never heals.
     """
     import time
     now = time.time() if now_epoch is None else now_epoch
     cache = {} if cache is None else cache
     counts: dict[str, int | None] = {}
     for url in recent_tiktok(state, now):
-        if url in cache:
-            counts[url] = cache[url]
+        cached = cache.get(url)
+        if cached is not None:
+            counts[url] = cached
         else:
             counts[url] = fetch(url)
-            cache[url] = counts[url]
+            if counts[url] is not None:
+                cache[url] = counts[url]
+            else:
+                cache.pop(url, None)
     return counts
 
 

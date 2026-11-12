@@ -85,4 +85,4 @@ jobs:
           curl -sS --max-time 20 -H "Title: AERIS - FB admin session dead" \
             -H "Tags: warning" -H "Priority: high" \
             -d "session ของ Facebook หมดอายุ ตัวช่วยแอดมินอ่านกล่องข้อความไม่ได้. แตะลิงก์เดียวจบ: ${LINK} - ล็อกอิน Facebook Page (AERIS Music). หลังล็อกอิน รอบถัดไปทำงานต่อเอง (ทุก 1 ชม.)" \
-            "https://ntfy.sh/${TOPIC}" || echo "ntfy push failed (non-fatal)"
+            "https://ntfy.sh/${TOPIC}" || echo "::error::ntfy push failed — the dead-session alert did not reach the operator"

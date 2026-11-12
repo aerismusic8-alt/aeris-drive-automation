@@ -49,6 +49,24 @@ jobs:
           pip install --quiet playwright
           python3 -m playwright install --with-deps chromium || true
 
+      - name: Audit the live channel against intent
+        # The product check: read every live upload and diff it against intent,
+        # not the code. This is what was missing when 1555 green tests coexisted
+        # with a top video that carried no revenue ask for weeks. It repairs the
+        # deterministic miss (the description ask) and alerts only on a new
+        # failure. It runs FIRST, in its own step, so a later measurement failure
+        # can never skip it.
+        # The script exits 0 for a spent quota (it reports that itself); a
+        # non-zero exit means a real bug in the audit, so let it turn the rail
+        # red — a `|| echo` here once hid a broken audit for days.
+        env:
+          YT_CLIENT_ID: ${{ secrets.YT_CLIENT_ID }}
+          YT_CLIENT_SECRET: ${{ secrets.YT_CLIENT_SECRET }}
+          YT_CH3_REFRESH_TOKEN: ${{ secrets.YT_CH3_REFRESH_TOKEN }}
+        run: |
+          set -euo pipefail
+          python3 aeris938-2/scripts/live_audit.py --repair --no-push
+
       - name: Write the dashboard
         env:
           YT_CLIENT_ID: ${{ secrets.YT_CLIENT_ID }}
@@ -60,33 +78,35 @@ jobs:
           # A spent Data API quota must not fail the job: PROGRESS.md still has
           # the last known numbers, and the ntfy push below is the point.
           python3 music938-1/scripts/market.py --root "$GITHUB_WORKSPACE" --channel ch3 \
-            || echo "market.py skipped (quota or transient API error)"
+            || echo "::warning::market.py skipped (quota or transient API error)"
           python3 music938-1/scripts/progress.py --root "$GITHUB_WORKSPACE"
           # The four-surface report (YouTube + FB + TikTok + Shopee). Shopee's
           # dashboard answers a fresh browser with a captcha, so it usually falls
           # back to the last reading the desktop captured — labelled, not blank.
-          python3 aeris938-2/scripts/report.py \
-            || echo "report.py skipped (desktop/CDP unavailable)"
+          # No `|| echo`: a measurement that fails must be visible, not swallowed.
+          # A missing desktop now leaves the newest history row blank, which the
+          # freshness gate below turns red instead of a lying-green pass.
+          python3 aeris938-2/scripts/report.py
           # The daily judge: reads the history report.py just wrote and names the
-          # one constraint blocking revenue. Exits 0 on bad news by design.
-          python3 aeris938-2/scripts/goal_watch.py --no-push \
-            || echo "goal_watch.py skipped"
+          # one constraint blocking revenue. It exits 0 on bad news by design,
+          # and names "data" (not a guess) when the newest reading is missing.
+          python3 aeris938-2/scripts/goal_watch.py --no-push
           # The daily review loop: on a flat day, pick ONE new experiment that
           # matches the constraint and has not been tried, and remember it. It
           # never repeats a loser and never switches away from a running test
           # before its window. A flat day is the trigger; the ledger is why it
           # cannot "forget". K, 2026-11-09.
-          python3 aeris938-2/scripts/experiment_loop.py --run --no-push \
-            || echo "experiment_loop.py skipped"
-          # Audit the LIVE channel against intent, not the code. This is the
-          # check that was missing when 1555 green tests coexisted with a
-          # top video that carried no revenue ask for weeks. It reads every
-          # upload and repairs the deterministic misses (the description ask),
-          # alerting only on a new failure.
-          # The script exits 0 for a spent quota (it reports that itself); a
-          # non-zero exit means a real bug in the audit, so let it turn the rail
-          # red — a `|| echo` here once hid a broken audit for days.
-          python3 aeris938-2/scripts/live_audit.py --repair --no-push
+          python3 aeris938-2/scripts/experiment_loop.py --run --no-push
+
+      - name: Freshness gate — fail if the newest reading is blind or stale
+        # The panel's rule (2026-11-12, duck + pollinations, quorum PASS): a
+        # green run must mean the numbers were actually read, and recently. If
+        # the newest history row is missing the reach number (a desktop/API
+        # outage wrote an all-null row) or is older than the freshness window,
+        # this exits non-zero so a lying-green dashboard cannot pass for healthy.
+        run: |
+          set -euo pipefail
+          python3 aeris938-2/scripts/goal_watch.py --no-push --assert-fresh
 
       - name: Commit the dashboard
         run: |

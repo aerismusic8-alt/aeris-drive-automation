@@ -100,10 +100,11 @@ jobs:
             echo "ambient sleep loop already live — skipping"
           else
             python3 scripts/ambient_loop.py --preset sleep --minutes 480 --render
+            # No `|| echo` on the upload: a silent skip means the sleep loop
+            # never goes live and nobody notices. A real failure must be red.
             python3 scripts/upload_compilation.py --upload --ch ch3 \
               --stem ambient-sleep \
-              --thumb library/thumbs/thumb-ambient-sleep.png \
-              || echo "ambient sleep: upload skipped"
+              --thumb library/thumbs/thumb-ambient-sleep.png
           fi
 
       - name: Replace the sleep loop if it was the old synth render
@@ -147,8 +148,10 @@ jobs:
             # and the mood filter. It refuses under 8 eligible tracks so the
             # "N เพลง" title stays honest.
             python3 scripts/compile_album.py --theme "$theme" --max 60 --render
+            # No `|| echo` on the upload: a swallowed skip leaves the theme
+            # unpublished while the run stays green. A real failure must be red.
             python3 scripts/upload_compilation.py --upload --ch ch3 \
-              --stem "compilation-${theme}" || echo "theme ${theme}: upload skipped"
+              --stem "compilation-${theme}"
             if [ -f "$state" ] && grep -q '"video_id": *"[^"]' "$state"; then
               echo "published theme ${theme}; stopping this run"
               break

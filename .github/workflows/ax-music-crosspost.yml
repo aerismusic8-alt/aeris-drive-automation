@@ -122,8 +122,13 @@ jobs:
         # nothing, so this step is safe to run every hour.
         run: |
           set -uo pipefail
+          # `engagement.py` exits 0 when there is simply no readable signal yet —
+          # that is normal and it retunes nothing. A NON-zero exit is a real bug,
+          # so it is surfaced as a visible annotation instead of a silent "skipped".
+          # It is kept non-fatal on purpose: a flaky TikTok page read must never
+          # block the posting step below, which is the revenue action.
           python3 music938-1/scripts/engagement.py --apply \
-            || echo "engagement read skipped (no numbers yet or transient error)"
+            || echo "::warning::engagement read failed (see log) — queue not retuned this run"
 
       - name: Post the pending Shorts
         env:

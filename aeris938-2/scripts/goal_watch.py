@@ -27,6 +27,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import surfaces  # noqa: E402
 import report  # noqa: E402
+import evidence  # noqa: E402
 
 WATCH = surfaces.WORK / "goal-watch.md"
 WINDOW_DAYS = 7.0
@@ -55,6 +56,35 @@ def _at(row: dict) -> datetime | None:
         return None
 
 
+def data_health(rows: list[dict], now=None) -> dict:
+    """Is the newest reading real and recent? Never decide on a blind day.
+
+    `history.jsonl` records a row every run, including runs where the cloud
+    desktop was down and every dashboard field came back null. Those rows carry
+    a real timestamp but no reach number, so "the views did not move" can really
+    mean "we never read the views". This gate asks the evidence module whether
+    the latest row's movement metric is *fresh and valid* before any constraint
+    is named.
+
+    `snapshot` carries the status of every tracked surface, so a reader can see
+    which surface is blind even when the reach metric itself is fine.
+    """
+    latest = rows[-1] if rows else None
+    if not latest:
+        return {"status": "unknown", "reason": "ยังไม่มีข้อมูลใน history เลย"}
+    snap = evidence.snapshot(
+        {k: latest.get(k) for k in evidence.SURFACE_KEYS}, latest.get("at"), now)
+    st = evidence.status(latest.get("yt_views"), latest.get("at"), now)
+    if st == "fresh":
+        return {"status": "fresh", "observed_at": latest.get("at"),
+                "snapshot": snap}
+    reason = ("อ่านค่าล่าสุดไม่ได้ (รอบที่เดสก์ท็อป/API ล่ม — ทุกช่องว่าง)"
+              if st == "unknown"
+              else f"ค่าล่าสุดเก่าเกิน {evidence.FRESH_MINUTES} นาที")
+    return {"status": st, "observed_at": latest.get("at"), "reason": reason,
+            "snapshot": snap}
+
+
 def window_delta(rows: list[dict], key: str, days: float = WINDOW_DAYS):
     """Change in `key` over the last `days`, as (delta, span_days) or None.
 
@@ -76,14 +106,18 @@ def window_delta(rows: list[dict], key: str, days: float = WINDOW_DAYS):
     return latest_v - base[1], span
 
 
-def diagnose(rows: list[dict]) -> dict:
+def diagnose(rows: list[dict], now=None) -> dict:
     """Name the constraint blocking revenue, from the movement that is real.
 
-    Order matters. Money first: a commission is the goal met, whatever else is
+    Order matters. Data first: if the newest reading is missing or stale we
+    cannot name *any* constraint — "no movement" would be a guess dressed as a
+    finding, which is exactly the blind day that produced a week of false
+    "reach" verdicts. Then money: a commission is the goal met, whatever else is
     flat. Then the reach question — no views means nothing downstream can work.
     Then the conversion question — views but no followers means the hook does
     not earn the follow. Only then is it a posting problem.
     """
+    health = data_health(rows, now)
     latest = rows[-1] if rows else {}
     subs = latest.get("yt_subs")
     tkf = latest.get("tk_followers")
@@ -93,6 +127,22 @@ def diagnose(rows: list[dict]) -> dict:
     d_subs = window_delta(rows, "yt_subs")
     d_tkf = window_delta(rows, "tk_followers")
     d_clicks = window_delta(rows, "sp_clicks")
+
+    # The gate: a constraint is a claim about movement, and movement needs a
+    # fresh, valid reading. Without one the honest answer is "data".
+    if health["status"] != "fresh":
+        constraint = "data"
+        action = (f"ข้อมูลล่าสุดยังไม่น่าเชื่อถือ ({health['reason']}) — "
+                  "ยืนยันว่าเดสก์ท็อป/รายงานอ่านค่าจริงก่อน จึงจะชี้คอขวดได้ "
+                  "ห้ามเดาจากข้อมูลที่ขาด")
+        return {
+            "at": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
+            "constraint": constraint, "action": action, "gate": None,
+            "data_health": health,
+            "yt_subs": subs, "tk_followers": tkf, "commission": comm,
+            "d_views": d_views, "d_subs": d_subs, "d_tkf": d_tkf,
+            "d_comm": d_comm, "d_clicks": d_clicks,
+        }
 
     # The gate that is furthest from open is the channel to push.
     gates = {}
@@ -124,6 +174,7 @@ def diagnose(rows: list[dict]) -> dict:
         "constraint": constraint,
         "action": action,
         "gate": gate,
+        "data_health": health,
         "yt_subs": subs, "tk_followers": tkf, "commission": comm,
         "d_views": d_views, "d_subs": d_subs, "d_tkf": d_tkf,
         "d_comm": d_comm, "d_clicks": d_clicks,
@@ -154,6 +205,18 @@ def render(d: dict) -> str:
         "",
         f"**คอขวด: {d['constraint']}** — {d['action']}",
         "",
+    ]
+    health = d.get("data_health") or {}
+    if health.get("status") and health["status"] != "fresh":
+        lines += [f"> สุขภาพข้อมูล: {health['status']} — {health.get('reason', '')}",
+                  "> คอขวดไม่ถูกชี้เพราะข้อมูลยังไม่น่าเชื่อถือ (ห้ามเดา)", ""]
+    snap = health.get("snapshot") or {}
+    blind = [k for k, v in (snap.get("keys") or {}).items()
+             if v.get("status") != "fresh"]
+    if blind:
+        lines += [f"> ช่องที่ยังอ่านไม่ได้/เก่า: {', '.join(sorted(blind))}",
+                  f"> สุขภาพข้อมูลรวม: {evidence.health_text(snap['summary'])}", ""]
+    lines += [
         "K รับได้ถ้าเดือนนี้ไม่ถึง — ขอแค่ทำเต็มที่ เฝ้าดู และปรับทุกวัน",
         "",
     ]
@@ -182,6 +245,9 @@ def push(text: str, topic: str) -> None:
 def main(argv=None) -> int:
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument("--no-push", action="store_true")
+    ap.add_argument("--assert-fresh", action="store_true",
+                    help="exit non-zero when the newest reading is missing/stale "
+                         "(the dashboard rail's freshness gate)")
     args = ap.parse_args(argv)
 
     rows = load()
@@ -190,6 +256,11 @@ def main(argv=None) -> int:
     WATCH.write_text(text, encoding="utf-8")
     print(text)
     print(headline(d))
+    if args.assert_fresh and d.get("constraint") == "data":
+        health = d.get("data_health") or {}
+        print(f"::error::freshness gate failed: {health.get('status')} — "
+              f"{health.get('reason', '')}")
+        return 3
     if not args.no_push:
         topic = os.environ.get("AX_NTFY_TOPIC", "")
         if topic:

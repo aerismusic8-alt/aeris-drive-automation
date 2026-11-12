@@ -20,6 +20,7 @@ import surfaces  # noqa: E402
 import report  # noqa: E402
 import admin  # noqa: E402
 import goal_watch  # noqa: E402
+import evidence  # noqa: E402
 
 
 def test_exactly_four_surfaces():
@@ -167,8 +168,14 @@ def test_gate_block_counts_the_gap_to_each_gate():
 
 def test_goal_watch_names_the_blocking_constraint():
     """The daily monitor must name the one constraint that is blocking revenue,
-    in priority order: income > reach > conversion > offer. It is a monitor, not
-    a gate, so it must never raise on bad news."""
+    in priority order: data > income > reach > conversion > offer. It is a
+    monitor, not a gate, so it must never raise on bad news.
+
+    `now` is passed explicitly: the reading must be fresh for a constraint to be
+    named, so a fixed historical window would be (correctly) read as stale.
+    """
+    NOW = "2026-11-07T00:00:00Z"
+
     def row(at, **kw):
         return {"at": at, **kw}
 
@@ -177,17 +184,42 @@ def test_goal_watch_names_the_blocking_constraint():
     # Views flat → reach is the blocker, even though clicks are also zero.
     flat = [row("2026-11-01T00:00:00Z", **base),
             row("2026-11-07T00:00:00Z", **base)]
-    assert goal_watch.diagnose(flat)["constraint"] == "reach"
+    assert goal_watch.diagnose(flat, now=NOW)["constraint"] == "reach"
     # Views growing but subs flat → conversion.
     conv = [row("2026-11-01T00:00:00Z", **base),
             row("2026-11-07T00:00:00Z", **dict(base, yt_views=5000))]
-    assert goal_watch.diagnose(conv)["constraint"] == "conversion"
+    assert goal_watch.diagnose(conv, now=NOW)["constraint"] == "conversion"
     # A commission beats everything.
     paid = [row("2026-11-01T00:00:00Z", **base),
             row("2026-11-07T00:00:00Z", **dict(base, sp_commission=120))]
-    assert goal_watch.diagnose(paid)["constraint"] == "income"
+    assert goal_watch.diagnose(paid, now=NOW)["constraint"] == "income"
     # And the digest always renders, with no history at all.
     assert "คอขวด" in goal_watch.render(goal_watch.diagnose([]))
+
+
+def test_goal_watch_refuses_a_constraint_without_fresh_data():
+    """A blind day must not produce a confident 'reach' verdict.
+
+    `history.jsonl` gets a row even when the cloud desktop was down and every
+    dashboard field is null. Before 2026-11-12 the monitor read those as "flat"
+    and named 'reach' — a guess dressed as a finding. Now the constraint is
+    'data' until a fresh, valid reading exists.
+    """
+    NOW = "2026-11-12T12:00:00Z"
+    # Newest reading is missing the reach number → unknown → 'data'.
+    blind = [{"at": "2026-11-12T11:00:00Z", "yt_subs": 8, "yt_views": None},
+             {"at": "2026-11-12T11:30:00Z", "yt_subs": 8, "yt_views": None}]
+    d = goal_watch.diagnose(blind, now=NOW)
+    assert d["constraint"] == "data", d
+    assert d["data_health"]["status"] == "unknown"
+    # Newest reading is real but hours old → stale → 'data'.
+    stale = [{"at": "2026-11-12T06:00:00Z", "yt_subs": 8, "yt_views": 100},
+             {"at": "2026-11-12T06:05:00Z", "yt_subs": 8, "yt_views": 100}]
+    assert goal_watch.diagnose(stale, now=NOW)["constraint"] == "data"
+    # A fresh, valid reading names a real constraint again.
+    fresh = [{"at": "2026-11-12T06:00:00Z", "yt_subs": 8, "yt_views": 100},
+             {"at": "2026-11-12T11:58:00Z", "yt_subs": 8, "yt_views": 100}]
+    assert goal_watch.diagnose(fresh, now=NOW)["constraint"] == "reach"
 
 
 def test_follow_guard_requires_the_page_identity():
@@ -385,18 +417,82 @@ def test_loop_reports_exhaustion_rather_than_reusing_a_loser():
 def test_loop_verdict_never_calls_a_low_exposure_test_a_loss():
     exp = loop.record(loop.LIBRARY["reach"][0], "reach", None)
     exp["start"] = "2026-11-01T00:00:00Z"
+    NOW = "2026-11-10T00:00:00Z"
     # Plenty of views, subscribers flat -> a real loss.
     strong = [{"at": "2026-11-01T00:00:00Z", "yt_subs": 7, "yt_views": 1214},
               {"at": "2026-11-10T00:00:00Z", "yt_subs": 7, "yt_views": 1600}]
-    assert loop.evaluate(exp, strong)[0] == "FAILED"
+    assert loop.evaluate(exp, strong, now=NOW)[0] == "FAILED"
     # Too little exposure to read -> inconclusive, NOT a loss.
     weak = [{"at": "2026-11-01T00:00:00Z", "yt_subs": 7, "yt_views": 1214},
             {"at": "2026-11-10T00:00:00Z", "yt_subs": 7, "yt_views": 1250}]
-    assert loop.evaluate(exp, weak)[0] == "INCONCLUSIVE"
+    assert loop.evaluate(exp, weak, now=NOW)[0] == "INCONCLUSIVE"
     # A subscriber gain is a win whatever else is flat.
     win = [{"at": "2026-11-01T00:00:00Z", "yt_subs": 7, "yt_views": 1214},
            {"at": "2026-11-10T00:00:00Z", "yt_subs": 9, "yt_views": 1250}]
-    assert loop.evaluate(exp, win)[0] == "WIN"
+    assert loop.evaluate(exp, win, now=NOW)[0] == "WIN"
+
+
+def test_loop_verdict_is_inconclusive_on_missing_or_stale_evidence():
+    """A verdict needs a fresh, valid reading of the goal metric.
+
+    The panel's gate (2026-11-12): missing data must never become a WIN or a
+    FAILED — a blind day is INCONCLUSIVE. Without this, an all-null history row
+    would read as 'subs flat, views flat' and close a test as a loss.
+    """
+    exp = loop.record(loop.LIBRARY["reach"][0], "reach", None)
+    exp["start"] = "2026-11-01T00:00:00Z"
+    NOW = "2026-11-10T00:00:00Z"
+    # Newest row is a blind day (subs missing) → inconclusive, not a loss.
+    blind = [{"at": "2026-11-01T00:00:00Z", "yt_subs": 7, "yt_views": 1214},
+             {"at": "2026-11-10T00:00:00Z", "yt_subs": None, "yt_views": None}]
+    verdict, why = loop.evaluate(exp, blind, now=NOW)
+    assert verdict == "INCONCLUSIVE", (verdict, why)
+    # Newest row is real but stale → also inconclusive.
+    stale = [{"at": "2026-11-01T00:00:00Z", "yt_subs": 7, "yt_views": 1214},
+             {"at": "2026-11-09T00:00:00Z", "yt_subs": 7, "yt_views": 1600}]
+    assert loop.evaluate(exp, stale, now=NOW)[0] == "INCONCLUSIVE"
+    # An offer test needs Shopee data: with a fresh YouTube reading but a blind
+    # Shopee click count it is still inconclusive, never a loss.
+    off = loop.record(loop.LIBRARY["offer"][0], "offer", None)
+    off["start"] = "2026-11-01T00:00:00Z"
+    shopee_blind = [{"at": "2026-11-01T00:00:00Z", "yt_subs": 7, "yt_views": 1214,
+                     "sp_clicks": 3},
+                    {"at": "2026-11-10T00:00:00Z", "yt_subs": 7, "yt_views": 1600,
+                     "sp_clicks": None}]
+    assert loop.evaluate(off, shopee_blind, now=NOW)[0] == "INCONCLUSIVE"
+
+
+def test_evidence_status_vocabulary():
+    """The shared contract: fresh / stale / unknown, and usable only when fresh."""
+    NOW = "2026-11-12T12:00:00Z"
+    assert evidence.status(5, "2026-11-12T11:50:00Z", NOW) == "fresh"
+    assert evidence.status(5, "2026-11-12T09:00:00Z", NOW) == "stale"
+    assert evidence.status(None, "2026-11-12T11:50:00Z", NOW) == "unknown"
+    assert evidence.status("UNKNOWN", "2026-11-12T11:50:00Z", NOW) == "unknown"
+    assert evidence.status(5, None, NOW) == "stale"
+    assert evidence.usable(5, "2026-11-12T11:50:00Z", NOW) is True
+    assert evidence.usable(None, "2026-11-12T11:50:00Z", NOW) is False
+    snap = evidence.snapshot({"a": 1, "b": None}, "2026-11-12T11:50:00Z", NOW)
+    assert snap["summary"] == {"fresh": 1, "stale": 0, "unknown": 1}
+    assert snap["keys"]["b"]["status"] == "unknown"
+
+
+def test_assert_fresh_gate_fails_on_a_blind_reading():
+    """The dashboard rail's freshness gate: a blind newest reading exits non-zero,
+    so a lying-green run cannot pass for a healthy one."""
+    import tempfile
+    orig_load, orig_watch = goal_watch.load, goal_watch.WATCH
+    with tempfile.TemporaryDirectory() as d:
+        goal_watch.WATCH = Path(d) / "goal-watch.md"
+        try:
+            goal_watch.load = lambda *a, **k: [
+                {"at": "2026-11-12T11:00:00Z", "yt_subs": 8, "yt_views": None}]
+            assert goal_watch.main(["--no-push", "--assert-fresh"]) == 3
+            goal_watch.load = lambda *a, **k: [
+                {"at": "2099-01-01T00:00:00Z", "yt_subs": 8, "yt_views": 100}]
+            assert goal_watch.main(["--no-push", "--assert-fresh"]) == 0
+        finally:
+            goal_watch.load, goal_watch.WATCH = orig_load, orig_watch
 
 
 # --- The live-artifact audit (K, 2026-11-09) ------------------------------

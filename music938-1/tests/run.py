@@ -3118,6 +3118,23 @@ def test_engagement_feedback() -> None:
     check("a post older than the window is not re-read",
           E.recent_tiktok(old, now, window_days=14) == {})
 
+    # A transient unreadable read must not be cached as "permanently unreadable":
+    # the 2026-11-12 panel's "a cached failure that never heals". build_counts
+    # caches a real number but retries a None next run.
+    calls = {"fail": True}
+    def flaky(url, *, timeout=20.0):
+        return None if calls["fail"] else 77
+    cache2: dict = {}
+    c1 = E.build_counts(state, queue, fetch=flaky, now_epoch=now, cache=cache2)
+    check("a failed read is not cached", cache2 == {}, str(cache2))
+    check("a failed read is dropped, not zero",
+          all(v is None for v in c1.values()), str(c1))
+    calls["fail"] = False
+    c2 = E.build_counts(state, queue, fetch=flaky, now_epoch=now, cache=cache2)
+    check("the retry reads a real number", any(v == 77 for v in c2.values()), str(c2))
+    check("a real number is cached for next time",
+          any(v == 77 for v in cache2.values()), str(cache2))
+
     # The loop must actually run in the rail, before the post step, and its
     # decision files must be committed — or the retune would be thrown away.
     wf = (ROOT.parent / ".github" / "workflows" / "ax-music-crosspost.yml").read_text()

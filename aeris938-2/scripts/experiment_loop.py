@@ -45,6 +45,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import surfaces  # noqa: E402
 import goal_watch  # noqa: E402
+import evidence  # noqa: E402
 
 WORK = surfaces.WORK
 LEDGER = WORK / "experiments.jsonl"
@@ -245,17 +246,19 @@ def pick(constraint: str, rows: list[dict]) -> dict | None:
     return None
 
 
-def evaluate(exp: dict, rows: list[dict]) -> tuple[str, str]:
+def evaluate(exp: dict, rows: list[dict], now=None) -> tuple[str, str]:
     """Judge a finished experiment from the metrics history.
 
     The panel was explicit: do not call a test a loss before its exposure
-    threshold. So the verdict is:
+    threshold, and — added 2026-11-12 — do not judge on data that is missing or
+    stale. So the verdict is:
       * WIN — the primary goal metric (subscribers, then commission) rose during
-        the window;
+        the window, on a real reading;
       * INCONCLUSIVE — the goal metric is flat but there was too little exposure
-        to read it as a failure (a tiny channel needs views before a verdict);
-      * FAILED — exposure was above the floor and the goal metric still did not
-        move.
+        to read it as a failure, OR the evidence is missing/stale (a blind day
+        cannot be a loss);
+      * FAILED — exposure was above the floor, the data is fresh, and the goal
+        metric still did not move.
     The experiment's own before/after is the history slice between its start and
     now; the baseline recorded at pick time anchors it.
     """
@@ -268,6 +271,20 @@ def evaluate(exp: dict, rows: list[dict]) -> tuple[str, str]:
         return "INCONCLUSIVE", "ข้อมูลไม่พอในช่วงทดลอง — ปิดเป็น inconclusive"
     base = after[0]
     last = after[-1]
+
+    # The gate: a verdict needs a fresh, valid reading of the metric the
+    # experiment actually depends on. A reach/conversion test reads YouTube
+    # subscribers; an offer/income test reads Shopee. If that metric is a blind
+    # day (missing) or too old, the honest outcome is INCONCLUSIVE — never a WIN
+    # or a FAILED built on no data. This is why an offer test cannot be closed
+    # while the Shopee dashboard is unreadable.
+    required = {"income": "sp_commission", "offer": "sp_clicks"}.get(
+        exp.get("constraint"), "yt_subs")
+    st = evidence.status(last.get(required), last.get("at"), now)
+    if st != "fresh":
+        return ("INCONCLUSIVE",
+                f"หลักฐาน '{required}' ล่าสุด {st} (ไม่สด/ขาด) — ยังตัดสินไม่ได้ "
+                "รอการอ่านที่สดและครบก่อน")
 
     def delta(key):
         a, b = base.get(key), last.get(key)
@@ -301,7 +318,8 @@ def _row_at(row: dict) -> datetime | None:
         return None
 
 
-def decide(rows: list[dict], constraint: str, history: list[dict] | None = None) -> dict:
+def decide(rows: list[dict], constraint: str, history: list[dict] | None = None,
+           now=None) -> dict:
     """The one decision for today: keep, close, or start.
 
     Order follows the panel: never switch away from a running test before its
@@ -317,7 +335,7 @@ def decide(rows: list[dict], constraint: str, history: list[dict] | None = None)
                         "วันนี้เก็บข้อมูลต่อ ไม่สลับ (คนดูน้อยต้องให้เวลาก่อนตัดสิน)")}
     if act and act.get("status") == "RUNNING":
         closed = dict(act)
-        status, result = evaluate(act, history or [])
+        status, result = evaluate(act, history or [], now)
         closed["status"] = status
         closed["end"] = _now()
         closed["result"] = result
