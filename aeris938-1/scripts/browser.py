@@ -70,6 +70,29 @@ def login_instructions(app: str) -> str:
     )
 
 
+def _vault_state_b64() -> str:
+    """The base64 storage_state from the durable vault, or "".
+
+    Kept import-light and failure-proof: a pod with no OpenHands key, or a fresh
+    account with no saved session, must fall back to the secret rather than
+    crash. `vault_session` lives in `ops/`, which is on sys.path for the rails.
+    """
+    try:
+        import sys  # noqa: PLC0415
+        ops = Path(__file__).resolve().parents[2] / "ops"
+        if str(ops) not in sys.path:
+            sys.path.insert(0, str(ops))
+        import vault_session  # noqa: PLC0415
+        state = vault_session.load_state()
+    except Exception:  # noqa: BLE001
+        return ""
+    if not state:
+        return ""
+    import base64  # noqa: PLC0415
+    return base64.b64encode(
+        json.dumps(state, separators=(",", ":")).encode()).decode()
+
+
 def connect(playwright):
     """Attach to a browser: the cloud desktop over CDP, or a fresh one in CI.
 
@@ -88,9 +111,18 @@ def connect(playwright):
 
     b64 = os.environ.get("AERIS_STORAGE_STATE_B64")
     path = os.environ.get("AERIS_STORAGE_STATE")
+    if not (path and os.path.exists(path)):
+        path = None
+        # The durable vault holds the *freshest* session and has no size cap,
+        # unlike the 48 KB Actions secret (which cannot even hold TikTok's
+        # localStorage). Prefer it so a pod sign-in heals CI with no K step; the
+        # secret stays the fallback for a fresh account or a missing vault key.
+        vault_b64 = _vault_state_b64()
+        if vault_b64:
+            b64 = vault_b64
     if b64 and not path:
         path = str(Path(tempfile.gettempdir()) / "aeris-storage-state.json")
-    if b64 or (path and os.path.exists(path)):
+    if path or b64:
         if b64 and not os.path.exists(path):
             Path(path).parent.mkdir(parents=True, exist_ok=True)
             Path(path).write_bytes(base64.b64decode(b64))

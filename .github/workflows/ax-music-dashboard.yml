@@ -67,6 +67,22 @@ jobs:
           set -euo pipefail
           python3 aeris938-2/scripts/live_audit.py --repair --no-push
 
+      - name: Load the freshest session from the durable vault
+        # Prefer the vault's live cookie set over the frozen secret (see
+        # ax-music-crosspost.yml). Non-fatal; the secret remains the fallback.
+        env:
+          OPENHANDS_API_KEY: ${{ secrets.OPENHANDS_API_KEY }}
+          AERIS_STORAGE_STATE: /tmp/aeris-storage-state.json
+        run: |
+          set -uo pipefail
+          if [ -z "${OPENHANDS_API_KEY:-}" ]; then
+            echo "::notice::no OPENHANDS_API_KEY — using the AERIS_STORAGE_STATE_B64 secret"
+            exit 0
+          fi
+          python3 ops/vault_session.py write-state "$AERIS_STORAGE_STATE" \
+            || echo "::notice::vault has no session yet — using the AERIS_STORAGE_STATE_B64 secret"
+          echo "AERIS_STORAGE_STATE=$AERIS_STORAGE_STATE" >> "$GITHUB_ENV"
+
       - name: Write the dashboard
         env:
           YT_CLIENT_ID: ${{ secrets.YT_CLIENT_ID }}

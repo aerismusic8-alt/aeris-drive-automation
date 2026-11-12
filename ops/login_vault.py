@@ -362,6 +362,13 @@ def save() -> int:
     pw, br, ctx = _context()
     try:
         cookies = ctx.cookies()
+        # Capture the full Playwright storage_state before the browser is torn
+        # down: it carries the localStorage that a cookie-only snapshot misses,
+        # and it is what the CI rails load.
+        try:
+            state = ctx.storage_state()
+        except Exception:  # noqa: BLE001
+            state = {"cookies": cookies, "origins": []}
         account = ""
         try:
             pg = ctx.pages[0] if ctx.pages else ctx.new_page()
@@ -383,6 +390,15 @@ def save() -> int:
     print(f"  account : {account or '(unknown)'}")
     print(f"  surfaces: {index['surfaces']}")
     print(f"  at      : {index['saved_at']}")
+    # Refresh the vault's Playwright storage_state too, so the CI rails read this
+    # sign-in on their next run with no `gh secret set` and no K action. This is
+    # the auto link: a pod sign-in heals CI. Lazy import avoids a cycle
+    # (vault_session imports login_vault at module load).
+    try:
+        import vault_session  # noqa: PLC0415
+        vault_session.save_state(state)
+    except Exception as exc:  # noqa: BLE001
+        print(f"  (vault storage_state not refreshed: {str(exc)[:60]})")
     save_bookmarks()
     save_storage()
     return 0

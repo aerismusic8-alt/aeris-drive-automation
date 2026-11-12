@@ -47,14 +47,31 @@ jobs:
           pip install --quiet playwright
           python3 -m playwright install --with-deps chromium
 
+      - name: Load the freshest session from the durable vault
+        # Prefer the vault's live cookie set over the frozen secret (see
+        # ax-music-crosspost.yml for the full reason). Non-fatal: an empty vault
+        # must not stop a run the secret can still carry.
+        env:
+          OPENHANDS_API_KEY: ${{ secrets.OPENHANDS_API_KEY }}
+          AERIS_STORAGE_STATE: /tmp/aeris-storage-state.json
+        run: |
+          set -uo pipefail
+          if [ -z "${OPENHANDS_API_KEY:-}" ]; then
+            echo "::notice::no OPENHANDS_API_KEY — using the AERIS_STORAGE_STATE_B64 secret"
+            exit 0
+          fi
+          python3 ops/vault_session.py write-state "$AERIS_STORAGE_STATE" \
+            || echo "::notice::vault has no session yet — using the AERIS_STORAGE_STATE_B64 secret"
+          echo "AERIS_STORAGE_STATE=$AERIS_STORAGE_STATE" >> "$GITHUB_ENV"
+
       - name: Read the Page inbox and draft replies
         env:
           AERIS_STORAGE_STATE_B64: ${{ secrets.AERIS_STORAGE_STATE_B64 }}
           AX_NTFY_TOPIC: ${{ vars.AX_NTFY_TOPIC }}
         run: |
           set -uo pipefail
-          if [ -z "${AERIS_STORAGE_STATE_B64:-}" ]; then
-            echo "::error::AERIS_STORAGE_STATE_B64 is not set; run ops/save_storage_state.py and gh secret set"
+          if [ -z "${AERIS_STORAGE_STATE_B64:-}" ] && [ ! -s "${AERIS_STORAGE_STATE:-}" ]; then
+            echo "::error::no session: neither the vault nor AERIS_STORAGE_STATE_B64 is set; run ops/save_storage_state.py and gh secret set"
             exit 1
           fi
           python3 aeris938-2/scripts/admin.py --run

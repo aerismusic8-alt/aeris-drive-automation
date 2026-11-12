@@ -52,6 +52,19 @@ def _has_session(ctx) -> bool:
                for c in ctx.cookies())
 
 
+def _page_signed_in(ctx) -> bool:
+    """True only if Facebook actually answers as the signed-in owner.
+
+    `c_user` can be present while Facebook serves the logged-out page (the trap
+    documented in `login_vault`), so a revive must verify the *page*, not the
+    cookie — otherwise `relogin` returns "already signed in" for a dead session
+    and K is asked to sign in anyway.
+    """
+    import login_vault  # noqa: PLC0415
+
+    return login_vault._signed_in(ctx, ".facebook.com")
+
+
 def _click(page, labels) -> bool:
     """Dispatch a click in-page. FB wraps controls so Playwright's click wedges."""
     for label in labels:
@@ -78,57 +91,119 @@ def check() -> int:
         return 0 if ok else 1
 
 
+def _login(pg, ctx, pw: str) -> int:
+    """The chooser -> password -> verify steps, on an already-navigated page.
+
+    Shared by the desktop revive and the headless (CI) revive so both take the
+    same path — the one that works on this account.
+    """
+    pg.goto("https://www.facebook.com/", wait_until="domcontentloaded", timeout=60000)
+    pg.wait_for_timeout(3500)
+    # The remembered-account chooser asks for the password next; click it
+    # so the login form (email + password) is not the path taken.
+    if not _click(pg, ("Continue", "ดำเนินการต่อ", "ใช้โปรไฟล์นี้ต่อ")):
+        print("no remembered-account chooser; trying the classic login form")
+    pg.wait_for_timeout(7000)
+
+    field = pg.locator("input[type=password]")
+    if not field.count():
+        print("no password field appeared — the login UI may have changed; "
+              "not guessing further")
+        return 1
+    field.first.click(timeout=8000)
+    field.first.fill(pw, timeout=8000)
+    pg.wait_for_timeout(800)
+    if not _click(pg, ("Log in", "เข้าสู่ระบบ", "Continue")):
+        print("could not find the submit button")
+        return 1
+    pg.wait_for_timeout(9000)
+    if not _has_session(ctx):
+        # A checkpoint page is the likely reason; stop rather than retry.
+        body = pg.inner_text("body")[:300].replace("\n", " ")
+        print(f"login did not complete (page: {body[:200]})")
+        return 1
+    return 0
+
+
+def _password() -> str:
+    import ax_vault  # noqa: PLC0415
+
+    return ax_vault.kv_get(ax_vault.ensure_anchor(), PW_KEY) or ""
+
+
 def relogin() -> int:
     """One supervised login attempt: chooser -> password -> verify."""
-    import ax_vault
     from playwright.sync_api import sync_playwright
 
-    aid = ax_vault.ensure_anchor()
-    pw = ax_vault.kv_get(aid, PW_KEY)
+    pw = _password()
     if not pw:
         print(f"no Facebook password in the vault ({PW_KEY}); cannot revive")
         return 2
-    email = (os.environ.get("FB_EMAIL") or ax_vault.kv_get(aid, EMAIL_KEY) or "").strip()
 
     with sync_playwright() as p:
         br = p.chromium.connect_over_cdp(CDP)
         ctx = br.contexts[0] if br.contexts else br.new_context()
-        if _has_session(ctx):
+        # Verify the *page*, not the cookie: `c_user` can be present while
+        # Facebook serves the logged-out page, and treating that as "signed in"
+        # is exactly the bug that sent K to sign in by hand.
+        if _has_session(ctx) and _page_signed_in(ctx):
             print("already signed in — nothing to do")
             return 0
         pg = ctx.new_page()
         try:
-            pg.goto("https://www.facebook.com/", wait_until="domcontentloaded", timeout=60000)
-            pg.wait_for_timeout(3500)
-            # The remembered-account chooser asks for the password next; click it
-            # so the login form (email + password) is not the path taken.
-            if not _click(pg, ("Continue", "ดำเนินการต่อ", "ใช้โปรไฟล์นี้ต่อ")):
-                print("no remembered-account chooser; trying the classic login form")
-            pg.wait_for_timeout(7000)
-
-            field = pg.locator("input[type=password]")
-            if not field.count():
-                print("no password field appeared — the login UI may have changed; "
-                      "not guessing further")
-                return 1
-            field.first.click(timeout=8000)
-            field.first.fill(pw, timeout=8000)
-            pg.wait_for_timeout(800)
-            if not _click(pg, ("Log in", "เข้าสู่ระบบ", "Continue")):
-                print("could not find the submit button")
-                return 1
-            pg.wait_for_timeout(9000)
-            if not _has_session(ctx):
-                # A checkpoint page is the likely reason; stop rather than retry.
-                body = pg.inner_text("body")[:300].replace("\n", " ")
-                print(f"login did not complete (page: {body[:200]})")
-                return 1
+            rc = _login(pg, ctx, pw)
+            if rc:
+                return rc
         finally:
             pg.close()
     print("signed in")
     import login_vault  # noqa: PLC0415
 
     login_vault.save()
+    return 0
+
+
+def revive_headless(state_path: str) -> int:
+    """Revive a dead Facebook session on a *headless* Chromium, in CI.
+
+    The desktop route (`relogin`) only runs where a cloud desktop is up. GitHub
+    Actions is the always-on free runner, and it holds the vaulted password, so
+    the same login can run there against a stored session and write the refreshed
+    session back — that is what lets a cron heal Facebook with no pod and no K.
+    """
+    from playwright.sync_api import sync_playwright
+
+    pw = _password()
+    if not pw:
+        print(f"no Facebook password in the vault ({PW_KEY}); cannot revive")
+        return 2
+
+    launch = dict(headless=True, args=["--no-sandbox", "--disable-dev-shm-usage"])
+    exe = os.environ.get("AERIS_CHROMIUM")
+    if exe:
+        launch["executable_path"] = exe
+    with sync_playwright() as p:
+        br = p.chromium.launch(**launch)
+        ctx = br.new_context(storage_state=state_path, locale="th-TH",
+                             viewport={"width": 1280, "height": 900})
+        if _has_session(ctx) and _page_signed_in(ctx):
+            print("already signed in — nothing to do")
+            br.close()
+            return 0
+        pg = ctx.new_page()
+        try:
+            rc = _login(pg, ctx, pw)
+            if rc:
+                return rc
+            state = ctx.storage_state()
+        finally:
+            pg.close()
+            br.close()
+    import json  # noqa: PLC0415
+
+    Path(state_path).write_text(json.dumps(state, separators=(",", ":")),
+                                encoding="utf-8")
+    print(f"signed in; refreshed {state_path}")
     return 0
 
 

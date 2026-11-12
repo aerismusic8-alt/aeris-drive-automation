@@ -19,6 +19,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "scripts"))
+sys.path.insert(0, str(ROOT.parent / "ops"))  # ax_vault / vault_session / login_vault
 
 import common  # noqa: E402
 import make_karaoke  # noqa: E402
@@ -2408,6 +2409,77 @@ def test_browser_ci_storage_state() -> None:
           "connect_over_cdp" in connect)
 
 
+def test_vault_session() -> None:
+    """The CI rails must read their session from the durable vault, not a frozen
+    secret.
+
+    The Actions secret `AERIS_STORAGE_STATE_B64` is a snapshot: nothing refreshes
+    it, so its cookies die every few weeks and the rail pages K to sign in again.
+    The durable vault holds the *live* cookie set (written whenever a pod signs
+    in) and has no size cap — TikTok's localStorage alone is far past GitHub's
+    48 KB secret limit — so the rails must prefer it and fall back to the secret.
+    """
+    section("vault: CI reads the live session, not a frozen secret")
+    ops = ROOT.parent / "ops"
+    src = (ops / "vault_session.py").read_text()
+    check("stores cookies and origins", "def save_state" in src and "origins" in src)
+    check("has a write-state path for CI", "def write_state" in src)
+
+    # Behaviour: a storage state round-trips through the KV store.
+    import ax_vault  # noqa: E402
+    import vault_session  # noqa: E402
+    store: dict = {}
+    orig = (ax_vault.ensure_anchor, ax_vault.kv_put, ax_vault.kv_get)
+    ax_vault.ensure_anchor = lambda: "test-anchor"
+    ax_vault.kv_put = lambda aid, k, v: store.__setitem__(k, v) or True
+    ax_vault.kv_get = lambda aid, k: store.get(k)
+
+    def _ck(name: str, domain: str) -> dict:
+        return {"domain": domain, "name": name, "value": "1", "path": "/",
+                "expires": -1, "httpOnly": True, "secure": True,
+                "sameSite": "Lax"}
+
+    try:
+        state = {"cookies": [_ck("c_user", ".facebook.com"),
+                             _ck("sessionid", ".tiktok.com"),
+                             _ck("nope", "example.com")],
+                 "origins": [{"origin": "https://www.tiktok.com",
+                              "localStorage": [{"name": "k", "value": "v"}]}]}
+        vault_session.save_state(state)
+        back = vault_session.load_state()
+        names = {c["name"] for c in back["cookies"]}
+        check("round-trips the wanted cookies", names == {"c_user", "sessionid"})
+        check("drops an unwanted domain", "nope" not in names)
+
+        import tempfile  # noqa: E402
+        with tempfile.TemporaryDirectory() as d:
+            p = Path(d) / "s.json"
+            rc = vault_session.write_state(str(p))
+            check("write_state writes the file", rc == 0 and p.exists())
+    finally:
+        ax_vault.ensure_anchor, ax_vault.kv_put, ax_vault.kv_get = orig
+
+    # browser.connect must prefer the vault over the frozen secret.
+    connect = (ROOT.parent / "aeris938-1" / "scripts" / "browser.py").read_text()
+    connect = connect.split("def connect(", 1)[1].split("\ndef ", 1)[0]
+    check("browser falls back to the vault session", "_vault_state_b64" in connect)
+    check("browser still reads the secret", "AERIS_STORAGE_STATE_B64" in connect)
+
+    # A pod sign-in must refresh the vault, so CI heals without K.
+    save = (ops / "login_vault.py").read_text().split("def save()", 1)[1]
+    save = save.split("\ndef ", 1)[0]
+    check("login_vault.save refreshes the vault storage_state",
+          "vault_session" in save and "save_state" in save)
+    ssrc = (ops / "save_storage_state.py").read_text()
+    check("save_storage_state stores to the vault",
+          "vault_session" in ssrc and "save_state" in ssrc)
+
+    # The crosspost workflow must load the vault before the probe.
+    wf = (ROOT.parent / ".github" / "workflows" / "ax-music-crosspost.yml").read_text()
+    check("crosspost loads the vault session",
+          "vault_session.py write-state" in wf and "OPENHANDS_API_KEY" in wf)
+
+
 def test_crosspost_uses_committed_queue() -> None:
     """`post` must act on the committed queue, not a fresh disk build.
 
@@ -3762,6 +3834,49 @@ def test_fb_relogin() -> None:
           "AERIS_STORAGE_STATE_B64" in src and "gh-put-secrets.py" in src)
     check("makes a single attempt, no password retry loop",
           "--check" in src and "no retry" in src.lower())
+    # The revive must verify the *page*, not just the cookie: c_user can be
+    # present while Facebook serves the logged-out page, and treating that as
+    # "signed in" is exactly the bug that sent K to sign in by hand.
+    check("revive verifies the page, not only the cookie",
+          "_page_signed_in" in src and "_signed_in(ctx, \".facebook.com\")" in src)
+    check("can revive headlessly for CI", "def revive_headless" in src)
+    check("the login path is shared, not duplicated",
+          "def _login" in src and src.count("pg.locator(\"input[type=password]\")") == 1)
+
+
+def test_session_guard() -> None:
+    """The session must heal itself, so the loop does not depend on K.
+
+    K's complaint: the cookie keeps getting wiped and every fix ended with K
+    signing in again. `ops/session_guard.py` is the answer — it checks every
+    surface, revives the one that can be revived with no human (Facebook, from the
+    vaulted password), refreshes the vault session CI reads, and reports only the
+    surfaces that genuinely still need K.
+    """
+    section("session guard (heal without K)")
+    ops = ROOT.parent / "ops"
+    src = (ops / "session_guard.py").read_text()
+    check("only Facebook is auto-revivable",
+          'AUTO_REVIVE = {"facebook"}' in src)
+    check("has a headless mode for CI", "def run_headless" in src and "--headless" in src)
+    check("refreshes the vault session after a revive",
+          "save_state" in src and "vault_session" in src)
+    check("reports a K-only surface as a failure",
+          "these need K" in src and "return 1 if need_k" in src)
+
+    # The heal must run on a schedule, or it is just another manual tool.
+    wf = (ROOT.parent / ".github" / "workflows" / "ax-session-heal.yml").read_text()
+    check("a workflow runs the heal on a schedule",
+          "ops/session_guard.py --headless" in wf and "schedule:" in wf)
+    check("the heal job can read the vault",
+          "OPENHANDS_API_KEY" in wf)
+
+    # And the rails must read the vault, so a heal reaches them.
+    for name in ("ax-music-crosspost.yml", "ax-music-admin.yml",
+                 "ax-music-dashboard.yml"):
+        body = (ROOT.parent / ".github" / "workflows" / name).read_text()
+        check(f"{name} loads the vault session",
+              "vault_session.py write-state" in body)
 
 
 def test_operator_url() -> None:
@@ -4685,6 +4800,7 @@ def main() -> int:
     test_karaoke_loudness_contract()
     test_crosspost_engine()
     test_browser_ci_storage_state()
+    test_vault_session()
     test_crosspost_uses_committed_queue()
     test_merge_queue_keeps_the_backlog()
     test_promote_surreal_leads_the_feeds()
@@ -4703,6 +4819,7 @@ def main() -> int:
     test_profile_setup()
     test_login_vault()
     test_fb_relogin()
+    test_session_guard()
     test_outreach()
     test_promo_site_converts_to_the_page()
     test_operator_url()

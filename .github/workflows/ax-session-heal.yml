@@ -1,0 +1,74 @@
+name: AX Session Heal (keep FB/TikTok posting alive without K)
+
+# The one rail that keeps the *login itself* alive. K's complaint was that the
+# cookie keeps getting wiped and every fix ended with K signing in again through
+# noVNC. This job breaks that loop: it loads the durable vault session into a
+# headless Chromium, checks each posting surface, and — for Facebook, the one
+# surface that can be revived with no human — signs back in from the vaulted
+# password and writes the refreshed session back to the vault.
+#
+# It is the CI half of `ops/session_guard.py`. The desktop half runs in a pod
+# (`session_guard.py`, no flag). Both share the same login code, so the fix that
+# works in one works in the other.
+#
+# What still needs K, honestly: TikTok and Google/Flow Music have no headless
+# revive (a device prompt / slide puzzle), so if their session dies this job says
+# so and stops. Everything that *can* be automated here is.
+
+on:
+  schedule:
+    # Every 6 hours, off the crosspost beat. The posting rails run hourly and read
+    # the same vault, so a revive here reaches them on their next run.
+    - cron: '20 */6 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: ax-session-heal
+  cancel-in-progress: false
+
+jobs:
+  heal:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install Playwright + Chromium
+        run: |
+          set -euo pipefail
+          pip install --quiet playwright
+          python3 -m playwright install --with-deps chromium
+
+      - name: Heal the session (check every surface, revive Facebook if dead)
+        id: heal
+        env:
+          OPENHANDS_API_KEY: ${{ secrets.OPENHANDS_API_KEY }}
+        run: |
+          set -uo pipefail
+          if [ -z "${OPENHANDS_API_KEY:-}" ]; then
+            echo "::notice::no OPENHANDS_API_KEY — cannot read the vault; skipping"
+            exit 0
+          fi
+          # Exit 1 means a surface is dead that only K can fix; keep the job green
+          # so the *report* below carries the message, not a red X with no context.
+          rc=0
+          python3 ops/session_guard.py --headless || rc=$?
+          echo "rc=$rc" >> "$GITHUB_OUTPUT"
+
+      - name: Ping K only when a surface genuinely needs a human
+        if: steps.heal.outputs.rc == '1'
+        env:
+          AX_NTFY_TOPIC: ${{ vars.AX_NTFY_TOPIC }}
+        run: |
+          set -uo pipefail
+          [ -z "${AX_NTFY_TOPIC:-}" ] && { echo "no ntfy topic"; exit 0; }
+          curl -s -o /dev/null -d "session ต้องล็อกอินเอง (TikTok/Google ไม่ revive ได้เอง). เปิด noVNC แล้วล็อกอิน surface ที่แจ้ง — Facebook ระบบกู้เองได้แล้วไม่ต้องแตะ" \
+            "https://ntfy.sh/${AX_NTFY_TOPIC}" || true

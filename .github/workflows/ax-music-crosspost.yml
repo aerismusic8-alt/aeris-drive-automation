@@ -69,6 +69,28 @@ jobs:
           pip install --quiet playwright
           python3 -m playwright install --with-deps chromium
 
+      - name: Load the freshest session from the durable vault
+        # The Actions secret is a *snapshot*: nothing refreshes it on its own, so
+        # the cookies inside it die every few weeks and the rail then pages K to
+        # sign in again. The durable vault already holds the live cookie set
+        # (written whenever a pod signs in) and has no size cap, so prefer it and
+        # fall back to the secret. Non-fatal: an empty vault must not stop a run
+        # that the secret can still carry.
+        env:
+          OPENHANDS_API_KEY: ${{ secrets.OPENHANDS_API_KEY }}
+          AERIS_STORAGE_STATE: /tmp/aeris-storage-state.json
+        run: |
+          set -uo pipefail
+          if [ -z "${OPENHANDS_API_KEY:-}" ]; then
+            echo "::notice::no OPENHANDS_API_KEY — using the AERIS_STORAGE_STATE_B64 secret"
+            exit 0
+          fi
+          python3 ops/vault_session.py write-state "$AERIS_STORAGE_STATE" \
+            || echo "::notice::vault has no session yet — using the AERIS_STORAGE_STATE_B64 secret"
+          # Keep the path exported for the later steps, whether or not it exists
+          # (browser.connect falls back to the secret when the file is absent).
+          echo "AERIS_STORAGE_STATE=$AERIS_STORAGE_STATE" >> "$GITHUB_ENV"
+
       - name: Is the saved session still signed in?
         # Report per surface and never fail here. Facebook and TikTok are
         # independent logins, and gating the whole run on "all signed in" meant
@@ -89,7 +111,11 @@ jobs:
           TT_REFRESH_TOKEN: ${{ secrets.TT_REFRESH_TOKEN }}
         run: |
           set -uo pipefail
-          if [ -z "${AERIS_STORAGE_STATE_B64:-}" ] && [ -z "${FB_PAGE_TOKEN:-}${TT_REFRESH_TOKEN:-}" ]; then
+          # A credential is the secret blob, the vault file (written by the step
+          # above), or an API token. Any one is enough to post.
+          if [ -z "${AERIS_STORAGE_STATE_B64:-}" ] \
+             && [ ! -s "${AERIS_STORAGE_STATE:-}" ] \
+             && [ -z "${FB_PAGE_TOKEN:-}${TT_REFRESH_TOKEN:-}" ]; then
             echo "::error::no posting credential at all: set AERIS_STORAGE_STATE_B64 or an API token"
             exit 1
           fi

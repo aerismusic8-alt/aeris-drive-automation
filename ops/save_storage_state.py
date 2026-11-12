@@ -53,6 +53,15 @@ def main() -> int:
               "in? (bootstrap.py --status, then sign in via noVNC)", file=sys.stderr)
         return 1
     blob = {"cookies": cookies, "origins": origins}
+    # Store to the durable vault as well as stdout. The vault has no size cap
+    # (TikTok's localStorage alone is ~470 KB, far past GitHub's 48 KB secret
+    # limit) and survives a sandbox recycle, so the CI rails can read the fresh
+    # session with no `gh secret set` step and no K action.
+    try:
+        import vault_session  # noqa: PLC0415
+        vault_session.save_state(blob)
+    except Exception as exc:  # noqa: BLE001
+        print(f"# vault store skipped: {str(exc)[:80]}", file=sys.stderr)
     print(f"# {len(cookies)} cookies, {len(origins)} origins", file=sys.stderr)
     sys.stdout.write(base64.b64encode(
         json.dumps(blob, separators=(",", ":")).encode()).decode())
