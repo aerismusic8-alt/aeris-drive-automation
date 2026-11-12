@@ -11,7 +11,7 @@ A compilation reuses the songs already built, so it costs no Flow Music
 generation and no extra quota beyond one upload.
 
     python3 scripts/compile_album.py --list                 # what would go in
-    python3 scripts/compile_album.py --name "รวมเพลงไทยเพื่อชีวิต" --max 60
+    python3 scripts/compile_album.py --name "รวมเพลงไทยป็อป" --max 60
     python3 scripts/compile_album.py --name ... --max 60 --render
 """
 from __future__ import annotations
@@ -192,7 +192,7 @@ def compilation_description(name: str, slugs: list[str],
         f"⏱️ รายการเพลง\n{build_chapters(slugs)}\n\n"
         f"🎧 ฟังเพลิน ๆ ได้ทั้งวัน ไม่ต้องกดเปลี่ยน\n"
         f"✨ AERIS Music — ค่ายเพลง AI\n\n"
-        f"#เพลงไทย #รวมเพลงไทย #เพลงเพื่อชีวิต #เพลงเศร้า #เพลงเพราะ "
+        f"#เพลงไทย #รวมเพลงไทย #เพลงป็อป #เพลงแดนซ์ #เพลงร็อก "
         f"#ค่ายเพลงAI #AIMusic #AERISMusic #เพลงฟังสบาย\n"
     )
 
@@ -246,7 +246,7 @@ def render(name: str, slugs: list[str], *, out_name: str | None = None,
 
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__)
-    ap.add_argument("--name", default="รวมเพลงไทยเพื่อชีวิต")
+    ap.add_argument("--name", default="รวมเพลงไทยป็อป")
     ap.add_argument("--theme", choices=sorted(THEMES),
                     help="build a themed album from one mood set (sad/chill/power)")
     ap.add_argument("--max", type=float, default=60.0, help="target minutes")

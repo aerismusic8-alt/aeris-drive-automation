@@ -1726,6 +1726,35 @@ def test_genres() -> None:
     for g in genres.genres():
         check(f"{g['id']}: maps to a known palette",
               genres.PALETTE_FOR.get(g["id"]) in PALETTES)
+    # K, 2026-11-13: "พักแนวลูกทุ่ง เพื่อชีวิต ไว้ เอาแนวป็อป แดนซ์ ร็อค". lukthung
+    # and morlam are parked (no new songs), and the focus genres carry the freed
+    # capacity. A parked genre must keep its style and tagline so its existing
+    # songs still resolve a sound, but must be excluded from the catalogue total
+    # and from the production pool.
+    parked = {g["id"] for g in genres.genres() if genres.is_parked(g)}
+    check("lukthung and morlam are parked",
+          {"lukthung", "morlam"} <= parked, str(parked))
+    active = {g["id"] for g in genres.active()}
+    check("a parked genre is not active",
+          not ({"lukthung", "morlam"} & active), str(active))
+    check("the catalogue total counts only active genres",
+          genres.catalogue_size() ==
+          sum(g["planned"] for g in genres.active()))
+    check("the focus genres are active",
+          {"pop", "edm", "rock"} <= active, str(sorted(active)))
+    # The focus genres must be able to hold their planned songs without reusing
+    # music (K, 2026-11-06: ดนตรีห้ามซ้ำกัน), so each needs at least one
+    # arrangement per planned song.
+    import arrangement as _A
+    sig_count = {}
+    for a in _A.signatures():
+        sig_count[a.get("genre")] = sig_count.get(a.get("genre"), 0) + 1
+    for g in genres.active():
+        check(f"{g['id']}: has an arrangement per planned song",
+              sig_count.get(g["id"], 0) >= g["planned"],
+              f"{g['id']}: {sig_count.get(g['id'], 0)} arrangements "
+              f"< {g['planned']} planned")
+
     # A `# GENRE:` id alone is not a writing brief — Gemini returns the same
     # generic เพื่อชีวิต lyric. A genre with a brief must actually reach the
     # prompt, and a genre without one must not gain a stray line.
@@ -1736,6 +1765,11 @@ def test_genres() -> None:
     rock = ai_lyrics.build_prompt({"TITLE": "t", "GENRE": "rock"})
     check("rock brief reaches the prompt",
           "แนวนำทาง" in rock and "ร็อกไทย" in rock)
+    # The focus genres must each carry a brief, or a pop/dance/rock song falls
+    # back to the generic lyric the brief exists to prevent.
+    for gid in ("pop", "edm", "synthpop", "citypop", "rnb"):
+        pr = ai_lyrics.build_prompt({"TITLE": "t", "GENRE": gid})
+        check(f"{gid} brief reaches the prompt", "แนวนำทาง" in pr)
     plain = ai_lyrics.build_prompt({"TITLE": "t", "MOOD": "sad"})
     check("a mood-only song gets no genre brief", "แนวนำทาง" not in plain)
 
@@ -2002,14 +2036,14 @@ def test_compilation() -> None:
     """
     section("compilation (watch-hour lever)")
     import compile_album
-    title = compile_album.compilation_title("รวมเพลงไทยเพื่อชีวิต", 24)
+    title = compile_album.compilation_title("รวมเพลงไทยป็อป", 24)
     check("title carries เลือกเพลงฟังได้", "เลือกเพลงฟังได้" in title, title)
     check("title states the track count", "24 เพลง" in title, title)
     check("title fits 60 chars", len(title) <= 60, f"{len(title)}")
     check("a 12-song floor is enforced", compile_album.MIN_TRACKS >= 12,
           str(compile_album.MIN_TRACKS))
     desc = compile_album.compilation_description(
-        "รวมเพลงไทยเพื่อชีวิต", ["01-khon-di-thi-chak-pai"])
+        "รวมเพลงไทยป็อป", ["01-khon-di-thi-chak-pai"])
     check("description carries a 00:00 chapter", "\n00:00 " in desc, desc[:50])
     # The compilation is the most-watched video, so its description must carry
     # the revenue ask. Before 2026-11-09 it had none, which is where the 0-click
@@ -4240,6 +4274,15 @@ def test_produce_loop() -> None:
     known = {g["id"] for g in pl.G.genres()}
     check("every theme names a planned genre",
           all(t[0] in known for t in pl.THEMES))
+    # K, 2026-11-13 parked lukthung/morlam: no theme may name a parked genre, or
+    # the loop keeps producing songs in a genre K asked to stop.
+    parked = {g["id"] for g in pl.G.genres() if pl.G.is_parked(g)}
+    check("no theme names a parked genre",
+          not any(t[0] in parked for t in pl.THEMES),
+          str([t[0] for t in pl.THEMES if t[0] in parked]))
+    check("the focus genres lead the pool",
+          {t[0] for t in pl.THEMES[:6]} == {"pop", "rock", "edm"},
+          str([t[0] for t in pl.THEMES[:6]]))
     # Rotation: a used title must not be picked again.
     first = pl.pick_theme(set())
     second = pl.pick_theme({first[2]})
@@ -4672,7 +4715,7 @@ def test_fill_playlists() -> None:
 
     cases = [
         ("คนดีที่จากไป (ท่อนที่ 2) #เพลงไทย #Shorts", "short"),
-        ("รวมเพลงไทยเพื่อชีวิต 15 เพลง (เลือกเพลงฟังได้)", "compilation"),
+        ("รวมเพลงไทยป็อป 15 เพลง (เลือกเพลงฟังได้)", "compilation"),
         ("คนดีที่จากไป — เพลงเศร้า ที่เข้าใจความเสียใจ", "song"),
     ]
     for title, want in cases:

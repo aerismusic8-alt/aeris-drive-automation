@@ -86,6 +86,20 @@
       "mix": "warm and live, guitar answering the vocal"
     },
     {
+      "id": "rock-hardcore-riff",
+      "genre": "rock",
+      "instruments": "down-tuned palm-muted guitars, double-kick kit, distorted bass, shouted gang chorus",
+      "groove": "aggressive hard-rock gallop, driving eighth notes",
+      "mix": "brutal and tight, guitars panned hard"
+    },
+    {
+      "id": "rock-indie-anthem",
+      "genre": "rock",
+      "instruments": "jangly overdriven guitars, live kit, driving bass, big singalong chorus",
+      "groove": "mid-tempo indie-rock anthem, steady backbeat",
+      "mix": "open and lively, guitars ringing wide"
+    },
+    {
       "id": "pop-piano-drive",
       "genre": "pop",
       "instruments": "piano-driven pop with a four-chord loop, programmed beat, synth strings",
@@ -126,6 +140,20 @@
       "instruments": "strummed acoustic guitar, light shaker, piano, simple programmed beat",
       "groove": "cheerful acoustic pop mid-tempo",
       "mix": "bright and open, natural vocal"
+    },
+    {
+      "id": "pop-electro-groove",
+      "genre": "pop",
+      "instruments": "electro-pop synth stabs, punchy programmed kit, filtered bass, layered vocal hook",
+      "groove": "driving electro-pop four-on-the-floor, offbeat synth accents",
+      "mix": "bright and wide, hook and vocal up front"
+    },
+    {
+      "id": "pop-kpop-drive",
+      "genre": "pop",
+      "instruments": "bold synth brass, tight dance-pop kit, sub bass, stacked harmony chorus",
+      "groove": "upbeat dance-pop with a pre-chorus lift",
+      "mix": "polished and loud, harmonies layered wide"
     },
     {
       "id": "indie-fingerpick",
@@ -338,6 +366,27 @@
       "mix": "epic mix, wide pads, long reverb tail"
     },
     {
+      "id": "edm-bigroom-energetic",
+      "genre": "edm",
+      "instruments": "huge big-room synth lead, punchy kick, sidechained bass, white-noise risers",
+      "groove": "big-room build into a euphoric drop, four-on-the-floor",
+      "mix": "loud and wide, lead super-saw front and centre"
+    },
+    {
+      "id": "edm-future-bass",
+      "genre": "edm",
+      "instruments": "detuned future-bass lead, wobbling sub, crisp trap-influenced kit, vocal chops",
+      "groove": "future-bass half-time drop, rolling hats",
+      "mix": "punchy and colourful, sub layered deep"
+    },
+    {
+      "id": "edm-hardstyle",
+      "genre": "edm",
+      "instruments": "distorted hardstyle kick, screeching lead, reverse bass, energetic vocal shouts",
+      "groove": "fast hardstyle stomp, offbeat bass punch",
+      "mix": "aggressive and loud, kick dominating the low end"
+    },
+    {
       "id": "jazz-upright-swing",
       "genre": "jazz",
       "instruments": "upright bass lead, brushed kit, piano comping, muted trumpet",
@@ -406,6 +455,20 @@
       "instruments": "lead distorted electric guitar trading with a full string section, brass stabs, choir pad, timpani rolls, double-kick kit",
       "groove": "march-like 120 bpm rock groove, half-time verse lifting to a driving double-kick chorus",
       "mix": "wide cinematic orchestral depth, guitars and strings in the same space, powerful lead vocal sitting above the wall of sound"
+    },
+    {
+      "id": "symphonic-epic-ballad",
+      "genre": "symphonic",
+      "instruments": "grand piano intro, soaring string section, distorted guitar in the final chorus, timpani swells",
+      "groove": "slow orchestral build into a heavy rock finale",
+      "mix": "vast and dramatic, orchestra and guitars layered wide"
+    },
+    {
+      "id": "symphonic-dark-opera",
+      "genre": "symphonic",
+      "instruments": "choir and brass fanfare, palm-muted guitar riff, double-kick drums, pipe organ",
+      "groove": "theatrical dark symphonic rock, driving double kick",
+      "mix": "huge and gothic, choir soaring over distorted guitars"
     }
   ]
 }

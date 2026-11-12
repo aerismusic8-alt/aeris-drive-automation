@@ -38,6 +38,8 @@ Roblox game anyone can enter and play, and real revenue from it (Roblox
 `@aerismusicth`, Shopee Affiliate. **Revenue gate = ch3 `@aerismusicth`**
 `UCm44BjAn03ruOF-WaA3ZRww`: YouTube's **1,000 subs AND 4,000 watch-hours/12 mo**.
 Free lever = long-form volume (`compile_album.py`; ~1 h/view vs 3 min).
+**แนวเพลง (K, 2026-11-13):** พักลูกทุ่ง/เพื่อชีวิต ไว้ — เน้น **ป็อป/แดนซ์(edm)/ร็อก**
+(`music938-1/channel/genres.json` `status: parked`; `genres.is_parked/active`).
 
 ## The metric is followers (K, 2026-11-09)
 Views without follows is the failure. Send every surface to the Page; end every
@@ -45,18 +47,16 @@ clip with `release.FOLLOW_ASK` + `release.FOLLOW_PROMISE` ("เพลงให�
 A post whose `reach≈2` is a repost of a Page clip — stop it. (Baseline: archive.)
 
 ## Environment facts that cost time
-- **Fresh-pod recovery: `scripts/bootstrap-pod.sh`** — restores python deps +
-  ffmpeg/fluidsynth/Thai-fonts/xvfb. Re-run after every pod (the `.pth` is
-  non-durable). Baked-host ban + installs: archive.
+- **Fresh-pod recovery: `scripts/bootstrap-pod.sh`** — re-run after every pod
+  (the `.pth` is non-durable). Detail: archive.
 - **24/7 runs on GitHub Actions, not the sandbox** (public repo → free minutes).
   Rails: `ax-music-release` 07:00 UTC, `ax-music-crosspost` 2-hourly,
   `ax-rail-watchdog` :15, `ax-music-dashboard` 08:30 UTC (ntfy topic
   `ax-ar-aeris-9f3k7q`). Judge loop health from the **rail run history** (API), not
   `data/heartbeat.json` — it was 9 days stale while the pod was fine.
 - **A dead browser session is the crosspost rail's top failure.** FB fails two
-  ways: (a) the Graph Page token rejected at account/app level — only the owner
-  restores it; (b) the browser cookie session dead (FB serves the logged-out page
-  while still holding `c_user`/`xs`, so a cookie-presence check lies). Fix (b):
+  ways: (a) the Graph Page token rejected at account level — only the owner fixes
+  it; (b) the cookie session dead (a `c_user`/`xs` presence check lies). Fix (b):
   `python3 ops/fb_relogin.py --push-secret`. (Detail: archive.)
 - **Writes:** the app token can't touch `.github/workflows/` (no `workflow`
   scope) — read `axsecrets:gh-workflow-token` from the vault (name
@@ -68,10 +68,9 @@ A post whose `reach≈2` is a repost of a Page clip — stop it. (Baseline: arch
 - **`ops/websearch.py`** is the free web search (Tavily has no quota left).
 
 ## Real-instrument sound (K, 2026-11-09) — durable
-K rejected the ffmpeg tone synth and the GM SoundFont as "fake": use the **sfizz**
-sampler (`install-sfizz.sh`). CI rails can't build it, so beds are pre-rendered on
-the pod and pulled from `media-938` (`sampler1-*.wav`). `AX_REQUIRE_REAL_INSTRUMENTS=1`
-makes a GM fallback **raise**, never ship silently. (Growth lanes: archive.)
+K rejected the ffmpeg tone synth and GM SoundFont as "fake": use the **sfizz**
+sampler (`install-sfizz.sh`). Beds are pre-rendered on the pod → `media-938`
+(`sampler1-*.wav`); `AX_REQUIRE_REAL_INSTRUMENTS=1` makes a GM fallback **raise**.
 
 ## Loop health & platform risks
 - Judge "does the loop reach the goal on its own?" from the **rail run history**,
@@ -82,9 +81,8 @@ makes a GM fallback **raise**, never ship silently. (Growth lanes: archive.)
   a guess) on a blank/stale newest row; `--assert-fresh` gates the dashboard rail;
   `experiment_loop` is INCONCLUSIVE on blind evidence and holds on `data`. A
   measurement `|| echo` hides exactly this (details: archive).
-- **`videos.list` takes ≤50 ids/call.** Past 50 uploads an all-ids call returns
-  HTTP 400, which `live_audit` mislabeled "quota" and hid for days. Chunk via
-  `ops/yt_auth.get_videos`; a non-403 error must fail the rail (2026-11-12).
+- **`videos.list` takes ≤50 ids/call** (past 50 → HTTP 400, once mislabeled
+  "quota"). Chunk via `ops/yt_auth.get_videos`; a non-403 error must fail the rail.
 - Platform risks: `AKATH_CORE/OPENHANDS_RISK_REGISTER.json` + `ops/risk_audit.py`
   (`--strict`); the 24/7 guard is `.github/workflows/ax-risk-audit.yml`.
 

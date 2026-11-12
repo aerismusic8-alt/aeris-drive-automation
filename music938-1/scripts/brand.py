@@ -39,7 +39,7 @@ SAFE_W, SAFE_H = 1546, 423
 AVATAR_SIZE = (800, 800)
 
 BRAND = "AERIS MUSIC"
-TAGLINE = "เพลงไทยเพื่อชีวิต · คาราโอเกะ · 20 เพลง"
+TAGLINE = "เพลงไทยป็อป · แดนซ์ · ร็อก"
 SUB = "ศิลปินทีละคน ปล่อยเป็นชุด ฟังได้ทุกวัน"
 
 
@@ -155,8 +155,8 @@ def make_compilation_thumb(size: tuple[int, int] = (1280, 720)) -> Path:
             draw.text((x + 4, y + 4), text, font=font, fill=(0, 0, 0, 160))
         draw.text((x, y), text, font=font, fill=fill)
 
-    center("รวมเพลงไทยเพื่อชีวิต", big, int(h * 0.20), (255, 255, 255, 255))
-    center("15 เพลง", mid, int(h * 0.50), (255, 226, 150, 245))
+    center("รวมเพลงไทย", big, int(h * 0.20), (255, 255, 255, 255))
+    center("ป็อป · แดนซ์ · ร็อก", mid, int(h * 0.50), (255, 226, 150, 245))
     center("เลือกเพลงฟังได้ · 57 นาที", small, int(h * 0.68), (238, 235, 255, 225), shadow=False)
     center("AERIS MUSIC", _font(LATIN_FONT, 34, bold=True), int(h * 0.85),
            (220, 216, 255, 190), shadow=False)

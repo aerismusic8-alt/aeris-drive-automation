@@ -170,7 +170,7 @@ def catalogue(extra_songs: list[str] | None = None) -> list[dict]:
             "title": ent.get("title") or lm.get("title") or slug,
             "mood": mood,
             "mood_th": MOOD_TH.get(mood, ""),
-            "genre": lm.get("genre") or "lukthung",
+            "genre": lm.get("genre") or "pop",
             "key": ent.get("key") or lm.get("key") or "",
             "tempo_bpm": int(tempo) if str(tempo).isdigit() else None,
             "voice": ent.get("voice") or lm.get("voice") or "",

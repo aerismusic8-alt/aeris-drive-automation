@@ -1,10 +1,11 @@
 {
-  "_comment": "The catalogue plan. K, 2026-11-01: unlimited songs, any genre, AR plans the catalogue. Each genre carries its own Flow Music style prompt and its own Thai tagline, so a new song needs only a lyric file with `# GENRE: <id>` in its header. `mood` stays the fallback for the original 20 Thai songs.",
+  "_comment": "The catalogue plan. K, 2026-11-01: unlimited songs, any genre, AR plans the catalogue. Each genre carries its own Flow Music style prompt and its own Thai tagline, so a new song needs only a lyric file with `# GENRE: <id>` in its header. `mood` stays the fallback for the original 20 Thai songs. K, 2026-11-13: 'พักแนวลูกทุ่ง เพื่อชีวิต ไว้ เอาแนวป็อป แดนซ์ ร็อค' — lukthung and morlam are PARKED (status: parked; no new songs, excluded from the catalogue total) and the focus genres pop / edm (dance) / rock take the freed capacity. A parked genre keeps its style and tagline because its existing songs still resolve their sound and tagline through it.",
   "genres": [
     {
       "id": "lukthung",
       "name_th": "ลูกทุ่ง",
       "name_en": "Thai luk-thung",
+      "status": "parked",
       "tagline": "เพลงลูกทุ่งไทย อารมณ์ดี ฟังแล้วได้ใจ",
       "style": "Thai traditional luk-thung, steady 4/4 two-step drum groove, consistent kick and snare, phin and khaen playing in tight synchronization with the rhythm section, warm melodic bass, vocals tightly locked to the instrumental beat, syllabic Thai vocal delivery with even note spacing, short balanced vocal phrases, smooth legato transitions between lines, constant tempo, no tempo changes, live band feel",
       "hashtags": ["เพลงลูกทุ่ง", "ลูกทุ่งไทย", "หมอลำ"],
@@ -14,6 +15,7 @@
       "id": "morlam",
       "name_th": "หมอลำ",
       "name_en": "Mor lam",
+      "status": "parked",
       "tagline": "หมอลำสนุก ๆ จังหวะมันส์ ฟังแล้วอยากเต้น",
       "style": "Thai mor-lam, driving khaen and long drum, upbeat dance groove, energetic call-and-response lead vocal singing in Thai",
       "hashtags": ["หมอลำ", "เพลงหมอลำ", "หมอลำสนุก"],
@@ -62,7 +64,7 @@
       "tagline": "ร็อกไทย กระแทกใจ ปลุกพลังในตัวคุณ",
       "style": "Thai fast-paced rock, driving straight eighth-note drums, energetic double-time feel, tight bass and drums, aggressive distorted electric guitars, urgent fast vocal phrasing, anthemic chorus, gritty lead vocal singing in Thai",
       "hashtags": ["เพลงร็อก", "ร็อกไทย", "เพลงมันส์"],
-      "planned": 6
+      "planned": 8
     },
     {
       "id": "pop",
@@ -71,7 +73,7 @@
       "tagline": "ป็อปไทย ฟังง่าย ติดหู ฟังได้ทุกวัน",
       "style": "Thai pop, bright piano or synth hook, steady 4/4 beat, clap on 2 and 4, memorable singable chorus, clear lead vocal singing in Thai",
       "hashtags": ["เพลงป็อป", "ป็อปไทย", "เพลงใหม่"],
-      "planned": 6
+      "planned": 8
     },
     {
       "id": "indie",
@@ -89,7 +91,7 @@
       "tagline": "อีดีเอ็ม จังหวะมันส์ ปลุกทุกงานปาร์ตี้",
       "style": "EDM dance pop, four-on-the-floor kick, big synth lead, euphoric drop, bright lead vocal singing in Thai",
       "hashtags": ["edm", "เพลงแดนซ์", "เพลงมันส์"],
-      "planned": 3
+      "planned": 6
     },
     {
       "id": "jazz",

@@ -49,8 +49,8 @@ SILVER = (216, 220, 226)    # #D8DCE2 soft silver — thin rules only
 TERRACOTTA = (197, 138, 104)  # #C58A68 wood / desk props
 
 BRAND = "AERIS MUSIC"
-TAGLINE = "เพลงไทยฟังสบาย · คาราโอเกะ"
-SUB = "เพลงอบอุ่น ฟังแล้วใจนุ่ม"
+TAGLINE = "เพลงไทยป็อป · แดนซ์ · ร็อก"
+SUB = "ศิลปินทีละคน ปล่อยเป็นชุด ฟังได้ทุกวัน"
 
 # The strip of a 2560x1440 banner that every surface shows (1546x423). Nothing
 # readable may be drawn outside it; the advisors were explicit that the corners

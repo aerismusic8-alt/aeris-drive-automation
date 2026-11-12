@@ -89,8 +89,8 @@ TAGLINE = {
     "mystic": "เพลงลึกลับ ชวนคิด ชวนฝัน",
     "epic": "เพลงทรงพลัง ปลุกใจให้ลุกขึ้นสู้อีกครั้ง",
 }
-HASHTAGS = ("#AERISMusic #เพลงไทย #ศิลปินไทย #เพลงใหม่ #เพลงเพื่อชีวิต "
-            "#เพลงเพราะ #ค่ายเพลงAI #AIMusic")
+HASHTAGS = ("#AERISMusic #เพลงไทย #ศิลปินไทย #เพลงใหม่ #เพลงป็อป "
+            "#เพลงแดนซ์ #เพลงร็อก #เพลงเพราะ #ค่ายเพลงAI #AIMusic")
 
 # The search-intent title tail, keyed by mood. The 2026-11-08 competitor scan
 # (10 real Thai channels, no API quota): the winning music titles lead with *when*
@@ -510,8 +510,8 @@ def playlist_for(kind: str) -> tuple[str, str]:
                 "รวมคลิปให้ความรู้ก่อนซื้อหูฟังและลำโพง พร้อมลิงก์พันธมิตร Shopee — "
                 "ดูราคา/สั่งซื้อได้จากลิงก์ในคำอธิบาย\n\n"
                 "AERIS Music · ค่ายเพลง AI")
-    return ("เพลงไทยเพื่อชีวิต — รวมทุกเพลง",
-            "รวมทุกเพลงไทยเพื่อชีวิตของ AERIS Music เนื้อร้องและทำนองใหม่\n\n"
+    return ("เพลงไทย — รวมทุกเพลง",
+            "รวมทุกเพลงไทยของ AERIS Music ป็อป แดนซ์ ร็อก เนื้อร้องและทำนองใหม่\n\n"
             "AERIS Music · ค่ายเพลง AI")
 
 

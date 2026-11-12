@@ -6176,3 +6176,14 @@ Restores python deps from `requirements.txt` into `/workspace/ax-tools/pylibs`
 `~/.local` (NOT durable), so re-run after every pod or the suite dies on `numpy`.
 A hardcoded `work-{1,2}-<id>.prod-runtime…` host is a bug — build it from
 `$RUNTIME_ID` (`risk_audit` scans for a baked host).
+
+## Genre focus (K, 2026-11-13) — folded from the card 2026-11-12
+K: "พักแนว ลูกทุ่ง เพื่อชีวิต ไว้ เอาแนว ป็อป แดนซ์ ร็อค". lukthung + morlam are
+`status: parked` in `music938-1/channel/genres.json` — no new songs, excluded from
+`catalogue_size()`; their existing songs keep their sound/tagline. Focus capacity
+moved to pop (8), rock (8), edm (6), with new arrangements so ดนตรีห้ามซ้ำกัน holds.
+Production pool (`produce_loop.THEMES`) leads with pop/pop/rock/rock/edm/edm and
+dropped the morlam row. Branding moved off "เพื่อชีวิต": `brand.py`/`brand_pro.py`
+tagline = "เพลงไทยป็อป · แดนซ์ · ร็อก", `release.HASHTAGS`, `compile_album` default
+name "รวมเพลงไทยป็อป", `upload_compilation.TITLE`. Genre briefs added for
+pop/edm/synthpop/citypop/rnb in `ai_lyrics.GENRE_BRIEF`.

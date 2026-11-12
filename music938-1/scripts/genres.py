@@ -103,8 +103,22 @@ def counts() -> dict[str, int]:
     return out
 
 
+def is_parked(genre: dict) -> bool:
+    """A parked genre keeps its style and tagline but takes no new songs.
+
+    K, 2026-11-13 parked lukthung and morlam ("พักแนวลูกทุ่ง เพื่อชีวิต ไว้").
+    Its existing songs must still resolve a sound, so it stays in the plan; only
+    production and the catalogue total skip it.
+    """
+    return genre.get("status") == "parked"
+
+
+def active() -> list[dict]:
+    return [g for g in genres() if not is_parked(g)]
+
+
 def catalogue_size() -> int:
-    return sum(g["planned"] for g in genres())
+    return sum(g["planned"] for g in active())
 
 
 def main() -> int:
@@ -120,12 +134,13 @@ def main() -> int:
     total = catalogue_size()
     have = sum(built.values())
     missing = [g for g in genres() if not g.get("style") or not g.get("tagline")]
-    print(f"catalogue plan: {len(genres())} genres, {total} songs planned, "
+    print(f"catalogue plan: {len(active())} active genres, {total} songs planned, "
           f"{have} on disk")
     for g in genres():
         n = built.get(g["id"], 0)
         bar = "#" * n + "." * max(g["planned"] - n, 0)
-        print(f"  {g['id']:10s} {g['name_th']:8s} {n:2}/{g['planned']:<2} [{bar}]")
+        tag = "  [parked]" if is_parked(g) else ""
+        print(f"  {g['id']:10s} {g['name_th']:8s} {n:2}/{g['planned']:<2} [{bar}]{tag}")
     if missing:
         print(f"\n{len(missing)} genre(s) have no style or tagline: "
               f"{', '.join(g['id'] for g in missing)}", file=sys.stderr)

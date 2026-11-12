@@ -55,24 +55,28 @@ QUEUE = ROOT / "work" / "produce-queue.json"
 # A theme pool, one row per (genre, angle, title seed). The advisor panel
 # (2026-11-07) named this "theme-pool + seed rotator": a small curated list keeps
 # the catalogue coherent, and the queue rotates through it instead of asking a
-# model for a fresh idea each run (which drifts and duplicates).
+# model for a fresh idea each run (which drifts and duplicates). K, 2026-11-13
+# parked lukthung/morlam and set the focus to pop / dance / rock, so those three
+# lead the pool and the morlam row is gone.
 THEMES = [
+    ("pop", "รักในวันที่ธรรมดา", "วันธรรมดาที่พิเศษ", "warm", "wan-tham-mada-thi-phi-set"),
+    ("pop", "รักที่เต้นได้ในวันธรรมดา", "หัวใจเต้นตามจังหวะ", "hopeful", "huachai-ten-tam-jang-wa"),
+    ("rock", "สู้ต่อแม้ไม่มีใครเชื่อ", "ไฟที่ยังไม่ดับ", "epic", "fai-thi-yang-mai-dap"),
+    ("rock", "ลุกขึ้นยืนอีกครั้ง", "ไม่ยอมแพ้ใครอีก", "epic", "mai-yom-phae-khrai-ik"),
+    ("edm", "ปลุกใจก่อนออกไปสู้", "ลุกขึ้นแล้วไป", "epic", "luk-khuen-laeo-pai"),
+    ("edm", "ปล่อยใจไปกับจังหวะ", "คืนนี้ไม่ต้องคิดอะไร", "hopeful", "khuen-ni-mai-tong-khit-arai"),
     ("lofi", "การทำงานดึกอย่างสงบ", "คืนที่ยังไม่หลับ", "calm", "khuen-thi-yang-mai-lap"),
     ("acoustic", "ความรักเรียบง่ายในบ้านเกิด", "บ้านหลังเล็กของเรา", "warm", "ban-lang-lek-khong-rao"),
     ("citypop", "ค่ำคืนในเมืองที่ไม่เคยหลับ", "ไฟนีออนกับใจที่ล้า", "mystic", "fai-nion-kap-chai-thi-la"),
     ("synthpop", "ความฝันวัยหนุ่มสาว", "แสงสีที่ยังตามหา", "hopeful", "saeng-si-thi-yang-tam-ha"),
     ("rnb", "ความคิดถึงที่ไม่กล้าบอก", "ข้อความที่ไม่ได้ส่ง", "sad", "kho-khwam-thi-mai-dai-song"),
-    ("morlam", "กลับบ้านไปหาพ่อแม่", "กลับบ้านเถิดหล่า", "hopeful", "klap-ban-thoet-la"),
-    ("rock", "สู้ต่อแม้ไม่มีใครเชื่อ", "ไฟที่ยังไม่ดับ", "epic", "fai-thi-yang-mai-dap"),
-    ("pop", "รักในวันที่ธรรมดา", "วันธรรมดาที่พิเศษ", "warm", "wan-tham-mada-thi-phi-set"),
     ("indie", "เพื่อนเก่าที่ห่างกันไป", "เพลงที่เราเคยร้อง", "calm", "phleng-thi-rao-khoei-rong"),
-    ("edm", "ปลุกใจก่อนออกไปสู้", "ลุกขึ้นแล้วไป", "epic", "luk-khuen-laeo-pai"),
     ("jazz", "ค่ำคืนในร้านเล็ก ๆ", "แก้วสุดท้ายของคืนนี้", "mystic", "kaeo-sut-thai-khong-khuen-ni"),
     ("country", "ชีวิตชนบทที่สงบ", "ทุ่งนากับแสงเช้า", "calm", "thung-na-kap-saeng-chao"),
 ]
 
 # Each theme yields several songs before the pool runs dry. The variant is a
-# distinct angle on the same theme, not a repeat: 12 themes x 5 variants = 60
+# distinct angle on the same theme, not a repeat: 14 themes x 5 variants = 70
 # songs, which is months at one per 4h, and the slug stays readable because the
 # variant only touches the title.
 VARIANTS = [

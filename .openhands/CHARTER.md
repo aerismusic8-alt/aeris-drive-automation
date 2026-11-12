@@ -192,6 +192,11 @@ chose PARKED). The runtime only claims `PENDING`, so parked goals are inert.
    `relax` preset was unused. Now wired: the rail publishes the relax/study loop
    (different intent + different bed, `sampler1-warm-F.wav`) under its own state
    file. Two ambient containers + 4 themed albums are the long-form surface.
+   **Genre focus (K, 2026-11-13):** "พักแนวลูกทุ่ง เพื่อชีวิต ไว้ เอาแนวป็อป แดนซ์
+   ร็อก" — lukthung + morlam are parked in `channel/genres.json` and the catalogue
+   focus is pop / edm(dance) / rock (capacity reallocated, arrangements added so
+   ดนตรีห้ามซ้ำกัน still holds, branding off "เพื่อชีวิต"). New songs come from the
+   focus pool in `produce_loop.THEMES`.
 2. **Grow Facebook (page `61595890900382`).** Profile is filled; post Reels from
    the Shorts queue. `grow.py facebook --profile|--post`. **Live 2026-11-09: 11
    posted / 100 pending** (photos + links were merged into the queue on 2026-11-08);

@@ -16,9 +16,9 @@ Flow Music's free credits are the scarce resource (~2-3 renders/day), so the
 filter runs entirely offline of Flow: a candidate must pass `lint_sections` and
 a second AI's critique before it is allowed to cost a render.
 
-    python3 scripts/forge_song.py --genre lukthung
+    python3 scripts/forge_song.py --genre pop
     python3 scripts/forge_song.py --genre rock --slug 27-...
-    python3 scripts/forge_song.py --genre lukthung --no-render
+    python3 scripts/forge_song.py --genre pop --no-render
 """
 from __future__ import annotations
 
