@@ -136,7 +136,14 @@ def main() -> int:
     desc_file = ROOT / "work" / "compilation.desc"
     tags_file = ROOT / "work" / "compilation.tags"
     desc_file.write_text(desc, encoding="utf-8")
-    tags_file.write_text(TAGS, encoding="utf-8")
+    # A stem-specific `<stem>.tags` sidecar (written by ambient_loop.py) carries
+    # that lane's own search words; without it a sleep video would inherit the
+    # song list's คาราโอเกะ/เพลงเศร้า, which describe the wrong video. Fall back
+    # to the album tags when there is no sidecar.
+    stem_tags = COMPILED / f"{args.stem}.tags"
+    tags_file.write_text(
+        stem_tags.read_text(encoding="utf-8").strip() if stem_tags.exists() else TAGS,
+        encoding="utf-8")
 
     cmd = [sys.executable, str(OPS / "yt_publish.py"), "--ch", args.ch,
            "--video", str(mp4), "--title", title,

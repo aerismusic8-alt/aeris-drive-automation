@@ -1217,6 +1217,62 @@ def test_ambient_loop() -> None:
     except ValueError:
         check("a zero-length plan is refused", True)
 
+    # Each preset owns its own search words. The sleep and relax loops are two
+    # different intents (หลับสบาย vs ทำงาน/อ่านหนังสือ), so a shared tag list
+    # would describe one of them wrong. A preset without tags inherits the album
+    # list's คาราโอเกะ/เพลงเศร้า, which is exactly the mismatch to prevent.
+    for pname, preset in A.PRESETS.items():
+        check(f"{pname}: carries its own tags", bool(preset.get("tags")))
+        check(f"{pname}: carries its own hashtags",
+              preset.get("hashtags", "").startswith("#"))
+    pt = A.plan("relax", mood="warm", key="F", minutes=480,
+                title_tmpl=A.PRESETS["relax"]["title"],
+                use_case=A.PRESETS["relax"]["use_case"], stem="ambient-relax",
+                tags=A.PRESETS["relax"]["tags"],
+                hashtags=A.PRESETS["relax"]["hashtags"])
+    check("plan carries the preset tags",
+          pt["tags"] == A.PRESETS["relax"]["tags"])
+    check("the relax description uses the relax hashtags",
+          "#studymusic" in pt["desc"])
+    check("the relax title names the study intent", "อ่านหนังสือ" in pt["title"])
+    check("the relax stem keys its own output path",
+          pt["out"].name == "ambient-relax.mp4")
+
+    # render() must drop a `<stem>.tags` sidecar, or the upload cannot pick the
+    # lane's own words and falls back to the album tags.
+    import pathlib as _pl
+    import tempfile
+    with tempfile.TemporaryDirectory() as td:
+        _saved = A.COMPILED
+        A.COMPILED = _pl.Path(td)
+        try:
+            out = _pl.Path(td) / "ambient-relax.mp4"
+            out.write_bytes(b"x")  # pretend the encode produced it
+            A.render({"cmd": ["true"], "out": out, "title": "t", "desc": "d",
+                      "stem": "ambient-relax", "tags": "เพลงผ่อนคลาย,study music"})
+            sidecar = _pl.Path(td) / "ambient-relax.tags"
+            check("render writes the preset tags sidecar",
+                  sidecar.exists() and "study music" in sidecar.read_text())
+        finally:
+            A.COMPILED = _saved
+
+    # The relax lane is dead code unless the rail publishes it. The rail must
+    # call the preset and guard it with its own state file, like the sleep one.
+    wf = (ROOT.parent / ".github" / "workflows"
+          / "ax-music-compilation.yml").read_text(encoding="utf-8")
+    check("the rail publishes the relax ambient lane",
+          "ambient_loop.py --preset relax" in wf)
+    check("the rail guards the relax lane with its own state file",
+          "compilation-state-ambient-relax.json" in wf)
+    check("the rail uploads the relax lane under its own stem",
+          "--stem ambient-relax" in wf)
+
+    # The upload must prefer the lane's own `<stem>.tags` over the album list, or
+    # the sleep/relax videos inherit คาราโอเกะ/เพลงเศร้า from the song tags.
+    up = (ROOT / "scripts" / "upload_compilation.py").read_text(encoding="utf-8")
+    check("upload prefers a stem-specific tags sidecar",
+          'f"{args.stem}.tags"' in up and "stem_tags" in up)
+
 
 def test_soundfont_renderer() -> None:
     section("soundfont (real-instrument bed, K rejected the tone synth)")

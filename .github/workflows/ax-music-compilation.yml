@@ -123,6 +123,35 @@ jobs:
           python3 scripts/refresh_sleep_video.py --apply || \
             echo "sleep refresh: skipped or failed; will retry next run"
 
+      # The second long-form surface. The sleep loop is one search intent; the
+      # relax preset is a different one (ทำงาน / อ่านหนังสือ / นั่งสมาธิ) on a
+      # different bed (sampler1-warm-F.wav), so it is a distinct video, not the
+      # sleep one re-titled — which is what a channel-level originality review
+      # would punish. The 2026-11-09 scan puts 8-12h ambient containers at
+      # 100-221M views and the YPP gate is watch-hours, so a second container
+      # adds a whole watch-hours surface at no cost. Same guard: the state file
+      # stops a re-run from doubling it.
+      - name: Build and upload the relax/study loop (once)
+        env:
+          YT_CLIENT_ID: ${{ secrets.YT_CLIENT_ID }}
+          YT_CLIENT_SECRET: ${{ secrets.YT_CLIENT_SECRET }}
+          YT_CH3_REFRESH_TOKEN: ${{ secrets.YT_CH3_REFRESH_TOKEN }}
+          AX_REQUIRE_REAL_INSTRUMENTS: "1"
+        run: |
+          set -euo pipefail
+          cd music938-1
+          state="work/compilation-state-ambient-relax.json"
+          if [ -f "$state" ] && grep -q '"video_id": *"[^"]' "$state"; then
+            echo "ambient relax loop already live — skipping"
+          else
+            python3 scripts/ambient_loop.py --preset relax --minutes 480 --render
+            # No `|| echo` on the upload: a silent skip means the relax loop
+            # never goes live and nobody notices. A real failure must be red.
+            python3 scripts/upload_compilation.py --upload --ch ch3 \
+              --stem ambient-relax \
+              --thumb library/thumbs/thumb-ambient-relax.png
+          fi
+
       - name: Build and upload each themed album not yet live
         env:
           YT_CLIENT_ID: ${{ secrets.YT_CLIENT_ID }}

@@ -78,6 +78,11 @@ PRESETS: dict[str, dict] = {
         "key": "C",
         "use_case": "หลับสบาย ผ่อนคลาย นอนไม่หลับ",
         "title": "เพลงกล่อมนอน {hours} ชั่วโมง | เพลงผ่อนคลายหลับสบาย AERIS Music",
+        # A sleep video tagged with the song list's คาราโอเกะ/เพลงเศร้า describes
+        # the wrong thing; each preset owns the words its own search intent uses.
+        "tags": ("เพลงกล่อมนอน,เพลงผ่อนคลาย,นอนหลับสบาย,เพลงนอนหลับ,"
+                 "sleep music,relaxing music,ambient,AERIS Music"),
+        "hashtags": "#เพลงกล่อมนอน #เพลงผ่อนคลาย #AERISMusic #ambient #sleepmusic",
     },
     "relax": {
         "name": "เพลงผ่อนคลาย",
@@ -85,6 +90,9 @@ PRESETS: dict[str, dict] = {
         "key": "F",
         "use_case": "ทำงาน อ่านหนังสือ นั่งสมาธิ",
         "title": "เพลงผ่อนคลาย {hours} ชั่วโมง | ทำงาน อ่านหนังสือ นั่งสมาธิ AERIS Music",
+        "tags": ("เพลงผ่อนคลาย,เพลงทำงาน,เพลงอ่านหนังสือ,เพลงสมาธิ,"
+                 "relaxing music,study music,ambient,AERIS Music"),
+        "hashtags": "#เพลงผ่อนคลาย #เพลงทำงาน #AERISMusic #ambient #studymusic",
     },
 }
 
@@ -135,7 +143,8 @@ def _hours_label(minutes: float) -> str:
 
 def plan(name: str, *, mood: str, key: str, minutes: float,
          title_tmpl: str, use_case: str, still: Path | None = None,
-         stem: str | None = None) -> dict:
+         stem: str | None = None, tags: str = "",
+         hashtags: str = "") -> dict:
     """The ffmpeg command and the sidecar text, with nothing executed.
 
     Pure on purpose: a test can assert the shape (length, loops, maps, title)
@@ -143,7 +152,8 @@ def plan(name: str, *, mood: str, key: str, minutes: float,
     state file, so the caller must pass the same one it will later check for.
 
     The audio is the instrument bed and nothing else (K, 2026-11-09: music only),
-    so there is no second input to mix.
+    so there is no second input to mix. `tags` and `hashtags` let each preset
+    carry the words its own search intent uses instead of the song list's.
     """
     if minutes <= 0:
         raise ValueError("minutes must be positive")
@@ -181,10 +191,11 @@ def plan(name: str, *, mood: str, key: str, minutes: float,
         f"เพลงผ่อนคลายจาก AERIS Music ยาว {hours} ชั่วโมง เปิดฟังยาว ๆ ได้เลย",
         "ทุกเพลงทำเองในสตูดิโอของเรา",
         "",
-        f"#{name} #เพลงผ่อนคลาย #AERISMusic #ambient #sleepmusic",
+        (hashtags or f"#{name} #เพลงผ่อนคลาย #AERISMusic #ambient #sleepmusic"),
     ])
     return {"cmd": cmd, "out": out, "title": title, "desc": desc,
-            "minutes": minutes, "stem": stem, "use_case": use_case}
+            "minutes": minutes, "stem": stem, "use_case": use_case,
+            "tags": tags}
 
 
 def render(p: dict) -> Path:
@@ -196,6 +207,8 @@ def render(p: dict) -> Path:
             f"{(res.stderr or res.stdout or '').strip()[-800:]}")
     (COMPILED / f"{p['stem']}.txt").write_text(p["desc"], encoding="utf-8")
     (COMPILED / f"{p['stem']}.title").write_text(p["title"], encoding="utf-8")
+    if p.get("tags"):
+        (COMPILED / f"{p['stem']}.tags").write_text(p["tags"], encoding="utf-8")
     return p["out"]
 
 
@@ -244,7 +257,8 @@ def main() -> int:
 
     p = plan(name, mood=mood, key=key, minutes=args.minutes,
              title_tmpl=preset["title"], use_case=preset["use_case"],
-             still=still, stem=stem)
+             still=still, stem=stem, tags=preset.get("tags", ""),
+             hashtags=preset.get("hashtags", ""))
     print(f"length : {args.minutes / 60:g} h ({args.minutes:g} min)")
     print(f"title  : {p['title']}")
     print(f"out    : {p['out'].name}")
