@@ -1,9 +1,11 @@
-"""Offline mood music, rendered with real instruments (fluidsynth + SoundFont).
+"""Offline mood music, rendered with real instruments (the sfizz sampler).
 
 This is the no-account fallback for the music library. K (2026-11-09) rejected
 the ffmpeg tone-generator version as "fake": the music must come from a program
-that makes realistic sound. `soundfont` (in the music engine) plays a SoundFont
-of recorded instruments through fluidsynth, so the timbre is a real recording.
+that makes realistic sound. `soundfont` renders through the sfizz sampler over
+recordings of real instruments when its banks are present, and prefers a
+pre-rendered real-instrument bed (pulled from the media release) over the
+General-MIDI SoundFont otherwise, so a runner never ships the timbre K rejected.
 It is still free, offline and deterministic, so the pipeline can run end to end
 without a login, and the result is filed in the music manifest with the same
 shape as a generated song.
@@ -67,13 +69,14 @@ def _synthesise(mood: str, out: Path, duration: float) -> dict:
     import soundfont  # noqa: PLC0415
 
     wav = out.with_suffix(".bed.wav")
-    soundfont.render_bed(mood, "C", wav, seconds=duration)
+    info = soundfont.render_bed(mood, "C", wav, seconds=duration)
     res = _run(["ffmpeg", "-y", "-hide_banner", "-loglevel", "error",
                 "-i", str(wav), "-c:a", "libmp3lame", "-b:a", "192k", str(out)])
     wav.unlink(missing_ok=True)
     if res.returncode != 0 or not out.exists() or out.stat().st_size == 0:
         raise RuntimeError(f"music encode failed: {res.stderr.strip()[-900:]}")
-    return {"bytes": out.stat().st_size, "bpm": MOODS[mood]["bpm"], **_measure(out)}
+    return {"bytes": out.stat().st_size, "bpm": MOODS[mood]["bpm"],
+            "source": info.get("source") or "soundfont-sampler", **_measure(out)}
 
 
 def make(mood: str, key: str, *, duration: float = 90.0, force: bool = False) -> dict:
@@ -85,7 +88,7 @@ def make(mood: str, key: str, *, duration: float = 90.0, force: bool = False) ->
 
     out = library.KINDS["music"] / f"{library.entry_id('music', key)}.mp3"
     info = _synthesise(mood, out, duration)
-    entry = library.add("music", key, out, source="soundfont-fluidsynth", mood=mood,
+    entry = library.add("music", key, out, source=info["source"], mood=mood,
                         duration_seconds=duration, bpm=info["bpm"],
                         integrated_lufs=info["integrated_lufs"])
     return {"status": "CREATED", "entry": entry}

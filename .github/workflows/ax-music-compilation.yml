@@ -52,20 +52,27 @@ jobs:
         run: |
           set -euo pipefail
           sudo apt-get update -qq
-          # fluidsynth + a MuseScore/FluidR3 SoundFont render the sleep bed with
-          # real recorded instruments (K rejected the old ffmpeg tone synth as
-          # "fake", 2026-11-09). mido writes the MIDI the sampler plays.
+          # fluidsynth + a MuseScore/FluidR3 SoundFont are the General-MIDI path K
+          # rejected (2026-11-09); they stay installed only for the MIDI tooling
+          # and as a last resort. The beds themselves are pulled pre-rendered
+          # through real instruments (see the pull step) and never re-synthesised
+          # here, so AX_REQUIRE_REAL_INSTRUMENTS makes a GM render fail the run.
           sudo apt-get install -y -qq ffmpeg fluidsynth \
             fluid-soundfont-gm musescore-general-soundfont
           python3 -m pip install --quiet --disable-pip-version-check Pillow mido numpy
 
-      - name: Pull the song masters and covers
+      - name: Pull the song masters, covers and real-instrument beds
         env:
           AX_GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           set -euo pipefail
           python3 music938-1/scripts/pull_media.py --only songs
           python3 music938-1/scripts/pull_media.py --only covers
+          # The sleep bed is a ~30 MB WAV rendered through the sfizz sampler on a
+          # pod that has the gigabyte banks. Pulling it is what lets the runner
+          # tile a real-instrument bed without building the sampler or ever
+          # touching the General-MIDI fallback.
+          python3 music938-1/scripts/pull_media.py --only ambient
 
       - name: Build the 16:9 thumbnail
         run: |
@@ -76,14 +83,15 @@ jobs:
       # views, a 2-hour Thai compilation 6-17M, and a sleep/ambient loop of 8-12
       # hours 100-221M. The *container* is what the algorithm rewards, and this
       # is the biggest one we can build for free: the bed is real instruments
-      # (fluidsynth + SoundFont — no Flow Music, no login), music only, and the
-      # picture is one held still, so the encode is minutes. One upload, then the
-      # state file stops a re-run from doubling it.
+      # (the sfizz sampler — no Flow Music, no login), pulled pre-rendered, music
+      # only, and the picture is one held still, so the encode is minutes. One
+      # upload, then the state file stops a re-run from doubling it.
       - name: Build and upload the sleep/ambient loop (once)
         env:
           YT_CLIENT_ID: ${{ secrets.YT_CLIENT_ID }}
           YT_CLIENT_SECRET: ${{ secrets.YT_CLIENT_SECRET }}
           YT_CH3_REFRESH_TOKEN: ${{ secrets.YT_CH3_REFRESH_TOKEN }}
+          AX_REQUIRE_REAL_INSTRUMENTS: "1"
         run: |
           set -euo pipefail
           cd music938-1

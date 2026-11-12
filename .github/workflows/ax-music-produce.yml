@@ -56,14 +56,20 @@ jobs:
           sudo apt-get update -qq
           sudo apt-get install -y -qq ffmpeg fonts-noto-core fluidsynth \
             fluid-soundfont-gm musescore-general-soundfont
-          # The offline bed is now real instruments via fluidsynth (K rejected
-          # the ffmpeg tone synth as "fake", 2026-11-09); mido writes the MIDI.
+          # fluidsynth is the General-MIDI path K rejected; the beds are pulled
+          # pre-rendered through real instruments instead (see the pull step) and
+          # AX_REQUIRE_REAL_INSTRUMENTS makes a GM render fail the run.
           python3 -m pip install --quiet --disable-pip-version-check Pillow mido numpy
 
       - name: Produce the next bed (no Flow, no login)
         working-directory: music938-1
         env:
           AX_GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # The song bed must be a real instrument, not the General-MIDI timbre K
+          # rejected. With the beds pulled above this renders from a shipped WAV;
+          # if neither the sampler nor a pulled bed is present the step fails
+          # instead of quietly shipping GM.
+          AX_REQUIRE_REAL_INSTRUMENTS: "1"
         # A rejected lyric draft exits 1, which used to skip every step below —
         # the mood render, the publish and the queue merge all live *after* this
         # one, so a bad draft also froze the mood clips (found 2026-11-09: two
@@ -84,6 +90,18 @@ jobs:
       # wasted runner time, so `--once` records what it built in a committed state
       # file and only fills the gaps. Bump STATE_VERSION in the script (or delete
       # the state file) to force a re-render after a renderer change.
+      - name: Pull the real-instrument beds already on the release
+        # The beds are rendered through the sfizz sampler on a pod that has the
+        # gigabyte banks and shipped on the media release. A runner cannot build
+        # the sampler, so it pulls the beds and only tiles them; without this pull
+        # the mood clips and the song beds would fall to the General-MIDI path K
+        # rejected. `AX_REQUIRE_REAL_INSTRUMENTS` makes that fallback fail loudly.
+        env:
+          AX_GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          python3 music938-1/scripts/pull_media.py --only ambient
+
       - name: Pull the mood clips already on the release
         # `--once` keys off the clip being on disk, and a fresh checkout has an
         # empty library/, so without this pull every run re-renders all six and
@@ -96,6 +114,10 @@ jobs:
 
       - name: Render the mood clips (once)
         working-directory: music938-1
+        env:
+          # The mood clips are bedded on the same real-instrument beds; require
+          # them so a missing pull fails rather than shipping the GM timbre.
+          AX_REQUIRE_REAL_INSTRUMENTS: "1"
         run: |
           set -euo pipefail
           python3 scripts/make_mood_short.py --all --once || \

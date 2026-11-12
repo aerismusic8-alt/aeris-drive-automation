@@ -764,7 +764,8 @@ def _offline_bed(slug: str, force: bool = False) -> dict:
     # The bed has no vocal, so it is also the instrumental bed a clip with
     # narration wants.
     shutil.copyfile(src, OUT_DIR / f"karaoke-{slug}.mp3")
-    rec = {"slug": slug, "status": "OFFLINE_BED", "source": "soundfont-fluidsynth",
+    rec = {"slug": slug, "status": "OFFLINE_BED",
+           "source": bed["entry"].get("source", "soundfont-sampler"),
            "mood": mood, "file": str(out)}
     print(json.dumps(rec, ensure_ascii=False))
     return rec

@@ -110,8 +110,10 @@ music938-1/library/thumbs/*.png
 music938-1/library/covers/*.jpg
 # The compilation render is a 200 MB+ artifact; keep the .txt/.title (chapters) but not the video.
 music938-1/library/compilations/*.mp4
-# The ambient beds are ffmpeg synth, regenerated on demand; only the sidecars ship.
-# They are WAV now (sample-exact, so the loop crossfade is seamless), not MP3.
+# The ambient beds are pre-rendered through the sfizz real-instrument sampler and
+# shipped on the media release (a runner cannot build the sampler); the local copy
+# is regenerable on a pod that has the banks. WAV, sample-exact, so the loop
+# crossfade is seamless.
 music938-1/library/ambient/*.mp3
 music938-1/library/ambient/*.wav
 # Local review pages; they point at multi-hundred-MB renders and are regenerated

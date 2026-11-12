@@ -27,6 +27,11 @@ API = "https://api.github.com"
 
 def group_of(name: str) -> str | None:
     """Which library subdir an asset belongs in, or None to ignore it."""
+    # The pre-rendered real-instrument beds are WAVs, so they must be tested
+    # before the generic `.wav -> songs` rule below, or a pulled bed lands in
+    # songs/ and the ambient/mood renderers never find it.
+    if name.startswith("sampler1-") and name.endswith(".wav"):
+        return "ambient"
     if name.endswith(".mp3") or name.endswith(".wav"):
         return "songs"
     if name.startswith("karaoke-") and name.endswith(".mp4"):

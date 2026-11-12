@@ -43,6 +43,16 @@ SOUNDFONTS = [
     "/usr/share/sounds/sf2/default-GM.sf2",
 ]
 
+# The pre-rendered real-instrument beds, shipped on the media release and pulled
+# back on a runner that cannot build the sampler. `render_bed` prefers one over
+# the General-MIDI fallback, so a rail never re-synthesises the timbre K rejected.
+ROOT = Path(__file__).resolve().parent.parent
+_BEDS = ROOT / "library" / "ambient"
+_BED_TAG = "sampler1"
+# A whole 180 s stereo bed is ~30 MB; anything far smaller is a truncated pull and
+# must not be trusted (the same failure the bed cache guards against).
+_MIN_BED_BYTES = 44100 * 2 * 2 * 150
+
 # The loop crossfade length: long enough to hide a reverb tail, short enough not
 # to smear the beat.
 XFADE_SECONDS = 1.5
@@ -281,6 +291,41 @@ def real_instruments_enabled() -> bool:
     except Exception:  # noqa: BLE001
         return False
     return sampler.available()
+
+
+# When set, a bed or backing that would fall back to the General-MIDI SoundFont
+# raises instead of rendering. K (2026-11-09) rejected that timbre outright, so a
+# rail that publishes audio sets this and fails loudly rather than shipping the
+# sound he refused (advisor panel, duck + pollinations, 2026-11-12: "never a
+# silent GM fallback — fail the workflow before publication").
+_REQUIRE_REAL_ENV = "AX_REQUIRE_REAL_INSTRUMENTS"
+
+
+def require_real_instruments() -> bool:
+    return os.environ.get(_REQUIRE_REAL_ENV, "").strip().lower() not in ("", "0", "false", "no")
+
+
+def _gm_fallback_or_raise(what: str) -> None:
+    if require_real_instruments():
+        raise RuntimeError(
+            f"{what} would render through the General-MIDI SoundFont, which K "
+            f"rejected as fake (2026-11-09), and {_REQUIRE_REAL_ENV} is set. "
+            f"Install the sfizz sampler and its real banks (scripts/install-sfizz.sh) "
+            f"or pull the pre-rendered beds (scripts/pull_media.py --only beds). "
+            f"Unset {_REQUIRE_REAL_ENV} to allow the fallback on a dev pod.")
+
+
+def pulled_bed(mood: str, key: str) -> Path | None:
+    """A pre-rendered real-instrument bed from the media release, if present.
+
+    A runner cannot build the sfizz sampler and its gigabyte banks, so it pulls
+    the approved beds instead of re-synthesising them. This is the free, durable
+    route the advisor panel named (duck + pollinations, 2026-11-12): render once
+    on a pod that has the sampler, ship the WAV, and let the rail tile it. The
+    file must be a whole bed, or a truncated pull would loop a fragment.
+    """
+    p = _BEDS / f"{_BED_TAG}-{mood}-{key}.wav"
+    return p if p.exists() and p.stat().st_size >= _MIN_BED_BYTES else None
 
 
 def _mix_wavs(parts: list[Path], out_wav: Path) -> None:
@@ -542,6 +587,7 @@ def render_backing(mood: str, chords, *, spb: float, total: float,
             _render_real(midi, raw, _BACKING_CHANNEL_ROLES, gains,
                          drums_gain=preset["gain"])
         else:
+            _gm_fallback_or_raise("the song backing")
             _render_midi(midi, raw, find_soundfont(),
                          gain if gain is not None else preset["gain"])
         x = _read_wav_f32(raw)
@@ -578,6 +624,27 @@ def render_bed(mood: str, key: str, out: Path, *, seconds: float = 180.0,
         _render_real(midi, raw, _BED_CHANNEL_ROLES,
                      {ch: g for ch in _BED_CHANNEL_ROLES})
     else:
+        # No sampler on this host. Prefer the bed already rendered through real
+        # instruments and shipped on the media release; only if that is absent do
+        # we fall back to General-MIDI, and never silently when the caller
+        # requires real instruments.
+        shipped = pulled_bed(mood, key)
+        if shipped is not None:
+            midi.unlink(missing_ok=True)
+            # The pulled bed is a seamless loop, so tile it to the requested
+            # length. Copying it verbatim would shrink a song bed that asked for
+            # 210 s down to the 180 s loop unit.
+            import numpy as np  # noqa: PLC0415
+
+            x = _read_wav_f32(shipped)
+            want = int(round(seconds * 44100))
+            reps = -(-want // x.shape[0])
+            tiled = np.tile(x, (reps, 1))[:want]
+            _write_wav_s16(out, tiled)
+            return {"mood": mood, "key": key, "seconds": tiled.shape[0] / 44100,
+                    "file": str(out), "bytes": out.stat().st_size,
+                    "source": "pulled-bed"}
+        _gm_fallback_or_raise("the ambient bed")
         _render_midi(midi, raw, find_soundfont(), g)
 
     # Trim fluidsynth's long reverb tail (~25s past the last note) to the written

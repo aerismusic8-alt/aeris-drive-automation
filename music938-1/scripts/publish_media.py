@@ -40,6 +40,12 @@ SOURCES = [
     ("surreal", "*.mp4"),
     ("concert", "*.mp4"),
     ("moods", "*.mp4"),
+    # The pre-rendered real-instrument beds (K approved the six, 2026-11-09).
+    # A runner cannot build sfizz + the gigabyte banks, so it must NOT re-synthesise
+    # them through the rejected General-MIDI fallback; it pulls these instead and
+    # only tiles them. They are ~30 MB each, so they ride the media release like
+    # every other gitignored asset.
+    ("ambient", "sampler1-*.wav"),
     ("covers", "*.jpg"),
     ("thumbs", "*.png"),
 ]

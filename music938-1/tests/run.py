@@ -1355,6 +1355,86 @@ def test_sampler_renderer() -> None:
           SF.real_instruments_enabled() is True)
 
 
+def test_real_instrument_guard() -> None:
+    """A rail must never publish the General-MIDI timbre K rejected.
+
+    The 24/7 rails run on ubuntu-latest, which cannot build the sfizz sampler and
+    its gigabyte banks, so `render_bed` used to fall back to the General-MIDI
+    SoundFont — the exact sound K rejected (2026-11-09). The fix is two-sided:
+    the beds are pre-rendered through real instruments and pulled from the media
+    release, and `AX_REQUIRE_REAL_INSTRUMENTS` makes the GM fallback raise instead
+    of shipping silently. This pins both halves.
+    """
+    section("real-instrument guarantee (no silent GM fallback)")
+    import soundfont as SF
+    from pathlib import Path
+    import tempfile
+
+    # The guard is off by default, so a dev pod without a bank still renders.
+    check("the require flag defaults off",
+          not SF.require_real_instruments())
+
+    # With the flag on and no sampler and no pulled bed, a render must raise —
+    # not quietly return the General-MIDI timbre.
+    saved_beds, saved_real = SF._BEDS, SF.real_instruments_enabled
+    saved_flag = os.environ.get(SF._REQUIRE_REAL_ENV)
+    os.environ[SF._REQUIRE_REAL_ENV] = "1"
+    try:
+        with tempfile.TemporaryDirectory() as td:
+            SF._BEDS = Path(td) / "empty"
+            SF.real_instruments_enabled = lambda: False
+            try:
+                SF.render_bed("calm", "C", Path(td) / "x.wav")
+                check("a GM render raises when the flag is set", False, "no raise")
+            except RuntimeError as exc:
+                check("a GM render raises when the flag is set",
+                      "General-MIDI" in str(exc), str(exc)[:60])
+
+            # A pulled bed takes priority over the GM fallback: copy a real bed
+            # in and the same call must succeed without the sampler.
+            src = SF.ROOT / "library" / "ambient" / f"{SF._BED_TAG}-calm-C.wav"
+            if src.exists() and src.stat().st_size >= SF._MIN_BED_BYTES:
+                beds = Path(td) / "beds"
+                beds.mkdir()
+                (beds / src.name).write_bytes(src.read_bytes())
+                SF._BEDS = beds
+                out = Path(td) / "pulled.wav"
+                info = SF.render_bed("calm", "C", out)
+                check("a pulled bed is preferred over the GM fallback",
+                      info.get("source") == "pulled-bed", str(info.get("source")))
+                check("the pulled bed is a real WAV of bed length",
+                      out.exists() and out.stat().st_size >= SF._MIN_BED_BYTES)
+            else:
+                note("no real bed on this pod; the pulled-bed branch is unpinned here")
+    finally:
+        SF._BEDS, SF.real_instruments_enabled = saved_beds, saved_real
+        if saved_flag is None:
+            os.environ.pop(SF._REQUIRE_REAL_ENV, None)
+        else:
+            os.environ[SF._REQUIRE_REAL_ENV] = saved_flag
+
+    # The media pack must carry the beds to a runner, and the rails must pull
+    # them: a bed that never ships is a runner that falls to GM.
+    import pull_media as PM
+    import publish_media as PB
+    check("pull_media routes a pulled bed to ambient/",
+          PM.group_of(f"{SF._BED_TAG}-calm-C.wav") == "ambient")
+    check("pull_media still routes a song WAV to songs/",
+          PM.group_of("some-song.wav") == "songs")
+    check("the media pack ships the beds",
+          ("ambient", f"{SF._BED_TAG}-*.wav") in PB.SOURCES)
+
+    # Every publishing rail that renders a bed must pull it and require real
+    # instruments, or the fallback it forgot is the sound K rejected.
+    for name in ("ax-music-compilation.yml", "ax-music-produce.yml"):
+        wf = ROOT.parent / ".github" / "workflows" / name
+        src = wf.read_text(encoding="utf-8")
+        check(f"{name} pulls the real-instrument beds",
+              "pull_media.py --only ambient" in src)
+        check(f"{name} requires real instruments",
+              "AX_REQUIRE_REAL_INSTRUMENTS" in src)
+
+
 def test_mood_short() -> None:
     section("mood clips (each approved instrument bed -> a vertical clip)")
     import make_mood_short as M
@@ -4564,6 +4644,7 @@ def main() -> int:
     test_ambient_loop()
     test_soundfont_renderer()
     test_sampler_renderer()
+    test_real_instrument_guard()
     test_mood_short()
     test_refresh_sleep_video()
     test_provenance()
