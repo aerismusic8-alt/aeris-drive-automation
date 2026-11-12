@@ -88,6 +88,31 @@ def chunks(items: list, size: int):
         yield items[i:i + size]
 
 
+def compilation_ids(root: Path) -> list[dict]:
+    """Every live long-form compilation, from its own upload state record.
+
+    The compilations are the watch-hours lever (the 8-hour ambient bed alone
+    outweighs every Short), and they are uploaded by `upload_compilation.py`,
+    which records them in `work/compilation-state-*.json` — *not* in the release
+    ledger. Reading only the ledger made the daily report blind to them: the
+    channel said 62 videos while the per-video table showed 51, and the one
+    asset that can move 4,000 watch-hours never appeared. `live_audit.py`
+    already reads these records; this makes the dashboard agree with it.
+    """
+    out: dict[str, dict] = {}
+    for st in sorted((root / "work").glob("compilation-state-*.json")):
+        try:
+            d = json.loads(st.read_text(encoding="utf-8"))
+        except (OSError, ValueError):
+            continue
+        vid = d.get("video_id")
+        if not vid or vid in out:
+            continue
+        out[vid] = {"video_id": vid, "slug": d.get("stem", ""),
+                    "kind": "compilation", "public": True}
+    return list(out.values())
+
+
 def released_ids(root: Path) -> list[dict]:
     """Every distinct video the ledger says is live, newest first."""
     path = root / "work" / "release-state.json"
@@ -100,6 +125,14 @@ def released_ids(root: Path) -> list[dict]:
         if vid and vid not in seen:
             seen[vid] = {"video_id": vid, "slug": r.get("slug", ""),
                          "kind": r.get("kind", ""), "public": bool(r.get("public"))}
+    return list(seen.values())
+
+
+def tracked_ids(root: Path) -> list[dict]:
+    """Every video the dashboard tracks: the release ledger plus compilations."""
+    seen: dict[str, dict] = {}
+    for r in released_ids(root) + compilation_ids(root):
+        seen.setdefault(r["video_id"], r)
     return list(seen.values())
 
 
@@ -259,7 +292,7 @@ def main() -> int:
     root = resolve_root(Path(args.root).resolve() if args.root else ROOT)
     token = access_token(args.channel)
 
-    rel = released_ids(root)
+    rel = tracked_ids(root)
     stats = video_stats(token, [r["video_id"] for r in rel]) if rel else {}
     videos = []
     for r in rel:

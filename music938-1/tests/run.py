@@ -2143,6 +2143,36 @@ def test_market_report() -> None:
     check("report names the monetization target", "1,000" in report and "4,000" in report)
 
 
+def test_market_tracks_compilations() -> None:
+    """The daily report must include the long-form compilations.
+
+    The compilations are uploaded by `upload_compilation.py`, which records them
+    in `work/compilation-state-*.json` rather than the release ledger. Reading
+    only the ledger left the report blind to them: the channel said 62 videos
+    while the per-video table showed 51, and the 8-hour ambient bed — the single
+    biggest watch-hours asset — never appeared. `tracked_ids` unions both sources.
+    """
+    section("marketing report tracks compilations (market.py)")
+    import market
+    import tempfile
+    with tempfile.TemporaryDirectory() as td:
+        work = Path(td) / "work"
+        work.mkdir()
+        (work / "release-state.json").write_text(json.dumps({"released": [
+            {"video_id": "rel1", "slug": "01", "kind": "short", "public": True}]}))
+        (work / "compilation-state-ambient-sleep.json").write_text(json.dumps(
+            {"video_id": "comp1", "stem": "ambient-sleep", "minutes": 480.0}))
+        (work / "compilation-state-compilation.json").write_text(json.dumps(
+            {"video_id": "comp2", "stem": "compilation", "minutes": 56.7}))
+        tracked = market.tracked_ids(Path(td))
+        ids = {r["video_id"] for r in tracked}
+        check("the ledger's video is tracked", "rel1" in ids)
+        check("the compilations are tracked", {"comp1", "comp2"} <= ids)
+        check("no id is duplicated", len(ids) == len(tracked))
+        check("a compilation is labelled by kind",
+              any(r["kind"] == "compilation" for r in tracked))
+
+
 def test_market_plugin_wiring() -> None:
     """The daily plugin must run market.py and commit the report back.
 
@@ -4820,6 +4850,7 @@ def main() -> int:
     test_competitor_scanner_parsers()
     test_flow_extend_kinds()
     test_market_report()
+    test_market_tracks_compilations()
     test_market_plugin_wiring()
     test_market_root_resolution()
     test_automation_secret_fallback()
