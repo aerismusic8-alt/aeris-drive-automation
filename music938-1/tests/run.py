@@ -3806,6 +3806,20 @@ def test_login_vault() -> None:
     si = _inspect.getsource(login_vault._signed_in)
     check("an all-negative probe reports signed-in when the marker is gone",
           "if want else True" in si)
+    # Positive markers are alternatives (TikTok shows "Search" in English or
+    # "ค้นหา" in Thai, never both), so the check must be `any`. Changing it to
+    # `all` made every English-locale surface read DEAD while signed in — the
+    # exact false alarm that sends K to re-sign a working session.
+    check("positive markers are alternatives, not all required",
+          "any(m in body for m in want) if want else True" in si)
+    # A guest page shows the same markers (TikTok's /foryou has "Search" logged
+    # out), so the auth cookie must gate the page check or a logged-out visitor
+    # reads as signed in and the rails try to post with no session.
+    check("requires the auth cookie before trusting the page",
+          "_has_auth_cookie(ctx, domain)" in si and "def _has_auth_cookie" in src)
+    check("has a vault-refresh watch loop",
+          "def watch(" in (ROOT.parent / "ops" / "session_guard.py").read_text()
+          and "--watch" in (ROOT.parent / "ops" / "session_guard.py").read_text())
     check("Flow's probe has a negative marker",
           any(m.startswith("!") for m in login_vault.PROBE[".flowmusic.app"][1:]))
     # Cookies are not the whole session: Google keeps its device-trust token in

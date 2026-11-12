@@ -261,15 +261,37 @@ def run_headless() -> int:
     return 1 if need_k else 0
 
 
+def watch(interval: int = 600, push: bool = False) -> int:
+    """Keep the vault session fresh while a pod is up.
+
+    A pod recycle can take a session with it before anything has saved the fresh
+    cookies, and then the next pod has only the last snapshot. Running the check
+    on a loop means a surface that dies is caught within `interval` — while the
+    revive path can still fix it — and the vault is refreshed every round, so a
+    recycle loses at most one interval of session life instead of everything.
+    """
+    import time  # noqa: PLC0415
+    while True:
+        try:
+            run(check_only=False, push=push)
+        except Exception as exc:  # noqa: BLE001
+            print(f"watch round failed: {str(exc)[:120]}")
+        time.sleep(interval)
+
+
 def main(argv: list[str]) -> int:
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument("--check", action="store_true", help="report only, change nothing")
     ap.add_argument("--no-push", action="store_true", help="skip the CI secret push")
     ap.add_argument("--headless", action="store_true",
                     help="run on a headless Chromium (CI), not the cloud desktop")
+    ap.add_argument("--watch", type=int, metavar="SECONDS", default=0,
+                    help="keep checking and refreshing the vault on a loop")
     args = ap.parse_args(argv)
     if args.headless:
         return run_headless()
+    if args.watch:
+        return watch(args.watch, push=not args.no_push)
     return run(check_only=args.check, push=not args.no_push)
 
 

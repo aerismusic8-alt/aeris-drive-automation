@@ -333,11 +333,14 @@ def restore_login() -> None:
 
 
 def _heal_sessions() -> None:
-    """Revive any dead login it can, so a fresh pod does not page K.
+    """Revive any dead login it can, then keep the vault fresh on a loop.
 
     Best-effort: the desktop is already up at this point, so a heal failure must
     not fail the bring-up. Facebook and Flow Music revive from vaulted passwords;
-    TikTok/Shopee still need K and are reported, not guessed at.
+    TikTok/Shopee still need K and are reported, not guessed at. The background
+    watch matters because a session that dies and is never re-saved is what a pod
+    recycle turns into a K login — a loop that refreshes the vault every ten
+    minutes keeps the snapshot current, so a recycle loses minutes, not the login.
     """
     guard = Path(__file__).resolve().parents[4] / "ops" / "session_guard.py"
     if not guard.exists():
@@ -349,6 +352,29 @@ def _heal_sessions() -> None:
             print(out)
     except Exception as exc:  # noqa: BLE001
         print("[=] session heal skipped:", exc)
+    _start_watch(guard)
+
+
+def _start_watch(guard: Path) -> None:
+    """Launch the vault-refresh loop once, detached, guarded by a pidfile."""
+    pidfile = STATE / "session_watch.pid"
+    if pidfile.exists():
+        try:
+            os.kill(int(pidfile.read_text().strip()), 0)
+            return  # already watching
+        except (ValueError, ProcessLookupError, PermissionError):
+            pass
+    log = STATE / "session_watch.log"
+    try:
+        with log.open("ab") as fh:
+            proc = subprocess.Popen(
+                [sys.executable, str(guard), "--watch", "600", "--no-push"],
+                stdout=fh, stderr=fh, stdin=subprocess.DEVNULL,
+                start_new_session=True)
+        pidfile.write_text(str(proc.pid))
+        print(f"[+] session watch started (pid {proc.pid})")
+    except Exception as exc:  # noqa: BLE001
+        print("[=] session watch not started:", exc)
 
 
 def operator_url() -> str | None:

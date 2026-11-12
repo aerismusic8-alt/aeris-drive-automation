@@ -404,13 +404,32 @@ def save() -> int:
     return 0
 
 
+def _has_auth_cookie(ctx, domain: str) -> bool:
+    """True if the context still carries the cookie that proves this session.
+
+    Necessary but not sufficient (Facebook kept `c_user` while serving the
+    logged-out page), so it is a cheap pre-check that stops a *guest* page from
+    reading as signed-in: TikTok's /foryou shows "Search" to a logged-out visitor
+    too, so the page markers alone are a false positive without this gate.
+    """
+    name = AUTH.get(domain)
+    if not name:
+        return True
+    suffix = domain.lstrip(".")
+    return any(c.get("name") == name and suffix in (c.get("domain") or "")
+               for c in ctx.cookies())
+
+
 def _signed_in(ctx, domain: str) -> bool:
     """True only if the surface actually answers as a signed-in user.
 
     Presence of the auth cookie is necessary but not sufficient — Facebook kept
-    `c_user`/`xs` while serving the logged-out page. So this loads the surface
-    and looks for content that only appears when signed in.
+    `c_user`/`xs` while serving the logged-out page. So this requires the cookie
+    *and* loads the surface and looks for content that only appears when signed
+    in.
     """
+    if not _has_auth_cookie(ctx, domain):
+        return False
     probe = PROBE.get(domain)
     if not probe:
         return False
@@ -423,13 +442,15 @@ def _signed_in(ctx, domain: str) -> bool:
         if "เข้าสู่ระบบ" in body[:200] and "รหัสผ่าน" in body:
             return False
         # "!marker" means the page is signed in only when the marker is gone
-        # (Flow Music keeps a "Log in" link on its landing page). A probe can be
-        # all-negative: then signed-in is simply "every marker is gone".
+        # (Flow Music keeps a "Log in" link on its landing page). Positive markers
+        # are *alternatives* — any one proves sign-in (TikTok shows "Search" in
+        # English or "ค้นหา" in Thai, never both). A probe with no positive marker
+        # at all is signed-in exactly when every negative marker is gone.
         want = [m for m in markers if not m.startswith("!")]
         gone = [m[1:] for m in markers if m.startswith("!")]
         if any(m in body for m in gone):
             return False
-        return all(m in body for m in want) if want else True
+        return any(m in body for m in want) if want else True
     except Exception:  # noqa: BLE001
         return False
     finally:
