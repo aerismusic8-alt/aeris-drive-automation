@@ -54,13 +54,10 @@ A post whose `reach≈2` is a **repost** of a clip already on the Page — stop 
   `ax-ar-aeris-9f3k7q`). Judge loop health from the **rail run history** (API), not
   `data/heartbeat.json` — it was 9 days stale while the pod was fine.
 - **A dead browser session is the crosspost rail's top failure.** FB fails two
-  ways: (a) the Graph Page token rejected at account/app level (`API access
-  blocked`, OAuthException 200) — only the owner restores it; (b) the browser
-  cookie session dead (FB serves the logged-out page while still holding
-  `c_user`/`xs`, so a cookie-presence check lies). Fix (b):
-  `python3 ops/fb_relogin.py --push-secret` — one CDP sign-in from the vault
-  password; it refreshes `login_vault` + CI secret `AERIS_STORAGE_STATE_B64`. The
-  account block does **not** block the browser login.
+  ways: (a) the Graph Page token rejected at account/app level — only the owner
+  restores it; (b) the browser cookie session dead (FB serves the logged-out page
+  while still holding `c_user`/`xs`, so a cookie-presence check lies). Fix (b):
+  `python3 ops/fb_relogin.py --push-secret`. (Detail: archive.)
 - **Writes:** the app token can't touch `.github/workflows/` (no `workflow`
   scope) — read `axsecrets:gh-workflow-token` from the vault (name
   `OPENHANDS_API_KEY` in the command) and push with it; `GITHUB_TOKEN` is 403.
@@ -73,17 +70,21 @@ A post whose `reach≈2` is a **repost** of a clip already on the Page — stop 
 ## Real-instrument sound (K, 2026-11-09) — durable
 K rejected the ffmpeg tone synth and the GM SoundFont as "fake". Use the **sfizz**
 sampler (`install-sfizz.sh`). CI rails can't build it, so beds are pre-rendered on
-the pod and pulled from `media-938` (`pull_media.py --only ambient`, `sampler1-*.wav`);
-`AX_REQUIRE_REAL_INSTRUMENTS=1` makes a GM fallback **raise**, never ship silently.
-Free growth lanes (long-form compilations + ambient loops) are in the archive.
+the pod and pulled from `media-938` (`sampler1-*.wav`); `AX_REQUIRE_REAL_INSTRUMENTS=1`
+makes a GM fallback **raise**, never ship silently. Free growth lanes: archive.
 
 ## Loop health & platform risks
 - Judge "does the loop reach the goal on its own?" from the **rail run history**,
   not `data/heartbeat.json`. A red rail is the loop failing to walk.
+- **Never decide on missing/stale data** (2026-11-12 panel, quorum PASS).
+  `aeris938-2/scripts/evidence.py` = the shared contract (fresh/stale/unknown;
+  `usable()` only when fresh; 120-min window). `goal_watch` names **`data`** (never
+  a guess) on a blank/stale newest row; `--assert-fresh` gates the dashboard rail;
+  `experiment_loop` is INCONCLUSIVE on blind evidence and holds on `data`. A
+  measurement `|| echo` hides exactly this (details: archive).
 - **`videos.list` takes ≤50 ids/call.** Past 50 uploads an all-ids call returns
   HTTP 400, which `live_audit` mislabeled "quota" and hid for days. Chunk via
-  `ops/yt_auth.get_videos`; a non-403 error must fail the rail, never be swallowed
-  by `|| echo` (2026-11-12, found + repaired 28 live videos missing the ask).
+  `ops/yt_auth.get_videos`; a non-403 error must fail the rail (2026-11-12).
 - Platform risks: `AKATH_CORE/OPENHANDS_RISK_REGISTER.json` + `ops/risk_audit.py`
   (`--strict`); the 24/7 guard is `.github/workflows/ax-risk-audit.yml`.
 
