@@ -111,7 +111,10 @@ def _vault_has(key: str) -> bool:
         import ax_vault  # noqa: PLC0415
 
         return bool(ax_vault.kv_get(ax_vault.ensure_anchor(), key))
-    except Exception:  # noqa: BLE001 — a missing vault must not crash the audit
+    except BaseException:  # noqa: BLE001 — CI has no vault: ensure_anchor() raises
+        # SystemExit (a BaseException, so `except Exception` misses it) when the
+        # OpenHands API rejects the runner. A secret lookup must never kill the
+        # watchdog job; the 2026-11-11 AX Rail Watchdog run died on exactly this.
         return False
 
 

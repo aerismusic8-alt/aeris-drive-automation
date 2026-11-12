@@ -44,8 +44,16 @@ jobs:
       - name: Install ffmpeg
         run: |
           set -euo pipefail
-          sudo apt-get update -qq
-          sudo apt-get install -y -qq ffmpeg
+          # ffmpeg is preinstalled on ubuntu-latest. Installing it again needs
+          # apt to reach security.ubuntu.com, and a DNS blip there failed the
+          # whole render on 2026-11-11 (the runner hung ~1 h on the retry, then
+          # "Temporary failure resolving"). Only install when it is truly absent.
+          if ! command -v ffmpeg >/dev/null 2>&1; then
+            sudo apt-get update -qq
+            sudo apt-get install -y -qq ffmpeg
+          fi
+          # make_concert_short imports concert -> make_song, which imports numpy.
+          python3 -m pip install --quiet --disable-pip-version-check numpy
 
       - name: Pull the song masters and covers
         env:

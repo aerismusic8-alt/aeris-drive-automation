@@ -2651,7 +2651,10 @@ def test_api_posting_route() -> None:
     # CI has no vault: ax_vault.ensure_anchor() raises SystemExit (a BaseException)
     # when the OpenHands API rejects the runner. The 2026-11-07 heartbeat run died
     # on exactly that — a secret lookup must never kill a GitHub job.
-    for name in ("fb_graph.py", "tiktok_api.py"):
+    # k_free_status.py is in the list because the hourly AX Rail Watchdog calls its
+    # audit(); the 2026-11-11 watchdog run died on that exact SystemExit and, with
+    # `-e`, skipped the whole job. Any module a GitHub job imports must survive it.
+    for name in ("fb_graph.py", "tiktok_api.py", "k_free_status.py"):
         src = (ops / name).read_text()
         check(f"{name} survives a vault SystemExit",
               "except BaseException" in src)
@@ -4483,6 +4486,31 @@ def test_risk_audit() -> None:
           (ROOT.parent / "scripts" / "bootstrap-pod.sh").exists())
 
 
+def test_render_workflow_deps() -> None:
+    """A render rail must install the deps its script imports, and must not need
+    apt merely to get ffmpeg that the runner already has.
+
+    Two real failures on 2026-11-11:
+    - AX Music Concert Render died with `ModuleNotFoundError: No module named
+      'numpy'` — the workflow installed ffmpeg but not numpy, and
+      make_concert_short -> concert -> make_song imports numpy at module load.
+    - AX Music Karaoke Render died inside `apt-get install ffmpeg` when
+      security.ubuntu.com briefly failed to resolve, although ubuntu-latest
+      already ships ffmpeg. A needless apt call is a single point of failure.
+    """
+    section("render workflow deps")
+    wf = ROOT.parent / ".github" / "workflows"
+    concert = (wf / "ax-music-concert-render.yml").read_text()
+    check("the concert render installs numpy",
+          "pip install" in concert and "numpy" in concert)
+    # ffmpeg ships with ubuntu-latest, so the install must be conditional; a bare
+    # `apt-get install ffmpeg` makes a DNS blip fatal to the render.
+    for name in ("ax-music-concert-render.yml", "ax-music-karaoke-render.yml"):
+        src = (wf / name).read_text()
+        check(f"{name} only apt-installs ffmpeg when it is missing",
+              "command -v ffmpeg" in src)
+
+
 def main() -> int:
     test_lyrics()
     test_tokenizer()
@@ -4570,6 +4598,7 @@ def main() -> int:
     test_ledger_write_merges_instead_of_clobbering()
     test_youtube_quota_ledger()
     test_risk_audit()
+    test_render_workflow_deps()
     test_outputs()
     print(f"\n{PASS} passed, {FAIL} failed")
     if FAILURES:
