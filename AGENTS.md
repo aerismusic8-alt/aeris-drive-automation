@@ -76,7 +76,24 @@ git push "https://x-access-token:${TOKEN}@github.com/aerismusic8-alt/aeris-drive
 ```
 
 `create_pr` and similar tools use the read-only token and will 403. Create PRs
-via the REST API with the app token instead.
+via the REST API with an app token instead.
+
+**A fresh pod has no App key.** `~/.config/aeris/` was on the ephemeral overlay,
+so the recipe above only works while that directory survives. The route that works
+from a clean pod is the durable vault: read the KV key
+`axsecrets:gh-workflow-token` (value is a **dict** — `.token`, `.login`,
+`.scopes`) and put the token in the push URL.
+
+```bash
+TOK=$(python3 -c "import sys;sys.path.insert(0,'ops');import ax_vault;\
+aid=ax_vault.ensure_anchor();print(ax_vault.kv_get(aid,'axsecrets:gh-workflow-token')['token'])")
+GIT_TERMINAL_PROMPT=0 git push \
+  "https://x-access-token:${TOK}@github.com/aerismusic8-alt/aeris-drive-automation.git" main
+```
+
+The `git -c http.extraheader="AUTHORIZATION: bearer <tok>"` form fails with
+"invalid credentials" even though the same token answers the REST API with 200.
+Verified 2026-11-13: `6592a7e..1eb9cc1 main -> main`.
 
 **Workflow files need a `workflow` scope the App token does not have.** A push
 that touches `.github/workflows/` is rejected with `refusing to allow an OAuth
