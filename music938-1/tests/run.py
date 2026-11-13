@@ -4369,6 +4369,50 @@ def test_phone_login() -> None:
                                       / "scripts" / "bootstrap.py").read_text())
 
 
+def test_story_reel() -> None:
+    """A story Reel is the growth lane; the music clips do not attach an audience.
+
+    K (2026-11-13): the Page needs followers to unlock Stars/Subscriptions, and
+    Facebook gives Reels free distribution. The lane must stay free (edge-tts +
+    ffmpeg + licence-checked Wikimedia stills), vertical, and caption-led.
+    """
+    section("story reel (Thai narrated vertical)")
+    import importlib.util
+    ops = ROOT.parent / "ops"
+    src = (ops / "story_reel.py").read_text()
+    post = (ops / "post_story_reel.py").read_text()
+
+    check("renders vertical 1080x1920", "1080" in src and "1920" in src)
+    # Rule #1: no paid voice, no API key. edge-tts + ffmpeg + Wikimedia only.
+    check("voice is free edge-tts", "edge" in src.lower() and "tts" in src.lower())
+    check("no paid API or key", "api_key" not in src.lower()
+          and "openai" not in src.lower())
+    check("stills are licence-checked", "commons" in src.lower()
+          or "wikimedia" in src.lower())
+    # AUDIO FIRST: the narration is synthesised per paragraph so each caption
+    # knows its own length; pictures come after.
+    check("narration is synthesised before pictures",
+          src.index("def narrate") < src.index("def build_video"))
+
+    spec = importlib.util.spec_from_file_location("story_reel", ops / "story_reel.py")
+    sr = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(sr)
+    scripts = sorted((ROOT.parent / "scripts_story").glob("*.md"))
+    check("story scripts exist", len(scripts) >= 1)
+    title, theme, paras = sr.read_script(str(scripts[0]))
+    check("read_script pulls TITLE and THEME", bool(title) and theme == "horror")
+    check("read_script keeps every paragraph", len(paras) >= 3)
+
+    pspec = importlib.util.spec_from_file_location("post_story_reel",
+                                                   ops / "post_story_reel.py")
+    psr = importlib.util.module_from_spec(pspec)
+    pspec.loader.exec_module(psr)
+    cap = psr.caption("ห้องเช่าหมายเลข 9", "horror")
+    check("caption carries the follow ask", psr.FOLLOW_ASK in cap)
+    check("caption carries the theme hashtags",
+          psr.HASHTAGS["horror"] in cap and "#AERISMusic" in cap)
+
+
 def test_heartbeat_repair_signal() -> None:
     """The board must notice a release that went up without its art.
 
@@ -5205,6 +5249,7 @@ def main() -> int:
     test_promo_site_converts_to_the_page()
     test_operator_url()
     test_phone_login()
+    test_story_reel()
     test_heartbeat_repair_signal()
     test_consult_gate()
     test_produce_loop()
