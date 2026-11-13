@@ -1,13 +1,25 @@
 # ⛔ WORK SUSPENDED — 2026-10-26, re-issued 2026-11-13
 
-> **STATUS 2026-11-13 (evening): HOLD LIFTED for the publishing rails.**
-> K: "K ปล่อยให้ ar บริหารเพจแบบเต็มรูปแบบเลย สามารถปรับปรุงแก้ไขทำอะไรได้หมด
-> อยากลบสร้างใหม่ก็ได้ ให้อำนาจเต็ม". AR now administers the channels outright and
-> may restructure them. Six rails are back on (release, compilation, crosspost,
-> admin, session-heal, dashboard); the five *render* rails stay off on purpose
-> until the backlog drains. See "Rework done under the hold" below for the pilot
-> numbers and the FB head-of-line fix. The sections under this box are the
-> historical record of the hold and how it was lifted.
+> **STATUS 2026-11-13 (late): HOLD FULLY LIFTED — all 11 rails are back on.**
+> K: "ให้ทำการยกเลิกเงื่อนไขเลย" (cancel the conditions). The five *render* rails
+> that were still `disabled_manually` (affiliate, concert, karaoke, produce,
+> surreal) are now `active`, so the whole publishing/rendering set runs again:
+> release, compilation, crosspost, admin, session-heal, dashboard **+** the five
+> renders. Verified by `GET /actions/workflows` (all `active`) and by a real
+> dispatch of `ax-music-produce` and `ax-music-surreal-render` (HTTP 204, both
+> `in_progress`).
+>
+> **The 12 OpenHands automations were left as they were** — they are *duplicates*
+> of the Actions rails, not extra capacity: `AX Music Daily Release` re-uploads
+> what `ax-music-release.yml` already shipped (same ledger → the same batch) and
+> `AX Rail Watchdog` / `AX YouTube Activity Monitor` repeat `ax-rail-watchdog.yml`.
+> Enabling both halves would double the run count for no new output, which is the
+> opposite of what the lift is for. Only `AX Music Marketing Daily` stays on.
+>
+> The pilot caps from the rework below stay in force (`UPLOADS_PER_DAY=2`,
+> `MIN_GAP_SECONDS=6h`, `DAILY_CAP=4`): lifting the hold means the rails may run,
+> not that the volume goes back up. The sections under this box are the historical
+> record of the hold and how it was lifted.
 
 K (2026-11-13): "รอดูผลตอบรับเอามาวิเคราะห์และประเมิน คลิปที่ตั้งระบบอัตโนมัติไว้
 ให้ระงับทั้งหมดก่อนนะ" — hold the automated clips, watch the response, then judge.
