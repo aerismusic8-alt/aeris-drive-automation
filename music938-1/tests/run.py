@@ -1170,6 +1170,64 @@ def test_music_video() -> None:
               bad.lower() not in code.lower())
 
 
+def test_film_video() -> None:
+    section("film music video (public-domain film, cut to the song)")
+    # K, 2026-11-13: "วีดีโอต้องเหมาะกับเพลงและบทเพลงสิ" — the bar is not "a film
+    # that moves" but *this* film for *this* song. The film is cast by the lyric's
+    # mood, the cut follows the sections, and the grade follows the section too.
+    # The render needs ffmpeg and a downloaded film, so it is exercised by hand;
+    # the casting, the pacing and the free-route guard are what a future change
+    # could quietly break, so they are pinned here.
+    import inspect
+    import make_film_video as fv
+
+    # Casting: the mood in the lyric header picks the film, so an epic rock song
+    # gets the rock'n'roll film and not the noir one.
+    check("epic song casts a film that lists epic",
+          "epic" in fv.film_for_mood("epic")["moods"],
+          fv.film_for_mood("epic")["id"])
+    check("a sad song casts a film that lists sad",
+          "sad" in fv.film_for_mood("sad")["moods"],
+          fv.film_for_mood("sad")["id"])
+    check("an unknown mood still returns a real film",
+          fv.film_for_mood("nonsense")["id"] in {f["id"] for f in fv.FILMS})
+    check("every film has a mood, a title and a credit",
+          all(f.get("moods") and f.get("title") and f.get("note") for f in fv.FILMS),
+          f"{len(fv.FILMS)} films")
+
+    # Pacing follows the sections, not one metronome: a chorus is cut faster than
+    # a verse of the same song, and every section tiles its own span exactly.
+    secs = fv.window_sections("24-yut-mai-yom", 212.5, 0.0, 212.5)
+    names = [s[0] for s in secs]
+    check("the song's sections are read in order",
+          names == ["verse", "chorus", "verse", "chorus", "bridge", "chorus"], str(names))
+    plan = fv.plan_by_section(secs, 160)
+    chorus = [p for p in plan if p[2] == "chorus"]
+    verse = [p for p in plan if p[2] == "verse"]
+    check("a chorus is cut faster than a verse",
+          max(p[1] for p in chorus) < min(p[1] for p in verse),
+          f"chorus<={max(p[1] for p in chorus):.2f} verse>={min(p[1] for p in verse):.2f}")
+    # The plan covers the whole window with no gap and no overlap.
+    covered = sum(p[1] for p in plan)
+    check("the cut plan tiles the whole window", abs(covered - 212.5) < 0.5, f"{covered:.2f}s")
+
+    # The grade answers the section: the hook is lifted above the verse.
+    check("the chorus is graded brighter than the verse",
+          "brightness=0.03" in fv.section_grade("epic", 1.0)
+          and "brightness=-0.03" in fv.section_grade("epic", 0.45))
+
+    # Rule #1: public-domain film over a free, key-less route, and the film's own
+    # audio is dropped so no third-party score rides along to be claimed.
+    src = inspect.getsource(fv)
+    code = "\n".join(ln for ln in src.splitlines() if not ln.lstrip().startswith("#"))
+    check("the film route is archive.org", "archive.org/download" in code)
+    check("the source is credited in the output info", "\"note\"" in code or "note" in code)
+    for bad in ("api_key", "Bearer ", "hf_token", "OPENAI"):
+        check(f"film video never asks for a credential ({bad})",
+              bad.lower() not in code.lower())
+    check("the film's own audio is never mapped", '"-an"' in code)
+
+
 def test_follow_end_card() -> None:
     section("follow ask (the only on-screen follow prompt)")
     import make_short
@@ -5032,6 +5090,7 @@ def main() -> int:
     test_shorts()
     test_motion_lane()
     test_music_video()
+    test_film_video()
     test_follow_end_card()
     test_ambient_loop()
     test_soundfont_renderer()
