@@ -1,21 +1,53 @@
-# ⛔ WORK SUSPENDED — 2026-10-26
+# ⛔ WORK SUSPENDED — 2026-10-26, re-issued 2026-11-13
 
-K: "ตอนนี้ระงับงานทั้งหมดไว้ก่อน หยุดงานออโต้ด้วย"
+K (2026-11-13): "รอดูผลตอบรับเอามาวิเคราะห์และประเมิน คลิปที่ตั้งระบบอัตโนมัติไว้
+ให้ระงับทั้งหมดก่อนนะ" — hold the automated clips, watch the response, then judge.
 
 **Read this before doing anything on the 4 channels.**
 
-## What is stopped
+## What is stopped (2026-11-13)
 
-- All **6 automations** are `enabled=false` / `INACTIVE` (verified via
-  `GET /api/automation/v1?limit=50`, `STILL ENABLED: 0`).
-- No uploads. ch2's first episode is rendered and sitting in `work/ep_ch2/`.
-- No renders started for ch1, ch3 or ch4.
+All 11 **publishing/rendering** GitHub Actions workflows are
+`disabled_manually` (verified via `GET /actions/workflows`):
+
+`ax-music-crosspost`, `ax-music-release`, `ax-music-compilation`,
+`ax-music-admin`, `ax-music-dashboard`, `ax-music-produce`,
+`ax-music-affiliate-render`, `ax-music-concert-render`,
+`ax-music-karaoke-render`, `ax-music-surreal-render`, `ax-session-heal`.
+
+All 12 OpenHands automations are `enabled=false` (the last one, *AX Music
+Marketing Strategy (weekly)*, was turned off this day — it opened PRs, so it
+belonged to the held set).
+
+The read-only watchers stay ON, because the hold is *watch and judge*: the
+feedback must keep arriving. `ax-rail-watchdog`, `ax-token-heartbeat`,
+`ax-memory-guard`, `ax-risk-audit`, `ax-roblox-live-state`.
+
+Re-enable with `PUT /actions/workflows/<id>/enable` and
+`PATCH /automation/v1/<id> {"enabled": true}`.
 
 ## What must not happen until K lifts the hold
 
-1. Do not enable any automation.
-2. Do not upload anything to YouTube.
+1. Do not enable any publishing automation.
+2. Do not upload anything to YouTube / Facebook / TikTok.
 3. Do not start a new render.
+
+## Why it was re-issued: the response is the problem
+
+Measured 2026-11-13 (see `work/response-review-2026-11-13.md`): the channel is
+**not** under-performing because clips are missing; it is not finding an
+audience at all.
+
+- Whole channel: 72 uploads, **1,981 views total**, median **7.5 views**,
+  15 likes, **1 comment**.
+- Daily views collapsed: 847 (11-01) → 325 (11-10) → **0 (11-11)** → 10 (11-12)
+  → 19 (11-13), while the posting rate went *up* (4–10 clips/day).
+- Every genre label except the two "คิดถึง / เพื่อชีวิต" ones sits at 0–7 views.
+  The rock pivot's song (`ยืนหยัดไม่ยอม`) is at **2 views**.
+- 14 of 72 uploads have 0 views; 5 have ≥100, all of them older shorts.
+
+Producing more clips does not fix this. The hold exists to stop the loop from
+burning quota on output nobody watches.
 
 ## What survives the pause
 
