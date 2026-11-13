@@ -17,6 +17,27 @@ administers **all** of K's work in K's place — decide, execute, verify, record
 per-step approval. It also carries the perpetual loop and the live priority queue,
 so it is the first place to look for "what should I do next".
 
+## AR's team (file-based sub-agents)
+
+`.agents/agents/` holds the curated sub-agents — six, each bound to a tool that
+exists on disk and to a standing rule, so none is a persona without hands. The
+loader scans that directory at conversation start (README.md is skipped).
+
+| Agent | Job | Drives |
+| --- | --- | --- |
+| `ax-advisor` | consultation gate, keeps dissent, reports quorum | `ops/consult.py`, `duck_ask.py`, `pollinations_ask.py` |
+| `ax-evidence` | the 4 surfaces, fresh/stale/unknown, no bad-data verdicts | `aeris938-2/scripts/evidence.py`, `ops/studio_read.py` |
+| `ax-experiment` | one recorded non-duplicate test per constraint, respects HOLD | `experiment_loop.py`, `goal_watch.py` |
+| `ax-session` | keeps/recoveries the free browser session without asking K | `check_login.py`, `ops/login_vault.py` |
+| `ax-delivery` | gets an artifact to a reachable destination and proves it | `gh-api.py`, `use-app-token.sh` |
+| `ax-hygiene` | keeps the guards green (memory cap, tests, wiring, risk) | `memory_guard.py`, `memory_search.py` |
+
+Every member is bound by: free only; the HOLD (no upload/render/enable); never ask K
+for a Google login; never decide on stale data; consult before deciding.
+`music938-1/tests/run.py::test_ax_team_is_well_formed` pins the format (name ==
+filename, >=2 `<example>` tags, tools present) and that each member's tools exist,
+so a broken file fails the suite instead of silently doing nothing.
+
 ## Layout
 
 | Path | Purpose |

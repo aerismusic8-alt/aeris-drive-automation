@@ -5340,6 +5340,58 @@ def test_render_workflow_deps() -> None:
               "command -v ffmpeg" in src)
 
 
+def test_ax_team_is_well_formed() -> None:
+    """The file-based team in `.agents/agents/` must be loadable and grounded.
+
+    The team exists to carry rules and drive real tools; a member that is malformed
+    (name != filename, no tools, no examples, no rule) would silently do nothing,
+    which is worse than absent. This pins the SDK contract the loader enforces and
+    that every member is bound to a tool that actually exists on disk.
+    """
+    section("ax team (file-based sub-agents)")
+    agents_dir = ROOT.parent / ".agents" / "agents"
+    check("the team directory exists", agents_dir.is_dir())
+    files = sorted(p for p in agents_dir.glob("*.md") if p.name != "README.md")
+    check("the team has members", len(files) >= 5)
+
+    # Files each member claims to drive; a missing path means a persona without
+    # hands, so it must fail here rather than at run time.
+    required_tools = {
+        "ax-advisor": ["ops/consult.py", "ops/duck_ask.py", "ops/pollinations_ask.py"],
+        "ax-evidence": ["aeris938-2/scripts/evidence.py", "aeris938-2/scripts/surfaces.py"],
+        "ax-experiment": ["aeris938-2/scripts/experiment_loop.py",
+                          "aeris938-2/scripts/goal_watch.py"],
+        "ax-session": ["ops/login_vault.py"],
+        "ax-hygiene": ["ops/memory_guard.py", "ops/memory_search.py"],
+    }
+    for path in files:
+        text = path.read_text(encoding="utf-8")
+        m = re.match(r"^---\n(.*?)\n---\n", text, re.S)
+        check(f"{path.name} has YAML frontmatter", bool(m))
+        if not m:
+            continue
+        fm = m.group(1)
+        name_m = re.search(r"^name:\s*(\S+)", fm, re.M)
+        check(f"{path.name} declares a name", bool(name_m))
+        if name_m:
+            check(f"{path.name} name matches its filename",
+                  name_m.group(1) == path.stem, f"{name_m.group(1)} != {path.stem}")
+            # description must carry >=2 <example> tags so the orchestrator
+            # knows when to delegate to it.
+            check(f"{path.name} has >=2 <example> tags",
+                  fm.count("<example>") >= 2)
+            check(f"{path.name} declares tools", "tools:" in fm)
+            for rel in required_tools.get(path.stem, []):
+                check(f"{path.stem} drives {rel}", (ROOT.parent / rel).exists())
+        # every member states at least one binding rule
+        check(f"{path.name} states a rule (Do not / free only / HOLD)",
+              any(k in text for k in ("Do not", "free only", "HOLD", "never")))
+    # The README must list every member, or a new agent goes unnoticed.
+    readme = (agents_dir / "README.md").read_text(encoding="utf-8")
+    for path in files:
+        check(f"README lists {path.stem}", path.stem in readme)
+
+
 def main() -> int:
     test_lyrics()
     test_tokenizer()
@@ -5442,6 +5494,7 @@ def main() -> int:
     test_youtube_quota_ledger()
     test_risk_audit()
     test_render_workflow_deps()
+    test_ax_team_is_well_formed()
     test_outputs()
     print(f"\n{PASS} passed, {FAIL} failed")
     if FAILURES:
