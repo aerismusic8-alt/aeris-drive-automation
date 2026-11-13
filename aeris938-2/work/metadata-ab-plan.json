@@ -1,0 +1,18 @@
+{
+ "at": "2026-11-13T11:48:08+00:00",
+ "channel": "ch3",
+ "variable": "title carries a hook phrase (| ร้องต่อไหม?) vs unchanged",
+ "held_fixed": "format = Short (<= 65s)",
+ "window_days": 10.0,
+ "excluded": 71,
+ "treated": [],
+ "control": [
+  {
+   "id": "jcuOlUTWyM0",
+   "title": "9 พฤศจิกายน ค.ศ. 2026",
+   "seconds": 16,
+   "views": 19,
+   "published": "2026-11-09"
+  }
+ ]
+}

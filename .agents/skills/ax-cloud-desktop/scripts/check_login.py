@@ -43,15 +43,32 @@ def main() -> int:
                            if "flowmusic" in (c.get("domain") or "")})
             print(f"google cookies : {len(google)} {google[:8]}")
             print(f"flowmusic      : {flow}")
-            signed_in = len(google) >= 5 and "SID" in google
-            email = None
-            if signed_in:
-                pg = ctx.pages[0] if ctx.pages else ctx.new_page()
-                pg.goto("https://myaccount.google.com/", wait_until="domcontentloaded",
-                        timeout=60000)
-                pg.wait_for_timeout(3500)
-                m = re.search(r"[\w.+-]+@[\w.-]+\.\w+", pg.inner_text("body"))
-                email = m.group(0) if m else None
+            # A SID cookie can be *present and expired*: the presence check used to
+            # report SIGNED_IN from a dead session (2026-11-13 — it passed while
+            # youtube.com showed no avatar and Studio bounced to the sign-in wall).
+            # The evidence is what an authenticated page does, not which cookies
+            # exist. Load myaccount.google.com and read where it lands.
+            pg = ctx.pages[0] if ctx.pages else ctx.new_page()
+            pg.goto("https://myaccount.google.com/", wait_until="domcontentloaded",
+                    timeout=60000)
+            pg.wait_for_timeout(3500)
+            landed = pg.url
+            body = pg.inner_text("body")
+            # The account chooser renders *at myaccount.google.com* when signed out,
+            # so the URL alone is not evidence. The chooser's own words are: it
+            # offers to sign in rather than showing the account. Any of these means
+            # the session is gone (2026-11-13: Studio and youtube.com both showed
+            # signed out while a stale SID cookie was still present).
+            signed_out_markers = ("Signed out", "Use another account",
+                                  "Choose an account", "Sign in with Google",
+                                  "Create an account", "Sign in to",
+                                  "ลงชื่อเข้าใช้", "สลับบัญชี", "เพิ่มบัญชี")
+            bounced = ("accounts.google.com" in landed and "signin" in landed) \
+                or "accountchooser" in landed \
+                or any(mk in body for mk in signed_out_markers)
+            m = re.search(r"[\w.+-]+@[\w.-]+\.\w+", body)
+            email = m.group(0) if m else None
+            signed_in = "SID" in google and not bounced
             if signed_in:
                 print(f"RESULT=SIGNED_IN account={email or '(not shown)'}")
                 if email and email.lower() != EXPECTED_ACCOUNT.lower():
@@ -61,7 +78,12 @@ def main() -> int:
                           f"back in as {EXPECTED_ACCOUNT}.")
                     return 3
                 return 0
-            print("RESULT=SIGNED_OUT — the operator must sign in via noVNC")
+            if "SID" in google and bounced:
+                print("RESULT=SIGNED_OUT — a SID cookie is present but the session "
+                      "is dead (Google redirected to the sign-in wall). The "
+                      "operator must sign in again via noVNC.")
+            else:
+                print("RESULT=SIGNED_OUT — the operator must sign in via noVNC")
             return 1
     except Exception as exc:
         print(f"could not reach the desktop browser: {exc}", file=sys.stderr)

@@ -4413,6 +4413,59 @@ def test_story_reel() -> None:
           psr.HASHTAGS["horror"] in cap and "#AERISMusic" in cap)
 
 
+def test_metadata_ab_holds_format_fixed() -> None:
+    """The title experiment must change exactly one variable.
+
+    The 2026-11-13 review claimed hook-titled clips out-reach plain ones. They do
+    -- but every Short carries a hook and every plain clip is a song, so the
+    comparison was confounded with the *format* (Short median 18 views vs song
+    median 2). A test that flips the title on the plain group would measure the
+    format, not the title. So the tool must restrict itself to Shorts.
+    """
+    section("metadata A/B experiment")
+    import importlib.util
+    ops = ROOT.parent / "ops"
+    path = ROOT.parent / "aeris938-2" / "scripts" / "metadata_ab.py"
+    src = path.read_text()
+    spec = importlib.util.spec_from_file_location("metadata_ab", path)
+    m = importlib.util.module_from_spec(spec)
+    sys.path.insert(0, str(ops))
+    spec.loader.exec_module(m)
+
+    check("format is held fixed to Shorts", m.SHORT_MAX_SECONDS == 65)
+    check("a song is not a candidate", m.duration_seconds(
+        {"contentDetails": {"duration": "PT3M34S"}}) > m.SHORT_MAX_SECONDS)
+    check("a Short is a candidate", m.duration_seconds(
+        {"contentDetails": {"duration": "PT42S"}}) <= m.SHORT_MAX_SECONDS)
+    check("the split is deterministic", m.arm_of("abc") == m.arm_of("abc"))
+    # build_plan excludes a song even when its title is plain.
+    plan = m.build_plan([
+        {"id": "song1", "snippet": {"title": "เพลงเศร้า ที่เข้าใจความเสียใจ",
+                                    "publishedAt": "2026-11-04T00:00:00Z"},
+         "statistics": {"viewCount": "7"}, "contentDetails": {"duration": "PT3M34S"}}])
+    check("a plain-titled song is excluded from the frame",
+          not plan["treated"] and not plan["control"])
+    check("the plan names the held-fixed variable", "held_fixed" in plan)
+
+
+def test_login_check_reads_evidence() -> None:
+    """check_login must not report a signed-in session from cookie presence.
+
+    A SID cookie can be present and expired. On 2026-11-13 check_login printed
+    SIGNED_IN while Studio and youtube.com both showed the account as "Signed
+    out", because it trusted the cookie set. The check must read what an
+    authenticated page actually does.
+    """
+    section("cloud-desktop login check")
+    text = (ROOT.parent / ".agents" / "skills" / "ax-cloud-desktop" / "scripts"
+            / "check_login.py").read_text()
+    check("loads a real Google account page",
+          "myaccount.google.com" in text or "session state" in text)
+    check("treats the sign-out words as evidence", "signed_out_markers" in text)
+    check("does not trust the cookie set alone",
+          "signed_in = \"SID\" in google and not bounced" in text)
+
+
 def test_heartbeat_repair_signal() -> None:
     """The board must notice a release that went up without its art.
 
@@ -5250,6 +5303,8 @@ def main() -> int:
     test_operator_url()
     test_phone_login()
     test_story_reel()
+    test_metadata_ab_holds_format_fixed()
+    test_login_check_reads_evidence()
     test_heartbeat_repair_signal()
     test_consult_gate()
     test_produce_loop()
