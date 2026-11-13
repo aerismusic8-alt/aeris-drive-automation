@@ -105,11 +105,11 @@
    ]
   },
   "2026-11-12": {
-   "units": 50,
+   "units": 100,
    "calls": {
-    "thumbnails.set": 1
+    "thumbnails.set": 2
    },
-   "updated": "2026-11-12T16:44:16+00:00",
+   "updated": "2026-11-13T00:59:46+00:00",
    "reserves": [
     {
      "purpose": "release 6 item(s)",
