@@ -60,7 +60,15 @@ AFF_DISCLOSURE = "ลิงก์พันธมิตร Shopee — เรา�
 # The old "10,000 / 1,600 = 6" rule was simply wrong, and the 2026-11-05 advisor
 # panel (3/3) said the same: the ceiling is 100, so pick a cadence for the
 # creative test, not for a limit that does not exist.
-UPLOADS_PER_DAY = 6
+#
+# 6 -> 2 on 2026-11-13. The measured result that forced the publishing HOLD: the
+# posting rate went UP (4 -> 10 clips/day) while daily views fell (847 -> 0-19),
+# 14 of 72 uploads sat at 0 views, and the whole channel earned 1 comment in 13
+# days. The 2026-11-13 advisor panel (duck + pollinations, quorum PASS) named the
+# same fix first: stop clearing the backlog, cap the pilot, and learn from a
+# small batch instead of burning quota on output nobody watches. Volume was never
+# the constraint -- retention is.
+UPLOADS_PER_DAY = 2
 
 # The wrong-render backlog must not eat the whole day. Product clips are the only
 # content with a reason to buy, and nothing else on the channel produces a click
@@ -69,7 +77,14 @@ UPLOADS_PER_DAY = 6
 # description link may not be tappable — both say: publish the product clips
 # first, and never let the replacement queue consume their slots. The backlog is
 # a quality fix; it can wait one more day. The product test cannot.
-AFFILIATE_RESERVE = 2
+#
+# Lowered 2 -> 1 with the cadence cut (2026-11-13). With UPLOADS_PER_DAY = 2 a
+# reserve of 2 would spend the *whole* day on product clips and publish no song
+# at all, which starves the retention test this pilot exists to run. One slot
+# still guarantees the funnel gets a clip every day while a song Short goes out
+# beside it. The invariant that matters is `AFFILIATE_RESERVE < UPLOADS_PER_DAY`,
+# and the test suite pins it.
+AFFILIATE_RESERVE = 1
 
 # Media is gitignored and a recycled pod has an empty library/, so the files a
 # batch needs are fetched from the `media-938` release on demand. Downloading
@@ -230,6 +245,17 @@ def is_retired(slug: str) -> bool:
 
 SHORTS = ROOT / "library" / "shorts"
 
+# At most this many Shorts per song reach the plan. One song yields three chorus
+# cuts, but in the current catalogue all three choruses carry the *same* lyric
+# lines (verified on `01-khon-di-thi-chak-pai`: three `[chorus]` blocks, identical
+# text), so the three cuts are the same clip with a different caption -- exactly
+# what the 2026-11-13 advisor panel (duck) warned against: "don't publish three
+# cuts that are essentially the same excerpt with minor changes". Publishing one
+# is a creative choice; publishing three is volume for its own sake, and volume
+# was measured to hurt (see UPLOADS_PER_DAY). Raise this only when a song's
+# choruses actually differ.
+SHORTS_PER_SONG = 1
+
 
 def short_files(slug: str, mix: str = "song") -> list[Path]:
     """Every Short for a song: the -h1/-h2 hook cuts, or the plain name alone.
@@ -251,7 +277,7 @@ def short_files(slug: str, mix: str = "song") -> list[Path]:
     for n in names:
         if n not in seen and _have(n, SHORTS / n):
             seen.append(n)
-    return [SHORTS / n for n in seen]
+    return [SHORTS / n for n in seen[:SHORTS_PER_SONG]]
 
 
 def has_short(slug: str, mix: str = "song") -> bool:

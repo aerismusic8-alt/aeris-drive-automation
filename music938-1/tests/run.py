@@ -758,8 +758,11 @@ def test_affiliate_reserve() -> None:
     section("affiliate slot reserve")
     import release
 
-    check("the reserve is set", release.AFFILIATE_RESERVE >= 2,
+    check("the reserve is set", release.AFFILIATE_RESERVE >= 1,
           f"{release.AFFILIATE_RESERVE}")
+    check("the reserve leaves room for a song",
+          release.AFFILIATE_RESERVE < release.UPLOADS_PER_DAY,
+          f"{release.AFFILIATE_RESERVE} vs {release.UPLOADS_PER_DAY}")
     check("every card is pending on an empty ledger",
           release.affiliate_pending({"released": []}) >= 5)
     live = {"released": [{"slug": c["id"], "kind": "affiliate"}
@@ -772,6 +775,33 @@ def test_affiliate_reserve() -> None:
     check("replacements stop at the reserve", "AFFILIATE_RESERVE" in rv)
     check("the reserve is dynamic, not a fixed wall",
           "affiliate_pending" in rv)
+
+
+def test_release_pilot_caps() -> None:
+    """The publishing HOLD fix: cap the volume, one Short per song, keep the
+    affiliate slot inside the cap.
+
+    Measured 2026-11-13: the posting rate rose (4 -> 10/day) while views fell
+    (847 -> 0-19) and 14 of 72 uploads sat at 0 views. The 2026-11-13 advisor
+    panel (duck + pollinations, quorum PASS) said the same: stop clearing the
+    backlog. These three numbers are the whole fix, so they are pinned here — a
+    later change that quietly raises them re-creates the flood.
+    """
+    section("release pilot caps (HOLD fix)")
+    import release
+
+    check("daily cap is a pilot, not a flood", release.UPLOADS_PER_DAY <= 2,
+          f"{release.UPLOADS_PER_DAY}")
+    check("the affiliate reserve stays inside the cap",
+          release.AFFILIATE_RESERVE < release.UPLOADS_PER_DAY,
+          f"{release.AFFILIATE_RESERVE} vs {release.UPLOADS_PER_DAY}")
+    check("one Short per song, not three",
+          release.SHORTS_PER_SONG == 1, f"{release.SHORTS_PER_SONG}")
+    # The cap must be enforced by the per-day ledger, not only by the planner:
+    # a re-run of the workflow in the same quota-day must be refused.
+    src = (ROOT / "scripts" / "release.py").read_text()
+    check("the cap is enforced against uploads_today",
+          "used >= UPLOADS_PER_DAY" in src, "per-day gate missing")
 
 
 def test_daily_release_saves_ledger_on_early_stop() -> None:
@@ -3254,22 +3284,25 @@ def test_crosspost_pace_and_captions() -> None:
     check("a 60-post burst is held back", not ok, why)
     check("the daily cap is named in the reason", "cap" in why)
 
-    # The band is ~2 h: the minimum is two hours, so a post one hour old is held
-    # back however its own gap is drawn. K (2026-11-10): "ระยะห่างกัน 2 ชั่วโมง".
+    # The band is the pilot rhythm: a post inside the minimum gap is held back
+    # however its own gap is drawn. K (2026-11-10) asked for a steady rhythm; the
+    # 2026-11-13 fix slowed it from 2 h to 6 h (see crosspost.py) because ~12
+    # posts/day per surface was flooding two surfaces with no audience.
     recent = {"posted": {"tiktok:x": {"at": at(3600)}}}
     ok, why = crosspost.pace_ok(recent, "tiktok", now)
     check("a post 1 hour old is inside the minimum gap", not ok, why)
-    check("the band floor is two hours",
-          crosspost.MIN_GAP_SECONDS == 2 * 60 * 60, str(crosspost.MIN_GAP_SECONDS))
-    check("the band ceiling is two hours plus a little jitter",
-          2 * 60 * 60 <= crosspost.MAX_GAP_SECONDS <= 2 * 60 * 60 + 20 * 60,
+    check("the band floor is the pilot rhythm",
+          crosspost.MIN_GAP_SECONDS == 6 * 60 * 60, str(crosspost.MIN_GAP_SECONDS))
+    check("the band ceiling is the floor plus a little jitter",
+          crosspost.MIN_GAP_SECONDS <= crosspost.MAX_GAP_SECONDS
+          <= crosspost.MIN_GAP_SECONDS + 20 * 60,
           str(crosspost.MAX_GAP_SECONDS))
 
     # The gap is humanised: drawn per post, so it varies a little, but always lands
-    # within a few minutes of the two-hour rhythm.
+    # within a few minutes of the pilot rhythm.
     gaps = {crosspost._gap_for(f"tiktok:s{i}") for i in range(40)}
     check("the per-post gap varies (not a fixed interval)", len(gaps) > 3, str(len(gaps)))
-    check("every gap is inside the 2 h band",
+    check("every gap is inside the band",
           all(crosspost.MIN_GAP_SECONDS <= g <= crosspost.MAX_GAP_SECONDS for g in gaps))
     check("the gap is stable for the same post (no flap on re-run)",
           crosspost._gap_for("tiktok:s7") == crosspost._gap_for("tiktok:s7"))

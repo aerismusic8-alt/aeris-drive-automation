@@ -26,6 +26,30 @@ feedback must keep arriving. `ax-rail-watchdog`, `ax-token-heartbeat`,
 Re-enable with `PUT /actions/workflows/<id>/enable` and
 `PATCH /automation/v1/<id> {"enabled": true}`.
 
+## Rework done under the hold (2026-11-13)
+
+K: "เอาทีมงานใหม่ไป ปรับงานทั้งหมดที่holdไว้แล้วค่อยปล่อย" — rework the held work,
+*then* release. The 2026-11-13 advisor panel (duck + pollinations, quorum PASS)
+named the fix the data did: the volume is the problem. So the rework is a set of
+**cuts**, each pinned by a test, not a new feature:
+
+| knob | was | now |
+|---|---|---|
+| `release.UPLOADS_PER_DAY` | 6 | 2 |
+| `release.SHORTS_PER_SONG` | 3 | 1 |
+| `release.AFFILIATE_RESERVE` | 2 | 1 |
+| `crosspost.MIN_GAP_SECONDS` | 2 h | 6 h |
+| `crosspost.DAILY_CAP` / `FACEBOOK_DAILY_CAP` | 12 | 4 |
+
+`ax-music-release.yml` default `count` 6→2, `spread` 4→8. Tests: the new
+`test_release_pilot_caps` plus the updated crosspost cadence test; the full suite
+is green. **Not** changed: the genre order in `produce_loop.THEMES` — K set
+pop/dance/rock himself, and the rock clip is 2 days old, too little exposure to
+overrule him. That one goes back to K, not to a code edit.
+
+The hold itself is still K's to lift. This section records that the held work has
+been reworked; it does not enable anything.
+
 ## What must not happen until K lifts the hold
 
 1. Do not enable any publishing automation.

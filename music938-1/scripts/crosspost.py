@@ -620,14 +620,23 @@ def pending(queue: list[dict], state: dict, platform: str | None) -> list[dict]:
 # 2-5 h band. A small jitter (up to +15 min) keeps the feed off an exact
 # metronome, which the burst analysis flagged as a tell, while still landing
 # "about every two hours".
-MIN_GAP_SECONDS = 2 * 60 * 60
-MAX_GAP_SECONDS = 2 * 60 * 60 + 15 * 60
+#
+# 2 h -> 6 h on 2026-11-13, when K ordered the held rails fixed before release.
+# The 2 h rhythm is a *volume* setting, and volume is what the measured result
+# indicted: posting 4-10 clips/day produced 60 Facebook views/28 d and 0 TikTok
+# likes, so ~12 posts/day per surface was flooding two surfaces that show no
+# audience. The 2026-11-13 advisor panel (duck + pollinations, quorum PASS) named
+# this first -- cap the pilot, stop clearing the backlog. The rhythm is still
+# steady; it is just slow enough to read a result before the next post.
+MIN_GAP_SECONDS = 6 * 60 * 60
+MAX_GAP_SECONDS = 6 * 60 * 60 + 15 * 60
 
-# A hard ceiling, not the pacing. At a 2 h gap a surface naturally posts ~11-12
-# times a day, so this sits just above that and only stops a retry storm or a
-# manual burst from emptying a whole day's queue at once.
-DAILY_CAP = 12
-FACEBOOK_DAILY_CAP = 12
+# A hard ceiling, not the pacing. At a 6 h gap a surface naturally posts ~4 times
+# a day, so this sits just above that and only stops a retry storm or a manual
+# burst from emptying a whole day's queue at once. Lowered 12 -> 4 with the gap
+# so the cap and the rhythm agree.
+DAILY_CAP = 4
+FACEBOOK_DAILY_CAP = 4
 
 # At most one *link* post a day. A link post is the format that reads as an ad,
 # so the rule is "never two links in a row, <=1 a day"; a photo or a Reel

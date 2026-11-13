@@ -41,10 +41,10 @@ on:
     inputs:
       count:
         description: "Videos to upload this run (cadence choice; videos.insert bucket is 100/day)"
-        default: "6"
+        default: "2"
       spread:
         description: "Hours between publishAt times"
-        default: "4"
+        default: "8"
 
 permissions:
   contents: write
@@ -123,8 +123,8 @@ jobs:
           # The driver reads AX_GH_TOKEN for the ledger write and the media
           # release; the job token can do both in this repo.
           AX_GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          AX_RELEASE_COUNT: ${{ github.event.inputs.count || '6' }}
-          AX_RELEASE_SPREAD: ${{ github.event.inputs.spread || '4' }}
+          AX_RELEASE_COUNT: ${{ github.event.inputs.count || '2' }}
+          AX_RELEASE_SPREAD: ${{ github.event.inputs.spread || '8' }}
           AX_RELEASE_CH: ch3
         run: |
           set -euo pipefail
