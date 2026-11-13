@@ -4447,6 +4447,17 @@ def test_metadata_ab_holds_format_fixed() -> None:
           not plan["treated"] and not plan["control"])
     check("the plan names the held-fixed variable", "held_fixed" in plan)
 
+    # The experiment loop must not open the confounded title test on its own.
+    loop_path = ROOT.parent / "aeris938-2" / "scripts" / "experiment_loop.py"
+    lspec = importlib.util.spec_from_file_location("experiment_loop", loop_path)
+    loop = importlib.util.module_from_spec(lspec)
+    lspec.loader.exec_module(loop)
+    picked = loop.pick("reach", [])
+    check("a not-yet-runnable candidate is skipped", picked["key"] != "search-intent-title")
+    check("the title test is gated on new un-hooked Shorts",
+          any(c.get("key") == "search-intent-title" and c.get("requires")
+              for c in loop.LIBRARY["reach"]))
+
 
 def test_login_check_reads_evidence() -> None:
     """check_login must not report a signed-in session from cookie presence.

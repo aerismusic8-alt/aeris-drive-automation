@@ -99,6 +99,14 @@ LIBRARY: dict[str, list[dict]] = {
             "peer": "คู่แข่งใช้ชื่อยาวแบบมีคำอารมณ์/โอกาสนำ",
             "metric": "วิวจาก Search + วิวต่อวิดีโอ",
             "guardrail": "อัตราคลิกจากหน้าแรก (ถ้าตกทั้งที่วิวขึ้น = ได้วิวผิดกลุ่ม)",
+            # WARNING (2026-11-13): do NOT run this as a before/after on the current
+            # clips. Title and format are confounded -- every Short already carries a
+            # hook and every plain-titled clip is a song, so the live data cannot
+            # separate them and there is no control arm. Use
+            # `aeris938-2/scripts/metadata_ab.py` once un-hooked Shorts exist; it
+            # holds the format fixed and reports an empty frame instead of running
+            # confounded.
+            "requires": "new Shorts whose title does not already carry a hook phrase",
         },
     ],
     "conversion": [
@@ -239,8 +247,15 @@ def active_experiment(rows: list[dict]) -> dict | None:
 
 
 def pick(constraint: str, rows: list[dict]) -> dict | None:
-    """The first library experiment for this constraint not already tried."""
+    """The first library experiment for this constraint not already tried.
+
+    A candidate carrying `requires` is not runnable yet (2026-11-13: the title test
+    needs Shorts that do not already carry a hook, or it measures the format). Skip
+    it rather than opening a test whose single variable is not actually single.
+    """
     for cand in LIBRARY.get(constraint, []):
+        if cand.get("requires"):
+            continue
         if not is_duplicate(cand, rows):
             return cand
     return None
