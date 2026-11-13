@@ -4493,6 +4493,46 @@ def test_studio_read_parses_analytics() -> None:
           d["returning"].get("regular") == 0.0)
 
 
+def test_login_vault_never_clobbers_a_live_surface() -> None:
+    """A restore must not overwrite a surface that is already signed in.
+
+    On 2026-11-13 a `login_vault restore` laid the older snapshot over a working
+    Studio login and turned it into the account chooser -- which the operator reads
+    as "it asked me to sign in again". The snapshot is provably incomplete (it
+    lacks the device-trust token), so a live surface must be left alone.
+    """
+    section("login vault restore guard")
+    import importlib.util
+    path = ROOT.parent / "ops" / "login_vault.py"
+    spec = importlib.util.spec_from_file_location("login_vault", path)
+    m = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(m)
+
+    cookies = [
+        {"domain": ".google.com", "name": "SID"},
+        {"domain": "accounts.google.com", "name": "LSID"},  # subdomain of live google
+        {"domain": ".facebook.com", "name": "c_user"},
+        {"domain": ".tiktok.com", "name": "sessionid"},
+    ]
+    restore_set, kept = m.split_live(cookies, [".google.com"])
+    check("the live surface's cookies are kept",
+          {c["name"] for c in kept} == {"SID", "LSID"})
+    check("other surfaces are restored",
+          {c["name"] for c in restore_set} == {"c_user", "sessionid"})
+    # With nothing live, everything is restored.
+    r2, k2 = m.split_live(cookies, [])
+    check("no live surface -> restore everything", len(r2) == 4 and not k2)
+    # --force is the only way to overwrite a live surface.
+    check("restore accepts a force override", "force" in i_args(m.restore))
+    check("google is proved by the account email, not a shared word",
+          m.PROBE[".google.com"] == ("https://myaccount.google.com/",))
+
+
+def i_args(fn) -> list[str]:
+    import inspect
+    return list(inspect.signature(fn).parameters)
+
+
 def test_login_check_reads_evidence() -> None:
     """check_login must decide from positive evidence, not from cookies or words.
 
@@ -5353,6 +5393,7 @@ def main() -> int:
     test_phone_login()
     test_story_reel()
     test_metadata_ab_holds_format_fixed()
+    test_login_vault_never_clobbers_a_live_surface()
     test_login_check_reads_evidence()
     test_studio_read_parses_analytics()
     test_heartbeat_repair_signal()

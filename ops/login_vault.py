@@ -38,6 +38,7 @@ import base64
 import gzip
 import json
 import os
+import re
 import sys
 from datetime import datetime, timezone
 from pathlib import Path
@@ -87,7 +88,10 @@ AUTH = {
 # "Log in" link, so "signed in" is proved by it being gone, not by a marker
 # appearing.
 PROBE = {
-    ".google.com": ("https://myaccount.google.com/", "บัญชี", "Account"),
+    # Google is proved by the account email, never by the word "บัญชี" — that word
+    # is on the signed-out chooser too, which is how a dead session read healthy
+    # (2026-11-13). The empty tuple means: use the email probe in _signed_in.
+    ".google.com": ("https://myaccount.google.com/",),
     # The signed-in shell renders "ค้นหาเพื่อน" / the owner's name; the
     # logged-out page renders neither. The marker set is deliberately generous
     # because Facebook's first paint varies, and a false "rejected" would send K
@@ -441,6 +445,13 @@ def _signed_in(ctx, domain: str) -> bool:
         body = pg.inner_text("body")
         if "เข้าสู่ระบบ" in body[:200] and "รหัสผ่าน" in body:
             return False
+        # Google has no reliable positive word: the signed-out chooser and the
+        # signed-in account page both contain "บัญชี". It does have a reliable
+        # positive *token* — the account email — and the chooser has none.
+        if domain == ".google.com":
+            if "accountchooser" in pg.url or "signin" in pg.url:
+                return False
+            return re.search(r"[\w.+-]+@[\w.-]+\.\w+", body) is not None
         # "!marker" means the page is signed in only when the marker is gone
         # (Flow Music keeps a "Log in" link on its landing page). Positive markers
         # are *alternatives* — any one proves sign-in (TikTok shows "Search" in
@@ -457,7 +468,23 @@ def _signed_in(ctx, domain: str) -> bool:
         pg.close()
 
 
-def restore(verify: bool = True) -> int:
+def split_live(cookies: list[dict], live_domains) -> tuple[list[dict], list[dict]]:
+    """(cookies to restore, cookies kept because their surface is live).
+
+    Pure, so the rule is testable: a cookie whose domain belongs to a live surface
+    is never restored, because overwriting a live session with an older snapshot is
+    what broke Studio on 2026-11-13.
+    """
+    live = {d.lstrip(".") for d in live_domains}
+
+    def belongs(cookie):
+        dom = (cookie.get("domain") or "").lstrip(".")
+        return any(dom == d or dom.endswith("." + d) for d in live)
+
+    return [c for c in cookies if not belongs(c)], [c for c in cookies if belongs(c)]
+
+
+def restore(verify: bool = True, force: bool = False) -> int:
     index = ax_vault.kv_get(ax_vault.ensure_anchor(), INDEX_KEY)
     if not index:
         raise SystemExit("no saved session; run `login_vault.py save` after signing in")
@@ -466,7 +493,20 @@ def restore(verify: bool = True) -> int:
     cookies = unpack(index, chunks)
     pw, br, ctx = _context()
     try:
-        ctx.add_cookies(cookies)
+        # A restore lays the snapshot's cookies over whatever the browser holds.
+        # Overwriting a *live* surface destroys it: the snapshot is older and can
+        # be stale or incomplete. On 2026-11-13 a restore turned a working Studio
+        # login into the account chooser, which reads to the operator as "it asked
+        # me to sign in again". So restore only the surfaces that are *not* live,
+        # and leave a live one untouched.
+        already = {d: _signed_in(ctx, d) for d in WATCH if d in PROBE} if verify else {}
+        live = [d for d, ok in already.items() if ok]
+        if live and not force:
+            cookies, kept = split_live(cookies, live)
+            print(f"already live: {sorted(live)} — keeping their {len(kept)} cookie(s), "
+                  f"restoring the other {len(cookies)}")
+        if cookies:
+            ctx.add_cookies(cookies)
         present = {c["domain"] for c in ctx.cookies()}
         auth = {
             d: any(c["domain"] == d and c["name"] == AUTH[d] for c in ctx.cookies())
@@ -531,11 +571,16 @@ def main() -> int:
                                  formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("command", choices=["save", "restore", "status", "heartbeat",
                                         "save-bookmarks", "restore-bookmarks"])
+    ap.add_argument("--force", action="store_true",
+                    help="restore: overwrite even a live session with the snapshot")
     a = ap.parse_args()
-    return {"save": save, "restore": restore, "status": status,
-            "heartbeat": heartbeat,
-            "save-bookmarks": save_bookmarks,
-            "restore-bookmarks": restore_bookmarks}[a.command]()
+    if a.command == "restore":
+        return restore(force=a.force)
+    if a.command == "save-bookmarks":
+        return save_bookmarks()
+    if a.command == "restore-bookmarks":
+        return restore_bookmarks()
+    return {"save": save, "status": status, "heartbeat": heartbeat}[a.command]()
 
 
 if __name__ == "__main__":
