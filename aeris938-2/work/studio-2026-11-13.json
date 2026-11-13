@@ -1,0 +1,29 @@
+{
+ "subscribers": 8,
+ "watch_hours_28d": 23.5,
+ "monthly_viewers": 813,
+ "discovery": {
+  "browse": 53.0,
+  "suggested": 33.0,
+  "channel_page": 7.0
+ },
+ "returning": {
+  "new": 99.0,
+  "casual": 0.0,
+  "regular": 0.0
+ },
+ "top_content_28d": [
+  {
+   "title": "รวมเพลงไทยเพื่อชีวิต 15 เพลง (เลือกเพลงฟังได้)",
+   "views": 268
+  },
+  {
+   "title": "สัญญาจากใจ | ร้องต่อไหม? #Shorts",
+   "views": 245
+  },
+  {
+   "title": "คิดถึงเธอทุกคืน (ท่อนที่ 2) #เพลงไทย #Shorts",
+   "views": 239
+  }
+ ]
+}

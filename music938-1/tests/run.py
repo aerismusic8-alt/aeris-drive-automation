@@ -4459,22 +4459,60 @@ def test_metadata_ab_holds_format_fixed() -> None:
               for c in loop.LIBRARY["reach"]))
 
 
-def test_login_check_reads_evidence() -> None:
-    """check_login must not report a signed-in session from cookie presence.
+def test_studio_read_parses_analytics() -> None:
+    """The Studio scrape must read what the Data API cannot expose.
 
-    A SID cookie can be present and expired. On 2026-11-13 check_login printed
-    SIGNED_IN while Studio and youtube.com both showed the account as "Signed
-    out", because it trusted the cookie set. The check must read what an
-    authenticated page actually does.
+    ch3's token scope is `youtube` only, so impressions/CTR/watch-hours/returning
+    come from Studio over the signed-in desktop (K, 2026-11-13). The parse is pure,
+    so it is tested against a real page dump rather than a mock.
+    """
+    section("Studio analytics reader")
+    import importlib.util
+    path = ROOT.parent / "ops" / "studio_read.py"
+    spec = importlib.util.spec_from_file_location("studio_read", path)
+    m = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(m)
+
+    check("Thai thousands normalise", m.to_number("3.5 พัน") == 3500.0)
+    check("plain integers pass through", m.to_number("268") == 268.0)
+    check("a signed delta loses its plus", m.to_number("+8") == 8.0)
+
+    dump = (
+        "ผู้ติดตามทั้งหมด\n8\nเวลาในการรับชม (ชั่วโมง)\n23.5\n"
+        "ผู้ชมรายเดือน\n813\n"
+        "วิธีที่ผู้ชมค้นพบเนื้อหาของคุณ\nฟีเจอร์การเรียกดู\n53%\n"
+        "วิดีโอแนะนำ\n33%\nหน้าช่อง\n7%\n"
+        "ผู้ชมใหม่\n99%\nผู้ชมทั่วไป\n0%\nผู้ชมขาประจำ\n0%\n")
+    d = m.parse(dump)
+    check("subscribers read", d["subscribers"] == 8)
+    check("watch-hours read", d["watch_hours_28d"] == 23.5)
+    check("monthly viewers read", d["monthly_viewers"] == 813)
+    check("browse is the top discovery source",
+          d["discovery"].get("browse") == 53.0)
+    check("returning viewers are exposed (the retention signal)",
+          d["returning"].get("regular") == 0.0)
+
+
+def test_login_check_reads_evidence() -> None:
+    """check_login must decide from positive evidence, not from cookies or words.
+
+    Two failures on 2026-11-13 shaped this. First it printed SIGNED_IN from cookie
+    presence while the session was dead (both accounts showed "Signed out").
+    Then, once K signed in, it printed SIGNED_OUT because the live account page
+    contains a "ลงชื่อเข้าใช้" link -- a word that appears in both states. The only
+    reliable signal is positive: the account email, or the YouTube avatar.
     """
     section("cloud-desktop login check")
     text = (ROOT.parent / ".agents" / "skills" / "ax-cloud-desktop" / "scripts"
             / "check_login.py").read_text()
-    check("loads a real Google account page",
-          "myaccount.google.com" in text or "session state" in text)
-    check("treats the sign-out words as evidence", "signed_out_markers" in text)
-    check("does not trust the cookie set alone",
-          "signed_in = \"SID\" in google and not bounced" in text)
+    check("reads the account email as evidence",
+          "re.search(r\"[\\w.+-]+@[\\w.-]+\\.\\w+\"" in text)
+    check("falls back to the YouTube avatar",
+          "ytd-topbar-menu-button-renderer" in text or "#avatar-btn" in text)
+    check("requires the email, not just a SID cookie",
+          "signed_in = \"SID\" in google and email is not None" in text)
+    check("no longer decides from words that both states share",
+          "signed_out_markers =" not in text and "bounced" not in text)
 
 
 def test_heartbeat_repair_signal() -> None:
@@ -5316,6 +5354,7 @@ def main() -> int:
     test_story_reel()
     test_metadata_ab_holds_format_fixed()
     test_login_check_reads_evidence()
+    test_studio_read_parses_analytics()
     test_heartbeat_repair_signal()
     test_consult_gate()
     test_produce_loop()
