@@ -1132,6 +1132,15 @@ def post(platform: str, limit: int, only: str | None = None) -> int:
         if not todo:
             print(f"nothing pending for {only}")
             return 0
+    api = api_poster(platform)
+    # A browser poster drives only the Reels composer, so on the browser path a
+    # photo/link item can never be published. Drop them *before* the limit is
+    # applied: with `--limit 1` a photo sitting at the head of the queue ate the
+    # one slot every hour, so Facebook posted nothing while 100+ videos waited
+    # behind it (FB 22/154 vs TikTok 31/121, 2026-11-13).
+    if api is None and platform == "facebook":
+        todo = [it for it in todo
+                if (it.get("kind") or "song") not in ("photo", "link")]
     todo = todo[:limit]
     if not todo:
         print("nothing pending")
@@ -1144,7 +1153,6 @@ def post(platform: str, limit: int, only: str | None = None) -> int:
         print(f"held back by cadence: {why}")
         return 1
     posted = 0
-    api = api_poster(platform)
     if platform in API_ONLY and api is None:
         # Park, do not fall back to the browser. This is the deliberate end of the
         # K loop: a missing Facebook token holds the queue quietly and prints the

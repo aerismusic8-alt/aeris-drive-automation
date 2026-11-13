@@ -2720,6 +2720,13 @@ def test_crosspost_engine() -> None:
     # photo/link item must be skipped there, not abort the run of videos.
     check("photo/link items are skipped on the browser path",
           'if api is None and kind in ("photo", "link")' in src)
+    # ... and dropped *before* the limit is applied. Otherwise a photo at the
+    # head of the queue eats the one slot (`--limit 1`) every hour and Facebook
+    # posts nothing while 100+ Reels wait behind it.
+    check("photo/link are dropped before the limit, not after",
+          'if api is None and platform == "facebook":' in src and
+          src.index('if api is None and platform == "facebook":') <
+          src.index("todo = todo[:limit]"))
     # A token that is present but rejected is still reported as an outage by the
     # probe, not hidden behind a green run — that is what let a dead Facebook
     # token pass unnoticed from 2026-11-08.
