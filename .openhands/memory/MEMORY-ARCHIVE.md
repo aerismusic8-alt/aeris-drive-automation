@@ -6212,3 +6212,10 @@ measurement `|| echo` hides exactly this.
   account/app level — only the owner restores it; (b) the browser cookie session
   dead — Facebook serves the logged-out page while still holding `c_user`/`xs`, so
   a cookie-presence check lies. Fix (b) with `ops/fb_relogin.py --push-secret`.
+
+## Real-instrument sound (K, 2026-11-09) — moved out of the index 2026-11-13
+K rejected the ffmpeg tone synth and GM SoundFont as "fake": use the **sfizz**
+sampler (`install-sfizz.sh`); `AX_REQUIRE_REAL_INSTRUMENTS=1` makes a GM fallback
+**raise**, never ship silently. CI rails cannot build sfizz, so beds are
+pre-rendered on the pod and pulled from `media-938` (`sampler1-*.wav`).
+Growth lanes for this: see the same date's daily log.
