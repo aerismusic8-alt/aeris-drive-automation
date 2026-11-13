@@ -6194,3 +6194,21 @@ pop/edm/synthpop/citypop/rnb in `ai_lyrics.GENRE_BRIEF`.
 guess) on a blank/stale newest row; `--assert-fresh` gates the dashboard rail;
 `experiment_loop` is INCONCLUSIVE on blind evidence and holds on `data`. A
 measurement `|| echo` hides exactly this.
+
+## 2026-11-13 — detail moved out of the MEMORY.md index
+
+- **Writes / push.** `GITHUB_TOKEN` in the sandbox is read-only (403 on every
+  push). The GitHub App key that used to live in `~/.config/aeris/` is gone (that
+  dir was on the ephemeral overlay; `ax_vault.py` excludes `.pem` by design).
+  Working route, verified 2026-11-13: read the durable vault KV key
+  `axsecrets:gh-workflow-token` — the value is a **dict** `{token, login,
+  scopes, note}`, login `aerismusic8-alt`, scopes `repo,workflow` — and push with
+  `https://x-access-token:<token>@github.com/OWNER/REPO.git`. The
+  `git -c http.extraheader="AUTHORIZATION: bearer <tok>"` form fails with
+  "invalid credentials" even though the same token answers the REST API with 200.
+  Pushed `6592a7e..1eb9cc1 main -> main`. `ax_vault.ensure_anchor()` raises
+  `SystemExit` (a BaseException), so a bare `except Exception` will not catch it.
+- **FB crosspost failure detail.** (a) the Graph Page token rejected at
+  account/app level — only the owner restores it; (b) the browser cookie session
+  dead — Facebook serves the logged-out page while still holding `c_user`/`xs`, so
+  a cookie-presence check lies. Fix (b) with `ops/fb_relogin.py --push-secret`.

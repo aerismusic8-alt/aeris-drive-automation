@@ -52,12 +52,12 @@ A post whose `reach≈2` is a repost of a Page clip — stop it.
   `ax-rail-watchdog` :15, `ax-music-dashboard` 08:30 UTC (ntfy
   `ax-ar-aeris-9f3k7q`). Judge loop health from the **rail run history** (API), not
   `data/heartbeat.json` — it was 9 days stale while the pod was fine.
-- **A dead browser session is the crosspost rail's top failure.** FB fails two
-  ways: the Graph Page token rejected at account level (owner-only fix), or the
-  cookie session dead (a `c_user`/`xs` presence check lies). Fix (b):
-  `python3 ops/fb_relogin.py --push-secret`. (Detail: archive.)
-- **Writes:** `GITHUB_TOKEN` is 403; the app token can't touch `.github/workflows/`
-  — push with the vault's `axsecrets:gh-workflow-token`. Detail: archive.
+- **A dead browser session is the crosspost rail's top failure** (FB serves the
+  logged-out page while still holding `c_user`/`xs`, so a cookie check lies).
+  Fix: `python3 ops/fb_relogin.py --push-secret`. Detail: archive.
+- **Writes:** `GITHUB_TOKEN` is 403. Push with the vault KV
+  `axsecrets:gh-workflow-token` (dict, `.token`) in the URL
+  `https://x-access-token:<tok>@github.com/...`. Detail: archive.
 - **Desktop view = Live View** (`work-2` host, port 12001; `bootstrap.py`
   `start_liveview`). The X screen does not repaint here, so noVNC is frozen.
 - **Thai text** lives only in `roblox/src/shared/Text.luau` (Roblox) and
