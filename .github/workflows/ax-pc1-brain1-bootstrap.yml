@@ -16,6 +16,23 @@ jobs:
         run: |
           if ($env:COMPUTERNAME -ne 'DESKTOP-RGK6JKB') { throw "EXPECTED_PC1:$env:COMPUTERNAME" }
           Write-Host "PC1=VERIFIED"
+
+      # The Brain1 tasks must be registered against the interactive user, but the
+      # runner executes as a service account. Report both identities up front so a
+      # cross-account registration denial is diagnosable instead of opaque.
+      - name: Report runner and interactive identity
+        shell: powershell
+        run: |
+          $runner = [System.Security.Principal.WindowsIdentity]::GetCurrent().Name
+          $interactive = (Get-CimInstance Win32_ComputerSystem).UserName
+          Write-Host "RUNNER_ACCOUNT=$runner"
+          Write-Host "INTERACTIVE_USER=$interactive"
+          if ([string]::IsNullOrWhiteSpace($interactive)) { throw "NO_INTERACTIVE_USER" }
+          if ($runner -ne $interactive) {
+            Write-Host "IDENTITY_SPLIT=YES cross-account task registration is required"
+          } else {
+            Write-Host "IDENTITY_SPLIT=NO"
+          }
       - name: Download Brain1 scripts
         shell: powershell
         run: |
