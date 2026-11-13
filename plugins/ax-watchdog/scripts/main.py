@@ -325,18 +325,44 @@ def main() -> int:
     except Exception as exc:  # noqa: BLE001
         problems.append(f"heartbeat error: {exc}")
 
-    # K-free audit: how many rails still need a human. Reported, never alerted —
-    # the avatar has no API and the song beds have no API, so "not all K-free" is
-    # the steady state, and alerting on it every hour would train K to ignore the
-    # watchdog. It is here so the number is visible and moves when a token lands.
+    # K-free audit: how many rails still need a human. Reported every hour, but
+    # alerting only on a *new* recurring dependency. "Not all K-free" is the
+    # steady state (the avatar and the song beds have no API), so alerting on it
+    # every hour would train K to ignore the watchdog. A *new* one is different:
+    # it means a rail that used to run itself now waits on K, which is a silent
+    # stop the run history cannot show. The baseline lives in the vault so the
+    # alert fires once per regression, not every hour.
     kfree = {}
+    new_blocked = []
     try:
         sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)),
                                         "..", "..", "..", "ops"))
         import k_free_status  # noqa: PLC0415
         kfree = k_free_status.audit()
+        blocked = sorted({(r["surface"], r["rail"]) for r in kfree.get("blocked", [])})
+        try:
+            import ax_vault  # noqa: PLC0415
+            raw = ax_vault.kv_get(ax_vault.ensure_anchor(),
+                                  k_free_status.BASELINE_KEY)
+            # `raw` truthy means a baseline exists (even the string "[]" for an
+            # empty set). With no baseline this run only records — alerting on
+            # the first observation would page K for the steady state.
+            prior = {tuple(x) for x in json.loads(raw)} if raw else set()
+            new_blocked = [f"{s} — {r}" for s, r in blocked
+                           if raw and (s, r) not in prior]
+        except BaseException:  # noqa: BLE001 — a missing vault must not kill the run
+            new_blocked = []
+        try:
+            import ax_vault  # noqa: PLC0415
+            ax_vault.kv_put(ax_vault.ensure_anchor(), k_free_status.BASELINE_KEY,
+                            json.dumps(blocked))
+        except BaseException:  # noqa: BLE001
+            pass
     except Exception as exc:  # noqa: BLE001
         kfree = {"error": str(exc)[:120]}
+
+    if new_blocked:
+        problems.append("k-free regression: " + ", ".join(new_blocked))
 
     now = datetime.now(timezone.utc)
     kv_set("latest", {"at": now.isoformat(timespec="seconds"),

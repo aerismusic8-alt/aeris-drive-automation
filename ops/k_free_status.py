@@ -175,13 +175,84 @@ def audit() -> dict:
     }
 
 
+BASELINE_KEY = "axsecrets:k-free-baseline"
+# One-time fixes that are already on K's list, so the watchdog does not fail
+# forever on a rail K has been told about but has not reached yet. Each is a
+# (surface, rail) pair. When one is closed, drop its line — the audit then
+# confirms it, which is the point of tracking it at all.
+KNOWN_ONE_TIME = {
+    ("youtube", "channel avatar"),
+    ("facebook", "Page Reels"),
+    ("tiktok", "Short posting"),
+    ("drive", "asset sync"),
+}
+
+
+def _baseline(rep: dict) -> int:
+    """Fail only on what this watchdog can act on, and record what it sees.
+
+    `--check` exits 1 while *any* rail needs K, which is the right target but a
+    useless watchdog signal: the four one-time fixes stay open until K acts, so
+    the rail would be red every day and the real regression — a *new* rail that
+    quietly acquired a K-dependency — would be lost in the noise. This compares
+    against the last recorded state instead:
+
+      * a **new** recurring K-dependency is a hard failure (the loop broke);
+      * a known one-time fix still open is reported, not failed;
+      * a known one-time fix that is *still* open but whose credential has
+        arrived is fine — that is the fix landing.
+
+    The state is written back to the vault so the next run has a baseline. In a
+    fresh pod the vault read fails and the first run only records; the second
+    run can compare. That is deliberate: an unreadable baseline must never be
+    mistaken for "no regression".
+    """
+    blocked = {(r["surface"], r["rail"]) for r in rep["blocked"]}
+    once = {(r["surface"], r["rail"]) for r in rep["one_time"]}
+
+    prior: set[tuple[str, str]] = set()
+    try:
+        import ax_vault
+        raw = ax_vault.kv_get(ax_vault.ensure_anchor(), BASELINE_KEY)
+        prior = {tuple(x) for x in json.loads(raw)} if raw else set()
+    except Exception:
+        prior = set()
+
+    new_blocked = sorted(blocked - prior)
+    unknown_once = sorted(once - KNOWN_ONE_TIME)
+
+    print(f"K-free {rep['k_free']}/{rep['total']} rails; "
+          f"blocked={sorted(blocked) or 'none'}; "
+          f"one-time open={sorted(once) or 'none'}")
+    if new_blocked:
+        print(f"REGRESSION: new recurring K-dependency {new_blocked}")
+    if unknown_once:
+        print(f"NOTE: one-time fix not on the known list {unknown_once} "
+              "(add it to KNOWN_ONE_TIME or close it)")
+
+    try:
+        import ax_vault
+        ax_vault.kv_put(ax_vault.ensure_anchor(), BASELINE_KEY,
+                        json.dumps(sorted(blocked)))
+    except Exception as exc:
+        print(f"baseline not recorded ({type(exc).__name__}); first run only")
+
+    return 1 if new_blocked else 0
+
+
 def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--json", action="store_true")
     ap.add_argument("--check", action="store_true",
                     help="exit 1 while any rail still needs K")
+    ap.add_argument("--baseline", action="store_true",
+                    help="fail only on a NEW K-dependency, or on a pre-existing "
+                         "one that a one-time fix should have closed (see below)")
     a = ap.parse_args()
     rep = audit()
+
+    if a.baseline:
+        return _baseline(rep)
 
     if a.json:
         print(json.dumps(rep, ensure_ascii=False, indent=2))

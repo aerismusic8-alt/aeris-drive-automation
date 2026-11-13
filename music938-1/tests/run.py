@@ -4968,6 +4968,25 @@ def test_k_free_status() -> None:
               [b["surface"] for b in rep1["revivable"]] == ["facebook"])
         check("--check still fails while TikTok needs K",
               rep1["k_free_all"] is False)
+
+        # The audit is only a watchdog if something *runs* it and alerts on a
+        # change. The hourly watchdog imports `audit()` and reports the number;
+        # it must also fail on a *new* recurring dependency, because that is a
+        # rail that silently stopped running itself and the run history cannot
+        # show it. `--baseline` compares against the vault so the steady state
+        # (the avatar, the song beds) never pages K.
+        src = (ROOT.parent / "ops" / "k_free_status.py").read_text()
+        check("k_free_status has a baseline mode",
+              "--baseline" in src and "def _baseline" in src)
+        check("the baseline compares against the vault, not a constant",
+              "BASELINE_KEY" in src and "kv_get" in src and "kv_put" in src)
+        wd = (ROOT.parent / "plugins" / "ax-watchdog" / "scripts" / "main.py").read_text()
+        check("the watchdog alerts on a new K-dependency",
+              "k-free regression" in wd and "new_blocked" in wd)
+        check("the watchdog does not alert before a baseline exists",
+              "if raw and (s, r) not in prior" in wd)
+        check("the watchdog survives a missing vault on the K-free path",
+              "k_free_status.BASELINE_KEY" in wd and "except BaseException" in wd)
     finally:
         kfs.get_secret = real
         kfs._vault_has = real_vault
