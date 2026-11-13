@@ -109,6 +109,17 @@ def connect(playwright):
     import tempfile
     from pathlib import Path
 
+    # Prefer the cloud desktop whenever one is actually up. It carries the
+    # interactive login (the operator signed in once via noVNC); the vault/secret
+    # blob is a *snapshot* for CI, and using it here would silently run on a
+    # headless browser that has no such login -- and, on a pod without Playwright's
+    # Chromium, crashes on a missing binary instead of doing the job. The desktop
+    # is the right tool when it is available; the blob is the fallback for CI.
+    if cdp_alive():
+        browser = playwright.chromium.connect_over_cdp(CDP_DEFAULT)
+        context = browser.contexts[0] if browser.contexts else browser.new_context()
+        return browser, context
+
     b64 = os.environ.get("AERIS_STORAGE_STATE_B64")
     path = os.environ.get("AERIS_STORAGE_STATE")
     if not (path and os.path.exists(path)):
@@ -138,14 +149,10 @@ def connect(playwright):
             storage_state=path, locale="th-TH",
             viewport={"width": 1280, "height": 900})
         return browser, context
-    if not cdp_alive():
-        raise RuntimeError(
-            "no cloud desktop found on " + CDP_DEFAULT +
-            "\n  start it with: aeris938-1/scripts/desktop.sh up"
-        )
-    browser = playwright.chromium.connect_over_cdp(CDP_DEFAULT)
-    context = browser.contexts[0] if browser.contexts else browser.new_context()
-    return browser, context
+    raise RuntimeError(
+        "no cloud desktop found on " + CDP_DEFAULT +
+        "\n  start it with: aeris938-1/scripts/desktop.sh up"
+    )
 
 
 def page_for(context, url: str, *, reuse_host: str | None = None):

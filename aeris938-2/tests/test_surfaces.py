@@ -21,6 +21,7 @@ import report  # noqa: E402
 import admin  # noqa: E402
 import goal_watch  # noqa: E402
 import evidence  # noqa: E402
+import follower_forecast as ff  # noqa: E402
 
 
 def test_exactly_four_surfaces():
@@ -604,6 +605,65 @@ def test_read_live_distinguishes_a_bug_from_a_quota():
             pass
     finally:
         yt_auth.all_upload_ids, yt_auth.get_videos = orig_ids, orig_get
+
+
+def test_follower_forecast_refuses_on_no_movement():
+    """A forecast from zero movement is a lie, so the tool must refuse it.
+
+    On 2026-11-13 every surface sat at 0-8 followers. A slope fitted to that is
+    noise; projecting a date to 1,000 would be inventing a number. The contract:
+    no net growth -> `too-new` with no days-to-gate, never a confident date.
+    """
+    from datetime import datetime, timedelta, timezone
+
+    now = datetime(2026, 11, 13, 12, 0, tzinfo=timezone.utc)
+    flat = [{"at": (now - timedelta(hours=h)).isoformat().replace("+00:00", "Z"),
+             "tk_followers": 0} for h in (48, 24, 1)]
+    pts = ff._points(flat, "tk_followers", 7, now)
+    proj = ff.project(pts, 1000, now)
+    assert proj["confidence"] == "too-new", proj
+    assert proj["days_to_gate"] is None, proj
+    assert proj["range_days"] is None, proj
+
+
+def test_follower_forecast_range_brackets_the_slope():
+    """A real series yields a range, and the likely value sits inside it.
+
+    A steady +10/day over a week must produce a positive pace and a range whose
+    middle element is the fitted projection — not a single point pretending to
+    be a certainty.
+    """
+    from datetime import datetime, timedelta, timezone
+
+    now = datetime(2026, 11, 13, 12, 0, tzinfo=timezone.utc)
+    rows = [{"at": (now - timedelta(days=d)).isoformat().replace("+00:00", "Z"),
+             "yt_subs": 100 + 10 * (7 - d)} for d in range(7)]
+    pts = ff._points(rows, "yt_subs", 7, now)
+    proj = ff.project(pts, 1000, now)
+    assert proj["confidence"] == "measured", proj
+    assert proj["pace_per_day"] and proj["pace_per_day"] > 0, proj
+    best, likely, worst = proj["range_days"]
+    assert best <= likely <= worst, proj
+
+
+def test_follower_forecast_ignores_null_readings():
+    """A null reading is 'not measured', never a drop to zero.
+
+    The dashboard can write a row while the desktop is down (every field null).
+    Reading that as 0 would invent a cliff and a bogus negative slope.
+    """
+    from datetime import datetime, timedelta, timezone
+
+    now = datetime(2026, 11, 13, 12, 0, tzinfo=timezone.utc)
+    rows = [
+        {"at": (now - timedelta(days=2)).isoformat().replace("+00:00", "Z"),
+         "fb_followers": 10},
+        {"at": (now - timedelta(days=1)).isoformat().replace("+00:00", "Z"),
+         "fb_followers": None},
+        {"at": now.isoformat().replace("+00:00", "Z"), "fb_followers": 20},
+    ]
+    pts = ff._points(rows, "fb_followers", 7, now)
+    assert [v for _, v in pts] == [10.0, 20.0], pts
 
 
 if __name__ == "__main__":
