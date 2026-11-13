@@ -76,8 +76,10 @@ def main() -> int:
                           f"back in as {EXPECTED_ACCOUNT}.")
                     return 3
                 return 0
-            print("RESULT=SIGNED_OUT — no account email and no YouTube avatar; the "
-                  "operator must sign in via noVNC")
+            print("RESULT=SIGNED_OUT — no account email and no YouTube avatar. First "
+                  "recover from the vault: python3 ops/login_vault.py restore "
+                  "(never ask K for a Google login — K's rule, 2026-11-13). Only if "
+                  "the vault cannot restore it is K needed.")
             return 1
     except Exception as exc:
         print(f"could not reach the desktop browser: {exc}", file=sys.stderr)

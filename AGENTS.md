@@ -286,6 +286,21 @@ A real track is registered in `library/music/` (`source: flowmusic-web`), and
 `make_story.py` prefers a library track over the synth bed. `compose.py` loops a short
 track with `-stream_loop -1`, so a 3-minute song fills a 5-minute episode.
 
+### Never ask K for a Google login again
+
+K's rule (2026-11-13): recover the session from the vault; asking K is the failure.
+A fresh context plus vault cookies **and** stored storage restores the account with no
+password (verified — the device-trust token lives in localStorage, so a cookie-only
+restore still makes Google ask).
+
+- On a fresh pod `bootstrap.py` already calls `restore_login()`; do not gate it on K.
+- If a surface reads signed out, run `ops/login_vault.py restore` and re-check.
+- **A `restore` must never overwrite a live surface.** Doing that on 2026-11-13 turned
+  a working Studio login into the password prompt, which cost K a re-login. `restore`
+  now keeps any live surface and replaces only the dead ones (`--force` overrides).
+- Judge sign-in by positive evidence (the account email / YouTube avatar), never by
+  cookie presence or by a word like "บัญชี" that both states show.
+
 ### The farm loop
 
 `Farm.luau` and `Axe.luau` are the "farm" half of the game. Farming is not a
