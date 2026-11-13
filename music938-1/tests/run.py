@@ -4909,13 +4909,12 @@ def test_k_free_status() -> None:
               and not by[("tiktok", "Short posting (fallback)")]["needs_k"])
         check("the Flow render is covered by the keyless synth bed",
               by[("music", "song beds (Flow render)")]["covered"])
-        check("the avatar is a one-time K action, not recurring",
-              by[("youtube", "channel avatar")]["one_time"]
-              and not by[("youtube", "channel avatar")]["needs_k"])
+        check("the avatar is no longer a K-dependency",
+              ("youtube", "channel avatar") not in by)
         check("with tokens present, nothing needs K again", rep["needs_k"] == 0)
         check("k_free_all means no recurring need", rep["k_free_all"] is True)
-        check("with every token present, only the avatar is a one-time action",
-              rep["needs_k_once"] == 1)
+        check("with every token present, nothing is left as a one-time action",
+              rep["needs_k_once"] == 0)
 
         # Nothing present: no *api* rail can claim K-free, but a keyless rail has
         # no credential to lose, so it stays K-free. With no tokens the browser
@@ -4932,7 +4931,7 @@ def test_k_free_status() -> None:
         check("with no tokens, an unprovisioned api rail is a one-time need",
               by0[("facebook", "Page Reels")]["one_time"])
         check("with no tokens, every api/oneshot rail is a one-time need",
-              rep0["needs_k_once"] == 6)
+              rep0["needs_k_once"] == 5)
         # Facebook is no longer API-only: with no token it falls back to the
         # signed-in browser, exactly like TikTok. Neither browser fallback is
         # K-free on its own (a snapshot can expire), and with no token neither
@@ -4974,7 +4973,7 @@ def test_k_free_status() -> None:
         # it must also fail on a *new* recurring dependency, because that is a
         # rail that silently stopped running itself and the run history cannot
         # show it. `--baseline` compares against the vault so the steady state
-        # (the avatar, the song beds) never pages K.
+        # (the song beds) never pages K.
         src = (ROOT.parent / "ops" / "k_free_status.py").read_text()
         check("k_free_status has a baseline mode",
               "--baseline" in src and "def _baseline" in src)

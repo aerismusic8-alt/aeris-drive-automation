@@ -58,9 +58,11 @@ RAILS: list[tuple[str, str, str, list[str], str, tuple[str, str] | None, str]] =
     ("youtube", "upload + banner", "api",
      ["YT_CH3_REFRESH_TOKEN"], "OAuth refresh token; re-minted by the token heartbeat",
      None, ""),
-    ("youtube", "channel avatar", "oneshot", [],
-     "no avatar API exists; one Studio click, then the vault keeps the session",
-     None, ""),
+    # The avatar used to be listed here as a one-time K action, because YouTube
+    # exposes no avatar API. That is no longer true: the avatar was set on
+    # 2026-11-13 by driving YouTube Studio over the signed-in cloud desktop, and
+    # the vault holds the Google password, so the agent can do it again without K
+    # (`ops/set_avatar_studio.py`). No K-dependency remains, so no row.
     ("facebook", "Page Reels", "api",
      ["FB_PAGE_TOKEN"], "Meta System User token: K provisions it once, then never. "
      "Preferred when live; the account-level block (2026-11-08) is what makes the "
@@ -181,7 +183,6 @@ BASELINE_KEY = "axsecrets:k-free-baseline"
 # (surface, rail) pair. When one is closed, drop its line — the audit then
 # confirms it, which is the point of tracking it at all.
 KNOWN_ONE_TIME = {
-    ("youtube", "channel avatar"),
     ("facebook", "Page Reels"),
     ("tiktok", "Short posting"),
     ("drive", "asset sync"),
