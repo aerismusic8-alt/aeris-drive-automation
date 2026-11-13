@@ -124,6 +124,24 @@ def _is_longform(item: dict) -> bool:
     return "M" in body or "H" in body
 
 
+def _lyric_for_title(title: str) -> str:
+    """The lyric block for a live video, matched by its Thai title.
+
+    An upload's title is `<TITLE> — <tagline>…`, so match on the song title
+    prefix and take the longest match: "รักที่มากกว่า" and "รักที่" are different
+    songs, and the shorter one would otherwise shadow the longer. Returns "" when
+    no lyric file matches, so a compilation or an outside upload is left alone.
+    """
+    import release
+    best, block = "", ""
+    for slug in release.all_slugs():
+        t = release.parse_lyrics(slug).get("TITLE", "")
+        if t and title.startswith(t) and len(t) > len(best):
+            best = t
+            block = release.lyric_block(slug)
+    return block if best else ""
+
+
 def main() -> int:
     apply = "--apply" in sys.argv
     # Cap how many videos this run rewrites. A write costs ~50 quota units, so
@@ -172,6 +190,14 @@ def main() -> int:
                 new = (desc.rstrip() + "\n" + block)[:MAX_DESC]
             if longform and new == desc:
                 new = (desc.rstrip() + monetize.commission_block())[:MAX_DESC]
+            # The lyric is the searchable body a song upload lacks (search was
+            # 0% of views, 2026-11-13). Add it once, only to long-form songs, and
+            # only when the title matches a lyric file — a compilation is left
+            # alone. The `📝 เนื้อเพลง` marker makes the check idempotent.
+            if longform and "📝 เนื้อเพลง" not in new:
+                ly = _lyric_for_title(sn["title"])
+                if ly:
+                    new = (new.rstrip() + f"\n\n📝 เนื้อเพลง\n\n{ly}")[:MAX_DESC]
             if new == desc:
                 skipped += 1
                 continue

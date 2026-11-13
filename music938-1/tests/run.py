@@ -2399,6 +2399,17 @@ def test_lyric_in_description() -> None:
     check("the description stays within YouTube's 5000-char limit",
           len(song_desc) <= 5000, str(len(song_desc)))
 
+    # The same lyric must reach the *live* uploads. `apply_monetize.py` backfills
+    # descriptions on the release rail; it matches a live video to its lyric by
+    # the Thai title prefix, and must leave a compilation alone.
+    import apply_monetize as am
+    check("a live song title matches its lyric",
+          len(am._lyric_for_title("หัวใจสีเทา — เพลงเศร้าอกหัก ฟังตอนดึก")) > 100)
+    check("a compilation title matches no lyric",
+          am._lyric_for_title("รวมเพลงไทย 24 เพลง") == "")
+    check("an unknown title matches no lyric",
+          am._lyric_for_title("เพลงที่ไม่รู้จัก") == "")
+
 
 def test_competitor_scanner_parsers() -> None:
     """The no-quota channel scanner must parse the numbers real pages carry.
