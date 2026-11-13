@@ -41,6 +41,11 @@ THB_PER_USD = 33.56
 # channel is not a place to stick an ad, it is the door to a revenue route.
 YT_GATE_SUBS = 1000          # YouTube Partner Program
 TT_GATE_FOLLOWERS = 1000     # TikTok Shop Affiliate (verified 2026-11-07)
+# YPP needs *both* 1,000 subs and 4,000 public watch-hours in 12 months. The
+# second half is the harder one and the Data API cannot read it, so it comes
+# from the Studio scrape (`ops/studio_read.py`). It is kept as a gate here so the
+# daily judge names it instead of reporting only the half it can see.
+YT_GATE_HOURS = 4000.0
 
 
 def _money(v):

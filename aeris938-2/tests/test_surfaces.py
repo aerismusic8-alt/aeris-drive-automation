@@ -185,17 +185,47 @@ def test_goal_watch_names_the_blocking_constraint():
     # Views flat → reach is the blocker, even though clicks are also zero.
     flat = [row("2026-11-01T00:00:00Z", **base),
             row("2026-11-07T00:00:00Z", **base)]
-    assert goal_watch.diagnose(flat, now=NOW)["constraint"] == "reach"
-    # Views growing but subs flat → conversion.
+    assert goal_watch.diagnose(flat, now=NOW, hours=0.0)["constraint"] == "reach"
+    # Views growing but subs flat → conversion. (hours=None: with the hour count
+    # unread, retention must not be claimable — only conversion is visible.)
     conv = [row("2026-11-01T00:00:00Z", **base),
             row("2026-11-07T00:00:00Z", **dict(base, yt_views=5000))]
-    assert goal_watch.diagnose(conv, now=NOW)["constraint"] == "conversion"
+    assert goal_watch.diagnose(conv, now=NOW, hours=None)["constraint"] == "conversion"
     # A commission beats everything.
     paid = [row("2026-11-01T00:00:00Z", **base),
             row("2026-11-07T00:00:00Z", **dict(base, sp_commission=120))]
-    assert goal_watch.diagnose(paid, now=NOW)["constraint"] == "income"
+    assert goal_watch.diagnose(paid, now=NOW, hours=0.0)["constraint"] == "income"
     # And the digest always renders, with no history at all.
-    assert "คอขวด" in goal_watch.render(goal_watch.diagnose([]))
+    assert "คอขวด" in goal_watch.render(goal_watch.diagnose([], hours=None))
+
+
+def test_goal_watch_sees_the_watch_hour_gate():
+    """YPP is two-sided (1,000 subs AND 4,000 watch-hours) and the Data API cannot
+    read watch-hours, so the sub count alone hides the harder half. When views
+    arrive but the watch-hour gate is further from opening than the sub gate, the
+    judge must name retention rather than report a healthy-looking sub count.
+
+    Measured 2026-11-13: 8 subs (0.8% of the sub gate) but 23.5 h (0.6% of the
+    hour gate) — the hour gate is the real blocker.
+    """
+    NOW = "2026-11-13T00:00:00Z"
+
+    def row(at, **kw):
+        return {"at": at, **kw}
+
+    base = dict(yt_subs=8, yt_views=2042, tk_followers=2, sp_commission=0,
+                sp_clicks=0)
+    grow = [row("2026-11-06T00:00:00Z", **base),
+            row("2026-11-13T00:00:00Z", **dict(base, yt_views=9000))]
+    d = goal_watch.diagnose(grow, now=NOW, hours=23.5)
+    assert d["constraint"] == "retention", d["constraint"]
+    assert d["watch_hours"] == 23.5
+    assert "ชั่วโมงดู" in goal_watch.render(d)
+    # The sub gate is further from opening than the hour gate → not retention.
+    d2 = goal_watch.diagnose(grow, now=NOW, hours=3000.0)
+    assert d2["constraint"] != "retention", d2["constraint"]
+    # An unread watch-hour count must not be invented as zero.
+    assert goal_watch.diagnose(grow, now=NOW, hours=None)["watch_hours"] is None
 
 
 def test_goal_watch_refuses_a_constraint_without_fresh_data():

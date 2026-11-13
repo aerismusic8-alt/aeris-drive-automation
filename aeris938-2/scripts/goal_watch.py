@@ -33,6 +33,26 @@ WATCH = surfaces.WORK / "goal-watch.md"
 WINDOW_DAYS = 7.0
 
 
+def studio_hours() -> float | None:
+    """The newest watch-hours reading from the Studio scrape, or None.
+
+    YPP needs 4,000 public watch-hours as well as 1,000 subs, and the Data API
+    does not expose watch-hours at all — only the signed-in Studio does
+    (`ops/studio_read.py`). Without this the daily judge reported the sub count
+    and stayed silent about the half that is actually further from opening
+    (23.5 h on 2026-11-13, 0.6% of the gate). None means "not read", never 0.
+    """
+    files = sorted(surfaces.WORK.glob("studio-*.json"))
+    if not files:
+        return None
+    try:
+        data = json.loads(files[-1].read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return None
+    v = data.get("watch_hours_28d")
+    return float(v) if isinstance(v, (int, float)) else None
+
+
 def load(path: Path | None = None) -> list[dict]:
     p = path or report.HISTORY
     if not p.exists():
@@ -106,7 +126,10 @@ def window_delta(rows: list[dict], key: str, days: float = WINDOW_DAYS):
     return latest_v - base[1], span
 
 
-def diagnose(rows: list[dict], now=None) -> dict:
+_UNSET = object()
+
+
+def diagnose(rows: list[dict], now=None, hours=_UNSET) -> dict:
     """Name the constraint blocking revenue, from the movement that is real.
 
     Order matters. Data first: if the newest reading is missing or stale we
@@ -122,6 +145,8 @@ def diagnose(rows: list[dict], now=None) -> dict:
     subs = latest.get("yt_subs")
     tkf = latest.get("tk_followers")
     comm = latest.get("sp_commission")
+    if hours is _UNSET:
+        hours = studio_hours()
     d_comm = window_delta(rows, "sp_commission")
     d_views = window_delta(rows, "yt_views")
     d_subs = window_delta(rows, "yt_subs")
@@ -140,14 +165,19 @@ def diagnose(rows: list[dict], now=None) -> dict:
             "constraint": constraint, "action": action, "gate": None,
             "data_health": health,
             "yt_subs": subs, "tk_followers": tkf, "commission": comm,
+            "watch_hours": hours,
             "d_views": d_views, "d_subs": d_subs, "d_tkf": d_tkf,
             "d_comm": d_comm, "d_clicks": d_clicks,
         }
 
-    # The gate that is furthest from open is the channel to push.
+    # The gate that is furthest from open is the channel to push. YouTube's gate
+    # is two-sided: whichever of subs/hours is further from opening is the real
+    # one, and the sub count alone hides the harder half.
     gates = {}
     if isinstance(subs, (int, float)):
-        gates["youtube"] = subs / report.YT_GATE_SUBS
+        gates["youtube_subs"] = subs / report.YT_GATE_SUBS
+    if isinstance(hours, (int, float)):
+        gates["youtube_hours"] = hours / report.YT_GATE_HOURS
     if isinstance(tkf, (int, float)):
         gates["tiktok"] = tkf / report.TT_GATE_FOLLOWERS
     gate = min(gates, key=gates.get) if gates else None
@@ -158,6 +188,15 @@ def diagnose(rows: list[dict], now=None) -> dict:
         constraint = "reach"
         action = ("reach ไม่ขยับ (ยอดดูไม่โต): คลิปไม่ถูกมองเห็น — "
                   "เปลี่ยนฟอร์แมต/hook และยืนยันว่าโพสต์ออกจริง")
+    elif isinstance(hours, (int, float)) and hours < report.YT_GATE_HOURS \
+            and (isinstance(subs, (int, float))
+                 and subs / report.YT_GATE_SUBS > hours / report.YT_GATE_HOURS):
+        # Views arrive but nobody stays long enough: the watch-hour gate is
+        # further from opening than the sub gate, and the API cannot see it.
+        constraint = "retention"
+        action = (f"มีคนดูแต่ดูสั้น (watch-hours {hours:g}/{report.YT_GATE_HOURS:g} ชม. "
+                  f"= {100.0 * hours / report.YT_GATE_HOURS:.1f}%) — "
+                  "ซับไปไวกว่าชั่วโมงดู: ทำเพลงยาว/อัลบั้มให้ดูต่อเนื่อง")
     elif d_subs is not None and d_views[0] > 0 and d_subs[0] == 0:
         constraint = "conversion"
         action = ("มี reach แต่ไม่มีคนติดตาม: hook/เหตุผลติดตามยังไม่พอ — "
@@ -176,6 +215,7 @@ def diagnose(rows: list[dict], now=None) -> dict:
         "gate": gate,
         "data_health": health,
         "yt_subs": subs, "tk_followers": tkf, "commission": comm,
+        "watch_hours": hours,
         "d_views": d_views, "d_subs": d_subs, "d_tkf": d_tkf,
         "d_comm": d_comm, "d_clicks": d_clicks,
     }
@@ -192,6 +232,10 @@ def render(d: dict) -> str:
 
     comm = d.get("commission")
     comm_s = f"฿{comm:,.2f}" if isinstance(comm, (int, float)) else "UNKNOWN"
+    hours = d.get("watch_hours")
+    hours_s = (f"{hours:g} / {report.YT_GATE_HOURS:g} ชม. "
+               f"= {100.0 * hours / report.YT_GATE_HOURS:.1f}%"
+               if isinstance(hours, (int, float)) else "ยังอ่านไม่ได้")
     lines = [
         "# เฝ้าเป้า $500 — AERIS Music",
         "",
@@ -199,6 +243,7 @@ def render(d: dict) -> str:
         "",
         f"- ค่าคอมสะสม: {comm_s} (เป้า ฿16,780)",
         f"- YouTube ซับ: {d.get('yt_subs')} / 1,000 — {fmt(d.get('d_subs'))}",
+        f"- YouTube ชั่วโมงดู: {hours_s}",
         f"- TikTok ผู้ติดตาม: {d.get('tk_followers')} / 1,000 — {fmt(d.get('d_tkf'))}",
         f"- ยอดดู YouTube: {fmt(d.get('d_views'))}",
         f"- คลิก Shopee: {fmt(d.get('d_clicks'))}",
