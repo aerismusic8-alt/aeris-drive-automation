@@ -96,6 +96,11 @@ music938-1/library/songs/clipmeta-*.json
 # Shorts, thumbnails and cover jpgs are regenerable renders; the durable copy
 # lives in the GitHub Release (see the 24h release mechanism).
 music938-1/library/shorts/*.mp4
+# The music-video rail (make_music_video.py): the finished video and the AI
+# scenes are large, and a scene is re-generatable from its prompt in seconds.
+# The scenes live under library/mv/, the video under library/musicvideo/.
+music938-1/library/musicvideo/*.mp4
+music938-1/library/mv/*.jpg
 music938-1/library/affiliate/*.mp4
 # The absurdist "exhibit" clips (K's FB/TK rebrand) are regenerable ffmpeg
 # renders over the covers we already own; the durable copy is the media release.

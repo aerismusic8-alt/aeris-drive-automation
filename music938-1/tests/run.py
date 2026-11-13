@@ -1118,6 +1118,58 @@ def test_motion_lane() -> None:
           make_motion.OUT_DIR.name == "motion")
 
 
+def test_music_video() -> None:
+    section("music video (many moving shots, cut on the beat)")
+    # K, 2026-11-13: "ทำภาพเหมือนดีเจคุมเครื่องเสียง แต่ไม่ค่อยมีทำมิวสิควีดีโอ ถ้าเราทำ
+    # ได้ น่าจะมีคนสนใจ" and "ภาพยนตร์ประกอบเพลง ถ้าเราทำความยาวเท่าเพลงก็ได้".
+    # The differentiator is a video, not one still with a fake zoom. The cut rate
+    # and the move set are the parts a future change could quietly break, so pin
+    # them here; the render itself needs ffmpeg + the free image backend and is
+    # exercised by hand, not in the suite.
+    import inspect
+    import make_music_video as mv
+
+    # A cut every two beats. A slow ballad must still change picture faster than
+    # a viewer's patience: at 68 bpm that is 1.76 s, well inside the 4 s ceiling.
+    check("68 bpm cuts about every 2 beats", abs(mv.shot_seconds(68) - 1.765) < 0.05,
+          f"{mv.shot_seconds(68):.3f}")
+    check("a slow song still cuts under 4 s", mv.shot_seconds(50) <= mv.SHOT_MAX,
+          f"{mv.shot_seconds(50):.3f}")
+    check("a fast song does not strobe", mv.shot_seconds(180) >= mv.SHOT_MIN,
+          f"{mv.shot_seconds(180):.3f}")
+
+    # Shots tile the song exactly: n * shot == length, so the audio and the cut
+    # both end together and the last shot is not a stub.
+    for length, bpm in ((232.2, 68.0), (30.0, 68.0), (12.0, 120.0)):
+        n, shot = mv.plan_shots(length, bpm)
+        check(f"shots tile {length:.0f}s exactly", abs(n * shot - length) < 1e-6,
+              f"{n}x{shot:.3f}")
+        check(f"{length:.0f}s has several shots", n >= 3, str(n))
+
+    # The whole point is movement, so there must be more than one camera move and
+    # every move must actually pan/zoom/tilt (a still filter would be the bug).
+    check("several distinct camera moves", len(mv.MOVES) >= 4, str(len(mv.MOVES)))
+    check("no two neighbours share a move",
+          all(mv.MOVE_ORDER[i] != mv.MOVE_ORDER[i + 1]
+              for i in range(len(mv.MOVE_ORDER) - 1)))
+    for name, frag in mv.MOVES.items():
+        check(f"move '{name}' actually moves the frame",
+              any(k in frag for k in ("zoompan", "min(t/", "*min(t")))
+
+    # Several AI scenes per song, so the video is not one image on a loop.
+    check("several AI scenes per song", len(mv.SCENE_PROMPTS) >= 3,
+          str(len(mv.SCENE_PROMPTS)))
+    # Rule #1: the free, key-less image route only.
+    src = inspect.getsource(mv)
+    code = "\n".join(ln for ln in src.splitlines()
+                     if not ln.lstrip().startswith("#"))
+    check("music video reuses the free Pollinations route",
+          "_fetch_pollinations" in code)
+    for bad in ("api_key", "Bearer ", "hf_token"):
+        check(f"music video never asks for a credential ({bad})",
+              bad.lower() not in code.lower())
+
+
 def test_follow_end_card() -> None:
     section("follow ask (the only on-screen follow prompt)")
     import make_short
@@ -4979,6 +5031,7 @@ def main() -> int:
     test_level_ordering()
     test_shorts()
     test_motion_lane()
+    test_music_video()
     test_follow_end_card()
     test_ambient_loop()
     test_soundfont_renderer()
