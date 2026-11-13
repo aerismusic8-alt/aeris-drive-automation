@@ -41,6 +41,7 @@ W, H = 1080, 1920
 FPS = 30
 MAX_SECONDS = 58.0        # under the 60s Shorts ceiling, with margin
 HOOK_PAD = 0.6            # a beat of lead-in so the hook does not start on frame 0
+ZOOM_MAX = 1.18           # the cover zoom ramp: 1.0 -> ZOOM_MAX across the clip
 
 # The opening card. Every platform's ranking leans hardest on the first two
 # seconds — a scroll is decided before the chorus lands — and the file used to
@@ -308,7 +309,7 @@ def render(slug: str, *, mix: str = "song", out_dir: Path | None = None,
     # slowly so the frame is not dead. This is the usual Shorts treatment and it
     # keeps the art intact on a phone. The ass filter is per-hook, so the chain is
     # assembled inside the loop.
-    def chain(ass: Path) -> str:
+    def chain(ass: Path, clip_seconds: float) -> str:
         # The cover is square, so a hard centre crop to 9:16 would slice its title
         # text off the sides and drop the captions on top of it. Instead: a
         # blurred, dimmed copy fills the frame, the whole cover sits in the upper
@@ -317,6 +318,13 @@ def render(slug: str, *, mix: str = "song", out_dir: Path | None = None,
         cw = int(W * 0.86)
         cy = int(H * 0.055)
         scrim = int(H * 0.52)
+        # Zoom off the output frame counter `on`, NOT `zoom+rate`: with `d=1`
+        # zoompan treats every input frame as its own still and resets the
+        # `zoom` accumulator each frame, so `zoom+0.0005` never accumulated and
+        # the "slow zoom" was in fact a dead frame (measured 0.005 mean abs
+        # frame diff vs 5.25 for the `on` ramp). Sized so the ramp spans the clip.
+        span = max(1.0, clip_seconds * FPS)
+        rate = (ZOOM_MAX - 1.0) / span
         return (
             f"[0:v]scale={W}:{H}:force_original_aspect_ratio=increase,crop={W}:{H},"
             f"gblur=sigma=32,eq=brightness=-0.06:saturation=1.05[bg];"
@@ -324,7 +332,7 @@ def render(slug: str, *, mix: str = "song", out_dir: Path | None = None,
             f"[bg][fg]overlay=(W-w)/2:{cy}[base];"
             f"[base]drawbox=x=0:y={scrim}:w={W}:h={H - scrim}:"
             f"color=black@0.38:t=fill[scrimd];"
-            f"[scrimd]zoompan=z='min(zoom+0.0005,1.12)':d=1:"
+            f"[scrimd]zoompan=z='min(1+{rate:.8f}*on,{ZOOM_MAX})':d=1:"
             f"x='iw/2-(iw/zoom/2)':y='ih/2-(ih/zoom/2)':s={W}x{H}:fps={FPS}[zp];"
             f"[zp]{ass_filter(ass)}[v]"
         )
@@ -339,7 +347,7 @@ def render(slug: str, *, mix: str = "song", out_dir: Path | None = None,
         out = out_dir / f"short-{mix}{suffix}-{slug}.mp4"
         args = ["-loop", "1", "-i", str(cover),
                 "-ss", f"{start:.3f}", "-i", str(audio),
-                "-filter_complex", chain(ass_path),
+                "-filter_complex", chain(ass_path, length),
                 "-map", "[v]", "-map", "1:a",
                 "-t", f"{length:.3f}",
                 "-c:v", "libx264", "-preset", "veryfast", "-crf", "20",

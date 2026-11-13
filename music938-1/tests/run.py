@@ -1065,6 +1065,24 @@ def test_shorts() -> None:
         finally:
             make_short.ROOT, make_short._duration = old_root, old_dur
 
+    # K, 2026-11-13: "งานคลิปไม่ได้เรื่อง". The cause was in the zoom filter. The
+    # chain wrote `zoompan=z='min(zoom+0.0005,1.12)':d=1`, but with `d=1` zoompan
+    # treats every input frame as its own still and resets the `zoom` accumulator
+    # each frame, so `zoom+rate` never accumulated and the "slow zoom" was a dead
+    # frame — measured 0.015 mean abs frame diff, i.e. the picture did not move.
+    # The zoom must therefore be driven off the output frame counter `on`, which
+    # does accumulate. This is a source check because the defect is invisible in
+    # any still and only shows as motion across frames.
+    import inspect
+    src = inspect.getsource(make_short)
+    # Check the executable code only: the comments deliberately quote the dead
+    # pattern to explain it, so stripping comments keeps the check honest.
+    code = "\n".join(ln for ln in src.splitlines()
+                     if not ln.lstrip().startswith("#"))
+    check("short zoom is driven off the frame counter, not a reset accumulator",
+          "*on" in code and "zoom+0.0005" not in code)
+    check("short zoom has a real target (>= 1.10)",
+          make_short.ZOOM_MAX >= 1.10, f"{make_short.ZOOM_MAX}")
 
 
 def test_follow_end_card() -> None:
