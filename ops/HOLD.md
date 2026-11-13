@@ -1,5 +1,14 @@
 # ⛔ WORK SUSPENDED — 2026-10-26, re-issued 2026-11-13
 
+> **STATUS 2026-11-13 (evening): HOLD LIFTED for the publishing rails.**
+> K: "K ปล่อยให้ ar บริหารเพจแบบเต็มรูปแบบเลย สามารถปรับปรุงแก้ไขทำอะไรได้หมด
+> อยากลบสร้างใหม่ก็ได้ ให้อำนาจเต็ม". AR now administers the channels outright and
+> may restructure them. Six rails are back on (release, compilation, crosspost,
+> admin, session-heal, dashboard); the five *render* rails stay off on purpose
+> until the backlog drains. See "Rework done under the hold" below for the pilot
+> numbers and the FB head-of-line fix. The sections under this box are the
+> historical record of the hold and how it was lifted.
+
 K (2026-11-13): "รอดูผลตอบรับเอามาวิเคราะห์และประเมิน คลิปที่ตั้งระบบอัตโนมัติไว้
 ให้ระงับทั้งหมดก่อนนะ" — hold the automated clips, watch the response, then judge.
 
