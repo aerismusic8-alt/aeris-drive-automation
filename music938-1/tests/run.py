@@ -1216,6 +1216,31 @@ def test_film_video() -> None:
           "brightness=0.03" in fv.section_grade("epic", 1.0)
           and "brightness=-0.03" in fv.section_grade("epic", 0.45))
 
+    # Orientation. Reels, Shorts and TikTok need a true 9:16 frame (K,
+    # 2026-11-13: "ต้องแนวตั้ง"), and the film is 4:3, so the picture must be
+    # fitted whole — never stretched (which bends faces) and never cropped to
+    # 9:16 (which cuts the actors out). The blurred-fill fit is what makes both
+    # true at once.
+    fv.set_canvas(True)
+    check("the vertical canvas is 1080x1920", (fv.W, fv.H) == (1080, 1920),
+          f"{fv.W}x{fv.H}")
+    vw, vh = fv._content_box()
+    check("the vertical content box keeps the film's 4:3 shape",
+          abs(vw / vh - 4 / 3) < 0.01 and vw <= fv.W and vh <= fv.H, f"{vw}x{vh}")
+    check("a vertical shot is smaller than the canvas, so a fill is required",
+          vh < fv.H, f"content {vh} of {fv.H}")
+    fv.set_canvas(False)
+    check("the landscape canvas is 1920x1080", (fv.W, fv.H) == (1920, 1080),
+          f"{fv.W}x{fv.H}")
+    lw, lh = fv._content_box()
+    check("the landscape content box keeps the 4:3 shape too",
+          abs(lw / lh - 4 / 3) < 0.01, f"{lw}x{lh}")
+    shot_src = inspect.getsource(fv.render_shot)
+    check("the fit preserves the aspect, so faces are never stretched",
+          "force_original_aspect_ratio=increase" in inspect.getsource(fv._move_chain))
+    check("the space around the film is filled by a blurred copy",
+          "boxblur" in shot_src and "overlay" in shot_src)
+
     # Rule #1: public-domain film over a free, key-less route, and the film's own
     # audio is dropped so no third-party score rides along to be claimed.
     src = inspect.getsource(fv)

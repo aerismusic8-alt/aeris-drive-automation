@@ -59,6 +59,17 @@ FILM_DIR = Path("/workspace/ax-tools/aeris938-state/film")
 
 W, H, FPS = 1920, 1080, 30
 
+# Reels/Shorts need a true 9:16 frame. `--vertical` swaps the canvas; every size
+# below is read at call time, so one module serves both orientations.
+VERTICAL = False
+
+
+def set_canvas(vertical: bool) -> None:
+    """Point W/H at the landscape or the vertical canvas for this render."""
+    global VERTICAL, W, H
+    VERTICAL = vertical
+    W, H = (1080, 1920) if vertical else (1920, 1080)
+
 # Public-domain films on the Internet Archive. `moods` is the point: a film is
 # cast like an actor, so the picture answers the lyric. `ident` is the item,
 # `file` the derivative to pull, `note` the credit for the description.
@@ -341,12 +352,6 @@ def footage_for_sections(samples: list[tuple[float, float, float]],
     return times
 
 
-def _shot_filter(move: str, frames: int, dur: float) -> str:
-    ow, oh = int(W * OVERSIZE), int(H * OVERSIZE)
-    return FILM_MOVES[move].format(w=W, h=H, ow=ow, oh=oh, n=frames,
-                                   d=f"{dur:.3f}", fps=FPS)
-
-
 def section_grade(mood: str, energy: float) -> str:
     """The mood look, lifted for the hook and held back for the verse.
 
@@ -363,17 +368,50 @@ def section_grade(mood: str, energy: float) -> str:
     return f"{base},{extra}"
 
 
+def _move_chain(move: str, cw: int, ch: int, frames: int, dur: float) -> str:
+    """Fit the source to a content box without distortion, then move inside it."""
+    ow, oh = int(cw * OVERSIZE), int(ch * OVERSIZE)
+    fit = (f"scale={ow}:{oh}:force_original_aspect_ratio=increase,"
+           f"crop={cw}:{ch}:x='(iw-{cw})/2':y='(ih-{ch})/2',")
+    return fit + FILM_MOVES[move].format(w=cw, h=ch, ow=ow, oh=oh, n=frames,
+                                         d=f"{dur:.3f}", fps=FPS)
+
+
+def _content_box() -> tuple[int, int]:
+    """The largest 4:3 rectangle that fits the canvas — the film's own shape.
+
+    Every film here is 4:3 (a 640x480 or 512x384 transfer). Stretching that to
+    the canvas distorts faces by a third, and cropping it to 9:16 throws away
+    more than half of each shot. So the film keeps its shape inside this box and
+    the space around it is filled by a blurred copy of the same frame.
+    """
+    return min(W, int(H * 4 / 3)), min(H, int(W * 3 / 4))
+
+
 def render_shot(film: Path, start: float, move: str, dur: float, out: Path,
                 grade: str, ffmpeg: str = "ffmpeg") -> None:
-    """Cut one graded, moving shot out of the film at 1080p landscape."""
+    """Cut one graded, moving shot, fitted to the canvas without distortion.
+
+    The film sits whole, centred, in a 4:3 band; a blurred, darkened copy of the
+    same frame fills the rest of the canvas. That is the standard Reels and Shorts
+    look and the only fit that neither stretches the picture nor crops the actors
+    out of it.
+    """
     frames = max(1, int(round(dur * FPS)))
-    vf = (_shot_filter(move, frames, dur)
-          + f",scale={W}:{H}:force_original_aspect_ratio=increase"
-          + f",crop={W}:{H},{grade},setsar=1,format=yuv420p")
+    cw, ch = _content_box()
+    fc = (
+        f"[0:v]split=2[bg][fg];"
+        f"[bg]scale={W}:{H}:force_original_aspect_ratio=increase,"
+        f"crop={W}:{H},boxblur=24:2,eq=brightness=-0.16:saturation=0.85[bgz];"
+        f"[fg]{_move_chain(move, cw, ch, frames, dur)},{grade}[fgs];"
+        f"[bgz][fgs]overlay=(W-{cw})/2:(H-{ch})/2:shortest=1,"
+        f"setsar=1,format=yuv420p[v]"
+    )
     subprocess.run(
         [ffmpeg, "-y", "-v", "error", "-ss", f"{start:.3f}", "-t", f"{dur:.3f}",
-         "-i", str(film), "-vf", vf, "-an", "-r", str(FPS),
-         "-c:v", "libx264", "-preset", "veryfast", "-crf", "20", str(out)],
+         "-i", str(film), "-filter_complex", fc, "-map", "[v]", "-an",
+         "-r", str(FPS), "-c:v", "libx264", "-preset", "veryfast", "-crf", "20",
+         str(out)],
         check=True)
 
 
@@ -398,7 +436,9 @@ def _cut_card(text: str, sub: str, out: Path) -> None:
 
 
 def build(slug: str, *, film_id: str | None = None, seconds: float | None = None,
-          full: bool = False, ffmpeg: str = "ffmpeg") -> dict:
+          full: bool = False, vertical: bool = False,
+          ffmpeg: str = "ffmpeg") -> dict:
+    set_canvas(vertical)
     song = SONGS / f"song-{slug}.mp3"
     if not song.exists():
         raise SystemExit(f"no song: {song}")
@@ -433,6 +473,8 @@ def build(slug: str, *, film_id: str | None = None, seconds: float | None = None
     # song share shot filenames, so two renders at once would overwrite each
     # other's frames and produce a corrupt file (moov atom not found).
     tag = "full" if full else "hook"
+    if vertical:
+        tag += "-vertical"
     work = WORK / f"{slug}-{tag}"
     work.mkdir(parents=True, exist_ok=True)
     shots: list[Path] = []
@@ -443,7 +485,8 @@ def build(slug: str, *, film_id: str | None = None, seconds: float | None = None
         shots.append(out)
 
     OUT_DIR.mkdir(parents=True, exist_ok=True)
-    out = OUT_DIR / (f"film-{slug}.mp4" if full else f"film-{slug}-hook.mp4")
+    stem = f"film-{slug}" + ("-vertical" if vertical else "")
+    out = OUT_DIR / (f"{stem}.mp4" if full else f"{stem}-hook.mp4")
 
     title = work / "card-title.png"
     endc = work / "card-end.png"
@@ -485,6 +528,7 @@ def build(slug: str, *, film_id: str | None = None, seconds: float | None = None
     return {"slug": slug, "path": str(out), "shots": len(shots),
             "seconds": round(length, 1), "bpm": bpm, "mood": mood,
             "film": film["title"], "credit": film["note"],
+            "vertical": vertical, "size": f"{W}x{H}",
             "sections": [s[0] for s in sections], "bytes": out.stat().st_size}
 
 
@@ -496,6 +540,8 @@ def main() -> int:
     ap.add_argument("--all", action="store_true")
     ap.add_argument("--full", action="store_true")
     ap.add_argument("--seconds", type=float)
+    ap.add_argument("--vertical", action="store_true",
+                    help="render a 1080x1920 frame for Reels/Shorts/TikTok")
     ap.add_argument("--list", action="store_true")
     args = ap.parse_args()
 
@@ -516,10 +562,12 @@ def main() -> int:
 
     for slug in slugs:
         try:
-            info = build(slug, film_id=args.film, seconds=args.seconds, full=args.full)
+            info = build(slug, film_id=args.film, seconds=args.seconds,
+                         full=args.full, vertical=args.vertical)
             print(f"{slug}: {info['path']} ({info['shots']} shots, "
-                  f"{info['seconds']}s, {info['bpm']:.0f} bpm, {info['mood']}, "
-                  f"{info['film']}, sections={'/'.join(info['sections'])})")
+                  f"{info['seconds']}s, {info['size']}, {info['bpm']:.0f} bpm, "
+                  f"{info['mood']}, {info['film']}, "
+                  f"sections={'/'.join(info['sections'])})")
         except Exception as e:  # noqa: BLE001
             print(f"{slug}: FAILED {type(e).__name__}: {e}", file=sys.stderr)
     return 0

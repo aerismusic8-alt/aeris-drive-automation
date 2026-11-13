@@ -1111,10 +1111,19 @@ def _publish_api(platform: str, it: dict, media, api) -> str | None:
             else f"https://www.tiktok.com/@aeris.music4/video/{vid}")
 
 
-def post(platform: str, limit: int) -> int:
+def post(platform: str, limit: int, only: str | None = None) -> int:
     state = load_state()
     queue = load_queue()
-    todo = pending(queue, state, platform)[:limit]
+    todo = pending(queue, state, platform)
+    if only:
+        # Post one named item out of order. The queue is a long rotation and the
+        # lead is a different format; when K asks for a specific song to go now,
+        # waiting a week behind the rotation is the wrong answer.
+        todo = [it for it in todo if it["id"] == only]
+        if not todo:
+            print(f"nothing pending for {only}")
+            return 0
+    todo = todo[:limit]
     if not todo:
         print("nothing pending")
         return 0
@@ -1338,6 +1347,7 @@ def main() -> int:
                          "empty queue from a blocked one")
     ap.add_argument("--platform", choices=sorted(PLATFORMS), default=None)
     ap.add_argument("--limit", type=int, default=1)
+    ap.add_argument("--only", help="post this queue item id out of order")
     ap.add_argument("--rebuild-queue", action="store_true")
     ap.add_argument("--merge-queue", action="store_true",
                     help="append newly rendered Shorts without dropping the backlog")
@@ -1406,7 +1416,7 @@ def main() -> int:
             print(f"  {it['id']}\n    {it['caption'].splitlines()[0]}")
         return 0
     if args.post:
-        return post(args.platform or "tiktok", args.limit)
+        return post(args.platform or "tiktok", args.limit, args.only)
     ap.error("choose --plan, --probe, --post or --status")
     return 2
 
