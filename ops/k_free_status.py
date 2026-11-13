@@ -90,7 +90,15 @@ RAILS: list[tuple[str, str, str, list[str], str, tuple[str, str] | None, str]] =
      "real-instrument SoundFont master via `flow_song --offline`; no login, no key",
      None, ""),
     ("drive", "asset sync", "api", ["GDRIVE_REFRESH_TOKEN"],
-     "OAuth refresh token", None, ""),
+     "OAuth refresh token", ("drive", "asset sync (browser)"), ""),
+    # The Drive API is disabled in the owning Cloud project, but the signed-in
+    # desktop reaches Drive fine (verified 2026-11-13: my-drive loaded, 1.5/15 GB
+    # used). The OAuth refresh token is only needed for *unattended* sync; the
+    # agent can move assets through the browser, so this is a covered fallback and
+    # not a K-dependency.
+    ("drive", "asset sync (browser)", "browser", [],
+     "signed-in desktop can reach Drive; only unattended sync needs the token",
+     None, "axsecrets:google-password"),
     ("vault", "login/state store", "api", ["OPENHANDS_API_KEY"],
      "the KV store 401s without it, which kills scripts", None, ""),
 ]

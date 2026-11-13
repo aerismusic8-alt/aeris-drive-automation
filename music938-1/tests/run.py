@@ -4933,24 +4933,25 @@ def test_k_free_status() -> None:
         check("with no tokens, every api/oneshot rail is a one-time need",
               rep0["needs_k_once"] == 5)
         # Facebook is no longer API-only: with no token it falls back to the
-        # signed-in browser, exactly like TikTok. Neither browser fallback is
-        # K-free on its own (a snapshot can expire), and with no token neither
-        # primary covers it. With no vaulted password, both are the honest
-        # recurring K-dependency.
+        # signed-in browser, exactly like TikTok and Drive. No browser fallback is
+        # K-free on its own (a snapshot can expire), and with no token no primary
+        # covers it. With no vaulted password, all three are the honest recurring
+        # K-dependency.
         check("facebook falls back to the browser, not a park",
               not by0[("facebook", "Page Reels")]["needs_k"]
               and by0[("facebook", "Reels (browser fallback)")]["needs_k"])
-        check("with no tokens and no vault, both browser fallbacks are recurring",
-              rep0["needs_k"] == 2 and rep0["k_free_all"] is False)
+        check("with no tokens and no vault, all three browser fallbacks recur",
+              rep0["needs_k"] == 3 and rep0["k_free_all"] is False)
         check("facebook is reported as a one-time setup, not a blocker",
               ("facebook", "Page Reels") not in
               {(b["surface"], b["rail"]) for b in rep0["blocked"]})
 
-        # The vault holds the Facebook password but not TikTok's: the agent
-        # revives Facebook itself (`ops/fb_relogin.py`), so only TikTok is left as
-        # a recurring K-dependency. This is the honesty the audit exists for — a
-        # revivable rail must not be reported as K-free (a checkpoint could still
-        # need a human), yet must stop being counted as recurring.
+        # The vault holds the Facebook password but not Google's: the agent
+        # revives Facebook itself (`ops/fb_relogin.py`), so TikTok's Short posting
+        # and Drive's asset sync stay as the recurring K-dependencies. This is the
+        # honesty the audit exists for — a revivable rail must not be reported as
+        # K-free (a checkpoint could still need a human), yet must stop being
+        # counted as recurring.
         kfs.get_secret = lambda name: ""
         kfs._vault_has = lambda key: key == "axsecrets:fb-password"
         rep1 = kfs.audit()
@@ -4960,9 +4961,9 @@ def test_k_free_status() -> None:
               fb["revivable"] and not fb["needs_k"] and not fb["k_free"])
         check("a revivable rail is still not counted as K-free",
               not fb["k_free"])
-        check("the revivable rail leaves only TikTok recurring",
-              rep1["needs_k"] == 1
-              and rep1["blocked"][0]["surface"] == "tiktok")
+        check("the revivable rail leaves TikTok and Drive recurring",
+              rep1["needs_k"] == 2
+              and {b["surface"] for b in rep1["blocked"]} == {"tiktok", "drive"})
         check("the revivable rail is reported in its own list",
               [b["surface"] for b in rep1["revivable"]] == ["facebook"])
         check("--check still fails while TikTok needs K",
