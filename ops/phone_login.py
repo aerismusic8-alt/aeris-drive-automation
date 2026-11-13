@@ -88,6 +88,20 @@ def novnc_url() -> str:
     return f"https://work-1-{rid}.prod-runtime.all-hands.dev/vnc.html?autoconnect=1&resize=remote"
 
 
+def liveview_url() -> str:
+    """The browser-tab live view, on the work-2 host.
+
+    Preferred over noVNC here: the X screen does not repaint on this sandbox, so
+    noVNC shows a frozen picture. The live view serves the tab from CDP, which
+    does repaint, and it carries taps and typing. Served by ops/live_view_server.py
+    on the same port as this page, so the port is inferred, not hard-coded.
+    """
+    rid = os.environ.get("RUNTIME_ID")
+    if not rid:
+        return "https://work-2-<work-host>/"
+    return f"https://work-2-{rid}.prod-runtime.all-hands.dev/"
+
+
 def cdp_alive() -> bool:
     try:
         urllib.request.urlopen(f"{CDP}/json/version", timeout=4).read()
@@ -289,6 +303,9 @@ PAGE = """<!doctype html><html lang="th"><head>
   .vnc {{ display:block; text-align:center; margin:0 18px 26px; padding:18px;
           background:#0f6b4f; color:#fff; border-radius:16px; text-decoration:none;
           font-size:19px; font-weight:700; }}
+  a.live {{ display:block; text-align:center; margin:6px 18px 14px; padding:22px 16px;
+            font-size:21px; font-weight:900; background:#6d4bff; color:#fff;
+            border-radius:18px; text-decoration:none; box-shadow:0 4px 0 #3d2a99; }}
   .note {{ color:#9c92ad; font-size:13px; padding:0 18px 30px; }}
   .tok {{ margin:6px 18px 20px; padding:16px; background:#1c2b22; border:1px solid #2f6b4d;
           border-radius:16px; }}
@@ -307,7 +324,8 @@ PAGE = """<!doctype html><html lang="th"><head>
            text-decoration:none; box-shadow:0 4px 0 #a97c00; }}
 </style></head><body>
 <header><h1>AERIS — เข้าสู่ระบบ</h1>
-<div class="sub">แตะปุ่ม = เปิดหน้านั้นในเครื่อง แล้วเข้า noVNC อัตโนมัติ</div></header>
+<div class="sub">แตะปุ่ม = เปิดหน้านั้นในเครื่อง แล้วดูผ่าน Live View อัตโนมัติ</div></header>
+<a class="live" href="{live}" target="_blank">👁 เปิด Live View (ดูจอเครื่อง — ใช้ตัวนี้)</a>
 <a class="big" href="/pass">🔑 พิมพ์รหัส Facebook (ครั้งเดียว)</a>
 <div class="acct">บัญชีที่ใช้บ่อย: <b>{account}</b><br><span style="font-size:13px;color:#b9aecb">
 อยากใช้บัญชีอื่น (เช่น <b>kongkeat.p3@gmail.com</b>) กดปุ่ม "สลับบัญชี Google" ล่างสุด
@@ -323,7 +341,7 @@ PAGE = """<!doctype html><html lang="th"><head>
     <button type="submit">ตรวจสอบ + ตั้งค่าให้เลย</button>
   </form>
 </div>
-<a class="vnc" href="{vnc}" target="_blank">เปิด noVNC (หน้าจอเครื่อง)</a>
+<a class="vnc" href="{vnc}" target="_blank">เปิด noVNC (สำรอง — จอรวมทั้งเครื่อง)</a>
 <div class="note">รหัส VNC: <b>{vncpass}</b><br>
 desktop: <b>{desktop}</b> · CDP: <b>{cdp}</b><br>
 ลิงก์นี้ตายเมื่อ pod recycle — เปิดใหม่ด้วย <code>bootstrap.py --url</code></div>
@@ -481,7 +499,8 @@ color:#fff;text-decoration:none;border-radius:14px;text-align:center;font-weight
             + '</a>'
             for k, (label, url, hint, acct) in SURFACES.items())
         html = PAGE.format(account=EXPECTED_ACCOUNT, buttons=buttons,
-                           vnc=novnc_url(), vncpass=vnc_password() or "(ไม่มีรหัส)",
+                           vnc=novnc_url(), live=liveview_url(),
+                           vncpass=vnc_password() or "(ไม่มีรหัส)",
                            desktop="up" if cdp_alive() else "down",
                            cdp="up" if cdp_alive() else "down").encode()
         return self._send(200, html, "text/html; charset=utf-8")

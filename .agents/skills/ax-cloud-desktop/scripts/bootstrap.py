@@ -32,9 +32,16 @@ VNC_PORT = 5900
 NOVNC_PORT = 12000
 CDP_PORT = 9222
 NOVNC_WEB = "/usr/share/novnc"
+# The browser-tab live view. It goes on 12001 (the work-2 host) because 12000
+# (work-1) is already websockify for noVNC, and because push-via-pc1.sh already
+# serves its bundle from 12001 — the live view's --serve-dir keeps that working.
+LIVEVIEW_PORT = 12001
+# phone_login's one-time Facebook token pages run here, on loopback only; the
+# live view proxies /pass, /fb-pass, /fb-type, /fb-grab and /fb-token to it.
+PHONE_PORT = 12002
 
 APT_PACKAGES = ["xvfb", "openbox", "x11vnc", "websockify", "novnc"]
-PIP_PACKAGES = ["playwright", "websocket-client"]
+PIP_PACKAGES = ["playwright", "websocket-client", "aiohttp"]
 
 
 def sh(cmd: list[str], **kw) -> subprocess.CompletedProcess:
@@ -64,7 +71,8 @@ def install() -> None:
         sudo(["apt-get", "update", "-qq"])
         sudo(["apt-get", "install", "-y", "-qq", *APT_PACKAGES])
     need_pip = []
-    for mod, pkg in (("playwright", "playwright"), ("websocket", "websocket-client")):
+    for mod, pkg in (("playwright", "playwright"), ("websocket", "websocket-client"),
+                     ("aiohttp", "aiohttp")):
         try:
             __import__(mod)
         except ImportError:
@@ -231,12 +239,66 @@ def start() -> None:
         print("[+] chromium (CDP", CDP_PORT, ")")
 
 
+def start_liveview() -> None:
+    """Serve the browser tab as a live page, on top of the desktop.
+
+    This is the view K actually uses. noVNC ships the whole X screen, but the X
+    screen does not repaint on this sandbox (scrot is byte-identical across
+    seconds while the browser is active), so noVNC shows a frozen picture. This
+    serves the *tab* instead, straight from CDP, which does repaint: ~85 ms and
+    ~12 fps measured. It also carries taps and typing, so K can sign in and the
+    agent can watch, which is what the desktop was for.
+
+    `--serve-dir /tmp/serve` keeps the old 12001 job alive: push-via-pc1.sh
+    fetches its bundle from there, and that route needs no other change.
+    """
+    script = REPO / "ops" / "live_view_server.py"
+    if not script.exists():
+        print("[=] live view not started: ops/live_view_server.py missing")
+        return
+    if up(f"live_view_server.py.*{LIVEVIEW_PORT}"):
+        return
+    # A plain http.server may already hold 12001; it serves /tmp/serve and nothing
+    # else, so replacing it is safe (the bundle stays reachable through us).
+    if up(f"http.server {LIVEVIEW_PORT}"):
+        sh(["pkill", "-f", f"http.server {LIVEVIEW_PORT}"])
+        time.sleep(1)
+    serve_dir = Path("/tmp/serve")
+    serve_dir.mkdir(parents=True, exist_ok=True)
+    spawn([sys.executable, "-u", str(script),
+           "--port", str(LIVEVIEW_PORT), "--serve-dir", str(serve_dir)],
+          STATE / "logs" / "liveview.log")
+    time.sleep(3)
+    print("[+] live view", LIVEVIEW_PORT, "-> browser tab")
+    start_phone_login()
+
+
+def start_phone_login() -> None:
+    """Run the one-time Facebook token pages on an internal port.
+
+    Only 12001 is reachable from outside, and the live view owns it. The token
+    pages (password form, token form, grab-from-desktop) are proxied through the
+    live view, so they keep working without a second public port.
+    """
+    script = REPO / "ops" / "phone_login.py"
+    if not script.exists():
+        return
+    if up(f"phone_login.py.*{PHONE_PORT}"):
+        return
+    spawn([sys.executable, "-u", str(script), "--port", str(PHONE_PORT),
+           "--host", "127.0.0.1"], STATE / "logs" / "phone_login.log")
+    time.sleep(2)
+    print("[+] phone login pages on", PHONE_PORT, "(proxied via the live view)")
+
+
 def status() -> int:
     ok = True
     for pattern, label in ((f"Xvfb {DISPLAY}", "Xvfb"), ("openbox", "openbox"),
                            (f"x11vnc -display {DISPLAY}", "x11vnc"),
                            (f"websockify.*{NOVNC_PORT}", "websockify"),
-                           (f"remote-debugging-port={CDP_PORT}", "chromium")):
+                           (f"remote-debugging-port={CDP_PORT}", "chromium"),
+                           (f"live_view_server.py.*{LIVEVIEW_PORT}", "live view"),
+                           (f"phone_login.py.*{PHONE_PORT}", "phone login")):
         alive = up(pattern)
         ok = ok and alive
         print(f"{'UP  ' if alive else 'DOWN'} {label}")
@@ -394,6 +456,19 @@ def operator_url() -> str | None:
     return f"https://work-1-{rid}.prod-runtime.all-hands.dev/vnc.html?autoconnect=1&resize=remote"
 
 
+def liveview_url() -> str | None:
+    """The browser-tab live view URL, on the work-2 host.
+
+    This is the one to hand K: noVNC's X screen does not repaint here, so the
+    frozen picture K sees is this view's problem to solve, not noVNC's. Same
+    RUNTIME_ID trick as `operator_url`, different work host and no query string.
+    """
+    rid = os.environ.get("RUNTIME_ID")
+    if not rid:
+        return None
+    return f"https://work-2-{rid}.prod-runtime.all-hands.dev/"
+
+
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument("--status", action="store_true", help="report only")
@@ -415,13 +490,17 @@ def main() -> int:
     # rewrites Preferences on exit, so setting it against a running browser is lost.
     show_bookmark_bar()
     start()
+    start_liveview()
     restore_login()
     restore_bookmarks()
     if args.heal:
         _heal_sessions()
     print()
     rc = status()
-    print("\noperator URL (sign in here, inside the desktop):")
+    print("\nlive view (browser tab — use this one; the X screen does not repaint here):")
+    lv = liveview_url()
+    print("  " + (lv or "https://work-2-<work-host>/"))
+    print("\nnoVNC (whole X desktop; shows a frozen picture on this sandbox):")
     url = operator_url()
     print("  " + (url or "https://work-1-<work-host>/vnc.html?autoconnect=1&resize=scale"))
     if (STATE / "vnc.pass.txt").exists():

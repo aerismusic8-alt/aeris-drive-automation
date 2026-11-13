@@ -251,10 +251,17 @@ Three facts that cost real time and will bite again:
   403 and Playwright cannot attach, even though the browser is running.
 - **`vnc.html` returns 200 even when the VNC backend is dead** — it is a static page.
   Run `bootstrap.py --status`, not a curl, to know whether the desktop is up.
+- **The X screen does not repaint on this sandbox**, so noVNC shows a frozen picture
+  even with every process up (`scrot` of `:99` is byte-identical across seconds). The
+  view to use is the **live view**, which serves the browser *tab* from CDP on 12001:
+  `https://work-2-<work-host>/`. `bootstrap.py` starts it (`start_liveview`) together
+  with the phone pages (`start_phone_login`, proxied through it).
 
-The operator signs in via
-`https://work-1-<work-host>/vnc.html?autoconnect=1&resize=scale` (the `work-1-...` host
-from the session's work_hosts, never `hostname`). Sending a `flowmusic.app/session/<id>`
+The operator signs in via the live view —
+`https://work-2-<work-host>/` (the `work-2-...` host from the session's work_hosts,
+never `hostname`). noVNC
+(`https://work-1-<work-host>/vnc.html?autoconnect=1&resize=remote`) still exists as a
+fallback but shows the frozen X screen. Sending a `flowmusic.app/session/<id>`
 link does not help: that is an in-app route, not a credential, and without the cookie it
 redirects to the landing page.
 

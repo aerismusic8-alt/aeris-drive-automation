@@ -4331,6 +4331,42 @@ def test_phone_login() -> None:
     # not have to copy a long string out of noVNC into a phone form.
     check("can grab the token off the desktop", "/fb-grab" in src
           and "grab_fb_token" in src and "connect_over_cdp" in src)
+    # noVNC ships the whole X screen, but the X screen does not repaint on this
+    # sandbox (scrot is byte-identical across seconds while the browser is
+    # active), so K saw a frozen picture. The live view serves the browser *tab*
+    # from CDP instead, which does repaint, and carries taps and typing.
+    check("offers the browser-tab live view", "liveview_url()" in src
+          and 'class="live"' in src)
+    check("live view is on the work-2 host", "{rid}.prod-runtime" in src
+          and "work-2-" in src)
+    check("keeps noVNC as a labelled fallback", "สำรอง" in src)
+    # The server is what makes the URL real; a page pointing at a script that is
+    # not there is worse than no button.
+    lv = (ROOT.parent / "ops" / "live_view_server.py").read_text()
+    check("serves the tab over MJPEG", "/mjpeg" in lv
+          and "multipart/x-mixed-replace" in lv)
+    check("takes input as well as pixels", 'add_post("/input"' in lv
+          and "click_norm" in lv)
+    # startScreencast yields one frame and stalls on this Chromium build; the
+    # working transport is captureScreenshot. The server must ask for the fresh
+    # capture path (watch(..., screencast=False)), not the stalled push.
+    check("captures frames instead of screencast", "captureScreenshot" in lv
+          and "VIEW.watch, body.get(\"id\"), False" in lv)
+    # Only 12001 is reachable from outside, so phone_login's one-time Facebook
+    # token pages run on a loopback port and are proxied through the live view
+    # rather than duplicated. The surface shortcuts replace the rest of its job.
+    check("proxies the Facebook token pages", "PHONE_PATHS" in lv
+          and "async def phone_proxy" in lv and "PHONE_PORT" in lv)
+    check("offers the surface shortcuts itself", "async def surfaces" in lv
+          and "async def open_url" in lv and "/surfaces" in lv)
+    check("reuses a surface tab instead of stacking",
+          "def _activate" in (ROOT.parent / "ops" / "live_view.py").read_text())
+    check("bootstrap brings the live view up",
+          "def start_liveview" in (ROOT.parent / ".agents/skills/ax-cloud-desktop"
+                                   / "scripts" / "bootstrap.py").read_text())
+    check("bootstrap starts the phone pages too",
+          "def start_phone_login" in (ROOT.parent / ".agents/skills/ax-cloud-desktop"
+                                      / "scripts" / "bootstrap.py").read_text())
 
 
 def test_heartbeat_repair_signal() -> None:

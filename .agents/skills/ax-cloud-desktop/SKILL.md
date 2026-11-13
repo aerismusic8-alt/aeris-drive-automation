@@ -38,6 +38,11 @@ see, believe what you see and update this file.
    Without it every Playwright call fails and it looks like the browser is broken.
 3. **`vnc.html` answers `200` even when the VNC backend is dead** — it is a static file.
    Never use the HTTP code as proof the desktop is up. Run `status`.
+4. **The X screen does not repaint on this sandbox.** `scrot` of `:99` is
+   byte-identical across seconds while the browser is active, so **noVNC shows a
+   frozen picture** even though every process is up. This is why the desktop
+   "looks dead". It is not the VNC transport — it is the renderer. Use the live
+   view below, which does not ship the X screen at all.
 
 ## Bring it up
 
@@ -57,6 +62,34 @@ The pieces, and what each one is for:
 | `x11vnc :5900` | exports the screen |
 | `websockify :12000` | bridges VNC to the browser so a phone can reach it |
 | `chromium --remote-debugging-port=9222` | the browser the agent drives |
+| `live_view_server.py :12001` | serves the **browser tab** as a live page with input |
+
+## Live view — the view to use (2026-11-13)
+
+`ops/live_view_server.py` serves the browser tab straight from CDP, not the X
+screen. It is the answer to "noVNC is frozen": measured **~85 ms latency, ~12 fps,
+~77 KB/frame** at quality 50, and it carries taps and typing.
+
+```bash
+python3 ops/live_view_server.py --port 12001 --serve-dir /tmp/serve
+```
+
+`bootstrap.py` starts it for you (step `start_liveview`). Endpoints: `/` (page),
+`/mjpeg` (multipart JPEG the `<img>` shows), `/frame` (one JPEG), `/tabs`,
+`/health`, `POST /watch`, `POST /input`.
+
+Facts that cost time and will bite again:
+
+- **`Page.startScreencast` is unusable here.** It yields exactly one frame and
+  stalls — on the main browser *and* a second Chromium launched `--disable-gpu`.
+  Use `Page.captureScreenshot` (`live_view.capture()`), which is live.
+- **Never call `recv()` on one CDP websocket from two threads.** A background
+  reader plus a request waiter deadlocked the server: `/frame` worked, the
+  WebSocket never delivered. The transport is synchronous, one call at a time.
+- **MJPEG over plain HTTP, not a binary WebSocket.** An `<img>` renders it with no
+  client code and it survives a stall.
+- `--serve-dir` keeps 12001's old job: `push-via-pc1.sh` fetches its bundle from
+  there. Without it, that route breaks.
 
 Packages are **not in the repo** and vanish on recycle:
 `sudo apt-get install -y xvfb openbox x11vnc websockify novnc` plus
@@ -64,35 +97,36 @@ Packages are **not in the repo** and vanish on recycle:
 
 ## The operator signs in — the agent never does
 
-Give K this, with the VNC password from `.../aeris938-state/vnc.pass.txt`:
+**Hand K the live view first:**
 
 ```
-https://work-1-<work-host>/vnc.html?autoconnect=1&resize=remote
+https://work-2-<work-host>/
 ```
 
-`<work-host>` is the **`work-1-...` host from the session's work_hosts block**, not
-`hostname` (that returns the k8s pod name and answers 404). `bootstrap.py` now
-builds the whole URL from `RUNTIME_ID` and prints it — use that instead of
-pasting the host by hand:
+`<work-host>` is the **`work-2-...` host from the session's work_hosts block**, not
+`hostname`. `bootstrap.py` builds it from `RUNTIME_ID` and prints it; use that:
 
 ```
-python3 .agents/skills/ax-cloud-desktop/scripts/bootstrap.py --url
+python3 .agents/skills/ax-cloud-desktop/scripts/bootstrap.py
 ```
+
+noVNC (`https://work-1-<work-host>/vnc.html?autoconnect=1&resize=remote`, password
+in `.../aeris938-state/vnc.pass.txt`) still works as a fallback, but on this sandbox
+it shows a frozen picture — see fact 4 above. Reach for it only if the live view is
+down.
 
 ### Signing in from a phone (the easy way)
 
-noVNC on a phone used to mean a 1600x900 desktop shrunk to fit: the address bar
-was a few pixels tall and the URL had to be typed by hand. Two things fix it.
+`ops/phone_login.py` serves one page of large buttons on port 12001; open it from
+the phone at `https://work-2-<work-host>/`. A tap opens that surface in the desktop
+over CDP and then hands the phone to the **live view** already showing it, so the
+only thing left to do is sign in (the password manager fills it). Health at
+`/health`. The page never collects a password.
 
-- **`resize=remote`, not `resize=scale`.** `start()` runs x11vnc with `-xrandr`
-  and `operator_url()` asks for `resize=remote`, so the desktop takes the phone's
-  shape and the text is native size. Do not switch it back to `scale`.
-- **`ops/phone_login.py` removes the typing.** It serves one page of large
-  buttons on port 12001; open it from the phone at
-  `https://work-2-<work-host>/`. A tap opens that surface in the desktop over CDP
-  and drops the phone into noVNC already showing it, so the only thing left to do
-  is sign in (the password manager fills it). `--status`-style health at
-  `/health`. The page never collects a password.
+If the live view is down it falls back to noVNC. noVNC on a phone used to mean a
+1600x900 desktop shrunk to fit, with an address bar a few pixels tall; `resize=remote`
+(not `resize=scale`) fixes the sizing, which needs x11vnc `-xrandr` — `start()`
+passes it. Do not switch it back to `scale`.
 
 Google's **device-code** login is *not* a substitute: it mints an OAuth token,
 not the browser cookie session Flow Music / TikTok / Shopee need.

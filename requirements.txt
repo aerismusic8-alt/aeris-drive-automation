@@ -24,6 +24,7 @@ imageio-ffmpeg
 fonttools
 playwright
 websocket-client
+aiohttp              # live view server (ops/live_view_server.py) - the desktop view
 gradio_client        # free image-to-video Spaces - music938-1/scripts/make_motion.py
 
 # --- rails / secrets / signing ---

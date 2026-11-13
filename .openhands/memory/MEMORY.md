@@ -56,10 +56,10 @@ A post whose `reach≈2` is a repost of a Page clip — stop it.
   ways: the Graph Page token rejected at account level (owner-only fix), or the
   cookie session dead (a `c_user`/`xs` presence check lies). Fix (b):
   `python3 ops/fb_relogin.py --push-secret`. (Detail: archive.)
-- **Writes:** the app token can't touch `.github/workflows/` (no `workflow`
-  scope) — read `axsecrets:gh-workflow-token` from the vault (name
-  `OPENHANDS_API_KEY` in the command) and push with it; `GITHUB_TOKEN` is 403.
-  (`ax_vault.ensure_anchor()` raises `SystemExit`, a BaseException — see archive.)
+- **Writes:** `GITHUB_TOKEN` is 403; the app token can't touch `.github/workflows/`
+  — push with the vault's `axsecrets:gh-workflow-token`. Detail: archive.
+- **Desktop view = Live View** (`work-2` host, port 12001; `bootstrap.py`
+  `start_liveview`). The X screen does not repaint here, so noVNC is frozen.
 - **Thai text** lives only in `roblox/src/shared/Text.luau` (Roblox) and
   `music938-1/fonts/NotoSansThai.ttf` (video); without `fonts-thai-tlwg` the SVG
   renderer makes tofu silently. Burned ASS text has no emoji glyph — use `•` / `»`.
