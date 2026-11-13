@@ -6187,3 +6187,10 @@ dropped the morlam row. Branding moved off "เพื่อชีวิต": `br
 tagline = "เพลงไทยป็อป · แดนซ์ · ร็อก", `release.HASHTAGS`, `compile_album` default
 name "รวมเพลงไทยป็อป", `upload_compilation.TITLE`. Genre briefs added for
 pop/edm/synthpop/citypop/rnb in `ai_lyrics.GENRE_BRIEF`.
+
+## [moved 2026-11-13] Never decide on missing/stale data (2026-11-12 panel, quorum PASS)
+`aeris938-2/scripts/evidence.py` = the shared contract (fresh/stale/unknown;
+`usable()` only when fresh; 120-min window). `goal_watch` names **`data`** (never a
+guess) on a blank/stale newest row; `--assert-fresh` gates the dashboard rail;
+`experiment_loop` is INCONCLUSIVE on blind evidence and holds on `data`. A
+measurement `|| echo` hides exactly this.
