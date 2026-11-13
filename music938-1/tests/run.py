@@ -2488,6 +2488,20 @@ def test_market_report() -> None:
           < report.index("รักที่ไม่มีวันจบ"))
     check("report names the monetization target", "1,000" in report and "4,000" in report)
 
+    # A spent shared quota pool must read as "skipped", not as a crash. Five
+    # quota-exhausted days in a row were read as five failures, so the platform
+    # auto-paused the market-daily automation ("nothing has succeeded in 24
+    # hours"). The measurement rail is the loop's eyes; it must survive a spent
+    # pool. rc 3 is the same "spent for today" code release.py uses.
+    src = (ROOT / "scripts" / "market.py").read_text()
+    check("market raises a dedicated QuotaExhausted, not a raw HTTPError",
+          "class QuotaExhausted" in src and "quotaExceeded" in src)
+    check("market maps a spent pool to rc 3 (skip, not crash)",
+          "except QuotaExhausted" in src and "return 3" in src)
+    plug = (ROOT.parent / "plugins" / "market-daily" / "scripts" / "main.py").read_text()
+    check("the market-daily plugin treats rc 3 as a skip",
+          "rc == 3" in plug and "skipped" in plug)
+
 
 def test_market_tracks_compilations() -> None:
     """The daily report must include the long-form compilations.

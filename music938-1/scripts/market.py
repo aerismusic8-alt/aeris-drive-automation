@@ -76,11 +76,28 @@ def access_token(channel: str) -> str:
         return json.load(r)["access_token"]
 
 
+class QuotaExhausted(RuntimeError):
+    """The shared 10,000-unit pool is spent for the Pacific day.
+
+    Not an error: the measurement rail simply cannot read stats until the pool
+    resets. Treating it as a failure is what killed the market-daily automation
+    — five quota-exhausted runs in a row read as five crashes, so the platform
+    paused it. It maps to rc 3, the same "spent for today, nothing wrong" code
+    `release.py` uses for the upload cap.
+    """
+
+
 def yt_get(path: str, token: str, **params) -> dict:
     url = f"{API}/{path}?" + urllib.parse.urlencode(params)
     req = urllib.request.Request(url, headers={"Authorization": f"Bearer {token}"})
-    with urllib.request.urlopen(req, timeout=30) as r:
-        return json.load(r)
+    try:
+        with urllib.request.urlopen(req, timeout=30) as r:
+            return json.load(r)
+    except urllib.error.HTTPError as e:
+        body = e.read().decode("utf-8", "replace")
+        if e.code == 403 and "quotaExceeded" in body:
+            raise QuotaExhausted(path) from None
+        raise
 
 
 def chunks(items: list, size: int):
@@ -292,14 +309,24 @@ def main() -> int:
     root = resolve_root(Path(args.root).resolve() if args.root else ROOT)
     token = access_token(args.channel)
 
-    rel = tracked_ids(root)
-    stats = video_stats(token, [r["video_id"] for r in rel]) if rel else {}
+    try:
+        rel = tracked_ids(root)
+        stats = video_stats(token, [r["video_id"] for r in rel]) if rel else {}
+        chan = channel_stats(token, args.channel)
+    except QuotaExhausted as exc:
+        # Spent for the Pacific day, not broken. Exit 3 so the automation reads
+        # it as "skipped", not as a crash — five crashes is what got market-daily
+        # auto-paused. Nothing is written; tomorrow's run diffs against the last
+        # good snapshot, so no measurement is lost.
+        print(f"quota exhausted for today ({exc}); the report waits for the reset",
+              file=sys.stderr)
+        return 3
     videos = []
     for r in rel:
         s = stats.get(r["video_id"])
         if s:
             videos.append({**r, **s})
-    cur = build_snapshot(args.channel, channel_stats(token, args.channel), videos)
+    cur = build_snapshot(args.channel, chan, videos)
 
     if args.json:
         print(json.dumps(cur, ensure_ascii=False, indent=2))

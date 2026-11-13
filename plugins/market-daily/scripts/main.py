@@ -137,7 +137,13 @@ def main() -> int:
     rc = subprocess.call([sys.executable, str(music / "scripts" / "market.py"),
                           "--root", str(root), "--channel", str(cfg["channel"])],
                          env=env, cwd=str(root))
-    if rc != 0:
+    if rc == 3:
+        # Quota spent for the Pacific day. Not a failure: skip the measurement,
+        # still refresh the promo page (it reads the Data API too, so it may also
+        # be refused — that path is already non-fatal), and return 0 so the
+        # platform does not read five quota days as five crashes and pause us.
+        print("market.py: quota spent for today; measurement skipped", flush=True)
+    elif rc != 0:
         print(f"market.py returned {rc}", file=sys.stderr)
         return rc
 
