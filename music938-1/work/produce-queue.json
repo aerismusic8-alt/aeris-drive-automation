@@ -1,5 +1,5 @@
 {
-  "made": 5,
+  "made": 6,
   "log": [
     {
       "slug": "25-thai-5bcb50c5",
@@ -116,6 +116,17 @@
     {
       "slug": "30-wan-tham-mada-thi-phi-set",
       "title": "วันธรรมดาที่พิเศษ",
+      "genre": "pop",
+      "mood": "warm",
+      "result": "lyric",
+      "flow": false,
+      "audio": "none",
+      "offline_rc": 1,
+      "instrumental": false
+    },
+    {
+      "slug": "31-wan-tham-mada-thi-phi-set-v31",
+      "title": "วันธรรมดาที่พิเศษอีกครั้ง",
       "genre": "pop",
       "mood": "warm",
       "result": "lyric",
