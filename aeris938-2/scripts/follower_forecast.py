@@ -123,6 +123,19 @@ def _daily_gains(points: list[tuple[datetime, float]]) -> list[float]:
     return gains
 
 
+def _percentile(values: list[float], pct: float) -> float | None:
+    """Linear-interpolated percentile; None on an empty list."""
+    if not values:
+        return None
+    xs = sorted(values)
+    if len(xs) == 1:
+        return xs[0]
+    k = (len(xs) - 1) * (pct / 100.0)
+    lo = int(k)
+    hi = min(lo + 1, len(xs) - 1)
+    return xs[lo] + (xs[hi] - xs[lo]) * (k - lo)
+
+
 def project(points: list[tuple[datetime, float]], gate: int | None,
             now: datetime | None = None) -> dict:
     """Turn a series into a verdict: pace, a range, and a confidence.
@@ -158,15 +171,21 @@ def project(points: list[tuple[datetime, float]], gate: int | None,
         return out
 
     remaining = gate - current
-    best = max(slope, max(gains) if gains else slope)
+    gains = _daily_gains(points)
+    pos = [g for g in gains if g > 0]
+    # best = the best *day* observed (optimistic); likely = the fitted slope;
+    # worst = the lower-quartile day, so a series that gains in one jump and is
+    # flat the rest of the week reads as "not at this pace" rather than as the
+    # jump rate. Taking the slowest *positive* day (the old code) inverted the
+    # range on exactly this staircase: the only positive gain was the fastest.
+    best = max(pos) if pos else slope
     likely = slope
-    worst = min([g for g in gains if g > 0], default=slope)
-    # best = fastest sustained pace; likely = the fitted slope; worst = the
-    # slowest *positive* day, so a zero day does not read as "never".
+    q1 = _percentile(gains, 25) if gains else None
+    worst = q1 if (q1 is not None and q1 > 0) else None
     out["days_to_gate"] = round(remaining / likely, 1) if likely > 0 else None
-    out["range_days"] = (round(remaining / best, 1) if best > 0 else None,
+    out["range_days"] = (round(remaining / best, 1) if best and best > 0 else None,
                          out["days_to_gate"],
-                         round(remaining / worst, 1) if worst > 0 else None)
+                         round(remaining / worst, 1) if worst else None)
     return out
 
 

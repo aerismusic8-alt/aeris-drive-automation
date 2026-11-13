@@ -666,6 +666,32 @@ def test_follower_forecast_ignores_null_readings():
     assert [v for _, v in pts] == [10.0, 20.0], pts
 
 
+def test_follower_forecast_range_is_not_inverted_on_a_staircase():
+    """A jump-then-flat week must not read as the jump rate.
+
+    Real data is a staircase: flat for many readings, then +1. The first version
+    of `project` took the slowest *positive* day as the worst case, so the only
+    positive gain — the jump — became both the best and the worst pace and the
+    range came out inverted (566 … 4878 … 566). The honest shape: the jump is
+    the optimistic bound, the fitted slope is the likely one, and a lower
+    quartile of zero means there is no finite worst case.
+    """
+    from datetime import datetime, timedelta, timezone
+
+    now = datetime(2026, 11, 13, 12, 0, tzinfo=timezone.utc)
+    rows = []
+    for d in range(7):
+        rows.append({"at": (now - timedelta(days=6 - d)).isoformat()
+                     .replace("+00:00", "Z"),
+                     "yt_subs": 100 if d < 6 else 110})
+    pts = ff._points(rows, "yt_subs", 7, now)
+    proj = ff.project(pts, 1000, now)
+    best, likely, worst = proj["range_days"]
+    assert proj["confidence"] == "measured", proj
+    assert best < likely, proj           # optimistic bound is sooner, not later
+    assert worst is None, proj           # half the days are flat: no floor
+
+
 if __name__ == "__main__":
     fns = [v for k, v in sorted(globals().items()) if k.startswith("test_")]
     for fn in fns:
