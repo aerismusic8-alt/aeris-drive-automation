@@ -1,7 +1,7 @@
 {
-  "at": "2026-11-13T16:10:36Z",
-  "winner": "concert",
-  "trailing": "surreal",
+  "at": "2026-11-13T16:23:27Z",
+  "winner": null,
+  "trailing": null,
   "stats": {
     "song": {
       "n": 16,
@@ -16,8 +16,8 @@
       "median_per_day": 0.0
     },
     "concert": {
-      "n": 4,
-      "median_per_day": 0.3411403707734548
+      "n": 5,
+      "median_per_day": 0.0
     }
   }
 }
