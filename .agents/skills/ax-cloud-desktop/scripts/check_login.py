@@ -59,13 +59,22 @@ def main() -> int:
             if m:
                 email = m.group(0)
             if not email:
-                # Fallback: the YouTube avatar only renders for a signed-in viewer.
+                # The YouTube avatar menu only opens for a signed-in viewer, and
+                # only then does it name the account. A bare topbar button is NOT
+                # evidence: the logged-out page has one too, which is how this
+                # reported SIGNED_IN while the session was actually dead
+                # (2026-11-13). Open the menu and read the account out of it.
                 pg.goto("https://www.youtube.com/", wait_until="domcontentloaded",
                         timeout=60000)
                 pg.wait_for_timeout(3500)
-                if pg.query_selector("#avatar-btn, ytd-topbar-menu-button-renderer"):
-                    print("RESULT=SIGNED_IN account=(not shown, via YouTube avatar)")
-                    return 0
+                try:
+                    pg.click("#avatar-btn, ytd-topbar-menu-button-renderer", timeout=5000)
+                    pg.wait_for_timeout(1500)
+                    mm = re.search(r"[\w.+-]+@[\w.-]+\.\w+", pg.inner_text("body"))
+                    if mm:
+                        email = mm.group(0)
+                except Exception:
+                    pass
             signed_in = "SID" in google and email is not None
             if signed_in:
                 print(f"RESULT=SIGNED_IN account={email}")

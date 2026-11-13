@@ -375,10 +375,16 @@ def save() -> int:
             state = {"cookies": cookies, "origins": []}
         account = ""
         try:
-            pg = ctx.pages[0] if ctx.pages else ctx.new_page()
+            # pages[0] may be any tab; read the email off the account page itself
+            # so the saved index says which account it holds, not "(unknown)".
+            pg = ctx.new_page()
+            pg.goto("https://myaccount.google.com/", wait_until="domcontentloaded",
+                    timeout=45000)
+            pg.wait_for_timeout(2500)
             account = pg.evaluate(
                 "() => { const m = document.body.innerText.match(/[\\w.+-]+@[\\w-]+\\.[\\w.]+/);"
                 " return m ? m[0] : ''; }")
+            pg.close()
         except Exception:  # noqa: BLE001
             pass
     finally:
