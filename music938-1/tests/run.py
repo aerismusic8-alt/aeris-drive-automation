@@ -1085,6 +1085,39 @@ def test_shorts() -> None:
           make_short.ZOOM_MAX >= 1.10, f"{make_short.ZOOM_MAX}")
 
 
+def test_motion_lane() -> None:
+    section("motion lane (free image-to-video)")
+    # K, 2026-11-13: "ภาพวีดีโอ การเคลื่อนไหว ให้คะแนน -10/10" and "หาโปรแกรมมา
+    # สร้าง video gen ... ใช้ฟรี gen ได้วันละคลิปก็ได้ หาหลายๆ โปรแกรม". A synthesised
+    # pan/zoom cannot invent parallax, so the answer is a free image-to-video model.
+    # These are source checks: calling a real Space needs the network and its daily
+    # quota, which the test suite must not depend on.
+    import inspect
+    import make_motion
+    src = inspect.getsource(make_motion)
+    code = "\n".join(ln for ln in src.splitlines()
+                     if not ln.lstrip().startswith("#"))
+
+    # Several backends, not one: a single Space hits its daily quota, and the rail
+    # must fall through to another instead of failing.
+    check("motion rail offers several free backends", len(make_motion.BACKENDS) >= 3,
+          str(len(make_motion.BACKENDS)))
+    check("every motion backend is a huggingface Space",
+          all("huggingface" in s or "/" in s for _, s, _ in make_motion.BACKENDS))
+    # Rule #1: no key, no token, no login anywhere in the rail.
+    for bad in ("api_key", "api-key", "Bearer ", "hf_token", "authorization"):
+        check(f"motion rail never asks for a credential ({bad})",
+              bad.lower() not in code.lower())
+    # The prompt must name the moving elements. A neutral prompt measured 0.77
+    # mean abs frame diff; the explicit one measured 8.33 - the wording is what
+    # carries the motion, so a vague prompt is the defect, not a style choice.
+    p = make_motion.MOTION_PROMPT.lower()
+    check("motion prompt names real motion (wind/particles/parallax)",
+          all(w in p for w in ("wind", "particle", "parallax")))
+    check("motion output lives under library/motion",
+          make_motion.OUT_DIR.name == "motion")
+
+
 def test_follow_end_card() -> None:
     section("follow ask (the only on-screen follow prompt)")
     import make_short
@@ -4945,6 +4978,7 @@ def main() -> int:
     test_normalize_floor()
     test_level_ordering()
     test_shorts()
+    test_motion_lane()
     test_follow_end_card()
     test_ambient_loop()
     test_soundfont_renderer()
