@@ -201,6 +201,48 @@ def parse_lyrics(slug: str) -> dict:
     return hdr
 
 
+def lyric_block(slug: str) -> str:
+    """The song's lyric, for the description — the one searchable thing a song has.
+
+    Search is the only discovery surface still at 0% (studio read 2026-11-13:
+    browse 53%, suggested 33%, channel page 7%, search 0%). A title carries about
+    six words; the lyric carries the whole song, so a viewer who remembers a line
+    and types it can find the upload. YouTube indexes the full description text,
+    not only the visible part, so the block sits below the fold without losing
+    that.
+
+    Section tags (`[chorus]`) and the `# KEY:` header are dropped — nobody
+    searches for those — and a repeated stanza (the chorus is identical every
+    time) is kept once, so the block reads as a lyric rather than a wall.
+    """
+    path = LYRICS / f"{slug}.txt"
+    if not path.exists():
+        return ""
+    stanzas: list[list[str]] = []
+    cur: list[str] = []
+    for line in path.read_text(encoding="utf-8").splitlines():
+        s = line.strip()
+        if not s:
+            if cur:
+                stanzas.append(cur)
+                cur = []
+            continue
+        if s.startswith("#") or (s.startswith("[") and s.endswith("]")):
+            continue
+        cur.append(s)
+    if cur:
+        stanzas.append(cur)
+    seen: set[str] = set()
+    out: list[str] = []
+    for st in stanzas:
+        key = "\n".join(st)
+        if key in seen:
+            continue
+        seen.add(key)
+        out.append(key)
+    return "\n\n".join(out)
+
+
 def all_slugs() -> list[str]:
     return sorted(f.stem for f in LYRICS.glob("*.txt"))
 
@@ -507,6 +549,14 @@ def describe(slug: str, kind: str, variant: str = "") -> tuple[str, str, list[st
             f"🎧 ฟังเพลิน ฟังได้ทุกวัน\n\n"
             f"{HASHTAGS}"
         )
+    # The lyric is the only large searchable body a song upload has, and search
+    # was the one discovery surface still at 0%. Append it for the long-form song
+    # and the karaoke cut (a sing-along is looked up by its lyric); a Short is too
+    # small to carry a stanza block without burying the ask.
+    if kind in ("song", "karaoke"):
+        ly = lyric_block(slug)
+        if ly:
+            desc = f"{desc}\n\n📝 เนื้อเพลง\n\n{ly}"
     tags = ["เพลงไทย", "เพลงใหม่", "ศิลปินไทย", "AERIS", "เพลงเพราะ",
             "เพลงฟังสบาย", "ค่ายเพลง AI", "AI music", title_th, tagline,
             "thai music", "thai song"]

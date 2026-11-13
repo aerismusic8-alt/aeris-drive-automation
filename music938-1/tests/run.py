@@ -2371,6 +2371,35 @@ def test_song_title_search_intent() -> None:
     check("long title falls back to the tagline", t.endswith("เพลงเศร้า ที่เข้าใจความเสียใจ"), t)
 
 
+def test_lyric_in_description() -> None:
+    """A song's lyric must reach the description — search was the 0% surface.
+
+    Studio read 2026-11-13: browse 53%, suggested 33%, channel page 7%, **search
+    0%**. A title carries ~6 words; the lyric is the only large searchable body a
+    song upload has, and YouTube indexes the full description. It was being
+    written to the lyric file and never read. This pins it into the long-form and
+    karaoke descriptions without disturbing the ask or the hashtags.
+    """
+    section("lyric in description (search surface)")
+    import release
+    slug = "07-huachai-si-thao"
+    raw = release.lyric_block(slug)
+    check("the lyric block drops the [section] tags", "[chorus]" not in raw, raw[:40])
+    check("the lyric block drops the # header", "# TITLE" not in raw, raw[:40])
+    check("a repeated stanza appears once",
+          raw.count("รักเรามันจางหายไป") == 1, str(raw.count("รักเรามันจางหายไป")))
+    check("the lyric block is substantial", len(raw) > 100, str(len(raw)))
+    _t, song_desc, _tg = release.describe(slug, "song", "")
+    check("a song description carries the lyric", raw.split("\n")[0] in song_desc)
+    check("the song still carries the subscribe ask",
+          "sub_confirmation=1" in song_desc)
+    check("the song still carries the hashtag block", "#AERISMusic" in song_desc)
+    _t, short_desc, _tg = release.describe(slug, "short", "")
+    check("a Short does not carry the lyric block", "📝 เนื้อเพลง" not in short_desc)
+    check("the description stays within YouTube's 5000-char limit",
+          len(song_desc) <= 5000, str(len(song_desc)))
+
+
 def test_competitor_scanner_parsers() -> None:
     """The no-quota channel scanner must parse the numbers real pages carry.
 
@@ -5467,6 +5496,7 @@ def main() -> int:
     test_compilation_cta_repair()
     test_themed_compilations()
     test_song_title_search_intent()
+    test_lyric_in_description()
     test_competitor_scanner_parsers()
     test_flow_extend_kinds()
     test_market_report()
