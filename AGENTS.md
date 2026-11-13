@@ -301,6 +301,25 @@ restore still makes Google ask).
 - Judge sign-in by positive evidence (the account email / YouTube avatar), never by
   cookie presence or by a word like "บัญชี" that both states show.
 
+### AR's own identity (mailbox + browser profile)
+
+AR (the agent) has its own identity, kept **outside** the public repo at
+`/workspace/ax-tools/ar-identity/`: `creds.json` (the mail.tm mailbox, mode 600),
+`browser-profile/` (the cookies that keep AR signed in), `accounts.json` (which
+services AR has accounts on). Tools: `ops/ar_identity.py` (mailbox), `ops/ar_accounts.py`
+(register), `ops/ar_browser.py` (profile).
+
+- **K's rule:** a newly-registered mailbox is for throwaway signups only. Flow Music
+  and Gemini stay on **K's account `aerismusic8@gmail.com`**; `check_login.py` returns
+  `WRONG_ACCOUNT` (exit 3) on any other.
+- **It does not survive a replaced sandbox on its own.** `/workspace` survives a
+  *recycle* but a replaced sandbox gets a fresh, empty volume — and the vault excludes
+  credential-shaped files, so on 2026-11-13 the mailbox, profile and register were
+  gone. The mailbox password is now mirrored to the vault (`aridentity:creds`) and
+  `ar_identity.py ensure` restores from it before creating a new address. **Run
+  `ensure` first on a fresh pod.** The browser profile is still local; re-sign-in on
+  the services AR uses is not automatic.
+
 ### The farm loop
 
 `Farm.luau` and `Axe.luau` are the "farm" half of the game. Farming is not a

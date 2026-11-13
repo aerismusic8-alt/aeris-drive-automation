@@ -51,6 +51,7 @@ IDENTITY_DIR = Path(
     os.environ.get("AR_IDENTITY_DIR", "/workspace/ax-tools/ar-identity")
 )
 CREDS = IDENTITY_DIR / "creds.json"
+VAULT_KEY = "aridentity:creds"
 
 
 def _request(method: str, path: str, token: str | None = None, body=None):
@@ -120,13 +121,53 @@ def _save_creds(address: str, password: str, domain: str) -> None:
                                "domain": domain, "provider": "mail.tm"}, indent=2))
     os.chmod(tmp, 0o600)
     tmp.replace(CREDS)
+    vault_put_creds({"address": address, "password": password, "domain": domain})
+
+
+def vault_put_creds(creds: dict) -> None:
+    """Mirror the mailbox into the durable vault so a replaced sandbox keeps it.
+
+    `/workspace` survives a *recycle* but not a *replaced sandbox* — the volume is
+    new and empty. On 2026-11-13 that is exactly what happened: AR's mailbox, its
+    browser profile and its account register were gone, and the vault had never
+    held the credential (it excludes credential-shaped files by design). The
+    password is what re-mints the mail.tm token, so it is the one thing that must
+    outlive the pod. Best-effort: a vault outage must not fail a create.
+    """
+    try:
+        sys.path.insert(0, str(Path(__file__).resolve().parent))
+        import ax_vault  # noqa: PLC0415
+        ax_vault.kv_put(ax_vault.ensure_anchor(), VAULT_KEY, creds)
+        print(f"mirrored the mailbox to the vault ({VAULT_KEY})")
+    except Exception as exc:  # noqa: BLE001
+        print(f"[=] vault mirror skipped: {str(exc)[:80]}")
+
+
+def vault_get_creds() -> dict | None:
+    try:
+        sys.path.insert(0, str(Path(__file__).resolve().parent))
+        import ax_vault  # noqa: PLC0415
+        return ax_vault.kv_get(ax_vault.ensure_anchor(), VAULT_KEY)
+    except Exception:  # noqa: BLE001
+        return None
 
 
 def cmd_ensure(_args) -> int:
+    if not CREDS.exists():
+        # A replaced sandbox loses /workspace; the vault is the only place the
+        # mailbox can come back from. Restore before creating a *new* address, so
+        # the identity (and any account registered with it) survives the pod.
+        saved = vault_get_creds()
+        if saved and _try_login(saved.get("address", ""), saved.get("password", "")):
+            _save_creds(saved["address"], saved["password"], saved.get("domain", ""))
+            print(f"restored AR mailbox from the vault: {saved['address']}")
+            return 0
     if CREDS.exists():
         c = load_creds()
         if _try_login(c["address"], c["password"]):
             print(f"AR mailbox already exists: {c['address']}")
+            vault_put_creds({"address": c["address"], "password": c["password"],
+                             "domain": c.get("domain", "")})
             return 0
         print(f"stored mailbox {c['address']} no longer authenticates; creating a new one")
         CREDS.unlink(missing_ok=True)

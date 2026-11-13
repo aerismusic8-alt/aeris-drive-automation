@@ -4528,6 +4528,24 @@ def test_login_vault_never_clobbers_a_live_surface() -> None:
           m.PROBE[".google.com"] == ("https://myaccount.google.com/",))
 
 
+def test_ar_identity_survives_a_lost_pod() -> None:
+    """AR's own mailbox must outlive a replaced sandbox.
+
+    `/workspace` survives a recycle but a *replaced sandbox* gets a fresh volume,
+    and the vault excludes credential-shaped files. On 2026-11-13 that lost AR's
+    mailbox, profile and register. The mailbox password re-mints the mail.tm token,
+    so it is mirrored to the vault and restored before a new address is created.
+    """
+    section("AR identity durability")
+    text = (ROOT.parent / "ops" / "ar_identity.py").read_text()
+    check("mirrors the mailbox to the vault", "VAULT_KEY = \"aridentity:creds\"" in text)
+    check("has a vault put", "def vault_put_creds(" in text)
+    check("has a vault get", "def vault_get_creds(" in text)
+    check("ensure restores before creating a new address",
+          text.index("vault_get_creds()") < text.index("domain = _active_domain()"))
+    check("a create mirrors the credential", "vault_put_creds({" in text)
+
+
 def i_args(fn) -> list[str]:
     import inspect
     return list(inspect.signature(fn).parameters)
@@ -5394,6 +5412,7 @@ def main() -> int:
     test_story_reel()
     test_metadata_ab_holds_format_fixed()
     test_login_vault_never_clobbers_a_live_surface()
+    test_ar_identity_survives_a_lost_pod()
     test_login_check_reads_evidence()
     test_studio_read_parses_analytics()
     test_heartbeat_repair_signal()
