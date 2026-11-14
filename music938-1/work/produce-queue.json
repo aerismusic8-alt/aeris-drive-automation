@@ -134,6 +134,13 @@
       "audio": "none",
       "offline_rc": 1,
       "instrumental": false
+    },
+    {
+      "slug": "32-wan-tham-mada-thi-phi-set-v32",
+      "result": "no-draft",
+      "problems": [
+        "pollinations: HTTPError: HTTP Error 400: Bad Request"
+      ]
     }
   ]
 }
