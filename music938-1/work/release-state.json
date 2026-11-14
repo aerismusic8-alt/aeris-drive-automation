@@ -749,6 +749,26 @@
    "public": true,
    "thumb_ok": false,
    "playlist_ok": false
+  },
+  {
+   "slug": "07-huachai-si-thao",
+   "kind": "song",
+   "variant": "",
+   "video_id": "4G3m3btgHTQ",
+   "at": "2026-11-14T00:51:39+00:00",
+   "public": true,
+   "thumb_ok": false,
+   "playlist_ok": false
+  },
+  {
+   "slug": "08-klap-ban-rao",
+   "kind": "song",
+   "variant": "",
+   "video_id": "SlvZsEx7wsM",
+   "at": "2026-11-14T00:51:43+00:00",
+   "public": true,
+   "thumb_ok": false,
+   "playlist_ok": false
   }
  ],
  "playlists": {
