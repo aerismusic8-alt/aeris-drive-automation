@@ -152,7 +152,7 @@ def _chord_tones(offset: int, quality: str, root: int) -> list[int]:
     return [base + iv for iv in CHORD[quality]]
 
 
-def build_midi(mood: str, *, bars: int, path: Path) -> dict:
+def build_midi(mood: str, *, bars: int, path: Path, seed: int = 0) -> dict:
     """Write a 4/4 MIDI arrangement for `mood` and return its description.
 
     Four voices, all real instruments, every note struck or plucked so it decays:
@@ -164,6 +164,12 @@ def build_midi(mood: str, *, bars: int, path: Path) -> dict:
     There is deliberately no sustained pad: a chord held under the whole bed is
     what K heard as "เสียงฮัม" (a hum). Humanisation (velocity and a few ticks of
     timing jitter) is what stops a sampler from reading as a sequencer.
+
+    `seed` varies the motif, the chord-progression rotation and the arpeggio
+    direction, so two songs that share a mood and a key still get different
+    music. Without it the offline lane rendered one bed per (mood, key) and
+    shipped five songs that were two files — the exact "ดนตรีห้ามซ้ำกัน"
+    violation K set the arrangement system to prevent (measured 2026-11-14).
     """
     import mido  # local import: keeps --list and --help working without it
 
@@ -206,9 +212,14 @@ def build_midi(mood: str, *, bars: int, path: Path) -> dict:
 
     # A motif is a short shape of scale degrees, phrased over two bars; it is
     # transposed to each chord so the line follows the harmony instead of
-    # sitting on one scale run (which would read as a drone).
-    motif = [(0, 0.0, 1.0), (2, 1.0, 0.5), (1, 1.5, 0.5),
-             (3, 2.0, 1.0), (2, 3.0, 1.0)]
+    # sitting on one scale run (which would read as a drone). `seed` rotates the
+    # shape and the progression, so two songs in one mood do not share a melody.
+    base_motif = [(0, 0.0, 1.0), (2, 1.0, 0.5), (1, 1.5, 0.5),
+                  (3, 2.0, 1.0), (2, 3.0, 1.0)]
+    rot = seed % len(base_motif)
+    motif = base_motif[rot:] + base_motif[:rot]
+    prog_rot = seed % len(prog)
+    prog = prog[prog_rot:] + prog[:prog_rot]
 
     bar_ticks = ticks_per_beat * 4
     for b in range(bars):
@@ -225,12 +236,15 @@ def build_midi(mood: str, *, bars: int, path: Path) -> dict:
             start = t0 + i * (bar_ticks // 4)
             note(1, p, start, int(bar_ticks * 0.5), 42)
 
-        # arp: broken chord, eighth notes, soft, alternating up/down
+        # arp: broken chord, eighth notes, soft, direction varied by the seed so
+        # the same chord does not always sweep the same way
         shape = [chord[0], chord[1], chord[2], chord[1]]
+        if seed % 2:
+            shape = shape[::-1]
         eighth = ticks_per_beat // 2
         for i in range(8):
-            pitch = shape[i % len(shape)] + (12 if i >= 4 else 0)
-            jitter = ((i * 7 + b * 3) % 5) - 2      # -2..+2 ticks, deterministic
+            pitch = shape[i % len(shape)] + (12 if (i >= 4) != bool(seed % 2) else 0)
+            jitter = ((i * 7 + b * 3 + seed) % 5) - 2   # -2..+2 ticks, deterministic
             vel = 46 + ((i + b) % 3) * 4
             note(3, pitch, t0 + i * eighth + jitter, int(eighth * 0.9), vel)
 
@@ -601,12 +615,14 @@ def render_backing(mood: str, chords, *, spb: float, total: float,
 
 
 def render_bed(mood: str, key: str, out: Path, *, seconds: float = 180.0,
-               gain: float | None = None) -> dict:
+               gain: float | None = None, seed: int = 0) -> dict:
     """Render a loopable real-instrument bed to `out` (16-bit WAV).
 
     `key` selects the root octave placement only; the mood preset owns the scale
-    and harmony. The MIDI is written to a temp file next to `out` and removed
-    after the render, so only the WAV is kept.
+    and harmony. `seed` varies the melody, progression rotation and arpeggio, so
+    two songs in the same mood are not the same music (see `build_midi`). The
+    MIDI is written to a temp file next to `out` and removed after the render, so
+    only the WAV is kept.
     """
     if mood not in MOODS:
         raise ValueError(f"unknown mood {mood!r}; choose from {sorted(MOODS)}")
@@ -618,7 +634,7 @@ def render_bed(mood: str, key: str, out: Path, *, seconds: float = 180.0,
     norm = out.with_suffix(".norm.wav")
     out.parent.mkdir(parents=True, exist_ok=True)
 
-    build_midi(mood, bars=bars, path=midi)
+    build_midi(mood, bars=bars, path=midi, seed=seed)
     g = gain if gain is not None else preset["gain"]
     if real_instruments_enabled():
         _render_real(midi, raw, _BED_CHANNEL_ROLES,
@@ -637,6 +653,14 @@ def render_bed(mood: str, key: str, out: Path, *, seconds: float = 180.0,
             import numpy as np  # noqa: PLC0415
 
             x = _read_wav_f32(shipped)
+            # A runner has one shipped loop per (mood, key), so without a phase
+            # shift every song in a mood would tile to the same audio — the
+            # duplicate-music defect this seed exists to prevent. Rotating a
+            # seamless loop keeps it seamless and opens on a different bar.
+            if seed and x.shape[0] > 1:
+                off = int(seed) % x.shape[0]
+                if off:
+                    x = np.concatenate([x[off:], x[:off]], axis=0)
             want = int(round(seconds * 44100))
             reps = -(-want // x.shape[0])
             tiled = np.tile(x, (reps, 1))[:want]

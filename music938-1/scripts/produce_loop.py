@@ -117,13 +117,25 @@ def save_queue(q: dict) -> None:
     QUEUE.write_text(json.dumps(q, ensure_ascii=False, indent=2), encoding="utf-8")
 
 
-def pick_theme(used: set[str]) -> tuple[str, str, str, str, str, str] | None:
-    """The first (theme, variant) not yet attempted.
+def pick_theme(used: set[str], counts: dict[str, int] | None = None) -> tuple[str, str, str, str, str, str] | None:
+    """The first (theme, variant) not yet attempted, inside a genre's plan.
 
     `used` holds the titles already in the log. A theme with no variant left is
     skipped rather than repeated, so the pool never runs dry at 12 songs.
+
+    A genre is capped at its `planned` song count. Without the cap the pool
+    produced the first genre to its last variant before touching the second, so a
+    long run filled `pop` past its plan while `edm` stayed at zero — and, worse,
+    an over-full genre runs out of arrangements (`channel/arrangements.json` holds
+    one per planned song), so `arrangement.assign` spilled the extra songs into
+    another genre's pool and the songs shipped with the wrong sound (measured
+    2026-11-14: 11 pop songs, 8 pop arrangements).
     """
+    counts = counts if counts is not None else G.counts()
     for genre, angle, title, mood, slug_word in THEMES:
+        cap = G.by_id().get(genre, {}).get("planned")
+        if cap is not None and counts.get(genre, 0) >= cap:
+            continue
         for suffix, label in VARIANTS:
             full = f"{title}{suffix}"
             if full in used:
@@ -243,9 +255,19 @@ def main() -> int:
     q = load_queue()
     used = {r.get("title") for r in q["log"]}
     if args.plan:
-        for i in range(args.count):
-            t = pick_theme(used | {x[2] for x in THEMES[:i]})
+        # Advance the picker the way main() does, so N planned rows are N
+        # *distinct* songs. The old form only excluded the base title of the
+        # first i themes, so it printed the same theme six times.
+        seen = set(used)
+        sim = dict(G.counts())
+        for _ in range(args.count):
+            t = pick_theme(seen, counts=sim)
+            if not t:
+                print("  (pool exhausted)")
+                break
             print("  next:", t)
+            seen.add(t[2])
+            sim[t[0]] = sim.get(t[0], 0) + 1
         print(f"built so far: {len(existing_slugs())} lyrics, {q['made']} produced by this loop")
         return 0
 

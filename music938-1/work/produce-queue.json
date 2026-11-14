@@ -1,5 +1,5 @@
 {
-  "made": 6,
+  "made": 8,
   "log": [
     {
       "slug": "25-thai-5bcb50c5",
@@ -141,6 +141,28 @@
       "problems": [
         "pollinations: HTTPError: HTTP Error 400: Bad Request"
       ]
+    },
+    {
+      "slug": "32-wan-tham-mada-thi-phi-set-v32",
+      "title": "วันธรรมดาที่พิเศษในฝัน",
+      "genre": "pop",
+      "mood": "warm",
+      "result": "lyric",
+      "flow": false,
+      "audio": "synth-bed",
+      "offline_rc": 0,
+      "instrumental": true
+    },
+    {
+      "slug": "33-wan-tham-mada-thi-phi-set-v33",
+      "title": "วันธรรมดาที่พิเศษยามเช้า",
+      "genre": "pop",
+      "mood": "warm",
+      "result": "lyric",
+      "flow": false,
+      "audio": "synth-bed",
+      "offline_rc": 0,
+      "instrumental": true
     }
   ]
 }

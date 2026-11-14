@@ -51,7 +51,7 @@ def _measure(path: Path) -> dict:
     return {"integrated_lufs": lufs}
 
 
-def _synthesise(mood: str, out: Path, duration: float) -> dict:
+def _synthesise(mood: str, out: Path, duration: float, seed: int = 0) -> dict:
     """Render the bed with REAL instruments via `soundfont` (fluidsynth).
 
     K (2026-11-09): the ffmpeg sine/tremolo synth this used to be "sounds fake —
@@ -69,7 +69,7 @@ def _synthesise(mood: str, out: Path, duration: float) -> dict:
     import soundfont  # noqa: PLC0415
 
     wav = out.with_suffix(".bed.wav")
-    info = soundfont.render_bed(mood, "C", wav, seconds=duration)
+    info = soundfont.render_bed(mood, "C", wav, seconds=duration, seed=seed)
     res = _run(["ffmpeg", "-y", "-hide_banner", "-loglevel", "error",
                 "-i", str(wav), "-c:a", "libmp3lame", "-b:a", "192k", str(out)])
     wav.unlink(missing_ok=True)
@@ -79,15 +79,27 @@ def _synthesise(mood: str, out: Path, duration: float) -> dict:
             "source": info.get("source") or "soundfont-sampler", **_measure(out)}
 
 
-def make(mood: str, key: str, *, duration: float = 90.0, force: bool = False) -> dict:
+def make(mood: str, key: str, *, duration: float = 90.0, force: bool = False,
+         seed: int = 0) -> dict:
+    """Render (or reuse) a mood bed.
+
+    `key` doubles as the library id, so it must be unique per *song* as well as
+    per mood: two songs that asked for the same key used to get one shared file
+    (K: "ดนตรีห้ามซ้ำกัน"). Callers that need distinct music per song pass a
+    song-specific key, and `seed` varies the melody within one key.
+    """
     if mood not in MOODS:
         raise ValueError(f"unknown mood {mood!r}; choose from {sorted(MOODS)}")
     existing = library.find("music", key)
-    if existing and not force:
+    # A bed built for a different length is not this bed. Reusing it silently
+    # shipped a 199 s take for a 210 s request (measured 2026-11-14), because the
+    # real-instrument renderer returns ~11 s less than it is asked for and the
+    # cache only ever checked the id.
+    if existing and not force and existing.get("duration_seconds") == duration:
         return {"status": "REUSED", "entry": existing}
 
     out = library.KINDS["music"] / f"{library.entry_id('music', key)}.mp3"
-    info = _synthesise(mood, out, duration)
+    info = _synthesise(mood, out, duration, seed=seed)
     entry = library.add("music", key, out, source=info["source"], mood=mood,
                         duration_seconds=duration, bpm=info["bpm"],
                         integrated_lufs=info["integrated_lufs"])

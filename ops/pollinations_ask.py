@@ -26,12 +26,19 @@ ENDPOINT = "https://text.pollinations.ai/"
 FREE_LIMIT_WAIT = 48
 
 
-def ask(problem: str, timeout: float = 180.0, model: str = "openai") -> str:
+def ask(problem: str, timeout: float = 180.0, model: str = "openai",
+        max_tokens: int = 2048) -> str:
     # `reasoning_effort: low` is not cosmetic: the default reasoning budget is
     # spent before the model emits an answer, and a song prompt is long enough to
     # trigger `output_token_limit_exceeded` (HTTP 400). Measured 2026-11-07.
+    #
+    # `max_tokens` is the other half of that fix, and it was missing: measured
+    # 2026-11-14, a 1344-char lyric brief still 400s with the identical
+    # `output_token_limit_exceeded` body until the caller raises the ceiling, and
+    # a produce run lost every draft to it. The retry below cannot recover this
+    # one — it is deterministic, not capacity — so the ceiling is the fix.
     body = {"messages": [{"role": "user", "content": problem}],
-            "reasoning_effort": "low"}
+            "reasoning_effort": "low", "max_tokens": max_tokens}
     if model:
         body["model"] = model
     data = json.dumps(body).encode("utf-8")
@@ -47,9 +54,12 @@ def ask(problem: str, timeout: float = 180.0, model: str = "openai") -> str:
                 raise RuntimeError("empty answer from pollinations")
             return answer
         except urllib.error.HTTPError as e:
-            if e.code not in (402, 429) or attempt == 2:
+            # 400 is not always a bad request: the free tier also returns it
+            # under load, where the same body answers seconds later. A short
+            # backoff and a retry recovers that case.
+            if e.code not in (400, 402, 429) or attempt == 2:
                 raise
-            time.sleep(FREE_LIMIT_WAIT)
+            time.sleep(FREE_LIMIT_WAIT if e.code in (402, 429) else 8)
     raise RuntimeError("pollinations did not answer")
 
 

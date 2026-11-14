@@ -255,6 +255,13 @@ def lint_sections(sections: list[tuple[str, list[str]]]) -> list[str]:
     character count cannot be a syllable count; ~8 sung syllables land between
     roughly 10 and 30 Thai characters. The band rejects an empty or runaway
     line, not a stylistically short one.
+
+    The ceiling is 42, not 34: measured 2026-11-14, a run of drafts died on
+    lines of 36-39 characters that were perfectly singable Thai (one held note
+    spans two syllables), so 34 was rejecting real songs to catch a fused answer.
+    A fused answer is not marginal — it is the whole section on one line, well
+    past 60 characters — so the higher ceiling still catches it while the drafts
+    that were being thrown away now reach Flow Music.
     """
     problems: list[str] = []
     shape = [s for s, _ in STRUCTURE]
@@ -285,7 +292,7 @@ def lint_sections(sections: list[tuple[str, list[str]]]) -> list[str]:
             if re.search(r"[A-Za-z]", ln):
                 problems.append(f"[{sec}] has Latin text: {ln!r}")
             n = len(re.findall(r"[ก-๙]", ln))
-            if n < 8 or n > 34:
+            if n < 8 or n > 42:
                 problems.append(f"[{sec}] line is {n} Thai chars: {ln!r}")
     return problems
 

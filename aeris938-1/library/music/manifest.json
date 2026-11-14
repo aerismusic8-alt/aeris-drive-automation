@@ -118,7 +118,33 @@
       "duration_seconds": 120.0,
       "bpm": 84,
       "integrated_lufs": -20.1
+    },
+    {
+      "id": "music-g-32-wan-tham-mada-thi-phi-set-v32",
+      "kind": "music",
+      "file": "library/music/music-g-32-wan-tham-mada-thi-phi-set-v32.mp3",
+      "bytes": 5487639,
+      "sha256": "49a190e611fad225bf635dc49d491ad948b2a4ecc543d6d704250f231e7bd25a",
+      "created_at": "2026-11-14T07:13:37Z",
+      "source": "soundfont-sampler",
+      "mood": "warm",
+      "duration_seconds": 240.0,
+      "bpm": 62,
+      "integrated_lufs": -23.6
+    },
+    {
+      "id": "music-g-33-wan-tham-mada-thi-phi-set-v33",
+      "kind": "music",
+      "file": "library/music/music-g-33-wan-tham-mada-thi-phi-set-v33.mp3",
+      "bytes": 5488266,
+      "sha256": "960af6990ec2883e44a9a285c765d5e4b25a0c0c6bc230389436870aad7cd620",
+      "created_at": "2026-11-14T07:13:57Z",
+      "source": "soundfont-sampler",
+      "mood": "warm",
+      "duration_seconds": 240.0,
+      "bpm": 62,
+      "integrated_lufs": -23.9
     }
   ],
-  "updated_at": "2026-11-07T19:23:36Z"
+  "updated_at": "2026-11-14T07:13:57Z"
 }
