@@ -1,5 +1,5 @@
 {
-  "made": 8,
+  "made": 9,
   "log": [
     {
       "slug": "25-thai-5bcb50c5",
@@ -163,6 +163,17 @@
       "audio": "synth-bed",
       "offline_rc": 0,
       "instrumental": true
+    },
+    {
+      "slug": "34-wan-tham-mada-thi-phi-set-v34",
+      "title": "วันธรรมดาที่พิเศษยามค่ำ",
+      "genre": "pop",
+      "mood": "warm",
+      "result": "lyric",
+      "flow": false,
+      "audio": "none",
+      "offline_rc": 1,
+      "instrumental": false
     }
   ]
 }
