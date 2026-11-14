@@ -6219,3 +6219,19 @@ sampler (`install-sfizz.sh`); `AX_REQUIRE_REAL_INSTRUMENTS=1` makes a GM fallbac
 **raise**, never ship silently. CI rails cannot build sfizz, so beds are
 pre-rendered on the pod and pulled from `media-938` (`sampler1-*.wav`).
 Growth lanes for this: see the same date's daily log.
+
+## Moved from MEMORY.md 2026-11-14 (superseded by the 6 KB cap)
+
+The old "Environment facts that cost time" block, verbatim, before it was
+condensed to free room for the 2026-11-14 AR-mail rule:
+
+- **24/7 runs on GitHub Actions, not the sandbox** (public repo -> free minutes).
+  Rails: ax-music-release 07:00 UTC, ax-music-crosspost 2-hourly, ax-rail-watchdog :15,
+  ax-music-dashboard 08:30 UTC (ntfy topic ax-ar-aeris-9f3k7q).
+- **Fresh-pod recovery: scripts/bootstrap-pod.sh** (python deps + ffmpeg/fluidsynth/
+  Thai-fonts/xvfb); the .pth is non-durable, so re-run after every pod.
+- **ops/websearch.py** is the free web search (Tavily quota gone).
+
+Also moved 2026-11-14: **แนวเพลง (K, 2026-11-13):** พักลูกทุ่ง/เพื่อชีวิต —
+เน้น ป็อป/แดนซ์(edm)/ร็อก (`music938-1/channel/genres.json`;
+`genres.is_parked/active`).

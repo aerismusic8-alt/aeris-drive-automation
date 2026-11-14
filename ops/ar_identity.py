@@ -200,12 +200,21 @@ def cmd_ensure(_args) -> int:
     )
 
 
+def _members(box) -> list:
+    """mail.tm returns either a hydra envelope or a bare list; accept both."""
+    if isinstance(box, list):
+        return box
+    if isinstance(box, dict):
+        return box.get("hydra:member", []) or []
+    return []
+
+
 def cmd_whoami(_args) -> int:
     c = load_creds()
     token = _login(c["address"], c["password"])
     status, me = _request("GET", "/me", token=token)
     status, box = _request("GET", "/messages", token=token)
-    count = len((box or {}).get("hydra:member", []) or []) if status == 200 else "?"
+    count = len(_members(box)) if status == 200 else "?"
     print(f"address: {c['address']}")
     print(f"provider: {c['provider']}   inbox: {count} message(s)")
     print(f"account id: {(me or {}).get('id', '?')}")
@@ -218,7 +227,7 @@ def cmd_inbox(args) -> int:
     deadline = time.time() + (args.wait or 0)
     while True:
         status, box = _request("GET", "/messages", token=token)
-        members = (box or {}).get("hydra:member", []) or []
+        members = _members(box)
         if members or time.time() >= deadline:
             break
         time.sleep(3)

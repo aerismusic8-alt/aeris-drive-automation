@@ -97,11 +97,17 @@ it; fix the repo name instead.
 ## Login-only web apps (cloud desktop)
 
 - Flow Music (`flowmusic.app`) and Gemini web (`gemini.google.com`) have **no API**,
-  and both run on **K's Google account `aerismusic8@gmail.com`** — never on a mailbox
-  AR registered (K's rule, 2026-10-31). `check_login.py` returns
-  `RESULT=WRONG_ACCOUNT` (exit 3) if a different account is signed in.
-  Drive them through the persistent cloud desktop. Read the `ax-cloud-desktop`
-  skill first.
+  and both offer only **"Continue with Google"**, so they need a *Google Account*.
+  Historically that was **K's `aerismusic8@gmail.com`**; **K's rule (2026-11-14)
+  now says every tool must use AR's OWN mail, not K's.** AR's mailbox is
+  `araeris4770d7@fldubai.com` (mail.tm), but a free unattended **Google signup is
+  blocked**: after email verification Google forces `crossflowverification` device
+  attestation (QR / `intent://devicephoneverification` / SMS) that needs a physical
+  phone. `ops/ar_google_signup.py` drives signup to that wall; a human (K) must tap
+  the QR once, like a login. Until then, keep these apps on K's account.
+  `check_login.py` returns `RESULT=WRONG_ACCOUNT` (exit 3) if a different account
+  is signed in. Drive them through the persistent cloud desktop; read the
+  `ax-cloud-desktop` skill first.
 - The operator signs in once; **the agent never types the Google password.**
 - Chrome needs `--remote-allow-origins='*'` or every CDP websocket is refused with
   403, even though the browser runs.
