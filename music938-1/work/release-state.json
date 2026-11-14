@@ -384,7 +384,7 @@
    "at": "2026-11-06T14:43:33+00:00",
    "public": true,
    "replaces": "-6RdLKwxykk",
-   "thumb_ok": false,
+   "thumb_ok": true,
    "playlist_ok": true
   },
   {
@@ -395,7 +395,7 @@
    "at": "2026-11-06T14:43:51+00:00",
    "public": true,
    "replaces": "iLwzR8A_1uw",
-   "thumb_ok": false,
+   "thumb_ok": true,
    "playlist_ok": true
   },
   {
@@ -406,7 +406,7 @@
    "at": "2026-11-06T14:44:01+00:00",
    "public": true,
    "replaces": "FsO5qmneeEQ",
-   "thumb_ok": false,
+   "thumb_ok": true,
    "playlist_ok": true
   },
   {
@@ -417,7 +417,7 @@
    "at": "2026-11-06T14:44:19+00:00",
    "public": true,
    "replaces": "STQsMvhb0yk",
-   "thumb_ok": false,
+   "thumb_ok": true,
    "playlist_ok": true
   },
   {
@@ -427,7 +427,7 @@
    "video_id": "A3jr9T148Q8",
    "at": "2026-11-06T18:39:59+00:00",
    "public": true,
-   "thumb_ok": false,
+   "thumb_ok": true,
    "playlist_ok": true
   },
   {
@@ -497,7 +497,7 @@
    "video_id": "eozvJ2kwqIc",
    "at": "2026-11-08T14:59:10+00:00",
    "public": true,
-   "thumb_ok": false,
+   "thumb_ok": true,
    "playlist_ok": true
   },
   {
@@ -507,7 +507,7 @@
    "video_id": "aazNGu-8z2A",
    "at": "2026-11-08T14:59:14+00:00",
    "public": true,
-   "thumb_ok": false,
+   "thumb_ok": true,
    "playlist_ok": true
   },
   {
@@ -517,7 +517,7 @@
    "video_id": "n8At2UBF5Aw",
    "at": "2026-11-09T18:39:40+00:00",
    "public": true,
-   "thumb_ok": false,
+   "thumb_ok": true,
    "playlist_ok": false
   },
   {
@@ -527,7 +527,7 @@
    "video_id": "cxATfEGoD0Q",
    "at": "2026-11-09T18:39:43+00:00",
    "public": true,
-   "thumb_ok": false,
+   "thumb_ok": true,
    "playlist_ok": false
   },
   {
@@ -537,7 +537,7 @@
    "video_id": "4AjCA6Zj3S8",
    "at": "2026-11-09T18:39:47+00:00",
    "public": true,
-   "thumb_ok": false,
+   "thumb_ok": true,
    "playlist_ok": true
   },
   {
@@ -618,7 +618,7 @@
    "at": "2026-11-11T00:33:02+00:00",
    "public": true,
    "thumb_ok": false,
-   "playlist_ok": false
+   "playlist_ok": true
   },
   {
    "slug": "18-khon-thi-chan-khoei-rak",
@@ -628,7 +628,7 @@
    "at": "2026-11-11T00:33:06+00:00",
    "public": true,
    "thumb_ok": false,
-   "playlist_ok": false
+   "playlist_ok": true
   },
   {
    "slug": "19-lom-nao-kap-khwam-khit-thueng",
@@ -638,7 +638,7 @@
    "at": "2026-11-11T16:03:11+00:00",
    "public": true,
    "thumb_ok": false,
-   "playlist_ok": false
+   "playlist_ok": true
   },
   {
    "slug": "20-khop-khun-thi-yang-hai-chai",
@@ -648,7 +648,7 @@
    "at": "2026-11-11T16:03:14+00:00",
    "public": true,
    "thumb_ok": false,
-   "playlist_ok": false
+   "playlist_ok": true
   },
   {
    "slug": "21-sao-na-khoi-phi",
@@ -658,7 +658,7 @@
    "at": "2026-11-11T16:03:16+00:00",
    "public": true,
    "thumb_ok": false,
-   "playlist_ok": false
+   "playlist_ok": true
   },
   {
    "slug": "24-yut-mai-yom",
@@ -668,7 +668,7 @@
    "at": "2026-11-11T16:03:19+00:00",
    "public": true,
    "thumb_ok": false,
-   "playlist_ok": false
+   "playlist_ok": true
   },
   {
    "slug": "06-doen-khon-diao",
@@ -678,7 +678,7 @@
    "at": "2026-11-11T16:03:22+00:00",
    "public": true,
    "thumb_ok": false,
-   "playlist_ok": false
+   "playlist_ok": true
   },
   {
    "slug": "07-huachai-si-thao",
@@ -688,7 +688,7 @@
    "at": "2026-11-11T16:03:26+00:00",
    "public": true,
    "thumb_ok": false,
-   "playlist_ok": false
+   "playlist_ok": true
   },
   {
    "slug": "08-klap-ban-rao",
@@ -698,7 +698,7 @@
    "at": "2026-11-12T16:44:22+00:00",
    "public": true,
    "thumb_ok": false,
-   "playlist_ok": false
+   "playlist_ok": true
   },
   {
    "slug": "09-phleng-khong-khon-nueai",
@@ -708,7 +708,7 @@
    "at": "2026-11-12T16:44:26+00:00",
    "public": true,
    "thumb_ok": false,
-   "playlist_ok": false
+   "playlist_ok": true
   },
   {
    "slug": "10-dok-mai-rim-thang",
@@ -718,7 +718,7 @@
    "at": "2026-11-12T16:44:29+00:00",
    "public": true,
    "thumb_ok": false,
-   "playlist_ok": false
+   "playlist_ok": true
   },
   {
    "slug": "11-sanya-chak-chai",
