@@ -769,6 +769,26 @@
    "public": true,
    "thumb_ok": false,
    "playlist_ok": false
+  },
+  {
+   "slug": "09-phleng-khong-khon-nueai",
+   "kind": "song",
+   "variant": "",
+   "video_id": "p1pYKxfyoUA",
+   "at": "2026-11-14T23:50:31+00:00",
+   "public": true,
+   "thumb_ok": false,
+   "playlist_ok": false
+  },
+  {
+   "slug": "10-dok-mai-rim-thang",
+   "kind": "song",
+   "variant": "",
+   "video_id": "LfXEhBO7sPM",
+   "at": "2026-11-14T23:50:34+00:00",
+   "public": true,
+   "thumb_ok": false,
+   "playlist_ok": false
   }
  ],
  "playlists": {
