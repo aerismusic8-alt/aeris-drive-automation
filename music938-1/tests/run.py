@@ -1532,6 +1532,17 @@ def test_soundfont_renderer() -> None:
         beat = 60.0 / info["bpm"]
         check("build_midi length matches the bars", abs(info["seconds"] - 16 * beat) < 1e-6)
         check("the midi file was written", (Path(td) / "t.mid").stat().st_size > 0)
+        # K: "ดนตรีห้ามซ้ำกัน". Two songs in one mood must not render the same
+        # bed, so the seed must actually change the music — this is what shipped
+        # five songs that were two files (measured 2026-11-14).
+        a_mid, b_mid = Path(td) / "a.mid", Path(td) / "b.mid"
+        SF.build_midi("calm", bars=4, path=a_mid, seed=0)
+        SF.build_midi("calm", bars=4, path=b_mid, seed=987654)
+        check("a different seed writes different music",
+              a_mid.read_bytes() != b_mid.read_bytes())
+        check("the same seed is reproducible",
+              SF.build_midi("calm", bars=4, path=Path(td) / "c.mid",
+                            seed=987654)["seconds"] == info["seconds"])
 
     # The crossfade is the seamless-loop fix: the wrap must join adjacent
     # samples, and the loop must be shorter than the source by exactly the xfade.
@@ -1803,6 +1814,8 @@ def test_refresh_sleep_video() -> None:
 
 def test_provenance() -> None:
     section("provenance (WIRING: retired Piper engine must not ship)")
+    import inspect
+
     import provenance
     # The gate is the left/right channel difference: make_song.py copies one mono
     # signal into both channels, so its files are bit-identical, while a real
@@ -1830,6 +1843,45 @@ def test_provenance() -> None:
         data = json.loads((ROOT / "library" / "songs" / "manifest.json").read_text(encoding="utf-8"))
         check("manifest on disk is readable by the readers",
               "entries" in data and all("id" in e for e in data["entries"]))
+
+    # A bed is not a song. The ffmpeg synth was mono-duplicated and caught; the
+    # *sampler* bed is a real stereo mix at 44.1 kHz, so the mono test called it
+    # "flow" and the catalogue sold an instrumental under a song title (the
+    # 2026-11-07 bug, back in a new form). The discriminator is the sample rate:
+    # a Flow/Lyria master is 48 kHz, every rendered bed is common.SR.
+    import common
+    check("is_bed keys off the render sample rate",
+          "common.SR" in inspect.getsource(provenance.is_bed))
+    beds = [p for p in sorted((common.LIBRARY / "songs").glob("song-*.mp3"))
+            if provenance.is_bed(p)]
+    flows = [p for p in sorted((common.LIBRARY / "songs").glob("song-*.mp3"))
+             if not provenance.is_bed(p)]
+    check("a bed is never labelled a real song",
+          all(provenance.verdict(p) != "retired" for p in beds))
+    if beds:
+        check("no bed is mistaken for a Flow song",
+              all(not provenance.is_bed(p) for p in flows))
+    # The share pack must use is_bed, or it labels a bed "flow"/has_vocals again.
+    pack = (ROOT / "scripts" / "make_share_pack.py").read_text(encoding="utf-8")
+    check("the share pack asks is_bed before calling a file a song",
+          "provenance.is_bed(" in pack)
+    # The release rail must refuse a bed, or it uploads an instrumental as a song.
+    rel = (ROOT / "scripts" / "release.py").read_text(encoding="utf-8")
+    check("the release plan skips an offline bed",
+          "def is_bed(" in rel and "is_bed(song)" in rel)
+    # Every clip surface must refuse a bed too, or a Short/exhibit plays music
+    # under a song caption — the same bug in another shape.
+    for script in ("make_short.py", "make_surreal_short.py"):
+        text = (ROOT / "scripts" / script).read_text(encoding="utf-8")
+        check(f"{script} refuses to cut a clip from an offline bed",
+              "is_bed(" in text)
+    # The keyless lane writes its bed to the same path a Flow render uses. The
+    # EXISTS short-circuit must ask `_is_bed`, or the bed counts as a finished
+    # song and Flow never renders the real take (measured 2026-11-14).
+    flow = (ROOT / "scripts" / "flow_song.py").read_text(encoding="utf-8")
+    check("flow_song defines a bed check", "def _is_bed(" in flow)
+    check("the EXISTS short-circuit refuses a bed",
+          "MIN_SECONDS and not _is_bed(out)" in flow)
 
 
 def test_youtube_quota_ledger() -> None:
@@ -2013,6 +2065,17 @@ def test_arrangement_no_repeat() -> None:
         a = A.signature_for(s, cat)
         check(f"{s}: arrangement matches its genre", a.get("genre") == g,
               f"{g} -> {a.get('genre')}")
+
+    # K's rule is about the *sound*, not the label: "ดนตรีห้ามซ้ำกัน". Two songs
+    # that resolve to the same arrangement id are the same music, whatever their
+    # genre headers say — which is exactly how the offline lane shipped five
+    # songs that were two files (measured 2026-11-14). Pin the audio too, so a
+    # bed shared by two slugs cannot pass as two songs.
+    by_audio: dict[str, list[str]] = {}
+    for p in sorted((common.LIBRARY / "songs").glob("song-*.mp3")):
+        by_audio.setdefault(common.sha256_file(p), []).append(p.stem)
+    same = {k: v for k, v in by_audio.items() if len(v) > 1}
+    check("no two songs share one audio file", not same, str(same))
 
     # Every arrangement needs all three parts or the Flow prompt is thin.
     for a in A.signatures():
@@ -4807,6 +4870,16 @@ def test_produce_loop() -> None:
     first = pl.pick_theme(set())
     second = pl.pick_theme({first[2]})
     check("the picker skips a title already used", first[2] != second[2])
+    # A genre must not be produced past its plan: an over-full genre exhausts its
+    # arrangement pool, so `assign` spills the extras into another genre's pool
+    # and the songs ship with the wrong sound (measured 2026-11-14: 11 pop songs,
+    # 8 pop arrangements). A full genre is skipped, not over-filled.
+    planned = {g["id"]: g["planned"] for g in pl.G.genres()}
+    full = {g: planned.get(g, 0) for g in planned}
+    capped = pl.pick_theme(set(), counts=full)
+    check("a full genre is skipped for an unfilled one",
+          capped is None or full.get(capped[0], 0) < planned.get(capped[0], 0),
+          str(capped))
     # The pool is themes x variants; it must exhaust (not repeat) only once every
     # combination is used, so the loop can run for weeks without a duplicate.
     all_titles = {f"{t[2]}{s}" for t in pl.THEMES for s, _ in pl.VARIANTS}
@@ -5068,6 +5141,26 @@ def test_keyless_lyric_drafter() -> None:
     bad = [("chorus", ["คิดถึงบ้านยามฝนตกทุกครา", "2nd opinion"])]
     check("the marker would fail the lint",
           any("Latin" in p for p in A.lint_sections(bad)))
+    # The Thai-length ceiling must accept a real singable line and still catch a
+    # fused answer. 2026-11-14: a 34-char ceiling rejected the 36-39 char lines
+    # Duck.ai actually writes, and a produce run lost every draft to it.
+    ok39 = [("chorus", ["ฟุ้งกรามเสียงกระตุ้นกล้ามเนื้อพยายามวัน"])]
+    check("a 39-char Thai line passes the lint",
+          not any("Thai chars" in p for p in A.lint_sections(ok39)))
+    check("a fused runaway line still fails the lint",
+          any("Thai chars" in p for p in A.lint_sections([("chorus", ["ก" * 90])])))
+    # Pollinations returns `output_token_limit_exceeded` (HTTP 400) on a long
+    # lyric brief unless the caller raises the ceiling; a produce run lost every
+    # draft to it (measured 2026-11-14). Both the ceiling and a retry for the
+    # genuinely transient 400 are required.
+    poll = (ROOT.parent / "ops" / "pollinations_ask.py").read_text()
+    check("pollinations sends max_tokens (the output-limit fix)",
+          "max_tokens" in poll and "output_token_limit_exceeded" in poll)
+    check("pollinations retries a transient 400",
+          "400" in poll and "attempt == 2" in poll)
+    # --plan must list N distinct songs, not the same theme N times.
+    check("the plan advances the picker",
+          "seen.add(t[2])" in (ROOT / "scripts" / "produce_loop.py").read_text())
     forge = (ROOT / "scripts" / "forge_song.py").read_text()
     check("the forge tries the keyless drafter first",
           forge.index('for drafter in ("duck", "chatgpt")') > 0)
@@ -5078,6 +5171,15 @@ def test_keyless_lyric_drafter() -> None:
           "--offline" in flow and "def _offline_bed" in flow)
     check("the offline path uses the offline synth, not Flow",
           "make_music" in flow and 'status": "OFFLINE_BED' in flow)
+    # The real-instrument renderer returns ~11 s less than it is asked for, so a
+    # 210 s request lands at ~199 s — under the pack's 3.5-minute floor (measured
+    # 2026-11-14). The offline bed must ask for enough headroom, and the bed cache
+    # must not reuse a take built for a different length.
+    check("the offline bed asks for enough headroom for the floor",
+          "duration=240.0" in flow)
+    mk = (ROOT.parent / "aeris938-1" / "scripts" / "make_music.py").read_text()
+    check("the bed cache is duration-aware",
+          'existing.get("duration_seconds") == duration' in mk)
     check("the offline path reads the lyric header",
           'parse_lyric(lyric)["meta"]' in flow)
     # A normal run must never silently downgrade a Flow render to a synth bed.

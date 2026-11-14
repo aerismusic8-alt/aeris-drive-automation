@@ -141,6 +141,11 @@ def _audio_provenance(slug: str) -> dict:
         return {"audio": "unknown", "has_vocals": None}
     try:
         import provenance  # noqa: PLC0415
+        # Sample rate first: a sampler bed is a real stereo mix, so the old
+        # mono-duplication test called it "flow" and the catalogue sold a bed as
+        # a song (the 2026-11-07 bug, in a new form). `is_bed` keys off the rate.
+        if provenance.is_bed(path):
+            return {"audio": "synth-bed", "has_vocals": False}
         mono = bool(provenance.signature(path).get("mono_duplicated"))
     except Exception:  # noqa: BLE001 - a missing ffmpeg must not break the pack
         mono = None

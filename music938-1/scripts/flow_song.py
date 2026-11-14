@@ -558,10 +558,19 @@ def generate(slug: str, *, timeout: float = 480.0, force: bool = False,
     if out.exists() and kar.exists() and not force:
         # Existence is not enough: a take from before the floor was enforced can
         # be under 3.5 min and still sit on disk. Rebuild those.
-        if _seconds(out) >= MIN_SECONDS:
+        #
+        # An offline bed is not a song either. The keyless lane writes the bed to
+        # this exact path, so without this check the bed counts as "already done"
+        # and Flow never renders the real take — the song is silently stranded on
+        # the instrumental forever (measured 2026-11-14).
+        if _seconds(out) >= MIN_SECONDS and not _is_bed(out):
             return {"status": "EXISTS", "file": str(out), "karaoke": str(kar)}
-        print(f"[warn] {slug}: existing take is {_seconds(out):.1f}s, rebuilding",
-              file=sys.stderr)
+        if _is_bed(out):
+            print(f"[warn] {slug}: on-disk master is an offline bed, not a sung "
+                  f"song; rendering with Flow", file=sys.stderr)
+        else:
+            print(f"[warn] {slug}: existing take is {_seconds(out):.1f}s, rebuilding",
+                  file=sys.stderr)
 
     song = parse_lyric(lyric_path)
     if len(song["lyrics"]) > 3000:
@@ -730,6 +739,39 @@ def _karaoke_only(slug: str) -> int:
     return 0
 
 
+def _is_bed(path: Path) -> bool:
+    """True when `path` is our offline real-instrument bed, not a Flow render.
+
+    The keyless lane writes its bed to the same `song-<slug>.mp3` path a Flow
+    render uses, so without this the bed is mistaken for a finished song and
+    blocks the real render. Delegates to `provenance.is_bed`, which keys off the
+    sample rate (a Flow master is 48 kHz, a rendered bed is `common.SR`).
+    """
+    try:
+        import provenance  # noqa: PLC0415
+        return provenance.is_bed(path)
+    except Exception:  # noqa: BLE001 - a bed check must never block a render
+        return False
+
+
+def _bed_seed(slug: str) -> int:
+    """A stable per-song seed for the offline bed.
+
+    Keyed off the song's own arrangement id, so two songs in one mood get
+    different melodies and re-rendering the same song reproduces its bed.
+    """
+    import hashlib  # noqa: PLC0415
+
+    import arrangement  # noqa: PLC0415
+
+    try:
+        sig = arrangement.signature_for(slug)
+        basis = f"{sig.get('id', '')}-{slug}"
+    except Exception:  # noqa: BLE001 - a seed must never block a render
+        basis = slug
+    return int(hashlib.sha256(basis.encode("utf-8")).hexdigest()[:8], 16)
+
+
 def _offline_bed(slug: str, force: bool = False) -> dict:
     """A keyless song master: lyrics + a real-instrument bed, no Flow Music.
 
@@ -752,7 +794,18 @@ def _offline_bed(slug: str, force: bool = False) -> dict:
     if mood not in make_music.MOODS:
         mood = "calm"
     key = (meta.get("key") or "C").strip() or "C"
-    bed = make_music.make(mood, key, duration=210.0, force=force)
+    # A bed is keyed by (mood, key) in the library, so two songs in one mood used
+    # to share one file: the offline lane shipped five songs that were two files,
+    # which is K's "ดนตรีห้ามซ้ำกัน" violation (measured 2026-11-14). The bed id
+    # carries the slug and a seed derived from the song's own arrangement, so each
+    # song gets its own music.
+    bed_key = f"{key}-{slug}"
+    seed = _bed_seed(slug)
+    # 240, not 210: the real-instrument renderer returns ~11 s less than it is
+    # asked for (fluidsynth fills fewer frames than the nominal bar count), so a
+    # 210 s request lands at ~199 s — under the pack's 3.5-minute floor and red in
+    # the duration test. Measured 2026-11-14: 240 s in, 228.6 s out.
+    bed = make_music.make(mood, bed_key, duration=240.0, force=force, seed=seed)
     src = Path(make_music.__file__).resolve().parent.parent / bed["entry"]["file"]
     # The `song-` prefix is not decoration: the catalogue, the share pack, the
     # media release and release.py all key off `song-<slug>.mp3`. A bare

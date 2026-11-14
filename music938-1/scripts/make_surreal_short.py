@@ -152,6 +152,16 @@ def render(slug: str, out_dir: Path | None = None) -> Path:
         if not p.exists():
             raise FileNotFoundError(f"missing {p}; pull media first")
 
+    # An exhibit is bedded on the song's chorus. If the "song" is really an
+    # offline bed there is no vocal under the caption, which is the bed-shipped-
+    # as-a-song bug K caught (2026-11-07). Refuse it before rendering.
+    try:
+        import provenance
+    except ImportError:  # a missing module must not block an unrelated render
+        provenance = None
+    if provenance is not None and provenance.is_bed(audio):
+        raise SystemExit(f"{slug} is an offline bed, not a sung song")
+
     meta, _lines = load_lyrics(slug)
     song_title = meta.get("TITLE", slug)
     # Guard the copy *we* author — the exhibit premise and the ask. The song's own

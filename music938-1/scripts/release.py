@@ -285,6 +285,24 @@ def is_retired(slug: str) -> bool:
         return True
 
 
+def is_bed(slug: str) -> bool:
+    """True when the on-disk file is our offline real-instrument bed, not a song.
+
+    The produce lane's keyless master is a 44.1 kHz instrumental; a Flow render
+    is 48 kHz. Releasing a bed would put an instrumental on the channel under a
+    song title, which is the bug K caught on 2026-11-07. A file not on disk is
+    judged as "not a bed": the release asset list only ever holds Flow renders.
+    """
+    song = SONGS / f"song-{slug}.mp3"
+    if not song.exists():
+        return False
+    try:
+        import provenance
+        return provenance.is_bed(song)
+    except Exception:  # ffmpeg missing: fail closed, do not risk a bed release
+        return True
+
+
 SHORTS = ROOT / "library" / "shorts"
 
 # At most this many Shorts per song reach the plan. One song yields three chorus
@@ -750,6 +768,14 @@ def plan(days: int, shorts: bool = False, spread: float = 0,
         if is_retired(song):
             # A rebuilt song is the rejected engine; it must not be uploaded.
             print(f"skip {song}: rebuilt by the retired Piper engine "
+                  f"(see scripts/provenance.py)", file=sys.stderr)
+            continue
+        if is_bed(song):
+            # An offline bed is a real-instrument instrumental, not a song. The
+            # produce lane labels it `synth-bed` and it exists as raw material for
+            # clips; releasing it would put an instrumental on the channel under a
+            # song title — the "bed shipped as a song" bug K caught (2026-11-07).
+            print(f"skip {song}: offline bed, not a sung song "
                   f"(see scripts/provenance.py)", file=sys.stderr)
             continue
         group = [{"slug": song, "kind": "short", "video": v, "variant": v.stem}

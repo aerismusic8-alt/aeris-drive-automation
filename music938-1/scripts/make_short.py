@@ -281,6 +281,17 @@ def render(slug: str, *, mix: str = "song", out_dir: Path | None = None,
         if not p.exists():
             raise FileNotFoundError(f"missing {p}; run flow_song.py first")
 
+    # A bed is an instrumental, not a sung song. A Short cut from it would play
+    # music with no vocal while the caption promises a song — the bed-shipped-as-
+    # a-song bug K caught (2026-11-07). Refuse it for every mix, before rendering.
+    try:
+        import provenance
+    except ImportError:  # a missing module must not block an unrelated render
+        provenance = None
+    if provenance is not None and provenance.is_bed(
+            ROOT / "library" / "songs" / f"song-{slug}.mp3"):
+        raise RuntimeError(f"{slug} is an offline bed, not a sung song")
+
     # A karaoke clip must be refused outright when the words cannot be trusted to
     # match the song (K, 2026-11-07). The lyric-card path makes this a hard gate,
     # not a note: better to ship no karaoke clip than a mismatched one.
@@ -400,6 +411,15 @@ def main() -> int:
     rc = 0
     for slug in slugs:
         try:
+            # A bed on disk is not a song; skip it rather than turn a healthy
+            # batch red. `render()` still refuses one when called directly.
+            try:
+                import provenance
+                if provenance.is_bed(ROOT / "library" / "songs" / f"song-{slug}.mp3"):
+                    print(f"{slug}: skip (offline bed, not a sung song)")
+                    continue
+            except ImportError:
+                pass
             # A karaoke mix whose words cannot be trusted is refused by render(),
             # so a `--mix karaoke` batch skips those songs instead of shipping a
             # mismatched clip (K, 2026-11-07).

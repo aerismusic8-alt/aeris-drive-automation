@@ -96,6 +96,23 @@ def verdict(path: Path) -> str:
     return "retired" if sig["mono_duplicated"] else "flow"
 
 
+def is_bed(path: Path) -> bool:
+    """True when `path` is our offline real-instrument bed, not a Flow render.
+
+    A Flow Music (Lyria) master comes back at 48 kHz; every bed
+    `soundfont.render_bed` writes is at `common.SR` (44.1 kHz). Sample rate is
+    the discriminator the old mono-duplication test cannot give: that test only
+    caught the ffmpeg synth, because the *sampler* bed is a real stereo mix, so
+    it read as a Flow song and could be catalogued as one — the same class of bug
+    K caught on 2026-11-07 (a bed shipped as a song).
+    """
+    try:
+        sig = signature(path)
+    except Exception:  # noqa: BLE001 - unreadable audio is "not a bed", not a crash
+        return False
+    return sig.get("sample_rate") == str(common.SR)
+
+
 def song_slugs() -> list[str]:
     return sorted(p.name[len("song-"):-len(".mp3")] for p in SONGS.glob("song-*.mp3"))
 
