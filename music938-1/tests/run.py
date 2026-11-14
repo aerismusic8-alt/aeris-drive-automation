@@ -4891,6 +4891,23 @@ def test_produce_loop() -> None:
     s1, s2 = pl._slugify("ไฟนีออนกับใจที่ล้า"), pl._slugify("ไฟนีออนกับใจที่ล้า")
     check("a Thai title yields a stable slug", s1 == s2 and s1.isascii())
     check("the slug has no path characters", "/" not in s1 and " " not in s1)
+    # A theme whose draft fails must not wedge the loop, but a single failure is
+    # often transient, so it gets a few retries before it is set aside. Measured
+    # 2026-11-15: `30-khuen-thi-yang-mai-lap-v30` was attempted 8 times with no
+    # song produced because the picker never counted the failed attempt.
+    t0 = pl.pick_theme(set())[2]
+    one = {"made": 0, "log": [{"slug": "x", "title": t0, "result": "no-draft"}]}
+    check("a once-failed theme is still retried (transient failures recover)",
+          pl.attempted_titles(one) == set())
+    many = {"made": 0, "log": [{"slug": "x", "title": t0, "result": "no-draft"}]
+            * pl.MAX_DRAFT_ATTEMPTS}
+    check("a theme that keeps failing is set aside",
+          t0 in pl.attempted_titles(many))
+    check("a made title is never picked again",
+          t0 in pl.attempted_titles(
+              {"made": 1, "log": [{"slug": "x", "title": t0, "result": "lyric"}]}))
+    check("a no-draft record carries the title it tried",
+          '"title": title, "genre": genre' in src)
 
 
 def test_share_pack() -> None:

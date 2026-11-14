@@ -117,6 +117,36 @@ def save_queue(q: dict) -> None:
     QUEUE.write_text(json.dumps(q, ensure_ascii=False, indent=2), encoding="utf-8")
 
 
+MAX_DRAFT_ATTEMPTS = 3
+
+
+def attempted_titles(q: dict) -> set[str]:
+    """Titles the picker must skip: the ones already made, and the ones that have
+    failed to draft too many times.
+
+    A `no-draft` record used to carry only the slug, so the picker — which keys
+    off `title` — never saw the attempt and re-picked the same theme on every
+    run. Measured 2026-11-15: `30-khuen-thi-yang-mai-lap-v30` was attempted 8
+    times in a row with no song produced, and the loop never reached the other
+    ~60 themes. But a single failure is often transient (a pollinations 400, a
+    draft that one retry fixes — origin's log shows `32-...-v32` failing once
+    then succeeding), so a theme is retried up to `MAX_DRAFT_ATTEMPTS` times
+    before it is set aside: transient failures recover, a persistent one cannot
+    wedge the loop.
+    """
+    made: set[str] = set()
+    fails: dict[str, int] = {}
+    for rec in q.get("log", []):
+        title = rec.get("title")
+        if not title:
+            continue
+        if rec.get("result") == "lyric":
+            made.add(title)
+        else:
+            fails[title] = fails.get(title, 0) + 1
+    return made | {t for t, n in fails.items() if n >= MAX_DRAFT_ATTEMPTS}
+
+
 def pick_theme(used: set[str], counts: dict[str, int] | None = None) -> tuple[str, str, str, str, str, str] | None:
     """The first (theme, variant) not yet attempted, inside a genre's plan.
 
@@ -170,7 +200,8 @@ def make_one(theme: tuple[str, str, str, str, str, str], *, flow: bool) -> dict:
             break
     if not secs or problems:
         print(f"  draft rejected: {problems[:3]}", flush=True)
-        return {"slug": slug, "result": "no-draft", "problems": problems[:3]}
+        return {"slug": slug, "title": title, "genre": genre, "mood": mood,
+                "result": "no-draft", "problems": problems[:3]}
     (ROOT / "lyrics" / f"{slug}.txt").write_text(A.render_file(meta, secs), encoding="utf-8")
     print(f"  lyric written: lyrics/{slug}.txt ({sum(len(l) for _, l in secs)} lines)", flush=True)
 
@@ -253,7 +284,7 @@ def main() -> int:
     args = ap.parse_args()
 
     q = load_queue()
-    used = {r.get("title") for r in q["log"]}
+    used = attempted_titles(q)
     if args.plan:
         # Advance the picker the way main() does, so N planned rows are N
         # *distinct* songs. The old form only excluded the base title of the
@@ -273,7 +304,7 @@ def main() -> int:
 
     made = []
     for _ in range(max(1, args.count)):
-        used = {r.get("title") for r in q["log"]}
+        used = attempted_titles(q)
         theme = pick_theme(used)
         if not theme:
             print("theme pool exhausted — extend THEMES in produce_loop.py")
