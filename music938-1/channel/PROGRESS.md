@@ -1,6 +1,6 @@
 # AERIS Music — ความคืบหน้า (อัตโนมัติ)
 
-อัพเดท: 2026-11-13 01:23 UTC
+อัพเดท: 2026-11-14 00:59 UTC
 
 ## เป้าหมาย monetize
 - ผู้ติดตาม: 8 / 1,000   [.................... 0%]
@@ -13,12 +13,12 @@
 - `ax-music-dashboard` 07:20Z — เขียนหน้านี้ + รายงาน
 
 ## เนื้อหาที่ปล่อยแล้ว (ledger)
-- รวม 78 รายการ: affiliate=5, karaoke=6, short=48, song=19
+- รวม 80 รายการ: affiliate=5, karaoke=6, short=48, song=21
 - เพลย์ลิสต์: karaoke=PLYqvExU9-SLE, song=PLeA2Vf8N8O5c, short=PLKlARHtRpKkI, compilation=PLQyOtKueeTgs, naviya=PLA2A_jek56jw, mood-sad=PLEAzEDjP3vgk, mood-warm=PLUQemmr8-kPw, mood-hopeful=PLeLdgn9BjlEY
 
 ## ครอสโพสต์
-- โพสต์แล้ว: facebook=60, facebook-page=20, tiktok=29
-- คิวคงเหลือ: facebook=153, tiktok=120
+- โพสต์แล้ว: facebook=60, facebook-page=23, tiktok=33
+- คิวคงเหลือ: facebook=155, tiktok=121
 
 ## หมายเหตุ
 - ตัวเลขจาก YouTube Data API (subs/views/likes/comments).
