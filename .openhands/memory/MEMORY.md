@@ -16,12 +16,10 @@ channel without K's approval.
 
 ## Accounts (K, 2026-11-14): every tool uses AR's OWN mail
 "เครื่องมือทุกอย่างใช้เมล์ตัวเองล็อคอิน รวมถึง agent ในทีม ไม่ต้องใช้เมล์ K".
-AR mailbox = `araeris4770d7@fldubai.com` (mail.tm; `ops/ar_identity.py`). **Flow
-Music/Gemini offer only "Continue with Google"**, needing an AR *Google Account* —
-but a free unattended signup is **blocked**: after email verification Google forces
-`crossflowverification` device attestation (QR / `intent://devicephoneverification`
-/ SMS) → needs a real phone. No AR account exists; K must tap the QR once
-(2026-11-12.md).
+AR mailbox = `araeris4770d7@fldubai.com` (mail.tm; `ops/ar_identity.py`). Flow
+Music/Gemini offer only "Continue with Google" → an AR *Google Account*, but free
+signup is **blocked**: Google forces `crossflowverification` attestation (QR/SMS)
+→ needs a real phone. No AR account exists; K must tap the QR once (2026-11-12.md).
 
 ## Roles and method (K, 2026-10-31)
 - **K = final authority.** Every standing rule is K's.
@@ -40,7 +38,8 @@ built from free cloud tools. Scope = **4 channels**. Two goals in
 Roblox game anyone can enter and play, and real revenue from it (Roblox **PARKED**).
 Focus (aeris938-2) = Facebook, TikTok, YouTube `@aerismusicth`, Shopee Affiliate.
 **Revenue gate = ch3 `@aerismusicth`** `UCm44BjAn03ruOF-WaA3ZRww`: **1,000 subs AND
-4,000 watch-hours/12 mo**. Free lever = long-form volume (`compile_album.py`).
+4,000 watch-hours/12 mo**. Free lever = **weekly numbered long-form series**
+(`volume_series.py` → Vol.N, ~75 min; scan 2026-11-15: winners = numbered long-form).
 
 ## The metric is followers (K, 2026-11-09)
 Views without follows is the failure. Send every surface to the Page; end every
