@@ -228,6 +228,14 @@ def main() -> int:
     if rc == 3:
         print("batch stopped early (day's upload slots spent); ledger saved")
         return 0
+    if rc == 4:
+        # YouTube refused the upload with `uploadLimitExceeded`: the account's
+        # own daily cap is below our cadence. That is a real failure the rail
+        # must show (red + the watchdog alert), not a "day done" green. The
+        # ledger is already written above, so nothing that did upload is lost.
+        print("release failed: UPLOAD_LIMIT_EXCEEDED (account cap); "
+              "ledger saved", file=sys.stderr)
+        return 4
     if rc != 0:
         print(f"release returned {rc}", file=sys.stderr)
         return rc

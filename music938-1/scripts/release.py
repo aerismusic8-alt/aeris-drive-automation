@@ -987,12 +987,18 @@ def release_one(item: dict, args) -> int:
     if proc.returncode != 0:
         # A channel-level cap, distinct from the API's 100/day insert bucket:
         # YouTube throttles how many videos an account may upload in a day and
-        # returns `uploadLimitExceeded`. There is no point trying the rest of the
-        # batch, and it is not a defect to report — treat it as the day being
-        # done (rc 3), the same as a spent cadence, so the workflow stays green.
+        # returns `uploadLimitExceeded`. This is a real failure, not a spent
+        # cadence. The daily batch is deliberately small (UPLOADS_PER_DAY) and
+        # every other uploader to this channel is a once-a-week job, so a batch
+        # that cannot upload means the account's own cap is below the cadence —
+        # a signal the rail must surface, not swallow. Treating it as "day done"
+        # (rc 3, green) is how the channel shipped 0 videos on 2026-11-13 and
+        # 2026-11-15 while every run reported success. Return a distinct code
+        # (4) so `daily_release.py` can fail the workflow and alert.
         if "uploadLimitExceeded" in proc.stdout or "uploadLimitExceeded" in proc.stderr:
-            print("upload limit reached for today; stopping the batch", file=sys.stderr)
-            return 3
+            print("UPLOAD_LIMIT_EXCEEDED: YouTube refused the upload "
+                  "(account daily cap), not a spent cadence", file=sys.stderr)
+            return 4
         return proc.returncode
     m = re.search(r"video id (\S+)", proc.stdout)
     vid = m.group(1) if m else None
@@ -1095,6 +1101,7 @@ def main() -> int:
         return 3
 
     rc = 0
+    uploaded = 0
     for i, item in enumerate(batch):
         if i:
             print(f"--- release {i + 1}/{args.count} ---")
@@ -1111,8 +1118,16 @@ def main() -> int:
                   f"continuing the batch", file=sys.stderr)
             rc = 0
             continue
+        # rc 4 is the account's own daily upload cap. If something already
+        # uploaded this run, the cap is simply reached — the same "day done" as
+        # rc 3, and the workflow stays green. If NOTHING uploaded, the cap is
+        # below our cadence: a real failure the rail must surface, so keep rc 4.
+        if rc == 4:
+            rc = 3 if uploaded else 4
+            break
         if rc != 0:
             break
+        uploaded += 1
     return rc
 
 

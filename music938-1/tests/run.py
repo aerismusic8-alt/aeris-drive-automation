@@ -867,8 +867,22 @@ def test_release_tolerates_transient_errors() -> None:
           "for attempt in range" in pl and "409, 500, 502, 503, 504" in pl)
     check("a real quota 403 is not retried",
           "transient = e.code in" in pl)
-    check("uploadLimitExceeded stops the day cleanly (rc 3)",
-          "uploadLimitExceeded" in src and "return 3" in src)
+    # `uploadLimitExceeded` is NOT transient: it is the account's own daily cap,
+    # a real failure. It used to be folded into rc 3 ("day done", green), which
+    # is how the channel shipped 0 videos on 2026-11-13 and 2026-11-15 while the
+    # rail reported success. It now returns a distinct code (4) with a marker.
+    check("uploadLimitExceeded returns a distinct failure code (4), not rc 3",
+          "uploadLimitExceeded" in src and "return 4" in src
+          and "UPLOAD_LIMIT_EXCEEDED" in src)
+    # The cap only means "day done" if something already uploaded this run. When
+    # the FIRST item is refused, the account cap is below our cadence — a real
+    # failure that must stay rc 4 so the rail goes red and the watchdog alerts.
+    loop = src[src.find("for i, item in enumerate(batch)"):]
+    check("a cap hit after an upload is downgraded to 'day done' (rc 3)",
+          "rc = 3 if uploaded else 4" in loop)
+    dl = (ROOT / "scripts" / "daily_release.py").read_text(encoding="utf-8")
+    check("the wrapper fails the run on rc 4 instead of returning green",
+          "if rc == 4:" in dl and "return 4" in dl)
 
 
 def test_ledger_write_merges_instead_of_clobbering() -> None:
