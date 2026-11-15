@@ -6,8 +6,7 @@ const ROOT=dirname(fileURLToPath(import.meta.url));
 const REGISTRY_PATH=resolve(ROOT,'node-registry.json');
 
 const DEFAULT_NODES={
-  "PC1-MAIN":{nodeId:"PC1-MAIN",role:"PRIMARY",transport:"local",status:"UNKNOWN",capabilities:["execution","ai","control","browser"]},
-  "PC2-NIGHT":{nodeId:"PC2-NIGHT",role:"SECONDARY",transport:"http",status:"UNKNOWN",capabilities:["execution","ai","control","browser"]}
+  "PC1-MAIN":{nodeId:"PC1-MAIN",role:"PRIMARY",transport:"local",status:"UNKNOWN",capabilities:["execution","ai","control","browser"]}
 };
 
 export async function loadNodeRegistry(){

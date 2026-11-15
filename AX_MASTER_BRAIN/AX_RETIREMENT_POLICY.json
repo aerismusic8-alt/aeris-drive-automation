@@ -8,7 +8,10 @@
       "business_id": "XM_LIVE_TRADE",
       "status": "RETIRED",
       "reason": "K directed AX to stop pursuing XM live trading and remove it from active business execution.",
-      "task_ids": ["AICS-LIVE-TRADING", "MISSION-XM-PORTFOLIO-1M"]
+      "task_ids": [
+        "AICS-LIVE-TRADING",
+        "MISSION-XM-PORTFOLIO-1M"
+      ]
     }
   ],
   "execution_rule": "Retired task IDs must remain in canonical history for audit continuity but must never be selected, dispatched, scheduled, or treated as active current work.",
@@ -19,5 +22,13 @@
     "OPERATIONS_REQUIRED_FOR_REVENUE",
     "INFRASTRUCTURE_MAINTENANCE",
     "LONG_TERM_SYSTEM_EXPANSION"
+  ],
+  "retired_nodes": [
+    {
+      "node_id": "PC2-NIGHT",
+      "machine_identity": "DESKTOP-M9M4818",
+      "status": "RETIRED",
+      "reason": "The PC2 machine no longer exists. PC1 is the only execution node; every PC2 reference was removed from state, registry and architecture on 2026-11-15."
+    }
   ]
 }

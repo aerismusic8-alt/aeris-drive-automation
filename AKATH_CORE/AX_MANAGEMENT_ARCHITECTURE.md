@@ -64,9 +64,8 @@ There is no requirement to create a recurring AX timer merely to simulate superv
 - never treats an unverified observation as a lesson.
 
 ### 4. Node Brain — Autonomous Local Management
-Each node has its own Brain:
-- PC1 Brain → manages PC1 Control;
-- PC2 Brain → manages PC2 Control.
+PC1 has its own Brain:
+- PC1 Brain → manages PC1 Control.
 
 Node Brain responsibilities:
 - inspect current state;
@@ -169,27 +168,18 @@ Reward completion must remain distinct from task start and milestone execution:
 
 ACTION → MILESTONE EVIDENCE → PARTNER/REWARD VERIFICATION → REWARD EVIDENCE → WRITE-BACK
 
-## Cross-node management
+## Node management
 
-PC1 and PC2 are independent execution nodes.
-
-AX manages them as separate workers:
-- PC1-MAIN = PRIMARY execution node;
-- PC2-NIGHT = SECONDARY execution node.
+PC1-MAIN is the only execution node.
 
 Shared knowledge does not merge local execution state.
 
-A node going offline must not stop the other node. On reconnect, the node reconciles canonical state before side-effecting execution.
+On reconnect, the node reconciles canonical state before side-effecting execution.
 
 ## Current node architecture
 
 PC1:
 PC1 → Runtime → Brain → Control → Vision/OS/Browser → Evidence → Verify → Write-back
-
-PC2:
-PC2 → Runtime → Brain → Control → Vision/OS/Browser → Evidence → Verify → Write-back
-
-Both are governed by the same management principles.
 
 ## State authority
 

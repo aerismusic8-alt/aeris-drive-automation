@@ -670,7 +670,7 @@
         "issued_by": "AX",
         "provider": "gemini",
         "objective": "Create the first concrete AERIS MUSIC YouTube Short production package that can be handed to a rendering specialist.",
-        "prompt": "Create a production-ready package for one AERIS MUSIC YouTube Short. Do not claim any media was rendered or uploaded. Return exactly these sections: 1) concept and hook, 2) 20-30 second timeline with 6 or fewer shots, 3) on-screen text, 4) voice/music direction, 5) title and caption, 6) rendering specification for a 9:16 MP4, 7) QC checklist. Make it concrete enough for a PC2 rendering specialist to execute next.",
+        "prompt": "Create a production-ready package for one AERIS MUSIC YouTube Short. Do not claim any media was rendered or uploaded. Return exactly these sections: 1) concept and hook, 2) 20-30 second timeline with 6 or fewer shots, 3) on-screen text, 4) voice/music direction, 5) title and caption, 6) rendering specification for a 9:16 MP4, 7) QC checklist. Make it concrete enough for a rendering specialist to execute next.",
         "system_instruction": "You are the AERIS MUSIC production AI specialist. Produce factual production instructions only. Never claim an artifact exists unless it was actually produced."
       },
       "result": {
@@ -853,25 +853,6 @@
         "completed_at": "2026-09-19T03:53:07.280Z"
       },
       "verified_at": "2026-09-19T03:50:38.118Z"
-    },
-    {
-      "task_id": "AKATH-PC2-BROWSER-E2E-002",
-      "type": "SYSTEM",
-      "title": "PC2 browser specialist E2E",
-      "capability": "browser",
-      "action": "browser_probe",
-      "status": "SUPERSEDED",
-      "created_at": "2026-09-18T14:32:26.3691739Z",
-      "deadline_at": "2026-09-18T14:42:26.3691739Z",
-      "target_node": "PC2-MAIN",
-      "payload": {
-        "url": "https://jumptask.io/",
-        "objective": "Open JumpTask and capture browser evidence only; do not submit or complete any task."
-      },
-      "evidence": null,
-      "verification": null,
-      "correction": "superseded_by_fresh_pc1_local_ollama_execution_gate",
-      "superseded_at": "2026-09-19T20:03:38.289Z"
     },
     {
       "task_id": "AKATH-PC1-LOCAL-OLLAMA-LIVE-001",

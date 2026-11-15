@@ -16,7 +16,7 @@ K approval remains required for live-money activation, financial transfers, mate
 
 K has explicitly authorized AX to operate continuously 24/7 within the approved delegation boundary. AX may continue internal execution, recovery, verification, persistence, task sequencing and revenue-oriented operations without requiring a new chat message from K for each step.
 
-PC1 and PC2 may be used as execution nodes when their runners are available and verified. GitHub Actions, self-hosted runners, PowerShell execution paths, connected AI executors and approved runtime services may be coordinated by AX within their existing safety and capability contracts.
+PC1 may be used as an execution node when its runner is available and verified. GitHub Actions, self-hosted runners, PowerShell execution paths, connected AI executors and approved runtime services may be coordinated by AX within their existing safety and capability contracts.
 
 24/7 authorization does not grant authority for live-money execution, financial transfers, material new capital, or other actions listed in the K-approval boundary above.
 

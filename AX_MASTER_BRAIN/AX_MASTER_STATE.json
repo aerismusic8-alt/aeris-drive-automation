@@ -67,7 +67,7 @@
     "SYSTEM tasks are enduring components that must maintain their verified operational baseline continuously",
     "MISSION tasks are finite objectives that close after target achievement and verification",
     "Categories organize canonical tasks but cannot create tasks",
-    "CONTROL_FIRST_EXECUTION: PC1 and PC2 execution is controlled through their respective local Control planes; AX does not treat chat, model reasoning, or direct ad-hoc actions as the primary node execution path.",
+    "CONTROL_FIRST_EXECUTION: PC1 execution is controlled through its local Control plane; AX does not treat chat, model reasoning, or direct ad-hoc actions as the primary node execution path.",
     "THINK_BEFORE_ACT: Every operation must first use A MASTER BRAIN knowledge, canonical state, task details, node capabilities, and latest evidence to reason/plan before any Control command is dispatched.",
     "CONTINUOUS_DATA_RESEARCH_FOR_BRAIN_UPGRADE: Continuous research and data acquisition is a core operating structure for upgrading A MASTER BRAIN; AX must continue gathering relevant evidence, knowledge, methods, failures and verified lessons over time.",
     "CONTROL_HARDENING: Control health must be supervised at layered cadences; heartbeat proves liveness only, while execution requires evidence and verification.",
@@ -173,7 +173,7 @@
   "device_capability_baseline": {
     "status": "RECORDED",
     "purpose": "Baseline capabilities used by AX to select work and control paths; hardware facts require node-specific verification.",
-    "independence_rule": "PC1 and PC2 have separate local Control planes and execute independently.",
+    "independence_rule": "PC1 runs a local Control plane and executes independently.",
     "nodes": {
       "PC1": {
         "machine_identity": "DESKTOP-RGK6JKB",
@@ -191,18 +191,6 @@
           "browser/application execution",
           "evidence collection and verification"
         ]
-      },
-      "PC2": {
-        "machine_identity": "DESKTOP-M9M4818",
-        "verified_capabilities": [
-          "online desktop control node",
-          "desktop capture/vision at 1024x768",
-          "Chrome execution",
-          "JumpTask web UI access",
-          "logged-in web session can be observed",
-          "screen contents can be inspected before task execution"
-        ],
-        "hardware_note": "Do not infer or copy hardware specifications from retired machine identities; hardware baseline remains pending node-specific verification."
       }
     },
     "capability_policy": [
@@ -210,14 +198,14 @@
       "Do not treat configuration flags as proof of capability.",
       "Desktop Commander may provide observation/control but is not required as the primary runtime dependency.",
       "Every execution and completion claim requires node-specific evidence and verification.",
-      "Control is the primary execution mechanism for both PC1 and PC2; observation and action must flow through the corresponding local Control plane.",
+      "Control is the primary execution mechanism for PC1; observation and action flow through the local Control plane.",
       "Before every execution, AX must think/plan using A MASTER BRAIN, canonical state, current evidence and node capability before dispatching Control."
     ]
   },
   "control_first_execution_contract": {
     "status": "RECORDED",
-    "rule": "PC1 and PC2 are operated through separate local Control planes under AX. Control is the primary mechanism for observing, deciding, dispatching, executing, collecting evidence, verifying and recovering node work.",
-    "shared_brain_rule": "Both Control planes use shared A MASTER BRAIN knowledge and canonical task/evidence state, while retaining independent local execution.",
+    "rule": "PC1 is operated through its local Control plane under AX. Control is the primary mechanism for observing, deciding, dispatching, executing, collecting evidence, verifying and recovering node work.",
+    "shared_brain_rule": "The Control plane uses shared A MASTER BRAIN knowledge and canonical task/evidence state while retaining independent local execution.",
     "pre_action_reasoning_gate": [
       "LOAD canonical task and current state",
       "LOAD latest evidence and verification",
@@ -229,8 +217,7 @@
     "no_action_without_thinking": "No execution command should be dispatched merely because a task exists or because a UI element is visible. AX must first determine the intended action and expected result.",
     "post_action_cycle": "After each meaningful Control action: observe -> compare expected vs actual -> collect evidence -> verify -> decide next action.",
     "node_rule": {
-      "PC1": "PC1 CONTROL is the primary execution/control path for PC1.",
-      "PC2": "PC2 CONTROL is the primary execution/control path for PC2."
+      "PC1": "PC1 CONTROL is the primary execution/control path for PC1."
     },
     "evidence_rule": "Control-reported success is not sufficient by itself; completion requires observable node-specific evidence and verification."
   },
@@ -250,7 +237,7 @@
     ],
     "priority_rule": "Research continues as an ongoing system function, not a one-time task, and must support current operational objectives without overriding K authority or canonical verified state.",
     "evidence_rule": "Unverified information remains research/input material and must not be promoted to verified brain knowledge until evidence supports it.",
-    "integration_rule": "The upgraded brain feeds the pre-action reasoning gate for both PC1 CONTROL and PC2 CONTROL.",
+    "integration_rule": "The upgraded brain feeds the pre-action reasoning gate for PC1 CONTROL.",
     "continuity_rule": "Research state, lessons, evidence references and verified knowledge must persist across sessions and model changes through canonical storage.",
     "control_integration": {
       "status": "ENHANCED",
@@ -263,16 +250,16 @@
       ],
       "promotion_rule": "Research/input becomes durable verified knowledge only after evidence and verification.",
       "reuse_rule": "Every comparable future Control action must consult accumulated lessons before dispatch.",
-      "feedback_rule": "Both PC1 and PC2 feed independent execution experience into the shared brain without sharing local execution state."
+      "feedback_rule": "PC1 feeds its execution experience into the shared brain."
     }
   },
   "offer_execution_operating_model": {
     "status": "RECORDED_AS_CORE_OPERATIONAL_OBJECTIVE",
-    "objective": "Maximize verified reward count by processing all feasible Offers independently on PC1 and PC2, while skipping infeasible Offers with explicit reasons and performing Daily Reward checks every day.",
+    "objective": "Maximize verified reward count by processing all feasible Offers on PC1, while skipping infeasible Offers with explicit reasons and performing Daily Reward checks every day.",
     "execution_rules": [
       "Use A MASTER BRAIN research and THINK_BEFORE_ACT before every Control action.",
-      "PC1 work is executed through PC1 CONTROL; PC2 work is executed through PC2 CONTROL.",
-      "Each PC/account operates independently; one node's state must not be treated as the other's.",
+      "PC1 work is executed through PC1 CONTROL.",
+      "Each account operates independently; one account's state must not be treated as another's.",
       "Read Offer details before Start.",
       "Run capability and feasibility checks before committing to an Offer.",
       "Complete every feasible Offer until verified completion/reward or a legitimate blocker is reached.",
@@ -318,7 +305,7 @@
       "REVERIFY",
       "RESUME SAME TASK ID"
     ],
-    "independence": "PC1 and PC2 retain independent local Control and recovery while sharing A MASTER BRAIN knowledge.",
+    "independence": "PC1 retains local Control and recovery while sharing A MASTER BRAIN knowledge.",
     "evidence_boundaries": [
       "HEARTBEAT != EXECUTION",
       "CONTROL_ALIVE != LOGIN",
@@ -341,11 +328,6 @@
         "watchdog": "AX_PC_CONTROL/brain1-watchdog.ps1",
         "control_worker_latest_commit": "99984c88c93c71ce6577316dd24e8cfe7853d82c",
         "control_worker_policy": "EXECUTED_PENDING_VERIFICATION; Control cannot self-declare VERIFIED"
-      },
-      "PC2": {
-        "machine_identity": "DESKTOP-M9M4818",
-        "brain": "BRAIN2",
-        "control": "CONTROL2"
       }
     },
     "system_problem_scope": [

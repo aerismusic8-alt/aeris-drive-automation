@@ -1,16 +1,13 @@
 {
   "schema": "AERIS-PC-SYNC/v1",
-  "updatedAt": "2026-09-22T04:01:11.762Z",
+  "updatedAt": "2026-11-15T00:00:00.000Z",
   "nodes": {
     "PC1": {
       "name": "DESKTOP-RGK6JKB",
       "status": "ONLINE"
-    },
-    "PC2": {
-      "name": "DESKTOP-M9M4818",
-      "status": "ONLINE"
     }
   },
   "control": "PULL_AND_VERIFY",
-  "secrets": "LOCAL_ONLY"
+  "secrets": "LOCAL_ONLY",
+  "note": "PC2 (DESKTOP-M9M4818) retired — machine no longer exists. Single node: PC1."
 }

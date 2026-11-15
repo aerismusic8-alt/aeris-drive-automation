@@ -1,4 +1,4 @@
-# PC1 / PC2 INDEPENDENT BRAIN-CONTROL ARCHITECTURE
+# PC1 INDEPENDENT BRAIN-CONTROL ARCHITECTURE
 
 ## Canonical node architecture
 
@@ -33,19 +33,7 @@ The node is autonomous after Runtime startup. ChatGPT/AX-GPT is not the runtime 
 - Browser/OS execution: local
 - Evidence + Verify + Write-back: local and canonical-sync capable
 
-## PC2
-
-- nodeId: PC2-NIGHT
-- machine: DESKTOP-M9M4818
-- role: SECONDARY
-- local Runtime: required
-- local Brain: required
-- local Control: required
-- Desktop Vision: required
-- Browser/OS execution: local
-- Evidence + Verify + Write-back: local and canonical-sync capable
-
-PC1 and PC2 must remain independently executable. One node being offline must not stop the other node's local Runtime → Brain → Control loop.
+PC1 is the only execution node. Its Runtime → Brain → Control loop runs and recovers independently of AX availability.
 
 ## Brain → Control contract
 
@@ -103,4 +91,4 @@ The node must reconcile its last local state with canonical state before perform
 
 ## Invalid legacy identity
 
-DESKTOP-O0AUKHG is not a current AERIS node.
+DESKTOP-O0AUKHG and DESKTOP-M9M4818 (the retired PC2) are not current AERIS nodes.

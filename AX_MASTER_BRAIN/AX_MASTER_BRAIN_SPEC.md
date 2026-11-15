@@ -71,12 +71,11 @@ The repository is undergoing migration from the obsolete A-as-executive model to
 
 ## Independent PC Control Architecture — Canonical
 
-PC1 and PC2 are controlled by separate independent Control instances under AX. They share the same canonical knowledge/state layer but must not depend on each other for local execution.
+PC1 is controlled by an independent local Control instance under AX. It shares the canonical knowledge/state layer but must not depend on AX availability for local execution.
 
 PC1 CONTROL owns PC1 observation, dispatch, execution, evidence collection, verification and local recovery.
-PC2 CONTROL owns PC2 observation, dispatch, execution, evidence collection, verification and local recovery.
 
-PC1 CONTROL must remain operational when PC2 is unavailable. PC2 CONTROL must remain operational when PC1 is unavailable. Shared A MASTER BRAIN / canonical state coordinates knowledge and policy, but is not a substitute for either node's local control plane.
+PC1 CONTROL must remain operational independently of AX. Shared A MASTER BRAIN / canonical state coordinates knowledge and policy, but is not a substitute for the node's local control plane.
 
 Desktop Commander is an optional observation/control adapter, not a required runtime dependency.
 
@@ -92,7 +91,7 @@ If an offer cannot be completed because a required capability, service, device, 
 
 ### Independence rule
 
-PC1 CONTROL and PC2 CONTROL are separate execution authorities for their respective machines. Shared knowledge does not mean shared execution. A task dispatched to one node must not be treated as executed, completed or verified merely because the other node is healthy.
+PC1 CONTROL is the execution authority for its machine. Shared knowledge does not mean shared execution. A task must not be treated as executed, completed or verified merely because AX or shared state is healthy.
 
 ## AX Autonomous Brain Upgrade Protocol — Canonical
 

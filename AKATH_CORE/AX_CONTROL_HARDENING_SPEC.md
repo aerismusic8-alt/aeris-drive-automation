@@ -46,7 +46,7 @@ DETECT → FREEZE NEW ACTIONS → CAPTURE STATE → CLASSIFY → RESTART COMPONE
 Do not create a duplicate task merely because a worker/control component restarted.
 
 ## Independence
-PC1 CONTROL and PC2 CONTROL maintain separate local execution and recovery. Shared A MASTER BRAIN provides knowledge and lessons; it does not make one node dependent on the other.
+PC1 CONTROL keeps its own local execution and recovery. Shared A MASTER BRAIN provides knowledge and lessons.
 
 ## Evidence standard
 HEARTBEAT != EXECUTION
@@ -56,8 +56,8 @@ TASK_STARTED != REWARD
 REPORTED_SUCCESS != VERIFIED_SUCCESS
 A reward is counted only after node-specific evidence and verification.
 
-## Current known PC2 lesson
-On 2026-09-23/24, PC2 Control inspection found a zero-byte hybrid-control-loop.mjs and a JumpTask AUTH_REQUIRED state. The loop was reconstructed and its 5-second observation cycle was restored. The login state remains independently verified as AUTH_REQUIRED until an actual authenticated session is observed. This lesson must be used to prevent silent control degradation and to distinguish Control health from account authentication.
+## Control-degradation lesson (node-independent)
+A control inspection once found a zero-byte control-loop script and an AUTH_REQUIRED login state. The loop was reconstructed and its 5-second observation cycle restored. The lesson: watch for silent control degradation (a zero-byte or truncated loop file) and keep Control health distinct from account authentication — a live loop does not mean a signed-in session.
 
 ## Operational contract
 The AX Control Check structure is a supervisory system function. Its local runtime implementation must operate independently of ChatGPT availability and must write verified state/evidence to canonical storage when the required persistence path is available.
