@@ -1,0 +1,151 @@
+name: AX PC1 Brain Cleanup (one-off)
+
+# One-off: stop and remove the retired PC1 Runtime/Brain/Control project's
+# scheduled tasks and its payload from the machine. Removing the files from the
+# repo does not stop a Windows scheduled task, so this runs on PC1 itself via the
+# self-hosted runner. Delete this workflow once the purge is verified.
+
+on:
+  workflow_dispatch:
+    inputs:
+      action:
+        description: 'discover (read-only) or purge (stop + remove tasks/payload)'
+        required: true
+        default: 'discover'
+        type: choice
+        options:
+          - discover
+          - purge
+
+permissions:
+  contents: read
+
+jobs:
+  pc1-brain-cleanup:
+    runs-on: self-hosted
+    steps:
+      - name: Verify this is PC1
+        shell: powershell
+        run: |
+          Write-Host "COMPUTERNAME=$env:COMPUTERNAME"
+          if ($env:COMPUTERNAME -ne 'DESKTOP-RGK6JKB') { throw "EXPECTED_PC1:$env:COMPUTERNAME" }
+          Write-Host "PC1=VERIFIED"
+
+      - name: Discover retired tasks and payload
+        shell: powershell
+        run: |
+          $ErrorActionPreference = 'Continue'
+          $tasks = @(
+            'AERIS-AKATH-AX-RUNTIME',
+            'AERIS-PC1-BRAIN1-DECISION',
+            'AERIS-PC1-BRAIN1-LOCAL-CONTROL',
+            'AERIS-PC1-BRAIN1-WATCHDOG'
+          )
+          Write-Host '--- scheduled tasks ---'
+          foreach ($t in $tasks) {
+            $task = Get-ScheduledTask -TaskName $t -ErrorAction SilentlyContinue
+            if ($task) { Write-Host ("PRESENT  {0}  state={1}" -f $t, $task.State) }
+            else       { Write-Host ("absent   {0}" -f $t) }
+          }
+          Write-Host '--- any other AERIS-* / *AX-RUNTIME* / *BRAIN1* task ---'
+          Get-ScheduledTask | Where-Object { $_.TaskName -match 'AERIS-|AX-RUNTIME|BRAIN1|MESHCENTRAL|LOCAL-GATEWAY' } |
+            ForEach-Object { Write-Host ("  {0}  state={1}" -f $_.TaskName, $_.State) }
+          Write-Host '--- payload roots ---'
+          foreach ($p in @('C:\AX-Runtime','C:\AX-Bootstrap\brain1','C:\AX-Bootstrap')) {
+            if (Test-Path $p) {
+              $n = (Get-ChildItem $p -Recurse -File -ErrorAction SilentlyContinue | Measure-Object).Count
+              Write-Host ("PRESENT  {0}  ({1} files)" -f $p, $n)
+            } else { Write-Host ("absent   {0}" -f $p) }
+          }
+
+      - name: Purge retired tasks and payload
+        if: ${{ github.event.inputs.action == 'purge' }}
+        shell: powershell
+        run: |
+          $ErrorActionPreference = 'Continue'
+          $tasks = @(
+            'AERIS-AKATH-AX-RUNTIME',
+            'AERIS-PC1-BRAIN1-DECISION',
+            'AERIS-PC1-BRAIN1-LOCAL-CONTROL',
+            'AERIS-PC1-BRAIN1-WATCHDOG'
+          )
+          foreach ($t in $tasks) {
+            $task = Get-ScheduledTask -TaskName $t -ErrorAction SilentlyContinue
+            if ($task) {
+              try { Stop-ScheduledTask -TaskName $t -ErrorAction SilentlyContinue } catch {}
+              Unregister-ScheduledTask -TaskName $t -Confirm:$false
+              Write-Host ("REMOVED TASK  {0}" -f $t)
+            } else {
+              Write-Host ("already absent  {0}" -f $t)
+            }
+          }
+
+          # Kill any process still running the retired payload (match the exact
+          # script paths, never a generic keyword).
+          Get-CimInstance Win32_Process -ErrorAction SilentlyContinue |
+            Where-Object { $_.CommandLine -match 'brain1-(decision-worker|local-control-worker|watchdog)\.ps1|AX-Runtime\\main\.mjs|run-ax-runtime-with-user-env\.ps1' } |
+            ForEach-Object {
+              Write-Host ("KILL PID {0}: {1}" -f $_.ProcessId, $_.CommandLine)
+              Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue
+            }
+
+          # Remove the retired payload. Keep C:\AX-Runtime\evidence — the Roblox
+          # scripts still write there.
+          $payloads = @(
+            'C:\AX-Bootstrap\brain1',
+            'C:\AX-Runtime\brain1-decision-worker.ps1',
+            'C:\AX-Runtime\brain1-local-control-worker.ps1',
+            'C:\AX-Runtime\brain1-watchdog.ps1',
+            'C:\AX-Runtime\brain1-install-proof.json',
+            'C:\AX-Runtime\main.mjs',
+            'C:\AX-Runtime\run-ax-runtime-with-user-env.ps1'
+          )
+          foreach ($p in $payloads) {
+            if (Test-Path $p) {
+              Remove-Item $p -Recurse -Force -ErrorAction SilentlyContinue
+              Write-Host ("REMOVED PAYLOAD  {0}" -f $p)
+            } else {
+              Write-Host ("already absent  {0}" -f $p)
+            }
+          }
+
+          # List (do not delete) whatever else is under C:\AX-Runtime, so the
+          # evidence folder and anything unrelated are left alone.
+          if (Test-Path 'C:\AX-Runtime') {
+            Write-Host '--- C:\AX-Runtime top level (NOT deleted) ---'
+            Get-ChildItem 'C:\AX-Runtime' -Force -ErrorAction SilentlyContinue |
+              ForEach-Object { Write-Host ("  {0}  {1}" -f $(if($_.PSIsContainer){'dir '}else{'file'}), $_.Name) }
+          }
+
+      - name: Verify (post-purge)
+        if: ${{ github.event.inputs.action == 'purge' }}
+        shell: powershell
+        run: |
+          $ErrorActionPreference = 'Continue'
+          $tasks = @(
+            'AERIS-AKATH-AX-RUNTIME',
+            'AERIS-PC1-BRAIN1-DECISION',
+            'AERIS-PC1-BRAIN1-LOCAL-CONTROL',
+            'AERIS-PC1-BRAIN1-WATCHDOG'
+          )
+          $remaining = 0
+          foreach ($t in $tasks) {
+            if (Get-ScheduledTask -TaskName $t -ErrorAction SilentlyContinue) {
+              Write-Host ("STILL PRESENT  {0}" -f $t); $remaining++
+            } else { Write-Host ("gone  {0}" -f $t) }
+          }
+          $ev = 'C:\AX-Runtime\evidence'
+          if (Test-Path $ev) { Write-Host "evidence dir kept: $ev" }
+          $proof = [ordered]@{
+            protocol        = 'AX PC1 BRAIN CLEANUP v1'
+            computerName    = $env:COMPUTERNAME
+            action          = '${{ github.event.inputs.action }}'
+            tasksRemaining  = $remaining
+            evidenceKept    = (Test-Path $ev)
+            completedAt     = [DateTime]::UtcNow.ToString('o')
+          }
+          New-Item -ItemType Directory -Path $ev -Force | Out-Null
+          ($proof | ConvertTo-Json) | Set-Content (Join-Path $ev 'pc1-brain-cleanup-proof.json') -Encoding UTF8
+          Get-Content (Join-Path $ev 'pc1-brain-cleanup-proof.json')
+          if ($remaining -ne 0) { throw "PURGE_INCOMPLETE:$remaining tasks remain" }
+          Write-Host 'PURGE=VERIFIED'
