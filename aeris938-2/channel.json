@@ -10,7 +10,9 @@
   "facebook": {
     "name": "AERIS Music",
     "page_id": "61595890900382",
-    "url": "https://www.facebook.com/profile.php?id=61595890900382"
+    "url": "https://www.facebook.com/profile.php?id=61595890900382",
+    "status": "paused",
+    "_status_comment": "K, 2026-11-15: FB is under review and K's phone session expired; 'ระบบออโต้เราไม่เนียนมันจับได้'. A browser session posting on a cron cadence is the detection signature, so AR never browser-posts FB again. `report.py` passes `--skip facebook` to social_stats while paused, so no measurement, no browser touch. Only a Meta System User token (FB_PAGE_TOKEN) revives the safe API route. To resume: set status back to 'active'."
   },
   "tiktok": {
     "handle": "@aeris.music4",

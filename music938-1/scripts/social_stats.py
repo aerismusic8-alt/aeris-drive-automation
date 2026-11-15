@@ -560,7 +560,11 @@ def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__,
                                  formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--json", action="store_true", help="print the numbers, write nothing")
+    ap.add_argument("--skip", action="append", default=[], metavar="SURFACE",
+                    help="do not measure this surface (e.g. --skip facebook while "
+                         "FB is paused, so the browser never touches the Page)")
     args = ap.parse_args()
+    skip = {s.strip().lower() for s in args.skip}
 
     # Shopee first, straight from the API: it needs no browser, so a pod without
     # chromium still reports it. The desk is then best-effort for FB/TikTok.
@@ -568,6 +572,12 @@ def main() -> int:
     stats = {"facebook": {"reachable": False, "note": "desktop unavailable"},
              "tiktok": {"reachable": False, "note": "desktop unavailable"},
              "shopee": shopee or {"reachable": False, "note": "no session"}}
+    # A skipped surface is reported as paused regardless of the desktop, so a
+    # deliberate halt never reads as a desktop outage.
+    for name in skip:
+        if name in stats:
+            stats[name] = {"reachable": False, "note": "paused" if name == "facebook"
+                           else "skipped"}
     try:
         desk = open_desk()
     except Exception as exc:  # noqa: BLE001
@@ -575,9 +585,13 @@ def main() -> int:
         desk = None
     if desk is not None:
         try:
-            stats["facebook"] = measure_facebook(desk)
-            stats["tiktok"] = measure_tiktok(desk)
-            if shopee is None:
+            # A paused surface is never opened in the browser: reading FB while
+            # it is under review is itself a risk, and the numbers are moot.
+            if "facebook" not in skip:
+                stats["facebook"] = measure_facebook(desk)
+            if "tiktok" not in skip:
+                stats["tiktok"] = measure_tiktok(desk)
+            if shopee is None and "shopee" not in skip:
                 stats["shopee"] = measure_shopee(desk)
         finally:
             desk.close()

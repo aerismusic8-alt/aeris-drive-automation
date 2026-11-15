@@ -992,15 +992,17 @@ def post_facebook(page, video: Path, text: str) -> str | None:
 
 POSTERS = {"tiktok": post_tiktok, "facebook": post_facebook}
 
-# Surfaces that post ONLY through their API. Empty on purpose now: the reason
-# Facebook was listed here — a browser session that dies and needs K to sign in
-# again — no longer holds. `ops/login_vault.py` snapshots the cookie session to
-# the durable KV store, so a fresh pod restores it without K. And when the
-# Graph token is rejected at the account level ("API access blocked", the state
-# from 2026-11-08), parking the queue posted nothing at all. Facebook now falls
-# back to the signed-in browser exactly like TikTok; the API route is still
-# preferred whenever its token is live (`api_poster`).
-API_ONLY: set[str] = set()
+# Surfaces that post ONLY through their API, never the browser.
+#
+# Facebook is listed here again (K, 2026-11-15: "ระบบออโต้เราไม่เนียนมันจับได้").
+# A logged-in browser posting Reels on a cron cadence is the automation signature
+# Meta catches, and reading the Page while it is under review is itself a risk.
+# So a missing Graph token now *parks* the Facebook queue (rc 3, rail stays green)
+# instead of driving a cookie session. The safe automation is the Graph API, and
+# it needs a Meta System User token (`FB_PAGE_TOKEN`); without one, FB posts
+# nothing rather than posting dangerously. To revive the API route see
+# docs/k-free-runbook.md.
+API_ONLY: set[str] = {"facebook"}
 
 # Where each platform lists its own posts, newest first. `post_*` used to return
 # `page.url`, which after publishing is the studio/composer page - so 114 of the

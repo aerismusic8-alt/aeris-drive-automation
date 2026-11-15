@@ -2822,14 +2822,13 @@ def test_crosspost_engine() -> None:
     check("publish is confirmed by the dialog or a navigation",
           "กำลังประมวลผลคลิป Reels" in body and "reels_composer" in body)
 
-    # Facebook used to be API-only, parked rather than opening a browser that
-    # dies and needs K. That is no longer the trade: ops/login_vault.py restores
-    # the cookie session on a fresh pod without K, and a rejected Graph token
-    # parked the whole queue (2026-11-08). Facebook now falls back to the
-    # signed-in browser like TikTok; the API is still preferred when its token is
-    # live. These guards pin the new shape so it is not silently reverted.
-    check("facebook is no longer an API-only surface",
-          "facebook" not in crosspost.API_ONLY)
+    # Facebook is API-only again (K, 2026-11-15). A browser session posting on a
+    # cron cadence is the automation signature Meta catches, so with no live
+    # Graph token the Facebook queue is *parked* (rc 3, rail green) rather than
+    # falling back to a signed-in browser. These guards pin the safe shape so a
+    # later change does not silently re-open the browser route.
+    check("facebook is an API-only surface (no browser fallback)",
+          "facebook" in crosspost.API_ONLY)
     check("api_poster returns None for facebook without a live token",
           crosspost.api_poster("facebook") is None or
           crosspost.fb_graph.available())
@@ -3245,7 +3244,7 @@ def test_api_posting_route() -> None:
           "--push-secrets" in hb and "gh-put-secrets.py" in hb)
 
     # A rejected Facebook token is a *degradation*, not a K-needed outage: the
-    # signed-in-browser fallback (API_ONLY is empty) still posts Reels, and an
+    # API-only surface (no browser fallback, K 2026-11-15) simply parks, and an
     # account-level block is not something a sign-in can clear. Paging K every
     # six hours for it was the false-alarm loop the API route was meant to remove,
     # so the heartbeat must report "degraded" and only "expired" may fail the run.

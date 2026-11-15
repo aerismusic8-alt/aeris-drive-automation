@@ -206,12 +206,23 @@ def snapshot_stats() -> dict | None:
 
 
 def dashboard_stats() -> dict:
-    """FB/TikTok/Shopee via social_stats.py (needs the cloud desktop)."""
+    """FB/TikTok/Shopee via social_stats.py (needs the cloud desktop).
+
+    A surface whose `status` is `paused` in channel.json is passed to
+    `social_stats.py --skip`, so a paused Page is never opened in a browser — the
+    browser session posting is exactly the automation signature Meta catches
+    (K, 2026-11-15). FB is paused; TikTok and Shopee are measured as before.
+    """
     tool = surfaces.tool("social_stats.py")
+    cmd = [sys.executable, str(tool), "--json"]
+    cfg = surfaces.config()
+    paused = [name for name in surfaces.SURFACES
+              if (cfg.get(name) or {}).get("status") == "paused"]
+    for name in paused:
+        cmd += ["--skip", name]
     try:
-        out = subprocess.run([sys.executable, str(tool), "--json"],
-                             cwd=str(surfaces.MUSIC), capture_output=True,
-                             text=True, timeout=180)
+        out = subprocess.run(cmd, cwd=str(surfaces.MUSIC),
+                             capture_output=True, text=True, timeout=180)
     except subprocess.TimeoutExpired:
         return {"_error": "social_stats timed out"}
     if out.returncode != 0:
@@ -301,6 +312,9 @@ def render(yt: dict, dash: dict, prev: dict | None = None,
     sp = dash.get("shopee") or {}
     err = dash.get("_error")
     prev = prev or {}
+    # A paused surface (channel.json status) is not read and not a failure — say
+    # "พักอยู่", not UNKNOWN, so a deliberate halt is not mistaken for an outage.
+    fb_paused = (fb.get("note") == "paused")
     # Shopee is often unreadable from a scheduled runner; fall back to the last
     # real reading and say so, rather than print UNKNOWN every day.
     sp_stale = None
@@ -333,10 +347,12 @@ def render(yt: dict, dash: dict, prev: dict | None = None,
         f"{_delta(yt.get('videos'), prev.get('yt_videos'))} |",
         f"| | | ยอดดูรวม | {yt.get('views', 'UNKNOWN')} | "
         f"{_delta(yt.get('views'), prev.get('yt_views'))} |",
-        f"| 1 | Facebook | ผู้ติดตาม | {_cell(fb, 'followers')} | "
-        f"{_delta(fb.get('followers'), prev.get('fb_followers'))} |",
-        f"| | | ยอดดู 28 วัน | {_cell(fb, 'views_28d')} | "
-        f"{_delta(fb.get('views_28d'), prev.get('fb_views_28d'))} |",
+        f"| 1 | Facebook | ผู้ติดตาม | "
+        f"{'พักอยู่' if fb_paused else _cell(fb, 'followers')} | "
+        f"{_delta(fb.get('followers'), prev.get('fb_followers')) if not fb_paused else '—'} |",
+        f"| | | ยอดดู 28 วัน | "
+        f"{'พักอยู่' if fb_paused else _cell(fb, 'views_28d')} | "
+        f"{_delta(fb.get('views_28d'), prev.get('fb_views_28d')) if not fb_paused else '—'} |",
         f"| 2 | TikTok | ผู้ติดตาม | {_cell(tk, 'followers_total')} | "
         f"{_delta(tk.get('followers_total'), prev.get('tk_followers'))} |",
         f"| | | ยอดดู 7 วัน | {_cell(tk, 'views_7d')} | "

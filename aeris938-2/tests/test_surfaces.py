@@ -60,6 +60,35 @@ def test_tools_that_grow_exists():
         assert surfaces.tool(name).exists(), name
 
 
+def test_paused_facebook_is_not_measured():
+    """K, 2026-11-15: FB is paused (browser posting is the detection signature).
+    A paused surface must never be opened in the browser — report.py passes
+    `--skip facebook` to social_stats, which reports it as paused, and the
+    rendered row says "พักอยู่" rather than a bare UNKNOWN."""
+    cfg = surfaces.config()
+    assert cfg["facebook"].get("status") == "paused"
+    text = report.render(
+        {"handle": "@aerismusicth", "subs": 5, "videos": 28, "views": 100},
+        {"facebook": {"reachable": False, "note": "paused"},
+         "tiktok": {"reachable": True, "followers_total": 1, "views_7d": 0},
+         "shopee": {"reachable": False}})
+    assert "| 1 | Facebook | ผู้ติดตาม | พักอยู่ |" in text
+    assert "| 1 | Facebook | ผู้ติดตาม | UNKNOWN |" not in text
+
+
+def test_social_stats_skip_marks_paused():
+    """`--skip facebook` must yield note == "paused" even when the desktop is
+    down, so a deliberate halt never reads as a desktop outage."""
+    import subprocess
+    import os
+    tool = surfaces.tool("social_stats.py")
+    out = subprocess.run([sys.executable, str(tool), "--json", "--skip", "facebook"],
+                         cwd=str(surfaces.MUSIC), capture_output=True, text=True,
+                         timeout=120, env={**os.environ})
+    assert out.returncode == 0, out.stderr
+    assert json.loads(out.stdout)["facebook"]["note"] == "paused"
+
+
 def test_report_never_guesses():
     yt = {"handle": "@aerismusicth", "subs": 5, "videos": 28, "views": 100}
     dash = {"facebook": {"reachable": False},
