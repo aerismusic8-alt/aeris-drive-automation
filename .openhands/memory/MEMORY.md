@@ -8,7 +8,7 @@ administers all of K's work; it holds the loop and priority queue.
 
 ## 🔴 กฎถาวรข้อที่ 1 (K): ฟรีเท่านั้น — free only
 100% free: no paid API, subscription or credits. Free routes only — login-only web
-apps via the headful Chromium K signed into, open APIs, self-hosted tooling. **AR
+apps (K's Chromium), open APIs, self-hosted tooling. **AR
 never types a password.** Related: **AUDIO FIRST**; delete the duplicate and the
 worthless, never archive it; K reviews a channel's first work; never rename a
 channel without K's approval.
@@ -18,6 +18,10 @@ channel without K's approval.
 AR mailbox = `araeris4770d7@fldubai.com` (mail.tm; `ops/ar_identity.py`). Flow
 Music/Gemini need an AR *Google Account*; free signup is blocked by Google's
 `crossflowverification` (QR/SMS) → K taps the QR once (2026-11-12.md).
+**AR's only self-creatable social account is Nostr** (2026-11-15): identity = a
+self-generated keypair → no signup/captcha/phone (`ops/ar_nostr.py`). Bluesky now
+needs a phone on every PDS; Mastodon/Lemmy need approval + block mail.tm; Misskey
+captchas.
 
 ## Roles and method (K, 2026-10-31)
 - **K = final authority.** Every standing rule is K's.
@@ -36,8 +40,8 @@ TikTok, YouTube `@aerismusicth`, Shopee Affiliate). Two goals in
 `AKATH_CORE/CANONICAL_TASK_REGISTRY.json` must never close as ordinary tasks: a
 Roblox game anyone can enter and play, and real revenue from it (Roblox **PARKED**).
 **Revenue gate = ch3 `@aerismusicth`** `UCm44BjAn03ruOF-WaA3ZRww`: **1,000 subs AND
-4,000 watch-hours/12 mo**. Free lever = **weekly numbered long-form series**
-(`volume_series.py` → Vol.N, ~75 min; scan 2026-11-15: winners = numbered long-form).
+4,000 watch-hours/12 mo**. Free lever = **weekly numbered long-form series** (`volume_series.py`; scan
+2026-11-15: winners = numbered long-form).
 
 ## The metric is followers (K, 2026-11-09)
 Views without follows is the failure. Send every surface to the Page; end every
@@ -49,13 +53,11 @@ clip with `release.FOLLOW_ASK` + `FOLLOW_PROMISE` ("เพลงใหม่ท�
   Judge health from the **rail run history** (API), not `data/heartbeat.json`
   (stale 9 days once). Rails/topic: archive.
 - **FB browser posting is OFF (K 2026-11-15: "ระบบออโต้เราไม่เนียนมันจับได้").**
-  `crosspost.API_ONLY = {"facebook"}` — FB posts only via the Graph API and parks
-  (rc 3, green) with no live token, never a browser. Revive needs a Meta System
-  User token → `FB_PAGE_TOKEN`. A paused surface reports `note="paused"`.
+    FB posts only via the Graph API (`crosspost.API_ONLY`); parks green otherwise.
 - **Writes:** `GITHUB_TOKEN` is 403. Push with vault KV
   `axsecrets:gh-workflow-token` (dict, `.token`).
-- **Desktop view = Live View** (`work-2`, port 12001; `bootstrap.py start_liveview`);
-  X does not repaint, so noVNC freezes.
+- **Desktop view = Live View** (`work-2`, port 12001); X does not repaint, so noVNC
+  freezes.
 - **Thai text** lives only in `roblox/src/shared/Text.luau` +
   `music938-1/fonts/NotoSansThai.ttf`; without `fonts-thai-tlwg` the SVG renderer
   makes tofu silently. Burned ASS text has no emoji — use `•` / `»`.
@@ -63,7 +65,7 @@ clip with `release.FOLLOW_ASK` + `FOLLOW_PROMISE` ("เพลงใหม่ท�
 
 ## Real-instrument sound (K, 2026-11-09) — durable
 The **sfizz** sampler, not the GM synth; `AX_REQUIRE_REAL_INSTRUMENTS=1` makes a
-fallback **raise**. Beds pre-render on the pod (archive).
+fallback **raise** (beds pre-render on the pod; archive).
 
 ## Music video = public-domain film matched to the song (2026-11-13)
 "วีดีโอต้องเหมาะกับเพลงและบทเพลงสิ" — *this* film for *this* song.
@@ -71,9 +73,9 @@ fallback **raise**. Beds pre-render on the pod (archive).
 from archive.org (check `licenseurl`). `test_film_video` pins it.
 
 ## K-free status (2026-11-13) — audit in `ops/k_free_status.py`
-**5/11 rails K-free | K once 2 | agent-revivable 2 | K repeatedly 1** (TikTok).
+"Blocked" usually meant "blocked on the route I tried first" (desktop+vault first);
 **"Blocked" usually meant "blocked on the route I tried first":** check the desktop
-+ vault first. Watchdog alerts only on a *new* K-dependency.
+the watchdog alerts only on a *new* K-dependency. Scoreboard: archive.
 
 ## Loop health & platform risks
 - **A green run is not a finished job.** The release rail reported success while
@@ -85,8 +87,7 @@ from archive.org (check `licenseurl`). `test_film_video` pins it.
 - **`videos.list` takes ≤50 ids/call** (past 50 → HTTP 400, once mislabeled
   "quota"). Chunk via `ops/yt_auth.get_videos`; a non-403 error must fail the rail.
 - **YPP = 1,000 subs AND 4,000 watch-hours.** `goal_watch` reads the Studio scrape
-  and names **retention** when the hour gate is further (2026-11-13: 8 subs vs
-  23.5 h; 0% returning).
+  and names **retention** when the hour gate is further (detail: archive).
 - Platform risks: `AKATH_CORE/OPENHANDS_RISK_REGISTER.json` + `ops/risk_audit.py`
   (`--strict`); guard `.github/workflows/ax-risk-audit.yml`.
 

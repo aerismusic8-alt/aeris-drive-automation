@@ -2329,6 +2329,54 @@ def test_thumbnail_repair() -> None:
           saved and saved[-1]["released"][5]["playlist_ok"] is False)
 
 
+def test_nostr_identity() -> None:
+    """AR's Nostr identity must be a valid secp256k1/Schnorr keypair.
+
+    Nostr is the only social surface AR can join unattended: the identity is a
+    self-generated keypair, so there is no captcha, email or phone to block it
+    (2026-11-15 — Bluesky now needs a phone, Mastodon/Lemmy gate on approval or
+    block the mail.tm domain, every Misskey instance runs a captcha). A wrong
+    signature would publish nothing, so pin the crypto against the BIP340
+    vectors rather than trusting the pure-Python implementation.
+    """
+    section("Nostr identity (AR's own social account)")
+    sys.path.insert(0, str(ROOT.parent / "ops"))
+    import ar_nostr
+
+    vectors = [
+        ("0000000000000000000000000000000000000000000000000000000000000003",
+         "F9308A019258C31049344F85F89D5229B531C845836F99B08601F113BCE036F9",
+         "0000000000000000000000000000000000000000000000000000000000000000",
+         "0000000000000000000000000000000000000000000000000000000000000000",
+         "E907831F80848D1069A5371B402410364BDF1C5F8307B0084C55F1CE2DCA8215"
+         "25F66A4A85EA8B71E482A74F382D2CE5EBEEE8FDB2172F477DF4900D310536C0"),
+    ]
+    for sk, pk, aux, msg, sig in vectors:
+        check("xonly pubkey matches BIP340", ar_nostr.xonly_pub(int(sk, 16)).hex().upper() == pk)
+        got = ar_nostr.schnorr_sign(bytes.fromhex(msg), int(sk, 16), bytes.fromhex(aux))
+        check("Schnorr signature matches BIP340", got.hex().upper() == sig)
+
+    # The event id is sha256 of the canonical array; a bad serialization signs
+    # the wrong bytes and every relay silently drops the note.
+    import hashlib
+    rec = {"sk_hex": format(3, "064x")}
+    real_load, real_save = ar_nostr.load, ar_nostr._save
+    saved = {}
+    try:
+        ar_nostr.load = lambda: rec
+        ar_nostr._save = lambda r: saved.update(r)
+        ev = ar_nostr._event("hello")
+    finally:
+        ar_nostr.load, ar_nostr._save = real_load, real_save
+    canon = json.dumps([0, ev["pubkey"], ev["created_at"], ev["kind"], ev["tags"],
+                        ev["content"]], separators=(",", ":"), ensure_ascii=False)
+    check("event id is sha256 of the canonical serialization",
+          ev["id"] == hashlib.sha256(canon.encode()).hexdigest())
+    check("event carries a 64-byte signature", len(ev["sig"]) == 128)
+    check("npub is a bech32 npub", ar_nostr.bech32_encode(
+        "npub", ar_nostr.xonly_pub(3)).startswith("npub1"))
+
+
 def test_titles() -> None:
     """Release titles must fit the shape the competitor scan says wins.
 
@@ -5828,6 +5876,7 @@ def main() -> int:
     test_thumb_contrast()
     test_ai_covers()
     test_thumbnail_repair()
+    test_nostr_identity()
     test_titles()
     test_compilation()
     test_compilation_cta_repair()

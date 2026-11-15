@@ -6235,3 +6235,17 @@ condensed to free room for the 2026-11-14 AR-mail rule:
 Also moved 2026-11-14: **แนวเพลง (K, 2026-11-13):** พักลูกทุ่ง/เพื่อชีวิต —
 เน้น ป็อป/แดนซ์(edm)/ร็อก (`music938-1/channel/genres.json`;
 `genres.is_parked/active`).
+
+## K-free status detail (moved from MEMORY.md 2026-11-15)
+**5/11 rails K-free | K once 2 | agent-revivable 2 | K repeatedly 1** (TikTok).
+**"Blocked" usually meant "blocked on the route I tried first":** check the desktop
++ vault first. Watchdog alerts only on a *new* K-dependency. Audit: `ops/k_free_status.py`.
+
+## FB browser posting detail (moved from MEMORY.md 2026-11-15)
+`crosspost.API_ONLY = {"facebook"}` — FB posts only via the Graph API and parks
+(rc 3, green) with no live token, never a browser. Revive needs a Meta System
+User token → `FB_PAGE_TOKEN`. A paused surface reports `note="paused"`.
+
+## YPP gate detail (moved from MEMORY.md 2026-11-15)
+`goal_watch` reads the Studio scrape and names **retention** when the hour gate is
+further (2026-11-13: 8 subs vs 23.5 h; 0% returning).
