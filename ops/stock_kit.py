@@ -13,9 +13,10 @@ Two things make that a non-problem:
     list is ~1 KB, so a fresh sandbox can recreate the stock with one command
     even if the tarball was never carried across.
 
-Licences: Wikimedia Commons only, CC0 / PD / CC BY / CC BY-SA. NC and ND are
-excluded by `stills_rail`. BY and BY-SA still need the credit line in the video
-description, which `credits()` emits.
+Licences: Wikimedia Commons, Openverse and NASA Image Library, filtered to
+CC0 / PD / CC BY / CC BY-SA. NC and ND are excluded by `stills_rail`. BY and
+BY-SA still need the credit line in the video description, which `credits()`
+emits; `stills_rail.credits_block` names which source each still came from.
 """
 import argparse
 import json

@@ -139,7 +139,7 @@ def fetch_stills(theme: str, out_dir: str, want: int, log=print):
     queries = THEME_QUERIES.get(theme, THEME_QUERIES["lesson"])
     items = []
     for q in queries:
-        items += sr.search(q, limit=4, min_width=1200)
+        items += sr.search_multi(q, limit=4, min_width=1200)
         if len(items) >= want:
             break
     got = sr.download(items[:want], out_dir, log=log)
