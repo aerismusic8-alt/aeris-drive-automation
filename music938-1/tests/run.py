@@ -2257,12 +2257,21 @@ def test_thumbnail_repair() -> None:
         {"slug": "c", "kind": "short", "variant": "s", "video_id": "V3"},
         {"slug": "d", "kind": "song", "variant": "", "video_id": "V4",
          "thumb_ok": True, "playlist_ok": False},
+        # No `ch3:affiliate` id in the state: the create was refused on a spent
+        # pool when it uploaded (2026-11-09), so the repair must create it.
+        {"slug": "e", "kind": "affiliate", "variant": "", "video_id": "V5",
+         "thumb_ok": True, "playlist_ok": False},
+        # The playlist is created this run but the insert then fails: the new id
+        # must still be persisted, or the next run makes a second playlist.
+        {"slug": "f", "kind": "concert", "variant": "", "video_id": "V6",
+         "thumb_ok": True, "playlist_ok": False},
     ]
-    seen, saved, added = [], [], []
+    seen, saved, added, created = [], [], [], []
     real = (release.load_state, release.save_state, fix_thumbnails.thumb_for,
             yt_auth.access_token, fix_thumbnails.set_thumbnail, sys.argv,
             fix_thumbnails.in_playlist, release.add_to_playlist,
-            yt_quota.remaining, yt_quota.record, yt_quota.commit)
+            release.ensure_playlist, yt_quota.remaining, yt_quota.record,
+            yt_quota.commit)
     try:
         state = {"released": [dict(e) for e in entries],
                  "playlists": {"ch3:song": "PL1"}}
@@ -2272,7 +2281,21 @@ def test_thumbnail_repair() -> None:
         yt_auth.access_token = lambda ch: "tok"
         fix_thumbnails.set_thumbnail = lambda vid, path, tok: (seen.append(vid), (200, {}))[1]
         fix_thumbnails.in_playlist = lambda pid, vid, tok: False
-        release.add_to_playlist = lambda pid, vid, ch: (added.append((pid, vid)), True)[1]
+
+        def fake_add(pid, vid, ch):
+            if vid == "V6":            # the insert fails after the create
+                return False
+            added.append((pid, vid))
+            return True
+
+        release.add_to_playlist = fake_add
+
+        def fake_ensure(st, kind, ch):
+            created.append(f"{ch}:{kind}")
+            st.setdefault("playlists", {})[f"{ch}:{kind}"] = "PLNEW"
+            return "PLNEW"
+
+        release.ensure_playlist = fake_ensure
         # The quota gate must not depend on the live ledger, or the test would
         # pass or fail with whatever the day's real spend happens to be.
         yt_quota.remaining = lambda *a, **k: 10_000
@@ -2284,15 +2307,26 @@ def test_thumbnail_repair() -> None:
         (release.load_state, release.save_state, fix_thumbnails.thumb_for,
          yt_auth.access_token, fix_thumbnails.set_thumbnail, sys.argv,
          fix_thumbnails.in_playlist, release.add_to_playlist,
-         yt_quota.remaining, yt_quota.record, yt_quota.commit) = real
+         release.ensure_playlist, yt_quota.remaining, yt_quota.record,
+         yt_quota.commit) = real
 
     check("only the entry with thumb_ok=False is repaired", seen == ["V1"], f"{seen}")
     check("an entry with no thumb_ok is left alone", "V3" not in seen, f"{seen}")
     check("the repaired entry is marked ok", saved and
           saved[-1]["released"][0]["thumb_ok"] is True)
-    check("a lost playlist slot is refilled", added == [("PL1", "V4")], f"{added}")
+    check("a lost playlist slot is refilled", added == [("PL1", "V4"), ("PLNEW", "V5")],
+          f"{added}")
     check("the refilled entry is marked ok", saved and
           saved[-1]["released"][3]["playlist_ok"] is True)
+    check("a missing playlist id is created, not skipped",
+          created == ["ch3:affiliate", "ch3:concert"], f"{created}")
+    # The concert's insert failed after its playlist was created; the id must be
+    # persisted anyway (or the next run creates a duplicate) and the row left
+    # unresolved so it is retried.
+    check("a created playlist id is persisted even when the insert failed",
+          saved and saved[-1]["playlists"].get("ch3:concert") == "PLNEW")
+    check("an unresolved playlist slot stays false",
+          saved and saved[-1]["released"][5]["playlist_ok"] is False)
 
 
 def test_titles() -> None:

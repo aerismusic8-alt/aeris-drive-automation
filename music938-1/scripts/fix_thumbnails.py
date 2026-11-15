@@ -144,6 +144,7 @@ def main() -> int:
 
     tok = None if args.dry_run else yt_auth.access_token(args.ch)
     fixed = 0
+    state_dirty = False
     for e in todo:
         if args.limit and fixed >= args.limit:
             break
@@ -168,7 +169,16 @@ def main() -> int:
                     changed = True
         if e.get("playlist_ok") is False and not args.dry_run:
             key = f"{args.ch}:{e['kind']}"
-            pid = state.get("playlists", {}).get(key)
+            # Create the playlist if the state has no id for it. The 2026-11-09
+            # affiliate uploads recorded `playlist_ok: false` because the create
+            # itself was refused on a spent pool, and the id was never stored —
+            # a repair that only looks up an id can then never clear those rows.
+            pid = state.get("playlists", {}).get(key) \
+                or release.ensure_playlist(state, e["kind"], args.ch)
+            # A freshly created playlist id must be persisted even if the insert
+            # below fails, or the next run creates a duplicate playlist.
+            if state.get("playlists", {}).get(key):
+                state_dirty = True
             if not pid:
                 print(f"  playlist {e['slug']}: no {key} playlist id in state",
                       file=sys.stderr)
@@ -186,7 +196,7 @@ def main() -> int:
                     changed = True
         if changed:
             fixed += 1
-    if not args.dry_run and fixed:
+    if not args.dry_run and (fixed or state_dirty):
         release.save_state(state)
         # Push the repaired ledger back so the next run does not repeat this.
         if os.environ.get("AX_GH_TOKEN"):
