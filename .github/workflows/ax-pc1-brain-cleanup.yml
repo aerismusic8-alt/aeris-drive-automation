@@ -57,6 +57,22 @@ jobs:
               Write-Host ("PRESENT  {0}  ({1} files)" -f $p, $n)
             } else { Write-Host ("absent   {0}" -f $p) }
           }
+          Write-Host '--- C:\AX-Runtime top level (NOT deleted) ---'
+          if (Test-Path 'C:\AX-Runtime') {
+            Get-ChildItem 'C:\AX-Runtime' -Force -ErrorAction SilentlyContinue |
+              Sort-Object PSIsContainer, Name |
+              ForEach-Object { Write-Host ("  {0}  {1}" -f $(if($_.PSIsContainer){'dir '}else{'file'}), $_.Name) }
+          }
+          Write-Host '--- C:\AX-Bootstrap\brain1 contents ---'
+          if (Test-Path 'C:\AX-Bootstrap\brain1') {
+            Get-ChildItem 'C:\AX-Bootstrap\brain1' -Force -Recurse -ErrorAction SilentlyContinue |
+              ForEach-Object { Write-Host ("  {0}" -f $_.FullName) }
+          }
+          Write-Host '--- retired runtime entrypoints present at C:\AX-Runtime root? ---'
+          foreach ($n in @('main.mjs','run-ax-runtime-with-user-env.ps1','brain1-decision-worker.ps1','brain1-local-control-worker.ps1','brain1-watchdog.ps1','brain1-install-proof.json','dispatcher.mjs','node-control.mjs')) {
+            $p = Join-Path 'C:\AX-Runtime' $n
+            if (Test-Path $p) { Write-Host ("  PRESENT  {0}" -f $n) } else { Write-Host ("  absent   {0}" -f $n) }
+          }
 
       - name: Purge retired tasks and payload
         if: ${{ github.event.inputs.action == 'purge' }}
