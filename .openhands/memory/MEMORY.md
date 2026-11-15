@@ -3,8 +3,7 @@
 **How to use.** Injected every session; **capped at 6 KB** by `ops/memory_guard.py`.
 Rules/pointers only — detail in `MEMORY-ARCHIVE.md` + daily logs. New learning →
 today's log; promote only if it changes a decision; **move** superseded detail to
-the archive. **Read `.openhands/CHARTER.md` first** — K's mandate (2026-10-31): AR
-administers all of K's work; it holds the loop and priority queue.
+the archive. **Read `.openhands/CHARTER.md` first** — K's mandate (2026-10-31).
 
 ## 🔴 กฎถาวรข้อที่ 1 (K): ฟรีเท่านั้น — free only
 100% free: no paid API, subscription or credits. Free routes only — login-only web
@@ -19,9 +18,10 @@ AR mailbox = `araeris4770d7@fldubai.com` (mail.tm; `ops/ar_identity.py`). Flow
 Music/Gemini need an AR *Google Account*; free signup is blocked by Google's
 `crossflowverification` (QR/SMS) → K taps the QR once (2026-11-12.md).
 **AR's only self-creatable social account is Nostr** (2026-11-15): identity = a
-self-generated keypair → no signup/captcha/phone (`ops/ar_nostr.py`). Bluesky now
-needs a phone on every PDS; Mastodon/Lemmy need approval + block mail.tm; Misskey
-captchas.
+self-generated keypair → no signup/captcha/phone (`ops/ar_nostr.py`). It is now a
+live rail — `ops/announce_releases.py` posts each new release from the release
+workflow (`AR_NOSTR_NSEC` secret). Bluesky needs a phone on every PDS;
+Mastodon/Lemmy need approval + block mail.tm; Misskey captchas.
 
 ## Roles and method (K, 2026-10-31)
 - **K = final authority.** Every standing rule is K's.
@@ -39,25 +39,22 @@ built from free cloud tools. Scope = **4 channels** (focus aeris938-2 = Facebook
 TikTok, YouTube `@aerismusicth`, Shopee Affiliate). Two goals in
 `AKATH_CORE/CANONICAL_TASK_REGISTRY.json` must never close as ordinary tasks: a
 Roblox game anyone can enter and play, and real revenue from it (Roblox **PARKED**).
-**Revenue gate = ch3 `@aerismusicth`** `UCm44BjAn03ruOF-WaA3ZRww`: **1,000 subs AND
-4,000 watch-hours/12 mo**. Free lever = **weekly numbered long-form series** (`volume_series.py`; scan
-2026-11-15: winners = numbered long-form).
+**Revenue gate = ch3 `@aerismusicth`**: **1,000 subs AND 4,000 watch-hours/12 mo**.
+Free lever = **weekly numbered long-form series** (`volume_series.py`).
 
 ## The metric is followers (K, 2026-11-09)
-Views without follows is the failure. Send every surface to the Page; end every
-clip with `release.FOLLOW_ASK` + `FOLLOW_PROMISE` ("เพลงใหม่ทุกวัน").
+Views without follows is the failure. End every clip with `release.FOLLOW_ASK` +
+`FOLLOW_PROMISE` ("เพลงใหม่ทุกวัน").
 
 ## Environment facts that cost time
 - **Fresh-pod recovery: `scripts/bootstrap-pod.sh`** — re-run after every pod.
 - **24/7 runs on GitHub Actions, not the sandbox** (public repo → free minutes).
-  Judge health from the **rail run history** (API), not `data/heartbeat.json`
-  (stale 9 days once). Rails/topic: archive.
+  Judge health from the **rail run history** (API), not `data/heartbeat.json`.
 - **FB browser posting is OFF (K 2026-11-15: "ระบบออโต้เราไม่เนียนมันจับได้").**
     FB posts only via the Graph API (`crosspost.API_ONLY`); parks green otherwise.
-- **Writes:** `GITHUB_TOKEN` is 403. Push with vault KV
-  `axsecrets:gh-workflow-token` (dict, `.token`).
-- **Desktop view = Live View** (`work-2`, port 12001); X does not repaint, so noVNC
-  freezes.
+- **Writes:** `GITHUB_TOKEN` is 403; push via vault KV `axsecrets:gh-workflow-token`
+  (needs `OPENHANDS_API_KEY`; workflow files need it too).
+- **Desktop view = Live View** (`work-2`, port 12001; X does not repaint).
 - **Thai text** lives only in `roblox/src/shared/Text.luau` +
   `music938-1/fonts/NotoSansThai.ttf`; without `fonts-thai-tlwg` the SVG renderer
   makes tofu silently. Burned ASS text has no emoji — use `•` / `»`.
@@ -71,11 +68,12 @@ fallback **raise** (beds pre-render on the pod; archive).
 "วีดีโอต้องเหมาะกับเพลงและบทเพลงสิ" — *this* film for *this* song.
 `music938-1/scripts/make_film_video.py` casts by `# MOOD:` and pulls the film
 from archive.org (check `licenseurl`). `test_film_video` pins it.
+**Stills sources (2026-11-15):** `ops/stills_rail.py` = Wikimedia + **Openverse**
+(no key) + **NASA** (PD), licence-checked. Pexels/Pixabay/Unsplash/Coverr need a
+key and their signup is Cloudflare-blocked.
 
 ## K-free status (2026-11-13) — audit in `ops/k_free_status.py`
-"Blocked" usually meant "blocked on the route I tried first" (desktop+vault first);
-**"Blocked" usually meant "blocked on the route I tried first":** check the desktop
-the watchdog alerts only on a *new* K-dependency. Scoreboard: archive.
+"Blocked" = "blocked on the route I tried first" (desktop+vault first). Scoreboard: archive.
 
 ## Loop health & platform risks
 - **A green run is not a finished job.** The release rail reported success while
