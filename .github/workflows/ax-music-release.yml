@@ -129,3 +129,20 @@ jobs:
         run: |
           set -euo pipefail
           python3 music938-1/scripts/daily_release.py --root "$GITHUB_WORKSPACE"
+
+      # Announce the songs that just went public on AR's own Nostr account. This
+      # is the one distribution surface that needs no operator: the identity is a
+      # self-generated keypair, so nothing can expire it. Idempotent — the ledger
+      # of announced video ids is in the repo, so a re-run only sends what is new.
+      # A dead relay or a missing secret must never fail the release that already
+      # succeeded, hence `|| true`.
+      - name: Announce new releases on Nostr
+        env:
+          AR_NOSTR_NSEC: ${{ secrets.AR_NOSTR_NSEC }}
+          AX_GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -uo pipefail
+          python3 -m pip install -q websocket-client
+          # Cap a run: if the ledger is ever lost, the rail drips the backlog
+          # instead of posting the whole catalogue in one tick.
+          python3 ops/announce_releases.py --limit 3 || echo "nostr announce skipped (no secret or no relays)"

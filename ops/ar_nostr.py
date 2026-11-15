@@ -145,9 +145,37 @@ def bech32_encode(hrp: str, data: bytes) -> str:
 
 # --- account ---------------------------------------------------------------
 def load() -> dict:
+    """The identity, from the file or from `AR_NOSTR_NSEC` (for CI runners).
+
+    A GitHub Actions runner has no `/workspace/ax-tools`, so the key travels as
+    a secret there. Accepting the nsec (or raw hex) from the environment lets the
+    same module post from the pod and from a rail without a second code path.
+    """
+    env = os.environ.get("AR_NOSTR_NSEC")
+    if env:
+        if env.startswith("nsec1"):
+            sk = _bech32_decode_nsec(env)
+        else:
+            sk = int(env, 16)
+        return {"sk_hex": format(sk, "064x"),
+                "npub": bech32_encode("npub", xonly_pub(sk))}
     if not CREDS.exists():
         raise SystemExit(f"no Nostr identity yet ({CREDS}); run: create")
     return json.loads(CREDS.read_text())
+
+
+def _bech32_decode_nsec(nsec: str) -> int:
+    data = nsec[nsec.index("1") + 1:]
+    vals = [_CHARS.index(c) for c in data[:-6]]
+    acc = bits = 0
+    out = []
+    for v in vals:
+        acc = (acc << 5) | v
+        bits += 5
+        while bits >= 8:
+            bits -= 8
+            out.append((acc >> bits) & 0xFF)
+    return int.from_bytes(bytes(out), "big")
 
 
 def _save(rec: dict) -> None:

@@ -2377,6 +2377,78 @@ def test_nostr_identity() -> None:
         "npub", ar_nostr.xonly_pub(3)).startswith("npub1"))
 
 
+def test_stills_sources() -> None:
+    """The stills rail must reach more than Wikimedia, and must not leak NC/ND.
+
+    Openverse (no key) and NASA (public domain) were added 2026-11-15 because
+    Commons alone runs thin on a theme and returns ~0 for Thai queries. Every
+    source is licence-checked in code, so the test pins the filter rather than a
+    live result: an NC image must never pass into a monetised video, and a BY
+    image must produce a credit line naming its origin.
+    """
+    section("stills rail: multiple free sources, licence-safe")
+    import importlib.util
+    ops = ROOT.parent / "ops"
+    spec = importlib.util.spec_from_file_location("stills_rail", ops / "stills_rail.py")
+    sr = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(sr)
+
+    check("offers Wikimedia + Openverse + NASA",
+          all(hasattr(sr, n) for n in ("search", "search_openverse", "search_nasa")))
+    check("harvest interleaves the sources", len(sr.SOURCES) == 3)
+    # The licence gate: reuse-able passes, NonCommercial/NoDerivatives never do.
+    for lic in ("CC0", "Public domain", "CC BY 4.0", "CC BY-SA 3.0"):
+        check(f"accepts {lic}", bool(sr.OK_LICENCE.search(lic))
+              and not sr.BAD_LICENCE.search(lic))
+    for lic in ("CC BY-NC 4.0", "CC BY-ND 2.0", "fair use"):
+        check(f"rejects {lic}", bool(sr.BAD_LICENCE.search(lic)))
+    # A BY image must be credited, and the block must name the source it came from.
+    items = [{"title": "Stage", "url": "u", "source": "s", "licence": "CC BY 4.0",
+              "credit": "Someone", "origin": "Openverse"}]
+    block = sr.credits_block(items)
+    check("BY stills get a credit line", "Stage" in block and "Someone" in block)
+    check("credit block names the origin", "Openverse" in block)
+
+
+def test_announce_releases() -> None:
+    """The Nostr announcer must pick the right releases and never invent a link.
+
+    Nostr is AR's only operator-free social surface, so the release rail posts
+    each new song there. The selection rules are what keep it honest: only a
+    *public song* with a real `video_id` is announced, once. A record with no id
+    is skipped rather than linked to a guess, and an already-announced id is not
+    sent again — that is what makes a re-run safe.
+    """
+    section("nostr release announcer")
+    import importlib.util
+    ops = ROOT.parent / "ops"
+    spec = importlib.util.spec_from_file_location("announce_releases", ops / "announce_releases.py")
+    ar = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(ar)
+
+    released = [
+        {"slug": "a", "kind": "song", "video_id": "AAA", "public": True},
+        {"slug": "b", "kind": "song", "video_id": "BBB", "public": False},   # not public
+        {"slug": "c", "kind": "karaoke", "video_id": "CCC", "public": True},  # not a song
+        {"slug": "d", "kind": "song", "video_id": "", "public": True},       # no id
+        {"slug": "e", "kind": "song", "video_id": "EEE", "public": True},
+    ]
+    todo = ar.pending(released, announced={}, limit=None)
+    ids = [t[0] for t in todo]
+    check("announces only public songs with an id", ids == ["EEE", "AAA"])
+    check("newest release leads", ids[0] == "EEE")
+    check("a missing video_id is never guessed", "d" not in [t[1] for t in todo])
+
+    # Already-announced ids are not sent twice.
+    again = ar.pending(released, announced={"EEE": {"slug": "e"}})
+    check("an announced id is skipped", [t[0] for t in again] == ["AAA"])
+
+    # The note links to the real video and carries the standing follow ask.
+    text = ar.note_text("a", "AAA")
+    check("note links to the video", f"watch?v=AAA" in text)
+    check("note carries the follow ask", ar.FOLLOW_ASK in text and ar.FOLLOW_PROMISE in text)
+
+
 def test_titles() -> None:
     """Release titles must fit the shape the competitor scan says wins.
 
@@ -5877,6 +5949,8 @@ def main() -> int:
     test_ai_covers()
     test_thumbnail_repair()
     test_nostr_identity()
+    test_stills_sources()
+    test_announce_releases()
     test_titles()
     test_compilation()
     test_compilation_cta_repair()

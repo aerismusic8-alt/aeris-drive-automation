@@ -48,6 +48,9 @@ music938-1/work/*
 # The FB/TikTok rail's queue and posted-once ledger. The ledger is the only
 # record of what is already on Reels/TikTok, so it must survive a recycle.
 !music938-1/work/crosspost-queue.json
+# The Nostr announce ledger: which releases have already been posted, so a
+# re-run (or the CI rail) only announces what is new instead of the catalogue.
+!music938-1/work/nostr-announced.json
 !music938-1/work/crosspost-state.json
 # The response loop's memory: the last play-count per posted URL (so a run reads
 # only new posts, not every post ever made) and the decision it drew (so the next
