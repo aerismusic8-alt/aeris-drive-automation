@@ -2456,6 +2456,19 @@ def test_volume_series() -> None:
     wf = (ROOT.parent / ".github" / "workflows"
           / "ax-music-compilation.yml").read_text(encoding="utf-8")
     check("the compilation rail builds a volume", "volume_series.py" in wf)
+    # The series cursor must survive a fresh CI checkout, or the number resets
+    # and Vol.1 is re-published every week. `git check-ignore` is the real gate.
+    gi = subprocess.run(["git", "check-ignore", "-q",
+                         "music938-1/work/volume-series-state.json"],
+                        cwd=ROOT.parent, capture_output=True)
+    check("the series cursor is not gitignored", gi.returncode == 1,
+          f"git check-ignore rc={gi.returncode}")
+    # If a volume is already recorded, the next number is strictly past it.
+    if vs.SERIES_STATE.exists():
+        published = max(int(k) for k in json.loads(
+            vs.SERIES_STATE.read_text(encoding="utf-8")).get("volumes", {}))
+        check("the next volume is past the published one",
+              vs.next_volume() > published, f"next={vs.next_volume()} pub={published}")
 
 
 def test_song_title_search_intent() -> None:

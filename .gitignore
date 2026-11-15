@@ -78,6 +78,10 @@ music938-1/work/*
 # only exists if it is tracked, so an ignored state file means the guard never
 # fires and the channel floods with duplicates.
 !music938-1/work/compilation-state-*.json
+# The Volume Series cursor. Same reason as the compilation record: the next
+# volume number is published+1, so on a fresh CI checkout the file must survive
+# or the series restarts at Vol.1 and re-publishes it every week.
+!music938-1/work/volume-series-state.json
 # The mood-clip render record. Same reason as the compilation record: the `--once`
 # guard only skips a re-render if the file survives a fresh CI checkout, so an
 # ignored state file means all six clips re-render every 4 hours forever.
