@@ -4896,6 +4896,13 @@ def test_heartbeat_repair_signal() -> None:
     src = (ROOT.parent / "ops/heartbeat.py").read_text()
     check("the board reports the pending count",
           "waiting on a thumbnail/playlist repair" in src)
+    # A rail that fails on every run is still "fresh" — it ran, it just did
+    # nothing. 2026-11-13 and 2026-11-15 were green release runs that uploaded
+    # zero videos (the refused upload was folded into "day done"). The board
+    # must page on the latest run being red, or a running-but-broken rail never
+    # reaches a person.
+    check("the board alerts when the latest run failed",
+          "latest run failed" in src)
 
 
 def test_brand_identity() -> None:

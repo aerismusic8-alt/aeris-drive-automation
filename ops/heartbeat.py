@@ -204,6 +204,14 @@ def collect() -> dict:
             alerts.append(f"{name}: never ran")
         elif not fresh:
             alerts.append(f"{name}: stale (last {last_at})")
+        # A rail that fails on every run still looks fresh: it ran, it just did
+        # nothing. The release rail did exactly that — `release.py` returned a
+        # "day done" code on a refused upload, so 2026-11-13 and 2026-11-15 were
+        # green while the channel shipped 0 videos. Alert on the LATEST run
+        # being red (an old failure a later run fixed is not a page), so a rail
+        # that is running-but-broken reaches a person instead of a green board.
+        if last and last.get("conclusion") in ("failure", "timed_out"):
+            alerts.append(f"{name}: latest run failed ({last_at})")
 
     # A green run is not the whole answer: on 2026-11-06 the release rail ran
     # "success" while every one of its six uploads went live without a custom
