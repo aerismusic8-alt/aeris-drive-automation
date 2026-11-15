@@ -12,12 +12,14 @@ depends on K signing in again. Two things were wrong:
      live desktop sign-in never reached CI. (Fixed: `vault_session.py` +
      `browser.connect`.)
   2. Nothing revives a dead session on its own, even when the password is sitting
-     in the vault. Facebook is the one surface that can be revived headlessly, and
-     it was only revived when a human ran `fb_relogin.py`.
+     in the vault. Flow Music can be revived headlessly through Google SSO, and
+     it was only revived by hand.
 
-This command closes both. It checks each surface, auto-revives Facebook from the
-vaulted password, refreshes the vault session so CI reads it, and reports only the
-surfaces that genuinely still need K (a Google 2FA prompt, Shopee's slide puzzle).
+This command closes both. It checks each surface, auto-revives Flow Music from the
+vaulted google-password, refreshes the vault session so CI reads it, and reports
+only the surfaces that genuinely still need K (a Google 2FA prompt, Shopee's slide
+puzzle). Facebook is deliberately NOT auto-revived: it is API-only (K, 2026-11-15)
+and is skipped entirely while `aeris938-2/channel.json` marks it paused.
 
     python3 ops/session_guard.py            # check, revive what it can, refresh CI
     python3 ops/session_guard.py --check    # report only, change nothing
@@ -38,13 +40,30 @@ sys.path.insert(0, str(HERE))
 
 CDP = os.environ.get("AERIS_CDP", "http://127.0.0.1:9222")
 # Surfaces the rails read, and whether AR can revive them with no human.
-# facebook: yes — a vaulted password and no per-login second factor in this setup.
+# facebook: NO (K, 2026-11-15). Facebook is API-only now — a browser session
+#   posting on a cron cadence is the automation signature Meta caught, so AR
+#   never browser-revives it again. It stays out of AUTO_REVIVE and is skipped
+#   whenever it is paused in `aeris938-2/channel.json` (the single truth).
 # flow: yes — it signs in through Google SSO, and the vaulted google-password
 #   completes the chooser (verified 2026-11-12: a dead Flow session came back with
 #   no K). It must run on the desktop browser, not headless — Google blocks
 #   headless logins — so it heals whenever a pod is up.
 # the rest: no — a device prompt or a slide puzzle, so a dead session is a K task.
-AUTO_REVIVE = {"facebook", "flow"}
+AUTO_REVIVE = {"flow"}
+
+# domain -> the surface key in channel.json, so a paused surface is skipped here
+# too. Keeping this in one place is what stops a pause from being enforced in the
+# rail but silently re-opened by the healer.
+DOMAIN_SURFACE = {".facebook.com": "facebook", ".tiktok.com": "tiktok",
+                  ".flowmusic.app": "flow", ".google.com": "google",
+                  "accounts.google.com": "google"}
+
+
+def _paused_domains() -> set[str]:
+    import surface_status  # noqa: PLC0415
+
+    paused = surface_status.paused()
+    return {d for d, s in DOMAIN_SURFACE.items() if s in paused}
 
 
 def _surfaces() -> dict[str, bool]:
@@ -52,11 +71,14 @@ def _surfaces() -> dict[str, bool]:
     import login_vault  # noqa: PLC0415
     from playwright.sync_api import sync_playwright  # noqa: PLC0415
 
+    skip = _paused_domains()
     out: dict[str, bool] = {}
     with sync_playwright() as p:
         br = p.chromium.connect_over_cdp(CDP)
         ctx = br.contexts[0] if br.contexts else br.new_context()
         for domain in login_vault.WATCH:
+            if domain in skip:
+                continue
             if domain not in login_vault.PROBE:
                 continue
             out[domain] = login_vault._signed_in(ctx, domain)
@@ -89,12 +111,6 @@ def run(check_only: bool = False, push: bool = True) -> int:
         return 1 if dead else 0
 
     revived = False
-    if ".facebook.com" in dead:
-        import fb_relogin  # noqa: PLC0415
-        print("facebook is dead — reviving from the vaulted password")
-        if fb_relogin.relogin() == 0:
-            revived = True
-            state[".facebook.com"] = True
     if ".flowmusic.app" in dead:
         if _revive_flow():
             revived = True
@@ -193,10 +209,53 @@ def _refresh(push: bool) -> None:
         return
     if push:
         try:
-            import fb_relogin  # noqa: PLC0415
-            fb_relogin.push_secret()
+            _push_storage_secret()
         except Exception as exc:  # noqa: BLE001
             print(f"secret push skipped: {str(exc)[:100]}")
+
+
+def _push_storage_secret() -> int:
+    """Refresh the CI `AERIS_STORAGE_STATE_B64` from the now-live desktop session.
+
+    Lives here, not in `fb_relogin`, so the healer never imports the Facebook
+    browser-revive module (K, 2026-11-15: Facebook is API-only; AR never
+    browser-revives it). The push is surface-agnostic — it exports whatever
+    sessions the desktop holds and writes the secret.
+    """
+    import os  # noqa: PLC0415
+    import subprocess  # noqa: PLC0415
+
+    import ax_vault  # noqa: PLC0415
+    import save_storage_state  # noqa: PLC0415
+
+    blob = _capture_stdout(save_storage_state.main)
+    if not blob:
+        print("could not export a storage state (is the desktop signed in?)")
+        return 1
+    tok = ax_vault.kv_get(ax_vault.ensure_anchor(), "axsecrets:gh-workflow-token")
+    token = tok.get("token", "") if isinstance(tok, dict) else (tok or "")
+    if not token:
+        print("no write token in the vault (axsecrets:gh-workflow-token); "
+              "set the secret by hand")
+        return 1
+    env = dict(os.environ, GITHUB_TOKEN=token, AERIS_STORAGE_STATE_B64=blob)
+    r = subprocess.run(
+        [sys.executable, str(HERE.parent / "scripts" / "gh-put-secrets.py"),
+         "--repo", "aerismusic8-alt/aeris-drive-automation",
+         "AERIS_STORAGE_STATE_B64"],
+        env=env, capture_output=True, text=True)
+    print((r.stdout or r.stderr).strip())
+    return r.returncode
+
+
+def _capture_stdout(fn) -> str:
+    import contextlib  # noqa: PLC0415
+    import io  # noqa: PLC0415
+
+    buf = io.StringIO()
+    with contextlib.redirect_stdout(buf):
+        fn()
+    return buf.getvalue().strip()
 
 
 def run_headless() -> int:
@@ -225,10 +284,13 @@ def run_headless() -> int:
     if exe:
         launch["executable_path"] = exe
 
-    # Only the surfaces the CI rails post to, and only Facebook is revivable
-    # headlessly. Google refuses a headless login and Flow is desktop-only, so
-    # checking them here would report a false "needs K".
-    watched = (".facebook.com", ".tiktok.com")
+    # Only the surfaces the CI rails post to, minus any paused surface. Facebook
+    # is paused and API-only (K, 2026-11-15): it is never checked or revived in a
+    # browser here — that is the route Meta caught. Google refuses a headless
+    # login and Flow is desktop-only, so checking them would report a false
+    # "needs K".
+    skip = _paused_domains()
+    watched = tuple(d for d in (".facebook.com", ".tiktok.com") if d not in skip)
     alive: dict[str, bool] = {}
     with sync_playwright() as p:
         br = p.chromium.launch(**launch)
@@ -240,18 +302,6 @@ def run_headless() -> int:
 
     for d, ok in sorted(alive.items()):
         print(f"  {d:22} {'alive' if ok else 'DEAD'}")
-
-    revived = False
-    if alive.get(".facebook.com") is False:
-        import fb_relogin  # noqa: PLC0415
-        print("facebook is dead — reviving headlessly from the vaulted password")
-        if fb_relogin.revive_headless(str(tmp)) == 0:
-            revived = True
-            alive[".facebook.com"] = True
-
-    if revived:
-        vault_session.save_state(json.loads(tmp.read_text(encoding="utf-8")))
-        print("vault session refreshed from the headless revive")
 
     dead = [d for d, ok in alive.items() if not ok]
     need_k = [d for d in dead if d.lstrip(".").split(".")[0] not in AUTO_REVIVE]

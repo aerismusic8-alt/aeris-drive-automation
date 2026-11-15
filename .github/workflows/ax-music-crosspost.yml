@@ -134,6 +134,8 @@ jobs:
               0) echo "$p=SIGNED_IN" >> "$GITHUB_OUTPUT" ;;
               3) echo "$p=PARKED" >> "$GITHUB_OUTPUT"
                  echo "::notice::$p is API-only and has no token yet — parked, no K needed" ;;
+              4) echo "$p=PAUSED" >> "$GITHUB_OUTPUT"
+                 echo "::notice::$p is paused in channel.json — not posted, not probed" ;;
               *) echo "$p=SIGNED_OUT" >> "$GITHUB_OUTPUT"
                  echo "::warning::$p session is dead — posting will skip it" ;;
             esac
@@ -188,6 +190,14 @@ jobs:
               # green. It resumes by itself the moment the one-time token exists.
               n=$(python3 music938-1/scripts/crosspost.py --pending-count --platform "$p" | tail -1)
               echo "--- $p: parked (API-only, no token; $n pending) — no K needed ---"
+              continue
+            fi
+            if [ "$state" = "PAUSED" ]; then
+              # channel.json status=paused: a deliberate halt. Not posted and not
+              # counted as blocked, so the run stays green and K is not paged —
+              # and, crucially, the live surface still posts in the same run.
+              n=$(python3 music938-1/scripts/crosspost.py --pending-count --platform "$p" | tail -1)
+              echo "--- $p: paused (channel.json status=paused; $n pending) — not posted ---"
               continue
             fi
             if [ "$PLAT" = "all" ] && [ "$state" != "SIGNED_IN" ]; then
@@ -267,5 +277,5 @@ jobs:
           [ -n "$LINK" ] || LINK="(set the AX_LOGIN_URL repo variable to the work-2 host)"
           curl -sS --max-time 20 -H "Title: AERIS — session ที่ต้องล็อกอินใหม่" \
             -H "Tags: warning" -H "Priority: high" \
-            -d "session ของ surface ที่ยังใช้ browser หมดอายุ มีโพสต์ค้างอยู่. แตะปุ่มเดียวจบที่ ${LINK} — ล็อกอินเฉพาะ surface ที่แจ้ง (ปกติคือ TikTok @aeris.music4). ถ้า surface ที่แจ้งคือ Facebook: รัน python3 ops/fb_relogin.py --push-secret (ใช้รหัสใน vault ล็อกอินให้เองแล้วรีเฟรช secret ให้) ไม่ต้องแตะ token ก็โพสต์ต่อได้. ถ้า Facebook ล้มเพราะ Graph token ถูกปฏิเสธ (API access blocked) นั่นเป็นคนละเรื่อง — browser ยังโพสต์ได้ แต่ถ้าอยากคืนเส้นทาง headless ต้องออกรหัส System User ใหม่ตาม docs/k-free-runbook.md. ถ้าเพิ่งล็อกอินแล้วยังแดง ให้รัน ops/login_vault.py save และ ops/save_storage_state.py แล้วตั้ง secret AERIS_STORAGE_STATE_B64 ใหม่" \
+            -d "session ของ surface ที่ยังใช้ browser หมดอายุ มีโพสต์ค้างอยู่. แตะปุ่มเดียวจบที่ ${LINK} — ล็อกอินเฉพาะ surface ที่แจ้ง (ปกติคือ TikTok @aeris.music4). Facebook ไม่ใช่ surface ที่ล็อกอินผ่าน browser แล้ว (พักอยู่, status=paused) — ถ้าต้องการคืนเส้นทาง FB ให้ออก Meta System User token ใหม่ตาม docs/k-free-runbook.md ไม่ใช่ล็อกอิน browser. ถ้าเพิ่งล็อกอิน TikTok แล้วยังแดง ให้รัน ops/login_vault.py save และ ops/save_storage_state.py แล้วตั้ง secret AERIS_STORAGE_STATE_B64 ใหม่" \
             "https://ntfy.sh/${TOPIC}" || echo "ntfy push failed (non-fatal)"

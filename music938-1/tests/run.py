@@ -4396,20 +4396,30 @@ def test_session_guard() -> None:
 
     K's complaint: the cookie keeps getting wiped and every fix ended with K
     signing in again. `ops/session_guard.py` is the answer — it checks every
-    surface, revives the one that can be revived with no human (Facebook, from the
-    vaulted password), refreshes the vault session CI reads, and reports only the
-    surfaces that genuinely still need K.
+    surface, revives the ones that can be revived with no human (Flow Music,
+    through Google SSO), refreshes the vault session CI reads, and reports only
+    the surfaces that genuinely still need K.
+
+    Facebook is deliberately NOT auto-revived any more (K, 2026-11-15): a browser
+    session posting on a cron cadence is the automation signature Meta caught, so
+    Facebook is API-only and is skipped entirely while it is paused.
     """
     section("session guard (heal without K)")
     ops = ROOT.parent / "ops"
     src = (ops / "session_guard.py").read_text()
-    check("auto-revives Facebook and Flow Music",
-          'AUTO_REVIVE = {"facebook", "flow"}' in src)
+    check("auto-revives Flow Music only, not Facebook",
+          'AUTO_REVIVE = {"flow"}' in src and '"facebook"' not in src.split("AUTO_REVIVE")[1][:40])
+    check("never browser-revives Facebook",
+          "import fb_relogin" not in src and "fb_relogin.relogin" not in src
+          and "fb_relogin.revive_headless" not in src
+          and "fb_relogin.push_secret" not in src)
+    check("skips a paused surface from channel.json",
+          "surface_status" in src and "def _paused_domains" in src)
     check("revives Flow through Google SSO", "def _revive_flow" in src
           and "axsecrets:google-password" in src)
     check("has a headless mode for CI", "def run_headless" in src and "--headless" in src)
     check("refreshes the vault session after a revive",
-          "save_state" in src and "vault_session" in src)
+          "save_storage_state.main" in src and "vault_session" in src)
     check("reports a K-only surface as a failure",
           "these need K" in src and "return 1 if need_k" in src)
 
@@ -4426,6 +4436,55 @@ def test_session_guard() -> None:
         body = (ROOT.parent / ".github" / "workflows" / name).read_text()
         check(f"{name} loads the vault session",
               "vault_session.py write-state" in body)
+
+
+def test_paused_surface_is_skipped_everywhere() -> None:
+    """A paused surface must be off in every path, without stopping a live one.
+
+    K, 2026-11-15: Facebook is paused. The bug this guards is that the *only*
+    rail that posts was disabled to stop Facebook, which also stopped TikTok —
+    and a re-enabled rail or a manual call could still browser-post Facebook.
+    `aeris938-2/channel.json` is the single truth; every consumer must read it.
+    """
+    section("paused surface (channel.json is the single truth)")
+    import surface_status
+
+    paused = surface_status.paused()
+    check("channel.json marks facebook paused", "facebook" in paused, str(paused))
+    check("a live surface is not paused", "tiktok" not in paused, str(paused))
+
+    import crosspost
+    check("crosspost reads the same truth",
+          crosspost._paused() == {p for p in paused if p in crosspost.PLATFORMS},
+          str(crosspost._paused()))
+    # A paused surface never posts and never opens a browser, even if the rail is
+    # re-enabled or `grow.py facebook --post` is called by hand.
+    check("posting a paused surface is refused, not an outage",
+          crosspost.post("facebook", 1) == 0)
+
+    src = (ROOT / "scripts" / "crosspost.py").read_text()
+    check("probe skips a paused surface (rc 4)",
+          "PAUSED" in src and "return 4 if paused else 0" in src)
+    check("post refuses a paused surface at the source",
+          'if platform in _paused():' in src)
+
+    # session_guard and token_heartbeat must read the same truth, or a pause is
+    # enforced in the rail but silently re-opened by the healer.
+    sg = (ROOT.parent / "ops" / "session_guard.py").read_text()
+    check("the healer skips a paused surface",
+          "surface_status" in sg and "def _paused_domains" in sg)
+    th = (ROOT.parent / "ops" / "token_heartbeat.py").read_text()
+    check("the token heartbeat skips a paused surface",
+          'if "facebook" in surface_status.paused()' in th
+          and '"paused"' in th)
+
+    # The rail must skip a paused surface *and* still post the live one in the
+    # same run — that is the fix for "disabling the rail killed TikTok too".
+    wf = (ROOT.parent / ".github" / "workflows" / "ax-music-crosspost.yml").read_text()
+    check("the rail skips PAUSED without counting it as blocked",
+          'if [ "$state" = "PAUSED" ]' in wf and '4) echo "$p=PAUSED"' in wf)
+    check("the FB alert no longer tells K to browser-relogin",
+          "fb_relogin.py --push-secret" not in wf)
 
 
 def test_operator_url() -> None:
@@ -5751,6 +5810,7 @@ def main() -> int:
     test_login_vault()
     test_fb_relogin()
     test_session_guard()
+    test_paused_surface_is_skipped_everywhere()
     test_outreach()
     test_promo_site_converts_to_the_page()
     test_operator_url()

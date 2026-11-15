@@ -89,6 +89,25 @@ def test_social_stats_skip_marks_paused():
     assert json.loads(out.stdout)["facebook"]["note"] == "paused"
 
 
+def test_paused_facebook_is_skipped_by_every_consumer():
+    """A pause must be enforced everywhere, not only in the measurement path.
+
+    K, 2026-11-15: the browser route is the detection signature. `channel.json` is
+    the single truth; the admin rail (which opens a browser to read the Page) and
+    the session healer (which would browser-revive Facebook) must both read it, or
+    a paused surface is silently re-opened by the very code meant to protect it.
+    """
+    src = (ROOT / "scripts" / "admin.py").read_text(encoding="utf-8")
+    assert "surface_status" in src and 'surface_status.paused()' in src, \
+        "admin.py must skip the rail while facebook is paused"
+    assert "no browser touch" in src
+
+    sg = (Path(ROOT).parent / "ops" / "session_guard.py").read_text(encoding="utf-8")
+    assert "surface_status" in sg and "def _paused_domains" in sg
+    assert 'AUTO_REVIVE = {"flow"}' in sg, "Facebook must not be browser-revived"
+    assert "import fb_relogin" not in sg, "the healer must not import the FB revive"
+
+
 def test_report_never_guesses():
     yt = {"handle": "@aerismusicth", "subs": 5, "videos": 28, "views": 100}
     dash = {"facebook": {"reachable": False},

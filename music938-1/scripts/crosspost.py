@@ -778,6 +778,24 @@ def _signed_in(page) -> bool:
     return "/login" not in url and "login" not in url.split("?")[0]
 
 
+def _paused() -> set[str]:
+    """Surfaces whose `status` is `paused` in `aeris938-2/channel.json`.
+
+    channel.json is the single source of truth for which surfaces AR grows, so a
+    paused surface is not posted, not probed and not counted as blocked. This is
+    the seam that keeps a Facebook pause from taking TikTok down with it: the rail
+    posts the live surface and skips the paused one, instead of one dead surface
+    turning the whole run red and getting the rail disabled.
+    """
+    cfg = ROOT.parent / "aeris938-2" / "channel.json"
+    try:
+        data = json.loads(cfg.read_text(encoding="utf-8"))
+    except Exception:  # noqa: BLE001
+        return set()
+    return {name for name in PLATFORMS
+            if (data.get(name) or {}).get("status") == "paused"}
+
+
 def probe(platform: str | None = None) -> int:
     """Report, per platform, whether the desktop reaches the upload page signed in.
 
@@ -788,6 +806,16 @@ def probe(platform: str | None = None) -> int:
     """
     rc = 0
     names = [platform] if platform else list(PLATFORMS)
+    # A paused surface (channel.json status) is not a live surface: report it
+    # paused and skip it. rc 4 tells the rail "deliberately off" so it is neither
+    # posted nor counted as a blocked login — this is what lets the FB pause stop
+    # without stopping TikTok, and without paging K.
+    paused = _paused()
+    for n in sorted(set(names) & paused):
+        print(f"PAUSED {n:9} channel.json status=paused — not posted, not probed")
+    names = [n for n in names if n not in paused]
+    if not names:
+        return 4 if paused else 0
     # A surface with an API token is "signed in" without any browser: the probe
     # must not report a healthy API surface as dead just because the cookie
     # session it no longer uses has expired.
@@ -1123,6 +1151,13 @@ def _publish_api(platform: str, it: dict, media, api) -> str | None:
 
 
 def post(platform: str, limit: int, only: str | None = None) -> int:
+    if platform in _paused():
+        # channel.json status=paused. Refuse at the source, not only in the rail:
+        # a re-enabled workflow or a manual `grow.py facebook --post` must not be
+        # able to publish to a paused surface. rc 0 so a deliberate halt is not an
+        # outage.
+        print(f"{platform}: paused in channel.json — not posting (status=paused)")
+        return 0
     state = load_state()
     queue = load_queue()
     todo = pending(queue, state, platform)

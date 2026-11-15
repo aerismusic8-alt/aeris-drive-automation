@@ -40,6 +40,8 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
+import surface_status  # noqa: E402
+
 try:
     import fb_graph  # noqa: E402
 except Exception:  # noqa: BLE001
@@ -53,19 +55,24 @@ WARN_DAYS = 7
 
 
 def check_facebook(*, refresh: bool) -> dict:
+    if "facebook" in surface_status.paused():
+        # A paused surface is not checked: it is a deliberate halt, and there is
+        # no token to keep alive for it. Reporting it here would page K about a
+        # surface that is off on purpose.
+        return {"surface": "facebook", "state": "paused",
+                "detail": "paused in channel.json — not posting, not checked"}
     if fb_graph is None or not fb_graph.available():
         return {"surface": "facebook", "state": "browser", "detail": "no FB_PAGE_TOKEN"}
     if not fb_graph.token_alive(refresh=True):
-        # Present but rejected ("API access blocked", 2026-11-08). This is NOT a
-        # K-needed outage any more: commit 8e6eaecf gave Facebook the same
-        # signed-in-browser fallback TikTok has, so the rail still posts Reels
-        # without the token. Paging K here was the exact false-alarm loop the API
-        # route was meant to remove, and K cannot clear an account-level block
-        # anyway. Reported as a degradation, so the run stays green.
+        # Present but rejected ("API access blocked", 2026-11-08). Facebook is
+        # API-only (K, 2026-11-15): there is no browser fallback any more, so a
+        # rejected token means the surface cannot post at all until it is
+        # re-provisioned. It is NOT a K-needed outage (K cannot clear an
+        # account-level block, and the page may also be paused); it is reported as
+        # a degradation so the run stays green.
         return {"surface": "facebook", "state": "degraded",
                 "detail": "Graph token rejected (API access blocked / OAuthException); "
-                          "posting falls back to the browser — re-provision to restore "
-                          "the headless route"}
+                          "API-only surface cannot post — re-provision a System User token"}
     new = fb_graph.refresh() if refresh else ""
     info = fb_graph.debug_token()
     data = info.get("data", {}) if info.get("ok") else {}
@@ -153,10 +160,12 @@ def main(argv: list[str]) -> int:
     if push and refresh and repo:
         push_secrets(repo)
     # A "browser" state is not a failure: the rail is still running, just without
-    # the API. A "degraded" Facebook token is also not a failure: the browser
-    # fallback posts Reels without it, so the surface is up — the headless route
-    # is just unavailable. Only an *expired* credential means K is needed (TikTok
-    # has no browser-free alternative and the refresh token is the only way back).
+    # the API. A "paused" surface is off on purpose and is not a failure either.
+    # A "degraded" Facebook token is not a failure: Facebook is API-only now, so
+    # the surface simply cannot post until it is re-provisioned, and K cannot
+    # clear an account-level block. Only an *expired* credential means K is needed
+    # (TikTok has no browser-free alternative and the refresh token is the only
+    # way back).
     bad = [r for r in rows if r["state"] == "expired"]
     if bad:
         print("::error::" + "; ".join(f"{r['surface']} {r['detail']}" for r in bad))
@@ -165,7 +174,7 @@ def main(argv: list[str]) -> int:
     for r in rows:
         if r["state"] == "degraded":
             print(f"::warning::{r['surface']} degraded: {r['detail']}")
-    if all(r["state"] in ("browser", "degraded") for r in rows):
+    if all(r["state"] in ("browser", "degraded", "paused") for r in rows):
         print("no live API tokens — crosspost runs on the browser session")
     return 0
 
