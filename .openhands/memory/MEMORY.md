@@ -69,8 +69,8 @@ fallback **raise** (beds pre-render on the pod; archive).
 `music938-1/scripts/make_film_video.py` casts by `# MOOD:` and pulls the film
 from archive.org (check `licenseurl`). `test_film_video` pins it.
 **Stills sources (2026-11-15):** `ops/stills_rail.py` = Wikimedia + **Openverse**
-(no key) + **NASA** (PD), licence-checked. Pexels/Pixabay/Unsplash/Coverr need a
-key and their signup is Cloudflare-blocked.
++ **NASA** + **Cleveland/Art Institute** (CC0/PD); no-key, licence-checked.
+Pexels/Pixabay/Unsplash/Coverr need a key and their signup is Cloudflare-blocked.
 
 ## K-free status (2026-11-13) — audit in `ops/k_free_status.py`
 "Blocked" = "blocked on the route I tried first" (desktop+vault first). Scoreboard: archive.

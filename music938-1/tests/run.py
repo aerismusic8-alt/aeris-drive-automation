@@ -2380,11 +2380,13 @@ def test_nostr_identity() -> None:
 def test_stills_sources() -> None:
     """The stills rail must reach more than Wikimedia, and must not leak NC/ND.
 
-    Openverse (no key) and NASA (public domain) were added 2026-11-15 because
-    Commons alone runs thin on a theme and returns ~0 for Thai queries. Every
-    source is licence-checked in code, so the test pins the filter rather than a
-    live result: an NC image must never pass into a monetised video, and a BY
-    image must produce a credit line naming its origin.
+    Five free, no-key sources are wired in (2026-11-15): Wikimedia Commons,
+    Openverse, NASA, Cleveland Museum (CC0 subset) and the Art Institute of
+    Chicago (public-domain subset). Commons alone runs thin on a theme and
+    returns ~0 for Thai queries, so the others fill the gap. Every source is
+    licence-checked in code, so the test pins the filter rather than a live
+    result: an NC image must never pass into a monetised video, and a BY image
+    must produce a credit line naming its origin.
     """
     section("stills rail: multiple free sources, licence-safe")
     import importlib.util
@@ -2395,7 +2397,9 @@ def test_stills_sources() -> None:
 
     check("offers Wikimedia + Openverse + NASA",
           all(hasattr(sr, n) for n in ("search", "search_openverse", "search_nasa")))
-    check("harvest interleaves the sources", len(sr.SOURCES) == 3)
+    check("offers the two museum sources",
+          all(hasattr(sr, n) for n in ("search_cleveland", "search_chicago")))
+    check("harvest interleaves every source", len(sr.SOURCES) == 5)
     # The licence gate: reuse-able passes, NonCommercial/NoDerivatives never do.
     for lic in ("CC0", "Public domain", "CC BY 4.0", "CC BY-SA 3.0"):
         check(f"accepts {lic}", bool(sr.OK_LICENCE.search(lic))

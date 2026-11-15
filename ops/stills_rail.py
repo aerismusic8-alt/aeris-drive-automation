@@ -29,6 +29,8 @@ UA = {"User-Agent": "AX-episode-builder/1.0 (educational channel; contact ax@exa
 API = "https://commons.wikimedia.org/w/api.php"
 OPENVERSE_API = "https://api.openverse.org/v1/images/"
 NASA_API = "https://images-api.nasa.gov/search"
+CLEVELAND_API = "https://openaccess-api.clevelandart.org/api/artworks/"
+CHICAGO_API = "https://api.artic.edu/api/v1/artworks/search"
 
 # Licences we can use in a monetised video. BY / BY-SA additionally need credit.
 OK_LICENCE = re.compile(r"(cc0|public domain|cc[ -]by|pdm|by-sa|by\b)", re.I)
@@ -148,7 +150,72 @@ def search_nasa(query, limit=8, min_width=1400):
     return out
 
 
-SOURCES = [search, search_openverse, search_nasa]
+def search_cleveland(query, limit=8, min_width=1400):
+    """Cleveland Museum of Art open access. No key; filter to CC0 only.
+
+    The API returns a `share_license_status` per work, so only CC0 is taken —
+    the museum's own CC0 subset, which needs no attribution and no ND/NC check.
+    """
+    params = {"q": query, "limit": str(min(limit * 3, 50)), "has_image": "1", "cc0": "1"}
+    try:
+        data = _get_json(f"{CLEVELAND_API}?{urllib.parse.urlencode(params)}")
+    except Exception:
+        return []
+    out = []
+    for w in data.get("data", []):
+        if (w.get("share_license_status") or "").upper() != "CC0":
+            continue
+        imgs = w.get("images") or {}
+        tier = imgs.get("print") or imgs.get("web") or {}
+        url = tier.get("url")
+        try:
+            wd, ht = int(tier.get("width") or 0), int(tier.get("height") or 0)
+        except (TypeError, ValueError):
+            wd, ht = 0, 0
+        if not url or wd < min_width:
+            continue
+        out.append({
+            "title": (w.get("title") or "untitled")[:120],
+            "url": url,
+            "source": w.get("url") or url,
+            "licence": "CC0",
+            "credit": (w.get("creators") or [{}])[0].get("description", "")[:90],
+            "width": wd, "height": ht,
+            "origin": "Cleveland Museum",
+        })
+    return out
+
+
+def search_chicago(query, limit=8, min_width=1400):
+    """Art Institute of Chicago. No key; only works flagged public domain.
+
+    The IIIF service serves a full-size JPEG at `.../<image_id>/full/1686,/0/default.jpg`.
+    """
+    params = {"q": query, "limit": str(min(limit * 3, 50)),
+              "fields": "id,title,image_id,is_public_domain,artist_display"}
+    try:
+        data = _get_json(f"{CHICAGO_API}?{urllib.parse.urlencode(params)}")
+    except Exception:
+        return []
+    iiif = (data.get("config") or {}).get("iiif_url", "https://www.artic.edu/iiif/2")
+    out = []
+    for w in data.get("data", []):
+        iid = w.get("image_id")
+        if not w.get("is_public_domain") or not iid:
+            continue
+        out.append({
+            "title": (w.get("title") or "untitled")[:120],
+            "url": f"{iiif}/{iid}/full/1686,/0/default.jpg",
+            "source": f"https://www.artic.edu/artworks/{w.get('id')}",
+            "licence": "Public Domain",
+            "credit": (w.get("artist_display") or "Art Institute of Chicago")[:90],
+            "width": 1686, "height": 0,
+            "origin": "Art Institute of Chicago",
+        })
+    return out
+
+
+SOURCES = [search, search_openverse, search_nasa, search_cleveland, search_chicago]
 
 
 def search_multi(query, limit=8, min_width=1400):
