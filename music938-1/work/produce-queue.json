@@ -1,5 +1,5 @@
 {
-  "made": 11,
+  "made": 12,
   "log": [
     {
       "slug": "25-thai-5bcb50c5",
@@ -189,6 +189,17 @@
     {
       "slug": "36-fai-thi-yang-mai-dap-v36",
       "title": "ไฟที่ยังไม่ดับอีกครั้ง",
+      "genre": "rock",
+      "mood": "epic",
+      "result": "lyric",
+      "flow": false,
+      "audio": "none",
+      "offline_rc": 1,
+      "instrumental": false
+    },
+    {
+      "slug": "37-fai-thi-yang-mai-dap-v37",
+      "title": "ไฟที่ยังไม่ดับในฝัน",
       "genre": "rock",
       "mood": "epic",
       "result": "lyric",
