@@ -46,18 +46,30 @@ nothing live was to be touched.
 - `ops/` tooling, the task registry's live growth tasks, and `AX_MASTER_BRAIN/`
   knowledge.
 
-## Operator action required (outside the repo)
+## Machine cleanup — DONE (2026-11-15)
 
 Deleting the repo files does **not** stop anything already scheduled on the
-machine. On PC1, remove the retired scheduled tasks and their payload:
+machine, so the cleanup ran on PC1 itself through its self-hosted runner
+(`PC1-AERIS`), as a one-off workflow that was deleted after use. Verified
+2026-11-15 (run 43732946996):
 
-    schtasks /delete /tn AERIS-PC1-BRAIN1-DECISION /f
-    schtasks /delete /tn AERIS-PC1-BRAIN1-LOCAL-CONTROL /f
-    schtasks /delete /tn AERIS-PC1-BRAIN1-WATCHDOG /f
-    schtasks /delete /tn AERIS-PC1-INTERACTIVE-FOREGROUND-CAPTURE /f
-    Remove-Item -Recurse -Force C:\AX-Bootstrap\brain1
+- **Scheduled tasks: none were present.** All four the project would have
+  installed — `AERIS-AKATH-AX-RUNTIME`, `AERIS-PC1-BRAIN1-DECISION`,
+  `AERIS-PC1-BRAIN1-LOCAL-CONTROL`, `AERIS-PC1-BRAIN1-WATCHDOG` — were already
+  absent, and no other `AERIS-*` / `*BRAIN1*` / `*AX-RUNTIME*` /
+  `*MESHCENTRAL*` task exists. The runtime was never actually installed, so the
+  "live scheduled task" risk was theoretical.
+- **Payload removed:** `C:\AX-Bootstrap\brain1` (4 files) and the files
+  `brain1-decision-worker.ps1`, `brain1-local-control-worker.ps1`,
+  `brain1-watchdog.ps1`, `brain1-install-proof.json` under `C:\AX-Runtime`.
+  The Node entrypoints (`main.mjs`, `dispatcher.mjs`, `node-control.mjs`) were
+  never deployed there.
+- `C:\AX-Runtime\evidence` was **kept** — the Roblox scripts still write there.
+- Proof: `C:\AX-Runtime\evidence\pc1-brain-cleanup-proof.json`.
 
-(Leave `C:\AX-Runtime\evidence` in place — the Roblox scripts still write there.)
+`C:\AX-Runtime` is a large general scratch directory (~8,600 files: media,
+probes, unrelated scripts), so only the named payload was removed — never the
+whole directory.
 
 ## Recovery
 
