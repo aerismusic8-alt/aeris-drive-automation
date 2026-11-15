@@ -126,14 +126,7 @@
   },
   "current_system_state": {
     "ax_core": "LOCKED",
-    "akath_runtime": "ACTIVE",
-    "persistent_queue": "ACTIVE",
-    "state_snapshot_resume": "ACTIVE",
-    "agent_registry": "ACTIVE",
-    "execution_registry": "ACTIVE",
-    "heartbeat": "ACTIVE",
     "canonical_24h_context": "ACTIVE",
-    "dashboard_sync": "ACTIVE",
     "pcsev": "INTEGRATING",
     "revenue_mission": "ACTIVE",
     "ai_benchmark": "ACTIVE",
@@ -142,7 +135,8 @@
     "master_company_storage": "VERIFIED",
     "ax_model_independence": "VERIFIED",
     "continuous_reflection": "VERIFIED",
-    "file_id_persistence": "VERIFIED"
+    "file_id_persistence": "VERIFIED",
+    "note": "PC1 Runtime/Brain/Control project retired 2026-11-15 (see docs/RETIREMENT-PC1-BRAIN.md)."
   },
   "critical_continuity_gap": "TASK_MODELING_REFINEMENT_PENDING_ACCEPTANCE: canonical tasks now distinguish SYSTEM versus MISSION and categories; runtime acceptance must verify this model is used without creating competing task identities.",
   "verification_requirements": [
@@ -166,8 +160,6 @@
   ],
   "verified_evidence": {
     "github_actions_run": 33707158558,
-    "runtime_tests_job": 100498645623,
-    "windows_prerequisite_job": 100498645808,
     "result": "PASS"
   },
   "device_capability_baseline": {
@@ -186,7 +178,6 @@
           "architecture": "64-bit"
         },
         "control_capabilities": [
-          "local runtime/control",
           "desktop observation/capture",
           "browser/application execution",
           "evidence collection and verification"
@@ -201,160 +192,5 @@
       "Control is the primary execution mechanism for PC1; observation and action flow through the local Control plane.",
       "Before every execution, AX must think/plan using A MASTER BRAIN, canonical state, current evidence and node capability before dispatching Control."
     ]
-  },
-  "control_first_execution_contract": {
-    "status": "RECORDED",
-    "rule": "PC1 is operated through its local Control plane under AX. Control is the primary mechanism for observing, deciding, dispatching, executing, collecting evidence, verifying and recovering node work.",
-    "shared_brain_rule": "The Control plane uses shared A MASTER BRAIN knowledge and canonical task/evidence state while retaining independent local execution.",
-    "pre_action_reasoning_gate": [
-      "LOAD canonical task and current state",
-      "LOAD latest evidence and verification",
-      "LOAD node-specific capability baseline",
-      "INSPECT current desktop/application state",
-      "REASON about objective, constraints, feasibility and next action",
-      "ONLY THEN dispatch a Control command"
-    ],
-    "no_action_without_thinking": "No execution command should be dispatched merely because a task exists or because a UI element is visible. AX must first determine the intended action and expected result.",
-    "post_action_cycle": "After each meaningful Control action: observe -> compare expected vs actual -> collect evidence -> verify -> decide next action.",
-    "node_rule": {
-      "PC1": "PC1 CONTROL is the primary execution/control path for PC1."
-    },
-    "evidence_rule": "Control-reported success is not sufficient by itself; completion requires observable node-specific evidence and verification."
-  },
-  "brain_upgrade_learning_system": {
-    "status": "RECORDED_AS_CORE_STRUCTURE",
-    "role": "Continuous knowledge/research system for upgrading A MASTER BRAIN and improving AX decision quality.",
-    "core_loop": [
-      "IDENTIFY knowledge gaps and operational questions",
-      "RESEARCH relevant data and methods",
-      "COLLECT evidence and source context",
-      "ANALYZE and compare findings",
-      "TEST applicable methods when authorized and safe",
-      "VERIFY actual outcomes",
-      "EXTRACT lessons and reusable knowledge",
-      "WRITE_BACK verified knowledge to A MASTER BRAIN",
-      "REUSE upgraded knowledge in future THINK_BEFORE_ACT decisions"
-    ],
-    "priority_rule": "Research continues as an ongoing system function, not a one-time task, and must support current operational objectives without overriding K authority or canonical verified state.",
-    "evidence_rule": "Unverified information remains research/input material and must not be promoted to verified brain knowledge until evidence supports it.",
-    "integration_rule": "The upgraded brain feeds the pre-action reasoning gate for PC1 CONTROL.",
-    "continuity_rule": "Research state, lessons, evidence references and verified knowledge must persist across sessions and model changes through canonical storage.",
-    "control_integration": {
-      "status": "ENHANCED",
-      "input_sources": [
-        "verified execution outcomes",
-        "verified failures/root causes",
-        "recovery outcomes",
-        "node capability changes",
-        "desktop/control observations"
-      ],
-      "promotion_rule": "Research/input becomes durable verified knowledge only after evidence and verification.",
-      "reuse_rule": "Every comparable future Control action must consult accumulated lessons before dispatch.",
-      "feedback_rule": "PC1 feeds its execution experience into the shared brain."
-    }
-  },
-  "offer_execution_operating_model": {
-    "status": "RECORDED_AS_CORE_OPERATIONAL_OBJECTIVE",
-    "objective": "Maximize verified reward count by processing all feasible Offers on PC1, while skipping infeasible Offers with explicit reasons and performing Daily Reward checks every day.",
-    "execution_rules": [
-      "Use A MASTER BRAIN research and THINK_BEFORE_ACT before every Control action.",
-      "PC1 work is executed through PC1 CONTROL.",
-      "Each account operates independently; one account's state must not be treated as another's.",
-      "Read Offer details before Start.",
-      "Run capability and feasibility checks before committing to an Offer.",
-      "Complete every feasible Offer until verified completion/reward or a legitimate blocker is reached.",
-      "If an Offer is not feasible, record SKIPPED with the concrete reason and continue.",
-      "Count only verified rewards/completions as achieved output.",
-      "Check and perform each account's Daily Reward every day when available and legitimately completable.",
-      "Capture evidence and verify before moving to the next Offer."
-    ],
-    "success_metric": "Verified reward count, not number of opened Offers or attempted Starts.",
-    "research_feedback": "Offer outcomes, blockers, successful methods and failure patterns feed the continuous research/brain-upgrade loop."
-  },
-  "control_hardening_contract": {
-    "status": "RECORDED_AS_CORE_STRUCTURE",
-    "spec": "AKATH_CORE/AX_CONTROL_HARDENING_SPEC.md",
-    "cadence": {
-      "heartbeat_seconds": 5,
-      "control_liveness_seconds": 30,
-      "integrity_check_seconds": 60,
-      "deep_ax_control_check_minutes": 15,
-      "immediate_post_action_verification": true
-    },
-    "loop": [
-      "OBSERVE",
-      "LOAD CANONICAL STATE",
-      "THINK/PLAN WITH A MASTER BRAIN",
-      "DISPATCH",
-      "EXECUTE",
-      "OBSERVE",
-      "COLLECT EVIDENCE",
-      "VERIFY",
-      "LEARN",
-      "WRITE BACK",
-      "RECOVER/CONTINUE"
-    ],
-    "learning_gate": "Only evidence-backed lessons may be promoted to durable verified brain knowledge; credentials/secrets are excluded.",
-    "recovery_ladder": [
-      "DETECT",
-      "FREEZE NEW ACTIONS",
-      "CAPTURE STATE",
-      "CLASSIFY",
-      "RESTART COMPONENT",
-      "RECONNECT",
-      "REVERIFY",
-      "RESUME SAME TASK ID"
-    ],
-    "independence": "PC1 retains local Control and recovery while sharing A MASTER BRAIN knowledge.",
-    "evidence_boundaries": [
-      "HEARTBEAT != EXECUTION",
-      "CONTROL_ALIVE != LOGIN",
-      "LOGIN != TASK_SUCCESS",
-      "TASK_STARTED != REWARD",
-      "REPORTED_SUCCESS != VERIFIED_SUCCESS"
-    ]
-  },
-  "pc_brain_control_architecture": {
-    "status": "IMPLEMENTED_PENDING_RUNTIME_SOURCE_RECONCILIATION_AND_NODE_EXECUTION_VERIFICATION",
-    "rule": "AX creates/upgrades Brain; Brain reasons and dispatches intents; local Control executes; Verifier proves.",
-    "nodes": {
-      "PC1": {
-        "machine_identity": "DESKTOP-RGK6JKB",
-        "brain": "BRAIN1",
-        "control": "CONTROL1",
-        "runtime_root": "C:\\AX-Runtime",
-        "decision_worker": "AX_PC_CONTROL/brain1-decision-worker.ps1",
-        "control_worker": "AX_PC_CONTROL/brain1-local-control-worker.ps1",
-        "watchdog": "AX_PC_CONTROL/brain1-watchdog.ps1",
-        "control_worker_latest_commit": "99984c88c93c71ce6577316dd24e8cfe7853d82c",
-        "control_worker_policy": "EXECUTED_PENDING_VERIFICATION; Control cannot self-declare VERIFIED"
-      }
-    },
-    "system_problem_scope": [
-      "process/task diagnosis",
-      "unexpected terminal/foreground interference",
-      "runtime/queue failures",
-      "resource anomalies",
-      "browser/application recovery",
-      "desktop observation and re-verification"
-    ],
-    "safety_rule": "Brain1 may dispatch only whitelisted intents; destructive process termination is not blanket-authorized and must be tied to an identified AX-owned target.",
-    "evidence_gate": "No PC1 Brain1 VERIFIED claim until node execution produces fresh heartbeats and command evidence.",
-    "runtime_reconciliation_contract": "AX_PC_CONTROL/PC1_RUNTIME_SOURCE_RECONCILIATION.md"
-  },
-  "meshcentral_pc1_integration": {
-    "status": "TRANSPORT_AUTHENTICATED_NODE_DISCOVERY_VERIFIED_EXECUTION_PENDING",
-    "node": "PC1",
-    "machine_identity": "DESKTOP-RGK6JKB",
-    "adapter": "AX_PC_CONTROL/pc1-meshcentral-ax-dispatch.ps1",
-    "server": "LAN_ONLY",
-    "authentication": "VERIFIED",
-    "device_group": "Akath-pc1",
-    "discovered_records": 2,
-    "duplicate_resolution": "MATCH_HOST_AND_MESH_GROUP_THEN_PREFER_ACTIVE_KVM_OR_TERMINAL_SESSION_THEN_NEWEST_AGENT_TIMESTAMP; FAIL_CLOSED_ON_TIE",
-    "latest_adapter_commit": "e33977c10e87555223e9f3ca860e0a14609ba043",
-    "execution_gate": "Health proof -> Brain intent dispatch -> local Brain/Control evidence -> Verifier",
-    "evidence_gate": "NO_VERIFIED_AUTONOMOUS_CONTROL_CLAIM_UNTIL_FRESH_NODE_LOCAL_EVIDENCE_AND_VERIFICATION",
-    "credentials_rule": "NO_CREDENTIALS_STORED_IN_BRAIN_OR_GIT"
   }
 }

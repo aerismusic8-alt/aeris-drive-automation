@@ -6,11 +6,9 @@ now." The four jobs (Facebook, TikTok, YouTube @aerismusicth, Shopee Affiliate)
 are the live focus; the four Roblox tasks are set aside.
 
 A standing goal is "never closed as an ordinary task", so parking must not look
-like closing. This script sets the Roblox tasks to `PARKED` — a new, reversible
-label, not in the runtime's transition table — and records why, keeping every
-piece of evidence and history. The runtime only ever claims `PENDING` tasks, so a
-parked task is simply ignored: it cannot be executed, completed, or swept to
-OVERDUE.
+like closing. This script sets the Roblox tasks to `PARKED` — a reversible label
+— and records why, keeping every piece of evidence and history. A parked task is
+simply ignored: it is not executed, completed, or swept to OVERDUE.
 
 It also writes a `focus` block naming the four jobs, so "what are we working on"
 has one explicit answer that does not depend on reading statuses.

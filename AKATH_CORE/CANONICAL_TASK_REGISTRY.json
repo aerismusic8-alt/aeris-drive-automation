@@ -17,7 +17,9 @@
       "title": "PC1 canonical execution loop gate",
       "capability": "execution",
       "action": "pc1_execution_loop_gate",
-      "status": "DONE",
+      "status": "RETIRED",
+      "retired_from_status": "DONE",
+      "retired_reason": "PC1 Runtime/Brain/Control project retired 2026-11-15 (docs/RETIREMENT-PC1-BRAIN.md)",
       "created_at": "2026-09-17T00:00:00.000Z",
       "deadline_at": "2026-09-17T12:00:00.000Z",
       "milestones": [
@@ -62,7 +64,9 @@
       "title": "PC1 specialist execution continuity",
       "capability": "execution",
       "action": "pc1_specialist_execution_continuity",
-      "status": "DONE",
+      "status": "RETIRED",
+      "retired_from_status": "DONE",
+      "retired_reason": "PC1 Runtime/Brain/Control project retired 2026-11-15 (docs/RETIREMENT-PC1-BRAIN.md)",
       "created_at": "2026-09-17T02:55:00.000Z",
       "deadline_at": "2026-09-17T04:00:00.000Z",
       "milestones": [
@@ -108,7 +112,9 @@
       "title": "PC1 execution pipeline intake",
       "capability": "execution",
       "action": "pc1_execution_pipeline_intake",
-      "status": "DONE",
+      "status": "RETIRED",
+      "retired_from_status": "DONE",
+      "retired_reason": "PC1 Runtime/Brain/Control project retired 2026-11-15 (docs/RETIREMENT-PC1-BRAIN.md)",
       "created_at": "2026-09-17T03:12:00.000Z",
       "deadline_at": "2026-09-17T05:00:00.000Z",
       "milestones": [
@@ -154,7 +160,9 @@
       "title": "PC1 canonical execution continuation",
       "capability": "execution",
       "action": "pc1_execution_continuation_002",
-      "status": "DONE",
+      "status": "RETIRED",
+      "retired_from_status": "DONE",
+      "retired_reason": "PC1 Runtime/Brain/Control project retired 2026-11-15 (docs/RETIREMENT-PC1-BRAIN.md)",
       "created_at": "2026-09-17T03:42:00.000Z",
       "deadline_at": "2026-09-17T05:30:00.000Z",
       "milestones": [
@@ -203,7 +211,9 @@
       "title": "PC1 Gemini AI production intake",
       "capability": "ai",
       "action": "ai_production_smoke",
-      "status": "DONE",
+      "status": "RETIRED",
+      "retired_from_status": "DONE",
+      "retired_reason": "PC1 Runtime/Brain/Control project retired 2026-11-15 (docs/RETIREMENT-PC1-BRAIN.md)",
       "created_at": "2026-09-17T04:05:00.000Z",
       "deadline_at": "2026-09-17T06:00:00.000Z",
       "milestones": [
@@ -259,7 +269,9 @@
       "title": "PC1 allowlisted PowerShell control bridge smoke",
       "capability": "control",
       "action": "pc1_status",
-      "status": "SUPERSEDED",
+      "status": "RETIRED",
+      "retired_from_status": "SUPERSEDED",
+      "retired_reason": "PC1 Runtime/Brain/Control project retired 2026-11-15 (docs/RETIREMENT-PC1-BRAIN.md)",
       "created_at": "2026-09-17T04:50:00.000Z",
       "deadline_at": "2026-09-17T06:30:00.000Z",
       "milestones": [
@@ -299,7 +311,9 @@
       "title": "AX remote PC1 PowerShell control acceptance gate",
       "capability": "control",
       "action": "runtime_status",
-      "status": "DONE",
+      "status": "RETIRED",
+      "retired_from_status": "DONE",
+      "retired_reason": "PC1 Runtime/Brain/Control project retired 2026-11-15 (docs/RETIREMENT-PC1-BRAIN.md)",
       "created_at": "2026-09-17T12:10:00.000Z",
       "deadline_at": "2026-09-17T13:00:00.000Z",
       "milestones": [
@@ -354,7 +368,9 @@
       "title": "AX to PC1 bridge proof â€” second autonomous control command",
       "capability": "control",
       "action": "runtime_status",
-      "status": "SUPERSEDED",
+      "status": "RETIRED",
+      "retired_from_status": "SUPERSEDED",
+      "retired_reason": "PC1 Runtime/Brain/Control project retired 2026-11-15 (docs/RETIREMENT-PC1-BRAIN.md)",
       "created_at": "2026-09-17T02:20:00.000Z",
       "deadline_at": "2026-09-17T08:30:00.000Z",
       "deadline_reviewed_at": "2026-09-17T08:00:00.000Z",
@@ -400,7 +416,9 @@
       "title": "JumpTask first workload â€” AI-assisted autonomous task selection",
       "capability": "ai",
       "action": "ai_production_smoke",
-      "status": "DONE",
+      "status": "RETIRED",
+      "retired_from_status": "DONE",
+      "retired_reason": "PC1 Runtime/Brain/Control project retired 2026-11-15 (docs/RETIREMENT-PC1-BRAIN.md)",
       "created_at": "2026-09-17T08:59:00.000Z",
       "deadline_at": "2026-09-17T09:30:00.000Z",
       "milestones": [
@@ -457,7 +475,9 @@
       "title": "PC1 live autonomous execution gate",
       "capability": "execution",
       "action": "pc1_execution_live_gate",
-      "status": "SUPERSEDED",
+      "status": "RETIRED",
+      "retired_from_status": "SUPERSEDED",
+      "retired_reason": "PC1 Runtime/Brain/Control project retired 2026-11-15 (docs/RETIREMENT-PC1-BRAIN.md)",
       "created_at": "2026-09-18T04:05:19.015Z",
       "deadline_at": "2026-09-18T05:05:19.020Z",
       "milestones": [
@@ -493,7 +513,9 @@
       "title": "PC1 live allowlisted PowerShell control bridge",
       "capability": "control",
       "action": "pc1_status",
-      "status": "SUPERSEDED",
+      "status": "RETIRED",
+      "retired_from_status": "SUPERSEDED",
+      "retired_reason": "PC1 Runtime/Brain/Control project retired 2026-11-15 (docs/RETIREMENT-PC1-BRAIN.md)",
       "created_at": "2026-09-18T03:10:00.000Z",
       "deadline_at": "2026-09-18T04:10:00.000Z",
       "milestones": [
@@ -537,7 +559,9 @@
       "title": "AERIS first productive AI production task",
       "capability": "ai",
       "action": "ai_first_productive_work",
-      "status": "SUPERSEDED",
+      "status": "RETIRED",
+      "retired_from_status": "SUPERSEDED",
+      "retired_reason": "PC1 Runtime/Brain/Control project retired 2026-11-15 (docs/RETIREMENT-PC1-BRAIN.md)",
       "created_at": "2026-09-18T04:36:19.179Z",
       "deadline_at": "2026-09-18T05:36:19.183Z",
       "milestones": [
@@ -579,7 +603,9 @@
       "title": "AERIS live AI execution â€” fresh workload",
       "capability": "ai",
       "action": "ai_first_productive_work",
-      "status": "DONE",
+      "status": "RETIRED",
+      "retired_from_status": "DONE",
+      "retired_reason": "PC1 Runtime/Brain/Control project retired 2026-11-15 (docs/RETIREMENT-PC1-BRAIN.md)",
       "created_at": "2026-09-18T05:35:00.000Z",
       "deadline_at": "2026-09-18T06:05:00.000Z",
       "milestones": [
@@ -635,7 +661,9 @@
       "title": "AERIS Music Short production package",
       "capability": "ai",
       "action": "ai_content_production_package",
-      "status": "DONE",
+      "status": "RETIRED",
+      "retired_from_status": "DONE",
+      "retired_reason": "PC1 Runtime/Brain/Control project retired 2026-11-15 (docs/RETIREMENT-PC1-BRAIN.md)",
       "created_at": "2026-09-18T06:00:00.000Z",
       "deadline_at": "2026-09-18T07:00:00.000Z",
       "milestones": [
@@ -691,7 +719,9 @@
       "title": "AERIS live AI production package â€” PC1",
       "capability": "ai",
       "action": "ai_content_production_package",
-      "status": "DONE",
+      "status": "RETIRED",
+      "retired_from_status": "DONE",
+      "retired_reason": "PC1 Runtime/Brain/Control project retired 2026-11-15 (docs/RETIREMENT-PC1-BRAIN.md)",
       "created_at": "2026-09-18T08:42:00.000Z",
       "deadline_at": "2026-09-18T09:30:00.000Z",
       "milestones": [
@@ -744,7 +774,9 @@
       "title": "AERIS live AI production package â€” Gemini fallback model",
       "capability": "ai",
       "action": "ai_content_production_package",
-      "status": "DONE",
+      "status": "RETIRED",
+      "retired_from_status": "DONE",
+      "retired_reason": "PC1 Runtime/Brain/Control project retired 2026-11-15 (docs/RETIREMENT-PC1-BRAIN.md)",
       "created_at": "2026-09-18T08:48:00.000Z",
       "deadline_at": "2026-09-18T09:20:00.000Z",
       "milestones": [
@@ -802,7 +834,9 @@
       "title": "AERIS live AI production package â€” Gemini Lite",
       "capability": "ai",
       "action": "ai_content_production_package",
-      "status": "DONE",
+      "status": "RETIRED",
+      "retired_from_status": "DONE",
+      "retired_reason": "PC1 Runtime/Brain/Control project retired 2026-11-15 (docs/RETIREMENT-PC1-BRAIN.md)",
       "created_at": "2026-09-18T08:52:00.000Z",
       "deadline_at": "2026-09-18T09:25:00.000Z",
       "milestones": [
@@ -860,7 +894,9 @@
       "title": "PC1 live local Ollama execution gate",
       "capability": "ai",
       "action": "ai_local_ollama_live_gate",
-      "status": "DONE",
+      "status": "RETIRED",
+      "retired_from_status": "DONE",
+      "retired_reason": "PC1 Runtime/Brain/Control project retired 2026-11-15 (docs/RETIREMENT-PC1-BRAIN.md)",
       "created_at": "2026-09-19T20:03:38.290Z",
       "deadline_at": "2026-09-19T21:03:38.290Z",
       "milestones": [
@@ -917,7 +953,9 @@
       "title": "AERIS first YouTube Short media render",
       "capability": "media",
       "action": "render_first_short",
-      "status": "DONE",
+      "status": "RETIRED",
+      "retired_from_status": "DONE",
+      "retired_reason": "PC1 Runtime/Brain/Control project retired 2026-11-15 (docs/RETIREMENT-PC1-BRAIN.md)",
       "created_at": "2026-09-19T20:07:48.239Z",
       "deadline_at": "2026-09-19T21:07:48.239Z",
       "milestones": [
@@ -1557,14 +1595,8 @@
     "overdue_policy": "OVERDUE -> cause analysis -> corrective action -> continue or escalate; never silently extend deadline"
   },
   "completion_rule": "DONE requires actual execution result, persisted evidence, and verification",
-  "execution_direction": "AX -> AX_RUNTIME -> DISPATCHER -> PC1_MAIN -> SPECIALIST -> EXECUTE -> EVIDENCE -> VERIFY -> NEXT_JOB",
+  "execution_direction": "K -> AX (GitHub Actions rails + sandbox) -> the four aeris938-2 growth surfaces",
   "clean_start_rule": "Historical tasks are not current tasks. Experience may inform design but cannot create current state.",
-  "autonomous_continuation": {
-    "enabled": true,
-    "planner": "autonomous-planner.mjs",
-    "specialist_registry": "specialist-registry.mjs",
-    "requires_human_per_cycle": false
-  },
   "focus": {
     "scope": "aeris938-2",
     "tasks": [
@@ -1575,5 +1607,12 @@
     ],
     "note": "K 2026-11-09: the four jobs below are the focus; everything else (Roblox standing goals) is parked. K 2026-11-13: catalogue genre focus is pop / dance (edm) / rock — lukthung and phuea-chiwit are parked (`music938-1/channel/genres.json` status:parked).",
     "updated_at": "2026-11-12T23:30:00Z"
-  }
+  },
+  "retired_projects": [
+    {
+      "project": "PC1 Runtime/Brain/Control (local node-as-brain)",
+      "retired_on": "2026-11-15",
+      "note": "see docs/RETIREMENT-PC1-BRAIN.md"
+    }
+  ]
 }

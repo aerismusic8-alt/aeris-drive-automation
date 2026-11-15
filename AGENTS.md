@@ -42,8 +42,8 @@ so a broken file fails the suite instead of silently doing nothing.
 
 | Path | Purpose |
 | --- | --- |
-| `AKATH_CORE/` | Task registry and runtime state (`CANONICAL_TASK_REGISTRY.json`). |
-| `AX_MASTER_BRAIN/`, `AX_PC_CONTROL/` | Windows automation scripts driven by GitHub Actions. |
+| `AKATH_CORE/` | Task registry (`CANONICAL_TASK_REGISTRY.json`) and the Roblox goal scripts. |
+| `AX_MASTER_BRAIN/`, `AX_PC_CONTROL/` | Windows automation scripts driven by GitHub Actions (Roblox publish). |
 | `roblox/` | AX Arena game (Luau). Pure logic in `src/shared`, Roblox glue in `src/server` + `src/client`. |
 | `scripts/` | Tooling: Luau install/test, GitHub App token minting. |
 | `tools/` | Vendored binaries. Gitignored — fetch with `scripts/install-luau.sh`. |
@@ -152,7 +152,7 @@ tasks: a game anyone can enter and play, and real revenue from it.
 TikTok, YouTube `@aerismusicth`, Shopee Affiliate); the Roblox goals are `PARKED`,
 not closed — `AKATH_CORE/park_roblox_goals.py` sets that state and the registry's
 `focus` block names the four jobs. Resume by setting the status back to
-`IN_PROGRESS`. The runtime only claims `PENDING` tasks, so a parked goal is inert.
+`IN_PROGRESS`. A parked goal is inert until it is moved back.
 
 The shape that matters:
 
