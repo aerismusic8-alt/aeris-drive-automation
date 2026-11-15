@@ -1,0 +1,283 @@
+{
+  "at": "2026-11-15T02:21:41.209471+00:00",
+  "channels": [
+    {
+      "handle": "/@60minuteslongplay",
+      "title": "60 Minutes Longplay",
+      "subs": 3970000,
+      "scanned": 78,
+      "shorts": 48,
+      "longform": 30,
+      "median_views": 6,
+      "mean_views": 29822.6,
+      "max_views": 670000,
+      "title_has_hashtag_pct": 81,
+      "title_thai_pct": 100,
+      "mean_title_chars": 83.2,
+      "top": [
+        {
+          "id": "ia3zTjMOKvs",
+          "title": "รวมเพลงโคตรเพราะ ร้อยล้านวิว โจอี้ ภูวศิษฐ์ TaitosmitH เล็ก รัชเมศฐ์【LONGPLAY】",
+          "views": 670000,
+          "age": "",
+          "duration_s": 3794
+        },
+        {
+          "id": "ImpKPCR3B9I",
+          "title": "SUNDAY SPECIAL เพลงยุค90 ฟังได้ทุกยุค ทุกสมัย【LONGPLAY】 #ฟังยาวๆ1ชั่วโมง",
+          "views": 240000,
+          "age": "",
+          "duration_s": 5094
+        },
+        {
+          "id": "tyDURE9ONdA",
+          "title": "SUNDAY SPECIAL  รวมเพลง  จิ๊กโก๋ตัวพ่อ   เสือ เสก ป้าง【LONGPLAY】",
+          "views": 200000,
+          "age": "",
+          "duration_s": 5387
+        },
+        {
+          "id": "IDuFH1qU2lQ",
+          "title": "SATURDAY SPECIAL  รวมเพลง Tiktok ฮิตมากเวอร์ กันยายน 2569 【LONGPLAY】",
+          "views": 190000,
+          "age": "",
+          "duration_s": 4642
+        },
+        {
+          "id": "2dU5cWmK_u8",
+          "title": "รวมเพลงเพราะ ร้านเหล้ายุค 90 -2000  โยกปุ๊บ เต้นปั๊บ #นักร้องจริงไม่ใช้ai 【LONGPLAY】",
+          "views": 150000,
+          "age": "",
+          "duration_s": 3570
+        }
+      ]
+    },
+    {
+      "handle": "/@%E0%B9%80%E0%B8%9F%E0%B8%A3%E0%B8%B4%E0%B8%AA%E0%B8%A1%E0%B8%B4%E0%B8%A7%E0%B8%AA%E0%B8%B4%E0%B8%84-%E0%B8%AB3%E0%B8%A1",
+      "title": "รวมเพลงไทย",
+      "subs": null,
+      "scanned": 1,
+      "shorts": 0,
+      "longform": 1,
+      "median_views": 78,
+      "mean_views": 78.0,
+      "max_views": 78,
+      "title_has_hashtag_pct": 0,
+      "title_thai_pct": 100,
+      "mean_title_chars": 23.0,
+      "top": [
+        {
+          "id": "esqtoz1GtF4",
+          "title": "รวมเพลงฟังยาวๆ1ชั่วโมง ",
+          "views": 78,
+          "age": "",
+          "duration_s": 3718
+        }
+      ]
+    },
+    {
+      "handle": "/@Catmusic-01",
+      "title": "ฟังเพลงไทยเพราะๆ  ฮิตติดกระแส ฟังยาวๆ ฟังเพลินๆ",
+      "subs": 76700,
+      "scanned": 33,
+      "shorts": 3,
+      "longform": 30,
+      "median_views": 29,
+      "mean_views": 58.9,
+      "max_views": 407,
+      "title_has_hashtag_pct": 3,
+      "title_thai_pct": 100,
+      "mean_title_chars": 45.1,
+      "top": [
+        {
+          "id": "1H9hmnbIXo0",
+          "title": "ดวงเดือน - JOEY PHUWASIT  ( เนื้อเพลง )",
+          "views": 407,
+          "age": "",
+          "duration_s": 290
+        },
+        {
+          "id": "o0RL9h65BwU",
+          "title": "ลืมได้จริงใช่ไหม - NUM KALA Feat. ZOM MARIE ( เนื้อเพลง )",
+          "views": 172,
+          "age": "",
+          "duration_s": 257
+        },
+        {
+          "id": "Uh7YNWiqWkg",
+          "title": "กำแพงหัวใจ - Mirrr ( เนื้อเพลง )",
+          "views": 150,
+          "age": "",
+          "duration_s": 295
+        },
+        {
+          "id": "NLPPQ6FjxYk",
+          "title": "ฝันถึงแฟนเก่า - Three Man Down (เนื้อเพลง)",
+          "views": 134,
+          "age": "",
+          "duration_s": 242
+        },
+        {
+          "id": "Qjjoo0WBuZM",
+          "title": "ขอบคุณที่เลิกกัน - KLEAR x TILLY BIRDS  ( เนื้อเพลง )",
+          "views": 124,
+          "age": "",
+          "duration_s": 227
+        }
+      ]
+    },
+    {
+      "handle": "/@%E0%B8%A3%E0%B8%A7%E0%B8%A1%E0%B9%80%E0%B8%9E%E0%B8%A5%E0%B8%87%E0%B9%83%E0%B8%95%E0%B9%89%E0%B9%80%E0%B8%9E%E0%B8%B7%E0%B9%88%E0%B8%AD%E0%B8%8A%E0%B8%B5%E0%B8%A7%E0%B8%B4%E0%B8%95",
+      "title": "รวมเพลงใต้เพื่อชีวิต",
+      "subs": 5540,
+      "scanned": 30,
+      "shorts": 0,
+      "longform": 30,
+      "median_views": 1600,
+      "mean_views": 1742.5,
+      "max_views": 5000,
+      "title_has_hashtag_pct": 0,
+      "title_thai_pct": 100,
+      "mean_title_chars": 66.9,
+      "top": [
+        {
+          "id": "SfTCEJEsbEI",
+          "title": "🔥 รวมฮิตเพลงใต้เพื่อชีวิต 2026 (มาแรง) | อัปเดตใหม่ ฟังยาวไร้โฆษณา 🎵",
+          "views": 5000,
+          "age": "",
+          "duration_s": 3063
+        },
+        {
+          "id": "OfwL9HSFNUE",
+          "title": "🔥 รวมฮิตเพลงใต้เพื่อชีวิต 2026 (มาแรง) | อัปเดตใหม่ ฟังยาวไร้โฆษณา 🎵",
+          "views": 4600,
+          "age": "",
+          "duration_s": 2662
+        },
+        {
+          "id": "4GVbKKSpTAs",
+          "title": "💫จัดเต็ม! เพลงใต้หรอยๆ 2026 | เพื่อชีวิตโดนใจ ฟังเพลิน (No Ads)",
+          "views": 4500,
+          "age": "",
+          "duration_s": 2927
+        },
+        {
+          "id": "d3t68iW3FWI",
+          "title": "🔔 รวมฮิตเพลงใต้เพื่อชีวิต 2026 (มาแรง) | อัปเดตใหม่ ฟังยาวไร้โฆษณา 🎵",
+          "views": 3400,
+          "age": "",
+          "duration_s": 3046
+        },
+        {
+          "id": "9ZMwUNI946o",
+          "title": "จัดเต็ม! เพลงใต้หรอยๆ 2026 | เพื่อชีวิตโดนใจ ฟังเพลิน (No Ads)",
+          "views": 3000,
+          "age": "",
+          "duration_s": 2712
+        }
+      ]
+    },
+    {
+      "handle": "/@%E0%B8%8A%E0%B8%B4%E0%B8%A5%E0%B8%9F%E0%B8%B1%E0%B8%87%E0%B8%AA%E0%B8%9A%E0%B8%B2%E0%B8%A224",
+      "title": "ชิลฟังสบาย24",
+      "subs": 100,
+      "scanned": 30,
+      "shorts": 0,
+      "longform": 30,
+      "median_views": 18,
+      "mean_views": 28.0,
+      "max_views": 212,
+      "title_has_hashtag_pct": 100,
+      "title_thai_pct": 100,
+      "mean_title_chars": 90.0,
+      "top": [
+        {
+          "id": "Uwkyatr7dQo",
+          "title": "ชิลฟังสบาย24 Vol.57 รวมเพลงเพราะๆ 2026 ฟังยาวๆ #เพลงใหม่ล่าสุด  #เพลงฮิต #เพลงไทย #รวมเพลง",
+          "views": 212,
+          "age": "",
+          "duration_s": 6129
+        },
+        {
+          "id": "IUaPazIm3e8",
+          "title": "ชิลฟังสบาย24 Vol.31 รวมเพลงเพราะๆ 2026 ฟังยาวๆ #เพลงใหม่ล่าสุด  #เพลงฮิต #เพลงไทย #รวมเพลง",
+          "views": 117,
+          "age": "",
+          "duration_s": 6113
+        },
+        {
+          "id": "7T1H1r_E4CA",
+          "title": "ชิลฟังสบาย24 Vol.59 รวมเพลงเพราะๆ 2026 ฟังยาวๆ #เพลงใหม่ล่าสุด  #เพลงฮิต #เพลงไทย #รวมเพลง",
+          "views": 47,
+          "age": "",
+          "duration_s": 6312
+        },
+        {
+          "id": "bGkvoMgC3h4",
+          "title": "ชิลฟังสบาย24 Vol.60 รวมเพลงเพราะๆ 2026 ฟังยาวๆ #เพลงใหม่ล่าสุด  #เพลงฮิต #เพลงไทย #รวมเพลง",
+          "views": 42,
+          "age": "",
+          "duration_s": 6278
+        },
+        {
+          "id": "9Xk35EHJFsg",
+          "title": "ชิลฟังสบาย24 Vol.40 รวมเพลงเพราะๆ 2026 ฟังยาวๆ #เพลงใหม่ล่าสุด  #เพลงฮิต #เพลงไทย #รวมเพลง",
+          "views": 31,
+          "age": "",
+          "duration_s": 6282
+        }
+      ]
+    },
+    {
+      "handle": "/@%E0%B8%A3%E0%B8%A7%E0%B8%A1%E0%B9%80%E0%B8%9E%E0%B8%A5%E0%B8%87%E0%B8%9F%E0%B8%B1%E0%B8%87%E0%B8%AA%E0%B8%9A%E0%B8%B2%E0%B8%A2%E0%B9%84%E0%B8%A1%E0%B9%88%E0%B8%A1%E0%B8%B5%E0%B9%82%E0%B8%86%E0%B8%A9%E0%B8%93%E0%B8%B2",
+      "title": "รวมเพลงฟังสบาย ไม่มีโฆษณา",
+      "subs": 152000,
+      "scanned": 35,
+      "shorts": 5,
+      "longform": 30,
+      "median_views": 22000,
+      "mean_views": 686123.6,
+      "max_views": 7000000,
+      "title_has_hashtag_pct": 0,
+      "title_thai_pct": 100,
+      "mean_title_chars": 50.6,
+      "top": [
+        {
+          "id": "WNG-JrD8OqI",
+          "title": "เพลงฮิต สบายหู ฟังก่อนนอน ไม่มีโฆษณา HD",
+          "views": 7000000,
+          "age": "8 ปีที่แล้ว",
+          "duration_s": 4968
+        },
+        {
+          "id": "bv4jNZaiJqw",
+          "title": "รวมเพลงยุค 90 วัยทำงาน ฟังกันยาวๆไม่มีโฆษณา เพลงวัยรุ่นยุค 90 HD",
+          "views": 5600000,
+          "age": "8 ปีที่แล้ว",
+          "duration_s": 3930
+        },
+        {
+          "id": "q5i05WTrrko",
+          "title": "รวมเพลงเพราะๆ ที่ยังคิดถึง ฟังไม่เบื่อ ไม่มีโฆษณา",
+          "views": 3500000,
+          "age": "8 ปีที่แล้ว",
+          "duration_s": 3661
+        },
+        {
+          "id": "K7PwwYFflts",
+          "title": "รวมเพลงฮิตยุค 90 ไทยซึ้งๆกินใจ ฟังกันยาวๆเวลาทำงาน ไม่มีโฆษณา HD",
+          "views": 3400000,
+          "age": "8 ปีที่แล้ว",
+          "duration_s": 3271
+        },
+        {
+          "id": "KiN6fzClaRo",
+          "title": "รวมเพลงสตริงเพราะ 2018 มาใหม่่าสุดไม่มีซ้ำ ฟังกันยาวไม่มีโฆษณา",
+          "views": 1300000,
+          "age": "8 ปีที่แล้ว",
+          "duration_s": 3906
+        }
+      ]
+    }
+  ]
+}

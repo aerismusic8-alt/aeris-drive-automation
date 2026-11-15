@@ -153,6 +153,7 @@ jobs:
           fi
 
       - name: Build and upload each themed album not yet live
+        id: themed
         env:
           YT_CLIENT_ID: ${{ secrets.YT_CLIENT_ID }}
           YT_CLIENT_SECRET: ${{ secrets.YT_CLIENT_SECRET }}
@@ -165,6 +166,9 @@ jobs:
           # albums landing the same day reads as a burst, and the whole point of
           # the weekly cadence is one album a week for three weeks. A theme too
           # thin to publish falls through to the next one instead of blocking it.
+          # Publish at most one long-form video per run. Set this output so the
+          # volume step below skips when a themed album was the one that shipped.
+          published=0
           for theme in sad chill power; do
             state="work/compilation-state-compilation-${theme}.json"
             if [ -f "$state" ] && grep -q '"video_id": *"[^"]' "$state"; then
@@ -183,16 +187,51 @@ jobs:
               --stem "compilation-${theme}"
             if [ -f "$state" ] && grep -q '"video_id": *"[^"]' "$state"; then
               echo "published theme ${theme}; stopping this run"
+              published=1
               break
             fi
           done
+          echo "published=${published}" >> "$GITHUB_OUTPUT"
+
+      # The long-form Volume Series. The 2026-11-15 competitor scan (real public
+      # pages, no API quota) found the channels that WIN the Thai "เพลงเพราะๆ
+      # ฟังสบาย" query are long-form continuous compilations published as a
+      # *numbered series* ("... Vol.152 | รวมเพลงใหม่ ฟังยาว ไม่มีสะดุด เปิดฟัง
+      # ทั้งวัน", 30+ volumes deep, median 1,000-3,700 views). We shipped a themed
+      # album once and stopped, so YouTube had no "next episode" to suggest and
+      # Studio Analytics showed 0% returning viewers. The advisor panel (duck +
+      # pollinations, quorum PASS) chose the series over reworking Shorts. One
+      # volume per weekly run, ~75 min, newest songs up front, the catalogue
+      # rotating so each volume is new listening, and a "next volume" breadcrumb
+      # in the description. The volume number is honest: `next_volume` only moves
+      # after a real upload succeeds, so a failed run cannot burn a number.
+      - name: Build and upload the next long-form Volume
+        if: steps.themed.outputs.published != '1'
+        env:
+          YT_CLIENT_ID: ${{ secrets.YT_CLIENT_ID }}
+          YT_CLIENT_SECRET: ${{ secrets.YT_CLIENT_SECRET }}
+          YT_CH3_REFRESH_TOKEN: ${{ secrets.YT_CH3_REFRESH_TOKEN }}
+        run: |
+          set -euo pipefail
+          cd music938-1
+          vol=$(python3 -c "import sys;sys.path.insert(0,'scripts');import volume_series as v;print(v.next_volume())")
+          echo "next long-form volume: Vol.${vol}"
+          # Builds the render + the volume title/description (chapters, subscribe
+          # ask, next-volume breadcrumb). Refuses under 12 tracks / 45 min so the
+          # "ฟังยาว" title stays honest.
+          python3 scripts/volume_series.py --volume "$vol" --render
+          # No `|| echo` on the upload: a swallowed skip leaves the volume
+          # unpublished while the run stays green. A real failure must be red.
+          python3 scripts/upload_compilation.py --upload --ch ch3 \
+            --stem "volume-$(printf '%03d' "$vol")" --series-volume "$vol"
 
       - name: Record the uploads
         run: |
           set -euo pipefail
           git config user.name  "ax-music-compilation"
           git config user.email "ax-music-compilation@users.noreply.github.com"
-          git add music938-1/work/compilation-state-*.json 2>/dev/null || true
+          git add music938-1/work/compilation-state-*.json \
+                  music938-1/work/volume-series-state.json 2>/dev/null || true
           if git diff --cached --quiet; then
             echo "no state change to record"
             exit 0

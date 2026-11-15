@@ -2410,6 +2410,54 @@ def test_themed_compilations() -> None:
     check("themed title fits 100 chars", len(title) <= 100, f"{len(title)}")
 
 
+def test_volume_series() -> None:
+    """The long-form Volume Series is the 2026-11-15 competitor-scan lever.
+
+    The real scan (public pages, no quota) found the winners are long-form
+    continuous compilations published as a numbered series; our channel shipped a
+    themed album once and stopped, so it had no "next episode" and 0% returning
+    viewers. The advisor panel (duck + pollinations, quorum PASS) chose the
+    series. This pins the shape so a future edit cannot quietly break it: a
+    monotonic number, a title that leads the way the winners do, a tracklist that
+    differs between consecutive volumes, and a description that keeps the
+    chapters, the subscribe ask and the next-volume breadcrumb.
+    """
+    section("volume series (long-form competitor lever)")
+    import volume_series as vs
+    # Nothing published yet -> Vol.1, and the number only ever moves forward.
+    check("an empty series starts at Vol.1", vs.next_volume({}) == 1,
+          str(vs.next_volume({})))
+    check("the number is published + 1",
+          vs.next_volume({"next_volume": 5, "volumes": {"1": {}, "2": {}}}) == 5)
+    # The title leads like the winners and keeps the honest promise.
+    title = vs.volume_title(152)
+    check("title names the volume", "Vol.152" in title, title)
+    check("title leads with the channel tagline",
+          title.startswith(f"🎵 {vs.VOLUME_TAGLINE}"), title)
+    check("title carries ฟังยาว ไม่มีสะดุด", "ไม่มีสะดุด" in title, title)
+    check("title carries เลือกเพลงฟังได้", "เลือกเพลงฟังได้" in title, title)
+    check("title fits 100 chars", len(title) <= 100, f"{len(title)}")
+    # Consecutive volumes are different listening, not one tracklist re-titled.
+    v1, v2 = vs.pick_volume(1), vs.pick_volume(2)
+    check("a volume reaches the honest track floor",
+          len(v1) >= vs.MIN_VOLUME_TRACKS, f"{len(v1)}")
+    check("consecutive volumes differ", v1 != v2, f"{v1[:2]} vs {v2[:2]}")
+    check("consecutive volumes open on a different song", v1[0] != v2[0],
+          f"{v1[0]} vs {v2[0]}")
+    check("the tracklist is deterministic (safe retry)",
+          vs.pick_volume(3) == vs.pick_volume(3))
+    # The description keeps chapters, the subscribe ask and the breadcrumb.
+    desc = vs.volume_description(v1, 1)
+    check("description carries a 00:00 chapter", "\n00:00 " in desc, desc[:40])
+    check("description carries the subscribe ask",
+          "sub_confirmation=1" in desc, desc[:160])
+    check("description points at the next volume", "Vol.2" in desc, desc[:200])
+    # The rail must actually call the series builder, or the lever is dead code.
+    wf = (ROOT.parent / ".github" / "workflows"
+          / "ax-music-compilation.yml").read_text(encoding="utf-8")
+    check("the compilation rail builds a volume", "volume_series.py" in wf)
+
+
 def test_song_title_search_intent() -> None:
     """A song title must name a search intent, not just a mood adjective.
 
@@ -5657,6 +5705,7 @@ def main() -> int:
     test_compilation()
     test_compilation_cta_repair()
     test_themed_compilations()
+    test_volume_series()
     test_song_title_search_intent()
     test_lyric_in_description()
     test_competitor_scanner_parsers()

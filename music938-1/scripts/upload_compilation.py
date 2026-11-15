@@ -78,6 +78,8 @@ def main() -> int:
     ap.add_argument("--ch", default="ch3")
     ap.add_argument("--stem", default="compilation",
                     help="compile_album.py output stem (e.g. compilation-20)")
+    ap.add_argument("--series-volume", type=int, default=None,
+                    help="on success, advance volume_series past this volume")
     ap.add_argument("--thumb", default=None,
                     help="thumbnail png (default: thumb-compilation.png)")
     args = ap.parse_args()
@@ -167,6 +169,15 @@ def main() -> int:
         "minutes": round(dur / 60, 1),
     }, ensure_ascii=False, indent=2), encoding="utf-8")
     print("recorded", state.name)
+    if args.series_volume is not None:
+        # Advance the series only after the upload really succeeded, so a failed
+        # upload cannot burn a volume number.
+        try:
+            import volume_series
+            volume_series.record(args.series_volume, m.group(1) if m else None)
+            print(f"series advanced past Vol.{args.series_volume}")
+        except Exception as e:
+            print(f"series record skipped: {e}", file=sys.stderr)
     return 0
 
 
