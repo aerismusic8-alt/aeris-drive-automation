@@ -1,5 +1,5 @@
 {
-  "at": "2026-11-15T12:48:53Z",
+  "at": "2026-11-15T12:52:14Z",
   "winner": null,
   "trailing": null,
   "stats": {
@@ -16,7 +16,7 @@
       "median_per_day": 0.0
     },
     "concert": {
-      "n": 6,
+      "n": 7,
       "median_per_day": 0.0
     }
   }
