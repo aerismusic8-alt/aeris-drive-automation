@@ -52,9 +52,10 @@ clip with `release.FOLLOW_ASK` + `FOLLOW_PROMISE` ("เพลงใหม่ท�
 - **24/7 runs on GitHub Actions, not the sandbox** (public repo → free minutes).
   Judge health from the **rail run history** (API), not `data/heartbeat.json`
   (stale 9 days once). Rails/topic: archive.
-- **A dead browser session is the crosspost rail's top failure** (FB serves the
-  logged-out page while holding `c_user`/`xs`, so a cookie check lies). Fix:
-  `python3 ops/fb_relogin.py --push-secret`.
+- **FB browser posting is OFF (K 2026-11-15: "ระบบออโต้เราไม่เนียนมันจับได้").**
+  `crosspost.API_ONLY = {"facebook"}` — FB posts only via the Graph API and parks
+  (rc 3, green) with no live token, never a browser. Revive needs a Meta System
+  User token → `FB_PAGE_TOKEN`. A paused surface reports `note="paused"`.
 - **Writes:** `GITHUB_TOKEN` is 403. Push with vault KV
   `axsecrets:gh-workflow-token` (dict, `.token`).
 - **Desktop view = Live View** (`work-2`, port 12001; `bootstrap.py start_liveview`);
