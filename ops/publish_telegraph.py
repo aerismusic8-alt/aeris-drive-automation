@@ -87,7 +87,25 @@ def load_released(tok: str = "") -> list[dict]:
     return json.loads(STATE.read_text(encoding="utf-8")).get("released", [])
 
 
-def load_published() -> dict:
+def load_published(tok: str = "") -> dict:
+    """The published ledger, fresh from `main` when a token is available.
+
+    In CI the checkout can predate the previous run's Contents-API write, so
+    reading the checked-out file would re-publish yesterday's batch (it did, on
+    2026-11-16: two songs got a duplicate `-2` page). Pull the current file
+    first and fall back to disk.
+    """
+    if tok:
+        url = f"https://api.github.com/repos/{REPO}/contents/{LEDGER_REL}"
+        try:
+            r = urllib.request.Request(
+                url, headers={"Authorization": f"token {tok}",
+                              "Accept": "application/vnd.github+json"})
+            with urllib.request.urlopen(r, timeout=30) as resp:
+                blob = json.loads(resp.read())
+                return json.loads(base64.b64decode(blob["content"]))
+        except Exception:
+            pass
     try:
         return json.loads(PUBLISHED.read_text(encoding="utf-8"))
     except Exception:
@@ -149,7 +167,7 @@ def main(argv=None) -> int:
 
     tok = token()
     gh = os.environ.get("AX_GH_TOKEN") or os.environ.get("GITHUB_TOKEN") or ""
-    published = load_published()
+    published = load_published(gh)
     todo = pending(load_released(gh), published, args.limit)
     print(f"{len(todo)} song(s) to publish on Telegraph")
     if args.dry_run:

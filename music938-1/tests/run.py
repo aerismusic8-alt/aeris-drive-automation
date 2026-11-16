@@ -2482,6 +2482,10 @@ def test_publish_telegraph() -> None:
     check("the page links the video",
           f"{pt.WATCH}V1" in body)
     check("the page links the channel", pt.CHANNEL in body)
+    # CI reads the ledger fresh from `main`; a stale checkout re-publishes (it did).
+    import inspect
+    check("the published ledger can be read fresh from main",
+          "tok" in inspect.signature(pt.load_published).parameters)
 
 
 def test_telegraph_account() -> None:
