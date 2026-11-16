@@ -173,7 +173,7 @@
    "calls": {
     "thumbnails.set": 5
    },
-   "updated": "2026-11-16T01:58:26+00:00",
+   "updated": "2026-11-16T01:58:30+00:00",
    "reserves": [
     {
      "purpose": "release 2 item(s)",
@@ -194,6 +194,11 @@
      "purpose": "release 0 item(s)",
      "units": 0,
      "at": "2026-11-15T23:57:19+00:00"
+    },
+    {
+     "purpose": "release 1 item(s)",
+     "units": 100,
+     "at": "2026-11-16T01:58:30+00:00"
     }
    ]
   }
