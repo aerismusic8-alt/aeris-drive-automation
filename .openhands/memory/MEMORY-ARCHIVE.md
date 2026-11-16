@@ -6266,3 +6266,9 @@ pied_piper [hopeful,warm,calm], haunted_hill [sad,mystic], his_girl_friday
   Google's `crossflowverification` (QR/SMS) → K taps the QR once (2026-11-12.md).
 - Bluesky now needs server verification; Mastodon/Lemmy block mail.tm; Misskey
   captchas. So the self-creatable surfaces are Nostr + Telegraph only.
+
+## Moved from MEMORY.md 2026-11-16 — real-instrument sound detail
+sfizz sampler (not the GM SoundFont); `AX_REQUIRE_REAL_INSTRUMENTS=1` makes a
+GM fallback raise instead of shipping silently. Beds are pre-rendered on the
+pod (CI rails cannot build sfizz) and pulled from `media-938` (`sampler1-*.wav`).
+K rejected the ffmpeg tone synth and the GM SoundFont as fake.

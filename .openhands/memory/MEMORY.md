@@ -35,8 +35,10 @@ built from free cloud tools. Scope = **4 channels** (focus aeris938-2 = Facebook
 TikTok, YouTube `@aerismusicth`, Shopee Affiliate). Two goals in
 `AKATH_CORE/CANONICAL_TASK_REGISTRY.json` must never close as ordinary tasks: a
 Roblox game anyone can enter and play, and real revenue from it (Roblox **PARKED**).
-**Revenue gate = ch3 `@aerismusicth`**: **1,000 subs AND 4,000 watch-hours/12 mo**.
-Free lever = **weekly numbered long-form series** (`volume_series.py`).
+**Brand = NEO VINCI** (K renamed 2026-11-16; handle stays `@aerismusicth`); the
+display name lives only in `music938-1/scripts/branding.py` — never hardcode it.
+**Revenue gate = ch3**: **1,000 subs AND 4,000 watch-hours/12 mo**. Free lever =
+**weekly numbered long-form series** (`volume_series.py`).
 
 ## The metric is followers (K, 2026-11-09)
 Views without follows is the failure. End every clip with `release.FOLLOW_ASK` +
@@ -54,15 +56,14 @@ Views without follows is the failure. End every clip with `release.FOLLOW_ASK` +
     FB posts only via the Graph API (`crosspost.API_ONLY`); parks green otherwise.
 - **Writes:** `GITHUB_TOKEN` is 403; push via vault KV `axsecrets:gh-workflow-token`
   (needs `OPENHANDS_API_KEY`; workflow files need it too).
-- **Desktop view = Live View** (`work-2`, port 12001; X does not repaint).
+- **Desktop view = Live View** (`work-2`, port 12001).
 - **Thai text** lives only in `roblox/src/shared/Text.luau` +
   `music938-1/fonts/NotoSansThai.ttf`; without `fonts-thai-tlwg` the SVG renderer
   makes tofu silently. Burned ASS text has no emoji — use `•` / `»`.
 - **`ops/websearch.py`** is the free web search (Tavily has no quota left).
 
-## Real-instrument sound (K, 2026-11-09) — durable
-The **sfizz** sampler, not the GM synth; `AX_REQUIRE_REAL_INSTRUMENTS=1` makes a
-fallback **raise** (beds pre-render on the pod; archive).
+## Real-instrument sound (K)
+**sfizz** sampler, not GM; `AX_REQUIRE_REAL_INSTRUMENTS=1` makes a fallback **raise**.
 
 ## Music video = public-domain film matched to the song (2026-11-13)
 `make_film_video.py` casts the film by `# MOOD:` from archive.org (check
@@ -72,8 +73,8 @@ Western → `warm` recast to the musical). **Release wiring (2026-11-16):**
 (`mv_files`; film>mv; -hook/-vertical excluded); lyric render is the fallback;
 `describe()` marks `มิวสิควีดีโอ`. Free-media rails + `test_film_video`: archive.
 
-## K-free status (2026-11-13) — audit in `ops/k_free_status.py`
-"Blocked" = "blocked on the route I tried first" (desktop+vault first). Scoreboard: archive.
+## K-free status — `ops/k_free_status.py`
+"Blocked" = blocked on the first route tried (desktop+vault first).
 
 ## Loop health & platform risks
 - **A green run is not a finished job.** `release.py` returns rc 4 +
