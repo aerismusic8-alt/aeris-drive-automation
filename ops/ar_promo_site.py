@@ -307,6 +307,7 @@ footer{{border-top:1px solid #1e1e2e;padding:34px 0;color:var(--dim);font-size:.
 <section class="wrap">
   <div class="cta" style="justify-content:center">
     <a class="btn btn-primary" href="{PAGE_URL}" target="_blank" rel="noopener">ติดตาม AERIS Music บน Facebook</a>
+    <a class="btn" href="mv-index.html">ดูมิวสิควีดีโอทั้งหมด</a>
   </div>
 </section>
 <footer>

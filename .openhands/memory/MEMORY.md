@@ -14,14 +14,10 @@ channel without K's approval.
 
 ## Accounts (K, 2026-11-14): every tool uses AR's OWN mail
 "เครื่องมือทุกอย่างใช้เมล์ตัวเองล็อคอิน รวมถึง agent ในทีม ไม่ต้องใช้เมล์ K".
-AR mailbox = `araeris4770d7@fldubai.com` (mail.tm; `ops/ar_identity.py`). Flow
-Music/Gemini need an AR *Google Account*; free signup is blocked by Google's
-`crossflowverification` (QR/SMS) → K taps the QR once (2026-11-12.md).
-**AR's self-creatable surfaces (2026-11-16): Nostr** (self-generated keypair, no
-signup) — live rail, `ops/announce_releases.py` posts each release from the
-workflow (`AR_NOSTR_NSEC`); and **Telegraph** (`ops/ar_telegraph.py`) —
-`createAccount` needs no captcha/phone → search-indexable pages. Bluesky now needs
-server verification; Mastodon/Lemmy block mail.tm; Misskey captchas.
+AR mailbox = `araeris4770d7@fldubai.com` (mail.tm; `ops/ar_identity.py`).
+**AR self-creatable:** **Nostr** (own keypair, `AR_NOSTR_NSEC`, live rail
+`ops/announce_releases.py`) and **Telegraph** (`ops/ar_telegraph.py`, no captcha).
+Flow Music/Gemini need an AR *Google Account* → K taps a QR once.
 
 ## Roles and method (K, 2026-10-31)
 - **K = final authority.** Every standing rule is K's.
@@ -48,6 +44,10 @@ Views without follows is the failure. End every clip with `release.FOLLOW_ASK` +
 
 ## Environment facts that cost time
 - **Fresh-pod recovery: `scripts/bootstrap-pod.sh`** — re-run after every pod.
+- **MV links must be durable (K: "ลิงค์ตาย").** Publish to GitHub Pages with
+  `ops/mv_page.py <slug>` (watch page + `mv-index.html`, committed to
+  `site-aeris-music`); a /tmp preview dies on recycle. Song metadata = its lyric
+  header (`make_short.load_lyrics`), not a songs.json.
 - **24/7 runs on GitHub Actions, not the sandbox** (public repo → free minutes).
   Judge health from the **rail run history** (API), not `data/heartbeat.json`.
 - **FB browser posting is OFF (K 2026-11-15: "ระบบออโต้เราไม่เนียนมันจับได้").**

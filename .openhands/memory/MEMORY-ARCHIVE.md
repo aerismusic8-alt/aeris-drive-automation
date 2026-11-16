@@ -6260,3 +6260,9 @@ Film casting (make_film_video.py FILMS, in order): rock_rock_rock [epic,hopeful]
 criminal [epic,hopeful,sad], gun_pulpit [epic,mystic] (warm dropped 2026-11-16),
 pied_piper [hopeful,warm,calm], haunted_hill [sad,mystic], his_girl_friday
 [warm,hopeful]. `film_for_mood` returns the first film listing the mood.
+
+## Folded from MEMORY.md 2026-11-16 (accounts detail, kept reachable by grep)
+- Flow Music / Gemini web need an AR *Google Account*; free signup is blocked by
+  Google's `crossflowverification` (QR/SMS) → K taps the QR once (2026-11-12.md).
+- Bluesky now needs server verification; Mastodon/Lemmy block mail.tm; Misskey
+  captchas. So the self-creatable surfaces are Nostr + Telegraph only.
