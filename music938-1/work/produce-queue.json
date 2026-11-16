@@ -1,5 +1,5 @@
 {
-  "made": 12,
+  "made": 13,
   "log": [
     {
       "slug": "25-thai-5bcb50c5",
@@ -240,6 +240,17 @@
         "only 5/6 sections",
         "ends with [bridge], not [chorus]"
       ]
+    },
+    {
+      "slug": "38-luk-khuen-laeo-pai-v38",
+      "title": "ลุกขึ้นแล้วไปอีกครั้ง",
+      "genre": "edm",
+      "mood": "epic",
+      "result": "lyric",
+      "flow": false,
+      "audio": "none",
+      "offline_rc": 1,
+      "instrumental": false
     }
   ]
 }
