@@ -67,19 +67,20 @@ fallback **raise** (beds pre-render on the pod; archive).
 ## Music video = public-domain film matched to the song (2026-11-13)
 Film chosen by the lyric's mood: `make_film_video.py` casts by `# MOOD:`, pulls
 from archive.org (check `licenseurl`); `test_film_video` pins it (detail: archive).
-**Free media (2026-11-16):** `ops/stills_rail.py` = Wikimedia + **Openverse**
-+ **NASA** + **Cleveland/Art Institute** (CC0/PD). `ops/footage_rail.py` =
-**Commons video** (webm 1080p/4K) + **Openverse audio** (Jamendo/Freesound). All
-no-key, licence-checked. Pexels/Pixabay/Unsplash need a key (signup blocked).
+**Free media (2026-11-16):** `ops/stills_rail.py` + `ops/footage_rail.py`
+(Wikimedia/Openverse/NASA/Commons video, no-key, licence-checked; Pexels/Pixabay
+need a key). **Release wiring (2026-11-16):** `release.py plan()` ships the real MV
+as the long-form release when one exists (`mv_files`; film>mv; -hook/-vertical
+excluded); the lyric render is only the fallback. `describe()` marks `มิวสิควีดีโอ`.
 
 ## K-free status (2026-11-13) — audit in `ops/k_free_status.py`
 "Blocked" = "blocked on the route I tried first" (desktop+vault first). Scoreboard: archive.
 
 ## Loop health & platform risks
-- **A green run is not a finished job.** The release rail reported success while
-  YouTube refused every upload (2026-11-13/15: 0 videos, misread as a "reach"
-  problem). `release.py` now returns rc 4 + `UPLOAD_LIMIT_EXCEEDED`;
-  `heartbeat.collect()` pages when a rail's **latest run failed**. Read the log.
+- **A green run is not a finished job.** `release.py` returns rc 4 +
+  `UPLOAD_LIMIT_EXCEEDED`; `heartbeat` pages when a rail's latest run failed.
+  The cap is **per-channel new-videos/day** (unverified territory), clears over
+  hours, not at the 08:00 UTC API reset; a burst extends it. Read the log.
 - **Never decide on missing/stale data** (2026-11-12): a blank/stale newest row is
   `data`, never a guess; `--assert-fresh` gates the dashboard rail. Detail: archive.
 - **`videos.list` takes ≤50 ids/call** (past 50 → HTTP 400, once mislabeled
