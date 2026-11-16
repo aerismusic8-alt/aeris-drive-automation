@@ -1375,6 +1375,47 @@ def test_mv_is_the_release() -> None:
         release.all_slugs = real_all_slugs
 
 
+def test_mv_page() -> None:
+    section("an MV gets a durable watch page, not a link that dies with the pod")
+    # 2026-11-16: the preview K was shown lived in /tmp and a pod recycle wiped
+    # it ("ลิงค์ตาย"). A deliverable must survive the pod, so the film is a release
+    # asset and the page is on GitHub Pages. `ops/mv_page.py` does both.
+    import importlib.util
+    import inspect
+    ops_dir = ROOT.parent / "ops"
+    spec = importlib.util.spec_from_file_location("mv_page", ops_dir / "mv_page.py")
+    mv = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mv)
+
+    # The page reads the song's own lyric header, so the title and the mood are
+    # the song's, not a guess from the slug.
+    meta = mv.song_meta("26-ban-lang-lek-khong-rao")
+    check("the MV page takes the title from the lyric header",
+          meta["title"] == "บ้านหลังเล็กของเรา", meta["title"])
+    check("the MV page names the song's number and mood",
+          meta["number"] == "26" and meta["mood_th"] == "อบอุ่น", str(meta))
+    # K, 2026-11-16: the warm song was cast a Western; the page must show the
+    # film it was actually cut from, so the credit cannot lie.
+    check("the MV page credits the film the song was actually cut from",
+          "Pied Piper" in meta["film_title"], meta["film_title"])
+
+    html = mv.render("26-ban-lang-lek-khong-rao", meta, 237.461,
+                     "mv-26-poster.jpg", "mv-26-720p.mp4")
+    check("the page embeds a player, not only a download link", "<video" in html)
+    check("the full 1080p is linked from the durable release",
+          "releases/download/media-938/film-26-ban-lang-lek-khong-rao.mp4" in html)
+    check("the page is hosted on GitHub Pages (survives a recycle)",
+          "github.io/site-aeris-music" in mv.__doc__ or "Pages" in mv.__doc__)
+
+    # Rule #1: the page publisher never asks for a credential of its own; it uses
+    # the same write token as every other push.
+    src = inspect.getsource(mv)
+    code = "\n".join(ln for ln in src.splitlines() if not ln.lstrip().startswith("#"))
+    for bad in ("api_key", "hf_token", "OPENAI"):
+        check(f"the MV page never asks for a credential ({bad})",
+              bad.lower() not in code.lower())
+
+
 def test_follow_end_card() -> None:
     section("follow ask (the only on-screen follow prompt)")
     import make_short
@@ -6126,6 +6167,7 @@ def main() -> int:
     test_music_video()
     test_film_video()
     test_mv_is_the_release()
+    test_mv_page()
     test_follow_end_card()
     test_ambient_loop()
     test_soundfont_renderer()
