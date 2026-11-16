@@ -44,10 +44,10 @@ Views without follows is the failure. End every clip with `release.FOLLOW_ASK` +
 
 ## Environment facts that cost time
 - **Fresh-pod recovery: `scripts/bootstrap-pod.sh`** — re-run after every pod.
-- **MV links must be durable (K: "ลิงค์ตาย").** Publish to GitHub Pages with
-  `ops/mv_page.py <slug>` (watch page + `mv-index.html`, committed to
-  `site-aeris-music`); a /tmp preview dies on recycle. Song metadata = its lyric
-  header (`make_short.load_lyrics`), not a songs.json.
+- **MV links must be durable (K: "ลิงค์ตาย").** GitHub Pages `site-aeris-music`,
+  auto-published by its own `ax-mv-pages` workflow (`ops/mv_page.py --all`, skips
+  existing pages; `slug`/`force` dispatch rebuilds one). A /tmp preview dies on
+  recycle. Song metadata = its lyric header, not a songs.json.
 - **24/7 runs on GitHub Actions, not the sandbox** (public repo → free minutes).
   Judge health from the **rail run history** (API), not `data/heartbeat.json`.
 - **FB browser posting is OFF (K 2026-11-15: "ระบบออโต้เราไม่เนียนมันจับได้").**
