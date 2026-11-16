@@ -17,11 +17,11 @@ channel without K's approval.
 AR mailbox = `araeris4770d7@fldubai.com` (mail.tm; `ops/ar_identity.py`). Flow
 Music/Gemini need an AR *Google Account*; free signup is blocked by Google's
 `crossflowverification` (QR/SMS) → K taps the QR once (2026-11-12.md).
-**AR's only self-creatable social account is Nostr** (2026-11-15): identity = a
-self-generated keypair → no signup/captcha/phone (`ops/ar_nostr.py`). It is now a
-live rail — `ops/announce_releases.py` posts each new release from the release
-workflow (`AR_NOSTR_NSEC` secret). Bluesky needs a phone on every PDS;
-Mastodon/Lemmy need approval + block mail.tm; Misskey captchas.
+**AR's self-creatable surfaces (2026-11-16): Nostr** (self-generated keypair, no
+signup) — live rail, `ops/announce_releases.py` posts each release from the
+workflow (`AR_NOSTR_NSEC`); and **Telegraph** (`ops/ar_telegraph.py`) —
+`createAccount` needs no captcha/phone → search-indexable pages. Bluesky now needs
+server verification; Mastodon/Lemmy block mail.tm; Misskey captchas.
 
 ## Roles and method (K, 2026-10-31)
 - **K = final authority.** Every standing rule is K's.
@@ -65,12 +65,12 @@ The **sfizz** sampler, not the GM synth; `AX_REQUIRE_REAL_INSTRUMENTS=1` makes a
 fallback **raise** (beds pre-render on the pod; archive).
 
 ## Music video = public-domain film matched to the song (2026-11-13)
-"วีดีโอต้องเหมาะกับเพลงและบทเพลงสิ" — *this* film for *this* song.
-`music938-1/scripts/make_film_video.py` casts by `# MOOD:` and pulls the film
-from archive.org (check `licenseurl`). `test_film_video` pins it.
-**Stills sources (2026-11-15):** `ops/stills_rail.py` = Wikimedia + **Openverse**
-+ **NASA** + **Cleveland/Art Institute** (CC0/PD); no-key, licence-checked.
-Pexels/Pixabay/Unsplash/Coverr need a key and their signup is Cloudflare-blocked.
+Film chosen by the lyric's mood: `make_film_video.py` casts by `# MOOD:`, pulls
+from archive.org (check `licenseurl`); `test_film_video` pins it (detail: archive).
+**Free media (2026-11-16):** `ops/stills_rail.py` = Wikimedia + **Openverse**
++ **NASA** + **Cleveland/Art Institute** (CC0/PD). `ops/footage_rail.py` =
+**Commons video** (webm 1080p/4K) + **Openverse audio** (Jamendo/Freesound). All
+no-key, licence-checked. Pexels/Pixabay/Unsplash need a key (signup blocked).
 
 ## K-free status (2026-11-13) — audit in `ops/k_free_status.py`
 "Blocked" = "blocked on the route I tried first" (desktop+vault first). Scoreboard: archive.

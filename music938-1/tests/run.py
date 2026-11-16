@@ -2414,6 +2414,71 @@ def test_stills_sources() -> None:
     check("credit block names the origin", "Openverse" in block)
 
 
+def test_footage_rail() -> None:
+    """A clip needs two raw materials beyond stills: moving footage and music.
+
+    Both come from free, keyless sources (2026-11-16): Wikimedia Commons video
+    (~76k files, direct upload URL) and Openverse audio (Jamendo/Freesound). This
+    pins the licence contract, which is the part that must never drift: NC/ND are
+    dropped, BY/BY-SA are kept and must be credited, and a credit line names its
+    origin.
+    """
+    section("footage rail: free video + free audio, licence-safe")
+    import importlib.util
+    ops = ROOT.parent / "ops"
+    spec = importlib.util.spec_from_file_location("footage_rail", ops / "footage_rail.py")
+    fr = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(fr)
+
+    check("has a video source and an audio source",
+          bool(fr.VIDEO_SOURCES) and bool(fr.AUDIO_SOURCES))
+    check("video source is Commons", fr.search_video_commons.__module__ == fr.__name__)
+    for lic in ("CC0", "Public domain", "CC BY 4.0", "CC BY-SA 3.0"):
+        check(f"accepts {lic}", fr._licence_ok(lic))
+    for lic in ("CC BY-NC 4.0", "CC BY-ND 2.0", "fair use"):
+        check(f"rejects {lic}", not fr._licence_ok(lic))
+    items = [{"title": "Sea", "url": "u", "source": "s", "licence": "CC BY-SA 4.0",
+              "credit": "Someone", "origin": "Wikimedia Commons"}]
+    block = fr.credits_block(items)
+    check("BY-SA footage gets a credit line",
+          "Sea" in block and "Someone" in block and "Wikimedia Commons" in block)
+
+
+def test_telegraph_account() -> None:
+    """AR can open a publishing surface on its own: Telegraph needs no phone.
+
+    Every mainstream social network gates signup on a captcha, a phone or device
+    attestation (Facebook, Instagram, TikTok, X, Google, and Bluesky since
+    2026-11-15). Telegraph's `createAccount` takes only a short name and returns
+    an access token, so it is a surface AR provisions unattended. This pins the
+    tool's contract rather than a live result: the account is the durable part.
+    """
+    section("telegraph: a publishing surface AR opens itself")
+    import importlib.util
+    ops = ROOT.parent / "ops"
+    spec = importlib.util.spec_from_file_location("ar_telegraph", ops / "ar_telegraph.py")
+    tg = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(tg)
+
+    import inspect
+    check("talks to the free Telegraph API", tg.API == "https://api.telegra.ph")
+    # Signup needs no credential: every parameter of `create` has a default.
+    params = inspect.signature(tg.create).parameters.values()
+    check("opens an account with no required input",
+          all(p.default is not inspect.Parameter.empty for p in params))
+    # Plain text becomes paragraphs; a blank line starts a new one.
+    nodes = tg._nodes("one\n\nสอง")
+    check("blank line makes a new paragraph", len(nodes) == 2
+          and nodes[0]["children"] == ["one"] and nodes[1]["children"] == ["สอง"])
+    check("single block stays one paragraph", len(tg._nodes("ก\nข")) == 1)
+    # A human-read page must carry the AI disclosure.
+    check("page body carries the AI disclosure", "AI agent" in tg.AI_NOTE)
+    # The token is a credential-shaped file kept out of the repo.
+    check("token file is outside the repo", "ar-identity" in str(tg.CREDS))
+    check("identity dir is the shared AR one",
+          str(tg.IDENTITY_DIR).endswith("ar-identity"))
+
+
 def test_announce_releases() -> None:
     """The Nostr announcer must pick the right releases and never invent a link.
 
@@ -5955,6 +6020,8 @@ def main() -> int:
     test_nostr_identity()
     test_stills_sources()
     test_announce_releases()
+    test_footage_rail()
+    test_telegraph_account()
     test_titles()
     test_compilation()
     test_compilation_cta_repair()
