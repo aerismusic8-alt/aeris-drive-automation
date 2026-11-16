@@ -50,6 +50,7 @@ Grouped by what they do. Every file lives in `ops/`.
 - `tiktok_api.py` — post a Short (official Content Posting API).
 - `announce_releases.py` — announce new songs on AR's Nostr (live rail).
 - `ar_telegraph.py` — publish a search-indexable page on AR's Telegraph.
+- `publish_telegraph.py` — one Telegraph page per new song (live rail).
 - `ar_promo_site.py` — generate and publish the landing page (GitHub Pages).
 - `shopee_mint.py`, `social_cleanup.py`.
 
