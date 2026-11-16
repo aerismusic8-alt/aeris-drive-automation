@@ -57,8 +57,8 @@ FILM_TITLE = {"pied_piper": "The Pied Piper of Hamelin (1957)",
               "haunted_hill": "House on Haunted Hill (1959)",
               "his_girl_friday": "His Girl Friday (1940)"}
 
-TITLE_FMT = "{title} — มิวสิควีดีโอ · AERIS Music"
-TAGLINE = "AERIS Music · เพลงที่ {num} · {mood_th} · {mmss} · ตัดภาพยนตร์ {film}"
+TITLE_FMT = "{title} — มิวสิควีดีโอ · NEO VINCI"
+TAGLINE = "NEO VINCI · เพลงที่ {num} · {mood_th} · {mmss} · ตัดภาพยนตร์ {film}"
 
 
 def gh_token() -> str:
@@ -134,7 +134,7 @@ def render(slug: str, meta: dict, secs: float, poster: str, preview: str,
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>{TITLE_FMT.format(title=title)}</title>
-<meta name="description" content="{title} — มิวสิควีดีโอจาก AERIS Music">
+<meta name="description" content="{title} — มิวสิควีดีโอจาก NEO VINCI">
 <meta property="og:title" content="{title} — มิวสิควีดีโอ">
 <meta property="og:description" content="{tagline}">
 <meta property="og:type" content="video.other">
@@ -163,7 +163,7 @@ footer{{border-top:1px solid #1e1e2e;margin-top:34px;padding:26px 0;color:var(--
 <body>
 <div class="wrap">
   <header>
-    <div class="logo">AERIS<span>·</span>MUSIC</div>
+    <div class="logo">NEO VINCI<span>·</span>MUSIC</div>
     <a class="btn btn-primary" href="https://www.youtube.com/@aerismusicth?sub_confirmation=1" target="_blank" rel="noopener">ติดตามช่อง</a>
   </header>
   <h1>{title}</h1>
@@ -172,7 +172,7 @@ footer{{border-top:1px solid #1e1e2e;margin-top:34px;padding:26px 0;color:var(--
   <p class="note">ไฟล์เต็ม 1080p: <a href="{full}">film-{slug}.mp4</a></p>
   <p class="note">หน้านี้อยู่บน GitHub Pages — ลิงก์ถาวร ไม่หายเมื่อ pod รีไซเคิล</p>
   <footer>
-    <a href="./">← กลับหน้าแรก AERIS Music</a> ·
+    <a href="./">← กลับหน้าแรก NEO VINCI</a> ·
     <a href="https://www.youtube.com/@aerismusicth" target="_blank" rel="noopener">YouTube</a>
   </footer>
 </div>
@@ -317,7 +317,7 @@ def write_index(repo: Path) -> str:
     html = f'''<!doctype html>
 <html lang="th"><head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
-<title>มิวสิควีดีโอ · AERIS Music</title>
+<title>มิวสิควีดีโอ · NEO VINCI</title>
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Thai:wght@300;400;600;700&display=swap" rel="stylesheet">
 <style>
 :root{{--bg:#0b0b0f;--fg:#f4f4f8;--dim:#a6a6b8;--accent:#ff4d6d;--accent2:#ffb03a;--card:#1b1b26}}
@@ -334,7 +334,7 @@ h1{{font-size:1.6rem;font-weight:700;margin-bottom:6px}}
 .card .t{{padding:14px 16px;font-weight:600}}
 </style></head><body>
 <div class="wrap">
-  <h1>มิวสิควีดีโอ · AERIS Music</h1>
+  <h1>มิวสิควีดีโอ · NEO VINCI</h1>
   <p class="sub">ภาพยนตร์สาธารณสมบัติ ตัดตามบทเพลง · <a href="./">← หน้าแรก</a></p>
   <div class="grid">
 {grid}

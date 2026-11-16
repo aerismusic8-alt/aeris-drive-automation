@@ -27,7 +27,7 @@ STATE = ROOT / "work" / "compilation-state.json"
 
 TITLE = "รวมเพลงไทยป็อป 15 เพลง (เลือกเพลงฟังได้)"
 TAGS = ("เพลงไทย,รวมเพลงไทย,เพลงป็อป,เพลงแดนซ์,เพลงร็อก,เพลงเพราะ,"
-        "เพลงฟังสบาย,เพลงไทยเพราะๆ,เพลงไทยดัง,เพลงใหม่,AERIS Music,thai music")
+        "เพลงฟังสบาย,เพลงไทยเพราะๆ,เพลงไทยดัง,เพลงใหม่,NEO VINCI,thai music")
 
 
 def _paths(stem: str) -> tuple[Path, Path, Path]:

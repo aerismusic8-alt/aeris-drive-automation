@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Release music938-1 songs to the AERIS Music channel (ch3), on a plan.
+"""Release music938-1 songs to the NEO VINCI channel (ch3), on a plan.
 
 Two hard limits decide the shape of this:
 
@@ -36,6 +36,7 @@ from pathlib import Path
 
 import genres
 import monetize
+from branding import HASHTAGS, LABEL, FOLLOW_ASK, FOLLOW_PROMISE
 
 ROOT = Path(__file__).resolve().parent.parent
 OPS = ROOT.parent / "ops"
@@ -109,8 +110,8 @@ TAGLINE = {
     "mystic": "เพลงลึกลับ ชวนคิด ชวนฝัน",
     "epic": "เพลงทรงพลัง ปลุกใจให้ลุกขึ้นสู้อีกครั้ง",
 }
-HASHTAGS = ("#AERISMusic #เพลงไทย #ศิลปินไทย #เพลงใหม่ #เพลงป็อป "
-            "#เพลงแดนซ์ #เพลงร็อก #เพลงเพราะ #ค่ายเพลงAI #AIMusic")
+# HASHTAGS comes from `branding.py`; the tail below is the channel-agnostic genre
+# block appended after the brand tag.
 
 # The search-intent title tail, keyed by mood. The 2026-11-08 competitor scan
 # (10 real Thai channels, no API quota): the winning music titles lead with *when*
@@ -191,21 +192,8 @@ def hook_title(hook: int) -> str:
 # is an AI music label and must say so plainly. The old copy claimed the songs
 # were "ร้องด้วยเสียงจริง" (sung by a real voice), which is false — the vocals are
 # generated — and a viewer who noticed would be right to feel misled.
-LABEL = "🤖 AERIS Music — ค่ายเพลง AI สร้างเพลงและเสียงร้องด้วย AI"
-
-# The follow ask burned onto the end of every Short. Shorts are the channel's
-# only reach tool and its description sits below the fold, so until now a viewer
-# was never asked to follow anywhere they would see it. Text only, no emoji: the
-# burned-in font is Noto Sans Thai, which has no emoji glyph and renders tofu.
-# A short end card, not a whole-length banner — the 2026-11-09 advisor panel
-# (duck + pollinations, quorum PASS) warned that a persistent button clutters the
-# song and can cost retention, and retention is reach.
-FOLLOW_ASK = "กดติดตาม AERIS Music"
-# The second line of the card. Both advisors put a *reason to return* first among
-# the things that turn a first-time viewer into a follower, and the channel does
-# publish daily — so the ask names the reward instead of asking into the void.
-# It also stays true: the daily release rail posts a new song every day.
-FOLLOW_PROMISE = "เพลงใหม่ทุกวัน"
+# LABEL, FOLLOW_ASK, FOLLOW_PROMISE and HASHTAGS come from `branding.py` (the
+# single source of truth for the NEO VINCI identity); see the import above.
 
 
 def parse_lyrics(slug: str) -> dict:
@@ -539,11 +527,11 @@ def describe_affiliate(card: dict) -> tuple[str, str, list[str]]:
         f"🛒 ดูสินค้า/สั่งซื้อ: กดลิงก์ Shopee ที่หน้าโปรไฟล์ช่อง 👉 {link}\n\n"
         f"🎬 {hookline}\n"
         f"{bullets}\n"
-        f"🎵 เพลงจาก AERIS Music — ค่ายเพลง AI\n\n"
-        f"#{search.replace(' ', '')} #หูฟังบลูทูธ #ยี่ห้อไหนดี #Shopee #AERISMusic #Shorts"
+        f"🎵 เพลงจาก NEO VINCI — ค่ายเพลง AI\n\n"
+        f"#{search.replace(' ', '')} #หูฟังบลูทูธ #ยี่ห้อไหนดี #Shopee #NEOVINCI #Shorts"
     )
     tags = [search, "หูฟังบลูทูธ", "หูฟัง", "ลำโพงบลูทูธ", "ยี่ห้อไหนดี",
-            "รีวิวหูฟัง", "Shopee", "AERISMusic", "shorts"]
+            "รีวิวหูฟัง", "Shopee", "NEOVINCI", "shorts"]
     return title[:100], desc[:4900], tags[:30]
 
 
@@ -557,7 +545,7 @@ def describe(slug: str, kind: str, variant: str = "") -> tuple[str, str, list[st
     of 1,546 videos, the ones past 100k views averaged 47.9 characters and used
     `|` in only 8% of titles, while the sub-1k videos averaged 60.7 characters and
     used `|` in 38.9%. YouTube truncates past ~60 characters, so the tail is what
-    gets cut first. The old titles appended `| AERIS Music` to every single
+    gets cut first. The old titles appended `| NEO VINCI` to every single
     release, which is the losing shape; the brand is already the channel name, so
     it is dropped from the Shorts and karaoke titles and the words are spent on
     searchable Thai instead.
@@ -601,7 +589,7 @@ def describe(slug: str, kind: str, variant: str = "") -> tuple[str, str, list[st
             f"ร้องตามได้เลย! {tagline}\n"
             f"{LABEL}\n"
             f"{CTA}\n\n"
-            f"🎵 เพลงที่ {int(n)} ในชุดเพลงไทยของ AERIS Music\n"
+            f"🎵 เพลงที่ {int(n)} ในชุดเพลงไทยของ NEO VINCI\n"
             f"🎧 ฟังเวอร์ชันเต็ม (มีเสียงร้อง) ได้ในช่อง\n\n"
             f"{HASHTAGS}"
         )
@@ -622,7 +610,7 @@ def describe(slug: str, kind: str, variant: str = "") -> tuple[str, str, list[st
             f"{mv_line}"
             f"{LABEL}\n"
             f"{CTA}\n\n"
-            f"เพลงที่ {int(n)} ในชุดเพลงไทยของ AERIS Music — เนื้อร้องและทำนองใหม่\n\n"
+            f"เพลงที่ {int(n)} ในชุดเพลงไทยของ NEO VINCI — เนื้อร้องและทำนองใหม่\n\n"
             f"🎧 ฟังเพลิน ฟังได้ทุกวัน\n\n"
             f"{HASHTAGS}"
         )
@@ -634,7 +622,7 @@ def describe(slug: str, kind: str, variant: str = "") -> tuple[str, str, list[st
         ly = lyric_block(slug)
         if ly:
             desc = f"{desc}\n\n📝 เนื้อเพลง\n\n{ly}"
-    tags = ["เพลงไทย", "เพลงใหม่", "ศิลปินไทย", "AERIS", "เพลงเพราะ",
+    tags = ["เพลงไทย", "เพลงใหม่", "ศิลปินไทย", "NEO VINCI", "เพลงเพราะ",
             "เพลงฟังสบาย", "ค่ายเพลง AI", "AI music", title_th, tagline,
             "thai music", "thai song"]
     tags += [t for t in extra_tags if t not in tags]
@@ -653,19 +641,19 @@ def playlist_for(kind: str) -> tuple[str, str]:
     if kind == "short":
         return ("ท่อนฮุก — เพลงไทยสั้น ๆ",
                 "รวมท่อนฮุกของทุกเพลงในชุด ฟังสั้น ๆ ได้ใจความ\n\n"
-                "AERIS Music · ค่ายเพลง AI")
+                "NEO VINCI · ค่ายเพลง AI")
     if kind == "karaoke":
         return ("คาราโอเกะ — ร้องตามได้ทุกเพลง",
                 "รวมทุกเพลงในชุดเป็นเวอร์ชันคาราโอเกะ ไม่มีเสียงร้อง ร้องตามได้เลย\n\n"
-                "AERIS Music · ค่ายเพลง AI")
+                "NEO VINCI · ค่ายเพลง AI")
     if kind == "affiliate":
         return ("รีวิว/ก่อนซื้อ — หูฟัง & ลำโพง (คลิปพร้อมลิงก์)",
                 "รวมคลิปให้ความรู้ก่อนซื้อหูฟังและลำโพง พร้อมลิงก์พันธมิตร Shopee — "
                 "ดูราคา/สั่งซื้อได้จากลิงก์ในคำอธิบาย\n\n"
-                "AERIS Music · ค่ายเพลง AI")
+                "NEO VINCI · ค่ายเพลง AI")
     return ("เพลงไทย — รวมทุกเพลง",
-            "รวมทุกเพลงไทยของ AERIS Music ป็อป แดนซ์ ร็อก เนื้อร้องและทำนองใหม่\n\n"
-            "AERIS Music · ค่ายเพลง AI")
+            "รวมทุกเพลงไทยของ NEO VINCI ป็อป แดนซ์ ร็อก เนื้อร้องและทำนองใหม่\n\n"
+            "NEO VINCI · ค่ายเพลง AI")
 
 
 def ensure_playlist(state: dict, kind: str, ch: str) -> str | None:
@@ -793,7 +781,7 @@ def plan(days: int, shorts: bool = False, spread: float = 0,
     """Pair each built song with its karaoke into a dated release list.
 
     Shorts are discovery, not catalogue: a zero-subscriber channel gets no
-    long-form impressions (AERIS Music's own numbers: 382 of 449 lifetime views
+    long-form impressions (NEO VINCI's own numbers: 382 of 449 lifetime views
     came from Shorts, ~33 from long-form). They are planned first, so the
     audience exists before the watch-hour videos need one.
     """

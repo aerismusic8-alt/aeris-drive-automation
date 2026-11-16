@@ -19,7 +19,7 @@ import yt_auth  # noqa: E402
 WORK = Path(__file__).resolve().parent.parent / "work"
 BACKUP = WORK / "live-metadata-backup.json"
 MAX_TITLE = 60
-BRAND = re.compile(r"\s*\|\s*AERIS Music\s*$", re.IGNORECASE)
+BRAND = re.compile(r"\s*\|\s*NEO VINCI\s*$", re.IGNORECASE)
 
 
 def clean_title(t: str) -> str:

@@ -186,14 +186,14 @@ def compilation_description(name: str, slugs: list[str],
     return (
         f"🎵 {name} — รวม {len(slugs)} เพลงไทย\n\n"
         f"{lead}"
-        f"🤖 AERIS Music — ค่ายเพลง AI สร้างเพลงและเสียงร้องด้วย AI\n\n"
+        f"🤖 NEO VINCI — ค่ายเพลง AI สร้างเพลงและเสียงร้องด้วย AI\n\n"
         f"{cta_block}"
         f"👉 กดเลือกเพลงที่อยากฟังได้จากรายการด้านล่าง\n\n"
         f"⏱️ รายการเพลง\n{build_chapters(slugs)}\n\n"
         f"🎧 ฟังเพลิน ๆ ได้ทั้งวัน ไม่ต้องกดเปลี่ยน\n"
-        f"✨ AERIS Music — ค่ายเพลง AI\n\n"
+        f"✨ NEO VINCI — ค่ายเพลง AI\n\n"
         f"#เพลงไทย #รวมเพลงไทย #เพลงป็อป #เพลงแดนซ์ #เพลงร็อก "
-        f"#ค่ายเพลงAI #AIMusic #AERISMusic #เพลงฟังสบาย\n"
+        f"#ค่ายเพลงAI #AIMusic #NEOVINCI #เพลงฟังสบาย\n"
     )
 
 

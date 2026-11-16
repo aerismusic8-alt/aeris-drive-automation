@@ -1,6 +1,6 @@
 name: AX Music Daily Dashboard
 
-# Writes the AERIS Music dashboard once a day and commits it, so progress is
+# Writes the NEO VINCI dashboard once a day and commits it, so progress is
 # visible without a sandbox and without a signed-in browser.
 #
 # Why here and not the OpenHands "AX Music Marketing Daily" automation: that one

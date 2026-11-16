@@ -1,6 +1,6 @@
 name: AX Music Daily Release (Actions fallback)
 
-# Uploads the day's batch of music938-1 songs to AERIS Music (ch3) and schedules
+# Uploads the day's batch of music938-1 songs to NEO VINCI (ch3) and schedules
 # them across the day with YouTube's own publishAt.
 #
 # Why this exists next to the OpenHands "AX Music Daily Release" automation: that

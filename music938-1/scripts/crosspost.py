@@ -43,6 +43,7 @@ sys.path.insert(0, str(ROOT.parent / "ops"))  # fb_graph / tiktok_api live here
 import browser as B  # noqa: E402
 import monetize  # noqa: E402
 import release  # noqa: E402
+from branding import NAME as BRAND, HANDLE  # noqa: E402
 
 try:  # the headless API posters; absent only on a very old checkout
     import fb_graph  # noqa: E402
@@ -108,7 +109,7 @@ PLATFORMS = {
 # Cross-promotion: the four surfaces are one audience split across apps, so a
 # viewer who found us on one is told where the others are. Handles, not links —
 # a raw URL in a caption reads as spam and Facebook suppresses it.
-YOUTUBE_HANDLE = "@aerismusicth"
+YOUTUBE_HANDLE = HANDLE
 TIKTOK_HANDLE = "@aeris.music4"
 
 
@@ -146,13 +147,13 @@ def caption(slug: str, platform: str, hook: int = 0, kind: str = "song") -> str:
                 f"❤️ กดติดตามเพจ · ของน่าซื้อ 👉 {shopee}\n"
                 f"🎬 ดูใหม่ทุกวัน: YouTube {YOUTUBE_HANDLE} · TikTok {TIKTOK_HANDLE}\n"
                 f"💬 {ask}\n"
-                f"#เพลงไทย #เพลงใหม่ #ร้องต่อไหม #AERISMusic #ค่ายเพลงAI")
+                f"#เพลงไทย #เพลงใหม่ #ร้องต่อไหม #NEOVINCI #ค่ายเพลงAI")
     shopee = monetize.link("tiktok")
     return (f"{series}\n"
             f"🎵 {tagline}\n"
             f"{release.LABEL}\n"
             f"🎧 กดติดตาม · ของน่าซื้อ 👉 {shopee}\n"
-            f"🎬 ฟังเต็ม ๆ ได้ที่ YouTube {YOUTUBE_HANDLE} · เพจ FB AERIS Music\n"
+            f"🎬 ฟังเต็ม ๆ ได้ที่ YouTube {YOUTUBE_HANDLE} · เพจ FB {BRAND}\n"
             f"💬 {ask}\n"
             f"#fyp #เพลงไทย #เพลงใหม่ #ร้องต่อไหม #TikTokเพลงไทย #ค่ายเพลงAI")
 
@@ -175,7 +176,7 @@ def photo_caption(slug: str, platform: str = "facebook") -> str:
             f"❤️ กดติดตามเพจ ฟังเพลงใหม่ทุกวัน\n"
             f"🎧 ฟังเต็ม ๆ: YouTube {YOUTUBE_HANDLE} · TikTok {TIKTOK_HANDLE}\n"
             f"🛒 ของน่าซื้อ 👉 {shopee}\n"
-            f"#เพลงไทย #เพลงใหม่ #AERISMusic #ค่ายเพลงAI")
+            f"#เพลงไทย #เพลงใหม่ #NEOVINCI #ค่ายเพลงAI")
 
 
 def link_caption(product: dict, platform: str = "facebook") -> str:
@@ -194,8 +195,8 @@ def link_caption(product: dict, platform: str = "facebook") -> str:
             f"• {bullets}\n"
             f"👉 ดูราคา/สั่งซื้อ: {url}\n"
             f"⚠️ โฆษณา · ได้ค่าคอมมิชชันจากการซื้อผ่านลิงก์นี้\n"
-            f"🎵 เพลงจาก AERIS Music\n"
-            f"{stag} #หูฟังบลูทูธ #Shopee #AERISMusic")
+            f"🎵 เพลงจาก {BRAND}\n"
+            f"{stag} #หูฟังบลูทูธ #Shopee #NEOVINCI")
 
 
 def refresh_captions() -> int:
@@ -544,14 +545,14 @@ def mood_caption(mood: str, platform: str) -> str:
                 f"{M.AI_NOTE}\n"
                 f"❤️ กดติดตามเพจ · ของน่าซื้อ 👉 {shopee}\n"
                 f"🎬 ดูใหม่ทุกวัน: YouTube {YOUTUBE_HANDLE} · TikTok {TIKTOK_HANDLE}\n"
-                f"#เพลงบรรเลง #เพลงผ่อนคลาย #AERISMusic #ค่ายเพลงAI")
+                f"#เพลงบรรเลง #เพลงผ่อนคลาย #NEOVINCI #ค่ายเพลงAI")
     shopee = monetize.link("tiktok")
     return (f"🎵 {title}\n"
             f"🎧 {info['tagline']}\n"
             f"{M.AI_NOTE}\n"
             f"🎧 กดติดตาม · ของน่าซื้อ 👉 {shopee}\n"
-            f"🎬 ฟังเต็ม ๆ ได้ที่ YouTube {YOUTUBE_HANDLE} · เพจ FB AERIS Music\n"
-            f"#fyp #เพลงบรรเลง #เพลงผ่อนคลาย #AERISMusic #TikTokเพลงไทย #ค่ายเพลงAI")
+            f"🎬 ฟังเต็ม ๆ ได้ที่ YouTube {YOUTUBE_HANDLE} · เพจ FB {BRAND}\n"
+            f"#fyp #เพลงบรรเลง #เพลงผ่อนคลาย #NEOVINCI #TikTokเพลงไทย #ค่ายเพลงAI")
 
 
 def mood_items() -> list[dict]:
@@ -946,7 +947,7 @@ def post_tiktok(page, video: Path, text: str) -> str | None:
 
 
 def post_facebook(page, video: Path, text: str) -> str | None:
-    """Post one Reel to the AERIS Music Page through the Business Suite composer.
+    """Post one Reel to the NEO VINCI Page through the Business Suite composer.
 
     Four facts this encodes, each verified live:
       * The composer's upload control opens a **native file chooser**, so the file

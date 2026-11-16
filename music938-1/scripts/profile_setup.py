@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Fill in the AERIS Music profiles on the social surfaces.
+"""Fill in the NEO VINCI profiles on the social surfaces.
 
 K, 2026-11-01: "Fb tk shoppee ต้องอัพเดทโปรไฟล์ หาผู้ติดตามด้วยใช่ไหม kเห็นโล่งๆ".
 Right — a profile with no avatar and no bio reads as abandoned, so a viewer who
@@ -41,7 +41,7 @@ import surreal  # noqa: E402  (scripts/ is already on sys.path)
 
 FACEBOOK_BIO = surreal.BIO
 WELCOME_POST = surreal.WELCOME
-# The AERIS Music *Page* (resolves to /people/AERIS-Music/61595890900382/), the
+# The NEO VINCI *Page* (resolves to /people/NEO VINCI-Music/61595890900382/), the
 # same Page crosspost.py posts Reels to. Do not point this at 61596276533369 —
 # that is K's personal profile ("Aeris-Ak Akath"), which cannot be branded and is
 # the wrong surface; branding it is what the Page was created to replace.

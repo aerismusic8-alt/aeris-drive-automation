@@ -133,7 +133,7 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
                   f"{_escape(song_title)}")
     # The brand mark and the AI disclosure, steady and low.
     ev.append(f"Dialogue: 0,{ts(0)},{ts(seconds)},Brand,,0,0,0,,"
-              f"{pos(540, 1780)}{{\\fad(300,300)}}AERIS MUSIC")
+              f"{pos(540, 1780)}{{\\fad(300,300)}}{concert.NAME}")
     ev.append(f"Dialogue: 0,{ts(0.6)},{ts(seconds)},Note,,0,0,0,,"
               f"{pos(540, 1850)}{{\\fad(300,300)}}{_escape(concert.AI_NOTE)}")
     # The follow end card, held briefly and released a beat before the end.

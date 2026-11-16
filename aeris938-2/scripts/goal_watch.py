@@ -237,7 +237,7 @@ def render(d: dict) -> str:
                f"= {100.0 * hours / report.YT_GATE_HOURS:.1f}%"
                if isinstance(hours, (int, float)) else "ยังอ่านไม่ได้")
     lines = [
-        "# เฝ้าเป้า $500 — AERIS Music",
+        "# เฝ้าเป้า $500 — NEO VINCI",
         "",
         f"ตรวจเมื่อ: {d['at']}",
         "",
@@ -279,7 +279,7 @@ def push(text: str, topic: str) -> None:
     body = text.encode("utf-8")
     req = urllib.request.Request(
         f"https://ntfy.sh/{topic}", data=body,
-        headers={"Title": "AERIS Music — เฝ้าเป้า", "Tags": "dart"})
+        headers={"Title": "NEO VINCI — เฝ้าเป้า", "Tags": "dart"})
     try:
         urllib.request.urlopen(req, timeout=20).read()
         print("ntfy: pushed")

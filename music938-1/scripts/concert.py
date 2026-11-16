@@ -51,6 +51,7 @@ ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import surreal  # noqa: E402  the shared guardrails + handles
 import release  # noqa: E402  the song title
+from branding import NAME as BRAND  # noqa: E402  the channel brand
 from make_song import _apply_loudnorm, _measure_loudnorm  # noqa: E402  the loudness contract
 
 SONGS = ROOT / "library" / "songs"
@@ -64,7 +65,7 @@ CLIP_SECONDS = 38.0
 # One recognisable rule, same as the exhibit lane: every clip is one song
 # "played live". Thai, and the burned label is emoji-free (the bundled Noto Sans
 # Thai has no emoji glyph, so an emoji would draw as tofu).
-NAME = "AERIS LIVE"
+NAME = f"{BRAND} LIVE"
 PROJECT = "คอนเสิร์ตจำลอง"
 SHOW_LINE = "บรรยากาศคอนเสิร์ต ฟังให้เหมือนยืนอยู่หน้าเวที"
 # The recurring ask, in the same shape as the exhibit ritual.
@@ -201,7 +202,7 @@ def caption(slug: str, platform: str, song_title: str = "") -> str:
         lines.append(song)
     lines += [f"🏟️ {PROJECT} — เสียงฮอลล์ เสียงเชียร์ เสียงวง",
               f"💬 {SHOW_ASK}", f"⚠️ {AI_NOTE}", tail,
-              "#คอนเสิร์ตจำลอง #เพลงไทย #AERISMusic"]
+              "#คอนเสิร์ตจำลอง #เพลงไทย #NEOVINCI"]
     return "\n".join(lines)
 
 

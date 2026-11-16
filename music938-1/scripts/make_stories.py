@@ -1,4 +1,4 @@
-"""Generate vertical Story cards (1080x1920) for the AERIS Music pack.
+"""Generate vertical Story cards (1080x1920) for the NEO VINCI pack.
 
 A Story is the cheapest reach a channel has: it appears above the feed for 24 h
 and costs one image. Each card is 9:16, carries the song title in Thai, the
@@ -22,6 +22,7 @@ from pathlib import Path
 from PIL import Image, ImageDraw, ImageFilter
 
 from common import ROOT
+from branding import NAME as BRAND, HANDLE
 from covers import (
     LATIN_FONT,
     THAI_FONT,
@@ -81,7 +82,7 @@ def _draw_story(title: str, hook: str, mood: str, kicker: str, foot: str,
             draw.text((x + 4, y + 4), text, font=font, fill=(0, 0, 0, 160))
         draw.text((x, y), text, font=font, fill=fill)
 
-    center("AERIS MUSIC", brand_font, int(h * 0.10), (255, 255, 255, 200))
+    center(BRAND, brand_font, int(h * 0.10), (255, 255, 255, 200))
     center(kicker, kick_font, int(h * 0.145), (255, 226, 150, 235))
 
     # Title block, wrapped and centred in the upper third.
@@ -102,7 +103,7 @@ def _draw_story(title: str, hook: str, mood: str, kicker: str, foot: str,
 
     # A clear call to action at the bottom, inside the safe area.
     center(foot, foot_font, int(h * 0.84), (255, 255, 255, 240))
-    center("@aerismusicth", _font(LATIN_FONT, 38), int(h * 0.90), (220, 216, 255, 180), shadow=False)
+    center(HANDLE, _font(LATIN_FONT, 38), int(h * 0.90), (220, 216, 255, 180), shadow=False)
 
     out.parent.mkdir(parents=True, exist_ok=True)
     img.convert("RGB").save(out, "JPEG", quality=90, optimize=True)

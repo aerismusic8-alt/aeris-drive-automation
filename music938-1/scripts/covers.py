@@ -15,6 +15,7 @@ from PIL import Image, ImageDraw, ImageFilter, ImageFont
 
 from common import LIBRARY
 import genres
+from branding import NAME as BRAND, HANDLE
 
 # The sandbox ships no Thai font, and the path these constants used to point at
 # does not exist on it: covers.py fell through to Pillow's bitmap default, which
@@ -208,7 +209,7 @@ def make_thumbnail(slug: str, title: str, mood: str, *, kind: str = "song",
     badge_font = _font(THAI_FONT, int(h * 0.050), bold=True)
 
     # Artist mark, top-left, inside the safe area.
-    draw.text((w * 0.055, h * 0.075), "AERIS MUSIC", font=mark_font,
+    draw.text((w * 0.055, h * 0.075), BRAND, font=mark_font,
               fill=(255, 255, 255, 190))
 
     lines = _wrap(draw, title, title_font, int(w * 0.86))

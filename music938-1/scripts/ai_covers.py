@@ -51,6 +51,7 @@ sys.path.insert(0, str(ROOT / "scripts"))
 
 import common  # noqa: E402
 import genres  # noqa: E402
+from branding import NAME as BRAND  # noqa: E402
 
 LIB = ROOT / "library"
 COVERS = LIB / "covers"
@@ -101,7 +102,7 @@ PROMPT_SUFFIX = (
 )
 
 BADGE = "คาราโอเกะ"
-MARK = "AERIS MUSIC"
+MARK = BRAND
 
 
 def _font(path: str, size: int, *, bold: bool = False) -> ImageFont.FreeTypeFont:

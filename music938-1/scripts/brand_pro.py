@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""AERIS Music identity, v3 — "Acoustic & Breeze", still the same channel.
+"""NEO VINCI identity, v3 — "Acoustic & Breeze", still the same channel.
 
 K brought a design brief from an AI YouTube consult (2026-11-07) that asked for an
 indie / warm / easy-listening look with headphone-and-gear cues and an earth-pastel
@@ -33,6 +33,8 @@ from pathlib import Path
 
 from PIL import Image, ImageDraw, ImageFilter, ImageFont
 
+from branding import NAME as BRAND  # noqa: E402  the single source of truth
+
 ROOT = Path(__file__).resolve().parent.parent
 FONTS = ROOT / "fonts"
 THAI_FONT = str(FONTS / "NotoSansThai.ttf")
@@ -48,7 +50,6 @@ SAGE = (168, 180, 161)      # #A8B4A1 sage — secondary detail
 SILVER = (216, 220, 226)    # #D8DCE2 soft silver — thin rules only
 TERRACOTTA = (197, 138, 104)  # #C58A68 wood / desk props
 
-BRAND = "AERIS MUSIC"
 TAGLINE = "เพลงไทยป็อป · แดนซ์ · ร็อก"
 SUB = "ศิลปินทีละคน ปล่อยเป็นชุด ฟังได้ทุกวัน"
 
@@ -173,7 +174,7 @@ def _window_light(img: Image.Image, x: float, y: float, w: float, h: float,
 
 def _breeze(img: Image.Image, pts: list[tuple[float, float, float, float]],
             color=SILVER) -> None:
-    """The air of AERIS: thin, blurred sine lines that never sit behind the text."""
+    """The air of NEO VINCI: thin, blurred sine lines that never sit behind the text."""
     layer = Image.new("RGBA", img.size, (0, 0, 0, 0))
     d = ImageDraw.Draw(layer)
     for k, (x0, y0, x1, amp) in enumerate(pts):

@@ -622,7 +622,7 @@ def test_audit_flags_an_empty_description_and_a_losing_title():
     empty = {"id": "X", "snippet": {"title": "x", "description": ""}}
     assert "description_empty" in audit.check_video(empty, exp, {})
     losing = {"id": "X", "snippet": {
-        "title": "เพลงเศร้า | AERIS Music",
+        "title": "เพลงเศร้า | NEO VINCI",
         "description": audit.monetize.cta("youtube")}}
     assert "losing_title_shape" in audit.check_video(losing, exp, {})
 

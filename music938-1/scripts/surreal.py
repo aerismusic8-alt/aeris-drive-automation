@@ -32,13 +32,15 @@ covers we already own; nothing is downloaded and nothing is paid for.
 """
 from __future__ import annotations
 
+from branding import NAME as _BRAND, HANDLE
+
 # ── the identity ──────────────────────────────────────────────────────────────
 # The one-line promise the panel asked for: not a mood word, a *rule* a stranger
 # can recognise across every post. Thai, no emoji (the burned font is Noto Sans
 # Thai with no emoji glyph — an emoji renders as tofu).
 
-NAME = "AERIS"
-SLOGAN = "AERIS — เพลงไทยที่หลุดโลก"          # the wordmark subtitle
+NAME = _BRAND
+SLOGAN = f"{NAME} — เพลงไทยที่หลุดโลก"          # the wordmark subtitle
 PROJECT = "ศิลปะเสียงหลุดโลก"                  # what the project calls itself
 
 # The recurring ritual, stated in Thai. Both advisors said the same thing: the
@@ -88,9 +90,9 @@ BANNED = (
 # Facebook is the gallery and TikTok is the lab; YouTube stays the library. The
 # handles are here so a caption never hard-codes one.
 HANDLES = {
-    "youtube": "@aerismusicth",
+    "youtube": HANDLE,
     "tiktok": "@aeris.music4",
-    "facebook": "AERIS Music",
+    "facebook": NAME,
 }
 
 
@@ -151,7 +153,7 @@ def caption(slug: str, platform: str, song_title: str = "") -> str:
     if song:
         lines.append(song)
     lines += [f"💬 {RITUAL_ASK}", f"⚠️ {AI_NOTE}", tail,
-              "#ศิลปะหลุดโลก #เพลงไทย #AERISMusic"]
+              "#ศิลปะหลุดโลก #เพลงไทย #NEOVINCI"]
     return "\n".join(lines)
 
 

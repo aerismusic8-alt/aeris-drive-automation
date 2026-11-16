@@ -76,7 +76,7 @@ def main() -> int:
         return f"{'#' * n}{'.' * (20 - n)} {pct}%"
 
     lines = [
-        "# AERIS Music — ความคืบหน้า (อัตโนมัติ)",
+        "# NEO VINCI — ความคืบหน้า (อัตโนมัติ)",
         "",
         f"อัพเดท: {time.strftime('%Y-%m-%d %H:%M UTC', time.gmtime())}",
         "",

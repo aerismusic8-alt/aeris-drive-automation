@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Post a rendered story Reel to the AERIS Music Facebook Page.
+"""Post a rendered story Reel to the NEO VINCI Facebook Page.
 
 The posting mechanics are the ones `music938-1/scripts/crosspost.py` proved live
 against the Business Suite Reels composer (native file chooser, three steps,
@@ -35,9 +35,9 @@ UPLOAD = ("https://business.facebook.com/latest/reels_composer/"
           f"?ref=biz_web_home_create_reel&asset_id={ASSET_ID}")
 
 HASHTAGS = {
-    "horror": "#เรื่องผี #เรื่องเล่าหลอน #ผีไทย #เล่าเรื่องผี #AERISMusic",
-    "lesson": "#ข้อคิดชีวิต #เรื่องเล่าให้แง่คิด #กำลังใจ #AERISMusic",
-    "humour": "#ตลก #ชีวิตประจำวัน #มีม #ขำ ๆ #AERISMusic",
+    "horror": "#เรื่องผี #เรื่องเล่าหลอน #ผีไทย #เล่าเรื่องผี #NEOVINCI",
+    "lesson": "#ข้อคิดชีวิต #เรื่องเล่าให้แง่คิด #กำลังใจ #NEOVINCI",
+    "humour": "#ตลก #ชีวิตประจำวัน #มีม #ขำ ๆ #NEOVINCI",
 }
 FOLLOW_ASK = "กดติดตามเพจไว้เลย"
 FOLLOW_PROMISE = "เรื่องเล่าใหม่ทุกวัน"

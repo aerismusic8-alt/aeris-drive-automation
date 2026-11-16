@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Set the AERIS Music channel description and keywords to the AI-label identity.
+"""Set the NEO VINCI channel description and keywords to the AI-label identity.
 
 `channels.update` replaces the whole `brandingSettings`, so the current one is
 read first and only the fields named here are overwritten — a bare PUT would
@@ -21,24 +21,24 @@ import yt_auth  # noqa: E402
 
 CHANNEL_ID = "UCm44BjAn03ruOF-WaA3ZRww"
 
-DESCRIPTION = """🤖 AERIS Music — ค่ายเพลง AI ของไทย
+DESCRIPTION = """🤖 NEO VINCI — ดาวินชีแห่งยุคใหม่
 
-เราสร้างเพลงและเสียงร้องด้วย AI อย่างเปิดเผย ทุกเพลงคือผลงานที่ตั้งใจทำ
-เนื้อร้องและทำนองใหม่ ไม่ใช่เพลงที่ผ่านมาแล้วผ่านไป
+ศิลปะคลาสสิก ผสานเทคโนโลยีล้ำสมัย เราสร้างเพลงและเสียงร้องด้วย AI
+อย่างเปิดเผย ทุกเพลงคือผลงานที่ตั้งใจทำ เนื้อร้องและทำนองใหม่
 
-🎵 เพลงไทยทุกแนว — ลูกทุ่ง หมอลำ ป็อป เพื่อชีวิต เพลงเศร้า
+🎵 เพลงไทยทุกแนว — ป็อป แดนซ์ ร็อก เพลงเศร้า เพลงให้กำลังใจ
 🎧 ฟังเพลิน ฟังได้ทุกวัน
 ✨ โปร่งใส: ทุกเสียงร้องสร้างด้วย AI
 
 ▶️ กดติดตามเพื่อไม่พลาดเพลงใหม่
 📱 TikTok: @aeris.music4
-💬 Facebook: AERIS Music
+💬 Facebook: NEO VINCI
 🛍️ Shopee: https://th.shp.ee/6hv2uk89
 
-#ค่ายเพลงAI #AIMusic #เพลงไทย #AERISMusic"""
+#ค่ายเพลงAI #AIMusic #เพลงไทย #NEOVINCI"""
 
-KEYWORDS = ("เพลงไทย,เพลงใหม่,ศิลปินไทย,AERIS,ค่ายเพลง AI,AI music,"
-            "เพลงลูกทุ่ง,หมอลำ,เพลงเพื่อชีวิต,เพลงเศร้า,เพลงเพราะ,เพลงฟังสบาย,"
+KEYWORDS = ("เพลงไทย,เพลงใหม่,ศิลปินไทย,NEO VINCI,ดาวินชีแห่งยุคใหม่,ค่ายเพลง AI,"
+            "AI music,เพลงป็อป,เพลงแดนซ์,เพลงร็อก,เพลงเศร้า,เพลงเพราะ,เพลงฟังสบาย,"
             "thai music,thai song,ai music")
 
 

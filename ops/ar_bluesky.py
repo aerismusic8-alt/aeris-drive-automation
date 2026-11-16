@@ -26,7 +26,7 @@ Environment
     AR_IDENTITY_DIR   where bluesky.json lives
                       (default: /workspace/ax-tools/ar-identity)
     BSKY_HANDLES      comma-separated handle candidates for `create`
-                      (default: a sensible AERIS Music list)
+                      (default: a sensible NEO VINCI list)
 """
 from __future__ import annotations
 
@@ -48,7 +48,7 @@ CREDS = IDENTITY_DIR / "bluesky.json"
 
 # The AI-disclosure line: every post AR makes to a human-read surface must say it
 # is an AI agent (see the external-services rule).
-AI_NOTE = "— AERIS Music (AI agent)"
+AI_NOTE = "— NEO VINCI (AI agent)"
 
 DEFAULT_HANDLES = [
     "aeris-music-938",

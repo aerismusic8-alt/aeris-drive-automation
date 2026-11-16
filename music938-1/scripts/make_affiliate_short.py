@@ -6,7 +6,7 @@ viewer no reason to buy anything — the affiliate link sat in a caption where
 nobody was about to purchase, so the reported clicks were 0. A revenue funnel
 needs content whose *intent* is a purchase: a product card with a hook, three
 honest bullet points, a price and a link. This builds that card as a 9:16 clip
-bedded on an AERIS song, so the same audience engine carries it.
+bedded on an NEO VINCI song, so the same audience engine carries it.
 
 It is deliberately not a video of the product. We have not tested the products,
 so the clip shows the listing's own image and the listing's own facts, and it
@@ -46,7 +46,7 @@ MAX_SECONDS = 58.0
 #   id       stable slug, used for the output filename and the post id
 #   title    the card hook, e.g. "หูฟังบลูทูธราคาประหยัด"
 #   bullets  2-4 buying-guidance points (general advice, not a product claim)
-#   song     slug of the AERIS song to bed it on
+#   song     slug of the NEO VINCI song to bed it on
 #   hook     which chorus to use (1-based)
 #   image    optional path to a product photo; the song cover is used if absent
 #   price    optional display price; only set it from a listing you have read
@@ -111,19 +111,19 @@ def caption(product: dict, platform: str = "tiktok") -> str:
         return (f"{head}\n{bullets}\n"
                 f"🛒 ดูราคา/สั่งซื้อ 👉 {url}\n"
                 f"⚠️ {DISCLOSURE}\n"
-                f"🎬 เพลงประกอบจาก AERIS Music · YouTube @aerismusicth\n"
-                f"{stag} #หูฟังบลูทูธ #Shopee #AERISMusic")
+                f"🎬 เพลงประกอบจาก NEO VINCI · YouTube @aerismusicth\n"
+                f"{stag} #หูฟังบลูทูธ #Shopee #NEOVINCI")
     if platform == "youtube":
         return (f"{head}\n{bullets}\n"
                 f"🛒 ลิงก์สินค้า 👉 {url}\n"
                 f"⚠️ {DISCLOSURE}\n"
-                f"🎵 เพลงจาก AERIS Music\n"
-                f"{stag} #หูฟังบลูทูธ #Shopee #AERISMusic")
+                f"🎵 เพลงจาก NEO VINCI\n"
+                f"{stag} #หูฟังบลูทูธ #Shopee #NEOVINCI")
     return (f"{head}\n{bullets}\n"
             f"🛒 กดลิงก์ 👉 {url}\n"
             f"⚠️ {DISCLOSURE}\n"
-            f"🎵 เพลงจาก AERIS Music\n"
-            f"{stag} #หูฟังบลูทูธ #Shopee #AERISMusic")
+            f"🎵 เพลงจาก NEO VINCI\n"
+            f"{stag} #หูฟังบลูทูธ #Shopee #NEOVINCI")
 
 
 def _esc(text: str) -> str:

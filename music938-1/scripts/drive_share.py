@@ -12,7 +12,7 @@ Google; `ops/phone_login.py` is the tap-first page for that.
 Each media type gets its own subfolder, so a full song never mixes with a
 karaoke mix or a Short:
 
-    AX Content Lab/music938/AERIS Music — คลังเพลง/
+    AX Content Lab/music938/NEO VINCI — คลังเพลง/
       01 เพลงเต็ม/       song-*.mp3
       02 คาราโอเกะ/       karaoke-*.mp3
       03 ปก/              cover-*.jpg
@@ -33,7 +33,7 @@ REPO = ROOT.parent
 LIB = ROOT / "library"
 PULL = ROOT / "scripts" / "pull_media.py"
 UPLOADER = REPO / "scripts" / "gdrive-upload-browser.py"
-BASE = "AX Content Lab/music938/AERIS Music — คลังเพลง"
+BASE = "AX Content Lab/music938/NEO VINCI — คลังเพลง"
 
 # group -> (library subdir, filename glob, Drive subfolder)
 GROUPS = {

@@ -328,7 +328,7 @@ def render(yt: dict, dash: dict, prev: dict | None = None,
             }
             sp_stale = last.get("at")
     lines = [
-        "# รายงานการปั้น 4 ช่องทาง — AERIS Music (aeris938-2)", "",
+        "# รายงานการปั้น 4 ช่องทาง — NEO VINCI (aeris938-2)", "",
         f"วัดเมื่อ: {time.strftime('%Y-%m-%d %H:%M UTC', time.gmtime())}", "",
         "> ตัวเลขที่อ่านไม่ได้เขียน UNKNOWN — ไม่เดา", "",
     ]

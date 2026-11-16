@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Post a Reel to the AERIS Music Page through the Meta Graph API.
+"""Post a Reel to the NEO VINCI Page through the Meta Graph API.
 
 This is the headless replacement for the browser poster in
 `music938-1/scripts/crosspost.py`. The browser route drives a real Chromium with

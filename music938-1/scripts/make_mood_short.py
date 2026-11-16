@@ -31,6 +31,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 import covers  # noqa: E402  the mood palettes
 import release  # noqa: E402  the follow copy
 import surreal  # noqa: E402  the AI-disclosure line
+from branding import NAME as BRAND  # noqa: E402  the brand mark
 from ambient_loop import ensure_bed, bed_path  # noqa: E402  the shared bed cache
 from make_karaoke import FONT, OUTLINE, _duration  # noqa: E402
 
@@ -75,7 +76,7 @@ AI_NOTE = "ดนตรีบรรเลงเครื่องดนตรี
 
 def title_for(mood: str) -> str:
     m = MOODS[mood]
-    return f"เพลง{m['name']} เครื่องดนตรีจริง | {m['tagline']} | AERIS Music"
+    return f"เพลง{m['name']} เครื่องดนตรีจริง | {m['tagline']} | {BRAND}"
 
 
 def _hex(h: float, s: float, v: float) -> str:
@@ -144,7 +145,7 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
               f"{_escape(m['tagline'])}")
     # The brand mark, low and quiet, so the frame is signed without shouting.
     ev.append(f"Dialogue: 0,{ts(0)},{ts(seconds)},Brand,,0,0,0,,"
-              f"{pos(540, 1780)}{{\\fad(300,300)}}AERIS MUSIC")
+              f"{pos(540, 1780)}{{\\fad(300,300)}}{BRAND}")
     # The AI disclosure, on every clip, small and steady.
     ev.append(f"Dialogue: 0,{ts(0.6)},{ts(seconds)},Note,,0,0,0,,"
               f"{pos(540, 1850)}{{\\fad(300,300)}}{_escape(AI_NOTE)}")

@@ -504,7 +504,7 @@ def test_concert_lane() -> None:
     import surreal
     import make_concert_short as mcs
 
-    # The wordmark is Latin (a brand mark, like the burned "AERIS MUSIC"); the
+    # The wordmark is Latin (a brand mark, like the burned "NEO VINCI"); the
     # copy around it is Thai.
     check("wordmark is a Latin brand mark", concert.NAME.isascii(), concert.NAME)
     for name, val in (("project", concert.PROJECT),
@@ -1472,7 +1472,7 @@ def test_follow_end_card() -> None:
     # retention down, and retention is reach).
     check("there is a follow ask", bool(release.FOLLOW_ASK.strip()))
     check("the ask is Thai", has_thai(release.FOLLOW_ASK))
-    check("the ask names the channel", "AERIS" in release.FOLLOW_ASK)
+    check("the ask names the channel", "NEO VINCI" in release.FOLLOW_ASK)
     # The card also carries the reason to return. Both advisors on the 2026-11-09
     # panel put "a clear reason to come back" first among the things that turn a
     # first-time viewer into a follower, so the ask is not a bare command.
@@ -2729,7 +2729,7 @@ def test_titles() -> None:
     Of 1,546 scanned videos, the ones past 100k views averaged 47.9 characters
     and used `|` in 8% of titles; the sub-1k ones averaged 60.7 and used `|` in
     38.9%. YouTube truncates past ~60 characters, so a long title hides its own
-    tail. This pins the fix: no `| AERIS Music` suffix, and under 60 characters.
+    tail. This pins the fix: no `| NEO VINCI` suffix, and under 60 characters.
     """
     section("release titles (competitor shape)")
     import release
@@ -2741,7 +2741,7 @@ def test_titles() -> None:
         check(f"{kind}/{variant or 'plain'} title <= 60 chars", len(title) <= 60,
               f"{len(title)}: {title}")
         check(f"{kind}/{variant or 'plain'} title has no brand suffix",
-              "AERIS Music" not in title, title)
+              "NEO VINCI" not in title, title)
     # The Short must still be discoverable as a Short.
     st, _, _ = release.describe(slug, "short", "")
     check("short title carries #Shorts", "#Shorts" in st, st)
@@ -2799,7 +2799,7 @@ def test_compilation_cta_repair() -> None:
     mod = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(mod)
     bare = ("🎵 รวมเพลงไทย — รวม 16 เพลงไทย\n\n"
-            "🤖 AERIS Music — ค่ายเพลง AI\n\n"
+            "🤖 NEO VINCI — ค่ายเพลง AI\n\n"
             "👉 กดเลือกเพลงที่อยากฟังได้จากรายการด้านล่าง\n\n"
             "⏱️ รายการเพลง\n00:00 01. คนดีที่จากไป\n03:48 02. รักที่ไม่มีวันจบ\n")
     check("a description without the link is flagged", mod._needs_cta(bare), "bare")
@@ -2959,7 +2959,7 @@ def test_lyric_in_description() -> None:
     check("a song description carries the lyric", raw.split("\n")[0] in song_desc)
     check("the song still carries the subscribe ask",
           "sub_confirmation=1" in song_desc)
-    check("the song still carries the hashtag block", "#AERISMusic" in song_desc)
+    check("the song still carries the hashtag block", "#NEOVINCI" in song_desc)
     _t, short_desc, _tg = release.describe(slug, "short", "")
     check("a Short does not carry the lyric block", "📝 เนื้อเพลง" not in short_desc)
     check("the description stays within YouTube's 5000-char limit",
@@ -3861,7 +3861,7 @@ def test_crosspost_pace_and_captions() -> None:
     check("facebook caption cross-promotes YouTube + TikTok",
           "@aerismusicth" in fb_cap and "@aeris.music4" in fb_cap)
     check("tiktok caption cross-promotes YouTube + Facebook",
-          "@aerismusicth" in tt_cap and "AERIS Music" in tt_cap)
+          "@aerismusicth" in tt_cap and "NEO VINCI" in tt_cap)
 
     # `refresh_captions` must rewrite only what has not gone out, and leave a
     # posted item's caption alone — the queue is a committed artifact and a
@@ -4222,7 +4222,7 @@ def test_social_stats_parser() -> None:
           social_stats._first_int("ค่าคอมมิชชั่น\n฿12.50\n", ["ค่าคอมมิชชั่น"]) == 12.5)
 
     # Facebook writes the follower count into one line.
-    fb = "AERIS Music\u00a0\nผู้ติดตาม 0 คน • กำลังติดตาม 0 คน"
+    fb = "NEO VINCI\u00a0\nผู้ติดตาม 0 คน • กำลังติดตาม 0 คน"
     check("Thai follower count is read",
           social_stats._first_int(fb, ["ผู้ติดตาม"]) == 0)
 
@@ -4234,7 +4234,7 @@ def test_social_stats_parser() -> None:
     check("the insights share is not read as a follower count",
           social_stats._followers(insights) == "UNKNOWN")
     check("the profile count is read",
-          social_stats._followers("AERIS Music\nผู้ติดตาม 1 คน • กำลังติดตาม 0 คน") == 1)
+          social_stats._followers("NEO VINCI\nผู้ติดตาม 1 คน • กำลังติดตาม 0 คน") == 1)
     check("a thousands-separated count is read",
           social_stats._followers("ผู้ติดตาม 1,234 คน") == 1234)
 
@@ -4245,7 +4245,7 @@ def test_social_stats_parser() -> None:
     # Sign-out detection: the login word is in the chrome even when signed in,
     # so the test must key on the Page's own content.
     check("a signed-in Page is not called signed out",
-          not social_stats._fb_signed_out("AERIS Music\nผู้ติดตาม 0 คน\nเข้าสู่ระบบ"))
+          not social_stats._fb_signed_out("NEO VINCI\nผู้ติดตาม 0 คน\nเข้าสู่ระบบ"))
     check("a real login wall is caught",
           social_stats._fb_signed_out("เข้าสู่ระบบ\nลืมบัญชีใช่ไหม\nสมัคร"))
 
@@ -4255,9 +4255,9 @@ def test_social_stats_parser() -> None:
     check("the profile dashboard is not the Page identity",
           not social_stats._acting_as_page("สถานะโปรไฟล์\nAeris-Ak Akath\nสลับไปใช้เพจ"))
     check("the switch banner means still the person",
-          not social_stats._acting_as_page("AERIS Music\nสลับไปใช้เพจ\nผู้ติดตาม 1 คน"))
+          not social_stats._acting_as_page("NEO VINCI\nสลับไปใช้เพจ\nผู้ติดตาม 1 คน"))
     check("the Page dashboard is the Page identity",
-          social_stats._acting_as_page("AERIS Music\nแดชบอร์ดครีเอเตอร์\nการวิเคราะห์"))
+          social_stats._acting_as_page("NEO VINCI\nแดชบอร์ดครีเอเตอร์\nการวิเคราะห์"))
 
     # The views dashboard prints the tab labels before the total, so the total
     # must come from the "28 วันที่ผ่านมา" range line, not the first "ยอดดู".
@@ -4522,7 +4522,7 @@ def test_monetize_footer() -> None:
     # the description — before the hashtag block — not buried under the socials
     # footer as it was before 2026-11-03.
     check("the product link still sits above the hashtags",
-          per.get("youtube", "") in desc and desc.index(per["youtube"]) < desc.index("#AERISMusic"),
+          per.get("youtube", "") in desc and desc.index(per["youtube"]) < desc.index("#NEOVINCI"),
           f"product at {desc.index(per['youtube'])}")
     mint_src = (ROOT.parent / "ops" / "shopee_mint.py").read_text()
     check("mint tool exists for re-pointing the links",
@@ -4555,7 +4555,7 @@ def test_monetize_footer() -> None:
     pagefirst = (f"🎵 เพลงเก่า\n\nเพลงผ่อนคลาย\n\n"
                  f"❤️ กดติดตามเพจ Facebook 👉 {page}\n"
                  f"🛒 ของน่าซื้อ 👉 {per['youtube']}\n\n"
-                 f"#AERISMusic #Shorts")
+                 f"#NEOVINCI #Shorts")
     migrated = monetize.refresh_description(pagefirst, "youtube")
     check("refresh adds the subscribe to a Page-first description",
           channel in migrated)
@@ -4676,7 +4676,7 @@ def test_profile_setup() -> None:
     # and crosspost.py use the Page; a profile_setup that drifts back to the
     # personal id would brand the wrong account.
     import profile_setup
-    check("brands the AERIS Music Page", profile_setup.FACEBOOK_ID == "61595890900382")
+    check("brands the NEO VINCI Page", profile_setup.FACEBOOK_ID == "61595890900382")
     # A bio is where a view can still become a click after the caption scrolls
     # away, so each surface's bio must carry *that surface's* affiliate link and
     # the disclosure. The first affiliate Reels went out with no link in the bio.
@@ -5128,7 +5128,7 @@ def test_story_reel() -> None:
     cap = psr.caption("ห้องเช่าหมายเลข 9", "horror")
     check("caption carries the follow ask", psr.FOLLOW_ASK in cap)
     check("caption carries the theme hashtags",
-          psr.HASHTAGS["horror"] in cap and "#AERISMusic" in cap)
+          psr.HASHTAGS["horror"] in cap and "#NEOVINCI" in cap)
 
 
 def test_metadata_ab_holds_format_fixed() -> None:
@@ -6028,12 +6028,12 @@ def test_outreach() -> None:
     # Page-only edit anchor, which the personal shell never shows.
     check("acting-as-Page rejects the personal shell that lists จัดการเพจ",
           not outreach._acting_as_page(
-              _FakePage("จัดการเพจ AERIS Music Aeris-Ak Akath ผู้ติดตาม 0 คน")))
+              _FakePage("จัดการเพจ NEO VINCI Aeris-Ak Akath ผู้ติดตาม 0 คน")))
     check("acting-as-Page rejects the switch-to-Page banner",
           not outreach._acting_as_page(
-              _FakePage("สลับไปใช้เพจ AERIS Music เพื่อดำเนินการเพิ่มเติม แก้ไขรูปภาพหน้าปก")))
+              _FakePage("สลับไปใช้เพจ NEO VINCI เพื่อดำเนินการเพิ่มเติม แก้ไขรูปภาพหน้าปก")))
     check("acting-as-Page is true only on the Page shell",
-          outreach._acting_as_page(_FakePage("จัดการเพจ AERIS Music แก้ไขรูปภาพหน้าปก")))
+          outreach._acting_as_page(_FakePage("จัดการเพจ NEO VINCI แก้ไขรูปภาพหน้าปก")))
 
 
 def test_promo_site_converts_to_the_page() -> None:
@@ -6054,7 +6054,7 @@ def test_promo_site_converts_to_the_page() -> None:
     check("links to the Facebook Page", "facebook.com/profile.php?id=" in html)
     check("has more than one follow link", html.count("facebook.com/profile.php?id=") >= 2)
     check("the follow button names the Page",
-          "ติดตาม AERIS Music บน Facebook" in html)
+          "ติดตาม NEO VINCI บน Facebook" in html)
     check("links TikTok too", "tiktok.com/@aeris.music4" in html)
     check("keeps the YouTube subscribe link", "sub_confirmation=1" in html)
     check("the first button is the Page, not YouTube",

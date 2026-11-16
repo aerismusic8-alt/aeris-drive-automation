@@ -1,4 +1,4 @@
-"""Daily marketing measurement for AERIS Music. No LLM.
+"""Daily marketing measurement for NEO VINCI. No LLM.
 
 The release rail ships videos and the activity monitor records a channel's
 totals, but nothing turns those into a decision. This runs once a day and:

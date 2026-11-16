@@ -8,7 +8,7 @@ cron would run. GitHub Actions is the one always-on, free runner in this account
 (the same machine that already runs the release and dashboard rails). This script
 captures the session once, so a workflow can restore it and post without a pod.
 
-The output is a **credential**: it is a live login for the AERIS Music Page and
+The output is a **credential**: it is a live login for the NEO VINCI Page and
 TikTok account. Do not commit it, do not paste it into a public place. Set it as
 a repository secret:
 

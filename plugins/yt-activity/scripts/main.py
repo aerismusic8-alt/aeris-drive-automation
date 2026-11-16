@@ -20,7 +20,7 @@ from datetime import datetime, timezone
 CHANNELS = {
     "ch1": ("YT_CH1_REFRESH_TOKEN", "ตาต้า GenX Shop"),
     "ch2": ("YT_CH2_REFRESH_TOKEN", "Farmmer"),
-    "ch3": ("YT_CH3_REFRESH_TOKEN", "AERIS Music"),
+    "ch3": ("YT_CH3_REFRESH_TOKEN", "NEO VINCI"),
     "ch4": ("YT_CH4_REFRESH_TOKEN", "kongkeat pratumma"),
 }
 TOKEN_URL = "https://oauth2.googleapis.com/token"

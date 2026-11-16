@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""AR promo site — generate and publish the AERIS Music landing page.
+"""AR promo site — generate and publish the NEO VINCI landing page.
 
 The page is a real, agent-owned promotional channel: it lives on GitHub Pages
 (``aerismusic8-alt/site-aeris-music``), which needs no captcha and no third
@@ -32,7 +32,7 @@ CHANNEL_ENV = {
     "ch4": "YT_CH4_REFRESH_TOKEN",
 }
 # YouTube lists uploads under the channel's "uploads" playlist (UU<id tail>).
-CHANNEL_ID = "UCm44BjAn03ruOF-WaA3ZRww"  # AERIS Music
+CHANNEL_ID = "UCm44BjAn03ruOF-WaA3ZRww"  # NEO VINCI
 DEFAULT_REPO = "aerismusic8-alt/site-aeris-music"
 GH_TOKEN_FILE = Path(os.environ.get("AR_GH_TOKEN_FILE", "/workspace/ax-tools/ar-identity/gh-token"))
 
@@ -217,9 +217,9 @@ def render(videos: list[dict], channel_url: str) -> str:
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>AERIS Music — เพลงไทยต้นฉบับ · ติดตามเพจ</title>
-<meta name="description" content="AERIS Music — เพลงไทยต้นฉบับ เพลงเศร้า เพื่อชีวิต ลูกทุ่ง คาราโอเกะ พร้อมคู่มือเลือกซื้อหูฟังบลูทูธและลำโพงก่อนตัดสินใจ">
-<meta property="og:title" content="AERIS Music — เพลงไทยต้นฉบับ">
+<title>NEO VINCI — เพลงไทยต้นฉบับ · ติดตามเพจ</title>
+<meta name="description" content="NEO VINCI — เพลงไทยต้นฉบับ เพลงเศร้า เพื่อชีวิต ลูกทุ่ง คาราโอเกะ พร้อมคู่มือเลือกซื้อหูฟังบลูทูธและลำโพงก่อนตัดสินใจ">
+<meta property="og:title" content="NEO VINCI — เพลงไทยต้นฉบับ">
 <meta property="og:description" content="เพลงไทยหลากหลายอารมณ์ พร้อมเวอร์ชันคาราโอเกะ ติดตามเพจไว้ไม่พลาดเพลงใหม่">
 <meta property="og:type" content="website">
 {guide_ld}
@@ -272,14 +272,14 @@ footer{{border-top:1px solid #1e1e2e;padding:34px 0;color:var(--dim);font-size:.
 <body>
 <div class="wrap">
   <header>
-    <div class="logo">AERIS<span>·</span>MUSIC</div>
+    <div class="logo">NEO VINCI<span>·</span>MUSIC</div>
     <a class="btn btn-primary" href="{PAGE_URL}" target="_blank" rel="noopener">ติดตามเพจ</a>
   </header>
   <div class="hero">
     <h1>เพลงไทย<em>ต้นฉบับ</em><br>จากใจถึงใจ</h1>
     <p>เพลงเศร้า · เพื่อชีวิต · ลูกทุ่ง · คาราโอเกะ — เพลงใหม่มาลงเพจเรื่อย ๆ<br>ติดตามเพจไว้ ไม่พลาดเพลงต่อไปครับ 🎶</p>
     <div class="cta">
-      <a class="btn btn-primary" href="{PAGE_URL}" target="_blank" rel="noopener">ติดตาม AERIS Music บน Facebook</a>
+      <a class="btn btn-primary" href="{PAGE_URL}" target="_blank" rel="noopener">ติดตาม NEO VINCI บน Facebook</a>
       <a class="btn btn-ghost" href="{channel_url}?sub_confirmation=1" target="_blank" rel="noopener">ฟังบน YouTube</a>
     </div>
   </div>
@@ -299,14 +299,14 @@ footer{{border-top:1px solid #1e1e2e;padding:34px 0;color:var(--dim);font-size:.
 </section>
 <section id="music" class="wrap">
   <h2>ผลงานล่าสุด</h2>
-  <p class="sub">เพลงไทยต้นฉบับจาก AERIS Music</p>
+  <p class="sub">เพลงไทยต้นฉบับจาก NEO VINCI</p>
   <div class="grid">
 {grid}
   </div>
 </section>
 <section class="wrap">
   <div class="cta" style="justify-content:center">
-    <a class="btn btn-primary" href="{PAGE_URL}" target="_blank" rel="noopener">ติดตาม AERIS Music บน Facebook</a>
+    <a class="btn btn-primary" href="{PAGE_URL}" target="_blank" rel="noopener">ติดตาม NEO VINCI บน Facebook</a>
     <a class="btn" href="mv-index.html">ดูมิวสิควีดีโอทั้งหมด</a>
   </div>
 </section>
@@ -316,7 +316,7 @@ footer{{border-top:1px solid #1e1e2e;padding:34px 0;color:var(--dim);font-size:.
     <a href="{channel_url}" target="_blank" rel="noopener">YouTube</a>
     <a href="{TIKTOK_URL}" target="_blank" rel="noopener">TikTok</a>
   </div>
-  <div>© AERIS Music — เพลงไทยต้นฉบับ</div>
+  <div>© NEO VINCI — เพลงไทยต้นฉบับ</div>
 </footer>
 </body>
 </html>

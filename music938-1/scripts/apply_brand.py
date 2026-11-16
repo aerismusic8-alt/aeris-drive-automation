@@ -1,4 +1,4 @@
-"""Apply the channel identity to the AERIS Music YouTube channel.
+"""Apply the channel identity to the NEO VINCI YouTube channel.
 
 Only the banner is reachable from the API. There is **no** YouTube Data API
 endpoint for the channel avatar — Google exposes it only in Studio — so this

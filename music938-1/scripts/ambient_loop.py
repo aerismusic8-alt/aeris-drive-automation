@@ -38,7 +38,9 @@ if Path(_BIN, "ffmpeg").exists() and _BIN not in os.environ.get("PATH", ""):
     os.environ["PATH"] = _BIN + os.pathsep + os.environ.get("PATH", "")
 
 ROOT = Path(__file__).resolve().parent.parent
-AERIS = ROOT.parent / "aeris938-1"
+sys.path.insert(0, str(ROOT / "scripts"))
+from branding import NAME as BRAND  # noqa: E402  the channel brand
+
 COMPILED = ROOT / "library" / "compilations"
 BEDS = ROOT / "library" / "ambient"
 COVERS = ROOT / "library" / "covers"
@@ -77,22 +79,22 @@ PRESETS: dict[str, dict] = {
         "mood": "calm",
         "key": "C",
         "use_case": "หลับสบาย ผ่อนคลาย นอนไม่หลับ",
-        "title": "เพลงกล่อมนอน {hours} ชั่วโมง | เพลงผ่อนคลายหลับสบาย AERIS Music",
+        "title": f"เพลงกล่อมนอน {{hours}} ชั่วโมง | เพลงผ่อนคลายหลับสบาย {BRAND}",
         # A sleep video tagged with the song list's คาราโอเกะ/เพลงเศร้า describes
         # the wrong thing; each preset owns the words its own search intent uses.
         "tags": ("เพลงกล่อมนอน,เพลงผ่อนคลาย,นอนหลับสบาย,เพลงนอนหลับ,"
-                 "sleep music,relaxing music,ambient,AERIS Music"),
-        "hashtags": "#เพลงกล่อมนอน #เพลงผ่อนคลาย #AERISMusic #ambient #sleepmusic",
+                 f"sleep music,relaxing music,ambient,{BRAND}"),
+        "hashtags": f"#เพลงกล่อมนอน #เพลงผ่อนคลาย #{BRAND.replace(' ', '')} #ambient #sleepmusic",
     },
     "relax": {
         "name": "เพลงผ่อนคลาย",
         "mood": "warm",
         "key": "F",
         "use_case": "ทำงาน อ่านหนังสือ นั่งสมาธิ",
-        "title": "เพลงผ่อนคลาย {hours} ชั่วโมง | ทำงาน อ่านหนังสือ นั่งสมาธิ AERIS Music",
+        "title": f"เพลงผ่อนคลาย {{hours}} ชั่วโมง | ทำงาน อ่านหนังสือ นั่งสมาธิ {BRAND}",
         "tags": ("เพลงผ่อนคลาย,เพลงทำงาน,เพลงอ่านหนังสือ,เพลงสมาธิ,"
-                 "relaxing music,study music,ambient,AERIS Music"),
-        "hashtags": "#เพลงผ่อนคลาย #เพลงทำงาน #AERISMusic #ambient #studymusic",
+                 f"relaxing music,study music,ambient,{BRAND}"),
+        "hashtags": f"#เพลงผ่อนคลาย #เพลงทำงาน #{BRAND.replace(' ', '')} #ambient #studymusic",
     },
 }
 
@@ -188,10 +190,10 @@ def plan(name: str, *, mood: str, key: str, minutes: float,
     desc = "\n".join([
         f"{title}",
         "",
-        f"เพลงผ่อนคลายจาก AERIS Music ยาว {hours} ชั่วโมง เปิดฟังยาว ๆ ได้เลย",
+        f"เพลงผ่อนคลายจาก {BRAND} ยาว {hours} ชั่วโมง เปิดฟังยาว ๆ ได้เลย",
         "ทุกเพลงทำเองในสตูดิโอของเรา",
         "",
-        (hashtags or f"#{name} #เพลงผ่อนคลาย #AERISMusic #ambient #sleepmusic"),
+        (hashtags or f"#{name} #เพลงผ่อนคลาย #{BRAND.replace(' ', '')} #ambient #sleepmusic"),
     ])
     return {"cmd": cmd, "out": out, "title": title, "desc": desc,
             "minutes": minutes, "stem": stem, "use_case": use_case,

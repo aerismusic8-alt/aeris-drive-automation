@@ -2,7 +2,7 @@
 """Render a vertical Short (1080x1920, <=60s) from a Flow Music song.
 
 Why this exists. The channel's own numbers say it plainly: of 449 lifetime views
-on AERIS Music, 382 came from Shorts and about 33 from long-form. A channel with
+on NEO VINCI, 382 came from Shorts and about 33 from long-form. A channel with
 no subscribers gets no long-form impressions - YouTube gives Shorts free
 distribution and long-form nothing until an audience exists. So a pack of 20
 songs builds an audience through Shorts first; the long-form compilations earn

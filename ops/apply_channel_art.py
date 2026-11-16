@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Set the AERIS Music banner through the YouTube Data API — no Studio, no K.
+"""Set the NEO VINCI banner through the YouTube Data API — no Studio, no K.
 
 The channel avatar cannot be set over the API (YouTube exposes no avatar write),
 but the **banner** can, and that is the piece with all the brand information in it.

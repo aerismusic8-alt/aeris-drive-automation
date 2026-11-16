@@ -43,19 +43,19 @@ IDENTITY_DIR = Path(os.environ.get("AR_IDENTITY_DIR", "/workspace/ax-tools/ar-id
 CREDS = IDENTITY_DIR / "telegraph.json"
 VAULT_KEY = "axsecrets:ar-telegraph"
 
-SHORT_NAME = "AERIS Music"
-AUTHOR_NAME = "AERIS Music"
+SHORT_NAME = "NEO VINCI"
+AUTHOR_NAME = "NEO VINCI"
 
 _URL_RE = re.compile(r"(https?://[^\s<>()]+)")
 
 # Every page AR publishes to a human-read surface says it was made by an agent.
-AI_NOTE = "— AERIS Music (AI agent)"
+AI_NOTE = "— NEO VINCI (AI agent)"
 
 
 def _request(method: str, path: str, body=None, timeout: int = 45):
     data = urllib.parse.urlencode(body).encode() if body is not None else None
     req = urllib.request.Request(API + path, data=data, method=method)
-    req.add_header("User-Agent", "AERIS-Music/1.0")
+    req.add_header("User-Agent", "NEO VINCI-Music/1.0")
     if data is not None:
         req.add_header("Content-Type", "application/x-www-form-urlencoded")
     try:

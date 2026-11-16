@@ -41,7 +41,7 @@ LEDGER_REL = "music938-1/work/nostr-announced.json"
 
 WATCH = "https://www.youtube.com/watch?v="
 CHANNEL = "https://www.youtube.com/@aerismusicth"
-FOLLOW_ASK = "กดติดตาม AERIS Music"
+FOLLOW_ASK = "กดติดตาม NEO VINCI"
 FOLLOW_PROMISE = "เพลงใหม่ทุกวัน"
 
 
