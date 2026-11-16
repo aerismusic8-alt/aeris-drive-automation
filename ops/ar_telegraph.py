@@ -31,6 +31,7 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import re
 import sys
 import urllib.error
 import urllib.parse
@@ -44,6 +45,8 @@ VAULT_KEY = "axsecrets:ar-telegraph"
 
 SHORT_NAME = "AERIS Music"
 AUTHOR_NAME = "AERIS Music"
+
+_URL_RE = re.compile(r"(https?://[^\s<>()]+)")
 
 # Every page AR publishes to a human-read surface says it was made by an agent.
 AI_NOTE = "— AERIS Music (AI agent)"
@@ -135,15 +138,34 @@ def whoami() -> dict:
 
 
 def _nodes(text: str) -> list:
-    """Turn plain text into Telegraph nodes: blank line = new paragraph."""
+    """Turn plain text into Telegraph nodes: blank line = new paragraph, and a
+    bare URL becomes a real link (Telegraph renders a text node as plain text)."""
     paras = [p.strip() for p in text.replace("\r\n", "\n").split("\n\n")]
-    return [{"tag": "p", "children": [p]} for p in paras if p]
+    out = []
+    for p in paras:
+        if not p:
+            continue
+        children, pos = [], 0
+        for m in _URL_RE.finditer(p):
+            if m.start() > pos:
+                children.append(p[pos:m.start()])
+            children.append({"tag": "a", "attrs": {"href": m.group(1)},
+                             "children": [m.group(1)]})
+            pos = m.end()
+        if pos < len(p):
+            children.append(p[pos:])
+        out.append({"tag": "p", "children": children or [p]})
+    return out
 
 
 def page(title: str, text: str, author_name: str | None = None,
-         author_url: str | None = None) -> dict:
-    """Publish one page and return its URL. Appends the AI-disclosure line."""
-    rec = load()
+         author_url: str | None = None, token: str | None = None) -> dict:
+    """Publish one page and return its URL. Appends the AI-disclosure line.
+
+    `token` lets a caller (e.g. a CI rail) pass the access token explicitly
+    instead of reading AR's identity file.
+    """
+    rec = load() if not token else {"access_token": token, "author_name": author_name}
     body = text if AI_NOTE in text else f"{text}\n\n{AI_NOTE}"
     payload = {
         "access_token": rec["access_token"],

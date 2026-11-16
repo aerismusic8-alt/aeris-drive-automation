@@ -146,3 +146,14 @@ jobs:
           # Cap a run: if the ledger is ever lost, the rail drips the backlog
           # instead of posting the whole catalogue in one tick.
           python3 ops/announce_releases.py --limit 3 || echo "nostr announce skipped (no secret or no relays)"
+
+      # Publish one search-indexable Telegraph page per new song. Same operator-free
+      # idea as Nostr: AR opens the account itself (no captcha/phone). Idempotent —
+      # the published ledger is in the repo, so a re-run only sends what is new.
+      - name: Publish new songs on Telegraph
+        env:
+          AR_TELEGRAPH_TOKEN: ${{ secrets.AR_TELEGRAPH_TOKEN }}
+          AX_GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -uo pipefail
+          python3 ops/publish_telegraph.py --limit 3 || echo "telegraph publish skipped (no token)"

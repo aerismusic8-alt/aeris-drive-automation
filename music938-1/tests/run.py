@@ -2452,6 +2452,38 @@ def test_footage_rail() -> None:
           < fr._audio_rank({"url": "https://cdn.freesound.org/previews/1.mp3"}))
 
 
+def test_publish_telegraph() -> None:
+    """The Telegraph rail gives each song a search-indexable page, idempotently.
+
+    Same contract as the Nostr announcer: only a public song with a video_id is
+    eligible, an already-published slug is skipped, and nothing is invented.
+    """
+    section("telegraph rail: a page per song, no duplicates")
+    import importlib.util
+    ops = ROOT.parent / "ops"
+    spec = importlib.util.spec_from_file_location(
+        "publish_telegraph", ops / "publish_telegraph.py")
+    pt = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(pt)
+
+    released = [
+        {"slug": "a", "kind": "song", "public": True, "video_id": "V1"},
+        {"slug": "b", "kind": "song", "public": False, "video_id": "V2"},
+        {"slug": "c", "kind": "song", "public": True, "video_id": ""},
+        {"slug": "d", "kind": "album", "public": True, "video_id": "V3"},
+        {"slug": "e", "kind": "song", "public": True, "video_id": "V4"},
+    ]
+    todo = pt.pending(released, {"e": {"url": "u"}})
+    check("only a public song with a video_id is eligible",
+          [r["slug"] for r in todo] == ["a"], str([r["slug"] for r in todo]))
+    check("an already-published slug is skipped", "e" not in [r["slug"] for r in todo])
+    check("limit caps the batch", len(pt.pending(released, {}, limit=1)) == 1)
+    body = pt.page_text("a", "V1")
+    check("the page links the video",
+          f"{pt.WATCH}V1" in body)
+    check("the page links the channel", pt.CHANNEL in body)
+
+
 def test_telegraph_account() -> None:
     """AR can open a publishing surface on its own: Telegraph needs no phone.
 
@@ -6029,6 +6061,7 @@ def main() -> int:
     test_stills_sources()
     test_announce_releases()
     test_footage_rail()
+    test_publish_telegraph()
     test_telegraph_account()
     test_titles()
     test_compilation()
