@@ -12,7 +12,12 @@ then survives a recycle.
 Usage
 -----
     python3 ops/mv_page.py 26-ban-lang-lek-khong-rao          # build and push
+    python3 ops/mv_page.py --all                              # every MV on the release
     python3 ops/mv_page.py 26-ban-lang-lek-khong-rao --dry-run # render to /tmp only
+
+The MV itself is read from disk when this pod built it, otherwise fetched from the
+`media-938` release, so the publisher works from a fresh pod too and is reusable
+for every song, not only the one built in this session.
 """
 from __future__ import annotations
 
@@ -32,11 +37,15 @@ from pathlib import Path
 REPO = "aerismusic8-alt/site-aeris-music"
 RELEASE = "media-938"
 DOWNLOADS = "aerismusic8-alt/aeris-drive-automation"
-ROOT = Path(__file__).resolve().parent.parent / "music938-1"   # .../music938-1
+ROOT = Path(os.environ.get("MV_SOURCE_ROOT")
+            or Path(__file__).resolve().parent.parent / "music938-1")  # .../music938-1
 MV_DIR = ROOT / "library" / "musicvideo"
 sys.path.insert(0, str(ROOT / "scripts"))
 from make_short import load_lyrics  # noqa: E402  (lyric header = the song's metadata)
-CLONE = Path("/workspace/ax-tools/pages") / "site-aeris-music"
+# Where the Pages checkout lives. A CI run checks the Pages repo out itself and
+# points MV_PAGES_DIR at it, so the same publisher works from a fresh pod and from
+# the Pages repo's own workflow without a cross-repo token.
+CLONE = Path(os.environ.get("MV_PAGES_DIR") or "/workspace/ax-tools/pages/site-aeris-music")
 GH_TOKEN_FILE = Path(os.environ.get("AR_GH_TOKEN_FILE", "/workspace/ax-tools/ar-identity/gh-token"))
 
 MOOD_TH = {"warm": "อบอุ่น", "sad": "เศร้า", "epic": "ยิ่งใหญ่", "hopeful": "มีความหวัง",
@@ -53,10 +62,11 @@ TAGLINE = "AERIS Music · เพลงที่ {num} · {mood_th} · {mmss} · 
 
 
 def gh_token() -> str:
-    for name in ("AX_GH_TOKEN", "GH_TOKEN"):
+    """A write token, or "" when none is set (the release reads are public)."""
+    for name in ("AX_GH_TOKEN", "GH_TOKEN", "GITHUB_TOKEN"):
         if os.environ.get(name):
             return os.environ[name]
-    return GH_TOKEN_FILE.read_text().strip()
+    return GH_TOKEN_FILE.read_text().strip() if GH_TOKEN_FILE.exists() else ""
 
 
 def gh(method: str, path: str, token: str, body=None):
@@ -176,23 +186,115 @@ def ensure_clone(token: str) -> Path:
         subprocess.run(["git", "-C", str(CLONE), "pull", "-q", "--ff-only"], check=False)
         return CLONE
     CLONE.parent.mkdir(parents=True, exist_ok=True)
-    subprocess.run(["git", "clone", "-q",
-                    f"https://x-access-token:{token}@github.com/{REPO}.git",
-                    str(CLONE)], check=True)
+    if token:
+        url = f"https://x-access-token:{token}@github.com/{REPO}.git"
+    else:
+        url = f"https://github.com/{REPO}.git"
+    subprocess.run(["git", "clone", "-q", url, str(CLONE)], check=True)
     return CLONE
 
 
+def _gh_headers(accept: str = "application/vnd.github+json") -> dict:
+    hdrs = {"Accept": accept, "User-Agent": "ax-mv-page"}
+    token = gh_token()
+    if token:
+        hdrs["Authorization"] = f"token {token}"
+    return hdrs
+
+
+def _is_mv(name: str) -> bool:
+    """A long-form MV: `film-<slug>.mp4` or `mv-<slug>[-full].mp4` (no Short cut)."""
+    if not name.endswith(".mp4") or "-hook" in name or "-vertical" in name:
+        return False
+    stem = name[:-4]
+    if stem.endswith("-full"):
+        stem = stem[:-5]
+    return stem.startswith(("film-", "mv-"))
+
+
+def slug_from_asset(name: str) -> str:
+    stem = name[:-4]
+    if stem.endswith("-full"):
+        stem = stem[:-5]
+    return stem.split("-", 1)[1]        # strip the film-/mv- prefix
+
+
+def release_mv_assets() -> dict[str, str]:
+    """{slug: asset_name} for every long-form MV on the media release.
+
+    A fresh pod has an empty `library/`, so the MVs that already shipped live only
+    on the release. Reading the release list is what makes the publisher reusable
+    for every song, not just the one built in this session. The film MV wins over a
+    generated one for the same slug, matching `release.mv_files`.
+    """
+    import urllib.request
+    base = f"https://api.github.com/repos/{DOWNLOADS}/releases/tags/{RELEASE}"
+    with urllib.request.urlopen(urllib.request.Request(base, headers=_gh_headers()),
+                                timeout=30) as r:
+        rel = json.loads(r.read().decode())
+    out: dict[str, str] = {}
+    for a in rel.get("assets", []):
+        name = a["name"]
+        if not _is_mv(name):
+            continue
+        slug = slug_from_asset(name)
+        # film- sorts before mv-, so a later mv- never displaces it.
+        if slug not in out or name.startswith("film-"):
+            out[slug] = name
+    return out
+
+
+def fetch_asset(name: str, dest: Path) -> Path:
+    """Download one release asset if it is not already on disk."""
+    if dest.exists():
+        return dest
+    import time
+    import urllib.request
+    info = next((a for a in _release_assets() if a["name"] == name), None)
+    if not info:
+        raise SystemExit(f"{name} is not on the {RELEASE} release")
+    urls = [f"https://api.github.com/repos/{DOWNLOADS}/releases/assets/{info['id']}",
+            info["browser_download_url"]]
+    dest.parent.mkdir(parents=True, exist_ok=True)
+    last: Exception | None = None
+    for attempt in range(3):
+        url = urls[min(attempt, 1)]
+        hdrs = _gh_headers("application/octet-stream") if attempt == 0 else {"User-Agent": "ax-mv-page"}
+        try:
+            with urllib.request.urlopen(urllib.request.Request(url, headers=hdrs),
+                                        timeout=600) as r:
+                dest.write_bytes(r.read())
+            return dest
+        except Exception as exc:  # noqa: BLE001 - a CDN blip must not abort the run
+            last = exc
+            if attempt < 2:
+                time.sleep(5 * (attempt + 1))
+    raise SystemExit(f"could not fetch {name} after 3 tries ({last})")
+
+
+def _release_assets() -> list[dict]:
+    import urllib.request
+    base = f"https://api.github.com/repos/{DOWNLOADS}/releases/tags/{RELEASE}"
+    with urllib.request.urlopen(urllib.request.Request(base, headers=_gh_headers()),
+                                timeout=30) as r:
+        return json.loads(r.read().decode()).get("assets", [])
+
+
 def film_asset(slug: str) -> tuple[Path, str]:
-    """Find the MV for a slug locally; return (path, release asset name).
+    """Find the MV for a slug; return (path, release asset name).
 
     A film MV is `film-<slug>.mp4` (make_film_video.py); a generated MV is
-    `mv-<slug>-full.mp4` (make_music_video.py). Both ship in the media release.
+    `mv-<slug>-full.mp4` (make_music_video.py). Both ship in the media release, so
+    a pod with an empty `library/` fetches the one it needs instead of failing.
     """
     for name in (f"film-{slug}.mp4", f"mv-{slug}-full.mp4"):
         p = MV_DIR / name
         if p.exists():
             return p, name
-    raise SystemExit(f"no MV for {slug} under {MV_DIR} — build it first")
+    on_release = release_mv_assets().get(slug)
+    if not on_release:
+        raise SystemExit(f"no MV for {slug} on disk or on the {RELEASE} release")
+    return fetch_asset(on_release, MV_DIR / on_release), on_release
 
 
 def write_index(repo: Path) -> str:
@@ -243,33 +345,37 @@ h1{{font-size:1.6rem;font-weight:700;margin-bottom:6px}}
     return "mv-index.html"
 
 
-def main(argv=None) -> int:
-    ap = argparse.ArgumentParser(description=__doc__.splitlines()[0])
-    ap.add_argument("slug", help="song slug, e.g. 26-ban-lang-lek-khong-rao")
-    ap.add_argument("--dry-run", action="store_true", help="render locally, no push")
-    args = ap.parse_args(argv)
-
-    src, asset = film_asset(args.slug)
-    meta = song_meta(args.slug)
-    secs = probe(src)["seconds"]
-
+def publish(slug: str, dry_run: bool = False, force: bool = False) -> str:
+    """Render and (unless dry-run) push the watch page for one song. Returns the URL."""
     token = gh_token()
     repo = ensure_clone(token)
-    poster, preview = f"mv-{args.slug}-poster.jpg", f"mv-{args.slug}-720p.mp4"
+    url = f"https://aerismusic8-alt.github.io/{REPO.split('/')[1]}/mv-{slug}.html"
+    page = repo / f"mv-{slug}.html"
+    if page.exists() and not force and not dry_run:
+        # The daily rail re-runs this over every MV; without this the run would
+        # re-download a 100-200 MB film and re-encode it to rebuild a page that
+        # is already live. Only a new MV (or --force) does real work.
+        print(f"skip {slug}: page already published")
+        return url
+
+    src, asset = film_asset(slug)
+    meta = song_meta(slug)
+    secs = probe(src)["seconds"]
+
+    poster, preview = f"mv-{slug}-poster.jpg", f"mv-{slug}-720p.mp4"
     subprocess.run(["ffmpeg", "-v", "error", "-y", "-ss", str(secs / 2), "-i", str(src),
                     "-frames:v", "1", "-vf", "scale=1280:720", str(repo / poster)], check=True)
     build_preview(src, repo / preview)
-    html = render(args.slug, meta, secs, poster, preview, asset)
-    (repo / f"mv-{args.slug}.html").write_text(html)
+    html = render(slug, meta, secs, poster, preview, asset)
+    page.write_text(html)
     write_index(repo)
 
-    url = f"https://aerismusic8-alt.github.io/{REPO.split('/')[1]}/mv-{args.slug}.html"
-    if args.dry_run:
-        print(f"dry-run: wrote {repo}/mv-{args.slug}.html ({preview}, {poster})")
+    if dry_run:
+        print(f"dry-run: wrote {page} ({preview}, {poster})")
         print(f"would publish: {url}")
-        return 0
+        return url
 
-    subprocess.run(["git", "-C", str(repo), "add", f"mv-{args.slug}.html", poster, preview,
+    subprocess.run(["git", "-C", str(repo), "add", f"mv-{slug}.html", poster, preview,
                     "mv-index.html"], check=True)
     # A republish can be byte-identical (same film, same song), so a bare commit
     # would exit 1 and abort the push. Only commit when something is staged.
@@ -277,9 +383,35 @@ def main(argv=None) -> int:
                             check=False).returncode
     if staged != 0:
         subprocess.run(["git", "-C", str(repo), "commit", "-q", "-m",
-                        f"MV watch page: {args.slug}"], check=True)
+                        f"MV watch page: {slug}"], check=True)
     subprocess.run(["git", "-C", str(repo), "push", "-q", "origin", "main"], check=True)
     print(f"published: {url}")
+    return url
+
+
+def main(argv=None) -> int:
+    ap = argparse.ArgumentParser(description=__doc__.splitlines()[0])
+    ap.add_argument("slug", nargs="?", help="song slug, e.g. 26-ban-lang-lek-khong-rao")
+    ap.add_argument("--all", action="store_true",
+                    help="publish a page for every MV on the media release")
+    ap.add_argument("--force", action="store_true",
+                    help="rebuild even when the page already exists")
+    ap.add_argument("--dry-run", action="store_true", help="render locally, no push")
+    args = ap.parse_args(argv)
+
+    if args.all:
+        slugs = sorted(release_mv_assets())
+        if not slugs:
+            print("no MV assets on the release")
+            return 0
+        print(f"{len(slugs)} MV(s) on the release: {', '.join(slugs)}")
+        for s in slugs:
+            publish(s, dry_run=args.dry_run, force=args.force)
+        return 0
+
+    if not args.slug:
+        ap.error("give a slug or --all")
+    publish(args.slug, dry_run=args.dry_run, force=args.force)
     return 0
 
 

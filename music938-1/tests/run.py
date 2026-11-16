@@ -1415,6 +1415,25 @@ def test_mv_page() -> None:
     check("a generated MV resolves to mv-<slug>-full.mp4",
           a01 == "mv-01-khon-di-thi-chak-pai-full.mp4", a01)
 
+    # The publisher is reusable for *every* song, not only the one built in this
+    # session: a fresh pod reads the release list, so it must recognise a long-form
+    # MV asset and recover the slug from it. A Short cut (`-hook`/`-vertical`) is a
+    # different deliverable and must never be taken for the long-form MV.
+    check("a film MV asset is recognised",
+          mv._is_mv("film-24-yut-mai-yom.mp4"), "film-24")
+    check("a generated full MV asset is recognised",
+          mv._is_mv("mv-01-khon-di-thi-chak-pai-full.mp4"), "mv-01-full")
+    check("a Short hook cut is not the long-form MV",
+          not mv._is_mv("mv-01-khon-di-thi-chak-pai-hook.mp4"), "hook")
+    check("a vertical Short cut is not the long-form MV",
+          not mv._is_mv("film-24-yut-mai-yom-vertical-hook.mp4"), "vertical")
+    check("the slug is recovered from a film MV asset",
+          mv.slug_from_asset("film-24-yut-mai-yom.mp4") == "24-yut-mai-yom",
+          mv.slug_from_asset("film-24-yut-mai-yom.mp4"))
+    check("the slug is recovered from a generated MV asset",
+          mv.slug_from_asset("mv-01-khon-di-thi-chak-pai-full.mp4") == "01-khon-di-thi-chak-pai",
+          mv.slug_from_asset("mv-01-khon-di-thi-chak-pai-full.mp4"))
+
     # The index lists every published page by its Thai title (the page's <h1>),
     # so K reads song names, not slugs.
     import tempfile
