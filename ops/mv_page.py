@@ -20,11 +20,13 @@ import argparse
 import base64
 import json
 import os
+import re
 import shutil
 import subprocess
 import sys
 import urllib.error
 import urllib.request
+from html import escape as esc_html
 from pathlib import Path
 
 REPO = "aerismusic8-alt/site-aeris-music"
@@ -74,11 +76,13 @@ def song_meta(slug: str) -> dict:
     """Title, number, mood and film, read from the song's own lyric header."""
     meta, _ = load_lyrics(slug)
     mood = meta.get("mood", "calm")
-    sub = meta.get("subtitle", "") or ""
-    num = "".join(ch for ch in sub.split("·")[0] if ch.isdigit()) if "·" in sub else ""
+    # The number is the slug's leading digits (canonical); the subtitle carries it
+    # only sometimes, so the slug is the source that is always there.
+    head = slug.split("-", 1)[0]
+    num = head.lstrip("0") or head if head.isdigit() else "—"
     import make_film_video as fv
     film_id = meta.get("film") or fv.film_for_mood(mood)["id"]
-    return {"title": meta.get("title", slug), "number": num or "—",
+    return {"title": meta.get("title", slug), "number": num,
             "mood_th": MOOD_TH.get(mood, "เพลงไทยต้นฉบับ"),
             "film_title": FILM_TITLE.get(film_id, film_id)}
 
@@ -105,13 +109,15 @@ def build_preview(src: Path, out: Path) -> None:
                          "100 MB limit; lower crf/scale")
 
 
-def render(slug: str, meta: dict, secs: float, poster: str, preview: str) -> str:
+def render(slug: str, meta: dict, secs: float, poster: str, preview: str,
+           asset: str | None = None) -> str:
     film = meta.get("film_title") or "ภาพยนตร์สาธารณสมบัติ"
     title = meta.get("title") or slug
     tagline = TAGLINE.format(num=meta.get("number", "—"),
                              mood_th=meta.get("mood_th", "เพลงไทยต้นฉบับ"),
                              mmss=mmss(secs), film=film)
-    full = f"https://github.com/{DOWNLOADS}/releases/download/{RELEASE}/film-{slug}.mp4"
+    asset = asset or f"film-{slug}.mp4"
+    full = f"https://github.com/{DOWNLOADS}/releases/download/{RELEASE}/{asset}"
     return f'''<!doctype html>
 <html lang="th">
 <head>
@@ -176,15 +182,74 @@ def ensure_clone(token: str) -> Path:
     return CLONE
 
 
+def film_asset(slug: str) -> tuple[Path, str]:
+    """Find the MV for a slug locally; return (path, release asset name).
+
+    A film MV is `film-<slug>.mp4` (make_film_video.py); a generated MV is
+    `mv-<slug>-full.mp4` (make_music_video.py). Both ship in the media release.
+    """
+    for name in (f"film-{slug}.mp4", f"mv-{slug}-full.mp4"):
+        p = MV_DIR / name
+        if p.exists():
+            return p, name
+    raise SystemExit(f"no MV for {slug} under {MV_DIR} — build it first")
+
+
+def write_index(repo: Path) -> str:
+    """Refresh mv-index.html so every published MV page is one click away."""
+    pages = sorted(repo.glob("mv-*.html"))
+    items = []
+    for p in pages:
+        if p.name == "mv-index.html":
+            continue
+        # Show the song's Thai title (the page's <h1>), not the slug.
+        m = re.search(r"<h1>(.*?)</h1>", p.read_text(), re.S)
+        title = m.group(1).strip() if m else p.stem[3:].replace("-", " ")
+        thumb = f"{p.stem}-poster.jpg"
+        href = p.name
+        img = (f'<img src="{thumb}" alt="{esc_html(title)}" loading="lazy">'
+               if (repo / thumb).exists() else "")
+        items.append(f'<a class="card" href="{href}">{img}'
+                     f'<div class="t">{esc_html(title)}</div></a>')
+    grid = "\n".join(items) or "<p>เร็ว ๆ นี้</p>"
+    html = f'''<!doctype html>
+<html lang="th"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>มิวสิควีดีโอ · AERIS Music</title>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Thai:wght@300;400;600;700&display=swap" rel="stylesheet">
+<style>
+:root{{--bg:#0b0b0f;--fg:#f4f4f8;--dim:#a6a6b8;--accent:#ff4d6d;--accent2:#ffb03a;--card:#1b1b26}}
+*{{box-sizing:border-box;margin:0;padding:0}}
+body{{background:var(--bg);color:var(--fg);font-family:"IBM Plex Sans Thai",system-ui,sans-serif;line-height:1.7;-webkit-font-smoothing:antialiased}}
+a{{color:inherit;text-decoration:none}}
+.wrap{{max-width:1040px;margin:0 auto;padding:26px 22px}}
+h1{{font-size:1.6rem;font-weight:700;margin-bottom:6px}}
+.sub{{color:var(--dim);margin-bottom:22px}}
+.grid{{display:grid;gap:20px;grid-template-columns:repeat(auto-fit,minmax(280px,1fr))}}
+.card{{background:var(--card);border:1px solid #24243a;border-radius:16px;overflow:hidden;transition:transform .15s,border-color .2s}}
+.card:hover{{transform:translateY(-3px);border-color:#3a3a5c}}
+.card img{{width:100%;aspect-ratio:16/9;object-fit:cover;display:block}}
+.card .t{{padding:14px 16px;font-weight:600}}
+</style></head><body>
+<div class="wrap">
+  <h1>มิวสิควีดีโอ · AERIS Music</h1>
+  <p class="sub">ภาพยนตร์สาธารณสมบัติ ตัดตามบทเพลง · <a href="./">← หน้าแรก</a></p>
+  <div class="grid">
+{grid}
+  </div>
+</div></body></html>
+'''
+    (repo / "mv-index.html").write_text(html)
+    return "mv-index.html"
+
+
 def main(argv=None) -> int:
     ap = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     ap.add_argument("slug", help="song slug, e.g. 26-ban-lang-lek-khong-rao")
     ap.add_argument("--dry-run", action="store_true", help="render locally, no push")
     args = ap.parse_args(argv)
 
-    src = MV_DIR / f"film-{args.slug}.mp4"
-    if not src.exists():
-        raise SystemExit(f"no film at {src} — build it with make_film_video.py first")
+    src, asset = film_asset(args.slug)
     meta = song_meta(args.slug)
     secs = probe(src)["seconds"]
 
@@ -194,8 +259,9 @@ def main(argv=None) -> int:
     subprocess.run(["ffmpeg", "-v", "error", "-y", "-ss", str(secs / 2), "-i", str(src),
                     "-frames:v", "1", "-vf", "scale=1280:720", str(repo / poster)], check=True)
     build_preview(src, repo / preview)
-    html = render(args.slug, meta, secs, poster, preview)
+    html = render(args.slug, meta, secs, poster, preview, asset)
     (repo / f"mv-{args.slug}.html").write_text(html)
+    write_index(repo)
 
     url = f"https://aerismusic8-alt.github.io/{REPO.split('/')[1]}/mv-{args.slug}.html"
     if args.dry_run:
@@ -203,10 +269,15 @@ def main(argv=None) -> int:
         print(f"would publish: {url}")
         return 0
 
-    subprocess.run(["git", "-C", str(repo), "add", f"mv-{args.slug}.html", poster, preview],
-                   check=True)
-    subprocess.run(["git", "-C", str(repo), "commit", "-q", "-m",
-                    f"MV watch page: {args.slug}"], check=True)
+    subprocess.run(["git", "-C", str(repo), "add", f"mv-{args.slug}.html", poster, preview,
+                    "mv-index.html"], check=True)
+    # A republish can be byte-identical (same film, same song), so a bare commit
+    # would exit 1 and abort the push. Only commit when something is staged.
+    staged = subprocess.run(["git", "-C", str(repo), "diff", "--cached", "--quiet"],
+                            check=False).returncode
+    if staged != 0:
+        subprocess.run(["git", "-C", str(repo), "commit", "-q", "-m",
+                        f"MV watch page: {args.slug}"], check=True)
     subprocess.run(["git", "-C", str(repo), "push", "-q", "origin", "main"], check=True)
     print(f"published: {url}")
     return 0

@@ -1407,6 +1407,29 @@ def test_mv_page() -> None:
     check("the page is hosted on GitHub Pages (survives a recycle)",
           "github.io/site-aeris-music" in mv.__doc__ or "Pages" in mv.__doc__)
 
+    # Both MV shapes resolve: a film MV (`film-<slug>.mp4`) and a generated MV
+    # (`mv-<slug>-full.mp4`), so the publisher is not tied to one rail.
+    _, a26 = mv.film_asset("26-ban-lang-lek-khong-rao")
+    _, a01 = mv.film_asset("01-khon-di-thi-chak-pai")
+    check("a film MV resolves to film-<slug>.mp4", a26 == "film-26-ban-lang-lek-khong-rao.mp4", a26)
+    check("a generated MV resolves to mv-<slug>-full.mp4",
+          a01 == "mv-01-khon-di-thi-chak-pai-full.mp4", a01)
+
+    # The index lists every published page by its Thai title (the page's <h1>),
+    # so K reads song names, not slugs.
+    import tempfile
+    import pathlib
+    with tempfile.TemporaryDirectory() as td:
+        td = pathlib.Path(td)
+        (td / "mv-26-x.html").write_text("<h1>บ้านหลังเล็กของเรา</h1>")
+        (td / "mv-01-y.html").write_text("<h1>คนดีที่จากไป</h1>")
+        mv.write_index(td)
+        idx = (td / "mv-index.html").read_text()
+        check("the MV index shows the Thai title, not the slug",
+              "บ้านหลังเล็กของเรา" in idx and "คนดีที่จากไป" in idx)
+        check("the MV index links every page",
+              'href="mv-26-x.html"' in idx and 'href="mv-01-y.html"' in idx)
+
     # Rule #1: the page publisher never asks for a credential of its own; it uses
     # the same write token as every other push.
     src = inspect.getsource(mv)
