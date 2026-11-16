@@ -6249,3 +6249,14 @@ User token → `FB_PAGE_TOKEN`. A paused surface reports `note="paused"`.
 ## YPP gate detail (moved from MEMORY.md 2026-11-15)
 `goal_watch` reads the Studio scrape and names **retention** when the hour gate is
 further (2026-11-13: 8 subs vs 23.5 h; 0% returning).
+
+## Free-media rails + film-casting detail (moved from MEMORY.md 2026-11-16)
+`ops/stills_rail.py` = Wikimedia + Openverse + NASA + Cleveland/Art Institute
+(CC0/PD). `ops/footage_rail.py` = Commons video (webm 1080p/4K) + Openverse audio
+(Jamendo/Freesound). All no-key, licence-checked; Pexels/Pixabay/Unsplash need a
+key (signup blocked). `test_film_video` pins the casting, the section pacing, the
+section grade and the vertical fit.
+Film casting (make_film_video.py FILMS, in order): rock_rock_rock [epic,hopeful],
+criminal [epic,hopeful,sad], gun_pulpit [epic,mystic] (warm dropped 2026-11-16),
+pied_piper [hopeful,warm,calm], haunted_hill [sad,mystic], his_girl_friday
+[warm,hopeful]. `film_for_mood` returns the first film listing the mood.

@@ -102,7 +102,10 @@ FILMS: list[dict] = [
         "file": "ccoPublicDomainThe_Gun_and_the_Pulpit.mp4",
         "title": "The Gun and the Pulpit",
         "year": 1974,
-        "moods": ["epic", "mystic", "warm"],
+        # A Western: dust, guns and menace. Right for an epic or a mystic song;
+        # it was dropped from `warm` (K, 2026-11-16) because a warm song about a
+        # home got a Western — the picture must answer the lyric, not just move.
+        "moods": ["epic", "mystic"],
         "note": "The Gun and the Pulpit (1974), public domain, via Internet Archive.",
     },
     {

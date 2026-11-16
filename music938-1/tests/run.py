@@ -1233,6 +1233,13 @@ def test_film_video() -> None:
     check("a sad song casts a film that lists sad",
           "sad" in fv.film_for_mood("sad")["moods"],
           fv.film_for_mood("sad")["id"])
+    # K, 2026-11-16: a warm song about a home was cast a Western ("บ้านหลังเล็ก
+    # ของเรา" -> The Gun and the Pulpit). The picture must answer the lyric, so a
+    # warm song gets the colour musical, not the noir or the Western.
+    check("a warm song casts a warm film, not the Western",
+          "warm" in fv.film_for_mood("warm")["moods"]
+          and fv.film_for_mood("warm")["id"] != "gun_pulpit",
+          fv.film_for_mood("warm")["id"])
     check("an unknown mood still returns a real film",
           fv.film_for_mood("nonsense")["id"] in {f["id"] for f in fv.FILMS})
     check("every film has a mood, a title and a credit",

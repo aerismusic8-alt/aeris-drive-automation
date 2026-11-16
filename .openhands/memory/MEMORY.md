@@ -65,13 +65,12 @@ The **sfizz** sampler, not the GM synth; `AX_REQUIRE_REAL_INSTRUMENTS=1` makes a
 fallback **raise** (beds pre-render on the pod; archive).
 
 ## Music video = public-domain film matched to the song (2026-11-13)
-Film chosen by the lyric's mood: `make_film_video.py` casts by `# MOOD:`, pulls
-from archive.org (check `licenseurl`); `test_film_video` pins it (detail: archive).
-**Free media (2026-11-16):** `ops/stills_rail.py` + `ops/footage_rail.py`
-(Wikimedia/Openverse/NASA/Commons video, no-key, licence-checked; Pexels/Pixabay
-need a key). **Release wiring (2026-11-16):** `release.py plan()` ships the real MV
-as the long-form release when one exists (`mv_files`; film>mv; -hook/-vertical
-excluded); the lyric render is only the fallback. `describe()` marks `มิวสิควีดีโอ`.
+`make_film_video.py` casts the film by `# MOOD:` from archive.org (check
+`licenseurl`); the picture must answer the lyric (K, 2026-11-16: a warm song got a
+Western → `warm` recast to the musical). **Release wiring (2026-11-16):**
+`release.py plan()` ships the MV as the long-form release when one exists
+(`mv_files`; film>mv; -hook/-vertical excluded); lyric render is the fallback;
+`describe()` marks `มิวสิควีดีโอ`. Free-media rails + `test_film_video`: archive.
 
 ## K-free status (2026-11-13) — audit in `ops/k_free_status.py`
 "Blocked" = "blocked on the route I tried first" (desktop+vault first). Scoreboard: archive.
