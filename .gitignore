@@ -105,6 +105,8 @@ music938-1/library/shorts/*.mp4
 # The scenes live under library/mv/, the video under library/musicvideo/.
 music938-1/library/musicvideo/*.mp4
 music938-1/library/mv/*.jpg
+# The motion lane (make_motion.py): a 3-4 s regenerable render per song.
+music938-1/library/motion/*.mp4
 music938-1/library/affiliate/*.mp4
 # The absurdist "exhibit" clips (K's FB/TK rebrand) are regenerable ffmpeg
 # renders over the covers we already own; the durable copy is the media release.

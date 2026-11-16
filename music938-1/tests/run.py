@@ -1297,6 +1297,77 @@ def test_film_video() -> None:
     check("the film's own audio is never mapped", '"-an"' in code)
 
 
+def test_mv_is_the_release() -> None:
+    section("a real music video replaces the lyric render as the long-form release")
+    # K, 2026-11-16: "อย่างน้อยๆทำออกมาให้ k เปิดดูแล้วเพลิน" — a still cover on a
+    # lyric render is the thing a viewer scrolls past, so when a film/MV exists
+    # it must be what `plan()` schedules, not the karaoke lyric render. This is
+    # the wiring that was missing: make_film_video.py built videos that nothing
+    # ever published.
+    import release
+
+    # Naming: the film render wins over the generated MV, and the -full / -hook
+    # variants are told apart. mv_files reads names from the release asset list,
+    # so stub it to a fixed set instead of hitting the network.
+    real_assets = release._release_asset_names
+    try:
+        release._release_asset_names = lambda: {
+            "film-x.mp4", "mv-x.mp4", "film-y.mp4", "film-y-hook.mp4",
+            "film-y-vertical-hook.mp4", "mv-z-full.mp4",
+        }
+        check("a film MV sorts ahead of the generated MV",
+              [p.name for p in release.mv_files("x")][0] == "film-x.mp4",
+              str([p.name for p in release.mv_files("x")]))
+        check("the -hook and -vertical cuts are not the long-form release",
+              [p.name for p in release.mv_files("y")] == ["film-y.mp4"],
+              str([p.name for p in release.mv_files("y")]))
+        check("the generated MV's -full name is still recognised",
+              [p.name for p in release.mv_files("z")] == ["mv-z-full.mp4"],
+              str([p.name for p in release.mv_files("z")]))
+        check("a song with no MV has none", release.mv_files("none") == [])
+        check("has_mv answers from mv_files", release.has_mv("x") and not release.has_mv("none"))
+    finally:
+        release._release_asset_names = real_assets
+
+    # The plan schedules the MV as `kind: song` for a song that has one, and
+    # falls back to the karaoke render only when it does not.
+    real_mv = release.mv_files
+    real_hv = release.has_video
+    real_state = release.load_state
+    real_pins = release.pinned_songs
+    real_has_song = release.has_song
+    real_retired = release.is_retired
+    real_bed = release.is_bed
+    real_aff = release.affiliate_cards
+    real_all_slugs = release.all_slugs
+    try:
+        release.mv_files = lambda s: [release.MUSICVIDEO / f"film-{s}.mp4"] if s == "with-mv" else []
+        release.has_video = lambda s, mix: True
+        release.load_state = lambda: {"released": []}
+        release.pinned_songs = lambda: []
+        release.has_song = lambda s: True
+        release.is_retired = lambda s: False
+        release.is_bed = lambda s: False
+        release.affiliate_cards = lambda: []
+        release.all_slugs = lambda: ["with-mv", "no-mv"]
+        items = release.plan(3)
+        longform = {i["slug"]: i["video"].name for i in items if i["kind"] == "song"}
+        check("the song with an MV schedules the MV file",
+              longform.get("with-mv") == "film-with-mv.mp4", str(longform))
+        check("the song without an MV falls back to the lyric render",
+              longform.get("no-mv") == "song-no-mv.mp4", str(longform))
+    finally:
+        release.mv_files = real_mv
+        release.has_video = real_hv
+        release.load_state = real_state
+        release.pinned_songs = real_pins
+        release.has_song = real_has_song
+        release.is_retired = real_retired
+        release.is_bed = real_bed
+        release.affiliate_cards = real_aff
+        release.all_slugs = real_all_slugs
+
+
 def test_follow_end_card() -> None:
     section("follow ask (the only on-screen follow prompt)")
     import make_short
@@ -6047,6 +6118,7 @@ def main() -> int:
     test_motion_lane()
     test_music_video()
     test_film_video()
+    test_mv_is_the_release()
     test_follow_end_card()
     test_ambient_loop()
     test_soundfont_renderer()

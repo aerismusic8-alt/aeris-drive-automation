@@ -35,6 +35,7 @@ SOURCES = [
     ("songs", "*.mp3"),
     ("songs", "*.wav"),
     ("karaoke", "*.mp4"),
+    ("musicvideo", "*.mp4"),
     ("shorts", "*.mp4"),
     ("affiliate", "*.mp4"),
     ("surreal", "*.mp4"),

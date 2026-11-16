@@ -44,6 +44,11 @@ import yt_quota  # noqa: E402
 LYRICS = ROOT / "lyrics"
 SONGS = ROOT / "library" / "songs"
 KARAOKE = ROOT / "library" / "karaoke"
+# A real music video, built by make_film_video.py / make_music_video.py. When one
+# exists for a song it replaces the lyric render as the long-form release: the
+# whole point of the rail is that a still-with-lyrics clip is what a viewer
+# scrolls past (K, 2026-11-13). Absent one, the lyric render is still the fallback.
+MUSICVIDEO = ROOT / "library" / "musicvideo"
 COVERS = ROOT / "library" / "covers"
 AFF_DIR = ROOT / "library" / "affiliate"
 THUMBS = ROOT / "library" / "thumbs"
@@ -136,6 +141,22 @@ def song_title(title_th: str, tagline: str, mood: str) -> str:
     if intent and len(f"{title_th} — {intent}") <= 60:
         return f"{title_th} — {intent}"
     return f"{title_th} — {tagline}"
+
+
+def mv_title(title_th: str, tagline: str, mood: str) -> str:
+    """`<song> — มิวสิควีดีโอ <search intent>`, the MV-marked twin of song_title.
+
+    The marker tells a viewer there is something to watch, which is the point of
+    the MV rail; the search intent is kept because discovery is what a title is
+    for. When both do not fit YouTube's ~60-char truncation the marker yields and
+    the title falls back to the plain song title — the description still carries
+    the `🎬 มิวสิควีดีโอ` note, so the fact is never lost.
+    """
+    intent = TITLE_INTENT.get(mood, "")
+    marked = f"{title_th} — มิวสิควีดีโอ {intent}" if intent else ""
+    if marked and len(marked) <= 60:
+        return marked
+    return song_title(title_th, tagline, mood)
 
 
 # One song yields three Shorts, one per chorus. The 2026-11-05 advisor panel
@@ -348,6 +369,34 @@ def has_video(slug: str, mix: str) -> bool:
     return _have(f"{mix}-{slug}.mp4", KARAOKE / f"{mix}-{slug}.mp4")
 
 
+def mv_files(slug: str) -> list[Path]:
+    """Music videos for a song, newest first: `film-<slug>[-full].mp4` then `mv-<slug>[-full].mp4`.
+
+    A film MV (`make_film_video.py`) and a generated MV (`make_music_video.py`)
+    may both exist. The film one wins: real footage reads as more alive than
+    animated cover art, and it is the rail K asked for. A `-hook` / `-vertical`
+    variant is skipped — those are the Short cuts, not the long-form release.
+    """
+    def matches(n: str) -> bool:
+        if not n.endswith(".mp4") or "-hook" in n or "-vertical" in n:
+            return False
+        stem = n[:-4]
+        if stem.endswith("-full"):
+            stem = stem[:-5]
+        return stem in (f"film-{slug}", f"mv-{slug}")
+
+    names = [n for n in _release_asset_names() if matches(n)]
+    if not names:
+        names = [p.name for p in MUSICVIDEO.glob("*.mp4") if matches(p.name)]
+    out = [MUSICVIDEO / n for n in sorted(set(names))]
+    out.sort(key=lambda p: (0 if p.name.startswith("film-") else 1))
+    return out
+
+
+def has_mv(slug: str) -> bool:
+    return bool(mv_files(slug))
+
+
 def load_state() -> dict:
     if STATE.exists():
         try:
@@ -557,10 +606,20 @@ def describe(slug: str, kind: str, variant: str = "") -> tuple[str, str, list[st
             f"{HASHTAGS}"
         )
     else:
-        title = song_title(title_th, tagline, mood)
+        # A song with a real music video is labelled as one: the whole reason the
+        # MV rail exists is that a viewer scrolls past a still cover, so the title
+        # has to say there is something to watch. Everything else keeps the
+        # search-shaped song title.
+        if has_mv(slug):
+            title = mv_title(title_th, tagline, mood)
+            mv_line = "🎬 มิวสิควีดีโอเต็มเพลง — ภาพเคลื่อนไหวตัดตามจังหวะเพลง\n"
+        else:
+            title = song_title(title_th, tagline, mood)
+            mv_line = ""
         desc = (
             f"🎵 {title_th}\n\n"
             f"{tagline}\n"
+            f"{mv_line}"
             f"{LABEL}\n"
             f"{CTA}\n\n"
             f"เพลงที่ {int(n)} ในชุดเพลงไทยของ AERIS Music — เนื้อร้องและทำนองใหม่\n\n"
@@ -784,9 +843,17 @@ def plan(days: int, shorts: bool = False, spread: float = 0,
         # (K, 2026-11-03): its lyric sweep was estimated, not measured, and
         # drifted off the sung line, so it was ordered dropped. Already-live
         # karaoke videos stay up; nothing new is planned.
-        if not shorts and has_video(song, "song"):
-            group.append({"slug": song, "kind": "song",
-                          "video": KARAOKE / f"song-{song}.mp4", "variant": ""})
+        # A real music video is the long-form release when one exists — it is
+        # what makes a viewer stop scrolling (K, 2026-11-13). The lyric render
+        # (`karaoke/song-<slug>.mp4`) is the fallback for songs that have none.
+        if not shorts:
+            mv = mv_files(song)
+            if mv:
+                group.append({"slug": song, "kind": "song",
+                              "video": mv[0], "variant": ""})
+            elif has_video(song, "song"):
+                group.append({"slug": song, "kind": "song",
+                              "video": KARAOKE / f"song-{song}.mp4", "variant": ""})
         if group:
             groups.append(group)
     depth = max((len(g) for g in groups), default=0)
