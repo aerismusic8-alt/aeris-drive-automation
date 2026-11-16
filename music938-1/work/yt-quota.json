@@ -208,8 +208,11 @@
    ]
   },
   "2026-11-16": {
-   "units": 0,
-   "calls": {},
+   "units": 100,
+   "calls": {
+    "thumbnails.set": 1,
+    "playlistItems.insert": 1
+   },
    "reserves": [
     {
      "purpose": "release 1 item(s)",
@@ -232,7 +235,7 @@
      "at": "2026-11-16T17:14:50+00:00"
     }
    ],
-   "updated": "2026-11-16T17:14:50+00:00"
+   "updated": "2026-11-16T17:14:54+00:00"
   }
  }
 }

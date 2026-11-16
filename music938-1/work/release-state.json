@@ -809,6 +809,16 @@
    "public": true,
    "thumb_ok": false,
    "playlist_ok": false
+  },
+  {
+   "slug": "26-ban-lang-lek-khong-rao",
+   "kind": "song",
+   "variant": "",
+   "video_id": "BD8RW22qe00",
+   "at": "2026-11-16T17:14:54+00:00",
+   "public": true,
+   "thumb_ok": false,
+   "playlist_ok": true
   }
  ],
  "playlists": {
