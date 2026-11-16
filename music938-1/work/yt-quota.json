@@ -208,9 +208,9 @@
    ]
   },
   "2026-11-16": {
-   "units": 150,
+   "units": 200,
    "calls": {
-    "thumbnails.set": 2,
+    "thumbnails.set": 3,
     "playlistItems.insert": 1
    },
    "reserves": [
@@ -235,7 +235,7 @@
      "at": "2026-11-16T17:14:50+00:00"
     }
    ],
-   "updated": "2026-11-16T17:15:54+00:00"
+   "updated": "2026-11-16T18:21:30+00:00"
   }
  }
 }
