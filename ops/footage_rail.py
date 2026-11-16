@@ -21,7 +21,9 @@ import re
 import urllib.parse
 import urllib.request
 
-UA = {"User-Agent": "AX-footage-builder/1.0 (educational channel; contact ax@example.com)"}
+# upload.wikimedia.org answers 403 to a User-Agent whose contact is example.com;
+# a plain product/URL UA is accepted (verified 2026-11-16). Do not "tidy" this.
+UA = {"User-Agent": "AERIS-Music/1.0 (https://youtube.com/@aerismusicth)"}
 COMMONS_API = "https://commons.wikimedia.org/w/api.php"
 OPENVERSE_AUDIO = "https://api.openverse.org/v1/audio/"
 
@@ -77,7 +79,12 @@ def search_video_commons(query, limit=8):
 
 
 def search_audio_openverse(query, limit=8):
-    """Openverse audio (Jamendo + the CC web). No key; direct audio URL."""
+    """Openverse audio (Jamendo + Freesound + the CC web). No key; direct URL.
+
+    Jamendo serves full-length mp3s and is reachable from this host; Freesound's
+    CDN only serves short previews and times out here (2026-11-16), so Jamendo
+    tracks are ranked first. Freesound stays as a fallback rather than a filter.
+    """
     params = {"q": query, "license": "cc0,pdm,by,by-sa",
               "page_size": str(min(limit * 3, 50))}
     try:
@@ -101,7 +108,13 @@ def search_audio_openverse(query, limit=8):
             "duration_ms": r.get("duration") or 0,
             "origin": "Openverse",
         })
+    out.sort(key=_audio_rank)
     return out
+
+
+def _audio_rank(item: dict) -> int:
+    """0 for a full track we can actually fetch (Jamendo), 1 for a preview host."""
+    return 0 if "jamendo" in (item.get("url") or "") else 1
 
 
 VIDEO_SOURCES = [search_video_commons]
@@ -126,6 +139,26 @@ def _interleave(sources, query, limit):
                 seen.add(pool[i]["url"])
                 out.append(pool[i])
     return out[:limit]
+
+
+def download(item, out_dir, name=None):
+    """Fetch one item's bytes to `out_dir`. Returns the Path, or None on failure.
+
+    Uses the module UA, which upload.wikimedia.org accepts; a 403 here is almost
+    always a User-Agent problem, not a missing file.
+    """
+    from pathlib import Path
+    out = Path(out_dir)
+    out.mkdir(parents=True, exist_ok=True)
+    ext = Path(urllib.parse.urlparse(item["url"]).path).suffix or ".bin"
+    dest = out / (name or (re.sub(r"[^A-Za-z0-9._-]+", "-", item["title"])[:60] + ext))
+    try:
+        req = urllib.request.Request(item["url"], headers=UA)
+        with urllib.request.urlopen(req, timeout=120) as r, open(dest, "wb") as f:
+            f.write(r.read())
+        return dest
+    except Exception:
+        return None
 
 
 def credits_block(items) -> str:

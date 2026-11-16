@@ -2442,6 +2442,14 @@ def test_footage_rail() -> None:
     block = fr.credits_block(items)
     check("BY-SA footage gets a credit line",
           "Sea" in block and "Someone" in block and "Wikimedia Commons" in block)
+    # upload.wikimedia.org 403s a User-Agent whose contact is example.com; the
+    # module UA must not carry one or every video download silently fails.
+    check("UA is one upload.wikimedia.org accepts",
+          "example.com" not in fr.UA["User-Agent"])
+    # Jamendo serves fetchable full tracks; Freesound only previews (and times out).
+    check("a Jamendo track outranks a Freesound preview",
+          fr._audio_rank({"url": "https://prod-1.storage.jamendo.com/?trackid=1"})
+          < fr._audio_rank({"url": "https://cdn.freesound.org/previews/1.mp3"}))
 
 
 def test_telegraph_account() -> None:
