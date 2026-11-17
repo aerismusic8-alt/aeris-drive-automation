@@ -228,25 +228,45 @@ Rules learned the hard way:
 - A red test run must never reach players, so the dispatch sits after the last
   test step and only runs for a push to `ax-arena-roblox-game`.
 
-## Clip quality — the floor (K, 2026-11-17)
+## Clip quality — one floor, every format (K, 2026-11-17)
 
 > "อันนี้เป็นแค่มาตรฐานเริ่มต้นสามารถทำได้ ห้ามมาตรฐานต่ำกว่านี้เด็ดขาดในช่องของเรา"
 
-The measured trivia standard is a **floor, not a target**. Nothing below it may
-ship on any of our channels. It is not just a doc: `ops/clip_standard.py` measures
-a finished clip and rejects it, and `ops/trivia_reel.py` runs that gate at the end
-of every render — on a fail it **deletes the MP4 and exits non-zero**, so a
-below-floor clip cannot leave the machine as a finished artifact.
+K supplied a trivia clip as a **sample** of the quality wanted; the goal is a
+standard for **all** our work. It is a **floor, not a target** — nothing below it
+may ship on any channel — and it is enforced by code, not a doc.
 
-The floor: 1280×720, 24/25/30 fps, h264, aac 48k stereo, ≥ 3 s, **−16.5…−13.5
-LUFS**, ≤ −1 dBTP, no hard cut (consecutive-frame Δ ≤ 20), not frozen (median
-Δ ≥ 0.15), caption present. Raising a number is welcome; lowering one is what K
-forbade. `docs/trivia-clip-standard.md` has the measured reference and the steps;
-`music938-1/tests/run.py::test_clip_standard_is_a_floor` pins the thresholds.
+`ops/clip_standard.py` measures a finished clip. It defines a **universal floor**
+(h264, aac 48k stereo, **−16…−12 LUFS**, ≤ −1.0 dBTP, ≥ 1 s) plus **one profile per
+format we render** (trivia 1280×720/24, vertical 1080×1920/30, film 1920×1080/30,
+horizontal 1920×1080/25, motion 832×480/16). Style rules apply only where the
+format calls for them: *no hard cut* is trivia (a film cuts by design), *not
+frozen* is trivia + vertical (a karaoke lyric sheet is nearly still). A profile may
+**tighten** the floor; raising a number is welcome, lowering one is what K forbade.
 
 ```bash
-python3 ops/clip_standard.py <clip.mp4>     # 11 rules; non-zero exit on a fail
+python3 ops/clip_standard.py <clip.mp4>     # auto-detects the profile
 ```
+
+Enforced at both ends:
+
+- `ops/trivia_reel.py` runs the gate after every render and, on a fail, **deletes
+  the MP4 and exits non-zero**.
+- `ops/yt_publish.py` is the one upload chokepoint for all 4 channels; it measures
+  every clip and **blocks** a below-floor one by default (`AX_ALLOW_BELOW_STANDARD=1`
+  overrides only for repairing an already-live video).
+- `music938-1/tests/run.py::test_clip_standard_is_a_floor` pins the floor and
+  builds deliberately bad clips to prove the gate rejects them.
+
+The first library-wide run found a real defect: **24 of 28 song masters clipped**
+(up to +1.6 dBTP) and ranged −11.9…−24.0 LUFS. The lanes mux those masters raw, so
+every Short/MV/film/karaoke inherited it. It is not a bug in `make_song.py` (its
+two-pass loudnorm is correct) — the masters are stale. `ops/remaster_songs.py`
+(free) brings each into the band and is idempotent. Masters are pulled from the
+`media-938` release, so refresh that release for the fix to reach a fresh pod.
+
+`docs/clip-standard.md` is the full standard; `docs/trivia-clip-standard.md` is
+the measured reference the trivia profile came from.
 
 ## Language
 

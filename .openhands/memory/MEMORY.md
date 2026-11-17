@@ -12,12 +12,11 @@ never types a password.** Related: **AUDIO FIRST**; delete the duplicate and the
 worthless, never archive it; K reviews a channel's first work; never rename a
 channel without K's approval.
 
-## Accounts (K, 2026-11-14): every tool uses AR's OWN mail
-"เครื่องมือทุกอย่างใช้เมล์ตัวเองล็อคอิน รวมถึง agent ในทีม ไม่ต้องใช้เมล์ K".
+## Accounts (K, 2026-11-14): every tool uses AR's OWN mail, not K's
 AR mailbox = `araeris4770d7@fldubai.com` (mail.tm; `ops/ar_identity.py`).
-**AR self-creatable:** **Nostr** (own keypair, `AR_NOSTR_NSEC`, live rail
-`ops/announce_releases.py`) and **Telegraph** (`ops/ar_telegraph.py`, no captcha).
-Flow Music/Gemini need an AR *Google Account* → K taps a QR once.
+AR self-creatable: **Nostr** (`AR_NOSTR_NSEC`; rail `ops/announce_releases.py`),
+**Telegraph** (`ops/ar_telegraph.py`). Flow Music/Gemini need an AR *Google Account*
+→ K taps a QR once.
 
 ## Roles and method (K, 2026-10-31)
 - **K = final authority.** Every standing rule is K's.
@@ -46,10 +45,9 @@ Views without follows is the failure. End every clip with `release.FOLLOW_ASK` +
 
 ## Environment facts that cost time
 - **Fresh-pod recovery: `scripts/bootstrap-pod.sh`** — re-run after every pod.
-- **MV links must be durable (K: "ลิงค์ตาย").** GitHub Pages `site-aeris-music`,
-  auto-published by its own `ax-mv-pages` workflow (`ops/mv_page.py --all`, skips
-  existing pages; `slug`/`force` dispatch rebuilds one). A /tmp preview dies on
-  recycle. Song metadata = its lyric header, not a songs.json.
+- **MV links must be durable (K: "ลิงค์ตาย").** GitHub Pages `site-aeris-music` via
+  `ax-mv-pages` (`ops/mv_page.py --all`; `slug`/`force` rebuilds one). A /tmp preview
+  dies on recycle. Song metadata = its lyric header, not a songs.json.
 - **24/7 runs on GitHub Actions, not the sandbox** (public repo → free minutes).
   Judge health from the **rail run history** (API), not `data/heartbeat.json`.
 - **FB browser posting is OFF (K 2026-11-15: "ระบบออโต้เราไม่เนียนมันจับได้").**
@@ -67,12 +65,14 @@ Views without follows is the failure. End every clip with `release.FOLLOW_ASK` +
 ## Real-instrument sound (K)
 **sfizz** sampler, not GM; `AX_REQUIRE_REAL_INSTRUMENTS=1` makes a fallback **raise**.
 
-## Clip quality — the FLOOR, not a target (K, 2026-11-17)
-"ห้ามมาตรฐานต่ำกว่านี้เด็ดขาดในช่องของเรา". Standard: 1280×720 24 fps h264, aac 48k
-stereo, **−15 LUFS**, real footage (no cut/zoom), white Thai ~72 px. **Enforced, not
-a doc:** `ops/clip_standard.py` measures a clip; `ops/trivia_reel.py` deletes it +
-exits non-zero on a fail. Reference + steps: `docs/trivia-clip-standard.md`;
-`test_clip_standard_is_a_floor`.
+## Clip quality — one FLOOR, every format (K, 2026-11-17)
+"ห้ามมาตรฐานต่ำกว่านี้เด็ดขาด". The trivia clip is only a **sample**; the standard is
+for all work. `ops/clip_standard.py` = universal floor (h264, aac 48k stereo, −16..−12
+LUFS, ≤ −1.0 dBTP) + a profile per format (trivia/vertical/film/horizontal/motion);
+style rules only where the format calls for them. Enforced at the one upload
+chokepoint **`ops/yt_publish.py`** (all 4 channels; **blocks by default**,
+`AX_ALLOW_BELOW_STANDARD=1` overrides) and in `ops/trivia_reel.py`. Found **24/28 song
+masters clip** → fix `ops/remaster_songs.py`. `docs/clip-standard.md`; `test_clip_standard_is_a_floor`.
 
 ## Loop health & platform risks
 - **A green run is not a finished job.** `release.py` returns rc 4 +

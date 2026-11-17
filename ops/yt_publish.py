@@ -116,6 +116,26 @@ def main():
     }
 
     tok = yt_auth.access_token(a.ch)
+
+    # The channel standard (K, 2026-11-17): nothing below the floor may ship.
+    # Every upload to every channel passes through here, so this is the one place
+    # to measure it. It *blocks* by default — K's rule is absolute. Set
+    # AX_ALLOW_BELOW_STANDARD=1 only for a deliberate, documented exception (e.g.
+    # repairing an already-live video), never to make a bad new clip pass.
+    import clip_standard
+    rows = clip_standard.check(a.video)
+    bad = [(n, d) for n, ok, d in rows if not ok]
+    if bad:
+        print("CLIP STANDARD: below the floor — " + "; ".join(f"{n} ({d})"
+                                                              for n, d in bad),
+              file=sys.stderr)
+        if os.environ.get("AX_ALLOW_BELOW_STANDARD") != "1":
+            raise SystemExit("refusing to upload: clip below the channel standard")
+        print("CLIP STANDARD: AX_ALLOW_BELOW_STANDARD=1, uploading anyway",
+              file=sys.stderr)
+    else:
+        print(f"CLIP STANDARD: ok ({len(rows)}/{len(rows)} rules)")
+
     print(f"uploading {os.path.basename(a.video)} ({os.path.getsize(a.video)/1e6:.1f} MB) to {a.ch}")
     code, body = multipart_upload(a.video, metadata, tok)
     print(f"HTTP {code}")

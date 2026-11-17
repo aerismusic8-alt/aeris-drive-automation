@@ -1,0 +1,94 @@
+# The channel clip standard — every format, one floor
+
+K (2026-11-17): the trivia clip he supplied is **only a sample** of the quality he
+wants — "อันนี้เป็นแค่มาตรฐานเริ่มต้น ... **ห้ามมาตรฐานต่ำกว่านี้เด็ดขาดในช่องของเรา**".
+The goal is a standard for **all** our work, not one lane. This document is that
+standard; `ops/clip_standard.py` is its enforceable form.
+
+> A rule in a document drifts. A rule measured on every clip does not. Nothing
+> below this floor may ship on any channel — the upload path measures it.
+
+Everything is free (Rule #1): ffprobe + ffmpeg only. No key, no account.
+
+## 1. The universal floor (every format)
+
+| Property | Floor |
+| --- | --- |
+| Video codec | h264 |
+| Pixel format | yuv420p (or yuvj420p) |
+| Audio codec | aac, 48 kHz, stereo |
+| Loudness | −16.0 .. −12.0 LUFS (target −14) |
+| True peak | ≤ −1.0 dBTP — no clipping |
+| Length | ≥ 1 s |
+
+The loudness band is the streaming-master norm (YouTube normalises playback to
+about −14 LUFS). The true-peak ceiling is what stops the distortion that makes a
+phone speaker buzz. A clip outside the band is not "loud", it is unmastered.
+
+## 2. One profile per format we actually render
+
+Measured from the live library on 2026-11-17:
+
+| Profile | Shape | fps | Lanes | Extra rules |
+| --- | --- | --- | --- | --- |
+| `trivia` | 1280×720 | 24 | เกร็ดความรู้ | not frozen, no hard cut, caption |
+| `vertical` | 1080×1920 | 30 | short, MV, affiliate, surreal, concert, moods | not frozen |
+| `film` | 1920×1080 | 30 | film / long-form landscape | (cuts by design — no style rule) |
+| `horizontal` | 1920×1080 | 25 | karaoke, compilation | (a lyric sheet is nearly still) |
+| `motion` | 832×480 | 16 | internal motion asset | silent allowed |
+
+A profile may **tighten** any floor value and add style rules. A style rule is
+applied only where the format calls for it — that is the point of splitting the
+floor from the style:
+
+- **No hard cut** belongs to trivia. A public-domain film cuts between shots by
+  design (measured max frame-delta ~90); holding it to the trivia rule would be a
+  false failure.
+- **Not frozen** belongs to trivia and the vertical lanes. A karaoke lyric sheet
+  is meant to be almost still (measured 0.0).
+- **Caption present** is checked on trivia (white Thai on footage) and is not
+  reliable on karaoke (white lyric on video — the heuristic cannot see it).
+
+## 3. How it is enforced
+
+| Where | What happens |
+| --- | --- |
+| `ops/trivia_reel.py` | runs the gate after every render; a fail **deletes the MP4 and exits non-zero** |
+| `ops/yt_publish.py` | the one upload chokepoint for all 4 channels — measures every clip and **blocks** a below-floor one by default; `AX_ALLOW_BELOW_STANDARD=1` is an explicit override for repairing an already-live video |
+| `music938-1/tests/run.py` | `test_clip_standard_is_a_floor` pins the floor (may only be raised) and builds deliberately bad clips to prove the gate rejects them |
+
+```
+python3 ops/clip_standard.py <clip.mp4>          # auto-detects the profile
+python3 ops/clip_standard.py <clip.mp4> --json
+```
+
+The publish gate blocks by default — K's rule is absolute. The override exists
+only for a deliberate, documented exception (repairing a live video), never to
+make a bad new clip pass.
+
+## 4. The defect this found, and the fix
+
+The gate's first run over the real library found that **24 of 28 song masters sat
+above 0 dBTP** (up to +1.6) and ranged −11.9 to −24.0 LUFS. The lanes mux those
+masters raw, so every Short, MV, film and karaoke inherited the clipping.
+
+- It is **not** a bug in `make_song.py`: its two-pass loudnorm reproduces
+  −14.1 LUFS / −13.1 dBTP correctly, and MP3 encoding adds no overshoot. The
+  masters are stale artifacts from before that path.
+- The fix is `ops/remaster_songs.py` (free, ffmpeg only): it brings each master
+  into the band and is idempotent, so it only touches a master that is out of it.
+
+```
+python3 ops/remaster_songs.py --dry-run     # report
+python3 ops/remaster_songs.py               # fix every out-of-band master
+```
+
+The masters are gitignored and pulled from the `media-938` release, so a fix is
+only durable once the release assets are refreshed (`scripts/publish_media.py`).
+
+## 5. Changing the standard
+
+Raising a threshold is welcome and encouraged. Lowering one is exactly what K
+forbade. If a rule turns out to be a false positive on a real, correct clip, fix
+the *rule* (as the karaoke text rule was removed) — never lower the floor to make
+a bad clip pass.

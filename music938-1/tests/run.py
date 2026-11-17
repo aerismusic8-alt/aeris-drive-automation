@@ -5184,42 +5184,73 @@ def test_trivia_reel() -> None:
 
 
 def test_clip_standard_is_a_floor() -> None:
-    """The trivia standard is a floor, not a target (K, 2026-11-17).
+    """The standard is one floor for every format (K, 2026-11-17).
 
-    K: "อันนี้เป็นแค่มาตรฐานเริ่มต้น ... ห้ามมาตรฐานต่ำกว่านี้เด็ดขาดในช่องของเรา".
-    A rule in a doc drifts, so ops/clip_standard.py measures a finished clip and
-    rejects it below the numbers measured from the reference. This test pins the
-    thresholds (they may only be raised) and proves the gate catches a clip that
-    is below the floor.
+    K: the trivia clip is only a sample; "ห้ามมาตรฐานต่ำกว่านี้เด็ดขาดในช่องของเรา"
+    for **all** our work. ops/clip_standard.py defines a universal floor plus a
+    profile per format we render, and is applied on the upload path. This pins the
+    floor (it may only be raised) and proves the gate rejects a clip below it.
     """
-    section("clip standard (the floor)")
+    section("clip standard (the floor, every format)")
     import importlib.util
     ops = ROOT.parent / "ops"
     spec = importlib.util.spec_from_file_location("clip_standard",
                                                   ops / "clip_standard.py")
     cs = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(cs)
-    t = cs.THRESHOLDS
-    # The floor measured from K's reference clip. Raising a number is fine;
-    # lowering one below these is exactly what K forbade.
-    check("format floor is 1280x720 h264",
-          t["width"] == 1280 and t["height"] == 720 and t["video_codec"] == "h264")
-    check("audio floor is aac 48k stereo",
-          t["audio_codec"] == "aac" and t["audio_rate"] == 48000
-          and t["audio_channels"] == 2)
-    check("loudness floor is the reference band",
-          t["lufs_min"] >= -16.5 and t["lufs_max"] <= -13.5)
-    check("no hard cut and not frozen",
-          t["motion_max"] <= 20.0 and t["motion_median_min"] >= 0.15)
-    check("caption floor is present",
-          t["text_px_min"] >= 120)
-    # The renderer enforces it: a fail removes the artifact and raises.
-    src = (ops / "trivia_reel.py").read_text()
-    check("trivia_reel runs the gate", "clip_standard.check" in src
-          and "below the standard" in src)
 
-    # Prove the gate actually rejects a below-floor clip, using a real render
-    # only when one is present (CI has none); otherwise build a tiny bad file.
+    # The universal floor: every format must clear this.
+    f = cs.FLOOR
+    check("codec floor is h264 + aac 48k stereo",
+          f["video_codec"] == "h264" and f["audio_codec"] == "aac"
+          and f["audio_rate"] == 48000 and f["audio_channels"] == 2)
+    check("loudness floor is the streaming-master band",
+          f["lufs_min"] >= -16.0 and f["lufs_max"] <= -12.0)
+    check("no clipping is the floor", f["true_peak_max"] <= -1.0)
+
+    # One profile for every format we actually render, and each lane maps to one.
+    for need in ("trivia", "vertical", "film", "horizontal", "motion"):
+        check(f"profile exists: {need}", need in cs.PROFILES)
+    for lane, prof in cs.LANE_PROFILE.items():
+        check(f"lane {lane} maps to a profile", prof in cs.PROFILES)
+
+    # The trivia profile is the measured reference; it may only tighten.
+    t = cs.PROFILES["trivia"]
+    check("trivia floor is the measured reference",
+          t["resolutions"] == [(1280, 720)] and t["fps"] == (24,)
+          and t["lufs_min"] >= -16.5 and t["lufs_max"] <= -13.5
+          and t["motion_max"] <= 20.0 and t["motion_median_min"] >= 0.15
+          and t["text_px_min"] >= 120)
+    # Style rules are per-format: a film cuts, a karaoke sheet is nearly still.
+    check("film is not held to the no-cut rule",
+          cs.PROFILES["film"].get("motion_max") is None)
+    check("karaoke is not held to a frozen-picture floor",
+          cs.PROFILES["horizontal"].get("motion_median_min") is None)
+    check("silent motion asset is allowed to have no audio",
+          cs.PROFILES["motion"].get("audio_required") is False)
+
+    # The renderer enforces it, and so does the upload chokepoint.
+    check("trivia_reel runs the gate",
+          "clip_standard.check" in (ops / "trivia_reel.py").read_text())
+    yt = (ops / "yt_publish.py").read_text()
+    check("every upload is measured", "clip_standard.check" in yt)
+    check("upload is blocked by the standard by default",
+          "AX_ALLOW_BELOW_STANDARD" in yt
+          and 'os.environ.get("AX_ALLOW_BELOW_STANDARD") != "1"' in yt)
+
+    # The film lane must normalise the muxed song: its masters clipped (song-24
+    # was -12.2 LUFS / +1.4 dBTP) and the lane muxed them raw.
+    film = (ROOT / "scripts" / "make_film_video.py").read_text()
+    check("film lane normalises the muxed song",
+          "[3:a]loudnorm" in film and "[aout]" in film)
+
+    # The re-master tool exists, targets the band, and is idempotent by design.
+    rm = (ops / "remaster_songs.py").read_text()
+    check("a re-master tool exists for the library",
+          "loudnorm" in rm and "in_band" in rm and "-14.0" in rm)
+    check("re-master leaves an in-band master alone", "in_band(" in rm)
+
+    # Prove the gate rejects a below-floor clip.
     import shutil
     import tempfile
     ff = shutil.which("ffmpeg") or cs.ffmpeg()
@@ -5230,11 +5261,31 @@ def test_clip_standard_is_a_floor() -> None:
                     "-shortest", "-c:v", "libx264", "-c:a", "aac", bad],
                    check=True)
     rows = {n: ok for n, ok, _ in cs.check(bad)}
-    check("gate rejects the wrong size", rows.get("landscape 1280x720") is False)
+    check("gate rejects an unknown shape",
+          any(not ok for n, ok in rows.items() if "shape" in n or "known" in n))
+    # A vertical clip that is only the wrong audio still fails the floor.
+    vbad = os.path.join(tempfile.mkdtemp(), "vbad.mp4")
+    subprocess.run([ff, "-y", "-v", "error", "-f", "lavfi", "-i",
+                    "testsrc2=size=1080x1920:rate=30:duration=6",
+                    "-f", "lavfi", "-i", "anullsrc=r=24000:cl=mono",
+                    "-shortest", "-c:v", "libx264", "-pix_fmt", "yuv420p",
+                    "-c:a", "aac", vbad], check=True)
+    rows = {n: ok for n, ok, _ in cs.check(vbad)}
     check("gate rejects the wrong audio",
           rows.get("audio aac 48k stereo") is False)
-    check("gate rejects a frozen picture",
-          rows.get("picture is not frozen") is False)
+    check("gate rejects an unnormalised master",
+          rows.get("loudness normalised") is False)
+    # A correct vertical clip passes the floor.
+    good = os.path.join(tempfile.mkdtemp(), "good.mp4")
+    subprocess.run([ff, "-y", "-v", "error", "-f", "lavfi", "-i",
+                    "testsrc2=size=1080x1920:rate=30:duration=6",
+                    "-f", "lavfi", "-i", "sine=frequency=330:duration=6",
+                    "-af", "loudnorm=I=-15:TP=-2:LRA=7",
+                    "-shortest", "-c:v", "libx264", "-pix_fmt", "yuv420p",
+                    "-c:a", "aac", "-ar", "48000", "-ac", "2", good], check=True)
+    rows = {n: ok for n, ok, _ in cs.check(good)}
+    check("a correct vertical clip passes", all(rows.values()),
+          "; ".join(f"{n}" for n, ok in rows.items() if not ok))
 
 
 def test_metadata_ab_holds_format_fixed() -> None:

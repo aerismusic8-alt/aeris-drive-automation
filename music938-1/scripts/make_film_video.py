@@ -514,7 +514,11 @@ def build(slug: str, *, film_id: str | None = None, seconds: float | None = None
         f"[3:a]showwaves=s={W}x180:mode=cline:colors=0x8affc1|0xff8ad8:"
         f"rate={FPS},format=rgba,colorchannelmixer=aa=0.22[wave];"
         f"[b2][wave]overlay=0:H-220[b3];"
-        f"[b3]setsar=1,format=yuv420p[out]"
+        f"[b3]setsar=1,format=yuv420p[out];"
+        # The song master is not always on target: song-24 measured -12.2 LUFS /
+        # +1.4 dBTP, and muxing it raw shipped a clipping track. Normalise at the
+        # mux so every film meets the channel floor regardless of the source.
+        f"[3:a]loudnorm=I=-14:TP=-1.5:LRA=11[aout]"
     )
     subprocess.run(
         [ffmpeg, "-y", "-v", "error",
@@ -522,7 +526,7 @@ def build(slug: str, *, film_id: str | None = None, seconds: float | None = None
          "-loop", "1", "-i", str(title),
          "-loop", "1", "-i", str(endc),
          "-ss", f"{start:.3f}", "-t", f"{length:.3f}", "-i", str(song),
-         "-filter_complex", fc, "-map", "[out]", "-map", "3:a",
+         "-filter_complex", fc, "-map", "[out]", "-map", "[aout]",
          "-t", f"{length:.3f}", "-c:v", "libx264", "-preset", "medium",
          "-crf", "20", "-pix_fmt", "yuv420p", "-r", str(FPS),
          "-c:a", "aac", "-b:a", "192k", "-shortest", str(out)],
