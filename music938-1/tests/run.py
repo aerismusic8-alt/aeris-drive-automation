@@ -1128,6 +1128,15 @@ def test_shorts() -> None:
     check("short zoom has a real target (>= 1.10)",
           make_short.ZOOM_MAX >= 1.10, f"{make_short.ZOOM_MAX}")
 
+    # K, 2026-11-17: a Short's own frame is dark by construction (blurred, scrimmed
+    # cover), so a plain grab measured mean luma 18 with no legible title and the
+    # thumbnail floor rejected it. `thumb_for` lifts the grab with a gamma curve
+    # and a light unsharp so the caption reads, without touching the clip. A plain
+    # `-frames:v 1` grab is the regression this pins.
+    tf = inspect.getsource(make_short.thumb_for)
+    check("the Short thumbnail lifts the dark frame",
+          "eq=gamma=" in tf and "unsharp=" in tf, tf[-300:])
+
 
 def test_motion_lane() -> None:
     section("motion lane (free image-to-video)")
@@ -1414,6 +1423,17 @@ def test_mv_page() -> None:
     check("a film MV resolves to film-<slug>.mp4", a26 == "film-26-ban-lang-lek-khong-rao.mp4", a26)
     check("a generated MV resolves to mv-<slug>-full.mp4",
           a01 == "mv-01-khon-di-thi-chak-pai-full.mp4", a01)
+
+    # The producer and the publisher must agree on the long-form name. The
+    # publisher (`ops/mv_page.py`) looks for `mv-<slug>-full.mp4`; the producer
+    # used to emit `mv-<slug>.mp4`, so the page never found the file it was
+    # handed and silently fell back to the release. Pin the two together.
+    import make_music_video as _mmv
+    _out = inspect.getsource(_mmv.build)
+    check("the full-MV producer emits mv-<slug>-full.mp4",
+          'f"mv-{slug}-full.mp4"' in _out, _out[:400])
+    check("the publisher reads the same mv-<slug>-full.mp4",
+          'f"mv-{slug}-full.mp4"' in inspect.getsource(mv.film_asset))
 
     # The publisher is reusable for *every* song, not only the one built in this
     # session: a fresh pod reads the release list, so it must recognise a long-form
@@ -5268,11 +5288,22 @@ def test_clip_standard_is_a_floor() -> None:
         check(f"crosspost.{fn} clears the standard before upload",
               "clip_standard.assert_ok" in body)
 
-    # The film lane must normalise the muxed song: its masters clipped (song-24
-    # was -12.2 LUFS / +1.4 dBTP) and the lane muxed them raw.
-    film = (ROOT / "scripts" / "make_film_video.py").read_text()
-    check("film lane normalises the muxed song",
-          "[3:a]loudnorm" in film and "[aout]" in film)
+    # Every lane must normalise the muxed song: its masters clipped (song-24 was
+    # -12.2 LUFS / +1.4 dBTP) and the lanes muxed them raw. The chain is
+    # loudnorm -> alimiter(level=0) -> 48 kHz. One-pass loudnorm is approximate
+    # on true peak, so the limiter is what makes the ceiling real; `level=0` stops
+    # it auto-normalising (the default raised a -0.3 dBTP peak to +0.7). And the
+    # 48 kHz pin is mandatory because loudnorm upsamples to 192k and aac would
+    # otherwise pick 96k, which the floor rejects.
+    for lane in ("make_short.py", "make_karaoke.py", "make_music_video.py",
+                 "make_film_video.py"):
+        src = (ROOT / "scripts" / lane).read_text()
+        check(f"{lane} normalises the muxed song",
+              "loudnorm=I=-14:TP=-2.0:LRA=11" in src and "[aout]" in src, lane)
+        check(f"{lane} holds the true-peak ceiling with the limiter",
+              "alimiter=limit=0.7:level=0" in src, lane)
+        check(f"{lane} pins the aac sample rate to 48 kHz",
+              '"-ar", "48000"' in src, lane)
 
     # The re-master tool exists, targets the band, and is idempotent by design.
     rm = (ops / "remaster_songs.py").read_text()
@@ -5316,6 +5347,68 @@ def test_clip_standard_is_a_floor() -> None:
     rows = {n: ok for n, ok, _ in cs.check(good)}
     check("a correct vertical clip passes", all(rows.values()),
           "; ".join(f"{n}" for n, ok in rows.items() if not ok))
+
+
+def test_thumb_standard_is_a_floor() -> None:
+    """A thumbnail is held to a floor like a clip (K, 2026-11-17).
+
+    K: "แม้กระทั่ง thumbnail ก็ต้องให้ได้มาตรฐาน 10/10". ops/thumb_standard.py
+    measures a finished thumbnail (size, aspect, tonal range, real detail, a
+    legible title, YouTube's 2 MB cap) and the upload path runs it before
+    thumbnails.set. This pins the floor and proves the gate rejects a blank or
+    failed image.
+    """
+    section("thumbnail standard (the floor, every thumbnail)")
+    import importlib.util
+    import tempfile
+    ops = ROOT.parent / "ops"
+    spec = importlib.util.spec_from_file_location("thumb_standard",
+                                                  ops / "thumb_standard.py")
+    ts = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(ts)
+
+    f = ts.FLOOR
+    check("thumbnail cap is YouTube's 2 MB", f["max_bytes"] <= 2_000_000)
+    check("16:9 floor is 1280 wide and 9:16 is 1080 wide",
+          f["min_width"] >= 1280 and f["min_width_vertical"] >= 1080)
+    check("the floor requires a legible title", f["bright_pct_min"] > 0
+          and f["bright_luma"] <= 200)  # gold ink (~192), not only white
+    check("the floor requires real detail and range",
+          f["detail_pct_min"] > 0 and f["dynamic_range_min"] > 0)
+
+    # The gate runs on the upload path, inside set_thumbnail before the request.
+    yt = (ops / "yt_publish.py").read_text()
+    check("upload measures the thumbnail", "thumb_standard.assert_ok" in yt)
+    stb = yt.split("def set_thumbnail(", 1)[1].split("\ndef ", 1)[0]
+    check("the thumbnail gate runs before the upload request",
+          "thumb_standard.assert_ok" in stb
+          and stb.index("thumb_standard.assert_ok") < stb.index("urlopen"))
+
+    # Prove the gate rejects a blank frame and a failed (near-black) render.
+    from PIL import Image
+    d = tempfile.mkdtemp()
+    blank = os.path.join(d, "blank.png")
+    Image.new("RGB", (1280, 720), (128, 128, 128)).save(blank)
+    rows = {n: ok for n, ok, _ in ts.check(blank)}
+    check("gate rejects a flat/blank frame",
+          rows.get("has real detail") is False
+          and rows.get("title is present") is False)
+    black = os.path.join(d, "black.png")
+    Image.new("RGB", (1080, 1920), (6, 6, 8)).save(black)
+    rows = {n: ok for n, ok, _ in ts.check(black)}
+    check("gate rejects a near-black failed render",
+          rows.get("wide tonal range") is False
+          and rows.get("title is present") is False)
+    # A tiny thumbnail fails the width floor; a square one fails the aspect.
+    small = os.path.join(d, "small.png")
+    Image.new("RGB", (640, 360), (10, 10, 12)).save(small)
+    check("gate rejects an undersized thumbnail",
+          {n: ok for n, ok, _ in ts.check(small)}.get("at least the min width")
+          is False)
+    square = os.path.join(d, "square.png")
+    Image.new("RGB", (1280, 1280), (10, 10, 12)).save(square)
+    check("gate rejects the wrong aspect",
+          {n: ok for n, ok, _ in ts.check(square)}.get("16:9 or 9:16") is False)
 
 
 def test_metadata_ab_holds_format_fixed() -> None:
@@ -6409,6 +6502,7 @@ def main() -> int:
     test_arrangement_no_repeat()
     test_song_analysis()
     test_thumb_contrast()
+    test_thumb_standard_is_a_floor()
     test_ai_covers()
     test_thumbnail_repair()
     test_nostr_identity()

@@ -238,7 +238,7 @@ def build(slug: str, *, seconds: float | None = None, full: bool = False,
         shots.append(out)
 
     OUT_DIR.mkdir(parents=True, exist_ok=True)
-    out = OUT_DIR / (f"mv-{slug}.mp4" if full else f"mv-{slug}-hook.mp4")
+    out = OUT_DIR / (f"mv-{slug}-full.mp4" if full else f"mv-{slug}-hook.mp4")
 
     # Title at the top, end card at the tail, both as stills laid over the cut.
     title = WORK / f"card-title-{slug}.png"
@@ -264,7 +264,10 @@ def build(slug: str, *, seconds: float | None = None, full: bool = False,
         f"[3:a]showwaves=s={W}x220:mode=cline:colors=0x8affc1|0xff8ad8:"
         f"rate={FPS},format=rgba,colorchannelmixer=aa=0.30[wave];"
         f"[b2][wave]overlay=0:H-300[b3];"
-        f"[b3]setsar=1,format=yuv420p[out]"
+        f"[b3]setsar=1,format=yuv420p[out];"
+        # Normalise at the mux, as the film lane does, so every MV meets the
+        # channel floor regardless of the source master's level.
+        f"[3:a]loudnorm=I=-14:TP=-2.0:LRA=11,alimiter=limit=0.7:level=0[aout]"
     )
     subprocess.run(
         [ffmpeg, "-y", "-v", "error",
@@ -272,10 +275,10 @@ def build(slug: str, *, seconds: float | None = None, full: bool = False,
          "-loop", "1", "-i", str(title),
          "-loop", "1", "-i", str(endc),
          "-ss", f"{start:.3f}", "-t", f"{length:.3f}", "-i", str(song),
-         "-filter_complex", fc, "-map", "[out]", "-map", "3:a",
+         "-filter_complex", fc, "-map", "[out]", "-map", "[aout]",
          "-t", f"{length:.3f}", "-c:v", "libx264", "-preset", "medium",
          "-crf", "20", "-pix_fmt", "yuv420p", "-r", str(FPS),
-         "-c:a", "aac", "-b:a", "192k", "-shortest", str(out)],
+         "-c:a", "aac", "-ar", "48000", "-b:a", "192k", "-shortest", str(out)],
         check=True)
 
     return {"slug": slug, "path": str(out), "shots": n_shots,

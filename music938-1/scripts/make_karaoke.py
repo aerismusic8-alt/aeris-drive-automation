@@ -233,11 +233,12 @@ def render(slug: str, *, preview: float | None = None,
     zoom = ("scale=2400:-1,zoompan=z='min(zoom+0.00035,1.18)':d=1:"
             "x='iw/2-(iw/zoom/2)':y='ih/2-(ih/zoom/2)':s=%dx%d:fps=%d" % (W, H, FPS))
     args = ["-loop", "1", "-i", str(cover), "-i", str(audio),
-            "-filter_complex", f"[0:v]{zoom},{ass_filter(ass_path)}[v]",
-            "-map", "[v]", "-map", "1:a",
+            "-filter_complex", f"[0:v]{zoom},{ass_filter(ass_path)}[v];"
+                               f"[1:a]loudnorm=I=-14:TP=-2.0:LRA=11,alimiter=limit=0.7:level=0[aout]",
+            "-map", "[v]", "-map", "[aout]",
             "-c:v", "libx264", "-preset", "veryfast", "-crf", "20",
             "-pix_fmt", "yuv420p", "-r", str(FPS),
-            "-c:a", "aac", "-b:a", "192k", "-shortest"]
+            "-c:a", "aac", "-ar", "48000", "-b:a", "192k", "-shortest"]
     if preview:
         args += ["-t", str(preview)]
     args += ["-movflags", "+faststart", str(out)]

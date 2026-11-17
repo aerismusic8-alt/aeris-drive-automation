@@ -48,8 +48,19 @@ def multipart_upload(path, metadata, token, mime="video/mp4"):
 
 
 def set_thumbnail(video_id, path, token):
+    # K (2026-11-17): a thumbnail is held to a floor like a clip. Measure it
+    # before the upload, so a blank or failed render cannot reach a channel.
+    import io
+    import thumb_standard
+    thumb_standard.assert_ok(path)
+    # YouTube takes JPEG or PNG, but the Content-Type must be honest: a PNG sent
+    # as image/jpeg is what silently dropped some thumbnails. Re-encode to JPEG
+    # (smaller, always well under the 2 MB cap) so the declared type is true.
+    from PIL import Image
+    buf = io.BytesIO()
+    Image.open(path).convert("RGB").save(buf, "JPEG", quality=92, optimize=True)
+    data = buf.getvalue()
     import urllib.request
-    data = open(path, "rb").read()
     req = urllib.request.Request(
         f"{THUMBS}?videoId={video_id}", data=data,
         headers={"Authorization": f"Bearer {token}", "Content-Type": "image/jpeg"},

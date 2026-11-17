@@ -82,7 +82,29 @@ python3 ops/remaster_songs.py               # fix every out-of-band master
 The masters are gitignored and pulled from the `media-938` release, so a fix is
 only durable once the release assets are refreshed (`scripts/publish_media.py`).
 
-## 5. Changing the standard
+## 5. Normalise at the mux, not the master
+
+The floor is measured on the **clip**, so the clip's own mux is where the audio
+must be normalised. The masters were already in band, yet every lane below failed
+the gate on loudness or true peak — because the render scripts wrote the song's
+raw samples into the container.
+
+- Each lane's mux filter (`make_short`, `make_karaoke`, `make_music_video`,
+  `make_film_video`) carries `loudnorm=I=-14:TP=-2.0:LRA=11`, then
+  `alimiter=limit=0.7:level=0`, then `-ar 48000`.
+- **`alimiter` must be `level=0`.** The default `level` auto-normalises after
+  limiting and *raised* a true peak of −0.3 dBTP to +0.7 — the limiter made
+  clipping worse. With `level=0` the ceiling holds (measured −2.6 dBTP).
+- **One-pass `loudnorm` is approximate on true peak.** `TP=-2.0` alone left the
+  output at −0.3 dBTP on a dense master; the limiter is what makes the ceiling
+  real. Test on the *loudest* master, not a quiet one.
+- **`-ar 48000` is mandatory.** `loudnorm` upsamples to 192 kHz internally, so
+  the aac encoder picks 96 kHz unless the rate is pinned — the gate wants 48 kHz.
+
+The lane is the last place the audio can be fixed before the container is sealed;
+a fix in the master never reaches a clip the lane already wrote.
+
+## 6. Changing the standard
 
 Raising a threshold is welcome and encouraged. Lowering one is exactly what K
 forbade. If a rule turns out to be a false positive on a real, correct clip, fix

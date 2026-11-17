@@ -358,12 +358,13 @@ def render(slug: str, *, mix: str = "song", out_dir: Path | None = None,
         out = out_dir / f"short-{mix}{suffix}-{slug}.mp4"
         args = ["-loop", "1", "-i", str(cover),
                 "-ss", f"{start:.3f}", "-i", str(audio),
-                "-filter_complex", chain(ass_path, length),
-                "-map", "[v]", "-map", "1:a",
+                "-filter_complex", chain(ass_path, length)
+                + ";[1:a]loudnorm=I=-14:TP=-2.0:LRA=11,alimiter=limit=0.7:level=0[aout]",
+                "-map", "[v]", "-map", "[aout]",
                 "-t", f"{length:.3f}",
                 "-c:v", "libx264", "-preset", "veryfast", "-crf", "20",
                 "-pix_fmt", "yuv420p", "-r", str(FPS),
-                "-c:a", "aac", "-b:a", "192k", "-shortest",
+                "-c:a", "aac", "-ar", "48000", "-b:a", "192k", "-shortest",
                 "-movflags", "+faststart", str(out)]
         subprocess.run(["ffmpeg", "-y", "-loglevel", "error", *args], check=True)
         written.append(out)
@@ -382,9 +383,14 @@ def thumb_for(short: Path, cover: Path):
     """
     dest = ROOT / "library" / "thumbs" / f"thumb-{short.stem}.png"
     dest.parent.mkdir(parents=True, exist_ok=True)
+    # The Short's own frame is dark by construction: a blurred, scrimmed copy of
+    # the cover fills the frame, so the mean luma lands near 18 and the title
+    # reads as "no title" on the thumbnail floor. A gamma lift plus a light
+    # unsharp makes the caption legible without touching the clip itself.
     subprocess.run(
         ["ffmpeg", "-y", "-loglevel", "error", "-ss", "1.5", "-i", str(short),
-         "-frames:v", "1", str(dest)], check=True)
+         "-frames:v", "1", "-vf", "eq=gamma=1.6,unsharp=5:5:0.8", str(dest)],
+        check=True)
     return dest
 
 

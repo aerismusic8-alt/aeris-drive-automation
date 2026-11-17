@@ -518,7 +518,7 @@ def build(slug: str, *, film_id: str | None = None, seconds: float | None = None
         # The song master is not always on target: song-24 measured -12.2 LUFS /
         # +1.4 dBTP, and muxing it raw shipped a clipping track. Normalise at the
         # mux so every film meets the channel floor regardless of the source.
-        f"[3:a]loudnorm=I=-14:TP=-1.5:LRA=11[aout]"
+        f"[3:a]loudnorm=I=-14:TP=-2.0:LRA=11,alimiter=limit=0.7:level=0[aout]"
     )
     subprocess.run(
         [ffmpeg, "-y", "-v", "error",
@@ -529,7 +529,7 @@ def build(slug: str, *, film_id: str | None = None, seconds: float | None = None
          "-filter_complex", fc, "-map", "[out]", "-map", "[aout]",
          "-t", f"{length:.3f}", "-c:v", "libx264", "-preset", "medium",
          "-crf", "20", "-pix_fmt", "yuv420p", "-r", str(FPS),
-         "-c:a", "aac", "-b:a", "192k", "-shortest", str(out)],
+         "-c:a", "aac", "-ar", "48000", "-b:a", "192k", "-shortest", str(out)],
         check=True)
 
     return {"slug": slug, "path": str(out), "shots": len(shots),
