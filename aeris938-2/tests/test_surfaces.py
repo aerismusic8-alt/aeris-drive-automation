@@ -38,6 +38,15 @@ def test_youtube_is_single_channel():
     assert yt["token"] == "ch3"
 
 
+def test_facebook_name_matches_the_brand():
+    """K renamed the brand to NEO VINCI (2026-11-16). `branding.NAME` is the one
+    source of truth for the display name; `channel.json` must agree, or the FB
+    Page (and anything reading this config) keeps the retired AERIS Music name."""
+    sys.path.insert(0, str(surfaces.MUSIC_SCRIPTS))
+    import branding  # noqa: E402
+    assert surfaces.config()["facebook"]["name"] == branding.NAME
+
+
 def test_every_surface_has_a_target():
     cfg = surfaces.config()
     assert cfg["facebook"]["page_id"] == "61595890900382"
