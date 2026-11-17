@@ -185,7 +185,9 @@ def _usable(path: str, min_secs: float):
     if info["seconds"] < min_secs:
         return False, f"too short ({info['seconds']:.1f}s < {min_secs:.1f}s)"
     peak = cs.motion(path)[2]
-    if peak > 18.0:
+    # A montage's internal cut is a step in the *source*, which no crossfade can
+    # soften; it must screen out well under the 20 floor, not 2 units under it.
+    if peak > 14.0:
         return False, f"internal cut (max {peak})"
     return True, ""
 
@@ -353,7 +355,7 @@ def _background_segment(src: str, per: float, is_video: bool, out: str):
              "-c:v", "libx264", "-preset", "veryfast", "-crf", "20", out])
 
 
-def fit_backgrounds(clips, total, xf=0.5, log=print):
+def fit_backgrounds(clips, total, xf=0.9, log=print):
     """The subset of `clips` that never has to be looped to fill its segment.
 
     `build_video` splits the narration evenly across the clips, so with `n`
@@ -386,25 +388,65 @@ def fit_backgrounds(clips, total, xf=0.5, log=print):
     return [clips[i] for i in kept]
 
 
-def build_video(backgrounds, narration, ass_path, total, out, work, log=print):
+def _mean_luma(path: str) -> float:
+    """Mean grey level (0-255) of a source, for sizing the crossfade."""
+    out = subprocess.run(
+        [ffmpeg(), "-v", "error", "-i", path,
+         "-vf", "fps=1,scale=1:1,format=gray", "-f", "rawvideo", "-"],
+        capture_output=True)
+    data = out.stdout
+    return (sum(data) / len(data)) if data else 128.0
+
+
+def _crossfade_for(paths, lo: float = 0.9, hi: float = 2.2) -> float:
+    """A crossfade long enough that the seam stays under the no-cut floor.
+
+    A crossfade is a per-frame blend, so two clips of very different brightness
+    produce a step of roughly `|Δluma| / (xf · fps)` on the frame-difference
+    metric the floor reads. At the old fixed 0.5 s a bright→dark seam measured
+    21-37 (limit 20) and the finished clip was deleted. Size the fade from the
+    worst adjacent brightness gap, with a 0.9 s floor so even a modest gap keeps
+    clear headroom under the limit.
+    """
+    lum = []
+    for p in paths:
+        try:
+            lum.append(_mean_luma(str(p)))
+        except Exception:  # noqa: BLE001 — an unreadable source just gets the mean
+            lum.append(128.0)
+    if len(lum) < 2:
+        return lo
+    step = max(abs(lum[i] - lum[i + 1]) for i in range(len(lum) - 1))
+    need = step / (6.0 * FPS)
+    return max(lo, min(hi, round(need, 2)))
+
+
+def build_video(backgrounds, narration, ass_path, total, out, work, xf=None, log=print):
     """Blend the backgrounds across the narration, then burn the cards.
 
-    The reference has no hard cut, so consecutive backgrounds crossfade (0.5 s)
-    instead of butting together. Each source is a little longer than its share so
-    the blend has material to pull from; the extra is trimmed by the final -t.
+    The reference has no hard cut, so consecutive backgrounds crossfade instead
+    of butting together. The fade length is sized to the footage (`xf`) so a
+    bright→dark seam does not read as a cut; each source is a little longer than
+    its share so the blend has material to pull from, and the extra is trimmed by
+    the final -t.
     """
     ff = ffmpeg()
     os.makedirs(work, exist_ok=True)
     n = max(1, len(backgrounds))
-    xf = 0.5 if n > 1 else 0.0
+    if xf is None:
+        xf = _crossfade_for([src for src, _ in backgrounds])
+    if n == 1:
+        xf = 0.0
     per = (total + (n - 1) * xf) / n
     segs = []
     for i, (src, is_video) in enumerate(backgrounds):
-        p = os.path.join(work, f"b{i:03d}.mp4")
+        # `per` is in the name: a retry with a longer fade rebuilds at a new `per`
+        # and must not reuse a segment cut for the old one.
+        p = os.path.join(work, f"b{i:03d}_{per:.2f}.mp4")
         if not (os.path.exists(p) and os.path.getsize(p) > 20000):
             _background_segment(src, per, is_video, p)
         segs.append(p)
-    silent = os.path.join(work, "silent.mp4")
+    silent = os.path.join(work, f"silent_{per:.2f}.mp4")
     if n == 1:
         run([ff, "-y", "-hide_banner", "-loglevel", "error", "-i", segs[0],
              "-c", "copy", silent])
@@ -469,13 +511,17 @@ def main() -> int:
 
     want = max(2, int(total / a.card_secs) + 1)
     backgrounds, credits = [], []
+    xf = None
     if not a.stills_only:
         # Screen at the smallest possible segment (all `want` clips used); a clip
         # longer than its real segment is fine, a shorter one is dropped by
-        # `fit_backgrounds` below.
+        # `fit_backgrounds` below. The crossfade is sized first, because a longer
+        # fade lengthens every segment and can disqualify a clip that the default
+        # 0.5 s would have kept.
         clips, items = fetch_footage(theme, os.path.join(work, "footage"),
                                      want, min_secs=total / want)
-        fitted = fit_backgrounds(clips, total)
+        xf = _crossfade_for(clips)
+        fitted = fit_backgrounds(clips, total, xf=xf)
         keep = set(fitted)
         credits = [it for c, it in zip(clips, items) if c in keep]
         backgrounds = [(c, True) for c in fitted]
@@ -491,23 +537,32 @@ def main() -> int:
     ass_path = os.path.join(work, "cap.ass")
     build_ass(marks, total, ass_path, title)
     out = os.path.join(a.out, os.path.basename(a.script).replace(".md", "") + ".mp4")
-    build_video(backgrounds, narration, ass_path, total, out, os.path.join(work, "segs"))
-    info = subprocess.run([ffmpeg(), "-hide_banner", "-i", out],
-                          capture_output=True, text=True).stderr
-    dur = re.search(r"Duration: (\d+):(\d+):([\d.]+)", info)
-    secs = (int(dur.group(1)) * 3600 + int(dur.group(2)) * 60 + float(dur.group(3))) if dur else 0
-    print(f"[done] {out}  {secs:.1f}s  {os.path.getsize(out)//1024} KB")
+    segs_dir = os.path.join(work, "segs")
 
     # The standard is a floor (K, 2026-11-17: "ห้ามมาตรฐานต่ำกว่านี้เด็ดขาด").
-    # A clip that drops below it is not written out as a finished artifact.
+    # A clip that drops below it is not written out as a finished artifact. The
+    # only soft check is the crossfade seam, so widen the fade and rebuild rather
+    # than throw the render away; anything else fails immediately.
     import clip_standard
-    rows = clip_standard.check(out)
-    for name, ok, detail in rows:
-        print(f"  {'ok  ' if ok else 'FAIL'} {name:28s} {detail}")
-    bad = [name for name, ok, _ in rows if not ok]
-    if bad:
-        os.remove(out)
-        raise SystemExit("clip below the standard (removed): " + "; ".join(bad))
+    for attempt in range(3):
+        build_video(backgrounds, narration, ass_path, total, out, segs_dir, xf=xf)
+        info = subprocess.run([ffmpeg(), "-hide_banner", "-i", out],
+                              capture_output=True, text=True).stderr
+        dur = re.search(r"Duration: (\d+):(\d+):([\d.]+)", info)
+        secs = (int(dur.group(1)) * 3600 + int(dur.group(2)) * 60 +
+                float(dur.group(3))) if dur else 0
+        print(f"[done] {out}  {secs:.1f}s  {os.path.getsize(out)//1024} KB")
+        rows = clip_standard.check(out)
+        for name, ok, detail in rows:
+            print(f"  {'ok  ' if ok else 'FAIL'} {name:28s} {detail}")
+        bad = [name for name, ok, _ in rows if not ok]
+        if not bad:
+            break
+        if bad != ["no hard cut"] or attempt == 2:
+            os.remove(out)
+            raise SystemExit("clip below the standard (removed): " + "; ".join(bad))
+        xf = min(2.5, round((xf or _crossfade_for([s for s, _ in backgrounds])) * 1.8, 2))
+        print(f"[video] seam still over the floor; rebuilding with a {xf}s crossfade")
 
     json.dump({"title": title, "theme": theme, "seconds": secs, "out": out,
                "backgrounds": len(backgrounds), "spec": SPEC,

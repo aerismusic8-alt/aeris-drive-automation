@@ -5213,6 +5213,31 @@ def test_trivia_reel() -> None:
           all(t in tr.THEME_QUERIES and t in tr.THEME_STILLS
               for t in ("sky", "space", "plants")))
 
+    # The crossfade must be sized to the footage, not fixed at 0.5 s. A fade
+    # between a bright and a dark clip steps ~|Δluma|/(xf*fps) on the
+    # frame-difference metric the "no hard cut" floor reads; at the old fixed
+    # 0.5 s a white->black seam measured ~21 (limit 20) and the finished clip was
+    # deleted, so the lane could never publish. Size from the worst adjacent gap.
+    real = tr._mean_luma
+    try:
+        tr._mean_luma = lambda p: {"a": 240.0, "b": 20.0, "c": 232.0}[p]
+        near = tr._crossfade_for(["a", "c"])   # a small brightness gap
+        wide = tr._crossfade_for(["a", "b"])   # a big one
+    finally:
+        tr._mean_luma = real
+    check("a small brightness gap keeps the minimum fade", near == 0.9)
+    check("a big brightness gap lengthens the fade", wide > near)
+    # Whatever fade is chosen, the luminance step it leaves stays under the floor.
+    check("the sized fade keeps the seam under the no-cut limit",
+          max(near, wide) * tr.FPS >= 220.0 / 20.0)
+    # The fade is threaded through the fit and the render, and the render retries
+    # with a longer fade rather than throwing the clip away.
+    check("the fade is threaded through fit_backgrounds and build_video",
+          "def build_video(backgrounds, narration, ass_path, total, out, work, xf=None"
+          in src and "fit_backgrounds(clips, total, xf=xf)" in src)
+    check("a seam over the floor rebuilds instead of deleting",
+          "seam still over the floor; rebuilding" in src)
+
 
 def test_trivia_publish() -> None:
     """The trivia lane must actually reach the channel (K, 2026-11-17).
@@ -5434,6 +5459,40 @@ def test_clip_standard_is_a_floor() -> None:
     rows = {n: ok for n, ok, _ in cs.check(good)}
     check("a correct vertical clip passes", all(rows.values()),
           "; ".join(f"{n}" for n, ok in rows.items() if not ok))
+
+    # Prove the trivia crossfade seam is real and that sizing it fixes it. A
+    # fixed 0.5 s fade between a bright and a dark clip steps the frame
+    # difference over the trivia "no hard cut" limit; the sized fade does not.
+    import importlib.util
+    spec = importlib.util.spec_from_file_location("trivia_reel", ops / "trivia_reel.py")
+    tr = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(tr)
+    w = tempfile.mkdtemp()
+    bright = os.path.join(w, "bright.mp4")
+    dark = os.path.join(w, "dark.mp4")
+    for path, col in ((bright, "white"), (dark, "black")):
+        subprocess.run([ff, "-y", "-v", "error", "-f", "lavfi", "-i",
+                        f"color=c={col}:s=1280x720:r=24:d=3",
+                        "-vf", "noise=alls=40:allf=t+u",
+                        "-c:v", "libx264", "-preset", "veryfast", "-crf", "20",
+                        "-pix_fmt", "yuv420p", path], check=True)
+
+    def _seam(xf: float) -> float:
+        out = os.path.join(w, f"seam{xf}.mp4")
+        subprocess.run([ff, "-y", "-v", "error", "-i", bright, "-i", dark,
+                        "-filter_complex",
+                        f"[0:v][1:v]xfade=transition=fade:duration={xf}:"
+                        f"offset={3 - xf}",
+                        "-c:v", "libx264", "-preset", "veryfast", "-crf", "20",
+                        "-pix_fmt", "yuv420p", out], check=True)
+        return cs.motion(out)[2]
+
+    fixed = _seam(0.5)                       # the old behaviour
+    sized = _seam(tr._crossfade_for([bright, dark]))
+    check("a fixed 0.5s fade can exceed the no-cut floor", fixed > 20.0,
+          f"seam max {fixed}")
+    check("the sized fade keeps the seam under the floor", sized <= 20.0,
+          f"seam max {sized}")
 
 
 def test_thumb_standard_is_a_floor() -> None:
