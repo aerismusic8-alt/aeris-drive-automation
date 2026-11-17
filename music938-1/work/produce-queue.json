@@ -1,5 +1,5 @@
 {
-  "made": 14,
+  "made": 15,
   "log": [
     {
       "slug": "25-thai-5bcb50c5",
@@ -255,6 +255,17 @@
     {
       "slug": "39-luk-khuen-laeo-pai-v39",
       "title": "ลุกขึ้นแล้วไปในฝัน",
+      "genre": "edm",
+      "mood": "epic",
+      "result": "lyric",
+      "flow": false,
+      "audio": "none",
+      "offline_rc": 1,
+      "instrumental": false
+    },
+    {
+      "slug": "40-luk-khuen-laeo-pai-v40",
+      "title": "ลุกขึ้นแล้วไปยามเช้า",
       "genre": "edm",
       "mood": "epic",
       "result": "lyric",
