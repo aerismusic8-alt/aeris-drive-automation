@@ -152,6 +152,8 @@ def clean_credits(items: list[dict]) -> str:
         title = (it.get("title") or "").strip()
         lic = (it.get("licence") or "").strip()
         src = (it.get("source") or "").strip()
+        if not title:
+            continue
         origin = (it.get("origin") or "Wikimedia Commons").strip()
         line = f"• {title} — {lic}, via {origin}"
         if src:
@@ -176,9 +178,11 @@ def grab_thumb(clip: Path, out: Path) -> Path:
     secs = float(dur) if dur else 0.0
     at = max(1.0, secs * 0.6)
     out.parent.mkdir(parents=True, exist_ok=True)
+    # JPEG, not PNG: a faithful 1280x720 PNG of a busy frame is ~2.2 MB and the
+    # thumbnail floor caps at 2 MB. q=2 keeps it visually identical at ~150 KB.
     subprocess.run(
         ["ffmpeg", "-y", "-loglevel", "error", "-ss", f"{at:.2f}", "-i", str(clip),
-         "-frames:v", "1", str(out)], check=True)
+         "-frames:v", "1", "-q:v", "2", str(out)], check=True)
     return out
 
 
@@ -232,11 +236,11 @@ def main() -> int:
         if not scripts:
             print("every trivia script is already posted")
             return 0
-        if a.next:
-            scripts = scripts[:1]
     else:
         ap.error("pass --script, --next, or --all")
 
+    pinned = bool(a.script)
+    want_one = bool(a.next)
     for sp in scripts:
         sp = Path(sp)
         if not sp.is_absolute() and not sp.exists():
@@ -248,17 +252,26 @@ def main() -> int:
 
         # Render (the clip floor is enforced inside trivia_reel: a fail removes
         # the file and raises, so a below-floor clip never reaches this code).
+        # A per-slug out dir keeps the footage cache from leaking between themes
+        # when `--all` renders several scripts in one run.
+        out_dir = str(Path(a.out) / slug)
         rc = subprocess.run([sys.executable, str(HERE / "trivia_reel.py"),
-                             "--script", str(sp), "--out", a.out]).returncode
+                             "--script", str(sp), "--out", out_dir]).returncode
         if rc != 0:
-            raise SystemExit(f"render failed for {slug} (rc {rc})")
-        meta = json.loads((Path(a.out) / "trivia.json").read_text(encoding="utf-8"))
+            # A pinned script failing is the caller's problem to see; for --next
+            # / --all a fact the free footage cannot render must not stall the
+            # daily lane on the same file forever, so move to the next one.
+            if pinned:
+                raise SystemExit(f"render failed for {slug} (rc {rc})")
+            print(f"::warning::render failed for {slug} (rc {rc}); trying the next")
+            continue
+        meta = json.loads((Path(out_dir) / "trivia.json").read_text(encoding="utf-8"))
         clip = Path(meta["out"])
 
         title = make_title(series, cards)
         desc = make_description(series, cards, meta.get("credits", []))
         tags = make_tags(series, cards)
-        thumb = grab_thumb(clip, THUMBS / f"thumb-trivia-{slug}.png")
+        thumb = grab_thumb(clip, THUMBS / f"thumb-trivia-{slug}.jpg")
 
         print(f"title: {title}")
         print(f"desc : {len(desc)} chars, {len(tags)} tags, thumb {thumb.name}")
@@ -266,6 +279,8 @@ def main() -> int:
         if a.dry_run:
             print(desc)
             print("dry-run: not uploading")
+            if want_one:
+                break
             continue
 
         vid = upload(clip, thumb, title, desc, tags, a.schedule, a.now, a.privacy)
@@ -276,6 +291,8 @@ def main() -> int:
         })
         save_state(state)
         print(f"posted {slug} -> https://youtu.be/{vid}")
+        if want_one:
+            break
     return 0
 
 

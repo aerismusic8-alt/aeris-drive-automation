@@ -5179,6 +5179,12 @@ def test_trivia_reel() -> None:
           src.index("def narrate") < src.index("def build_video"))
     # No hard cut: the reference has none, so backgrounds crossfade.
     check("backgrounds crossfade, never hard-cut", "xfade" in src)
+    # A source clip with a cut inside it, or one shorter than its segment (which
+    # build_video would loop, and the loop seam is a cut), makes the finished
+    # clip fail the floor and get deleted — screen sources before assembling.
+    check("footage is screened for internal cuts and length",
+          "def _usable" in src and "fit_backgrounds" in src
+          and "clip_standard" in src)
 
     spec = importlib.util.spec_from_file_location("trivia_reel",
                                                   ops / "trivia_reel.py")

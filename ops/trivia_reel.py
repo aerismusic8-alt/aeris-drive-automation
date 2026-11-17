@@ -167,32 +167,82 @@ def concat_audio(segs, work, gap=0.4):
     return raw, total, marks
 
 
-def fetch_footage(theme: str, out_dir: str, want: int, log=print):
+def _usable(path: str, min_secs: float):
+    """(ok, reason) for a candidate source clip.
+
+    Two ways a source ruins the no-cut floor: a cut inside it (a montage or a
+    jump-cutting timelapse), or being shorter than the segment it fills, because
+    `build_video` loops a short source with `-stream_loop -1` and the loop seam
+    is a hard cut. Verified 2026-11-17: three of five `plants` clips had an
+    internal cut (max 62-123) and a 5.3 s clip looped into an 8.9 s segment;
+    both made the finished clip fail and get deleted.
+    """
+    import clip_standard as cs
+    try:
+        info = cs.probe(path)
+    except Exception:
+        return False, "unreadable"
+    if info["seconds"] < min_secs:
+        return False, f"too short ({info['seconds']:.1f}s < {min_secs:.1f}s)"
+    peak = cs.motion(path)[2]
+    if peak > 18.0:
+        return False, f"internal cut (max {peak})"
+    return True, ""
+
+
+def fetch_footage(theme: str, out_dir: str, want: int, min_secs: float, log=print):
     """Free Commons footage for the theme; returns (paths, items).
 
     `items` carries the licence/credit for each clip so the description can
     attribute it — a CC BY / BY-SA clip requires that, and a music channel must
-    not ship one without it.
+    not ship one without it. Each candidate must be smooth and long enough for
+    its segment (`_usable`), so the assembled clip can hold the no-cut floor; a
+    wide candidate pool is pulled so enough usable clips survive screening.
     """
     os.makedirs(out_dir, exist_ok=True)
+    cmap_path = os.path.join(out_dir, "_credits.json")
+    cmap = {}
+    try:
+        cmap = json.load(open(cmap_path, encoding="utf-8"))
+    except (OSError, ValueError):
+        cmap = {}
     have = sorted(glob.glob(os.path.join(out_dir, "c*.webm")) +
                   glob.glob(os.path.join(out_dir, "c*.mp4")))
     if len(have) >= want:
-        return have[:want], []
-    items = []
+        keep = [h for h in have if _usable(h, min_secs)[0]]
+        if len(keep) >= want:
+            return keep[:want], [cmap.get(os.path.basename(h), {}) for h in keep[:want]]
+    items, seen = [], set()
     for q in THEME_QUERIES.get(theme, THEME_QUERIES["sky"]):
-        items += fr.search_video(q, limit=4)
-        if len(items) >= want:
-            break
+        for it in fr.search_video(q, limit=8):
+            key = it.get("url") or it.get("title")
+            if key and key not in seen:
+                seen.add(key)
+                items.append(it)
     got, used = [], []
-    for i, it in enumerate(items[:want]):
-        name = f"c{i:02d}" + (os.path.splitext(it["url"])[1] or ".webm")
+    for it in items:
+        if len(got) >= want:
+            break
+        name = f"c{len(got):02d}" + (os.path.splitext(it["url"])[1] or ".webm")
         p = fr.download(it, out_dir, name=name)
-        if p:
-            got.append(str(p))
-            used.append(it)
+        if not p:
+            continue
+        ok, why = _usable(str(p), min_secs)
+        if not ok:
+            log(f"  [footage] skip {os.path.basename(str(p))}: {why}")
+            os.remove(str(p))
+            continue
+        got.append(str(p))
+        used.append(it)
+        cmap[os.path.basename(str(p))] = {
+            "title": it.get("title", ""), "licence": it.get("licence", ""),
+            "source": it.get("source", ""), "origin": it.get("origin", "")}
     if got:
         log(f"  [footage] {len(got)} clips, theme {theme}")
+    try:
+        json.dump(cmap, open(cmap_path, "w", encoding="utf-8"), ensure_ascii=False)
+    except OSError:
+        pass
     return got, used
 
 
@@ -303,6 +353,39 @@ def _background_segment(src: str, per: float, is_video: bool, out: str):
              "-c:v", "libx264", "-preset", "veryfast", "-crf", "20", out])
 
 
+def fit_backgrounds(clips, total, xf=0.5, log=print):
+    """The subset of `clips` that never has to be looped to fill its segment.
+
+    `build_video` splits the narration evenly across the clips, so with `n`
+    clips each segment is `per = (total + (n-1)*xf)/n` seconds. A source shorter
+    than its segment is repeated with `-stream_loop -1`, and that loop seam is a
+    hard cut the clip standard rejects. Drop the shortest clip until every
+    remaining one is at least as long as its segment; if even one clip cannot
+    fill the whole narration, return [] so the caller falls back to stills.
+    """
+    import clip_standard as cs
+    lens = []
+    for c in clips:
+        try:
+            lens.append(cs.probe(c)["seconds"])
+        except Exception:
+            lens.append(0.0)
+    kept = sorted(range(len(clips)), key=lambda i: lens[i], reverse=True)
+    while len(kept) > 1:
+        per = (total + (len(kept) - 1) * xf) / len(kept)
+        if lens[kept[-1]] >= per:
+            break
+        log(f"  [footage] drop a short clip "
+            f"({lens[kept[-1]]:.1f}s < {per:.1f}s segment)")
+        kept.pop()
+    if not kept:
+        return []
+    per = (total + (len(kept) - 1) * xf) / len(kept)
+    if lens[kept[0]] < per:
+        return []
+    return [clips[i] for i in kept]
+
+
 def build_video(backgrounds, narration, ass_path, total, out, work, log=print):
     """Blend the backgrounds across the narration, then burn the cards.
 
@@ -387,8 +470,15 @@ def main() -> int:
     want = max(2, int(total / a.card_secs) + 1)
     backgrounds, credits = [], []
     if not a.stills_only:
-        clips, credits = fetch_footage(theme, os.path.join(work, "footage"), want)
-        backgrounds = [(c, True) for c in clips]
+        # Screen at the smallest possible segment (all `want` clips used); a clip
+        # longer than its real segment is fine, a shorter one is dropped by
+        # `fit_backgrounds` below.
+        clips, items = fetch_footage(theme, os.path.join(work, "footage"),
+                                     want, min_secs=total / want)
+        fitted = fit_backgrounds(clips, total)
+        keep = set(fitted)
+        credits = [it for c, it in zip(clips, items) if c in keep]
+        backgrounds = [(c, True) for c in fitted]
     if not backgrounds:
         stills = fetch_stills(theme, os.path.join(work, "stills"), want)
         if not stills:
