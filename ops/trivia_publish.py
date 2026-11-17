@@ -226,12 +226,23 @@ def main() -> int:
     ap.add_argument("--now", action="store_true", help="publish immediately")
     ap.add_argument("--schedule", help="ISO8601 UTC publishAt")
     ap.add_argument("--privacy", default="private")
+    ap.add_argument("--max-per-day", type=int, default=1,
+                    help="cap for --next/--all per UTC day (a --script run ignores it)")
     a = ap.parse_args()
 
     state = load_state()
     if a.script:
         scripts = [Path(a.script) if os.path.sep in a.script else SCRIPTS / a.script]
     elif a.next or a.all:
+        # The rail ticks more than once a day so a YouTube account upload cap
+        # (`uploadLimitExceeded`) does not lose the fact; that must stay a
+        # *retry*, not extra output, so a tick after the day's post does nothing.
+        today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+        made = sum(1 for r in state.get("posted", [])
+                   if str(r.get("at", "")).startswith(today))
+        if made >= a.max_per_day:
+            print(f"already posted {made} trivia clip(s) today — nothing to do")
+            return 0
         scripts = pick_scripts(state)
         if not scripts:
             print("every trivia script is already posted")

@@ -26,6 +26,13 @@ on:
     # 09:15 UTC — after the release rail's 08:05 tick and its 08:00 pool reset,
     # so a trivia upload does not race the day's songs for the fresh quota.
     - cron: '15 9 * * *'
+    # 21:00 UTC — a second, later attempt. YouTube also caps how many videos an
+    # *account* may upload in a day (`uploadLimitExceeded`), and that cap clears
+    # over hours rather than at the 08:00 UTC reset (see `release.py`). The
+    # release rail holds the day's first slots, so the morning trivia tick can
+    # be the one refused; the ledger records only successes, so a second tick
+    # lands the same fact once a slot frees, and never double-posts.
+    - cron: '0 21 * * *'
   workflow_dispatch:
     inputs:
       script:

@@ -5236,6 +5236,10 @@ def test_trivia_publish() -> None:
     # A committed ledger is what lets a fresh runner know what is already live.
     check("the ledger is committed by the rail",
           "trivia-state.json" in (ROOT.parent / ".github/workflows/ax-music-trivia.yml").read_text())
+    # The rail ticks twice a day so a YouTube account upload cap does not lose the
+    # fact; that must stay a retry, not extra output, so a same-day guard caps it.
+    check("a second daily tick is a retry, not extra output",
+          "--max-per-day" in src and "max_per_day" in src)
 
     spec = importlib.util.spec_from_file_location("trivia_publish",
                                                   ops / "trivia_publish.py")
