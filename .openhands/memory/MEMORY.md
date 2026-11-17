@@ -65,15 +65,14 @@ Views without follows is the failure. End every clip with `release.FOLLOW_ASK` +
 ## Real-instrument sound (K)
 **sfizz** sampler, not GM; `AX_REQUIRE_REAL_INSTRUMENTS=1` makes a fallback **raise**.
 
-## Clip quality — one FLOOR, every format, every channel (K, 2026-11-17)
-"ห้ามอัพขึ้นเด็ดขาด". The trivia clip is only a **sample**; the standard is for all
-work. `ops/clip_standard.py` = universal floor (h264, aac 48k stereo, −16..−12 LUFS,
-≤ −1.0 dBTP) + a profile per format (trivia/vertical/film/horizontal/motion); style
-rules only where the format calls for them. Gated at **every** upload route, no
-override: `ops/yt_publish.py` (YouTube), `ops/fb_graph.py` + `ops/tiktok_api.py` and
-`crosspost.post_tiktok/post_facebook` (FB/TikTok) all call `clip_standard.assert_ok`
-before any network call; `ops/trivia_reel.py` deletes a failing render. Found **24/28
-song masters clip** → fix `ops/remaster_songs.py`. `docs/clip-standard.md`.
+## Clip + thumbnail quality — one FLOOR, every format/channel (K, 2026-11-17)
+"ห้ามอัพขึ้นเด็ดขาด". The trivia clip is only a **sample**. `ops/clip_standard.py` =
+universal floor (h264, aac 48k stereo, −16..−12 LUFS, ≤ −1.0 dBTP) + a per-format
+profile. Gated at **every** upload route, no override (`ops/yt_publish.py`,
+`ops/fb_graph.py`, `ops/tiktok_api.py`, `crosspost`). Thumbnails too
+(`ops/thumb_standard.py` in `set_thumbnail`; `make_short.thumb_for` lifts the dark
+Short grab). Docs: `docs/clip-standard.md`, `docs/thumbnail-standard.md`;
+master fix `ops/remaster_songs.py`.
 
 ## Loop health & platform risks
 - **A green run is not a finished job.** `release.py` returns rc 4 +
