@@ -5183,6 +5183,60 @@ def test_trivia_reel() -> None:
               for t in ("sky", "space", "plants")))
 
 
+def test_clip_standard_is_a_floor() -> None:
+    """The trivia standard is a floor, not a target (K, 2026-11-17).
+
+    K: "อันนี้เป็นแค่มาตรฐานเริ่มต้น ... ห้ามมาตรฐานต่ำกว่านี้เด็ดขาดในช่องของเรา".
+    A rule in a doc drifts, so ops/clip_standard.py measures a finished clip and
+    rejects it below the numbers measured from the reference. This test pins the
+    thresholds (they may only be raised) and proves the gate catches a clip that
+    is below the floor.
+    """
+    section("clip standard (the floor)")
+    import importlib.util
+    ops = ROOT.parent / "ops"
+    spec = importlib.util.spec_from_file_location("clip_standard",
+                                                  ops / "clip_standard.py")
+    cs = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(cs)
+    t = cs.THRESHOLDS
+    # The floor measured from K's reference clip. Raising a number is fine;
+    # lowering one below these is exactly what K forbade.
+    check("format floor is 1280x720 h264",
+          t["width"] == 1280 and t["height"] == 720 and t["video_codec"] == "h264")
+    check("audio floor is aac 48k stereo",
+          t["audio_codec"] == "aac" and t["audio_rate"] == 48000
+          and t["audio_channels"] == 2)
+    check("loudness floor is the reference band",
+          t["lufs_min"] >= -16.5 and t["lufs_max"] <= -13.5)
+    check("no hard cut and not frozen",
+          t["motion_max"] <= 20.0 and t["motion_median_min"] >= 0.15)
+    check("caption floor is present",
+          t["text_px_min"] >= 120)
+    # The renderer enforces it: a fail removes the artifact and raises.
+    src = (ops / "trivia_reel.py").read_text()
+    check("trivia_reel runs the gate", "clip_standard.check" in src
+          and "below the standard" in src)
+
+    # Prove the gate actually rejects a below-floor clip, using a real render
+    # only when one is present (CI has none); otherwise build a tiny bad file.
+    import shutil
+    import tempfile
+    ff = shutil.which("ffmpeg") or cs.ffmpeg()
+    bad = os.path.join(tempfile.mkdtemp(), "bad.mp4")
+    subprocess.run([ff, "-y", "-v", "error", "-f", "lavfi", "-i",
+                    "color=c=navy:s=640x360:d=3", "-r", "15",
+                    "-f", "lavfi", "-i", "anullsrc=r=24000:cl=mono",
+                    "-shortest", "-c:v", "libx264", "-c:a", "aac", bad],
+                   check=True)
+    rows = {n: ok for n, ok, _ in cs.check(bad)}
+    check("gate rejects the wrong size", rows.get("landscape 1280x720") is False)
+    check("gate rejects the wrong audio",
+          rows.get("audio aac 48k stereo") is False)
+    check("gate rejects a frozen picture",
+          rows.get("picture is not frozen") is False)
+
+
 def test_metadata_ab_holds_format_fixed() -> None:
     """The title experiment must change exactly one variable.
 
@@ -6326,6 +6380,7 @@ def main() -> int:
     test_phone_login()
     test_story_reel()
     test_trivia_reel()
+    test_clip_standard_is_a_floor()
     test_metadata_ab_holds_format_fixed()
     test_login_vault_never_clobbers_a_live_surface()
     test_ar_identity_survives_a_lost_pod()

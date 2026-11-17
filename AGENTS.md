@@ -228,6 +228,26 @@ Rules learned the hard way:
 - A red test run must never reach players, so the dispatch sits after the last
   test step and only runs for a push to `ax-arena-roblox-game`.
 
+## Clip quality — the floor (K, 2026-11-17)
+
+> "อันนี้เป็นแค่มาตรฐานเริ่มต้นสามารถทำได้ ห้ามมาตรฐานต่ำกว่านี้เด็ดขาดในช่องของเรา"
+
+The measured trivia standard is a **floor, not a target**. Nothing below it may
+ship on any of our channels. It is not just a doc: `ops/clip_standard.py` measures
+a finished clip and rejects it, and `ops/trivia_reel.py` runs that gate at the end
+of every render — on a fail it **deletes the MP4 and exits non-zero**, so a
+below-floor clip cannot leave the machine as a finished artifact.
+
+The floor: 1280×720, 24/25/30 fps, h264, aac 48k stereo, ≥ 3 s, **−16.5…−13.5
+LUFS**, ≤ −1 dBTP, no hard cut (consecutive-frame Δ ≤ 20), not frozen (median
+Δ ≥ 0.15), caption present. Raising a number is welcome; lowering one is what K
+forbade. `docs/trivia-clip-standard.md` has the measured reference and the steps;
+`music938-1/tests/run.py::test_clip_standard_is_a_floor` pins the thresholds.
+
+```bash
+python3 ops/clip_standard.py <clip.mp4>     # 11 rules; non-zero exit on a fail
+```
+
 ## Language
 
 The player-facing text is Thai. `roblox/src/shared/Text.luau` is the only place

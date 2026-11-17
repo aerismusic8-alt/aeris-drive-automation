@@ -67,12 +67,12 @@ Views without follows is the failure. End every clip with `release.FOLLOW_ASK` +
 ## Real-instrument sound (K)
 **sfizz** sampler, not GM; `AX_REQUIRE_REAL_INSTRUMENTS=1` makes a fallback **raise**.
 
-## Clip production standard — trivia ("เกร็ดความรู้") lane
-K (2026-11-17): build the tool + steps to the reference clip's quality **first**,
-then standardise, then upload. Measured reference: 1280×720 24 fps, **−14.9 LUFS**,
-real moving footage (no cuts/zoom), white Thai ~72 px, ~3 px outline, left 10.5 %.
-Tool `ops/trivia_reel.py` (`SPEC` pinned by `test_trivia_reel`); steps in
-`docs/trivia-clip-standard.md`. Order: real footage > loudnorm speech > clean text.
+## Clip quality — the FLOOR, not a target (K, 2026-11-17)
+"ห้ามมาตรฐานต่ำกว่านี้เด็ดขาดในช่องของเรา". Standard: 1280×720 24 fps h264, aac 48k
+stereo, **−15 LUFS**, real footage (no cut/zoom), white Thai ~72 px. **Enforced, not
+a doc:** `ops/clip_standard.py` measures a clip; `ops/trivia_reel.py` deletes it +
+exits non-zero on a fail. Reference + steps: `docs/trivia-clip-standard.md`;
+`test_clip_standard_is_a_floor`.
 
 ## Loop health & platform risks
 - **A green run is not a finished job.** `release.py` returns rc 4 +

@@ -2,9 +2,14 @@
 
 This is the standard for the "เกร็ดความรู้รอบตัวและวิทยาศาสตร์" (everyday-science
 trivia) clips. K supplied a reference clip on 2026-11-17 and asked for that
-quality first, then to make it the standard. The numbers below are **measured**
-from that reference, not chosen by taste, and `music938-1/tests/run.py::
-test_trivia_reel` pins them so a change that drifts fails the suite.
+quality first, then to make it the standard.
+
+> **The standard is a floor, not a target.** K (2026-11-17): "อันนี้เป็นแค่
+> มาตรฐานเริ่มต้น ... **ห้ามมาตรฐานต่ำกว่านี้เด็ดขาดในช่องของเรา**" — nothing below
+> this may ship. The floor is enforced by `ops/clip_standard.py`, which measures a
+> finished clip and rejects it; `ops/trivia_reel.py` runs that gate at the end of
+> every render and **deletes the file and raises** if it fails. Raising a number is
+> welcome; lowering one is the thing K forbade.
 
 Everything is free (Rule #1): edge-tts voice, licence-checked Wikimedia Commons
 footage, ffmpeg. No key, no account, no login.
@@ -64,6 +69,34 @@ ffmpeg -hide_banner -i /tmp/trivia/sky-blue.mp4 \
 Thai narration runs ~13.6 characters/second (male voice, rate −8 %). A 20–30 s
 clip is 3–5 cards of 40–90 characters each. One card = one idea; the first card
 is the question, the rest answer it.
+
+## The floor, enforced (`ops/clip_standard.py`)
+
+A doc drifts, so the floor is machine-checked. `check(clip)` measures a finished
+file and returns one row per rule; `assert_ok(clip)` raises on any fail.
+
+```bash
+python3 ops/clip_standard.py /tmp/trivia/sky-blue.mp4        # human table
+python3 ops/clip_standard.py /tmp/trivia/sky-blue.mp4 --json # machine
+```
+
+| Rule | Floor | Why |
+| --- | --- | --- |
+| landscape | exactly 1280×720 | the format |
+| frame rate | 24/25/30 fps | a real frame rate |
+| video codec | h264 | widely playable |
+| audio | aac, 48000 Hz, 2 ch | the reference |
+| long enough | ≥ 3 s | not a flash |
+| loudness | −16.5 … −13.5 LUFS | raw TTS is ~−22 |
+| true peak | ≤ −1.0 dBTP | no clipping |
+| no hard cut | consecutive-frame Δ ≤ 20 | a cut measures ~94 |
+| not frozen | median Δ ≥ 0.15 | a still frame is 0.0 |
+| caption present | ≥ 120 text px | white Thai + thin dark outline |
+
+`ops/trivia_reel.py` runs this gate at the end of every render: on a fail it
+**deletes the MP4 and exits non-zero**, so a below-floor clip can never leave the
+machine as a finished artifact. `test_clip_standard_is_a_floor` pins the
+thresholds and proves the gate rejects a bad clip.
 
 ## What the clip must NOT carry
 

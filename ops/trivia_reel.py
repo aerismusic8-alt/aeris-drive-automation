@@ -401,6 +401,18 @@ def main() -> int:
     dur = re.search(r"Duration: (\d+):(\d+):([\d.]+)", info)
     secs = (int(dur.group(1)) * 3600 + int(dur.group(2)) * 60 + float(dur.group(3))) if dur else 0
     print(f"[done] {out}  {secs:.1f}s  {os.path.getsize(out)//1024} KB")
+
+    # The standard is a floor (K, 2026-11-17: "ห้ามมาตรฐานต่ำกว่านี้เด็ดขาด").
+    # A clip that drops below it is not written out as a finished artifact.
+    import clip_standard
+    rows = clip_standard.check(out)
+    for name, ok, detail in rows:
+        print(f"  {'ok  ' if ok else 'FAIL'} {name:28s} {detail}")
+    bad = [name for name, ok, _ in rows if not ok]
+    if bad:
+        os.remove(out)
+        raise SystemExit("clip below the standard (removed): " + "; ".join(bad))
+
     json.dump({"title": title, "theme": theme, "seconds": secs, "out": out,
                "backgrounds": len(backgrounds), "spec": SPEC},
               open(os.path.join(a.out, "trivia.json"), "w", encoding="utf-8"),
