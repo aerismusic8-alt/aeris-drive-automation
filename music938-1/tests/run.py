@@ -5131,6 +5131,58 @@ def test_story_reel() -> None:
           psr.HASHTAGS["horror"] in cap and "#NEOVINCI" in cap)
 
 
+def test_trivia_reel() -> None:
+    """A "เกร็ดความรู้" trivia clip is the landscape lane K asked for on 2026-11-17.
+
+    K supplied a reference clip and asked for that quality first, then to make it
+    the standard and upload it. The tool measures the reference into SPEC and must
+    stay free (edge-tts + ffmpeg + Wikimedia Commons footage/stills), landscape,
+    loudness-normalised, cut-free (crossfades, no hard cuts), and read the brand
+    from the one branding module. The numbers here are the measured reference, so
+    a change that drifts from the standard fails.
+    """
+    section("trivia reel (Thai narrated landscape)")
+    import importlib.util
+    ops = ROOT.parent / "ops"
+    src = (ops / "trivia_reel.py").read_text()
+
+    check("voice is free edge-tts", "edge" in src.lower() and "tts" in src.lower())
+    check("no paid API or key", "api_key" not in src.lower()
+          and "openai" not in src.lower())
+    # Rule #1 + quality: real moving footage first, licence-checked stills as fallback.
+    check("uses the free footage rail", "footage_rail" in src and "search_video" in src)
+    check("stills are licence-checked", "stills_rail" in src)
+    # The brand lives in one module; the lane must not hardcode the name.
+    check("brand is imported, not hardcoded", "import branding" in src
+          and "NEO VINCI" not in src)
+    check("narration is synthesised before pictures",
+          src.index("def narrate") < src.index("def build_video"))
+    # No hard cut: the reference has none, so backgrounds crossfade.
+    check("backgrounds crossfade, never hard-cut", "xfade" in src)
+
+    spec = importlib.util.spec_from_file_location("trivia_reel",
+                                                  ops / "trivia_reel.py")
+    tr = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(tr)
+    s = tr.SPEC
+    # The measured reference: 1280x720, 24 fps, ~72 px text, ~10.5 % left margin,
+    # -15 LUFS. These are the standard; do not loosen them silently.
+    check("spec is the measured reference",
+          s["width"] == 1280 and s["height"] == 720 and s["fps"] == 24)
+    check("spec text matches the reference",
+          s["card_font"] == 72 and s["margin_left"] == 134)
+    check("spec loudness matches the reference",
+          -16.0 <= s["lufs"] <= -14.0 and s["true_peak"] <= -1.5)
+    scripts = sorted((ROOT.parent / "scripts_trivia").glob("*.md"))
+    check("trivia scripts exist", len(scripts) >= 1)
+    title, theme, cards = tr.read_script(str(scripts[0]))
+    check("read_script pulls TITLE and THEME", bool(title) and bool(theme))
+    check("read_script keeps every card", len(cards) >= 2)
+    check("every theme has a footage and a stills query set",
+          all(t in tr.THEME_QUERIES and t in tr.THEME_STILLS
+              for t in ("sky", "space", "plants")))
+
+
 def test_metadata_ab_holds_format_fixed() -> None:
     """The title experiment must change exactly one variable.
 
@@ -6273,6 +6325,7 @@ def main() -> int:
     test_operator_url()
     test_phone_login()
     test_story_reel()
+    test_trivia_reel()
     test_metadata_ab_holds_format_fixed()
     test_login_vault_never_clobbers_a_live_surface()
     test_ar_identity_survives_a_lost_pod()

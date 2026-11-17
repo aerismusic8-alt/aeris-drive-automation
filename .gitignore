@@ -149,3 +149,7 @@ share/aeris-music/covers/*.jpg
 # The YouTube shared-quota ledger. Every worker reads and writes it through the
 # Contents API, so it must be tracked or the reservation is invisible to the rest.
 !music938-1/work/yt-quota.json
+
+# K's reference uploads at the repo root (a sample clip) are inputs, not sources;
+# the standard derived from one lives in docs/trivia-clip-standard.md.
+/*.mp4
