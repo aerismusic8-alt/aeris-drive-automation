@@ -152,14 +152,17 @@ def goal_block(sp: dict) -> list[str]:
 def youtube_stats() -> dict:
     """Subs, videos and views for the one channel this project grows.
 
-    The Data API is authoritative but its daily quota (10,000 units) is spent by
-    the 07:00 UTC release, so a later read answers 403 `quotaExceeded`. In that
-    case fall back to the last market snapshot rather than reporting UNKNOWN —
-    the snapshot is real, just older.
+    The Data API is authoritative but its daily quota (10,000 units, shared with
+    every thumbnail and playlist write) is spent by the release, so a later read
+    answers 403 `quotaExceeded`. When that happens, read the public channel page
+    instead (`yt_public_scan.channel_header`) — it carries the same three numbers
+    for zero quota, so the measurement rail is never blind. Only if that page also
+    fails do we fall back to the last market snapshot, labelled as older.
     """
     token = surfaces.config()["youtube"].get("token", "ch3")
     sys.path.insert(0, str(surfaces.OPS))
     import yt_auth  # noqa: E402  (path is set just above)
+    handle = surfaces.config()["youtube"]["handle"]
 
     try:
         tok = yt_auth.access_token(token)
@@ -171,18 +174,37 @@ def youtube_stats() -> dict:
         st = item["statistics"]
         return {
             "reachable": True,
-            "handle": surfaces.config()["youtube"]["handle"],
+            "handle": handle,
             "title": item["snippet"]["title"],
             "subs": int(st.get("subscriberCount", 0)),
             "videos": int(st.get("videoCount", 0)),
             "views": int(st.get("viewCount", 0)),
+            "source": "data-api",
         }
-    except Exception as exc:  # noqa: BLE001
+    except (Exception, SystemExit) as exc:  # SystemExit: a missing/invalid token
+        page = public_page_stats(handle)
+        if page:
+            page["note"] = f"Data API unavailable ({str(exc)[:100]}); public page"
+            return page
         snap = snapshot_stats()
         if snap:
             snap["note"] = f"Data API unavailable ({str(exc)[:120]}); snapshot"
             return snap
         raise
+
+
+def public_page_stats(handle: str) -> dict | None:
+    """The same three numbers off the public channel page — zero API quota."""
+    try:
+        import yt_public_scan  # noqa: E402
+        h = yt_public_scan.channel_header(handle)
+    except Exception:  # noqa: BLE001
+        return None
+    if h.get("subs") is None and h.get("views") is None:
+        return None
+    return {"reachable": True, "handle": handle, "title": h.get("title", handle),
+            "subs": h.get("subs"), "videos": h.get("videos"),
+            "views": h.get("views"), "source": "public-page"}
 
 
 def snapshot_stats() -> dict | None:

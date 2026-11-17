@@ -665,7 +665,9 @@ def test_read_live_distinguishes_a_bug_from_a_quota():
     quota state. Mislabeling the bug is what hid this failure for days."""
     import yt_auth
     orig_ids, orig_get = yt_auth.all_upload_ids, yt_auth.get_videos
+    orig_tok = yt_auth.access_token
     yt_auth.all_upload_ids = lambda tok: ["v1"]
+    yt_auth.access_token = lambda ch, timeout=60: "fake-token"
     try:
         yt_auth.get_videos = lambda tok, ids, part="x": (400, [])
         try:
@@ -683,6 +685,7 @@ def test_read_live_distinguishes_a_bug_from_a_quota():
             pass
     finally:
         yt_auth.all_upload_ids, yt_auth.get_videos = orig_ids, orig_get
+        yt_auth.access_token = orig_tok
 
 
 def test_follower_forecast_refuses_on_no_movement():
@@ -768,6 +771,59 @@ def test_follower_forecast_range_is_not_inverted_on_a_staircase():
     assert proj["confidence"] == "measured", proj
     assert best < likely, proj           # optimistic bound is sooner, not later
     assert worst is None, proj           # half the days are flat: no floor
+
+
+def test_youtube_stats_falls_back_to_the_public_page():
+    """A spent Data API quota must not blind the measurement rail.
+
+    The API's `channels.list` shares the 10,000-unit pool with every thumbnail
+    and playlist write, so it 403s by mid-morning. The public channel page
+    carries the same subs/videos/views for zero quota, so `youtube_stats` must
+    read it instead of returning UNKNOWN — a blind dashboard is what let flat
+    growth go unnoticed.
+    """
+    import sys as _sys
+    _sys.path.insert(0, str(Path(__file__).resolve().parent.parent.parent / "ops"))
+    import yt_public_scan as scan
+    h = scan.channel_header("@aerismusicth")
+    assert h["subs"] is not None, h
+    assert h["videos"] is not None, h
+    assert h["views"] is not None, h
+
+    # When the API raises (quota), the fallback path must return those numbers.
+    orig = report.public_page_stats
+    report.public_page_stats = lambda handle: {
+        "reachable": True, "handle": handle, "title": "NEO VINCI",
+        "subs": 8, "videos": 82, "views": 2096, "source": "public-page"}
+    import yt_auth
+    orig_tok = yt_auth.access_token
+    yt_auth.access_token = lambda ch, timeout=60: (_ for _ in ()).throw(
+        SystemExit("no token in this session"))
+    try:
+        r = report.youtube_stats()
+    finally:
+        yt_auth.access_token = orig_tok
+        report.public_page_stats = orig
+    assert r["subs"] == 8 and r["views"] == 2096, r
+    assert r["source"] == "public-page", r
+
+
+def test_live_audit_repair_respects_the_release_budget():
+    """The audit's repair loop must record its spend and never drain the pool.
+
+    `live_audit --repair` is the single largest consumer of the shared 10,000-unit
+    pool (a `videos.update` is 50 units, run three times a day) and it used to
+    write untracked until the pool was gone — which is how uploads shipped with
+    YouTube's auto frame and no playlist row. It must stop before the release's
+    budget and record every write in the ledger the release reserves against.
+    """
+    import live_audit as audit
+    import yt_quota
+    assert audit.QUOTA_FLOOR >= yt_quota.UNITS_PER_RELEASE, audit.QUOTA_FLOOR
+    src = (ROOT / "scripts" / "live_audit.py").read_text(encoding="utf-8")
+    assert "yt_quota.remaining() < QUOTA_FLOOR" in src, "no quota floor gate"
+    assert 'yt_quota.record("videos.update")' in src, "repairs are not recorded"
+    assert "yt_quota.commit(" in src, "the recorded spend is not persisted"
 
 
 if __name__ == "__main__":

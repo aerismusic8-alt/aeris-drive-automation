@@ -63,6 +63,10 @@ jobs:
           YT_CLIENT_ID: ${{ secrets.YT_CLIENT_ID }}
           YT_CLIENT_SECRET: ${{ secrets.YT_CLIENT_SECRET }}
           YT_CH3_REFRESH_TOKEN: ${{ secrets.YT_CH3_REFRESH_TOKEN }}
+          # The audit's repair loop is the largest consumer of the shared quota
+          # pool, so it records its spend in the same ledger the release reserves
+          # against. The commit needs a token; the job token can write here.
+          AX_GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           set -euo pipefail
           python3 aeris938-2/scripts/live_audit.py --repair --no-push

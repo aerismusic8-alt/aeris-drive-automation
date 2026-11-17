@@ -218,6 +218,43 @@ def _hms(s: str) -> int | None:
     return None
 
 
+def channel_header(handle: str) -> dict:
+    """Subs, video count and total views from the public page — no API quota.
+
+    The Data API's `channels.list` reads the same three numbers but draws on the
+    shared 10,000-unit pool that the release spends by mid-morning, so on a spent
+    day the dashboard is blind and every growth decision runs on a stale
+    snapshot. The public page carries them for free in the page HTML: the
+    subscriber and video counts in the `/videos` tab's metadata rows, the total
+    view count in the `/about` tab's `viewCountText`. Reading the page instead of
+    the API is what keeps the measurement rail honest on a zero-cost budget.
+    """
+    html = fetch(f"https://www.youtube.com/{handle.lstrip('/')}/videos")
+    title = handle
+    m = re.search(r'"pageTitle":"([^"]+)"', html)
+    if m:
+        title = re.sub(r"\s+", " ", m.group(1)).strip()
+    subs = videos = None
+    m = re.search(r'"content":"([^"]*ผู้ติดตาม[^"]*)"', html) or \
+        re.search(r'"content":"([^"]*subscribers[^"]*)"', html)
+    if m:
+        subs = _parse_int(m.group(1))
+    m = re.search(r'"content":"([^"]*วิดีโอ[^"]*)"', html) or \
+        re.search(r'"content":"([^"]*videos[^"]*)"', html)
+    if m:
+        videos = _parse_int(m.group(1))
+    views = None
+    try:
+        about = fetch(f"https://www.youtube.com/{handle.lstrip('/')}/about")
+        m = re.search(r'"viewCountText":"([^"]+)"', about)
+        if m:
+            views = _parse_int(m.group(1))
+    except Exception:  # noqa: BLE001 — a missing total-views number is not fatal
+        pass
+    return {"handle": handle, "title": title.strip(), "subs": subs,
+            "videos": videos, "views": views, "source": "public-page"}
+
+
 def summarise(ch: dict) -> dict:
     vids = [v for v in ch["videos"] if v.get("views") is not None]
     views = sorted(v["views"] for v in vids)

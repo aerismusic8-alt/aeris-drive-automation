@@ -46,6 +46,7 @@ sys.path.insert(0, str(REPO / "ops"))
 
 import yt_auth  # noqa: E402  (ops/yt_auth.py)
 import monetize  # noqa: E402  (music938-1/scripts/monetize.py)
+import yt_quota  # noqa: E402  (ops/yt_quota.py)
 
 WORK = ROOT / "work"
 REPORT = WORK / "live-audit.md"
@@ -57,6 +58,12 @@ MIN_CHAPTERS = 12
 # 25 videos * 50 units (videos.update) is 1,250 of the 10,000-unit pool, so a
 # full-backlog repair fits in one fresh-quota run; the cap only stops a runaway.
 MAX_REPAIRS = 50
+# Leave this much of the shared pool for the release (thumbnail 50 + playlist 50
+# per upload, plus reads). The release runs later in the same Pacific day and
+# refuses to start without its budget, so a repair that drained the pool would
+# leave the day's uploads with YouTube's auto frame — the exact failure the
+# ledger exists to prevent.
+QUOTA_FLOOR = 1500
 
 
 class QuotaError(RuntimeError):
@@ -243,12 +250,26 @@ def main(argv=None) -> int:
         for v in items:
             if repaired >= MAX_REPAIRS:
                 break
+            # Never drain the pool the release needs. This loop is the single
+            # largest consumer of the shared 10,000 units (a `videos.update` is
+            # 50 units, three runs a day), and it used to run untracked until the
+            # pool was gone — which is how uploads shipped with no thumbnail. It
+            # now reads and writes the same ledger the release reserves against.
+            if yt_quota.remaining() < QUOTA_FLOOR:
+                print(f"quota floor: {yt_quota.remaining()} units left — "
+                      f"stopping repairs to leave the release its budget")
+                break
             if any(c in ("revenue_ask_missing", "subscribe_ask_missing")
                    for c in fails.get(v["id"], [])):
                 if repair(v, exp):
+                    yt_quota.record("videos.update")
                     repaired += 1
                     v["snippet"]["description"] = (monetize.cta("youtube") + "\n\n"
                                                    + v["snippet"].get("description", ""))
+        if repaired:
+            # Persist the spend to the shared repo so the release's pre-flight
+            # sees it. Best-effort: a missing token must not fail the audit.
+            yt_quota.commit(f"quota: {repaired} live-audit repair(s)")
 
     # Recompute the misses that remain after any repair.
     fails = {v["id"]: check_video(v, exp, comps) for v in items}
