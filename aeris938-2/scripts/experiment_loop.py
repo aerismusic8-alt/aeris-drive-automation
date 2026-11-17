@@ -434,7 +434,7 @@ def peer_scan(handle: str = "@aerismusicth", peers: list[str] | None = None) -> 
 
 
 def render(decision: dict, scan: dict | None = None) -> str:
-    lines = ["# ลูปทดลองรายวัน — NEO VINCI", "",
+    lines = ["# ลูปทดลองรายวัน — เพลงส้นทีนไรเนี่ย", "",
              f"ตัดสินเมื่อ: {_now()}", ""]
     act = decision["action"]
     if act == "wait":
@@ -476,7 +476,7 @@ def push(text: str, topic: str) -> None:
     try:
         req = urllib.request.Request(
             f"https://ntfy.sh/{topic}", data=text.encode("utf-8"),
-            headers={"Title": "NEO VINCI — ลูปทดลอง", "Tags": "test_tube"})
+            headers={"Title": "เพลงส้นทีนไรเนี่ย — ลูปทดลอง", "Tags": "test_tube"})
         urllib.request.urlopen(req, timeout=20).read()
         print("ntfy: pushed")
     except Exception as e:  # noqa: BLE001

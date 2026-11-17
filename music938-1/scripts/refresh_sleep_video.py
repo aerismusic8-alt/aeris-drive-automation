@@ -96,13 +96,13 @@ def plan() -> dict:
 
 def _upload(mp4: Path, txt: Path, title_file: Path) -> str | None:
     title = (title_file.read_text(encoding="utf-8").strip()
-             if title_file.exists() else "เพลงกล่อมนอน 8 ชั่วโมง | NEO VINCI")
+             if title_file.exists() else "เพลงกล่อมนอน 8 ชั่วโมง | เพลงส้นทีนไรเนี่ย")
     desc = txt.read_text(encoding="utf-8").rstrip() if txt.exists() else ""
     desc_file = ROOT / "work" / "refresh-sleep.desc"
     tags_file = ROOT / "work" / "refresh-sleep.tags"
     desc_file.write_text(desc, encoding="utf-8")
     tags_file.write_text("เพลงกล่อมนอน,เพลงผ่อนคลาย,นอนหลับสบาย,sleep music,"
-                         "relaxing music,NEO VINCI", encoding="utf-8")
+                         "relaxing music,เพลงส้นทีนไรเนี่ย", encoding="utf-8")
     thumb = ROOT / "library" / "thumbs" / f"thumb-{STEM}.png"
     cmd = [sys.executable, str(OPS / "yt_publish.py"), "--ch", CHANNEL,
            "--video", str(mp4), "--title", title[:100],

@@ -46,7 +46,7 @@ CHANNEL_ID = {
     "ch3": "UCm44BjAn03ruOF-WaA3ZRww",
     "ch4": "UC7gCIu4G_7QCEJ8hJ-34zoQ",
 }
-CHANNEL_NAME = {"ch3": "NEO VINCI"}
+CHANNEL_NAME = {"ch3": "เพลงส้นทีนไรเนี่ย"}
 API = "https://www.googleapis.com/youtube/v3"
 MONETIZE_SUBS = 1000
 MONETIZE_HOURS = 4000
@@ -213,7 +213,7 @@ def render_report(prev: dict, cur: dict) -> str:
     vids = list(cur["videos"].values())
 
     lines: list[str] = []
-    lines.append("# รายงานการตลาด NEO VINCI (อัตโนมัติ)\n")
+    lines.append("# รายงานการตลาด เพลงส้นทีนไรเนี่ย (อัตโนมัติ)\n")
     lines.append(f"อ่านเมื่อ {cur['at']} · ช่อง `{cur['channel']}`\n")
 
     dsubs = _delta(ch["subs"], pch.get("subs"))

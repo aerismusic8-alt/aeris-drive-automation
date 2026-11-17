@@ -5,7 +5,7 @@ Three defects the competitor scan says cost discovery:
 
   * four older uploads carry **zero tags** (music search has nothing to match on)
   * those same uploads sit in category 22 (People & Blogs); music belongs in 10
-  * several titles still end in `| NEO VINCI`, the shape the losing clips use
+  * several titles still end in `| เพลงส้นทีนไรเนี่ย`, the shape the losing clips use
     (38.9% of sub-1k titles vs 8.0% of 100k+ titles)
 
 Reads every upload, prints a dry-run diff, and writes only with --apply. Current
@@ -26,9 +26,9 @@ WORK = Path(__file__).resolve().parent.parent / "work"
 BACKUP = WORK / "live-metadata-backup.json"
 MAX_TITLE = 60
 MUSIC_CATEGORY = "10"
-BRAND = re.compile(r"\s*\|\s*NEO VINCI\s*$", re.IGNORECASE)
+BRAND = re.compile(r"\s*\|\s*เพลงส้นทีนไรเนี่ย\s*$", re.IGNORECASE)
 
-BASE_TAGS = ["เพลงไทย", "เพลงใหม่", "ศิลปินไทย", "NEO VINCI", "เพลงเพราะ",
+BASE_TAGS = ["เพลงไทย", "เพลงใหม่", "ศิลปินไทย", "เพลงส้นทีนไรเนี่ย", "เพลงเพราะ",
              "เพลงฟังสบาย", "thai music", "thai song"]
 ARTIST_TAGS = ["NAVIYA", "เพลงอินดี้", "indie pop", "เพลงป็อป"]
 

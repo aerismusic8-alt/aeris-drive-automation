@@ -24,7 +24,7 @@ Advisor panel 2026-11-07 (6 channels / 4 vendors) ranked the routes:
 
 1. Go to **business.facebook.com → Business Settings → Users → System Users**.
 2. **Add** a system user (name it `ax-poster`, role *Employee* or *Admin*).
-3. **Add Assets** → Pages → select **NEO VINCI** → give it *Manage Page* (or
+3. **Add Assets** → Pages → select **เพลงส้นทีนไรเนี่ย** → give it *Manage Page* (or
    *Content* → *Create content*).
 4. **Add Assets** → Apps → select the Meta app you will use, or create one at
    developers.facebook.com (**Business** type). Give the system user access.
@@ -54,7 +54,7 @@ gh secret set FB_APP_SECRET   --body "<app secret>"
 ```
 
 Verify: `python3 ops/fb_graph.py status` should print `configured` and the Page
-name **NEO VINCI**.
+name **เพลงส้นทีนไรเนี่ย**.
 
 ## TikTok (do this second — read the limit first)
 

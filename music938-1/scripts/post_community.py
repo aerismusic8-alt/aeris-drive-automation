@@ -1,4 +1,4 @@
-"""Publish YouTube community posts for NEO VINCI.
+"""Publish YouTube community posts for เพลงส้นทีนไรเนี่ย.
 
 A community post is the closest thing YouTube has to a Story: it appears on the
 channel's Posts tab and in the subscriber feed. This drives the composer at

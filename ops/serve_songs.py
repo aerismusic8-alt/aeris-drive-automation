@@ -69,7 +69,7 @@ def page() -> str:
         rows = ["<p>ยังไม่มีเพลงที่เรนเดอร์เสร็จ</p>"]
     return f"""<!doctype html><html lang=th><meta charset=utf-8>
 <meta name=viewport content='width=device-width,initial-scale=1'>
-<title>NEO VINCI — ฟังเพลง</title>
+<title>เพลงส้นทีนไรเนี่ย — ฟังเพลง</title>
 <style>
  body{{font-family:system-ui,-apple-system,'Noto Sans Thai',sans-serif;
    background:#0f1115;color:#e8e8ea;margin:0;padding:16px;line-height:1.5}}
@@ -80,7 +80,7 @@ def page() -> str:
  .meta{{color:#8b909a;font-size:12px;margin-bottom:8px}}
  audio{{width:100%}}
 </style>
-<h1>NEO VINCI</h1>
+<h1>เพลงส้นทีนไรเนี่ย</h1>
 <div class=sub>ฟังเพลงที่สร้างเสร็จ · หน้านี้อยู่บน pod ชั่วคราว ปิดเมื่อ pod ถูก recycle</div>
 {''.join(rows)}
 </html>"""

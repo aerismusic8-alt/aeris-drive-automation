@@ -521,7 +521,7 @@ def render(stats: dict) -> str:
             return "UNKNOWN"
         return str(d.get(key, "UNKNOWN"))
 
-    lines = ["# รายงานโซเชียล — NEO VINCI", "",
+    lines = ["# รายงานโซเชียล — เพลงส้นทีนไรเนี่ย", "",
              f"วัดเมื่อ: {time.strftime('%Y-%m-%d %H:%M UTC', time.gmtime())}", "",
              "> ตัวเลขที่อ่านไม่ได้เขียน UNKNOWN — ไม่เดา", "",
              "| ผิว | สถานะ | ตัวชี้วัด | ค่า |", "| --- | --- | --- | ---: |"]

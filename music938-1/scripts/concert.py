@@ -202,7 +202,7 @@ def caption(slug: str, platform: str, song_title: str = "") -> str:
         lines.append(song)
     lines += [f"🏟️ {PROJECT} — เสียงฮอลล์ เสียงเชียร์ เสียงวง",
               f"💬 {SHOW_ASK}", f"⚠️ {AI_NOTE}", tail,
-              "#คอนเสิร์ตจำลอง #เพลงไทย #NEOVINCI"]
+              "#คอนเสิร์ตจำลอง #เพลงไทย #เพลงส้นทีนไรเนี่ย"]
     return "\n".join(lines)
 
 

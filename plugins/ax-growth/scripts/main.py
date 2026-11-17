@@ -1,4 +1,4 @@
-"""Grow the NEO VINCI Facebook Page. No LLM.
+"""Grow the เพลงส้นทีนไรเนี่ย Facebook Page. No LLM.
 
 K's rule (2026-11-03): a Page grows by following suggested pages, not by waiting
 for friendships. This runs twice a day and:

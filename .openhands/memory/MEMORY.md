@@ -34,7 +34,8 @@ built from free cloud tools. Scope = **4 channels** (focus aeris938-2 = Facebook
 TikTok, YouTube `@aerismusicth`, Shopee Affiliate). Two goals in
 `AKATH_CORE/CANONICAL_TASK_REGISTRY.json` must never close as ordinary tasks: a
 Roblox game anyone can enter and play, and real revenue from it (Roblox **PARKED**).
-**Brand = NEO VINCI** (K renamed 2026-11-16; handle stays `@aerismusicth`); the
+**Brand = เพลงส้นทีนไรเนี่ย** (K set the live name 2026-11-17, superseding the
+never-applied "NEO VINCI"; handle stays `@aerismusicth`); the
 display name lives only in `music938-1/scripts/branding.py` — never hardcode it.
 **Revenue gate = ch3**: **1,000 subs AND 4,000 watch-hours/12 mo**. Free lever =
 **weekly numbered long-form series** (`volume_series.py`).

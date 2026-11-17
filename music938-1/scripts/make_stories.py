@@ -1,4 +1,4 @@
-"""Generate vertical Story cards (1080x1920) for the NEO VINCI pack.
+"""Generate vertical Story cards (1080x1920) for the เพลงส้นทีนไรเนี่ย pack.
 
 A Story is the cheapest reach a channel has: it appears above the feed for 24 h
 and costs one image. Each card is 9:16, carries the song title in Thai, the

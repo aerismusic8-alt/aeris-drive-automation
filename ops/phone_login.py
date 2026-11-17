@@ -153,7 +153,7 @@ def gh_token() -> str:
 
 
 def _verify_token(token: str) -> dict:
-    """Confirm the token really names the NEO VINCI Page before storing it.
+    """Confirm the token really names the เพลงส้นทีนไรเนี่ย Page before storing it.
 
     A wrong token (personal, expired, wrong Page) must be caught here, while K is
     still looking at the screen — not discovered hours later when a Reel fails.
@@ -282,7 +282,7 @@ def grab_fb_token() -> dict:
 
 PAGE = """<!doctype html><html lang="th"><head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1">
-<title>NEO VINCI — เข้าสู่ระบบ</title>
+<title>เพลงส้นทีนไรเนี่ย — เข้าสู่ระบบ</title>
 <style>
   :root {{ color-scheme: dark; }}
   body {{ margin:0; background:#14121a; color:#f2eef7; font:17px/1.5 system-ui,sans-serif; }}
@@ -323,7 +323,7 @@ PAGE = """<!doctype html><html lang="th"><head>
            font-weight:900; background:#f5b301; color:#1a1200; border-radius:18px;
            text-decoration:none; box-shadow:0 4px 0 #a97c00; }}
 </style></head><body>
-<header><h1>NEO VINCI — เข้าสู่ระบบ</h1>
+<header><h1>เพลงส้นทีนไรเนี่ย — เข้าสู่ระบบ</h1>
 <div class="sub">แตะปุ่ม = เปิดหน้านั้นในเครื่อง แล้วดูผ่าน Live View อัตโนมัติ</div></header>
 <a class="live" href="{live}" target="_blank">👁 เปิด Live View (ดูจอเครื่อง — ใช้ตัวนี้)</a>
 <a class="big" href="/pass">🔑 พิมพ์รหัส Facebook (ครั้งเดียว)</a>
@@ -350,7 +350,7 @@ desktop: <b>{desktop}</b> · CDP: <b>{cdp}</b><br>
 
 PAGE_PASS = """<!doctype html><html lang="th"><head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>NEO VINCI — รหัส Facebook</title>
+<title>เพลงส้นทีนไรเนี่ย — รหัส Facebook</title>
 <style>body{{margin:0;background:#14121a;color:#f2eef7;
 font:18px/1.6 system-ui,sans-serif;padding:24px 18px;max-width:520px;margin:0 auto}}
 h1{{font-size:22px;margin:8px 0 4px}} p{{color:#c9bfe0;font-size:15px}}
@@ -395,7 +395,7 @@ class Handler(BaseHTTPRequestHandler):
         color = "#8ef0c0" if ok else "#ff9d9d"
         html = f"""<!doctype html><html lang="th"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>NEO VINCI — ผลการตั้งค่า</title>
+<title>เพลงส้นทีนไรเนี่ย — ผลการตั้งค่า</title>
 <style>body{{margin:0;background:#14121a;color:#f2eef7;font:17px/1.6 system-ui,sans-serif;
 padding:28px 20px}}.b{{padding:18px;border-radius:16px;background:#221d2e;margin:16px 0}}
 h1{{font-size:20px;color:{color}}}a{{display:block;padding:16px;margin-top:14px;background:#2c2440;
@@ -437,7 +437,7 @@ color:#fff;text-decoration:none;border-radius:14px;text-align:center;font-weight
             return self._result("token ใช้ไม่ได้", False,
                                 f"Meta ตอบกลับ: {v.get('error','')}<br><br>"
                                 "ตรวจว่าเป็น token ของ <b>ผู้ใช้ระบบ (System User)</b> "
-                                "และ assign เพจ <b>NEO VINCI</b> แล้ว")
+                                "และ assign เพจ <b>เพลงส้นทีนไรเนี่ย</b> แล้ว")
         s = _set_actions_secret("FB_PAGE_TOKEN", token)
         if not s.get("ok"):
             return self._result("ตั้ง secret ไม่สำเร็จ", False,

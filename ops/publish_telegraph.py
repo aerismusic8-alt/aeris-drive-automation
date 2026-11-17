@@ -68,7 +68,7 @@ def page_text(slug: str, video_id: str) -> str:
     return (
         f"เพลง “{title}”\n\n"
         f"ฟังเพลงเต็มได้ที่: {WATCH}{video_id}\n\n"
-        f"ติดตามเพลงใหม่ทุกวันได้ที่ช่อง NEO VINCI: {CHANNEL}"
+        f"ติดตามเพลงใหม่ทุกวันได้ที่ช่อง เพลงส้นทีนไรเนี่ย: {CHANNEL}"
     )
 
 

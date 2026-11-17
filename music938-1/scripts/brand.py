@@ -1,4 +1,4 @@
-"""Generate the NEO VINCI channel identity: banner and avatar.
+"""Generate the เพลงส้นทีนไรเนี่ย channel identity: banner and avatar.
 
 Both frames reuse the cover-art helpers in `covers.py` (gradient, blobs, a warm
 highlight, a deep vignette) so the channel reads as one brand rather than a
@@ -40,7 +40,7 @@ SAFE_W, SAFE_H = 1546, 423
 AVATAR_SIZE = (800, 800)
 
 # BRAND (= NAME), TAGLINE and POSITIONING come from `branding.py`.
-SUB = "ศิลปะคลาสสิก · เทคโนโลยีล้ำสมัย"
+SUB = "เพลงไทยทุกแนว · ฟังได้ทุกวัน"
 
 
 def _ring(img: Image.Image, cx: float, cy: float, r: float, alpha: int, width: int) -> None:
@@ -72,7 +72,9 @@ def make_banner(size: tuple[int, int] = BANNER_SIZE) -> Path:
 
     draw = ImageDraw.Draw(img)
     cy = h * 0.5
-    word_font = _font(LATIN_FONT, 168, bold=True)
+    # The name is Thai, so the wordmark uses the Thai font (the Latin font has no
+    # Thai glyphs and would render the whole name as tofu).
+    word_font = _font(THAI_FONT, 168, bold=True)
     tag_font = _font(THAI_FONT, 60, bold=True)
     sub_font = _font(THAI_FONT, 38)
 
@@ -110,14 +112,15 @@ def make_avatar(size: tuple[int, int] = AVATAR_SIZE) -> Path:
     _vignette(img, 0.42)
 
     draw = ImageDraw.Draw(img)
-    # A single letter is what survives an 88x88 render. The name is NEO VINCI, so
-    # the monogram is N — the old "A" would have been left over from AERIS.
-    mono_font = _font(LATIN_FONT, int(w * 0.62), bold=True)
-    tw = draw.textlength("N", font=mono_font)
+    # A single letter is what survives an 88x88 render. The name is Thai, so the
+    # monogram is the first Thai glyph — drawn with the Thai font (the Latin font
+    # has no Thai glyphs and would render tofu).
+    mono_font = _font(THAI_FONT, int(w * 0.62), bold=True)
+    tw = draw.textlength("พ", font=mono_font)
     x = (w - tw) / 2
     y = int(h * 0.13)
-    draw.text((x + 5, y + 5), "N", font=mono_font, fill=(0, 0, 0, 160))
-    draw.text((x, y), "N", font=mono_font, fill=(255, 255, 255, 255))
+    draw.text((x + 5, y + 5), "พ", font=mono_font, fill=(0, 0, 0, 160))
+    draw.text((x, y), "พ", font=mono_font, fill=(255, 255, 255, 255))
 
     # A small note, so the monogram reads as music, not a name initial.
     note = "♪"
@@ -125,7 +128,7 @@ def make_avatar(size: tuple[int, int] = AVATAR_SIZE) -> Path:
     nw = draw.textlength(note, font=nf)
     draw.text(((w - nw) / 2 + w * 0.30, int(h * 0.60)), note, font=nf, fill=(255, 226, 150, 235))
 
-    name_font = _font(LATIN_FONT, int(w * 0.088), bold=True)
+    name_font = _font(THAI_FONT, int(w * 0.088), bold=True)
     _centered(draw, BRAND, name_font, int(h * 0.76), w, (255, 255, 255, 235))
 
     out = ROOT / "channel" / "avatar-800x800.png"
@@ -163,7 +166,7 @@ def make_compilation_thumb(size: tuple[int, int] = (1280, 720)) -> Path:
     center("รวมเพลงไทย", big, int(h * 0.20), (255, 255, 255, 255))
     center("ป็อป · แดนซ์ · ร็อก", mid, int(h * 0.50), (255, 226, 150, 245))
     center("เลือกเพลงฟังได้ · 57 นาที", small, int(h * 0.68), (238, 235, 255, 225), shadow=False)
-    center("NEO VINCI", _font(LATIN_FONT, 34, bold=True), int(h * 0.85),
+    center(BRAND, _font(THAI_FONT, 34, bold=True), int(h * 0.85),
            (220, 216, 255, 190), shadow=False)
 
     out = ROOT / "library" / "thumbs" / "thumb-compilation.png"

@@ -147,7 +147,7 @@ def caption(slug: str, platform: str, hook: int = 0, kind: str = "song") -> str:
                 f"❤️ กดติดตามเพจ · ของน่าซื้อ 👉 {shopee}\n"
                 f"🎬 ดูใหม่ทุกวัน: YouTube {YOUTUBE_HANDLE} · TikTok {TIKTOK_HANDLE}\n"
                 f"💬 {ask}\n"
-                f"#เพลงไทย #เพลงใหม่ #ร้องต่อไหม #NEOVINCI #ค่ายเพลงAI")
+                f"#เพลงไทย #เพลงใหม่ #ร้องต่อไหม #เพลงส้นทีนไรเนี่ย #ค่ายเพลงAI")
     shopee = monetize.link("tiktok")
     return (f"{series}\n"
             f"🎵 {tagline}\n"
@@ -176,7 +176,7 @@ def photo_caption(slug: str, platform: str = "facebook") -> str:
             f"❤️ กดติดตามเพจ ฟังเพลงใหม่ทุกวัน\n"
             f"🎧 ฟังเต็ม ๆ: YouTube {YOUTUBE_HANDLE} · TikTok {TIKTOK_HANDLE}\n"
             f"🛒 ของน่าซื้อ 👉 {shopee}\n"
-            f"#เพลงไทย #เพลงใหม่ #NEOVINCI #ค่ายเพลงAI")
+            f"#เพลงไทย #เพลงใหม่ #เพลงส้นทีนไรเนี่ย #ค่ายเพลงAI")
 
 
 def link_caption(product: dict, platform: str = "facebook") -> str:
@@ -196,7 +196,7 @@ def link_caption(product: dict, platform: str = "facebook") -> str:
             f"👉 ดูราคา/สั่งซื้อ: {url}\n"
             f"⚠️ โฆษณา · ได้ค่าคอมมิชชันจากการซื้อผ่านลิงก์นี้\n"
             f"🎵 เพลงจาก {BRAND}\n"
-            f"{stag} #หูฟังบลูทูธ #Shopee #NEOVINCI")
+            f"{stag} #หูฟังบลูทูธ #Shopee #เพลงส้นทีนไรเนี่ย")
 
 
 def refresh_captions() -> int:
@@ -545,14 +545,14 @@ def mood_caption(mood: str, platform: str) -> str:
                 f"{M.AI_NOTE}\n"
                 f"❤️ กดติดตามเพจ · ของน่าซื้อ 👉 {shopee}\n"
                 f"🎬 ดูใหม่ทุกวัน: YouTube {YOUTUBE_HANDLE} · TikTok {TIKTOK_HANDLE}\n"
-                f"#เพลงบรรเลง #เพลงผ่อนคลาย #NEOVINCI #ค่ายเพลงAI")
+                f"#เพลงบรรเลง #เพลงผ่อนคลาย #เพลงส้นทีนไรเนี่ย #ค่ายเพลงAI")
     shopee = monetize.link("tiktok")
     return (f"🎵 {title}\n"
             f"🎧 {info['tagline']}\n"
             f"{M.AI_NOTE}\n"
             f"🎧 กดติดตาม · ของน่าซื้อ 👉 {shopee}\n"
             f"🎬 ฟังเต็ม ๆ ได้ที่ YouTube {YOUTUBE_HANDLE} · เพจ FB {BRAND}\n"
-            f"#fyp #เพลงบรรเลง #เพลงผ่อนคลาย #NEOVINCI #TikTokเพลงไทย #ค่ายเพลงAI")
+            f"#fyp #เพลงบรรเลง #เพลงผ่อนคลาย #เพลงส้นทีนไรเนี่ย #TikTokเพลงไทย #ค่ายเพลงAI")
 
 
 def mood_items() -> list[dict]:
@@ -950,7 +950,7 @@ def post_tiktok(page, video: Path, text: str) -> str | None:
 
 
 def post_facebook(page, video: Path, text: str) -> str | None:
-    """Post one Reel to the NEO VINCI Page through the Business Suite composer.
+    """Post one Reel to the เพลงส้นทีนไรเนี่ย Page through the Business Suite composer.
 
     Four facts this encodes, each verified live:
       * The composer's upload control opens a **native file chooser**, so the file

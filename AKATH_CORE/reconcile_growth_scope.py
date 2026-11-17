@@ -109,7 +109,7 @@ NEW_TASKS = [
     {
         "task_id": "AKATH-GROWTH-FACEBOOK-001",
         "type": "PRODUCT",
-        "title": "Grow the NEO VINCI Facebook Page",
+        "title": "Grow the เพลงส้นทีนไรเนี่ย Facebook Page",
         "capability": "growth",
         "action": "grow_facebook",
         "status": "IN_PROGRESS",
@@ -163,7 +163,7 @@ NEW_TASKS = [
     {
         "task_id": "AKATH-GROWTH-TIKTOK-001",
         "type": "PRODUCT",
-        "title": "Grow the NEO VINCI TikTok account",
+        "title": "Grow the เพลงส้นทีนไรเนี่ย TikTok account",
         "capability": "growth",
         "action": "grow_tiktok",
         "status": "IN_PROGRESS",

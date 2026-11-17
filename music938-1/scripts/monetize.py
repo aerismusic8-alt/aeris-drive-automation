@@ -165,7 +165,7 @@ def block(kind: str = "song") -> str:
                            _link("YouTube", c.get("youtube", ""))) if x]
     if socials:
         lines.append("")
-        lines.append("📱 ติดตาม NEO VINCI:")
+        lines.append("📱 ติดตาม เพลงส้นทีนไรเนี่ย:")
         lines.append(" · ".join(socials))
 
     return "\n".join(lines)

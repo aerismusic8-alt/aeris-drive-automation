@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""AR's daily admin pass for NEO VINCI, across every surface.
+"""AR's daily admin pass for เพลงส้นทีนไรเนี่ย, across every surface.
 
 K asked AR to administer the whole channel: YouTube, Facebook, TikTok and the
 Shopee link. The cron rails already cover what needs no browser (`AX Music Daily
@@ -55,7 +55,7 @@ def main() -> int:
     ap.add_argument("--no-crosspost", action="store_true")
     args = ap.parse_args()
 
-    lines = [f"# รายงาน AR — NEO VINCI", "",
+    lines = [f"# รายงาน AR — เพลงส้นทีนไรเนี่ย", "",
              f"เวลา: {time.strftime('%Y-%m-%d %H:%M UTC', time.gmtime())}", ""]
 
     if not desktop_up():

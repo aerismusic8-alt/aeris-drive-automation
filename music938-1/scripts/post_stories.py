@@ -1,4 +1,4 @@
-"""Post the NEO VINCI Story cards to Facebook Stories and YouTube community.
+"""Post the เพลงส้นทีนไรเนี่ย Story cards to Facebook Stories and YouTube community.
 
 Facebook Stories has a dedicated composer at `/stories/create/`: one file input,
 then a share button. The caption is optional and the card already carries the

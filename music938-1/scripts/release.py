@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Release music938-1 songs to the NEO VINCI channel (ch3), on a plan.
+"""Release music938-1 songs to the เพลงส้นทีนไรเนี่ย channel (ch3), on a plan.
 
 Two hard limits decide the shape of this:
 
@@ -193,7 +193,7 @@ def hook_title(hook: int) -> str:
 # were "ร้องด้วยเสียงจริง" (sung by a real voice), which is false — the vocals are
 # generated — and a viewer who noticed would be right to feel misled.
 # LABEL, FOLLOW_ASK, FOLLOW_PROMISE and HASHTAGS come from `branding.py` (the
-# single source of truth for the NEO VINCI identity); see the import above.
+# single source of truth for the channel identity); see the import above.
 
 
 def parse_lyrics(slug: str) -> dict:
@@ -527,11 +527,11 @@ def describe_affiliate(card: dict) -> tuple[str, str, list[str]]:
         f"🛒 ดูสินค้า/สั่งซื้อ: กดลิงก์ Shopee ที่หน้าโปรไฟล์ช่อง 👉 {link}\n\n"
         f"🎬 {hookline}\n"
         f"{bullets}\n"
-        f"🎵 เพลงจาก NEO VINCI — ค่ายเพลง AI\n\n"
-        f"#{search.replace(' ', '')} #หูฟังบลูทูธ #ยี่ห้อไหนดี #Shopee #NEOVINCI #Shorts"
+        f"🎵 เพลงจาก เพลงส้นทีนไรเนี่ย — ค่ายเพลง AI\n\n"
+        f"#{search.replace(' ', '')} #หูฟังบลูทูธ #ยี่ห้อไหนดี #Shopee #เพลงส้นทีนไรเนี่ย #Shorts"
     )
     tags = [search, "หูฟังบลูทูธ", "หูฟัง", "ลำโพงบลูทูธ", "ยี่ห้อไหนดี",
-            "รีวิวหูฟัง", "Shopee", "NEOVINCI", "shorts"]
+            "รีวิวหูฟัง", "Shopee", "เพลงส้นทีนไรเนี่ย", "shorts"]
     return title[:100], desc[:4900], tags[:30]
 
 
@@ -545,7 +545,7 @@ def describe(slug: str, kind: str, variant: str = "") -> tuple[str, str, list[st
     of 1,546 videos, the ones past 100k views averaged 47.9 characters and used
     `|` in only 8% of titles, while the sub-1k videos averaged 60.7 characters and
     used `|` in 38.9%. YouTube truncates past ~60 characters, so the tail is what
-    gets cut first. The old titles appended `| NEO VINCI` to every single
+    gets cut first. The old titles appended `| เพลงส้นทีนไรเนี่ย` to every single
     release, which is the losing shape; the brand is already the channel name, so
     it is dropped from the Shorts and karaoke titles and the words are spent on
     searchable Thai instead.
@@ -589,7 +589,7 @@ def describe(slug: str, kind: str, variant: str = "") -> tuple[str, str, list[st
             f"ร้องตามได้เลย! {tagline}\n"
             f"{LABEL}\n"
             f"{CTA}\n\n"
-            f"🎵 เพลงที่ {int(n)} ในชุดเพลงไทยของ NEO VINCI\n"
+            f"🎵 เพลงที่ {int(n)} ในชุดเพลงไทยของ เพลงส้นทีนไรเนี่ย\n"
             f"🎧 ฟังเวอร์ชันเต็ม (มีเสียงร้อง) ได้ในช่อง\n\n"
             f"{HASHTAGS}"
         )
@@ -610,7 +610,7 @@ def describe(slug: str, kind: str, variant: str = "") -> tuple[str, str, list[st
             f"{mv_line}"
             f"{LABEL}\n"
             f"{CTA}\n\n"
-            f"เพลงที่ {int(n)} ในชุดเพลงไทยของ NEO VINCI — เนื้อร้องและทำนองใหม่\n\n"
+            f"เพลงที่ {int(n)} ในชุดเพลงไทยของ เพลงส้นทีนไรเนี่ย — เนื้อร้องและทำนองใหม่\n\n"
             f"🎧 ฟังเพลิน ฟังได้ทุกวัน\n\n"
             f"{HASHTAGS}"
         )
@@ -622,7 +622,7 @@ def describe(slug: str, kind: str, variant: str = "") -> tuple[str, str, list[st
         ly = lyric_block(slug)
         if ly:
             desc = f"{desc}\n\n📝 เนื้อเพลง\n\n{ly}"
-    tags = ["เพลงไทย", "เพลงใหม่", "ศิลปินไทย", "NEO VINCI", "เพลงเพราะ",
+    tags = ["เพลงไทย", "เพลงใหม่", "ศิลปินไทย", "เพลงส้นทีนไรเนี่ย", "เพลงเพราะ",
             "เพลงฟังสบาย", "ค่ายเพลง AI", "AI music", title_th, tagline,
             "thai music", "thai song"]
     tags += [t for t in extra_tags if t not in tags]
@@ -641,19 +641,19 @@ def playlist_for(kind: str) -> tuple[str, str]:
     if kind == "short":
         return ("ท่อนฮุก — เพลงไทยสั้น ๆ",
                 "รวมท่อนฮุกของทุกเพลงในชุด ฟังสั้น ๆ ได้ใจความ\n\n"
-                "NEO VINCI · ค่ายเพลง AI")
+                "เพลงส้นทีนไรเนี่ย · ค่ายเพลง AI")
     if kind == "karaoke":
         return ("คาราโอเกะ — ร้องตามได้ทุกเพลง",
                 "รวมทุกเพลงในชุดเป็นเวอร์ชันคาราโอเกะ ไม่มีเสียงร้อง ร้องตามได้เลย\n\n"
-                "NEO VINCI · ค่ายเพลง AI")
+                "เพลงส้นทีนไรเนี่ย · ค่ายเพลง AI")
     if kind == "affiliate":
         return ("รีวิว/ก่อนซื้อ — หูฟัง & ลำโพง (คลิปพร้อมลิงก์)",
                 "รวมคลิปให้ความรู้ก่อนซื้อหูฟังและลำโพง พร้อมลิงก์พันธมิตร Shopee — "
                 "ดูราคา/สั่งซื้อได้จากลิงก์ในคำอธิบาย\n\n"
-                "NEO VINCI · ค่ายเพลง AI")
+                "เพลงส้นทีนไรเนี่ย · ค่ายเพลง AI")
     return ("เพลงไทย — รวมทุกเพลง",
-            "รวมทุกเพลงไทยของ NEO VINCI ป็อป แดนซ์ ร็อก เนื้อร้องและทำนองใหม่\n\n"
-            "NEO VINCI · ค่ายเพลง AI")
+            "รวมทุกเพลงไทยของ เพลงส้นทีนไรเนี่ย ป็อป แดนซ์ ร็อก เนื้อร้องและทำนองใหม่\n\n"
+            "เพลงส้นทีนไรเนี่ย · ค่ายเพลง AI")
 
 
 def ensure_playlist(state: dict, kind: str, ch: str) -> str | None:
@@ -781,7 +781,7 @@ def plan(days: int, shorts: bool = False, spread: float = 0,
     """Pair each built song with its karaoke into a dated release list.
 
     Shorts are discovery, not catalogue: a zero-subscriber channel gets no
-    long-form impressions (NEO VINCI's own numbers: 382 of 449 lifetime views
+    long-form impressions (เพลงส้นทีนไรเนี่ย's own numbers: 382 of 449 lifetime views
     came from Shorts, ~33 from long-form). They are planned first, so the
     audience exists before the watch-hour videos need one.
     """
@@ -1140,6 +1140,18 @@ def main() -> int:
     # scheduled `spread` hours after the previous, so the uploads cover the day
     # instead of landing together. Without --spread they all go out now.
     #
+    # The live channel description is part of the brand, so a rename leaves it
+    # stale. Apply it here — idempotent, and it skips the PUT when the live text
+    # already matches — so the daily rail heals it without a workflow-file change.
+    # Never fatal: a description that cannot be written must not stop the uploads.
+    if args.ch == "ch3" and not args.dry_run:
+        try:
+            import update_channel_branding
+            update_channel_branding.apply()
+        except Exception as e:  # noqa: BLE001
+            print(f"channel description update skipped: {type(e).__name__}: {e}",
+                  file=sys.stderr)
+
     # Reserve the shared pool BEFORE the first upload. `videos.insert` has its own
     # bucket, so an upload always succeeds — which is exactly the trap: on a spent
     # pool the video goes live with no thumbnail and no playlist row. Refusing to

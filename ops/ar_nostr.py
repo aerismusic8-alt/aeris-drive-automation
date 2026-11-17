@@ -41,7 +41,7 @@ DEFAULT_RELAYS = [
     "wss://relay.damus.io", "wss://nos.lol", "wss://relay.primal.net",
     "wss://nostr.mom", "wss://relay.nostr.band",
 ]
-AI_NOTE = "— NEO VINCI (AI agent)"
+AI_NOTE = "— เพลงส้นทีนไรเนี่ย (AI agent)"
 
 # --- secp256k1, pure Python ------------------------------------------------
 P = 0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFEFFFFFC2F

@@ -48,6 +48,7 @@ COST = {
     "playlists.insert": 50,
     "videos.update": 50,
     "playlists.update": 50,
+    "channels.update": 50,
     "videos.list": 1,
     "playlistItems.list": 1,
     "playlists.list": 1,

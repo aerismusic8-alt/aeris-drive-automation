@@ -153,7 +153,7 @@ def caption(slug: str, platform: str, song_title: str = "") -> str:
     if song:
         lines.append(song)
     lines += [f"💬 {RITUAL_ASK}", f"⚠️ {AI_NOTE}", tail,
-              "#ศิลปะหลุดโลก #เพลงไทย #NEOVINCI"]
+              "#ศิลปะหลุดโลก #เพลงไทย #เพลงส้นทีนไรเนี่ย"]
     return "\n".join(lines)
 
 

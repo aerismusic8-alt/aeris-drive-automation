@@ -19,7 +19,7 @@ the code that publishes it:
 
 Checks per video: a non-empty description, the revenue ask (the configured
 affiliate link), the subscribe ask, chapters on a compilation, and the losing
-title shape (`| NEO VINCI`). Deterministic misses (the revenue/subscribe ask)
+title shape (`| เพลงส้นทีนไรเนี่ย`). Deterministic misses (the revenue/subscribe ask)
 are repaired by inserting the same block `compile_album` writes; anything else
 alerts. Alerts fire only on a *new* failure, so a daily check does not cry wolf.
 
@@ -51,7 +51,7 @@ import yt_quota  # noqa: E402  (ops/yt_quota.py)
 WORK = ROOT / "work"
 REPORT = WORK / "live-audit.md"
 STATE = WORK / "live-audit-state.json"
-BRAND_TAIL = re.compile(r"\|\s*NEO VINCI\s*$", re.IGNORECASE)
+BRAND_TAIL = re.compile(r"\|\s*เพลงส้นทีนไรเนี่ย\s*$", re.IGNORECASE)
 CHAPTER = re.compile(r"^\d{1,2}:\d{2} ", re.MULTILINE)
 MIN_CHAPTERS = 12
 # Cap writes per run so one bad day cannot burn the whole quota pool on repairs.
@@ -185,7 +185,7 @@ def push(text: str, topic: str) -> None:
     try:
         req = urllib.request.Request(
             f"https://ntfy.sh/{topic}", data=text.encode("utf-8"),
-            headers={"Title": "NEO VINCI — ตรวจของจริง", "Tags": "mag"})
+            headers={"Title": "เพลงส้นทีนไรเนี่ย — ตรวจของจริง", "Tags": "mag"})
         urllib.request.urlopen(req, timeout=20).read()
         print("ntfy: pushed")
     except Exception as e:  # noqa: BLE001
@@ -193,7 +193,7 @@ def push(text: str, topic: str) -> None:
 
 
 def render(fails: dict[str, list[str]], n: int, new: set[str]) -> str:
-    lines = ["# ตรวจของจริงบนช่อง — NEO VINCI", "",
+    lines = ["# ตรวจของจริงบนช่อง — เพลงส้นทีนไรเนี่ย", "",
              f"ตรวจเมื่อ: {time.strftime('%Y-%m-%dT%H:%M:%SZ', time.gmtime())}",
              f"ตรวจ {n} วิดีโอ", ""]
     if not fails:
@@ -221,7 +221,7 @@ def main(argv=None) -> int:
     try:
         items = read_live()
     except QuotaError as e:
-        text = ("# ตรวจของจริงบนช่อง — NEO VINCI\n\n"
+        text = ("# ตรวจของจริงบนช่อง — เพลงส้นทีนไรเนี่ย\n\n"
                 f"ตรวจเมื่อ: {time.strftime('%Y-%m-%dT%H:%M:%SZ', time.gmtime())}\n\n"
                 f"⚠️ อ่านไม่ได้วันนี้: {e}\n\n"
                 "quota หมด (รีเซ็ตเที่ยงคืน Pacific) — จะตรวจใหม่รอบถัดไป "
@@ -232,7 +232,7 @@ def main(argv=None) -> int:
     except RuntimeError as e:
         # A non-quota read failure is a bug in this script, not a channel fault.
         # Fail loudly (red rail) instead of writing a reassuring "quota" note.
-        text = ("# ตรวจของจริงบนช่อง — NEO VINCI\n\n"
+        text = ("# ตรวจของจริงบนช่อง — เพลงส้นทีนไรเนี่ย\n\n"
                 f"ตรวจเมื่อ: {time.strftime('%Y-%m-%dT%H:%M:%SZ', time.gmtime())}\n\n"
                 f"❌ ตรวจไม่ได้ (ข้อผิดพลาดของสคริปต์ ไม่ใช่ของช่อง): {e}\n")
         print(text)

@@ -43,7 +43,7 @@ there is no rotation, no renewal, no K. Full steps in
 `docs/remove-k-from-the-loop.md`; the short form:
 
 business.facebook.com → Business Settings → Users → **System Users** → add
-`ax-poster` → Add Assets (the **NEO VINCI** Page: *Manage Page*) → Generate New
+`ax-poster` → Add Assets (the **เพลงส้นทีนไรเนี่ย** Page: *Manage Page*) → Generate New
 Token → **Expiration: Never** → tick `pages_manage_posts`,
 `pages_read_engagement`, `pages_show_list`, `business_management`.
 

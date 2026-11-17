@@ -233,7 +233,7 @@ def retune(queue: list[dict], winner: str | None, every: int = 3,
 
 def report(stats: dict[str, dict], win: str | None,
            lag: str | None = None) -> str:
-    lines = ["# ผลตอบรับ FB/TikTok — NEO VINCI", ""]
+    lines = ["# ผลตอบรับ FB/TikTok — เพลงส้นทีนไรเนี่ย", ""]
     if not stats:
         lines += ["ยังอ่านยอดดูไม่ได้ (TikTok ยังไม่มียอด หรือหน้าโหลดไม่ติด) "
                   "— คงการหมุนรูปแบบเดิมไว้ก่อน ไม่เดา", ""]

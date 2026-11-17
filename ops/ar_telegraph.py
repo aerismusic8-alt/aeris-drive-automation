@@ -43,19 +43,21 @@ IDENTITY_DIR = Path(os.environ.get("AR_IDENTITY_DIR", "/workspace/ax-tools/ar-id
 CREDS = IDENTITY_DIR / "telegraph.json"
 VAULT_KEY = "axsecrets:ar-telegraph"
 
-SHORT_NAME = "NEO VINCI"
-AUTHOR_NAME = "NEO VINCI"
+SHORT_NAME = "เพลงส้นทีนไรเนี่ย"
+AUTHOR_NAME = "เพลงส้นทีนไรเนี่ย"
 
 _URL_RE = re.compile(r"(https?://[^\s<>()]+)")
 
 # Every page AR publishes to a human-read surface says it was made by an agent.
-AI_NOTE = "— NEO VINCI (AI agent)"
+AI_NOTE = "— เพลงส้นทีนไรเนี่ย (AI agent)"
 
 
 def _request(method: str, path: str, body=None, timeout: int = 45):
     data = urllib.parse.urlencode(body).encode() if body is not None else None
     req = urllib.request.Request(API + path, data=data, method=method)
-    req.add_header("User-Agent", "NEO VINCI-Music/1.0")
+    # A User-Agent must be ASCII (urllib encodes headers as latin-1), so the
+    # brand is romanised here on purpose — do not put the Thai display name in.
+    req.add_header("User-Agent", "Ploeng-San-Teen-Music/1.0")
     if data is not None:
         req.add_header("Content-Type", "application/x-www-form-urlencoded")
     try:

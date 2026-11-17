@@ -54,11 +54,11 @@ MOOD_TH = {
     "mellow": "นุ่มนวล ช้า ๆ คิดถึง",
 }
 
-LICENSE = """NEO VINCI — free soundtrack pack
+LICENSE = """เพลงส้นทีนไรเนี่ย — free soundtrack pack
 ====================================
 
 License: CC0 1.0 (public domain dedication) for the music and karaoke tracks.
-Credit: "NEO VINCI (youtube.com/@aerismusicth)" — appreciated, not required.
+Credit: "เพลงส้นทีนไรเนี่ย (youtube.com/@aerismusicth)" — appreciated, not required.
 Commercial use: yes. Remix / loop / trim / re-record: yes.
 Restriction: do not re-upload the songs as-is to a music streaming service
 (Spotify, Apple Music, YouTube Music) claiming them as your own catalog. Every
@@ -240,7 +240,7 @@ PROMPT_TH = """คุณคือผู้ช่วยทำคลิปวิ�
 ถ้าคลิปมีเสียงบรรยาย ต้องใช้เฉพาะรายการ has_vocals=false หรือไฟล์ใน beds/ เท่านั้น อย่าเอาเพลงร้องไปทับเสียงพูด
 
 กติกาการใช้:
-1. ใช้ได้ฟรีทั้งหมด (CC0) รวมงานขาย ใส่เครดิต "NEO VINCI (youtube.com/@aerismusicth)" ไม่บังคับแต่ขอบคุณ
+1. ใช้ได้ฟรีทั้งหมด (CC0) รวมงานขาย ใส่เครดิต "เพลงส้นทีนไรเนี่ย (youtube.com/@aerismusicth)" ไม่บังคับแต่ขอบคุณ
 2. ห้ามเอาเพลงไปอัปซ้ำเป็นเพลงของตัวเองบน Spotify/Apple Music/YouTube Music เท่านั้น
 3. ถ้าคลิปต้องมีเสียงคนพูด ให้ใช้ไฟล์ใน beds/ (บรรเลงล้วน ไม่มีร้อง) หรือใช้ instrumental ของเพลง
 4. เพลงยาว ~3-4 นาที ทำเป็นลูปได้ ให้ตัด fade เข้า-ออก 2-3 วินาที
@@ -287,8 +287,8 @@ def main() -> int:
                 shutil.copy2(c, OUT / "covers" / c.name)
 
     (OUT / "catalog.json").write_text(
-        json.dumps({"pack": "NEO VINCI", "license": "CC0-1.0",
-                    "credit": "NEO VINCI (youtube.com/@aerismusicth)",
+        json.dumps({"pack": "เพลงส้นทีนไรเนี่ย", "license": "CC0-1.0",
+                    "credit": "เพลงส้นทีนไรเนี่ย (youtube.com/@aerismusicth)",
                     "songs": rows, "beds": beds},
                    ensure_ascii=False, indent=2), encoding="utf-8")
     csv = ["id,title,mood,audio,has_vocals,tempo_bpm,key,duration_seconds,url,instrumental_url"]
@@ -315,7 +315,7 @@ def main() -> int:
             cwd=str(root), capture_output=True, text=True)
         if r.returncode == 0:
             subprocess.run(["git", "commit", "-m",
-                            "share: NEO VINCI pack (catalog + license + prompt + beds)"],
+                            "share: เพลงส้นทีนไรเนี่ย pack (catalog + license + prompt + beds)"],
                            cwd=str(root))
         else:
             print("git add failed:", r.stderr.strip()[-200:])

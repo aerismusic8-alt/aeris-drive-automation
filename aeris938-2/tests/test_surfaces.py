@@ -39,9 +39,9 @@ def test_youtube_is_single_channel():
 
 
 def test_facebook_name_matches_the_brand():
-    """K renamed the brand to NEO VINCI (2026-11-16). `branding.NAME` is the one
-    source of truth for the display name; `channel.json` must agree, or the FB
-    Page (and anything reading this config) keeps the retired AERIS Music name."""
+    """K set the live channel name to เพลงส้นทีนไรเนี่ย (2026-11-17). `branding.NAME`
+    is the one source of truth for the display name; `channel.json` must agree, or
+    the FB Page (and anything reading this config) keeps a retired name."""
     sys.path.insert(0, str(surfaces.MUSIC_SCRIPTS))
     import branding  # noqa: E402
     assert surfaces.config()["facebook"]["name"] == branding.NAME
@@ -631,7 +631,7 @@ def test_audit_flags_an_empty_description_and_a_losing_title():
     empty = {"id": "X", "snippet": {"title": "x", "description": ""}}
     assert "description_empty" in audit.check_video(empty, exp, {})
     losing = {"id": "X", "snippet": {
-        "title": "เพลงเศร้า | NEO VINCI",
+        "title": "เพลงเศร้า | เพลงส้นทีนไรเนี่ย",
         "description": audit.monetize.cta("youtube")}}
     assert "losing_title_shape" in audit.check_video(losing, exp, {})
 
@@ -802,7 +802,7 @@ def test_youtube_stats_falls_back_to_the_public_page():
     # When the API raises (quota), the fallback path must return those numbers.
     orig = report.public_page_stats
     report.public_page_stats = lambda handle: {
-        "reachable": True, "handle": handle, "title": "NEO VINCI",
+        "reachable": True, "handle": handle, "title": "เพลงส้นทีนไรเนี่ย",
         "subs": 8, "videos": 82, "views": 2096, "source": "public-page"}
     import yt_auth
     orig_tok = yt_auth.access_token

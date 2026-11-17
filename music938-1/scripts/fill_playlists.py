@@ -32,19 +32,19 @@ STATE = ROOT / "work" / "playlist-state.json"
 # only, so neither is a bucket a new upload can land in.
 BUCKETS = [
     ("short", "ท่อนฮุก — เพลงไทยสั้น ๆ",
-     "รวมท่อนฮุกของทุกเพลง ฟังสั้น ๆ ได้ใจความ\n\nNEO VINCI · ค่ายเพลง AI",
+     "รวมท่อนฮุกของทุกเพลง ฟังสั้น ๆ ได้ใจความ\n\nเพลงส้นทีนไรเนี่ย · ค่ายเพลง AI",
      lambda t: "#Shorts" in t or "ท่อนที่" in t),
     ("compilation", "รวมเพลงยาว — ฟังเพลินเป็นชั่วโมง",
      "คอมไพล์เพลงไทยแบบยาว เลือกเพลงฟังได้ มีบทนำทุกเพลง\n\n"
-     "NEO VINCI · ค่ายเพลง AI",
+     "เพลงส้นทีนไรเนี่ย · ค่ายเพลง AI",
      lambda t: "รวมเพลง" in t),
     ("song", "เพลงไทย — รวมทุกเพลง",
-     "รวมทุกเพลงไทยของ NEO VINCI เนื้อร้องและทำนองใหม่\n\n"
-     "NEO VINCI · ค่ายเพลง AI",
+     "รวมทุกเพลงไทยของ เพลงส้นทีนไรเนี่ย เนื้อร้องและทำนองใหม่\n\n"
+     "เพลงส้นทีนไรเนี่ย · ค่ายเพลง AI",
      lambda t: True),
 ]
-ARTIST = ("naviya", "NAVIYA", "เพลงทั้งหมดของ NAVIYA ศิลปินคนแรกของ NEO VINCI\n\n"
-          "NEO VINCI · ค่ายเพลง AI")
+ARTIST = ("naviya", "NAVIYA", "เพลงทั้งหมดของ NAVIYA ศิลปินคนแรกของ เพลงส้นทีนไรเนี่ย\n\n"
+          "เพลงส้นทีนไรเนี่ย · ค่ายเพลง AI")
 
 # Mood playlists. A song belongs to its mood *and* to the all-songs playlist, so
 # these are additive rather than one-bucket-per-video (see `moods()`). The three
@@ -52,14 +52,14 @@ ARTIST = ("naviya", "NAVIYA", "เพลงทั้งหมดของ NAVIYA
 # header in its lyric file, keyed by the lyric's title.
 MOODS = [
     ("mood-sad", "เพลงเศร้า — อกหัก คิดถึง คร่ำครวญ",
-     "รวมเพลงเศร้าของ NEO VINCI อกหัก คิดถึง คนที่จากไป\n\n"
-     "NEO VINCI · ค่ายเพลง AI", {"sad"}),
+     "รวมเพลงเศร้าของ เพลงส้นทีนไรเนี่ย อกหัก คิดถึง คนที่จากไป\n\n"
+     "เพลงส้นทีนไรเนี่ย · ค่ายเพลง AI", {"sad"}),
     ("mood-warm", "เพลงอบอุ่น — ฟังแล้วใจนุ่ม",
-     "รวมเพลงอบอุ่นของ NEO VINCI รัก ครอบครัว บ้าน\n\n"
-     "NEO VINCI · ค่ายเพลง AI", {"warm", "calm"}),
+     "รวมเพลงอบอุ่นของ เพลงส้นทีนไรเนี่ย รัก ครอบครัว บ้าน\n\n"
+     "เพลงส้นทีนไรเนี่ย · ค่ายเพลง AI", {"warm", "calm"}),
     ("mood-hopeful", "เพลงให้กำลังใจ — สู้ต่อไป",
-     "รวมเพลงให้กำลังใจของ NEO VINCI กำลังใจ ความฝัน วันใหม่\n\n"
-     "NEO VINCI · ค่ายเพลง AI", {"hopeful", "epic"}),
+     "รวมเพลงให้กำลังใจของ เพลงส้นทีนไรเนี่ย กำลังใจ ความฝัน วันใหม่\n\n"
+     "เพลงส้นทีนไรเนี่ย · ค่ายเพลง AI", {"hopeful", "epic"}),
 ]
 
 

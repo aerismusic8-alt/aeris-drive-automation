@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""NEO VINCI identity, v3 — "Acoustic & Breeze", still the same channel.
+"""เพลงส้นทีนไรเนี่ย identity, v3 — "Acoustic & Breeze", still the same channel.
 
 K brought a design brief from an AI YouTube consult (2026-11-07) that asked for an
 indie / warm / easy-listening look with headphone-and-gear cues and an earth-pastel
@@ -174,7 +174,7 @@ def _window_light(img: Image.Image, x: float, y: float, w: float, h: float,
 
 def _breeze(img: Image.Image, pts: list[tuple[float, float, float, float]],
             color=SILVER) -> None:
-    """The air of NEO VINCI: thin, blurred sine lines that never sit behind the text."""
+    """The channel air: thin, blurred sine lines that never sit behind the text."""
     layer = Image.new("RGBA", img.size, (0, 0, 0, 0))
     d = ImageDraw.Draw(layer)
     for k, (x0, y0, x1, amp) in enumerate(pts):
@@ -234,7 +234,7 @@ def make_youtube_banner(size: tuple[int, int] = (2560, 1440)) -> Path:
     img.alpha_composite(cup)
 
     draw = ImageDraw.Draw(img)
-    word = _font(LATIN_FONT, 132, bold=True)
+    word = _font(THAI_FONT, 132, bold=True)
     tag = _font(THAI_FONT, 56, bold=True)
     sub = _font(THAI_FONT, 38)
 
@@ -269,7 +269,7 @@ def make_facebook_cover(size: tuple[int, int] = (1640, 624)) -> Path:
                   (w * 0.05, h * 0.88, w * 0.95, h * 0.030)])
     _headphone(img, w * 0.92, h * 0.34, min(w, h) * 0.075, color=SAGE)
     draw = ImageDraw.Draw(img)
-    word = _font(LATIN_FONT, 92, bold=True)
+    word = _font(THAI_FONT, 92, bold=True)
     tag = _font(THAI_FONT, 44, bold=True)
     sub = _font(THAI_FONT, 31)
     # Left-aligned so the centre (avatar zone) stays empty.

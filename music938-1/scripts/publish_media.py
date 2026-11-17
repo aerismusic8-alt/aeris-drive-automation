@@ -85,7 +85,7 @@ def release_id(tag: str, tok: str) -> int:
     if st != 200:
         st, rel = api(f"/repos/{REPO}/releases", tok, "POST", {
             "tag_name": tag,
-            "name": "NEO VINCI — media (song/karaoke/cover masters)",
+            "name": "เพลงส้นทีนไรเนี่ย — media (song/karaoke/cover masters)",
             "body": "Durable media store for music938-1. Gitignored build output "
                     "lives here so a fresh pod can pull it.",
             "draft": False, "prerelease": False,

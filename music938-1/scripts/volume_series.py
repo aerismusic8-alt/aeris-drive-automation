@@ -157,15 +157,15 @@ def volume_description(slugs: list[str], volume: int,
     nxt = next_volume_number if next_volume_number is not None else volume + 1
     return (
         f"🎵 {VOLUME_TAGLINE} Vol.{volume} — รวม {len(slugs)} เพลงไทย ต่อเนื่อง\n\n"
-        f"🤖 NEO VINCI — ค่ายเพลง AI สร้างเพลงและเสียงร้องด้วย AI\n\n"
+        f"🤖 เพลงส้นทีนไรเนี่ย — ค่ายเพลง AI สร้างเพลงและเสียงร้องด้วย AI\n\n"
         f"{cta_block}"
         f"👉 กดเลือกเพลงที่อยากฟังได้จากรายการด้านล่าง\n\n"
         f"⏱️ รายการเพลง\n{ca.build_chapters(slugs)}\n\n"
         f"🎧 ฟังเพลิน ๆ ได้ทั้งวัน ไม่ต้องกดเปลี่ยน\n"
         f"▶️ ตอนถัดไป: Vol.{nxt} กำลังจะมา — กดติดตามไว้ก่อน\n"
-        f"✨ NEO VINCI — ค่ายเพลง AI\n\n"
+        f"✨ เพลงส้นทีนไรเนี่ย — ค่ายเพลง AI\n\n"
         f"#เพลงไทย #รวมเพลงไทย #เพลงป็อป #เพลงแดนซ์ #เพลงร็อก "
-        f"#ค่ายเพลงAI #AIMusic #NEOVINCI #เพลงฟังสบาย #ฟังยาว\n"
+        f"#ค่ายเพลงAI #AIMusic #เพลงส้นทีนไรเนี่ย #เพลงฟังสบาย #ฟังยาว\n"
     )
 
 

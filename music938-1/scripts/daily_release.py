@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Keep the NEO VINCI channel active: one scheduled batch a day, unattended.
+"""Keep the เพลงส้นทีนไรเนี่ย channel active: one scheduled batch a day, unattended.
 
 The pod that builds the songs is not the pod that stays up, so this is the
 durable half. Two things make it robust on a machine with no git transport:
