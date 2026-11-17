@@ -55,7 +55,9 @@ Views without follows is the failure. End every clip with `release.FOLLOW_ASK` +
 - **FB browser posting is OFF (K 2026-11-15: "ระบบออโต้เราไม่เนียนมันจับได้").**
     FB posts only via the Graph API (`crosspost.API_ONLY`); parks green otherwise.
 - **Writes:** `GITHUB_TOKEN` is 403; push via vault KV `axsecrets:gh-workflow-token`
-  (needs `OPENHANDS_API_KEY`; workflow files need it too).
+  (needs `OPENHANDS_API_KEY`; workflow files need it too). On a fresh pod the App
+  key (`~/.config/aeris`) is gone → `use-app-token.sh` fails; **`$AX_GH_TOKEN`
+  writes** — set it as the remote userinfo, push, then reset the URL to tokenless.
 - **Desktop view = Live View** (`work-2`, port 12001).
 - **Thai text** lives only in `roblox/src/shared/Text.luau` +
   `music938-1/fonts/NotoSansThai.ttf`; without `fonts-thai-tlwg` the SVG renderer
@@ -65,16 +67,12 @@ Views without follows is the failure. End every clip with `release.FOLLOW_ASK` +
 ## Real-instrument sound (K)
 **sfizz** sampler, not GM; `AX_REQUIRE_REAL_INSTRUMENTS=1` makes a fallback **raise**.
 
-## Music video = public-domain film matched to the song (2026-11-13)
-`make_film_video.py` casts the film by `# MOOD:` from archive.org (check
-`licenseurl`); the picture must answer the lyric (K, 2026-11-16: a warm song got a
-Western → `warm` recast to the musical). **Release wiring (2026-11-16):**
-`release.py plan()` ships the MV as the long-form release when one exists
-(`mv_files`; film>mv; -hook/-vertical excluded); lyric render is the fallback;
-`describe()` marks `มิวสิควีดีโอ`. Free-media rails + `test_film_video`: archive.
-
-## K-free status — `ops/k_free_status.py`
-"Blocked" = blocked on the first route tried (desktop+vault first).
+## Clip production standard — trivia ("เกร็ดความรู้") lane
+K (2026-11-17): build the tool + steps to the reference clip's quality **first**,
+then standardise, then upload. Measured reference: 1280×720 24 fps, **−14.9 LUFS**,
+real moving footage (no cuts/zoom), white Thai ~72 px, ~3 px outline, left 10.5 %.
+Tool `ops/trivia_reel.py` (`SPEC` pinned by `test_trivia_reel`); steps in
+`docs/trivia-clip-standard.md`. Order: real footage > loudnorm speech > clean text.
 
 ## Loop health & platform risks
 - **A green run is not a finished job.** `release.py` returns rc 4 +

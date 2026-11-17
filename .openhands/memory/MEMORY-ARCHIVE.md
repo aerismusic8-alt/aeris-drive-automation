@@ -6272,3 +6272,14 @@ sfizz sampler (not the GM SoundFont); `AX_REQUIRE_REAL_INSTRUMENTS=1` makes a
 GM fallback raise instead of shipping silently. Beds are pre-rendered on the
 pod (CI rails cannot build sfizz) and pulled from `media-938` (`sampler1-*.wav`).
 K rejected the ffmpeg tone synth and the GM SoundFont as fake.
+
+## [moved from MEMORY.md 2026-11-17] Music video = public-domain film matched to the song
+`make_film_video.py` casts the film by `# MOOD:` from archive.org (check
+`licenseurl`); the picture must answer the lyric (K, 2026-11-16: a warm song got a
+Western → `warm` recast to the musical). **Release wiring (2026-11-16):**
+`release.py plan()` ships the MV as the long-form release when one exists
+(`mv_files`; film>mv; -hook/-vertical excluded); lyric render is the fallback;
+`describe()` marks `มิวสิควีดีโอ`. Free-media rails + `test_film_video`: archive.
+
+## [moved from MEMORY.md 2026-11-17] K-free status — `ops/k_free_status.py`
+"Blocked" = blocked on the first route tried (desktop+vault first).
