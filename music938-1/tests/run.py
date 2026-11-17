@@ -3650,7 +3650,11 @@ def test_state_files_are_addable() -> None:
              # `git add` silently drops them and the loop re-reads every post
              # from scratch each run.
              "music938-1/work/engagement-cache.json",
-             "music938-1/work/engagement.json"]
+             "music938-1/work/engagement.json",
+             # The trivia lane's posted-once ledger. The daily rail commits it and
+             # `--next` picks the first script not in it, so an ignored file makes
+             # the rail re-pick the same first fact on every tick.
+             "music938-1/work/trivia-state.json"]
     for rel in files:
         try:
             r = subprocess.run(["git", "check-ignore", "-q", "--no-index", rel],
@@ -5236,6 +5240,15 @@ def test_trivia_publish() -> None:
     # A committed ledger is what lets a fresh runner know what is already live.
     check("the ledger is committed by the rail",
           "trivia-state.json" in (ROOT.parent / ".github/workflows/ax-music-trivia.yml").read_text())
+    # ...but naming it in the rail is not enough: `work/*` ignores it, and an
+    # ignored file makes the rail's `git add` a silent no-op, so `--next` re-picks
+    # the same first fact forever. `git check-ignore` is the real gate (the same
+    # one `yt-quota.json` carries).
+    gi = subprocess.run(
+        ["git", "check-ignore", "-q", "music938-1/work/trivia-state.json"],
+        cwd=str(ROOT.parent), capture_output=True, text=True)
+    check("the trivia ledger is not gitignored", gi.returncode == 1,
+          f"git check-ignore rc={gi.returncode}")
     # The rail ticks twice a day so a YouTube account upload cap does not lose the
     # fact; that must stay a retry, not extra output, so a same-day guard caps it.
     check("a second daily tick is a retry, not extra output",

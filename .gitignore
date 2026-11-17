@@ -86,6 +86,10 @@ music938-1/work/*
 # guard only skips a re-render if the file survives a fresh CI checkout, so an
 # ignored state file means all six clips re-render every 4 hours forever.
 !music938-1/work/mood-clips-state.json
+# The trivia lane's posted-once ledger. The daily rail commits it, and
+# `trivia_publish.py --next` picks the first script not in it. If it is ignored,
+# `git add` silently fails and the rail always re-picks the same first fact.
+!music938-1/work/trivia-state.json
 music938-1/library/songs/*.mp3
 music938-1/library/songs/*.wav
 music938-1/library/songs/*.m4a
