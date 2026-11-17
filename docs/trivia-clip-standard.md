@@ -105,11 +105,37 @@ thresholds and proves the gate rejects a bad clip.
   AI note live in the title and the description.
 - No hard cut between pictures.
 
-## Publishing (once the standard clip is approved)
+## Publishing (the clip is approved and reaches the channel)
 
 The closing card carries `branding.FOLLOW_ASK` + `FOLLOW_PROMISE` ("กดติดตาม NEO
 VINCI" / "เพลงใหม่ทุกวัน"), which is K's rule that every clip ends with the ask.
-The description carries `branding.DESCRIPTION`, `branding.HASHTAGS`, the
-`branding.LABEL` AI line, and `footage_rail.credits_block` for any CC BY/BY-SA
-footage used. Upload is blocked on the YouTube Data API quota (403 quotaExceeded
-across all four channels on 2026-11-17); it resumes when the daily quota resets.
+The description carries `branding.LABEL` AI line, the `monetize.cta` subscribe
+ask, the socials footer, the footage credits and the trivia hashtags.
+
+`ops/trivia_publish.py` is the half that turns a finished clip into a channel
+upload — render, title, description, thumbnail, ledger:
+
+```bash
+python3 ops/trivia_publish.py --script scripts_trivia/sky-blue.md --dry-run
+python3 ops/trivia_publish.py --next --now       # the next unposted fact
+```
+
+- The title leads with the **question** (the query a viewer types) and appends
+  the series + `#เกร็ดความรู้`, so search can find it on a zero-subscriber channel.
+- The thumbnail is a mid-clip frame (60 % of the runtime, a settled card) held to
+  `ops/thumb_standard.py`, the same floor every channel thumb meets.
+- The upload goes through `ops/yt_publish.py`, the one chokepoint, so both the
+  clip floor and the thumbnail floor are enforced before any network call.
+- `music938-1/work/trivia-state.json` records every posted fact, so a re-run or a
+  retry never double-posts one.
+
+`.github/workflows/ax-music-trivia.yml` runs `--next --now` once a day. YouTube's
+per-channel daily new-video cap returns `uploadLimitExceeded` when the channel has
+already taken its quota of new videos that day; that is a normal, non-fatal
+outcome — the ledger records only successes, so the same fact lands on the next
+tick.
+
+`ops/trivia_reel.py` also enforces the clip floor at the end of every render: on
+a fail it **deletes the MP4 and exits non-zero**, so a below-floor clip can never
+leave the machine as a finished artifact.
+

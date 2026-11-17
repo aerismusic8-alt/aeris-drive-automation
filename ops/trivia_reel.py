@@ -168,26 +168,32 @@ def concat_audio(segs, work, gap=0.4):
 
 
 def fetch_footage(theme: str, out_dir: str, want: int, log=print):
-    """Free Commons footage for the theme; [] when none is usable."""
+    """Free Commons footage for the theme; returns (paths, items).
+
+    `items` carries the licence/credit for each clip so the description can
+    attribute it — a CC BY / BY-SA clip requires that, and a music channel must
+    not ship one without it.
+    """
     os.makedirs(out_dir, exist_ok=True)
     have = sorted(glob.glob(os.path.join(out_dir, "c*.webm")) +
                   glob.glob(os.path.join(out_dir, "c*.mp4")))
     if len(have) >= want:
-        return have[:want]
+        return have[:want], []
     items = []
     for q in THEME_QUERIES.get(theme, THEME_QUERIES["sky"]):
         items += fr.search_video(q, limit=4)
         if len(items) >= want:
             break
-    got = []
+    got, used = [], []
     for i, it in enumerate(items[:want]):
         name = f"c{i:02d}" + (os.path.splitext(it["url"])[1] or ".webm")
         p = fr.download(it, out_dir, name=name)
         if p:
             got.append(str(p))
+            used.append(it)
     if got:
         log(f"  [footage] {len(got)} clips, theme {theme}")
-    return got
+    return got, used
 
 
 def fetch_stills(theme: str, out_dir: str, want: int, log=print):
@@ -379,9 +385,9 @@ def main() -> int:
     print(f"[audio] narration {total:.1f}s, normalised to {SPEC['lufs']} LUFS")
 
     want = max(2, int(total / a.card_secs) + 1)
-    backgrounds = []
+    backgrounds, credits = [], []
     if not a.stills_only:
-        clips = fetch_footage(theme, os.path.join(work, "footage"), want)
+        clips, credits = fetch_footage(theme, os.path.join(work, "footage"), want)
         backgrounds = [(c, True) for c in clips]
     if not backgrounds:
         stills = fetch_stills(theme, os.path.join(work, "stills"), want)
@@ -414,7 +420,12 @@ def main() -> int:
         raise SystemExit("clip below the standard (removed): " + "; ".join(bad))
 
     json.dump({"title": title, "theme": theme, "seconds": secs, "out": out,
-               "backgrounds": len(backgrounds), "spec": SPEC},
+               "backgrounds": len(backgrounds), "spec": SPEC,
+               "cards": cards,
+               "credits": [{"title": it.get("title", ""),
+                            "licence": it.get("licence", ""),
+                            "source": it.get("source", ""),
+                            "origin": it.get("origin", "")} for it in credits]},
               open(os.path.join(a.out, "trivia.json"), "w", encoding="utf-8"),
               ensure_ascii=False, indent=2)
     return 0

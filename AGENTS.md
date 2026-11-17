@@ -271,6 +271,27 @@ two-pass loudnorm is correct) — the masters are stale. `ops/remaster_songs.py`
 `docs/clip-standard.md` is the full standard; `docs/trivia-clip-standard.md` is
 the measured reference the trivia profile came from.
 
+### The trivia lane (เกร็ดความรู้) and its publish half
+
+K's 2026-11-17 ask had three parts: build the lane, make the reference quality the
+standard, then **upload it**. `ops/trivia_reel.py` is the first two — it renders a
+Thai-narrated landscape clip (edge-tts + Wikimedia Commons footage + ffmpeg, all
+free) and enforces the clip floor. `ops/trivia_publish.py` is the third: it renders,
+builds the title/description/thumbnail, and uploads to `ch3` **through**
+`yt_publish.py`, so both the clip and thumbnail floors are enforced before any
+network call.
+
+- Facts live as one Markdown file each under `scripts_trivia/*.md`
+  (`# TITLE:`, `# THEME:`, then the cards). Adding a fact is adding a file.
+- `--next` picks the first fact not yet in `music938-1/work/trivia-state.json`
+  (the ledger), so a re-run or a retry never double-posts one. The ledger is
+  committed by the rail.
+- `.github/workflows/ax-music-trivia.yml` runs `--next --now` once a day. A
+  YouTube per-channel daily new-video cap surfaces as `uploadLimitExceeded`
+  (HTTP 400) — a normal, non-fatal outcome; the ledger records only successes, so
+  the same fact lands on the next tick.
+- `music938-1/tests/run.py::test_trivia_publish` pins the publishing contract.
+
 ## Language
 
 The player-facing text is Thai. `roblox/src/shared/Text.luau` is the only place

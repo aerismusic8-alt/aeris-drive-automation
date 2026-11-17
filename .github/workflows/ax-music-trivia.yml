@@ -1,0 +1,94 @@
+name: AX Music Trivia (เกร็ดความรู้)
+
+# Renders one Thai science-trivia clip a day and uploads it to NEO VINCI.
+#
+# K (2026-11-17): build a "เกร็ดความรู้รอบตัวและวิทยาศาสตร์" lane to the quality of
+# the reference clip he supplied, make that the standard, then upload it to the
+# channel. `ops/trivia_reel.py` renders it and enforces the clip floor; the
+# standard is documented in `docs/trivia-clip-standard.md` and pinned by
+# `music938-1/tests/run.py::test_trivia_reel` + `::test_clip_standard_is_a_floor`.
+#
+# Why a separate rail and not a step in the release rail: this lane has its own
+# dependency set (edge-tts, Pillow, numpy, imageio-ffmpeg, Thai fonts) and pulls
+# footage from Wikimedia Commons, whereas the release rail runs from a tarball
+# with almost no deps. Same reasoning as the karaoke and surreal render rails.
+#
+# Everything is free (Rule #1): edge-tts voice, licence-checked Commons footage,
+# ffmpeg. No key, no login, no paid stock.
+#
+# `trivia_publish.py --next` renders the first script that is not yet in the
+# ledger, so a run that hits YouTube's per-channel daily new-video cap
+# (`uploadLimitExceeded`) simply lands the same clip on the next tick — the
+# ledger records only successes, so a re-run never double-posts a fact.
+
+on:
+  schedule:
+    # 09:15 UTC — after the release rail's 08:05 tick and its 08:00 pool reset,
+    # so a trivia upload does not race the day's songs for the fresh quota.
+    - cron: '15 9 * * *'
+  workflow_dispatch:
+    inputs:
+      script:
+        description: "one scripts_trivia/*.md (default: the next unposted one)"
+        default: ""
+
+permissions:
+  contents: write
+
+concurrency:
+  group: ax-music-trivia
+  cancel-in-progress: false
+
+jobs:
+  trivia:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install ffmpeg, Thai fonts, and the python deps
+        run: |
+          set -euo pipefail
+          # ffmpeg is preinstalled on ubuntu-latest; only install when absent so a
+          # DNS blip on apt cannot fail the whole run (see ax-music-karaoke-render).
+          if ! command -v ffmpeg >/dev/null 2>&1; then
+            sudo apt-get update -qq
+            sudo apt-get install -y -qq ffmpeg
+          fi
+          # Thai fonts are a *silent* failure: without them the SVG/ASS renderer
+          # substitutes a font with no Thai glyphs and every card becomes tofu.
+          sudo apt-get install -y -qq fonts-thai-tlwg-ttf fonts-thai-tlwg-otf
+          python3 -m pip install --quiet --disable-pip-version-check \
+            edge-tts Pillow numpy imageio-ffmpeg requests
+
+      - name: Render + publish the next trivia clip
+        env:
+          YT_CLIENT_ID: ${{ secrets.YT_CLIENT_ID }}
+          YT_CLIENT_SECRET: ${{ secrets.YT_CLIENT_SECRET }}
+          YT_CH3_REFRESH_TOKEN: ${{ secrets.YT_CH3_REFRESH_TOKEN }}
+        run: |
+          set -uo pipefail
+          ARGS="--next --now"
+          if [ -n "${{ github.event.inputs.script }}" ]; then
+            ARGS="--script ${{ github.event.inputs.script }} --now"
+          fi
+          # The per-channel daily new-video cap makes a 400 uploadLimitExceeded a
+          # normal, non-fatal outcome: the clip is built and the next tick lands
+          # it (the ledger records only successes). Any other failure is surfaced
+          # as a warning rather than swallowed.
+          python3 ops/trivia_publish.py $ARGS \
+            || echo "::warning::trivia publish did not complete this run — will retry next tick"
+
+      - name: Commit the trivia ledger
+        run: |
+          set -euo pipefail
+          git config user.name  "ax-music-trivia"
+          git config user.email "ax-music-trivia@users.noreply.github.com"
+          git add music938-1/work/trivia-state.json music938-1/library/thumbs/thumb-trivia-*.png 2>/dev/null || true
+          if git diff --cached --quiet; then
+            echo "no change to record"
+            exit 0
+          fi
+          git commit -m "data(music): trivia publish $(date -u +%Y-%m-%dT%H:%MZ)"
+          git pull --rebase --autostash origin "${GITHUB_REF_NAME}"
+          git push

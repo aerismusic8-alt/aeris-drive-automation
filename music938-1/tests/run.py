@@ -5203,6 +5203,69 @@ def test_trivia_reel() -> None:
               for t in ("sky", "space", "plants")))
 
 
+def test_trivia_publish() -> None:
+    """The trivia lane must actually reach the channel (K, 2026-11-17).
+
+    K's ask was three steps: build the lane, make it the standard, **upload it**.
+    `ops/trivia_reel.py` covers the first two; `ops/trivia_publish.py` is the
+    third. This pins the publishing contract: it goes through the one upload
+    chokepoint (so the clip and thumbnail floors are enforced), it carries the
+    brand from the branding module and the monetize ask, it attributes the
+    Commons footage it used, and a posted fact is recorded so a re-run never
+    double-posts.
+    """
+    section("trivia publish (the upload half)")
+    import importlib.util
+    ops = ROOT.parent / "ops"
+    src = (ops / "trivia_publish.py").read_text()
+
+    check("publishes through the upload chokepoint", "yt_publish.py" in src)
+    check("targets the one channel", 'CH = "ch3"' in src)
+    check("brand is imported, not hardcoded",
+          "import branding" in src and "NEO VINCI" not in src)
+    check("carries the monetize ask", "monetize" in src)
+    check("records a ledger so a re-run cannot double-post",
+          "trivia-state.json" in src and "posted" in src)
+    check("attributes the footage licence", "credits" in src and "licence" in src)
+    # A committed ledger is what lets a fresh runner know what is already live.
+    check("the ledger is committed by the rail",
+          "trivia-state.json" in (ROOT.parent / ".github/workflows/ax-music-trivia.yml").read_text())
+
+    spec = importlib.util.spec_from_file_location("trivia_publish",
+                                                  ops / "trivia_publish.py")
+    tp = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(tp)
+
+    cards = ["ทำไมท้องฟ้าถึงเป็นสีฟ้า?", "เพราะแสงแดดเป็นแสงสีขาว",
+             "ตอนพระอาทิตย์ตก แสงเดินทางไกลขึ้น"]
+    title = tp.make_title("เกร็ดวิทยาศาสตร์", cards)
+    check("title leads with the question", title.startswith("ทำไมท้องฟ้าถึงเป็นสีฟ้า?"))
+    check("title carries the series and hashtag",
+          "เกร็ดวิทยาศาสตร์" in title and "#เกร็ดความรู้" in title)
+    check("title fits YouTube's truncation", len(title) <= 100)
+
+    desc = tp.make_description("เกร็ดวิทยาศาสตร์", cards, [
+        {"title": "Clouds.webm", "licence": "CC BY-SA 4.0",
+         "source": "https://commons.wikimedia.org/wiki/File:Clouds.webm",
+         "origin": "Wikimedia Commons"}])
+    check("description carries every card", all(c in desc for c in cards))
+    check("description carries the subscribe ask", "sub_confirmation" in desc)
+    check("description carries the AI label", "AI" in desc)
+    check("description credits the footage with its licence",
+          "CC BY-SA 4.0" in desc and "Wikimedia Commons" in desc)
+    check("description has no raw HTML", "<a " not in desc and "</a>" not in desc)
+    # The trivia clip is a music channel's clip, so the footer must not promise
+    # "เพลงใหม่ทุกวัน" as if this were a song; the trivia hashtags are its own.
+    check("description uses the trivia hashtags", "#เกร็ดความรู้" in desc)
+
+    tags = tp.make_tags("เกร็ดวิทยาศาสตร์", cards)
+    check("tags carry the series and the fact terms",
+          "เกร็ดวิทยาศาสตร์" in tags and "วิทยาศาสตร์" in tags)
+    check("tags are within the API limit", len(tags) <= 30)
+    check("no paid API or key", "api_key" not in src.lower()
+          and "openai" not in src.lower())
+
+
 def test_clip_standard_is_a_floor() -> None:
     """The standard is one floor for every format (K, 2026-11-17).
 
@@ -6555,6 +6618,7 @@ def main() -> int:
     test_phone_login()
     test_story_reel()
     test_trivia_reel()
+    test_trivia_publish()
     test_clip_standard_is_a_floor()
     test_metadata_ab_holds_format_fixed()
     test_login_vault_never_clobbers_a_live_surface()
