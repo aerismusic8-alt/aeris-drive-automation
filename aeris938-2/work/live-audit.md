@@ -1,6 +1,6 @@
 # ตรวจของจริงบนช่อง — NEO VINCI
 
-ตรวจเมื่อ: 2026-11-17T03:02:16Z
+ตรวจเมื่อ: 2026-11-17T17:44:32Z
 
 ⚠️ อ่านไม่ได้วันนี้: channels.list/playlistItems.list returned no items (quota spent or API error)
 

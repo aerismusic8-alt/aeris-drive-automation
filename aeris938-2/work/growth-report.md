@@ -1,16 +1,16 @@
 # รายงานการปั้น 4 ช่องทาง — NEO VINCI (aeris938-2)
 
-วัดเมื่อ: 2026-11-17 03:03 UTC
+วัดเมื่อ: 2026-11-17 17:45 UTC
 
 > ตัวเลขที่อ่านไม่ได้เขียน UNKNOWN — ไม่เดา
 
-> YouTube: Data API unavailable (HTTP Error 403: Forbidden); snapshot
+> YouTube: Data API unavailable (HTTP Error 403: Forbidden); public page
 
 | # | ช่องทาง | ตัวชี้วัด | ค่า | เปลี่ยน |
 | ---: | --- | --- | ---: | ---: |
 | 3 | YouTube @aerismusicth | ผู้ติดตาม | 8 | — |
-| | | วิดีโอ | 62 | — |
-| | | ยอดดูรวม | 1949 | — |
+| | | วิดีโอ | 82 | +20 |
+| | | ยอดดูรวม | 2105 | +156 |
 | 1 | Facebook | ผู้ติดตาม | พักอยู่ | — |
 | | | ยอดดู 28 วัน | พักอยู่ | — |
 | 2 | TikTok | ผู้ติดตาม | 0 | — |
