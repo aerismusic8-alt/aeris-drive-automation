@@ -46,16 +46,14 @@ Views without follows is the failure. End every clip with `release.FOLLOW_ASK` +
 ## Environment facts that cost time
 - **Fresh-pod recovery: `scripts/bootstrap-pod.sh`** — re-run after every pod.
 - **MV links must be durable (K: "ลิงค์ตาย").** GitHub Pages `site-aeris-music` via
-  `ax-mv-pages` (`ops/mv_page.py --all`; `slug`/`force` rebuilds one). A /tmp preview
-  dies on recycle. Song metadata = its lyric header, not a songs.json.
+  `ax-mv-pages` (`ops/mv_page.py --all`); a /tmp preview dies on recycle. Detail: archive.
 - **24/7 runs on GitHub Actions, not the sandbox** (public repo → free minutes).
   Judge health from the **rail run history** (API), not `data/heartbeat.json`.
 - **FB browser posting is OFF (K 2026-11-15: "ระบบออโต้เราไม่เนียนมันจับได้").**
     FB posts only via the Graph API (`crosspost.API_ONLY`); parks green otherwise.
 - **Writes:** `GITHUB_TOKEN` is 403; push via vault KV `axsecrets:gh-workflow-token`
-  (needs `OPENHANDS_API_KEY`; workflow files need it too). On a fresh pod the App
-  key (`~/.config/aeris`) is gone → `use-app-token.sh` fails; **`$AX_GH_TOKEN`
-  writes** — set it as the remote userinfo, push, then reset the URL to tokenless.
+  (workflow files need its `workflow` scope). Fresh-pod App key gone → `$AX_GH_TOKEN`
+  writes as the remote userinfo, then reset the URL tokenless. Detail: archive.
 - **Desktop view = Live View** (`work-2`, port 12001).
 - **Thai text** lives only in `roblox/src/shared/Text.luau` +
   `music938-1/fonts/NotoSansThai.ttf`; without `fonts-thai-tlwg` the SVG renderer
@@ -67,12 +65,15 @@ Views without follows is the failure. End every clip with `release.FOLLOW_ASK` +
 
 ## Clip + thumbnail quality — one FLOOR, every format/channel (K, 2026-11-17)
 "ห้ามอัพขึ้นเด็ดขาด". The trivia clip is only a **sample**. `ops/clip_standard.py` =
-universal floor (h264, aac 48k stereo, −16..−12 LUFS, ≤ −1.0 dBTP) + a per-format
-profile. Gated at **every** upload route, no override (`ops/yt_publish.py`,
-`ops/fb_graph.py`, `ops/tiktok_api.py`, `crosspost`). Thumbnails too
-(`ops/thumb_standard.py` in `set_thumbnail`; `make_short.thumb_for` lifts the dark
-Short grab). Docs: `docs/clip-standard.md`, `docs/thumbnail-standard.md`;
-master fix `ops/remaster_songs.py`.
+universal floor + a per-format profile, gated at **every** upload route, no override;
+thumbnails too (`ops/thumb_standard.py`). Docs: `docs/clip-standard.md`,
+`docs/thumbnail-standard.md`; master fix `ops/remaster_songs.py`. Detail: archive.
+
+## Trivia lane — เกร็ดความรู้ (K, 2026-11-17)
+`ops/trivia_reel.py` renders (free: edge-tts + Commons + ffmpeg), floor-gated;
+`ops/trivia_publish.py` uploads to **ch3**. Rail `ax-music-trivia.yml` ticks 09:15 +
+21:00 UTC; ledger `work/trivia-state.json` makes tick 2 a retry, not 2x. Walls are
+platform-side, not code: the *account* daily cap and the shared 10k API pool.
 
 ## Loop health & platform risks
 - **A green run is not a finished job.** `release.py` returns rc 4 +

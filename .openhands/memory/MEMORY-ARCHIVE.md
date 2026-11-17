@@ -6283,3 +6283,17 @@ Western → `warm` recast to the musical). **Release wiring (2026-11-16):**
 
 ## [moved from MEMORY.md 2026-11-17] K-free status — `ops/k_free_status.py`
 "Blocked" = blocked on the first route tried (desktop+vault first).
+
+## Moved from index 2026-11-17 (clip floor + writes detail)
+- Clip floor detail: `ops/clip_standard.py` = universal floor (h264, aac 48k stereo,
+  −16..−12 LUFS, ≤ −1.0 dBTP) + a per-format profile; gated at **every** upload route,
+  no override (`ops/yt_publish.py`, `ops/fb_graph.py`, `ops/tiktok_api.py`, `crosspost`).
+  Thumbnails too (`ops/thumb_standard.py` in `set_thumbnail`; `make_short.thumb_for`
+  lifts the dark Short grab). A 1280x720 PNG of a busy frame is ~2.2 MB and FAILS the
+  <2 MB thumb cap — write JPEG (q=2). Master fix `ops/remaster_songs.py`.
+- Writes detail: push via vault KV `axsecrets:gh-workflow-token` (needs
+  `OPENHANDS_API_KEY`; workflow files need its `workflow` scope). On a fresh pod the App
+  key (`~/.config/aeris`) is gone → `use-app-token.sh` fails; `$AX_GH_TOKEN` writes —
+  set it as the remote userinfo, push, then reset the URL to tokenless.
+- MV-page detail: `ops/mv_page.py --all`; `slug`/`force` rebuilds one page. Song
+  metadata is the song's lyric header, not a songs.json.
