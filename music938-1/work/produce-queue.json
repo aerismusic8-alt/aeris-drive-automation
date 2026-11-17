@@ -1,5 +1,5 @@
 {
-  "made": 16,
+  "made": 17,
   "log": [
     {
       "slug": "25-thai-5bcb50c5",
@@ -279,6 +279,17 @@
       "title": "ลุกขึ้นแล้วไปยามค่ำ",
       "genre": "edm",
       "mood": "epic",
+      "result": "lyric",
+      "flow": false,
+      "audio": "none",
+      "offline_rc": 1,
+      "instrumental": false
+    },
+    {
+      "slug": "42-khuen-ni-mai-tong-khit-arai",
+      "title": "คืนนี้ไม่ต้องคิดอะไร",
+      "genre": "edm",
+      "mood": "hopeful",
       "result": "lyric",
       "flow": false,
       "audio": "none",
