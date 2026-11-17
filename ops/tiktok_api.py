@@ -185,6 +185,10 @@ def post_video(video: Path, caption: str, *, allow_private: bool = False) -> str
         print("  tiktok: account is unaudited (SELF_ONLY only) — keeping the browser route")
         return None
 
+    # K (2026-11-17): nothing below the channel floor may be uploaded anywhere.
+    import clip_standard  # noqa: E402  (same directory)
+    clip_standard.assert_ok(str(video))
+
     size = video.stat().st_size
     chunks = max(1, (size + CHUNK - 1) // CHUNK)
     init = _req(f"{API}/post/publish/video/init/", {

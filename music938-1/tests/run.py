@@ -5234,9 +5234,39 @@ def test_clip_standard_is_a_floor() -> None:
           "clip_standard.check" in (ops / "trivia_reel.py").read_text())
     yt = (ops / "yt_publish.py").read_text()
     check("every upload is measured", "clip_standard.check" in yt)
-    check("upload is blocked by the standard by default",
-          "AX_ALLOW_BELOW_STANDARD" in yt
-          and 'os.environ.get("AX_ALLOW_BELOW_STANDARD") != "1"' in yt)
+    # K (2026-11-17): a below-floor clip must not reach a channel, ever. The gate
+    # must be unconditional (no env override) and must run *before* the insert.
+    check("upload is blocked by the standard with no override",
+          "AX_ALLOW_BELOW_STANDARD" not in yt
+          and "AX_ENFORCE_CLIP_STANDARD" not in yt
+          and "refusing to upload: clip below the channel standard" in yt)
+    check("the gate runs before the upload call",
+          yt.index("clip_standard.check") < yt.index("multipart_upload(a.video"))
+    # The precise videos.insert endpoint lives in exactly one place, so
+    # ops/yt_publish.py is a real chokepoint and the gate cannot be bypassed.
+    import subprocess
+    ins = subprocess.run(
+        ["grep", "-rl", "--include=*.py", "/upload/youtube/v3/videos",
+         str(ROOT.parent / "ops"), str(ROOT / "scripts")],
+        capture_output=True, text=True).stdout.split()
+    check("yt_publish is the single upload chokepoint",
+          ins and all(os.path.basename(p) == "yt_publish.py" for p in ins))
+
+    # K (2026-11-17): "ห้ามอัพขึ้นเด็ดขาด" — the rule is every channel, not just
+    # YouTube. Every primitive that uploads a video must clear the same gate:
+    # the FB/TikTok API posters and the browser composers.
+    for label, path in (
+        ("facebook API poster", ROOT.parent / "ops" / "fb_graph.py"),
+        ("tiktok API poster", ROOT.parent / "ops" / "tiktok_api.py"),
+    ):
+        src = path.read_text()
+        check(f"{label} clears the standard before upload",
+              "clip_standard.assert_ok" in src)
+    xp = (ROOT / "scripts" / "crosspost.py").read_text()
+    for fn in ("post_tiktok", "post_facebook"):
+        body = xp.split(f"def {fn}(", 1)[1].split("\ndef ", 1)[0]
+        check(f"crosspost.{fn} clears the standard before upload",
+              "clip_standard.assert_ok" in body)
 
     # The film lane must normalise the muxed song: its masters clipped (song-24
     # was -12.2 LUFS / +1.4 dBTP) and the lane muxed them raw.

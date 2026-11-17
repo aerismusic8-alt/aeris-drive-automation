@@ -290,6 +290,9 @@ def post_reel(video: Path, caption: str, *, token: str | None = None) -> str | N
     t = token or page_token()
     if not t:
         return None
+    # K (2026-11-17): nothing below the channel floor may be uploaded anywhere.
+    import clip_standard  # noqa: E402  (same directory)
+    clip_standard.assert_ok(str(video))
     size = video.stat().st_size
 
     start = _post(f"{GRAPH}/{PAGE_ID}/video_reels", {

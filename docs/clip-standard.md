@@ -54,17 +54,13 @@ floor from the style:
 | Where | What happens |
 | --- | --- |
 | `ops/trivia_reel.py` | runs the gate after every render; a fail **deletes the MP4 and exits non-zero** |
-| `ops/yt_publish.py` | the one upload chokepoint for all 4 channels — measures every clip and **blocks** a below-floor one by default; `AX_ALLOW_BELOW_STANDARD=1` is an explicit override for repairing an already-live video |
-| `music938-1/tests/run.py` | `test_clip_standard_is_a_floor` pins the floor (may only be raised) and builds deliberately bad clips to prove the gate rejects them |
+| `ops/yt_publish.py` | the one YouTube upload chokepoint for all 4 channels — measures every clip and **blocks** a below-floor one |
+| `ops/fb_graph.py` / `ops/tiktok_api.py` | the Facebook / TikTok API posters call `assert_ok` before any network call |
+| `music938-1/scripts/crosspost.py` | the browser composers `post_tiktok` / `post_facebook` call `assert_ok` first |
+| `music938-1/tests/run.py` | `test_clip_standard_is_a_floor` pins the floor (may only be raised), builds deliberately bad clips to prove the gate rejects them, and asserts every upload path is gated before the insert |
 
-```
-python3 ops/clip_standard.py <clip.mp4>          # auto-detects the profile
-python3 ops/clip_standard.py <clip.mp4> --json
-```
-
-The publish gate blocks by default — K's rule is absolute. The override exists
-only for a deliberate, documented exception (repairing a live video), never to
-make a bad new clip pass.
+The rule is **every channel, every route**. A below-floor clip has no path to a
+channel: there is **no override**. Fix the clip (or re-master the song) and retry.
 
 ## 4. The defect this found, and the fix
 

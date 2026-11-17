@@ -252,9 +252,12 @@ Enforced at both ends:
 
 - `ops/trivia_reel.py` runs the gate after every render and, on a fail, **deletes
   the MP4 and exits non-zero**.
-- `ops/yt_publish.py` is the one upload chokepoint for all 4 channels; it measures
-  every clip and **blocks** a below-floor one by default (`AX_ALLOW_BELOW_STANDARD=1`
-  overrides only for repairing an already-live video).
+- `ops/yt_publish.py` is the one YouTube upload chokepoint for all 4 channels; it
+  measures every clip and **blocks** a below-floor one. The Facebook and TikTok
+  posters (`ops/fb_graph.py`, `ops/tiktok_api.py`) and the browser composers
+  (`crosspost.post_tiktok` / `post_facebook`) call `assert_ok` before any network
+  call. The rule is **every channel, every route**, with **no override** (K
+  2026-11-17: "คลิปวีดีโอที่ต่ำกว่าเกณฑ์มาตรฐาน ห้ามอัพขึ้นเด็ดขาด").
 - `music938-1/tests/run.py::test_clip_standard_is_a_floor` pins the floor and
   builds deliberately bad clips to prove the gate rejects them.
 
