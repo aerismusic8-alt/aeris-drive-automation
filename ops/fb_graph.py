@@ -405,6 +405,43 @@ def page_fields(token: str | None = None) -> dict:
                 {"fields": "id,name,about", "access_token": t})
 
 
+def page_insights(*, token: str | None = None) -> dict:
+    """The Page's headline numbers through the Graph API — no browser.
+
+    Returns a `social_stats`-shaped dict so the measurement rail can read an
+    `api-only` Facebook the same way it read the browser dashboard: `followers`
+    and `views_28d` (Page views, the metric the browser route read from Page
+    Insights), plus `engagements_28d`. `page_impressions` was removed in Graph
+    v21, so `page_views_total` is the reach metric that still answers.
+
+    A missing or rejected token returns `{"reachable": False, "note": ...}` so the
+    caller falls back instead of reading a fabricated zero.
+    """
+    if not available():
+        return {"reachable": False, "note": "no FB_PAGE_TOKEN"}
+    t = page_access_token()
+    try:
+        base = get(PAGE_ID, {"fields": "followers_count,fan_count", "access_token": t})
+    except RuntimeError as exc:
+        return {"reachable": False, "note": f"graph read failed: {exc}"[:200]}
+    out: dict = {
+        "reachable": True,
+        "source": "graph-api",
+        "followers": base.get("followers_count", base.get("fan_count")),
+    }
+    for key, metric in (("views_28d", "page_views_total"),
+                        ("engagements_28d", "page_post_engagements")):
+        try:
+            r = get(f"{PAGE_ID}/insights",
+                    {"metric": metric, "period": "days_28", "access_token": t})
+            vals = r.get("data") or []
+            out[key] = (vals[0]["values"][-1]["value"]
+                        if vals and vals[0].get("values") else None)
+        except RuntimeError:
+            out[key] = None
+    return out
+
+
 def set_page_about(about: str, *, token: str | None = None, dry_run: bool = False) -> bool:
     """Set the Page description (the `about` field) via the Graph API.
 

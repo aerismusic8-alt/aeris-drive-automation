@@ -94,6 +94,17 @@ def cmd_status(args) -> int:
 
 
 def cmd_facebook(args) -> int:
+    # The browser paths (profile edit, follow, invite, welcome DM) are the
+    # automation touch the rule exists to stop, so they are refused while
+    # Facebook is api-only. Only the API posting route is allowed.
+    if args.profile or args.welcome or args.follow or args.invite:
+        sys.path.insert(0, str(surfaces.OPS))
+        import surface_status  # noqa: E402
+        if "facebook" in surface_status.no_browser():
+            print("facebook is api-only in channel.json — browser actions "
+                  "(--profile/--welcome/--follow/--invite) are refused; only "
+                  "--post runs, through the Graph API", file=sys.stderr)
+            return 2
     if args.queue:
         return _run("crosspost.py", "--rebuild-queue")
     if args.profile:

@@ -51,19 +51,20 @@ CDP = os.environ.get("AERIS_CDP", "http://127.0.0.1:9222")
 # the rest: no — a device prompt or a slide puzzle, so a dead session is a K task.
 AUTO_REVIVE = {"flow"}
 
-# domain -> the surface key in channel.json, so a paused surface is skipped here
-# too. Keeping this in one place is what stops a pause from being enforced in the
-# rail but silently re-opened by the healer.
+# domain -> the surface key in channel.json, so a surface a browser must not
+# drive (paused or api-only) is skipped here too. Keeping this in one place is
+# what stops that rule from being enforced in the rail but silently re-opened by
+# the healer.
 DOMAIN_SURFACE = {".facebook.com": "facebook", ".tiktok.com": "tiktok",
                   ".flowmusic.app": "flow", ".google.com": "google",
                   "accounts.google.com": "google"}
 
 
-def _paused_domains() -> set[str]:
+def _no_browser_domains() -> set[str]:
     import surface_status  # noqa: PLC0415
 
-    paused = surface_status.paused()
-    return {d for d, s in DOMAIN_SURFACE.items() if s in paused}
+    off = surface_status.no_browser()
+    return {d for d, s in DOMAIN_SURFACE.items() if s in off}
 
 
 def _surfaces() -> dict[str, bool]:
@@ -71,7 +72,7 @@ def _surfaces() -> dict[str, bool]:
     import login_vault  # noqa: PLC0415
     from playwright.sync_api import sync_playwright  # noqa: PLC0415
 
-    skip = _paused_domains()
+    skip = _no_browser_domains()
     out: dict[str, bool] = {}
     with sync_playwright() as p:
         br = p.chromium.connect_over_cdp(CDP)
@@ -284,12 +285,12 @@ def run_headless() -> int:
     if exe:
         launch["executable_path"] = exe
 
-    # Only the surfaces the CI rails post to, minus any paused surface. Facebook
-    # is paused and API-only (K, 2026-11-15): it is never checked or revived in a
-    # browser here — that is the route Meta caught. Google refuses a headless
-    # login and Flow is desktop-only, so checking them would report a false
-    # "needs K".
-    skip = _paused_domains()
+    # Only the surfaces the CI rails post to, minus any a browser must not drive.
+    # Facebook is api-only (K, 2026-11-17): it posts through the Graph API, so it
+    # is never checked or revived in a browser here — that is the route Meta
+    # caught. Google refuses a headless login and Flow is desktop-only, so
+    # checking them would report a false "needs K".
+    skip = _no_browser_domains()
     watched = tuple(d for d in (".facebook.com", ".tiktok.com") if d not in skip)
     alive: dict[str, bool] = {}
     with sync_playwright() as p:

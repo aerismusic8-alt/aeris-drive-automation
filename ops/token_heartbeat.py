@@ -56,9 +56,10 @@ WARN_DAYS = 7
 
 def check_facebook(*, refresh: bool) -> dict:
     if "facebook" in surface_status.paused():
-        # A paused surface is not checked: it is a deliberate halt, and there is
-        # no token to keep alive for it. Reporting it here would page K about a
-        # surface that is off on purpose.
+        # A `paused` surface is halted entirely: no token to keep alive, and
+        # reporting it would page K about a surface that is off on purpose.
+        # `api-only` is NOT skipped here — posting runs through this token, so its
+        # liveness must be checked or a dead token would silently stop the Page.
         return {"surface": "facebook", "state": "paused",
                 "detail": "paused in channel.json — not posting, not checked"}
     if fb_graph is None or not fb_graph.available():

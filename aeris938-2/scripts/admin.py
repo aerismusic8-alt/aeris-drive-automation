@@ -391,14 +391,16 @@ def _gate_alert_once(why: str) -> None:
 
 
 def run(check_only: bool = False, gate: bool = True) -> int:
-    # Facebook is paused (K, 2026-11-15): this rail reads the Page inbox and Page
-    # status through a signed-in browser, which is the automation touch the pause
-    # exists to stop. Skip the whole run while it is paused — a browser session
-    # reading the Page on a cron cadence is the same signature as posting.
+    # Facebook is api-only (K, 2026-11-17): this rail reads the Page inbox and
+    # Page status through a signed-in browser, which is the automation touch the
+    # rule exists to stop. It stays skipped whether FB is `paused` or `api-only` —
+    # a browser session reading the Page on a cron cadence is the same signature
+    # as posting.
     sys.path.insert(0, str(surfaces.OPS))
     import surface_status  # noqa: E402
-    if "facebook" in surface_status.paused():
-        print("facebook is paused in channel.json — admin rail skipped (no browser touch)")
+    if "facebook" in surface_status.no_browser():
+        print("facebook is api-only in channel.json — admin rail skipped "
+              "(no browser touch; the Graph API does the posting)")
         return 0
 
     if gate:

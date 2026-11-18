@@ -69,20 +69,33 @@ def test_tools_that_grow_exists():
         assert surfaces.tool(name).exists(), name
 
 
-def test_paused_facebook_is_not_measured():
-    """K, 2026-11-15: FB is paused (browser posting is the detection signature).
-    A paused surface must never be opened in the browser — report.py passes
-    `--skip facebook` to social_stats, which reports it as paused, and the
-    rendered row says "พักอยู่" rather than a bare UNKNOWN."""
+def test_api_only_facebook_is_measured_by_api_not_browser():
+    """K, 2026-11-17: the Meta System User token is live, so FB is `api-only` —
+    posted and measured through the Graph API, never through a browser. The
+    browser touch is the automation signature Meta caught (K, 2026-11-15), so the
+    status must be `api-only`, not `active` (which would re-open the browser
+    paths) and not `paused` (which would stop the API posting too).
+
+    `report.py` passes `--api-only facebook` to social_stats, which reads the Page
+    through the Graph API and reports real numbers; the rendered row shows them,
+    not "พักอยู่". A genuine `paused` surface still renders "พักอยู่"."""
     cfg = surfaces.config()
-    assert cfg["facebook"].get("status") == "paused"
+    assert cfg["facebook"].get("status") == "api-only", cfg["facebook"].get("status")
     text = report.render(
+        {"handle": "@aerismusicth", "subs": 5, "videos": 28, "views": 100},
+        {"facebook": {"reachable": True, "source": "graph-api",
+                      "followers": 2, "views_28d": 117},
+         "tiktok": {"reachable": True, "followers_total": 1, "views_7d": 0},
+         "shopee": {"reachable": False}})
+    assert "| 1 | Facebook | ผู้ติดตาม | 2 |" in text
+    assert "| | | ยอดดู 28 วัน | 117 |" in text
+    # A genuinely paused surface still reads "พักอยู่", not UNKNOWN.
+    paused = report.render(
         {"handle": "@aerismusicth", "subs": 5, "videos": 28, "views": 100},
         {"facebook": {"reachable": False, "note": "paused"},
          "tiktok": {"reachable": True, "followers_total": 1, "views_7d": 0},
          "shopee": {"reachable": False}})
-    assert "| 1 | Facebook | ผู้ติดตาม | พักอยู่ |" in text
-    assert "| 1 | Facebook | ผู้ติดตาม | UNKNOWN |" not in text
+    assert "| 1 | Facebook | ผู้ติดตาม | พักอยู่ |" in paused
 
 
 def test_social_stats_skip_marks_paused():
@@ -98,21 +111,23 @@ def test_social_stats_skip_marks_paused():
     assert json.loads(out.stdout)["facebook"]["note"] == "paused"
 
 
-def test_paused_facebook_is_skipped_by_every_consumer():
-    """A pause must be enforced everywhere, not only in the measurement path.
+def test_api_only_facebook_is_skipped_by_every_browser_consumer():
+    """A browser must never drive Facebook, in every path.
 
-    K, 2026-11-15: the browser route is the detection signature. `channel.json` is
-    the single truth; the admin rail (which opens a browser to read the Page) and
-    the session healer (which would browser-revive Facebook) must both read it, or
-    a paused surface is silently re-opened by the very code meant to protect it.
+    K, 2026-11-15/17: the browser route is the detection signature. `channel.json`
+    is the single truth; the admin rail (which opens a browser to read the Page)
+    and the session healer (which would browser-revive Facebook) must both read
+    `api-only` as "no browser", or the surface is silently re-opened by the very
+    code meant to protect it.
     """
     src = (ROOT / "scripts" / "admin.py").read_text(encoding="utf-8")
-    assert "surface_status" in src and 'surface_status.paused()' in src, \
-        "admin.py must skip the rail while facebook is paused"
+    assert "surface_status" in src and "surface_status.no_browser()" in src, \
+        "admin.py must skip the rail while facebook is api-only"
     assert "no browser touch" in src
 
     sg = (Path(ROOT).parent / "ops" / "session_guard.py").read_text(encoding="utf-8")
-    assert "surface_status" in sg and "def _paused_domains" in sg
+    assert "surface_status" in sg and "def _no_browser_domains" in sg
+    assert "surface_status.no_browser()" in sg
     assert 'AUTO_REVIVE = {"flow"}' in sg, "Facebook must not be browser-revived"
     assert "import fb_relogin" not in sg, "the healer must not import the FB revive"
 

@@ -230,18 +230,25 @@ def snapshot_stats() -> dict | None:
 def dashboard_stats() -> dict:
     """FB/TikTok/Shopee via social_stats.py (needs the cloud desktop).
 
-    A surface whose `status` is `paused` in channel.json is passed to
-    `social_stats.py --skip`, so a paused Page is never opened in a browser — the
-    browser session posting is exactly the automation signature Meta catches
-    (K, 2026-11-15). FB is paused; TikTok and Shopee are measured as before.
+    A surface's `status` in channel.json decides how it is read:
+
+      * `paused`   — passed to `social_stats.py --skip`, so a halted Page is never
+                     opened in a browser.
+      * `api-only` — passed to `social_stats.py --api-only`, so the Page is read
+                     through the Graph API and never opened in a browser. The
+                     browser touch is the automation signature Meta caught
+                     (K, 2026-11-15), so an api-only Facebook is measured by API.
+      * anything else is measured through the signed-in desktop as before.
     """
     tool = surfaces.tool("social_stats.py")
     cmd = [sys.executable, str(tool), "--json"]
     cfg = surfaces.config()
-    paused = [name for name in surfaces.SURFACES
-              if (cfg.get(name) or {}).get("status") == "paused"]
-    for name in paused:
-        cmd += ["--skip", name]
+    for name in surfaces.SURFACES:
+        status = (cfg.get(name) or {}).get("status")
+        if status == "paused":
+            cmd += ["--skip", name]
+        elif status == "api-only":
+            cmd += ["--api-only", name]
     try:
         out = subprocess.run(cmd, cwd=str(surfaces.MUSIC),
                              capture_output=True, text=True, timeout=180)

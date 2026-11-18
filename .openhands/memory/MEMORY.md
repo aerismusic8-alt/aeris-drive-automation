@@ -49,18 +49,19 @@ Views without follows is the failure. End every clip with `release.FOLLOW_ASK` +
 - **24/7 runs on GitHub Actions, not the sandbox** (public repo → free minutes).
   Judge health from the **rail run history** (API), not `data/heartbeat.json`.
 - **FB posts via the Graph API only (live 2026-11-18).** Browser posting is OFF
-  (K 2026-11-15: "ระบบออโต้เราไม่เนียนมันจับได้"). A System User token is NOT a Page
-  token — `fb_graph.page_access_token()` exchanges it, else writes fail `#210`.
-  Token in vault `axsecrets:fb-page-token` + secret `FB_PAGE_TOKEN` (never expires).
+  (K 2026-11-15). channel.json status = **`api-only`** (NOT `active` → re-opens
+  browser; NOT `paused` → stops posting). `surface_status.no_browser()` =
+  paused|api-only. System User token ≠ Page token — `fb_graph.page_access_token()`
+  exchanges it (else `#210`). Token: vault `axsecrets:fb-page-token` + secret
+  `FB_PAGE_TOKEN`. Measure via `fb_graph.page_insights()`. Detail: archive.
 - **Vault = source of truth; a secret injects only when the command *names* it.**
-    Read it by naming `AX_VAULT_BOOTSTRAP`/`OPENHANDS_API_KEY`. `ensure_anchor()` now
-    reads the anchor id from the secret (was 401-listing → false "no token").
+  Read it by naming `AX_VAULT_BOOTSTRAP`/`OPENHANDS_API_KEY`. Detail: archive.
 - **Writes:** `GITHUB_TOKEN` is 403; push via vault KV `axsecrets:gh-workflow-token`
   (workflow files need its `workflow` scope). Detail: archive.
 - **Desktop view = Live View** (`work-2`, port 12001).
 - **Thai text** lives only in `roblox/src/shared/Text.luau` +
-  `music938-1/fonts/NotoSansThai.ttf`; without `fonts-thai-tlwg` the SVG renderer
-  makes tofu silently. Burned ASS text has no emoji — use `•` / `»`.
+  `music938-1/fonts/NotoSansThai.ttf` (else tofu silently). Burned ASS text has no
+  emoji — use `•` / `»`.
 - **`ops/websearch.py`** is the free web search (Tavily has no quota left).
 
 ## Real-instrument sound (K)

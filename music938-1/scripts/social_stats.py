@@ -36,6 +36,12 @@ ROOT = Path(__file__).resolve().parent.parent
 REPORT = ROOT / "work" / "social-report.md"
 CDP = os.environ.get("AERIS_CDP", "http://127.0.0.1:9222").rstrip("/") + "/json"
 
+sys.path.insert(0, str(ROOT.parent / "ops"))  # fb_graph lives here
+try:
+    import fb_graph  # noqa: E402
+except Exception:  # noqa: BLE001
+    fb_graph = None
+
 # The signed-in dashboards. Each is the page the owner sees, not a public page,
 # so the numbers match what the platform reports to K.
 # The Page-scoped entry points. `professional_dashboard/insights/` serves the
@@ -563,8 +569,12 @@ def main() -> int:
     ap.add_argument("--skip", action="append", default=[], metavar="SURFACE",
                     help="do not measure this surface (e.g. --skip facebook while "
                          "FB is paused, so the browser never touches the Page)")
+    ap.add_argument("--api-only", action="append", default=[], metavar="SURFACE",
+                    help="measure this surface through its API instead of a browser "
+                         "(e.g. --api-only facebook; the Page is never opened)")
     args = ap.parse_args()
     skip = {s.strip().lower() for s in args.skip}
+    api_only = {s.strip().lower() for s in args.api_only}
 
     # Shopee first, straight from the API: it needs no browser, so a pod without
     # chromium still reports it. The desk is then best-effort for FB/TikTok.
@@ -578,6 +588,14 @@ def main() -> int:
         if name in stats:
             stats[name] = {"reachable": False, "note": "paused" if name == "facebook"
                            else "skipped"}
+    # An api-only surface is measured through its own API — the browser must never
+    # open it (K, 2026-11-17: the browser touch is the automation signature Meta
+    # caught). Facebook reads followers + 28-day views through the Graph API.
+    if "facebook" in api_only and "facebook" not in skip:
+        if fb_graph is not None:
+            stats["facebook"] = fb_graph.page_insights()
+        else:
+            stats["facebook"] = {"reachable": False, "note": "fb_graph unavailable"}
     try:
         desk = open_desk()
     except Exception as exc:  # noqa: BLE001
@@ -586,8 +604,9 @@ def main() -> int:
     if desk is not None:
         try:
             # A paused surface is never opened in the browser: reading FB while
-            # it is under review is itself a risk, and the numbers are moot.
-            if "facebook" not in skip:
+            # it is under review is itself a risk, and the numbers are moot. An
+            # api-only surface was already read above, so it is skipped here too.
+            if "facebook" not in skip and "facebook" not in api_only:
                 stats["facebook"] = measure_facebook(desk)
             if "tiktok" not in skip:
                 stats["tiktok"] = measure_tiktok(desk)

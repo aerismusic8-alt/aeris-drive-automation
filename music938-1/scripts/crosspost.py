@@ -780,13 +780,17 @@ def _signed_in(page) -> bool:
 
 
 def _paused() -> set[str]:
-    """Surfaces whose `status` is `paused` in `aeris938-2/channel.json`.
+    """Surfaces halted entirely: not posted and not probed, from channel.json.
 
-    channel.json is the single source of truth for which surfaces AR grows, so a
-    paused surface is not posted, not probed and not counted as blocked. This is
-    the seam that keeps a Facebook pause from taking TikTok down with it: the rail
-    posts the live surface and skips the paused one, instead of one dead surface
-    turning the whole run red and getting the rail disabled.
+    channel.json is the single source of truth for which surfaces AR grows. A
+    `paused` surface is a deliberate halt and is not posted, not probed and not
+    counted as blocked. This is the seam that keeps a paused Facebook from taking
+    TikTok down with it: the rail posts the live surface and skips the paused one,
+    instead of one dead surface turning the whole run red and getting the rail
+    disabled.
+
+    An `api-only` surface is *not* in this set: it still posts (through its API,
+    see `API_ONLY`). Only `paused` means "post nothing".
     """
     cfg = ROOT.parent / "aeris938-2" / "channel.json"
     try:

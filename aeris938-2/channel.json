@@ -10,9 +10,10 @@
   "facebook": {
     "name": "เพลงส้นทีนไรเนี่ย",
     "page_id": "61595890900382",
-    "url": "https://www.facebook.com/profile.php?id=61595890900382",
-    "status": "paused",
-    "_status_comment": "K, 2026-11-15: FB is under review and K's phone session expired; 'ระบบออโต้เราไม่เนียนมันจับได้'. A browser session posting on a cron cadence is the detection signature, so AR never browser-posts FB again. `report.py` passes `--skip facebook` to social_stats while paused, so no measurement, no browser touch. Only a Meta System User token (FB_PAGE_TOKEN) revives the safe API route. To resume: set status back to 'active'."
+    "url": "https://www.facebook.com/sontinkwai",
+    "username": "sontinkwai",
+    "status": "api-only",
+    "_status_comment": "K, 2026-11-17: the Meta System User token is live and never expires, so the safe Graph API route revives the Page (K: 'ไปปั้นเพจต่อ'). Status is `api-only`, NOT `active`: the Graph API posts (Reels, cover photos, Shopee link posts) and reads insights, but a browser session must NEVER drive the Page — that cron-cadence browser touch is the automation signature Meta caught (K, 2026-11-15). Every browser-facing consumer (session_guard, admin, social_stats) reads `api-only` and stays away; crosspost posts through fb_graph. To halt the Page entirely, set status back to 'paused'."
   },
   "tiktok": {
     "handle": "@aeris.music4",
