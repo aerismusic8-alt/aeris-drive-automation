@@ -292,9 +292,10 @@
       "mood": "hopeful",
       "result": "lyric",
       "flow": false,
-      "audio": "none",
-      "offline_rc": 1,
-      "instrumental": false
+      "audio": "synth-bed",
+      "offline_rc": 0,
+      "instrumental": true,
+      "note": "re-rendered 2026-11-18 after the produce rail was fixed to pull the beds first"
     },
     {
       "slug": "43-khuen-ni-mai-tong-khit-arai-v43",
@@ -303,9 +304,10 @@
       "mood": "hopeful",
       "result": "lyric",
       "flow": false,
-      "audio": "none",
-      "offline_rc": 1,
-      "instrumental": false
+      "audio": "synth-bed",
+      "offline_rc": 0,
+      "instrumental": true,
+      "note": "re-rendered 2026-11-18 after the produce rail was fixed to pull the beds first"
     }
   ]
 }

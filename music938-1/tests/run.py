@@ -1914,6 +1914,18 @@ def test_real_instrument_guard() -> None:
         check(f"{name} requires real instruments",
               "AX_REQUIRE_REAL_INSTRUMENTS" in src)
 
+    # The pull must come *before* the render that consumes the beds. On
+    # 2026-11-18 the produce rail pulled them after, so `pulled_bed` found
+    # nothing, the GM fallback raised under AX_REQUIRE_REAL_INSTRUMENTS, and
+    # every song shipped lyric-only (`audio: none`, #42-43) while the step's
+    # continue-on-error kept the run green. Presence is not order.
+    src = (ROOT.parent / ".github" / "workflows" / "ax-music-produce.yml").read_text(
+        encoding="utf-8")
+    pull_at = src.find("pull_media.py --only ambient")
+    produce_at = src.find("scripts/produce_loop.py")
+    check("the produce rail pulls the beds before it produces",
+          0 <= pull_at < produce_at, f"pull@{pull_at} produce@{produce_at}")
+
 
 def test_mood_short() -> None:
     section("mood clips (each approved instrument bed -> a vertical clip)")
@@ -6035,6 +6047,19 @@ def test_produce_loop() -> None:
               {"made": 1, "log": [{"slug": "x", "title": t0, "result": "lyric"}]}))
     check("a no-draft record carries the title it tried",
           '"title": title, "genre": genre' in src)
+
+    # A lyric with no audio is a script, not a song: no rail can publish it. On
+    # 2026-11-18 the beds were pulled *after* the produce step, so #42-43 shipped
+    # `audio: none` and the loop still exited 0 — a broken render rode a green
+    # run. The loop must report the slugs, and the rail must gate on them.
+    check("the loop reports a lyric that produced no audio",
+          '"no_audio"' in src and 'no_audio.append' in src)
+    check("a no-audio song is a non-zero exit",
+          "if no_audio:" in src and "return 2" in src)
+    wf_src = (ROOT.parent / ".github" / "workflows" / "ax-music-produce.yml").read_text(
+        encoding="utf-8")
+    check("the produce rail gates on the new song's audio",
+          "Verify the new song has audio" in wf_src and 'r.get("audio")' in wf_src)
 
 
 def test_share_pack() -> None:

@@ -61,6 +61,22 @@ jobs:
           # AX_REQUIRE_REAL_INSTRUMENTS makes a GM render fail the run.
           python3 -m pip install --quiet --disable-pip-version-check Pillow mido numpy
 
+      # The beds must be on disk *before* the produce step: `soundfont.pulled_bed`
+      # looks for a shipped WAV and, with AX_REQUIRE_REAL_INSTRUMENTS set, raises
+      # when it finds none rather than falling back to General-MIDI. With the pull
+      # below the produce step every song shipped lyric-only (`audio: none`, #42-43,
+      # found 2026-11-18) and the step's continue-on-error kept the run green.
+      - name: Pull the real-instrument beds already on the release
+        # The beds are rendered through the sfizz sampler on a pod that has the
+        # gigabyte banks and shipped on the media release. A runner cannot build
+        # the sampler, so it pulls the beds and only tiles them; without this pull
+        # the song bed falls to the General-MIDI path K rejected.
+        env:
+          AX_GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          python3 music938-1/scripts/pull_media.py --only ambient
+
       - name: Produce the next bed (no Flow, no login)
         working-directory: music938-1
         env:
@@ -90,18 +106,6 @@ jobs:
       # wasted runner time, so `--once` records what it built in a committed state
       # file and only fills the gaps. Bump STATE_VERSION in the script (or delete
       # the state file) to force a re-render after a renderer change.
-      - name: Pull the real-instrument beds already on the release
-        # The beds are rendered through the sfizz sampler on a pod that has the
-        # gigabyte banks and shipped on the media release. A runner cannot build
-        # the sampler, so it pulls the beds and only tiles them; without this pull
-        # the mood clips and the song beds would fall to the General-MIDI path K
-        # rejected. `AX_REQUIRE_REAL_INSTRUMENTS` makes that fallback fail loudly.
-        env:
-          AX_GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          set -euo pipefail
-          python3 music938-1/scripts/pull_media.py --only ambient
-
       - name: Pull the mood clips already on the release
         # `--once` keys off the clip being on disk, and a fresh checkout has an
         # empty library/, so without this pull every run re-renders all six and
@@ -122,6 +126,42 @@ jobs:
           set -euo pipefail
           python3 scripts/make_mood_short.py --all --once || \
             echo "mood clips: render skipped or failed; will retry next run"
+
+      # The produce step is continue-on-error (a rejected lyric draft is raw
+      # material, not a gate), so a render that produced no audio would ride a
+      # green run — exactly how #42-43 shipped lyric-only on 2026-11-18. This
+      # step is the gate, scoped to the records *this* run appended: the queue
+      # already carries old `audio: none` rows and re-checking them would pin the
+      # rail red forever.
+      - name: Verify the new song has audio
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import json, subprocess, sys
+          from pathlib import Path
+
+          def log_of(text):
+              try:
+                  return json.loads(text).get("log", [])
+              except Exception:
+                  return []
+
+          path = "music938-1/work/produce-queue.json"
+          now = log_of(Path(path).read_text())
+          try:
+              head = log_of(subprocess.run(
+                  ["git", "show", f"HEAD:{path}"], capture_output=True, text=True,
+                  check=True).stdout)
+          except Exception:
+              head = []
+          new = now[len(head):]
+          bad = [r["slug"] for r in new
+                 if r.get("result") == "lyric" and r.get("audio") in (None, "none")]
+          if bad:
+              print(f"::error::produced with no audio (a script, not a song): {bad}")
+              sys.exit(1)
+          print(f"{len(new)} new record(s), all with audio")
+          PY
 
       - name: Upload the media to the public release
         env:

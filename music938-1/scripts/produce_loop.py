@@ -303,6 +303,7 @@ def main() -> int:
         return 0
 
     made = []
+    no_audio = []
     for _ in range(max(1, args.count)):
         used = attempted_titles(q)
         theme = pick_theme(used)
@@ -314,16 +315,25 @@ def main() -> int:
         if rec.get("result") == "lyric":
             q["made"] += 1
             made.append(rec)
+            # A lyric with no audio is a script, not a song: no rail can publish
+            # it. Keep it as raw material, but report it — otherwise a broken
+            # render rides a green run (2026-11-18: the beds were pulled *after*
+            # the produce step, so #42-43 shipped `audio: none` and nobody saw it).
+            if rec.get("audio") in (None, "none"):
+                no_audio.append(rec["slug"])
         save_queue(q)
 
     if made and (args.push or args.pack_only):
         publish(args.pack_only)
 
     print(json.dumps({"produced": [m["slug"] for m in made],
+                      "no_audio": no_audio,
                       "total_made": q["made"]}, ensure_ascii=False))
     # The first CI run produced nothing (every drafter failed) and still exited 0,
     # so the workflow went green and no song appeared. A requested song that was
     # not produced is a failure the caller must see.
+    if no_audio:
+        return 2
     return 0 if made else 1
 
 
