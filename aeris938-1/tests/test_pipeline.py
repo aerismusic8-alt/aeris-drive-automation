@@ -110,6 +110,29 @@ def test_library_find_is_a_miss_not_a_guess(tmp_path, monkeypatch):
     assert library.find("img", "never-made") is None
 
 
+def test_library_find_misses_when_the_file_is_gone(tmp_path, monkeypatch):
+    """An entry whose file is absent is a miss, not a hit.
+
+    The manifest is committed but the media is pulled from the release, so a
+    fresh pod holds entries that point at files not yet on disk. Returning such
+    an entry made make_music answer REUSED and the share pack copy a phantom
+    path (FileNotFoundError, 2026-11-18).
+    """
+    monkeypatch.setattr(library, "ROOT", tmp_path)
+    monkeypatch.setattr(library, "KINDS", {"music": tmp_path / "music"})
+    (tmp_path / "music").mkdir()
+    real = tmp_path / "music" / "music-song.mp3"
+    real.write_bytes(b"not-really-mp3")
+    entry = library.add("music", "song", real)
+    assert library.find("music", "song")["sha256"] == entry["sha256"]
+
+    real.unlink()
+    assert library.find("music", "song") is None
+    # An entry with no recorded file is a miss too, not a hit on Path(".").
+    library.save("music", {"entries": [{"id": "music-song"}]})
+    assert library.find("music", "song") is None
+
+
 def test_entry_id_is_stable_and_filesystem_safe():
     a = library.entry_id("img", "Story 1 / Scene 3!")
     assert a == library.entry_id("img", "Story 1 / Scene 3!")

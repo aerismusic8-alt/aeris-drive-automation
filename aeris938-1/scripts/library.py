@@ -67,11 +67,25 @@ def entry_id(kind: str, key: str) -> str:
 
 
 def find(kind: str, key: str) -> dict | None:
-    """Look an asset up by its id. Returns None on a miss; never guesses."""
+    """Look an asset up by its id. Returns None on a miss; never guesses.
+
+    An entry whose file is gone is a miss, not a hit. The manifest is committed
+    but the media is pulled from the release, so a fresh pod can hold an entry
+    pointing at a file that is not on disk yet — returning it made `make_music`
+    answer REUSED and the caller copy a phantom path (FileNotFoundError, measured
+    2026-11-18). A miss instead regenerates the asset.
+    """
     want = entry_id(kind, key)
     for entry in load(kind)["entries"]:
-        if entry.get("id") == want:
-            return entry
+        if entry.get("id") != want:
+            continue
+        rel = entry.get("file")
+        if not rel:
+            return None
+        path = Path(rel)
+        if not path.is_absolute():
+            path = ROOT / path
+        return entry if path.exists() else None
     return None
 
 
