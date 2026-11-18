@@ -144,7 +144,33 @@
       "duration_seconds": 240.0,
       "bpm": 62,
       "integrated_lufs": -23.9
+    },
+    {
+      "id": "music-d-43-khuen-ni-mai-tong-khit-arai-v43",
+      "kind": "music",
+      "file": "library/music/music-d-43-khuen-ni-mai-tong-khit-arai-v43.mp3",
+      "bytes": 5761611,
+      "sha256": "28e39c8795b91d95acdf569d44c61975bd0f082d7da5e5192619de335952491a",
+      "created_at": "2026-11-18T14:26:21Z",
+      "source": "pulled-bed",
+      "mood": "hopeful",
+      "duration_seconds": 240.0,
+      "bpm": 66,
+      "integrated_lufs": -23.9
+    },
+    {
+      "id": "music-d-42-khuen-ni-mai-tong-khit-arai",
+      "kind": "music",
+      "file": "library/music/music-d-42-khuen-ni-mai-tong-khit-arai.mp3",
+      "bytes": 5761611,
+      "sha256": "2266dc40ab01057e15667b3d96188ebd286821ffdbdee90e7e63b7082a54a32a",
+      "created_at": "2026-11-18T14:28:10Z",
+      "source": "pulled-bed",
+      "mood": "hopeful",
+      "duration_seconds": 240.0,
+      "bpm": 66,
+      "integrated_lufs": -23.9
     }
   ],
-  "updated_at": "2026-11-14T07:13:57Z"
+  "updated_at": "2026-11-18T14:28:10Z"
 }
