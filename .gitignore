@@ -36,6 +36,9 @@ music938-1/work/*
 # release.py writes it under work/. If it is ignored, a fresh clone re-uploads
 # every song as a duplicate.
 !music938-1/work/release-state.json
+# The audio-reactive lane's ledger: which clip has reached ch3. Ignored, the
+# retry rail would re-upload the same clip on every tick once the cap clears.
+!music938-1/work/reactive-state.json
 # market.py writes the daily channel report and its diff baseline here, and the
 # market-daily automation commits them back so the next run can diff. Tracked on
 # purpose: they are the loop's memory, not a build artifact.

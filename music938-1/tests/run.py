@@ -5364,6 +5364,62 @@ def test_trivia_publish() -> None:
           and "openai" not in src.lower())
 
 
+def test_reactive_publish() -> None:
+    """The audio-reactive clip must reach ch3 (K, 2026-11-18).
+
+    K: "เอาขึ้นยูทูป tk ด้วยนะ". YouTube refused the first attempt with
+    `uploadLimitExceeded` — a per-account daily cap, not a defect, on a clip that
+    had already passed the channel floor 10/10. `ops/reactive_publish.py` is the
+    durable half: it fetches the clip from the `media-938` release (so a fresh
+    runner needs no sandbox), goes through the one upload chokepoint (so the clip
+    and thumbnail floors still apply), treats the cap as retryable, and records a
+    success in a committed ledger so a retry cannot double-post.
+    """
+    section("reactive publish (the YouTube half)")
+    import importlib.util
+    ops = ROOT.parent / "ops"
+    src = (ops / "reactive_publish.py").read_text()
+
+    check("publishes through the upload chokepoint", "yt_publish.py" in src)
+    check("targets the one channel", '"ch": "ch3"' in src)
+    check("brand is imported, not hardcoded",
+          "import branding" in src and "เพลงส้นทีนไรเนี่ย" not in src)
+    check("carries the follow ask", "FOLLOW_ASK" in src)
+    # The clip is durable in the release, not on a sandbox disk.
+    check("fetches the clip from the durable release",
+          "media-938" in src and "releases/download" in src)
+    # A cap must be a retry, not a failure, and not a silent success either.
+    check("the account cap is retryable, not fatal", "uploadLimitExceeded" in src)
+    # A recorded success is what makes a later tick a no-op.
+    check("records a ledger so a re-run cannot double-post",
+          "reactive-state.json" in src and "uploaded" in src)
+    # ...but naming it in the rail is not enough: `work/*` ignores it, and an
+    # ignored file makes the rail's `git add` a silent no-op. `git check-ignore`
+    # is the real gate (the same one the trivia ledger carries).
+    gi = subprocess.run(
+        ["git", "check-ignore", "-q", "music938-1/work/reactive-state.json"],
+        cwd=str(ROOT.parent), capture_output=True, text=True)
+    check("the reactive ledger is not gitignored", gi.returncode == 1,
+          f"git check-ignore rc={gi.returncode}")
+    check("the ledger is committed by the rail",
+          "reactive-state.json" in
+          (ROOT.parent / ".github/workflows/ax-music-reactive.yml").read_text())
+
+    spec = importlib.util.spec_from_file_location("reactive_publish",
+                                                  ops / "reactive_publish.py")
+    rp = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(rp)
+    # The description must carry the brand and the honest AI label, and stay
+    # inside YouTube's 5000-char limit.
+    desc = rp.description(rp.CLIPS[0])
+    check("description carries the brand", rp.branding.NAME in desc)
+    check("description carries the AI label", "AI" in desc)
+    check("description fits YouTube's limit", len(desc) <= 5000)
+    check("tags are within the API limit",
+          len([t for t in rp.TAGS.split(",") if t.strip()]) <= 30)
+
+
+
 def test_clip_standard_is_a_floor() -> None:
     """The standard is one floor for every format (K, 2026-11-17).
 
@@ -6870,6 +6926,7 @@ def main() -> int:
     test_story_reel()
     test_trivia_reel()
     test_trivia_publish()
+    test_reactive_publish()
     test_clip_standard_is_a_floor()
     test_metadata_ab_holds_format_fixed()
     test_login_vault_never_clobbers_a_live_surface()

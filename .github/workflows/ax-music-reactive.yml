@@ -1,0 +1,75 @@
+name: AX Music Reactive (audio-reactive clip to ch3)
+
+# Upload the audio-reactive clip (equalizer + dancing mascot) to ch3.
+#
+# K (2026-11-18): "เอาขึ้นยูทูป tk ด้วยนะ". The clip is already live on Facebook
+# and TikTok; YouTube refused it with `uploadLimitExceeded` (HTTP 400) — a
+# per-account daily new-video cap, not a defect, and the clip had passed the
+# channel floor 10/10. A cap clears over hours, so `ops/reactive_publish.py`
+# retries on a schedule until it lands and records the video id in
+# `music938-1/work/reactive-state.json`, so a re-run after a success is a no-op.
+#
+# The clip and its thumbnail live in the durable `media-938` release, so the
+# runner fetches them by URL — no sandbox, no local state. Free (Rule #1):
+# public repo, GitHub-hosted minutes, YouTube Data API.
+
+on:
+  schedule:
+    # Every 4 hours. The cap clears over hours rather than at the 08:00 UTC API
+    # reset, so a handful of ticks a day is enough to catch a free slot; once it
+    # lands the ledger makes every later tick a no-op.
+    - cron: '0 */4 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: ax-music-reactive
+  cancel-in-progress: false
+
+jobs:
+  reactive:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install ffmpeg and the python deps
+        run: |
+          set -euo pipefail
+          # ffmpeg is preinstalled on ubuntu-latest; only install when absent so a
+          # DNS blip on apt cannot fail the whole run.
+          if ! command -v ffmpeg >/dev/null 2>&1; then
+            sudo apt-get update -qq
+            sudo apt-get install -y -qq ffmpeg
+          fi
+          # clip_standard measures the clip (ffprobe + numpy) before any upload.
+          python3 -m pip install --quiet --disable-pip-version-check \
+            numpy Pillow imageio-ffmpeg
+
+      - name: Upload the clip if it is not already on YouTube
+        env:
+          YT_CLIENT_ID: ${{ secrets.YT_CLIENT_ID }}
+          YT_CLIENT_SECRET: ${{ secrets.YT_CLIENT_SECRET }}
+          YT_CH3_REFRESH_TOKEN: ${{ secrets.YT_CH3_REFRESH_TOKEN }}
+        run: |
+          set -uo pipefail
+          # A per-account daily cap (rc 4) is a normal, non-fatal outcome: the
+          # next tick lands it. Any other failure is surfaced as a warning.
+          python3 ops/reactive_publish.py \
+            || echo "::warning::reactive publish did not complete this run — will retry next tick"
+
+      - name: Commit the reactive ledger
+        run: |
+          set -euo pipefail
+          git config user.name  "ax-music-reactive"
+          git config user.email "ax-music-reactive@users.noreply.github.com"
+          git add music938-1/work/reactive-state.json 2>/dev/null || true
+          if git diff --cached --quiet; then
+            echo "no change to record"
+            exit 0
+          fi
+          git commit -m "data(music): reactive publish $(date -u +%Y-%m-%dT%H:%MZ)"
+          git pull --rebase --autostash origin "${GITHUB_REF_NAME}"
+          git push
