@@ -48,13 +48,12 @@ Views without follows is the failure. End every clip with `release.FOLLOW_ASK` +
   (`ops/mv_page.py --all`); a /tmp preview dies on recycle. Detail: archive.
 - **24/7 runs on GitHub Actions, not the sandbox** (public repo → free minutes).
   Judge health from the **rail run history** (API), not `data/heartbeat.json`.
-- **FB posts via the Graph API only (live 2026-11-18).** Browser posting is OFF
-  (K 2026-11-15). channel.json status = **`api-only`** (NOT `active` → re-opens
-  browser; NOT `paused` → stops posting). `fb_graph.page_access_token()` exchanges
-  the System User token (else `#210`); token = vault `axsecrets:fb-page-token`.
-  Feed lanes (all in `crosspost.py`): surreal/song/concert/mood/photo/**text**/
-  link/affiliate; `augment_formats` is **add-only** (a disk rebuild once dropped
-  21 pending photos). Measure via `fb_graph.page_insights()`. Detail: archive.
+- **FB posts via the Graph API only (2026-11-18); browser OFF (K 2026-11-15).**
+  channel.json = `api-only` (not `active`, not `paused`).
+  `fb_graph.page_access_token()` exchanges the System User token; vault
+  `axsecrets:fb-page-token`. Lanes in `crosspost.py`: song/photo/**text**/link/
+  affiliate; `augment_formats` is add-only (a disk rebuild once dropped 21
+  photos). Detail: archive.
 - **Vault = source of truth; a secret injects only when the command *names* it.**
   Read it by naming `AX_VAULT_BOOTSTRAP`/`OPENHANDS_API_KEY`. Detail: archive.
 - **Writes:** `GITHUB_TOKEN` is 403; push via vault KV `axsecrets:gh-workflow-token`
