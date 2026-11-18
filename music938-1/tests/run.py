@@ -6141,6 +6141,24 @@ def test_fb_page_description() -> None:
           and '"about": about' in src)
     check("the name is documented as not API-writable",
           "does not expose it for update" in " ".join(src.split()))
+    # A System User token is not a Page token; the write must exchange first, or
+    # Graph refuses with "#210 A page access token is required".
+    check("writes exchange for a Page token",
+          "def page_access_token" in src
+          and "page_access_token" in src.split("def set_page_about")[1].split("def ")[0])
+
+    fb._PAGE_TOKEN_CACHE.clear()
+    calls: list[str] = []
+    orig_exchange = fb._get
+    try:
+        fb._get = lambda url, data=None: (
+            calls.append((data or {}).get("fields", "")) or {"access_token": "page-tok"})
+        got = fb.page_access_token("sys-tok")
+        check("a System User token is exchanged for the Page token",
+              got == "page-tok" and calls == ["access_token"])
+    finally:
+        fb._get = orig_exchange
+        fb._PAGE_TOKEN_CACHE.clear()
 
     writes: list[dict] = []
     orig = (fb.page_token, fb._get, fb._post)

@@ -92,8 +92,43 @@ def _vault_put(key: str, value: str) -> bool:
 
 
 def page_token() -> str:
-    """The Page access token, from the env first and the vault second."""
+    """The configured token, from the env first and the vault second.
+
+    This is usually a *System User* token: it authenticates as the System User,
+    not as the Page. See `page_access_token` for the Page-scoped exchange.
+    """
     return (os.environ.get("FB_PAGE_TOKEN") or "").strip() or _vault_get("axsecrets:fb-page-token")
+
+
+# The Page-scoped token, per process. The exchange is one extra call and the
+# result is stable, so it is worth caching.
+_PAGE_TOKEN_CACHE: dict[str, str] = {}
+
+
+def page_access_token(token: str | None = None) -> str:
+    """Exchange the configured token for one that authenticates *as the Page*.
+
+    A System User token carries the Page's tasks but is not itself a Page token:
+    posting or editing Page fields with it fails `#210 A page access token is
+    required`. The Page node returns the Page token for any token that holds the
+    Page's tasks, so exchange on demand. If the exchange is refused the original
+    token is returned unchanged, which keeps the caller's error the real one.
+    """
+    base = (token or page_token()).strip()
+    if not base:
+        return ""
+    cached = _PAGE_TOKEN_CACHE.get(base)
+    if cached:
+        return cached
+    try:
+        d = _get(f"{GRAPH}/{PAGE_ID}",
+                 {"fields": "access_token", "access_token": base})
+    except RuntimeError:
+        return base
+    pt = (d.get("access_token") or "").strip()
+    if pt:
+        _PAGE_TOKEN_CACHE[base] = pt
+    return pt or base
 
 
 def app_creds() -> tuple[str, str]:
@@ -287,7 +322,7 @@ def post_reel(video: Path, caption: str, *, token: str | None = None) -> str | N
     the caller can distinguish "not configured" (fall back to the browser) from
     "configured but the API refused" (report it).
     """
-    t = token or page_token()
+    t = page_access_token(token) if (token or page_token()) else ""
     if not t:
         return None
     # K (2026-11-17): nothing below the channel floor may be uploaded anywhere.
@@ -330,7 +365,7 @@ def post_photo(image: Path, caption: str, *, token: str | None = None) -> str | 
     Same contract as `post_reel`: None when no token is configured, RuntimeError
     on a real API error so the caller can tell "not set up" from "refused".
     """
-    t = token or page_token()
+    t = page_access_token(token) if (token or page_token()) else ""
     if not t:
         return None
     blob = image.read_bytes()
@@ -350,7 +385,7 @@ def post_link(message: str, link: str, *, token: str | None = None) -> str | Non
     `message` is the caption; `link` becomes the clickable card. A link post is
     plain form-encoded `/feed`, no file, so `_post` already covers it.
     """
-    t = token or page_token()
+    t = page_access_token(token) if (token or page_token()) else ""
     if not t:
         return None
     out = _post(f"{GRAPH}/{PAGE_ID}/feed",
@@ -374,17 +409,17 @@ def set_page_about(about: str, *, token: str | None = None, dry_run: bool = Fals
     """Set the Page description (the `about` field) via the Graph API.
 
     `about` is the documented mapping of the Edit Page Info "Description" field,
-    so this is the sanctioned route — no browser. It needs a Page token that
-    carries `pages_manage_metadata`. Returns True when the write happened (or a
-    dry-run would happen); raises RuntimeError on a real API error, and returns
-    False when no token is configured.
+    so this is the sanctioned route — no browser. It needs a token that carries
+    the Page's tasks (`pages_manage_metadata`); a System User token is exchanged
+    for the Page token first, since the write itself needs a Page token.
 
     The Page *name* is deliberately not written here: the Graph API does not
     expose it for update, so a rename stays a manual Page Settings action.
     """
-    t = token or page_token()
-    if not t:
+    base = token or page_token()
+    if not base:
         return False
+    t = page_access_token(base)
     cur = page_fields(t)
     if (cur.get("about") or "").strip() == about.strip():
         return True  # already current; a no-op PUT is still a write we avoid
