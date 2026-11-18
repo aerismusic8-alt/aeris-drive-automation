@@ -35,7 +35,7 @@ PALETTE_FOR = {
     "lukthung": "warm", "morlam": "hopeful", "citypop": "mystic", "synthpop": "hopeful",
     "rnb": "mystic", "lofi": "calm", "rock": "epic", "pop": "hopeful", "indie": "calm",
     "edm": "hopeful", "jazz": "mystic", "acoustic": "warm", "country": "warm",
-    "symphonic": "epic",
+    "symphonic": "epic", "hiphop": "epic", "rap": "epic", "alternative": "hopeful",
 }
 
 

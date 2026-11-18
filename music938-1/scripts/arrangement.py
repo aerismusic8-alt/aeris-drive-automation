@@ -45,7 +45,8 @@ SCALE_BY_GENRE = {
     "rock": "minor", "rnb": "minor", "lofi": "minor", "jazz": "minor",
     "lukthung": "major", "morlam": "major", "country": "major",
     "acoustic": "major", "indie": "major", "citypop": "major",
-    "synthpop": "major", "edm": "major",
+    "synthpop": "major", "edm": "major", "pop": "major",
+    "hiphop": "minor", "rap": "minor", "alternative": "major",
 }
 PENTATONIC = {
     "major": ("major pentatonic (scale degrees 1-2-3-5-6), simple singable "

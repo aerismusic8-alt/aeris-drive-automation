@@ -469,6 +469,174 @@
       "instruments": "choir and brass fanfare, palm-muted guitar riff, double-kick drums, pipe organ",
       "groove": "theatrical dark symphonic rock, driving double kick",
       "mix": "huge and gothic, choir soaring over distorted guitars"
+    },
+    {
+      "id": "hiphop-boombap-808",
+      "genre": "hiphop",
+      "instruments": "sampled dusty piano loop, punchy boom-bap kick and snare, deep 808 sub bass, vinyl crackle",
+      "groove": "laid-back boom-bap head-nod, kick on 1 and 3",
+      "mix": "warm low end, vocal forward, vinyl texture"
+    },
+    {
+      "id": "hiphop-trap-bounce",
+      "genre": "hiphop",
+      "instruments": "bright plucked synth melody, rolling trap hi-hats, heavy 808 sub, clap layer",
+      "groove": "bouncy trap half-time, 808 slides",
+      "mix": "loud 808, crisp hats, wide stereo hook"
+    },
+    {
+      "id": "hiphop-jazzflip",
+      "genre": "hiphop",
+      "instruments": "flipped upright bass and trumpet sample, brushed snare, vinyl hiss",
+      "groove": "swung jazz break, lazy shuffle",
+      "mix": "soft compression, smoky room tone"
+    },
+    {
+      "id": "hiphop-westcoast",
+      "genre": "hiphop",
+      "instruments": "whiny detuned lead synth, funky slap bass, claps on 2 and 4",
+      "groove": "funk west-coast bounce, straight 4/4",
+      "mix": "glossy top end, punchy snare"
+    },
+    {
+      "id": "hiphop-drill",
+      "genre": "hiphop",
+      "instruments": "dark sliding 808, sparse eerie bells, skittering hats",
+      "groove": "drill pattern, sliding sub, half-time",
+      "mix": "deep sub, dark ambience, vocal on top"
+    },
+    {
+      "id": "hiphop-hype-anthem",
+      "genre": "hiphop",
+      "instruments": "brass stab hits, stadium claps, chanting gang hook",
+      "groove": "stomping anthemic 4/4, big kick",
+      "mix": "wall of brass, loud chorus lift"
+    },
+    {
+      "id": "hiphop-cloudrap",
+      "genre": "hiphop",
+      "instruments": "washed-out reverb synth pads, soft trap hats, subtle 808",
+      "groove": "slow dreamy trap, sparse",
+      "mix": "hazy reverb, wide pads, soft vocal"
+    },
+    {
+      "id": "hiphop-lofi-808",
+      "genre": "hiphop",
+      "instruments": "warm electric-piano chords, dusty kick, muted 808, tape wobble",
+      "groove": "relaxed lo-fi swing",
+      "mix": "tape saturation, mellow, intimate vocal"
+    },
+    {
+      "id": "rap-trap-hard",
+      "genre": "rap",
+      "instruments": "hard-hitting trap drums, rolling 32nd hats, distorted 808, dark piano riff",
+      "groove": "aggressive trap, fast hat rolls",
+      "mix": "loud distorted 808, vocal upfront"
+    },
+    {
+      "id": "rap-drill-slide",
+      "genre": "rap",
+      "instruments": "sliding drill 808, ominous strings, snapping snare",
+      "groove": "drill groove, syncopated sub slides",
+      "mix": "deep sub, dark strings, tight vocal"
+    },
+    {
+      "id": "rap-boom-bap-classic",
+      "genre": "rap",
+      "instruments": "crisp sampled break, upright bass, scratch hooks",
+      "groove": "classic boom-bap, kick-snare swing",
+      "mix": "punchy drums, vinyl warmth"
+    },
+    {
+      "id": "rap-phonk",
+      "genre": "rap",
+      "instruments": "cowbell melody, distorted 808, fast percussive kick",
+      "groove": "phonk pattern, cowbell-driven, half-time",
+      "mix": "heavy clipping 808, lo-fi grit"
+    },
+    {
+      "id": "rap-hyphy",
+      "genre": "rap",
+      "instruments": "bouncy 808 with fast hi-hats, bright synth stab",
+      "groove": "hyphy bounce, syncopated kick",
+      "mix": "loud bass, bright top, hype vocal"
+    },
+    {
+      "id": "rap-conscious",
+      "genre": "rap",
+      "instruments": "warm Rhodes chords, live-feel drums, deep round bass",
+      "groove": "steady head-nod boom-bap",
+      "mix": "clean mix, vocal clear, warm low end"
+    },
+    {
+      "id": "rap-trap-soul",
+      "genre": "rap",
+      "instruments": "soulful chopped vocal sample, trap drums, 808 sub",
+      "groove": "trap groove over soul chop",
+      "mix": "warm soul sample, punchy 808"
+    },
+    {
+      "id": "rap-drill-anthem",
+      "genre": "rap",
+      "instruments": "rising string swell, drill 808, choir chant hook",
+      "groove": "drill with anthemic drop",
+      "mix": "cinematic swell, deep sub, wide chorus"
+    },
+    {
+      "id": "alternative-jangle-rock",
+      "genre": "alternative",
+      "instruments": "jangly clean electric guitars, live driving drums, melodic bass",
+      "groove": "upbeat driving 4/4 alt-rock",
+      "mix": "bright guitars, punchy live drums"
+    },
+    {
+      "id": "alternative-fuzz-anthem",
+      "genre": "alternative",
+      "instruments": "fuzzy overdriven guitars, pounding drums, shouted group chorus",
+      "groove": "anthemic mid-tempo rock",
+      "mix": "wall of fuzz, loud singalong chorus"
+    },
+    {
+      "id": "alternative-indie-pop",
+      "genre": "alternative",
+      "instruments": "shimmery guitars, bouncy bass, tight snappy drums",
+      "groove": "bouncy indie-pop groove",
+      "mix": "bright airy mix, glossy vocal"
+    },
+    {
+      "id": "alternative-shoegaze",
+      "genre": "alternative",
+      "instruments": "layered reverb guitars, soft driving drums, warm bass",
+      "groove": "hypnotic mid-tempo wash",
+      "mix": "lush reverb, vocal buried in guitars"
+    },
+    {
+      "id": "alternative-grunge",
+      "genre": "alternative",
+      "instruments": "raw distorted guitars, heavy loose drums, growling bass",
+      "groove": "grunge loud-quiet-loud",
+      "mix": "gritty raw mix, dynamic chorus"
+    },
+    {
+      "id": "alternative-new-wave",
+      "genre": "alternative",
+      "instruments": "chorused clean guitar, bouncy synth, tom-heavy drums",
+      "groove": "new-wave dance-rock bounce",
+      "mix": "bright chorus guitars, punchy toms"
+    },
+    {
+      "id": "alternative-postpunk",
+      "genre": "alternative",
+      "instruments": "clanging guitars, urgent driving bass, tight snare",
+      "groove": "post-punk motorik drive",
+      "mix": "sparse sharp mix, urgent vocal"
+    },
+    {
+      "id": "alternative-anthem-rock",
+      "genre": "alternative",
+      "instruments": "big open guitar chords, stadium drums, harmonized lead",
+      "groove": "anthemic rock stomp",
+      "mix": "wide guitars, huge chorus"
     }
   ]
 }

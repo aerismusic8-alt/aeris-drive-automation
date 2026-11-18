@@ -16,7 +16,7 @@ from __future__ import annotations
 NAME = "เพลงส้นทีนไรเนี่ย"
 # The wordmark is drawn on art; the spoken/typed form is the same string.
 POSITIONING = "เพลงไทยใหม่ทุกวัน"
-TAGLINE = "ป็อป · แดนซ์ · ร็อก · เพลงเศร้า · ให้กำลังใจ"
+TAGLINE = "แดนซ์ · แรพ · ฮิปฮอป · ร็อก · อัลเทอร์นาทีฟ"
 
 # The channel description, shared by the channel branding and the profile setup.
 DESCRIPTION = (
