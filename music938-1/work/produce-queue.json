@@ -441,6 +441,16 @@
       "offline_rc": 0,
       "remaster_rc": 0,
       "instrumental": true
+    },
+    {
+      "slug": "48-luai-mai-yut-v48",
+      "title": "จัดเต็มทุกบาร์อีกครั้ง",
+      "genre": "rap",
+      "mood": "epic",
+      "result": "no-draft",
+      "problems": [
+        "only 0/6 sections"
+      ]
     }
   ],
   "total_made": 22
