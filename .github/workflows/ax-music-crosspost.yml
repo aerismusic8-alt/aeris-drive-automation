@@ -69,6 +69,23 @@ jobs:
           pip install --quiet playwright
           python3 -m playwright install --with-deps chromium
 
+      - name: Install the clip/thumbnail gate deps
+        # Every posting route — the browser composer (`post_tiktok`,
+        # `post_facebook`) and the API posters (`fb_graph.post_reel`,
+        # `tiktok_api.post_video`) — calls `clip_standard.assert_ok` first, which
+        # measures the file with ffprobe + imageio-ffmpeg + numpy (+ Pillow for the
+        # thumbnail floor). Without them the gate cannot read the clip and refuses
+        # every post. Install them here so a missing dependency can never look like
+        # a quality rejection.
+        run: |
+          set -euo pipefail
+          if ! command -v ffmpeg >/dev/null 2>&1; then
+            sudo apt-get update -qq
+            sudo apt-get install -y -qq ffmpeg
+          fi
+          python3 -m pip install --quiet --disable-pip-version-check \
+            imageio-ffmpeg numpy Pillow
+
       - name: Load the freshest session from the durable vault
         # The Actions secret is a *snapshot*: nothing refreshes it on its own, so
         # the cookies inside it die every few weeks and the rail then pages K to
@@ -148,10 +165,11 @@ jobs:
         # the Products "regardless of whether ... undertaken while logged-in", and
         # the Graph API is the access Meta granted in advance.
         #
-        # It is idempotent and skipped while FB is paused (no token), so it costs
-        # nothing until the API route is live. `|| rc=$?` keeps the step green on a
-        # parked surface (rc 3) and only a real API rejection (rc 1) is left to be
-        # seen in the log — it must never fail the revenue step below.
+        # It is idempotent and skipped while there is no token (parked), so it
+        # costs nothing until the API route is live. `|| rc=$?` keeps the step
+        # green on a parked surface (rc 3) and only a real API rejection (rc 1)
+        # is left to be seen in the log — it must never fail the revenue step
+        # below.
         env:
           FB_PAGE_TOKEN: ${{ secrets.FB_PAGE_TOKEN }}
         run: |
@@ -300,5 +318,5 @@ jobs:
           [ -n "$LINK" ] || LINK="(set the AX_LOGIN_URL repo variable to the work-2 host)"
           curl -sS --max-time 20 -H "Title: AERIS — session ที่ต้องล็อกอินใหม่" \
             -H "Tags: warning" -H "Priority: high" \
-            -d "session ของ surface ที่ยังใช้ browser หมดอายุ มีโพสต์ค้างอยู่. แตะปุ่มเดียวจบที่ ${LINK} — ล็อกอินเฉพาะ surface ที่แจ้ง (ปกติคือ TikTok @aeris.music4). Facebook ไม่ใช่ surface ที่ล็อกอินผ่าน browser แล้ว (พักอยู่, status=paused) — ถ้าต้องการคืนเส้นทาง FB ให้ออก Meta System User token ใหม่ตาม docs/k-free-runbook.md ไม่ใช่ล็อกอิน browser. ถ้าเพิ่งล็อกอิน TikTok แล้วยังแดง ให้รัน ops/login_vault.py save และ ops/save_storage_state.py แล้วตั้ง secret AERIS_STORAGE_STATE_B64 ใหม่" \
+            -d "session ของ surface ที่ยังใช้ browser หมดอายุ มีโพสต์ค้างอยู่. แตะปุ่มเดียวจบที่ ${LINK} — ล็อกอินเฉพาะ surface ที่แจ้ง (ปกติคือ TikTok @aeris.music4). Facebook ไม่ใช่ surface ที่ล็อกอินผ่าน browser (status=api-only, โพสต์และวัดผ่าน Graph API) — ถ้าโพสต์ FB หยุด ให้ออก Meta System User token ใหม่ตาม docs/k-free-runbook.md ไม่ใช่ล็อกอิน browser. ถ้าเพิ่งล็อกอิน TikTok แล้วยังแดง ให้รัน ops/login_vault.py save และ ops/save_storage_state.py แล้วตั้ง secret AERIS_STORAGE_STATE_B64 ใหม่" \
             "https://ntfy.sh/${TOPIC}" || echo "ntfy push failed (non-fatal)"

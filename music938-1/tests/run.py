@@ -4869,7 +4869,7 @@ def test_session_guard() -> None:
 
     Facebook is deliberately NOT auto-revived any more (K, 2026-11-15): a browser
     session posting on a cron cadence is the automation signature Meta caught, so
-    Facebook is API-only and is skipped entirely while it is paused.
+    Facebook is API-only (`status: api-only`) and a browser never drives it.
     """
     section("session guard (heal without K)")
     ops = ROOT.parent / "ops"
@@ -4880,8 +4880,9 @@ def test_session_guard() -> None:
           "import fb_relogin" not in src and "fb_relogin.relogin" not in src
           and "fb_relogin.revive_headless" not in src
           and "fb_relogin.push_secret" not in src)
-    check("skips a paused surface from channel.json",
-          "surface_status" in src and "def _paused_domains" in src)
+    check("skips a no-browser surface from channel.json",
+          "surface_status" in src and "def _no_browser_domains" in src
+          and "surface_status.no_browser()" in src)
     check("revives Flow through Google SSO", "def _revive_flow" in src
           and "axsecrets:google-password" in src)
     check("has a headless mode for CI", "def run_headless" in src and "--headless" in src)
@@ -4905,43 +4906,53 @@ def test_session_guard() -> None:
               "vault_session.py write-state" in body)
 
 
-def test_paused_surface_is_skipped_everywhere() -> None:
-    """A paused surface must be off in every path, without stopping a live one.
+def test_api_only_surface_is_never_browser_driven() -> None:
+    """An `api-only` surface posts and is measured, but a browser never drives it.
 
-    K, 2026-11-15: Facebook is paused. The bug this guards is that the *only*
-    rail that posts was disabled to stop Facebook, which also stopped TikTok —
-    and a re-enabled rail or a manual call could still browser-post Facebook.
-    `aeris938-2/channel.json` is the single truth; every consumer must read it.
+    K, 2026-11-17: the Meta System User token is live, so Facebook is `api-only`.
+    The bug this guards is the one the old pause guarded — a browser session on a
+    cron cadence is the automation signature Meta caught — but the surface must
+    still *post* (through the Graph API) and be *measured* (through the Graph
+    API), which `paused` would forbid. `aeris938-2/channel.json` is the single
+    truth; every browser-facing consumer must read `api-only` as "no browser".
     """
-    section("paused surface (channel.json is the single truth)")
+    section("api-only surface (post by API, never a browser)")
     import surface_status
 
-    paused = surface_status.paused()
-    check("channel.json marks facebook paused", "facebook" in paused, str(paused))
-    check("a live surface is not paused", "tiktok" not in paused, str(paused))
+    api_only = surface_status.api_only()
+    check("channel.json marks facebook api-only", "facebook" in api_only, str(api_only))
+    check("api-only is not the same as paused",
+          "facebook" not in surface_status.paused(), str(surface_status.paused()))
+    check("no_browser() covers api-only",
+          "facebook" in surface_status.no_browser())
+    check("a live surface is not api-only", "tiktok" not in api_only, str(api_only))
 
     import crosspost
-    check("crosspost reads the same truth",
-          crosspost._paused() == {p for p in paused if p in crosspost.PLATFORMS},
-          str(crosspost._paused()))
-    # A paused surface never posts and never opens a browser, even if the rail is
-    # re-enabled or `grow.py facebook --post` is called by hand.
-    check("posting a paused surface is refused, not an outage",
-          crosspost.post("facebook", 1) == 0)
+    # api-only is NOT paused: it still posts (via the API, see API_ONLY). Only a
+    # `paused` surface refuses at the source.
+    check("crosspost does not treat api-only as paused",
+          crosspost._paused() == set(), str(crosspost._paused()))
+    check("facebook is the API-only posting surface",
+          "facebook" in crosspost.API_ONLY)
 
     src = (ROOT / "scripts" / "crosspost.py").read_text()
-    check("probe skips a paused surface (rc 4)",
+    check("probe still reports a paused surface (rc 4)",
           "PAUSED" in src and "return 4 if paused else 0" in src)
     check("post refuses a paused surface at the source",
           'if platform in _paused():' in src)
 
-    # session_guard and token_heartbeat must read the same truth, or a pause is
-    # enforced in the rail but silently re-opened by the healer.
+    # session_guard and admin must read `no_browser()`, or a browser touch is
+    # silently re-opened by the very code meant to protect the Page.
     sg = (ROOT.parent / "ops" / "session_guard.py").read_text()
-    check("the healer skips a paused surface",
-          "surface_status" in sg and "def _paused_domains" in sg)
+    check("the healer never browser-touches a no-browser surface",
+          "surface_status" in sg and "def _no_browser_domains" in sg
+          and "surface_status.no_browser()" in sg)
+    ad = (ROOT.parent / "aeris938-2" / "scripts" / "admin.py").read_text()
+    check("the admin rail never browser-touches Facebook",
+          "surface_status.no_browser()" in ad and "no browser touch" in ad)
+    # token_heartbeat still checks the token: posting depends on it.
     th = (ROOT.parent / "ops" / "token_heartbeat.py").read_text()
-    check("the token heartbeat skips a paused surface",
+    check("the token heartbeat still checks the api-only token",
           'if "facebook" in surface_status.paused()' in th
           and '"paused"' in th)
 
@@ -5399,6 +5410,34 @@ def test_clip_standard_is_a_floor() -> None:
         body = xp.split(f"def {fn}(", 1)[1].split("\ndef ", 1)[0]
         check(f"crosspost.{fn} clears the standard before upload",
               "clip_standard.assert_ok" in body)
+
+    # The gate measures a clip with ffprobe (from the ffmpeg package) plus the
+    # numpy/Pillow it imports. A workflow that runs a gated upload path without
+    # those cannot read the file, so the gate fails closed and refuses *every*
+    # upload — the rail goes red with nothing published. That is exactly what
+    # happened on 2026-11-17/18: `ax-music-release.yml` ran `release.py` →
+    # `yt_publish.py` with no ffmpeg and every release was refused
+    # ("No module named 'imageio_ffmpeg'"). So a workflow that invokes a gated
+    # upload path must install ffmpeg + numpy + Pillow. `crosspost.py` counts
+    # only with `--post`; `--merge-queue`/`--promote-*` touch no clip.
+    import re as _re
+    gated = _re.compile(
+        r"python3\s+\S*(?:release|yt_publish|trivia_publish|upload_compilation"
+        r"|replace_video|daily_release)\.py|python3\s+\S*crosspost\.py[^\n]*--post")
+    wf_dir = ROOT.parent / ".github" / "workflows"
+    for wf in sorted(wf_dir.glob("*.yml")):
+        text = wf.read_text()
+        code = "\n".join(l for l in text.splitlines()
+                         if not l.lstrip().startswith("#"))
+        if not gated.search(code):
+            continue
+        has_ff = "command -v ffmpeg" in text or bool(
+            _re.search(r"apt-get install[^\n]*ffmpeg", text))
+        has_np = "numpy" in code or "imageio-ffmpeg" in code
+        has_pil = "Pillow" in code or "pillow" in code
+        check(f"{wf.name} installs the clip gate deps",
+              has_ff and has_np and has_pil,
+              f"ffmpeg={has_ff} numpy={has_np} pillow={has_pil}")
 
     # Every lane must normalise the muxed song: its masters clipped (song-24 was
     # -12.2 LUFS / +1.4 dBTP) and the lanes muxed them raw. The chain is
@@ -6785,7 +6824,7 @@ def main() -> int:
     test_login_vault()
     test_fb_relogin()
     test_session_guard()
-    test_paused_surface_is_skipped_everywhere()
+    test_api_only_surface_is_never_browser_driven()
     test_outreach()
     test_promo_site_converts_to_the_page()
     test_operator_url()
