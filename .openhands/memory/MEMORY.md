@@ -15,9 +15,8 @@ K reviews a channel's first work; never rename a channel without K's approval.
 AR mailbox = `araeris4770d7@fldubai.com` (mail.tm; `ops/ar_identity.py`).
 AR self-creatable: **Nostr** (`AR_NOSTR_NSEC`), **Telegraph** (`ops/ar_telegraph.py`).
 Flow Music/Gemini = K's account `aerismusic8` (AR never types a password). K taps a
-QR once, then `login_vault.py save` **immediately** — the session lasts ~1 day (the
-11-17 cookies were rejected 11-18). A synth bed has **no vocal**; Flow is the only
-real-song route (K: "ยากแค่ทำเพลง").
+QR once, then `login_vault.py save` **immediately** — the session lasts ~1 day. A
+synth bed has **no vocal**; Flow is the only real-song route (K: "ยากแค่ทำเพลง").
 
 ## Roles and method (K, 2026-10-31)
 - **K = final authority.** Every standing rule is K's.
@@ -36,11 +35,11 @@ built from free cloud tools. Scope = **4 channels** (focus aeris938-2 = Facebook
 TikTok, YouTube `@aerismusicth`, Shopee Affiliate). Two goals in
 `AKATH_CORE/CANONICAL_TASK_REGISTRY.json` must never close as ordinary tasks: a
 Roblox game anyone can enter and play, and real revenue from it (Roblox **PARKED**).
-**Brand = เพลงส้นทีนไรเนี่ย** (live name 2026-11-17; handle `@aerismusicth`); the
-name lives only in `music938-1/scripts/branding.py` — never hardcode it.
-**Revenue gate = ch3**: **1,000 subs AND 4,000 watch-hours/12 mo** (lever: weekly
-numbered long-form `volume_series.py`). The metric is **followers** (K 2026-11-09):
-end every clip with `release.FOLLOW_ASK` + `FOLLOW_PROMISE`.
+**Brand = เพลงส้นทีนไรเนี่ย** (handle `@aerismusicth`); the name lives only in
+`music938-1/scripts/branding.py` — never hardcode it.
+**Revenue gate = ch3**: **1,000 subs AND 4,000 watch-hours/12 mo**. The metric is
+**followers** (K 2026-11-09): end every clip with `release.FOLLOW_ASK` +
+`FOLLOW_PROMISE`.
 
 ## Environment facts that cost time
 - **Fresh-pod recovery: `scripts/bootstrap-pod.sh`** — re-run after every pod.
@@ -57,7 +56,7 @@ end every clip with `release.FOLLOW_ASK` + `FOLLOW_PROMISE`.
 - **Desktop = Live View** (`work-2`:12001); Thai text `Text.luau` +
   `NotoSansThai.ttf` (else tofu); burned ASS has no emoji.
 - **Playwright `connect_over_cdp` can hang** though CDP answers: kill
-  `remote-debugging-port=9222`, re-run `bootstrap.py`.
+  `remote-debugging-port=9222`, re-run `bootstrap.py`; raw CDP websocket works.
 - **`ops/websearch.py`** is the free web search (Tavily has no quota left).
 
 ## Sound + clip quality (K)
@@ -67,26 +66,27 @@ end every clip with `release.FOLLOW_ASK` + `FOLLOW_PROMISE`.
 route, no override; `ops/thumb_standard.py` too. `docs/clip-standard.md`.
 
 ## Retry lanes → ch3 (trivia + reactive)
-`ops/trivia_publish.py` + `ops/reactive_publish.py` share one chokepoint (rails
-`ax-music-trivia.yml` / `ax-music-reactive.yml`). A cap = **retry**, not failure;
-each ledger in `work/*` must be un-ignored (`!…`) or it re-posts every tick.
+`trivia_publish.py` + `reactive_publish.py` share one chokepoint; a cap = **retry**,
+not failure; each `work/*` ledger must be un-ignored (`!…`) or it re-posts every tick.
 
 ## Loop health & platform risks
 - **A green run is not a finished job.** `release.py` rc 4 + `UPLOAD_LIMIT_EXCEEDED`;
   `heartbeat` pages on a failed latest run. The cap is **per-channel new-videos/day**,
   clears over hours, not at the 08:00 UTC reset.
-- **`continue-on-error` + a wrong step order = a silent broken artifact.** The
-  produce rail pulled the beds *after* the produce step, so every song shipped
-  `audio: none` while the run stayed green: gate the artifact, assert the order.
-- **A free drafter's content filter judges the *framing*, not the content.** A
-  Thai rap brief was refused outright while rap alone and the angle alone passed;
-  a positive, no-violence clause up front clears it. Also: a cache manifest can
-  desync from pulled media — validate the file, don't trust the manifest.
+- **`continue-on-error` + a wrong step order = a silent broken artifact** — the
+  produce rail pulled beds *after* the produce step, so every song shipped
+  `audio: none` while green: gate the artifact, assert the order.
+- **A derived artifact outlives its source.** Re-mastering a song leaves older
+  rendered clips clipped; the fail-closed gate then blocks the whole batch (release
+  red 3 runs). Repair at the chokepoint (`clip_standard.needs_audio_repair`/
+  `repair_audio`, before the gate in `yt_publish.py`) — never re-render by hand.
+- **A free drafter's content filter judges the *framing*, not the content** — a
+  positive clause clears it; a committed manifest can desync from pulled media.
 - **Never decide on missing/stale data** (2026-11-12): a blank/stale newest row is
   `data`, never a guess; `--assert-fresh` gates the dashboard rail.
 - **`videos.list` ≤50 ids/call; YPP = 1,000 subs AND 4,000 watch-hours.**
 - **Bound every rail:** `timeout-minutes` (default 360) + `cancel-in-progress:
-  true`, or a hung step holds the slot for hours. Risks:
+  true`, or a hung step holds the slot. Risks:
   `AKATH_CORE/OPENHANDS_RISK_REGISTER.json` + `ops/risk_audit.py` (`--strict`).
 
 ## Recovery
