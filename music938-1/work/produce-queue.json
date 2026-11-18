@@ -8,7 +8,10 @@
       "mood": "calm",
       "result": "lyric",
       "flow": false,
-      "offline_rc": 1
+      "offline_rc": 0,
+      "audio": "synth-bed",
+      "instrumental": true,
+      "note": "re-rendered 2026-11-18 from the pulled beds (produce rail fixed)"
     },
     {
       "slug": "26-ban-lang-lek-khong-rao",
@@ -18,7 +21,9 @@
       "result": "lyric",
       "flow": false,
       "offline_rc": 0,
-      "instrumental": true
+      "instrumental": true,
+      "audio": "synth-bed",
+      "note": "re-rendered 2026-11-18 from the pulled beds (produce rail fixed)"
     },
     {
       "slug": "27-fai-nion-kap-chai-thi-la",
@@ -45,9 +50,10 @@
       "mood": "calm",
       "result": "lyric",
       "flow": false,
-      "audio": "none",
-      "offline_rc": 1,
-      "instrumental": false
+      "audio": "synth-bed",
+      "offline_rc": 0,
+      "instrumental": true,
+      "note": "re-rendered 2026-11-18 from the pulled beds (produce rail fixed)"
     },
     {
       "slug": "30-khuen-thi-yang-mai-lap-v30",
@@ -120,9 +126,10 @@
       "mood": "warm",
       "result": "lyric",
       "flow": false,
-      "audio": "none",
-      "offline_rc": 1,
-      "instrumental": false
+      "audio": "synth-bed",
+      "offline_rc": 0,
+      "instrumental": true,
+      "note": "re-rendered 2026-11-18 from the pulled beds (produce rail fixed)"
     },
     {
       "slug": "31-wan-tham-mada-thi-phi-set-v31",
@@ -131,9 +138,10 @@
       "mood": "warm",
       "result": "lyric",
       "flow": false,
-      "audio": "none",
-      "offline_rc": 1,
-      "instrumental": false
+      "audio": "synth-bed",
+      "offline_rc": 0,
+      "instrumental": true,
+      "note": "re-rendered 2026-11-18 from the pulled beds (produce rail fixed)"
     },
     {
       "slug": "32-wan-tham-mada-thi-phi-set-v32",
@@ -171,9 +179,10 @@
       "mood": "warm",
       "result": "lyric",
       "flow": false,
-      "audio": "none",
-      "offline_rc": 1,
-      "instrumental": false
+      "audio": "synth-bed",
+      "offline_rc": 0,
+      "instrumental": true,
+      "note": "re-rendered 2026-11-18 from the pulled beds (produce rail fixed)"
     },
     {
       "slug": "35-fai-thi-yang-mai-dap",
@@ -182,9 +191,10 @@
       "mood": "epic",
       "result": "lyric",
       "flow": false,
-      "audio": "none",
-      "offline_rc": 1,
-      "instrumental": false
+      "audio": "synth-bed",
+      "offline_rc": 0,
+      "instrumental": true,
+      "note": "re-rendered 2026-11-18 from the pulled beds (produce rail fixed)"
     },
     {
       "slug": "36-fai-thi-yang-mai-dap-v36",
@@ -193,9 +203,10 @@
       "mood": "epic",
       "result": "lyric",
       "flow": false,
-      "audio": "none",
-      "offline_rc": 1,
-      "instrumental": false
+      "audio": "synth-bed",
+      "offline_rc": 0,
+      "instrumental": true,
+      "note": "re-rendered 2026-11-18 from the pulled beds (produce rail fixed)"
     },
     {
       "slug": "37-fai-thi-yang-mai-dap-v37",
@@ -204,9 +215,10 @@
       "mood": "epic",
       "result": "lyric",
       "flow": false,
-      "audio": "none",
-      "offline_rc": 1,
-      "instrumental": false
+      "audio": "synth-bed",
+      "offline_rc": 0,
+      "instrumental": true,
+      "note": "re-rendered 2026-11-18 from the pulled beds (produce rail fixed)"
     },
     {
       "slug": "38-luk-khuen-laeo-pai",
@@ -248,9 +260,10 @@
       "mood": "epic",
       "result": "lyric",
       "flow": false,
-      "audio": "none",
-      "offline_rc": 1,
-      "instrumental": false
+      "audio": "synth-bed",
+      "offline_rc": 0,
+      "instrumental": true,
+      "note": "re-rendered 2026-11-18 from the pulled beds (produce rail fixed)"
     },
     {
       "slug": "39-luk-khuen-laeo-pai-v39",
@@ -259,9 +272,10 @@
       "mood": "epic",
       "result": "lyric",
       "flow": false,
-      "audio": "none",
-      "offline_rc": 1,
-      "instrumental": false
+      "audio": "synth-bed",
+      "offline_rc": 0,
+      "instrumental": true,
+      "note": "re-rendered 2026-11-18 from the pulled beds (produce rail fixed)"
     },
     {
       "slug": "40-luk-khuen-laeo-pai-v40",
@@ -270,9 +284,10 @@
       "mood": "epic",
       "result": "lyric",
       "flow": false,
-      "audio": "none",
-      "offline_rc": 1,
-      "instrumental": false
+      "audio": "synth-bed",
+      "offline_rc": 0,
+      "instrumental": true,
+      "note": "re-rendered 2026-11-18 from the pulled beds (produce rail fixed)"
     },
     {
       "slug": "41-luk-khuen-laeo-pai-v41",
@@ -281,9 +296,10 @@
       "mood": "epic",
       "result": "lyric",
       "flow": false,
-      "audio": "none",
-      "offline_rc": 1,
-      "instrumental": false
+      "audio": "synth-bed",
+      "offline_rc": 0,
+      "instrumental": true,
+      "note": "re-rendered 2026-11-18 from the pulled beds (produce rail fixed)"
     },
     {
       "slug": "42-khuen-ni-mai-tong-khit-arai",
