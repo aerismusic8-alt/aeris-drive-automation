@@ -983,7 +983,9 @@ def post_tiktok(page, video: Path, text: str) -> str | None:
     # a bare `set_input_files` timed out at 30 s and looked like a signed-out
     # session. Wait for the input to attach, then hand it the file.
     page.wait_for_selector('input[type="file"]', timeout=60000, state="attached")
-    page.locator('input[type="file"]').first.set_input_files(str(video))
+    # A 30 MB clip took ~40 s to hand over, so the default 30 s timeout fails
+    # while the file is still transferring and reads as a broken upload.
+    page.locator('input[type="file"]').first.set_input_files(str(video), timeout=180000)
     # The editor appears once the file is accepted; the caption box is a
     # contenteditable draft editor.
     page.wait_for_selector('[contenteditable="true"]', timeout=180000)
