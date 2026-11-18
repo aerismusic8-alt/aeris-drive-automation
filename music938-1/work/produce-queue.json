@@ -1,5 +1,5 @@
 {
-  "made": 17,
+  "made": 18,
   "log": [
     {
       "slug": "25-thai-5bcb50c5",
@@ -288,6 +288,17 @@
     {
       "slug": "42-khuen-ni-mai-tong-khit-arai",
       "title": "คืนนี้ไม่ต้องคิดอะไร",
+      "genre": "edm",
+      "mood": "hopeful",
+      "result": "lyric",
+      "flow": false,
+      "audio": "none",
+      "offline_rc": 1,
+      "instrumental": false
+    },
+    {
+      "slug": "43-khuen-ni-mai-tong-khit-arai-v43",
+      "title": "คืนนี้ไม่ต้องคิดอะไรอีกครั้ง",
       "genre": "edm",
       "mood": "hopeful",
       "result": "lyric",
