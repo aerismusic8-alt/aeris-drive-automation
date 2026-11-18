@@ -141,6 +141,31 @@ jobs:
             esac
           done
 
+      - name: Apply the Page description (API only, no browser)
+        # The Page description is the one Page-info field the Graph API can write
+        # (`about`). Doing it here — never by driving a signed-in browser — keeps
+        # the change inside Meta's rules: their terms forbid automated access to
+        # the Products "regardless of whether ... undertaken while logged-in", and
+        # the Graph API is the access Meta granted in advance.
+        #
+        # It is idempotent and skipped while FB is paused (no token), so it costs
+        # nothing until the API route is live. `|| rc=$?` keeps the step green on a
+        # parked surface (rc 3) and only a real API rejection (rc 1) is left to be
+        # seen in the log — it must never fail the revenue step below.
+        env:
+          FB_PAGE_TOKEN: ${{ secrets.FB_PAGE_TOKEN }}
+          AX_VAULT_BOOTSTRAP: ${{ secrets.AX_VAULT_BOOTSTRAP }}
+          OPENHANDS_API_KEY: ${{ secrets.OPENHANDS_API_KEY }}
+        run: |
+          set -uo pipefail
+          rc=0
+          python3 ops/apply_fb_brand.py || rc=$?
+          case "$rc" in
+            0) echo "fb page: description current" ;;
+            3) echo "::notice::fb page description skipped — no token (parked)" ;;
+            *) echo "::warning::fb page description not applied (rc $rc; see log)" ;;
+          esac
+
       - name: Read how the last posts are doing and retune the queue
         # K (2026-11-09): before posting the next job, check how the last ones did;
         # change a format that is not getting a response; keep looping until one

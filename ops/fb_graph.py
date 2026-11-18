@@ -361,6 +361,39 @@ def post_link(message: str, link: str, *, token: str | None = None) -> str | Non
     return pid
 
 
+def page_fields(token: str | None = None) -> dict:
+    """Read the Page's `name` and `about` (the Edit Page Info "Description")."""
+    t = token or page_token()
+    if not t:
+        return {}
+    return _get(f"{GRAPH}/{PAGE_ID}",
+                {"fields": "id,name,about", "access_token": t})
+
+
+def set_page_about(about: str, *, token: str | None = None, dry_run: bool = False) -> bool:
+    """Set the Page description (the `about` field) via the Graph API.
+
+    `about` is the documented mapping of the Edit Page Info "Description" field,
+    so this is the sanctioned route — no browser. It needs a Page token that
+    carries `pages_manage_metadata`. Returns True when the write happened (or a
+    dry-run would happen); raises RuntimeError on a real API error, and returns
+    False when no token is configured.
+
+    The Page *name* is deliberately not written here: the Graph API does not
+    expose it for update, so a rename stays a manual Page Settings action.
+    """
+    t = token or page_token()
+    if not t:
+        return False
+    cur = page_fields(t)
+    if (cur.get("about") or "").strip() == about.strip():
+        return True  # already current; a no-op PUT is still a write we avoid
+    if dry_run:
+        return True
+    _post(f"{GRAPH}/{PAGE_ID}", {"about": about, "access_token": t})
+    return True
+
+
 def _main(argv: list[str]) -> int:
     cmd = argv[0] if argv else "status"
     if cmd == "status":
@@ -368,6 +401,9 @@ def _main(argv: list[str]) -> int:
         print("configured" if tok else "not configured (no FB_PAGE_TOKEN)")
         if tok:
             print(json.dumps(whoami(), ensure_ascii=False))
+        return 0
+    if cmd == "page":
+        print(json.dumps(page_fields(), ensure_ascii=False))
         return 0
     if cmd == "refresh":
         new = refresh()

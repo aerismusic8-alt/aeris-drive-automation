@@ -51,6 +51,9 @@ Views without follows is the failure. End every clip with `release.FOLLOW_ASK` +
   Judge health from the **rail run history** (API), not `data/heartbeat.json`.
 - **FB browser posting is OFF (K 2026-11-15: "ระบบออโต้เราไม่เนียนมันจับได้").**
     FB posts only via the Graph API (`crosspost.API_ONLY`); parks green otherwise.
+- **Vault = source of truth; a secret injects only when the command *names* it.**
+    Read it by naming `AX_VAULT_BOOTSTRAP`/`OPENHANDS_API_KEY`. `ensure_anchor()` now
+    reads the anchor id from the secret (was 401-listing → false "no token").
 - **Writes:** `GITHUB_TOKEN` is 403; push via vault KV `axsecrets:gh-workflow-token`
   (workflow files need its `workflow` scope). Fresh-pod App key gone → `$AX_GH_TOKEN`
   writes as the remote userinfo, then reset the URL tokenless. Detail: archive.
@@ -62,6 +65,7 @@ Views without follows is the failure. End every clip with `release.FOLLOW_ASK` +
 
 ## Real-instrument sound (K)
 **sfizz** sampler, not GM; `AX_REQUIRE_REAL_INSTRUMENTS=1` makes a fallback **raise**.
+Detail: archive.
 
 ## Clip + thumbnail quality — one FLOOR, every format/channel (K, 2026-11-17)
 "ห้ามอัพขึ้นเด็ดขาด". The trivia clip is only a **sample**. `ops/clip_standard.py` =
@@ -70,10 +74,8 @@ thumbnails too (`ops/thumb_standard.py`). Docs: `docs/clip-standard.md`,
 `docs/thumbnail-standard.md`; master fix `ops/remaster_songs.py`. Detail: archive.
 
 ## Trivia lane — เกร็ดความรู้ (K, 2026-11-17)
-`ops/trivia_reel.py` renders (free: edge-tts + Commons + ffmpeg), floor-gated;
-`ops/trivia_publish.py` uploads to **ch3**. Rail `ax-music-trivia.yml` ticks 09:15 +
-21:00 UTC; ledger `work/trivia-state.json` makes tick 2 a retry, not 2x. Walls are
-platform-side, not code: the *account* daily cap and the shared 10k API pool.
+`ops/trivia_reel.py` renders, `ops/trivia_publish.py` uploads to **ch3**; rail
+`ax-music-trivia.yml`. Detail: archive.
 
 ## Loop health & platform risks
 - **A green run is not a finished job.** `release.py` returns rc 4 +

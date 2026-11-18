@@ -6123,6 +6123,45 @@ def test_vault_key_fallback() -> None:
           got == "anchor-from-secret" and not called["list"])
 
 
+def test_fb_page_description() -> None:
+    """The Page description is written through the Graph API, never a browser.
+
+    Meta's terms forbid automated access to the Products even while logged in, so
+    the only sanctioned way to change Page info is the Graph API. `about` is the
+    field that maps to the Edit Page Info "Description"; the Page *name* has no
+    API update, so it is deliberately not written here. This pins both facts and
+    the idempotence (a matching description must not spend a PUT).
+    """
+    section("facebook: page description via the API")
+    sys.path.insert(0, str(ROOT.parent / "ops"))
+    import fb_graph as fb  # noqa: E402
+
+    src = (ROOT.parent / "ops" / "fb_graph.py").read_text()
+    check("fb_graph sets the about field", "def set_page_about" in src
+          and '"about": about' in src)
+    check("the name is documented as not API-writable",
+          "does not expose it for update" in " ".join(src.split()))
+
+    writes: list[dict] = []
+    orig = (fb.page_token, fb._get, fb._post)
+    try:
+        fb.page_token = lambda *a, **k: "tok"
+        fb._get = lambda url, data=None: {"id": "1", "name": "เพลงส้นทีนไรเนี่ย",
+                                          "about": "old text"}
+        fb._post = lambda url, data=None, **k: writes.append(data or {}) or {"success": True}
+        # Different text -> one write of the about field.
+        check("a changed description is written", fb.set_page_about("new text") is True)
+        check("exactly one PUT, carrying about", len(writes) == 1 and writes[0].get("about") == "new text")
+        # Matching text -> no write.
+        fb._get = lambda url, data=None: {"id": "1", "about": "same"}
+        check("a matching description is a no-op", fb.set_page_about("same") is True and len(writes) == 1)
+        # No token -> False, no call.
+        fb.page_token = lambda *a, **k: ""
+        check("no token means no write", fb.set_page_about("x") is False and len(writes) == 1)
+    finally:
+        fb.page_token, fb._get, fb._post = orig
+
+
 def test_memory_guard() -> None:
     """The injected memory index must stay under its cap.
 
@@ -6748,6 +6787,7 @@ def main() -> int:
     test_share_pack()
     test_k_free_status()
     test_vault_key_fallback()
+    test_fb_page_description()
     test_memory_guard()
     test_keyless_lyric_drafter()
     test_brand_identity()

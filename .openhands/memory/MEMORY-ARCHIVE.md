@@ -6297,3 +6297,26 @@ Western → `warm` recast to the musical). **Release wiring (2026-11-16):**
   set it as the remote userinfo, push, then reset the URL to tokenless.
 - MV-page detail: `ops/mv_page.py --all`; `slug`/`force` rebuilds one page. Song
   metadata is the song's lyric header, not a songs.json.
+
+## Real-instrument sound (folded from MEMORY.md index, 2026-11-18)
+**sfizz** sampler, not GM; `AX_REQUIRE_REAL_INSTRUMENTS=1` makes a fallback **raise**.
+(K rejected the tone synth; the ambient lane uses real GM programs + sfizz.)
+
+## Vault read path — AX_VAULT_BOOTSTRAP (folded from MEMORY.md index, 2026-11-18)
+`ax_vault.ensure_anchor()` used to list automations (`GET /api/automation/v1`) to find
+the anchor id; that endpoint 401s in an interactive sandbox while the KV read works with
+the same key, so every caller (`fb_graph.page_token`, `ar_identity`, `login_vault`,
+`k_free_status`) silently got "" and reported a missing token / signed-out surface — a
+false "the vault is gone". Fixed 2026-11-18: `bootstrap_anchor()` reads the id straight
+from the `AX_VAULT_BOOTSTRAP` secret (env, then `ax_secrets`) first; listing is only the
+fallback. Pinned by `music938-1/tests/run.py::test_vault_key_fallback`.
+**Lesson:** "no token in env" ≠ "no token". The vault is the source of truth
+(`axsecrets:fb-page-token`, `axsecrets:gh-workflow-token`, ...). And the sandbox injects
+a secret into the env only when the *command text names the key* — so a command must name
+`AX_VAULT_BOOTSTRAP`/`OPENHANDS_API_KEY` for the vault to open at all.
+
+## Trivia lane — เกร็ดความรู้ (folded from MEMORY.md index, 2026-11-18)
+`ops/trivia_reel.py` renders (free: edge-tts + Commons + ffmpeg), floor-gated;
+`ops/trivia_publish.py` uploads to **ch3**. Rail `ax-music-trivia.yml` ticks 09:15 +
+21:00 UTC; ledger `work/trivia-state.json` makes tick 2 a retry, not 2x. Walls are
+platform-side, not code: the *account* daily new-video cap and the shared 10k API pool.
