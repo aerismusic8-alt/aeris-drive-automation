@@ -41,11 +41,20 @@ permissions:
 
 concurrency:
   group: ax-music-produce
-  cancel-in-progress: false
+  # Gemini's advice (2026-11-18), after a run hung 15+ min in the install step
+  # and 4 more queued behind it. cancel-in-progress kills a stuck run so the next
+  # one starts on a fresh runner instead of waiting out the 360-minute default.
+  # Safe here: a run is one song, and next_number() derives from the committed
+  # slugs, so a cancelled run leaves no numbering hole.
+  cancel-in-progress: true
 
 jobs:
   produce:
     runs-on: ubuntu-latest
+    # Gemini's advice (2026-11-18): the GitHub default is 360 minutes, so a hung
+    # step holds the concurrency slot for 6 hours. A produce run is a couple of
+    # minutes; 20 is a generous ceiling that turns a hang into a fast failure.
+    timeout-minutes: 20
     steps:
       - name: Checkout
         uses: actions/checkout@v4

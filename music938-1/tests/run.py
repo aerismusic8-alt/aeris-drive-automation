@@ -6092,6 +6092,14 @@ def test_produce_loop() -> None:
     # a below-floor master. The dependency is part of the fix, not an aside.
     check("the produce rail installs the remaster's ffmpeg",
           "imageio-ffmpeg" in wf_src)
+    # Gemini's advice (2026-11-18): a run hung in the install step for 15+ min
+    # while the job held the concurrency slot, and the GitHub default timeout is
+    # 360 minutes. Pin both the ceiling and cancel-in-progress so a hang becomes
+    # a fast failure instead of a queue of stuck runs.
+    check("the produce rail has a job timeout",
+          "timeout-minutes:" in wf_src)
+    check("the produce rail cancels a superseded run",
+          "cancel-in-progress: true" in wf_src)
 
 
 def test_share_pack() -> None:
