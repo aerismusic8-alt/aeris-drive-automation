@@ -28,25 +28,24 @@ FREE_LIMIT_WAIT = 48
 
 def ask(problem: str, timeout: float = 180.0, model: str = "openai",
         max_tokens: int = 8192) -> str:
-    # `reasoning_effort: low` is not cosmetic: the default reasoning budget is
-    # spent before the model emits an answer, and a song prompt is long enough to
-    # trigger `output_token_limit_exceeded` (HTTP 400). Measured 2026-11-07.
-    #
-    # `max_tokens` is the other half of that fix. 2048 was still too low for a
-    # song brief: measured 2026-11-18, the 1164-char produce prompt 400s with
-    # `output_token_limit_exceeded` at 2048 and answers at 4096, so every produce
-    # run lost its draft and shipped no song. The retry below cannot recover this
-    # one — it is deterministic, not capacity — so the ceiling is the fix.
-    body = {"messages": [{"role": "user", "content": problem}],
-            "reasoning_effort": "low", "max_tokens": max_tokens}
+    # The free models are *reasoning* LLMs (see /models: "GPT-OSS 20B Reasoning
+    # LLM"), so `max_tokens` must cover the hidden reasoning tokens *and* the
+    # answer. `reasoning_effort: low` keeps that budget small but does not remove
+    # it, and a long song brief can still exhaust the ceiling and 400 with
+    # `output_token_limit_exceeded` (measured 2026-11-18 at 4096, and once at
+    # 8192 under pool load). The retry below doubles the ceiling instead of
+    # repeating the same doomed call, so the loop self-heals.
+    body_base = {"messages": [{"role": "user", "content": problem}],
+                 "reasoning_effort": "low"}
     if model:
-        body["model"] = model
-    data = json.dumps(body).encode("utf-8")
-    req = urllib.request.Request(
-        ENDPOINT, data=data,
-        headers={"Content-Type": "application/json",
-                 "User-Agent": "aeris-consult/1.0"})
-    for attempt in range(3):
+        body_base["model"] = model
+    for attempt in range(4):
+        body = dict(body_base, max_tokens=max_tokens)
+        data = json.dumps(body).encode("utf-8")
+        req = urllib.request.Request(
+            ENDPOINT, data=data,
+            headers={"Content-Type": "application/json",
+                     "User-Agent": "aeris-consult/1.0"})
         try:
             with urllib.request.urlopen(req, timeout=timeout) as r:
                 answer = r.read().decode("utf-8", "ignore")
@@ -54,12 +53,22 @@ def ask(problem: str, timeout: float = 180.0, model: str = "openai",
                 raise RuntimeError("empty answer from pollinations")
             return answer
         except urllib.error.HTTPError as e:
-            # 400 is not always a bad request: the free tier also returns it
-            # under load, where the same body answers seconds later. A short
-            # backoff and a retry recovers that case.
-            if e.code not in (400, 402, 429) or attempt == 2:
-                raise
-            time.sleep(FREE_LIMIT_WAIT if e.code in (402, 429) else 8)
+            # Keep the body: the free tier returns 400 for distinct reasons
+            # (token ceiling, model down, load) and a bare "400 Bad Request"
+            # cannot tell them apart — that cost a CI run 2026-11-18.
+            try:
+                detail = e.read().decode("utf-8", "replace")[:200]
+            except Exception:  # noqa: BLE001
+                detail = ""
+            if "output_token_limit_exceeded" in detail and max_tokens < 32768:
+                max_tokens *= 2
+                continue
+            # 400/402/429 also mean "busy, try again": the same body answers
+            # seconds later, so a short backoff recovers it.
+            if e.code in (400, 402, 429) and attempt < 3:
+                time.sleep(FREE_LIMIT_WAIT if e.code in (402, 429) else 8)
+                continue
+            raise RuntimeError(f"pollinations HTTP {e.code}: {detail}") from e
     raise RuntimeError("pollinations did not answer")
 
 

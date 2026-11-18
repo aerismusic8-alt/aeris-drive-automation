@@ -194,6 +194,10 @@ def make_one(theme: tuple[str, str, str, str, str, str], *, flow: bool) -> dict:
             secs, problems = A.draft(meta, angle, drafter=drafter)
         except Exception as exc:  # noqa: BLE001
             problems = [f"{drafter}: {type(exc).__name__}: {exc}"]
+            # Print each channel's failure as it happens: the final `problems`
+            # only keeps the last drafter, so on 2026-11-18 the log showed only
+            # "pollinations: HTTP 400" and hid why duck (the primary) failed.
+            print(f"  {drafter} failed: {problems[0][:200]}", flush=True)
             continue
         print(f"  {drafter}: sections={len(secs)} problems={problems[:2]}", flush=True)
         if secs and not problems:

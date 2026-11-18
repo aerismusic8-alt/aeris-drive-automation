@@ -352,7 +352,20 @@
       "duration_seconds": 240.0,
       "bpm": 66,
       "integrated_lufs": -23.9
+    },
+    {
+      "id": "music-am-47-luai-mai-yut",
+      "kind": "music",
+      "file": "library/music/music-am-47-luai-mai-yut.mp3",
+      "bytes": 5761611,
+      "sha256": "474087edd1c3907c414257c3c2643b19602274967773e4f76026a81a0e87852e",
+      "created_at": "2026-11-18T16:38:03Z",
+      "source": "pulled-bed",
+      "mood": "epic",
+      "duration_seconds": 240.0,
+      "bpm": 76,
+      "integrated_lufs": -23.7
     }
   ],
-  "updated_at": "2026-11-18T15:56:41Z"
+  "updated_at": "2026-11-18T16:38:03Z"
 }

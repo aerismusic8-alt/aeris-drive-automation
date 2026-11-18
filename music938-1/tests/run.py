@@ -6427,13 +6427,17 @@ def test_keyless_lyric_drafter() -> None:
           any("Thai chars" in p for p in A.lint_sections([("chorus", ["ก" * 90])])))
     # Pollinations returns `output_token_limit_exceeded` (HTTP 400) on a long
     # lyric brief unless the caller raises the ceiling; a produce run lost every
-    # draft to it (measured 2026-11-14). Both the ceiling and a retry for the
-    # genuinely transient 400 are required.
+    # draft to it (measured 2026-11-14, and again 2026-11-18). The models are
+    # reasoning LLMs, so the ceiling must cover hidden reasoning + answer, and a
+    # transient 400/402/429 still needs a retry. The ceiling *doubles* on the
+    # token-limit error so the loop self-heals instead of repeating a doomed call.
     poll = (ROOT.parent / "ops" / "pollinations_ask.py").read_text()
     check("pollinations sends max_tokens (the output-limit fix)",
           "max_tokens" in poll and "output_token_limit_exceeded" in poll)
-    check("pollinations retries a transient 400",
-          "400" in poll and "attempt == 2" in poll)
+    check("pollinations raises the ceiling on the token-limit error",
+          "max_tokens *= 2" in poll)
+    check("pollinations retries a transient 400/402/429",
+          "in (400, 402, 429)" in poll and "FREE_LIMIT_WAIT" in poll)
     # --plan must list N distinct songs, not the same theme N times.
     check("the plan advances the picker",
           "seen.add(t[2])" in (ROOT / "scripts" / "produce_loop.py").read_text())

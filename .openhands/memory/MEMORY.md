@@ -15,7 +15,10 @@ channel without K's approval.
 ## Accounts (K, 2026-11-14): every tool uses AR's OWN mail, not K's
 AR mailbox = `araeris4770d7@fldubai.com` (mail.tm; `ops/ar_identity.py`).
 AR self-creatable: **Nostr** (`AR_NOSTR_NSEC`), **Telegraph** (`ops/ar_telegraph.py`).
-Flow Music/Gemini need an AR *Google Account* → K taps a QR once. Detail: archive.
+Flow Music/Gemini = K's account `aerismusic8` (AR never types a password). K taps a
+QR once, then run `login_vault.py save` **immediately** — the session lasts ~1 day
+(cookies saved 11-17 were rejected 11-18). A free synth bed has **no vocal**; Flow
+is the only real-song route (K: "ยากแค่ทำเพลง").
 
 ## Roles and method (K, 2026-10-31)
 - **K = final authority.** Every standing rule is K's.
@@ -46,26 +49,23 @@ Views without follows is the failure. End every clip with `release.FOLLOW_ASK` +
 - **Fresh-pod recovery: `scripts/bootstrap-pod.sh`** — re-run after every pod.
 - **MV links must be durable (K: "ลิงค์ตาย").** GitHub Pages via `ax-mv-pages`
   (`ops/mv_page.py --all`); a /tmp preview dies on recycle. Detail: archive.
-- **24/7 runs on GitHub Actions, not the sandbox** (public repo → free minutes).
-  Judge health from the **rail run history** (API), not `data/heartbeat.json`.
+- **24/7 runs on GitHub Actions** (public repo → free minutes); judge health from
+  the **rail run history**, not `data/heartbeat.json`.
 - **FB posts via the Graph API only (2026-11-18); browser OFF (K 2026-11-15).**
-  channel.json = `api-only` (not `active`, not `paused`).
-  `fb_graph.page_access_token()` exchanges the System User token; vault
-  `axsecrets:fb-page-token`. Lanes in `crosspost.py`: song/photo/**text**/link/
-  affiliate; `augment_formats` is add-only (a disk rebuild once dropped 21
-  photos). Detail: archive.
+  channel.json = `api-only`. `fb_graph.page_access_token()` exchanges the System
+  User token; vault `axsecrets:fb-page-token`. Lanes in `crosspost.py`:
+  song/photo/**text**/link/affiliate; `augment_formats` is add-only (a disk
+  rebuild once dropped 21 photos). Detail: archive.
 - **Vault = source of truth; a secret injects only when the command *names* it.**
   Read it by naming `AX_VAULT_BOOTSTRAP`/`OPENHANDS_API_KEY`. Detail: archive.
 - **Writes:** `GITHUB_TOKEN` is 403; push via vault KV `axsecrets:gh-workflow-token`
   (workflow files need its `workflow` scope). Detail: archive.
-- **Desktop view = Live View** (`work-2`, port 12001).
-- **Thai text** lives only in `roblox/src/shared/Text.luau` +
-  `music938-1/fonts/NotoSansThai.ttf` (else tofu silently). Burned ASS text has no
-  emoji — use `•` / `»`.
+- **Desktop view = Live View** (`work-2`, port 12001). Thai text: `Text.luau` +
+  `NotoSansThai.ttf` (else tofu); burned ASS has no emoji (`•`/`»`).
 - **`ops/websearch.py`** is the free web search (Tavily has no quota left).
 
 ## Real-instrument sound (K)
-**sfizz** sampler, not GM; `AX_REQUIRE_REAL_INSTRUMENTS=1` makes a fallback **raise**.
+**sfizz** sampler, not GM; `AX_REQUIRE_REAL_INSTRUMENTS=1` → a fallback **raises**.
 
 ## Clip + thumbnail quality — one FLOOR, every format/channel (K, 2026-11-17)
 "ห้ามอัพขึ้นเด็ดขาด". `ops/clip_standard.py` = universal floor + a per-format
@@ -73,10 +73,9 @@ profile, gated at **every** upload route, no override; thumbnails too
 (`ops/thumb_standard.py`). Detail: `docs/clip-standard.md`; fix `ops/remaster_songs.py`.
 
 ## Retry lanes → ch3 (trivia + reactive)
-`ops/trivia_publish.py` + `ops/reactive_publish.py` upload via the one chokepoint
-(rails `ax-music-trivia.yml` / `ax-music-reactive.yml`). A cap = **retry**, not
-failure: each records only successes in a committed `work/*` ledger that **must be
-un-ignored** (`!…`) or `git add` is a silent no-op and it re-posts every tick.
+`ops/trivia_publish.py` + `ops/reactive_publish.py` share one chokepoint (rails
+`ax-music-trivia.yml` / `ax-music-reactive.yml`). A cap = **retry**, not failure;
+each ledger in `work/*` must be un-ignored (`!…`) or it re-posts every tick.
 
 ## Loop health & platform risks
 - **A green run is not a finished job.** `release.py` rc 4 + `UPLOAD_LIMIT_EXCEEDED`;
@@ -93,5 +92,5 @@ un-ignored** (`!…`) or `git add` is a silent no-op and it re-posts every tick.
   (`--strict`); guard `.github/workflows/ax-risk-audit.yml`.
 
 ## Recovery
-Lost rail/file: `$AX_VAULT_BOOTSTRAP` → `ops/ax_vault.py` (KV `axvault:readme`) or
+Lost rail/file: `$AX_VAULT_BOOTSTRAP` → `ops/ax_vault.py` (`axvault:readme`) or
 `MEMORY-ARCHIVE.md`; a lost `work/*.json` is in the conversation event log.
