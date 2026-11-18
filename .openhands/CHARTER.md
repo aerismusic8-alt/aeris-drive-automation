@@ -96,44 +96,48 @@ account — not just when K is watching.
 **The step, in order, before writing any code or starting any non-trivial job:**
 
 1. State the problem in one paragraph, plainly.
-2. Run `python3 ops/consult.py "<problem>"` (or `--file`). It asks the panel at
-   once and appends the answers to `ops/consult-log.jsonl`. The default panel is
-   the two **keyless** channels — no login, no API key, so it works on the day
-   the Google session is the thing that is broken:
-   - `pollinations` — plain HTTP, ~10s
-   - `duck` — Duck.ai's default model, ~90s+ (its Thai reads the best)
+2. Run `python3 ops/consult.py "<problem>"` (or `--file`). It asks the panel and
+   appends the answer to `ops/consult-log.jsonl`.
 
-   `chatgpt` and `gemini` remain reachable with `--only`, but they are out of the
-   default because they need the Google session, which is usually signed out, so
-   they mostly added latency.
+   **The panel is Gemini alone (K, 2026-11-18): "ทีมที่ปรึกษาให้ใช้ gemini คนเดียวพอ
+   แล้วต้องทำตามคำสั่งและแนะนำของ gemini เมื่อติดปัญหา"** — one advisor, and **when a
+   problem blocks the work, ask Gemini and follow what it says**. The other
+   vendors (`duck`, `pollinations`, `chatgpt`) stay reachable with `--only` for a
+   one-off second opinion, but they are out of the default. The earlier history:
+   K cut the slow seats (2026-11-07, "the advisors are slow and give weak
+   answers"); before that the panel was two keyless HTTP channels, and before
+   *that* five seats of which three were the same Duck.ai page. That is the
+   standing instruction in action — adopt whichever advisor actually solves it
+   and drop the rest — and it landed on Gemini.
 
-   **K cut the slow seats (2026-11-07): "the advisors are slow and give weak
-   answers — cut them; use the ones that are good and useful."** Measured first:
-   every Duck.ai seat costs 90-600s because they are one page, so the old
-   three-Duck panel was three names for *one* opinion (~10 minutes for no extra
-   view), and the wide `consult10.py` panel was eight Duck models — ~12 minutes of
-   one page agreeing with itself. The gate requires at least **two channels across
-   at least two vendors** (`MIN_ADVISORS` / `MIN_FAMILIES`). The vendor count is
-   what matters: several seats are the *same* Duck.ai page, so counting seats alone
-   let one vendor pass for a panel — the 2026-11-06 Facebook brief answered "10/10"
-   while 8 of the 10 were that one page. The gate is wired into a real runner
-   (`aeris938-2/scripts/admin.py` fails closed without a quorum); it is not enforced
-   in CI, so on a pod-side decision it is still on you to call it.
-3. Read the answers. Where they agree, that is the plan. Where they disagree,
-   say so and pick, with the reason.
-4. **Then** act. Record which advice was followed in the commit or the memory
-   log, so the decision is auditable.
+   Gemini needs the Google session on the cloud desktop. **If it is signed out,
+   recover it; never ask K for a Google login** (K, 2026-11-13): run
+   `bootstrap.py`, then `python3 ops/login_vault.py restore`, then
+   `check_login.py` (judge by the account email, not by cookie presence). Only if
+   the vault cannot restore it is K needed.
+
+   The gate floor is now `MIN_ADVISORS` / `MIN_FAMILIES` = 1, so one Gemini answer
+   passes. The gate is wired into a real runner (`aeris938-2/scripts/admin.py`
+   fails closed without a quorum); it is not enforced in CI, so on a pod-side
+   decision it is still on you to call it.
+3. **Follow Gemini.** Where a problem blocks us, its advice is the instruction.
+   If its advice is impossible (a paid tool, a login only K holds), say which part
+   is impossible and why rather than silently ignoring it. Where a Gemini answer
+   contradicts a number the repo measured, the number wins — report the conflict.
+4. **Then** act. Record which advice was followed (`ops/consult.py --applied`) or
+   in the memory log, so the decision is auditable.
 
 Trivial, mechanical work — a typo, a version bump, a doc fix, a command already
 known to be right — does not need a consultation. Judgement calls do: a new
 feature, a strategy, a "why is this failing" that has already resisted one fix.
 
-The `--only duck` flag exists for a quick check; it is not an excuse to skip the
-panel on a real decision.
+The `--only <vendor>` flag exists for a quick check; it is not an excuse to skip
+the consultation on a real decision.
 
 A vendor that repeatedly gives the better answer becomes the default advisor for
 that class of problem — K's standing instruction is to adopt whichever one
 actually solves it and keep using it, and to drop the ones that are slow or weak.
+That is how the panel narrowed to Gemini.
 
 ## The perpetual loop (this work is never "done")
 

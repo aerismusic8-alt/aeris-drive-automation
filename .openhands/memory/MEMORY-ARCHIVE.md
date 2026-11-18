@@ -6334,3 +6334,14 @@ platform-side, not code: the *account* daily new-video cap and the shared 10k AP
   "quota"). Chunk via `ops/yt_auth.get_videos`; a non-403 error must fail the rail.
 - **YPP = 1,000 subs AND 4,000 watch-hours.** `goal_watch` reads the Studio scrape
   and names **retention** when the hour gate is further.
+
+### moved from MEMORY.md 2026-11-18 (Gemini-advisor rule made room)
+- **`continue-on-error` + a wrong step order = a silent broken artifact.** 2026-11-18
+  the produce rail pulled the beds *after* the produce step, so every song shipped
+  `audio: none` while the run stayed green. Fix: gate the artifact (`no_audio` →
+  exit 2) and assert the step ORDER in a test, not only presence.
+- **FB detail:** `fb_graph.page_access_token()` exchanges the System User token;
+  vault `axsecrets:fb-page-token`; lanes song/photo/text/link/affiliate;
+  `augment_formats` is add-only (a disk rebuild once dropped 21 photos).
+- **Advisor history:** panel was 5 seats (2026-11-05) → 2 keyless (2026-11-07) →
+  **Gemini alone (K, 2026-11-18)**. `consult.py` floor is now MIN_ADVISORS/'MIN_FAMILIES'=1.

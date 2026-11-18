@@ -23,23 +23,21 @@ answer, timestamps, the vendor families that answered, and what was later
 *applied*) so the reasoning behind a decision is auditable later and the
 "which vendor actually helped" question has data behind it.
 
-Vendors (all free, Rule #1). The default panel is the two keyless ones:
-  - pollinations : plain HTTP, no login, no API key — ~12s
-  - duck         : Duck.ai, needs NO login, so it still works when the Google
-                   session is the thing that is broken — ~90s
-
-The ChatGPT and Gemini web apps remain available (`--only chatgpt`), but they
-are out of the default: they need the Google session, which is usually signed
-out, so they mostly added latency. Three of the old channels were the same
-Duck.ai page under different names — one opinion, three times the wait.
+Vendors (all free, Rule #1). The default panel is **Gemini alone** (K,
+2026-11-18): the cloud desktop's signed-in `gemini.google.com` tab. It is the one
+advisor K wants, and its answer is what we follow when blocked. The keyless
+channels (pollinations ~12s, duck ~90s) and the ChatGPT web app stay reachable
+with `--only <name>` for a one-off second opinion, but they are out of the
+default. Three of the old channels were the same Duck.ai page under different
+names — one opinion, three times the wait.
 
 K's original rule was five *channels* on every non-trivial task (2026-11-05).
-Measured against `consult-log.jsonl` that floor was never met (4 of 33 rows) and
-got skipped, which is the failure the rule exists to prevent. K's correction
-(2026-11-07): use the advisors that are fast and useful, drop the rest. So the
-gate now requires `MIN_ADVISORS` (two) channels to answer **across at least
-`MIN_FAMILIES` (two) vendors** — two real vendors is the honest minimum for "not
-a single opinion", and it is what the panel actually delivers.
+K then cut the slow advisors (2026-11-07) and finally narrowed the panel to
+**Gemini alone** (2026-11-18): "ทีมที่ปรึกษาให้ใช้ gemini คนเดียวพอ แล้วต้องทำตาม
+คำสั่งและแนะนำของ gemini เมื่อติดปัญหา" — the advisor team is one member, and when
+a problem blocks us the instruction is to ask Gemini and follow what it says.
+So the gate floor is now `MIN_ADVISORS`/`MIN_FAMILIES` = 1, and the default panel
+is `["gemini"]`. The other vendors stay in `VENDORS` for a one-off `--only` call.
 """
 from __future__ import annotations
 
@@ -60,20 +58,12 @@ import pollinations_ask  # noqa: E402
 
 LOG = HERE / "consult-log.jsonl"
 
-# The standing panel. K (2026-11-07): "the advisors are slow and give weak
-# answers — cut them; use the ones that are good and useful."
-#
-# Measured before cutting: every Duck.ai channel takes 90-600s because they are
-# one page, and the old three-Duck panel was three names for ONE opinion (family
-# "duck"), so it spent ~10 minutes to buy nothing. `consult10.py` widened that to
-# eight Duck models — ~12 minutes of one page agreeing with itself.
-#
-# So the default panel is now the two keyless channels that answer over plain
-# HTTP: Pollinations (12s) and a single Duck.ai call. Two real vendors, no login,
-# no key, about two minutes. The ChatGPT/Gemini web apps stay in VENDORS and can
-# still be named with `--only` when a Google session is up, but they are out of
-# the default: a channel that is usually signed out only adds latency.
-PANEL = ["duck", "pollinations"]
+# The standing panel. K (2026-11-18): "ทีมที่ปรึกษาให้ใช้ gemini คนเดียวพอ แล้วต้อง
+# ทำตามคำสั่งและแนะนำของ gemini เมื่อติดปัญหา" — the advisor team is Gemini alone,
+# and when a problem blocks us, ask Gemini and follow its advice. The other
+# vendors stay in VENDORS so a one-off question can still name them with `--only`,
+# but they are no longer part of the default panel.
+PANEL = ["gemini"]
 VENDORS = {
     "duck": duck_ask.ask,
     "pollinations": pollinations_ask.ask,
@@ -97,17 +87,12 @@ def family(vendor: str) -> str:
 def families(answers: dict) -> set[str]:
     return {family(k) for k, v in answers.items() if v.get("ok")}
 
-# The gate floor, measured against the log rather than wished for. A channel
-# count of 5 was never reached (4 of 33 consultations) and a channel floor of 3
-# refused most of them (median was ONE channel), so the rule was skipped in
-# practice — the failure mode the advisors warned about. What actually matters
-# is more than one *vendor*: two families is the honest minimum for "not a
-# single opinion", and the trimmed panel of two keyless channels delivers it.
-MIN_FAMILIES = 2
-# Two channels, not three: the old three-channel floor was reachable only by
-# naming the same Duck page three times, which is one opinion and ~10 minutes.
-# With two real vendors in the panel, two answered channels IS two vendors.
-MIN_ADVISORS = 2
+# The gate floor. K's advisor team is now Gemini alone (2026-11-18), so the floor
+# is one advisor and one family. The earlier two-family floor existed to stop a
+# single Duck.ai page passing for a panel; with a one-vendor panel that reasoning
+# no longer applies, and K's instruction is to follow Gemini.
+MIN_FAMILIES = 1
+MIN_ADVISORS = 1
 
 
 def quorum(answers: dict) -> tuple[bool, str]:

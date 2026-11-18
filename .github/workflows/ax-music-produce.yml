@@ -59,7 +59,7 @@ jobs:
           # fluidsynth is the General-MIDI path K rejected; the beds are pulled
           # pre-rendered through real instruments instead (see the pull step) and
           # AX_REQUIRE_REAL_INSTRUMENTS makes a GM render fail the run.
-          python3 -m pip install --quiet --disable-pip-version-check Pillow mido numpy imageio-ffmpeg
+          python3 -m pip install --quiet --disable-pip-version-check Pillow mido numpy imageio-ffmpeg websocket-client
           # imageio-ffmpeg is the ffmpeg `ops/remaster_songs.py` resolves; without
           # it the new master's remaster step fails and the song ships at -23.9
           # LUFS, under the floor (measured 2026-11-18).

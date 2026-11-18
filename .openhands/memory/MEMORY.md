@@ -16,17 +16,19 @@ channel without K's approval.
 AR mailbox = `araeris4770d7@fldubai.com` (mail.tm; `ops/ar_identity.py`).
 AR self-creatable: **Nostr** (`AR_NOSTR_NSEC`), **Telegraph** (`ops/ar_telegraph.py`).
 Flow Music/Gemini = K's account `aerismusic8` (AR never types a password). K taps a
-QR once, then run `login_vault.py save` **immediately** — the session lasts ~1 day
-(cookies saved 11-17 were rejected 11-18). A free synth bed has **no vocal**; Flow
-is the only real-song route (K: "ยากแค่ทำเพลง").
+QR once, then `login_vault.py save` **immediately** — the session lasts ~1 day (the
+11-17 cookies were rejected 11-18). A synth bed has **no vocal**; Flow is the only
+real-song route (K: "ยากแค่ทำเพลง").
 
 ## Roles and method (K, 2026-10-31)
 - **K = final authority.** Every standing rule is K's.
 - **AR = me.** I administer **all** of K's work in K's place — decide, execute,
   report; no per-step approval. Hand K only what needs a credential or authority
   only K holds.
-- **Method: PCSEV** (Problem, Cause, Solution, Execute, Verify); `ops/consult.py`
-  **is** a real gate (→ `consult-log.jsonl`).
+- **Method: PCSEV** (Problem, Cause, Solution, Execute, Verify). **Advisor =
+  Gemini alone (K, 2026-11-18): "ทีมที่ปรึกษาให้ใช้ gemini คนเดียวพอ" — when stuck,
+  ask Gemini and follow its advice**; `ops/consult.py` is a real gate
+  (→ `consult-log.jsonl`), panel `["gemini"]`, floor 1.
 - **Time format (K, 2026-11-12):** times shown to K use **Thai time (UTC+7)
   24-hour** — never UTC or AM/PM. Rails stay UTC.
 
@@ -50,12 +52,10 @@ Views without follows is the failure. End every clip with `release.FOLLOW_ASK` +
 - **MV links must be durable (K: "ลิงค์ตาย").** GitHub Pages via `ax-mv-pages`
   (`ops/mv_page.py --all`); a /tmp preview dies on recycle. Detail: archive.
 - **24/7 runs on GitHub Actions** (public repo → free minutes); judge health from
-  the **rail run history**, not `data/heartbeat.json`.
-- **FB posts via the Graph API only (2026-11-18); browser OFF (K 2026-11-15).**
-  channel.json = `api-only`. `fb_graph.page_access_token()` exchanges the System
-  User token; vault `axsecrets:fb-page-token`. Lanes in `crosspost.py`:
-  song/photo/**text**/link/affiliate; `augment_formats` is add-only (a disk
-  rebuild once dropped 21 photos). Detail: archive.
+  the **rail run history**, not `heartbeat.json`.
+- **FB = Graph API only (2026-11-18); browser OFF (K 2026-11-15).** channel.json =
+  `api-only`; vault `axsecrets:fb-page-token`; lanes in `crosspost.py` (song/photo/
+  text/link/affiliate). Detail: archive.
 - **Vault = source of truth; a secret injects only when the command *names* it.**
   Read it by naming `AX_VAULT_BOOTSTRAP`/`OPENHANDS_API_KEY`. Detail: archive.
 - **Writes:** `GITHUB_TOKEN` is 403; push via vault KV `axsecrets:gh-workflow-token`
@@ -83,14 +83,14 @@ each ledger in `work/*` must be un-ignored (`!…`) or it re-posts every tick.
   clears over hours, not at the 08:00 UTC reset; a burst extends it. Detail: archive.
 - **`continue-on-error` + a wrong step order = a silent broken artifact.**
   2026-11-18 the produce rail pulled the beds *after* the produce step, so every
-  song shipped `audio: none` and the run stayed green: gate the artifact
-  (`no_audio` → exit 2) and assert the order in a test, not only presence.
+  song shipped `audio: none` while the run stayed green: gate the artifact and
+  assert the order in a test. Detail: archive.
 - **Never decide on missing/stale data** (2026-11-12): a blank/stale newest row is
   `data`, never a guess; `--assert-fresh` gates the dashboard rail.
 - **`videos.list` ≤50 ids/call; YPP = 1,000 subs AND 4,000 watch-hours.** Detail: archive.
 - Platform risks: `AKATH_CORE/OPENHANDS_RISK_REGISTER.json` + `ops/risk_audit.py`
-  (`--strict`); guard `.github/workflows/ax-risk-audit.yml`.
+  (`--strict`), guarded by `ax-risk-audit.yml`.
 
 ## Recovery
 Lost rail/file: `$AX_VAULT_BOOTSTRAP` → `ops/ax_vault.py` (`axvault:readme`) or
-`MEMORY-ARCHIVE.md`; a lost `work/*.json` is in the conversation event log.
+`MEMORY-ARCHIVE.md`; a lost `work/*.json` is in the event log.

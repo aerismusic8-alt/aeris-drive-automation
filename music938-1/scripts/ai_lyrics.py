@@ -222,7 +222,9 @@ def parse_body(raw: str) -> list[tuple[str, list[str]]]:
         s = line.strip()
         if not s:
             continue
-        m = re.match(r"\[(verse|chorus|bridge|intro|outro|pre[- ]?chorus)\]", s, re.I)
+        m = re.match(
+            r"^[\s*(\[]*(verse|chorus|bridge|intro|outro|pre[- ]?chorus)"
+            r"[\s*)\]\d:.\-—]*$", s, re.I)
         if m:
             cur = (m.group(1).lower(), [])
             sections.append(cur)
@@ -355,7 +357,16 @@ def draft(meta: dict, angle: str = "", drafter: str = "chatgpt"
     A thin public wrapper so the multi-AI forge drives the same prompt, the same
     parser and the same filter as the single-shot path.
     """
-    sections = parse_body(DRAFTERS[drafter](build_prompt(meta, angle)))
+    raw = DRAFTERS[drafter](build_prompt(meta, angle))
+    sections = parse_body(raw)
+    if not sections:
+        # The parser found no [section] tags. That is either a model refusal or
+        # a heading style the parser did not recognise (2026-11-18: a CI run
+        # answered in Thai but parsed to 0/6 and looked like an empty reply).
+        # Print a bounded preview so the next run shows which it was.
+        preview = " / ".join(raw.split())[:300]
+        print(f"  {drafter}: parsed 0 sections; raw preview: {preview}",
+              flush=True)
     return sections, lint_sections(sections)
 
 

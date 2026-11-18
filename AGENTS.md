@@ -25,7 +25,7 @@ loader scans that directory at conversation start (README.md is skipped).
 
 | Agent | Job | Drives |
 | --- | --- | --- |
-| `ax-advisor` | consultation gate, keeps dissent, reports quorum | `ops/consult.py`, `duck_ask.py`, `pollinations_ask.py` |
+| `ax-advisor` | Gemini-only consultation gate (K, 2026-11-18); follow its advice when blocked | `ops/consult.py`, `ops/gemini_ask.py`, `websearch.py` |
 | `ax-evidence` | the 4 surfaces, fresh/stale/unknown, no bad-data verdicts | `aeris938-2/scripts/evidence.py`, `ops/studio_read.py` |
 | `ax-experiment` | one recorded non-duplicate test per constraint, respects HOLD | `experiment_loop.py`, `goal_watch.py` |
 | `ax-session` | keeps/recoveries the free browser session without asking K | `check_login.py`, `ops/login_vault.py` |

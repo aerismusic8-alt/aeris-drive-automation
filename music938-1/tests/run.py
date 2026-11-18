@@ -274,6 +274,22 @@ def test_lyrics_parse() -> None:
     check("all lines are Thai", all(has_thai(l) for l in lines))
     # An intro/outro is instrumental, so its (empty) body is not a lyric line.
     check("no header lines in body", not any(l.startswith("#") for l in lines))
+    # The section heading must be recognised however the model writes it. A
+    # CI run answered in Thai but the parser only matched the exact `[verse]`
+    # form, so it read 0/6 sections and the song was thrown away (2026-11-18).
+    import ai_lyrics as A
+    for raw, want in (
+        ("[Verse 1]\nก ก ก ก", 1),
+        ("Verse 1\nก ก ก ก", 1),
+        ("**Chorus**\nก ก ก ก", 1),
+        ("(Bridge)\nก ก ก ก", 1),
+        ("[pre-chorus]\nก ก ก ก", 1),
+    ):
+        check(f"parse_body accepts {raw.splitlines()[0]!r}",
+              len(A.parse_body(raw)) == want, raw.splitlines()[0])
+    # A refusal (no tags at all) must stay empty, not invent a section.
+    check("parse_body returns nothing for an untagged answer",
+          A.parse_body("ขอโทษครับ ผมไม่สามารถเขียนเนื้อเพลงได้") == [])
 
 
 # --- rendered output -------------------------------------------------------
@@ -6483,32 +6499,22 @@ def test_consult_gate() -> None:
     src = (ROOT.parent / "ops" / "consult.py").read_text()
     check("chatgpt/gemini/duck stay available via --only",
           all(v in consult.VENDORS for v in ("chatgpt", "gemini", "duck")))
-    # K cut the slow advisors (2026-11-07): the default panel is the keyless
-    # channels only. The web apps stay reachable but are out of the default,
-    # because they need the Google session and mostly added latency.
-    check("the default panel is small (K: cut the slow ones)",
-          len(consult.PANEL) <= 3, f"{len(consult.PANEL)}")
-    check("every default channel is keyless (no login, no API key)",
-          set(consult.PANEL) == {"duck", "pollinations"})
-    check("the default panel names two distinct vendors",
-          len({consult.family(c) for c in consult.PANEL}) >= 2)
-    # A keyless HTTP channel keeps the panel at quorum on the days the browser
-    # channels die together (Gemini signs out, ChatGPT free throttles, a Duck tab
-    # wedges), so it is a first-class vendor, not a fallback script.
-    check("a keyless HTTP channel is in the panel", "pollinations" in consult.VENDORS)
-    check("that channel is a distinct vendor family",
-          consult.family("pollinations") == "pollinations")
-    # The quorum counts *vendors*, not channels: several Duck.ai models are one
-    # page, so counting channels let one page pass for a panel (the 2026-11-06 FB
-    # brief "10/10 agreed" while 8 were the same page).
+    # K (2026-11-18): the advisor team is Gemini alone, and when blocked we ask
+    # Gemini and follow its advice. So the default panel is exactly ["gemini"].
+    check("the default panel is Gemini alone (K, 2026-11-18)",
+          consult.PANEL == ["gemini"], str(consult.PANEL))
+    check("gemini is its own vendor family",
+          consult.family("gemini") == "gemini")
+    # The keyless HTTP channels are no longer the panel, but stay reachable.
+    check("a keyless HTTP channel stays reachable via --only",
+          "pollinations" in consult.VENDORS and "duck" in consult.VENDORS)
     check("duck channels collapse to one vendor",
           consult.family("duck-luna") == consult.family("duck-oss") == "duck")
-    check("chatgpt and gemini are their own vendors",
-          consult.family("chatgpt") == "chatgpt"
-          and consult.family("gemini") == "gemini")
-    check("the floor is measured in families", consult.MIN_FAMILIES >= 2,
-          f"{consult.MIN_FAMILIES}")
-    check("the floor matches the two-channel default",
+    # A single Gemini answer IS a quorum now (K narrowed the panel to one).
+    check("the floor is one advisor / one family",
+          consult.MIN_ADVISORS == 1 and consult.MIN_FAMILIES == 1,
+          f"{consult.MIN_ADVISORS}/{consult.MIN_FAMILIES}")
+    check("the floor matches the one-channel default",
           consult.MIN_ADVISORS == len(consult.PANEL),
           f"{consult.MIN_ADVISORS} vs {len(consult.PANEL)}")
     check("duck needs no login", "duck" in consult.VENDORS)
@@ -6529,33 +6535,18 @@ def test_consult_gate() -> None:
         check("gate reports not consulted", consult.consulted(brief) is None)
 
         # A consultation where nobody answered is not a consultation.
-        consult.record(brief, {"chatgpt": {"ok": False, "error": "timeout"}})
+        consult.record(brief, {"gemini": {"ok": False, "error": "signed out"}})
         check("an unanswered consultation does not satisfy the gate",
               consult.consulted(brief) is None)
 
-        # One family under three names is still one opinion — the exact shape the
-        # old channel count passed.
-        consult.record(brief, {"duck": {"ok": True, "answer": "a"},
-                               "duck-claude": {"ok": True, "answer": "b"},
-                               "duck-oss": {"ok": True, "answer": "c"}})
-        check("one vendor echoing itself is not a quorum",
-              consult.consulted(brief) is None)
-
-        # A single channel is not a panel either.
-        consult.record(brief, {"chatgpt": {"ok": True, "answer": "x"}})
-        check("one answer does not satisfy the gate",
-              consult.consulted(brief) is None)
-
-        # Two vendors across three channels satisfies it.
-        consult.record(brief, {"chatgpt": {"ok": True, "answer": "x"},
-                               "duck": {"ok": True, "answer": "y"},
-                               "duck-oss": {"ok": True, "answer": "z"}})
+        # One answered Gemini channel is a quorum now (K's one-advisor rule).
+        consult.record(brief, {"gemini": {"ok": True, "answer": "x"}})
         row = consult.require(brief)
-        check("gate passes after a real quorum (2 vendors / 3 channels)",
-              row is not None)
-        check("the quorum reason names the vendors",
-              "chatgpt" in consult.quorum(row["answers"])[1]
-              and "duck" in consult.quorum(row["answers"])[1])
+        check("a single Gemini answer satisfies the gate", bool(row))
+        check("the row records gemini as the family",
+              "gemini" in row.get("families", []), str(row.get("families")))
+        check("the quorum reason names the vendor",
+              "gemini" in consult.quorum(row["answers"])[1])
         check("the digest is stable across whitespace",
               consult.digest(brief) == consult.digest("  " + brief + "  "))
         check("a different brief is a different gate",
