@@ -130,6 +130,96 @@ def _from_markers(lines: list[str], markers: list[dict]) -> list[dict]:
     return out
 
 
+def marker_blocks(lyric_text: str, markers: list, duration: float) -> list[dict]:
+    """Flow's markers as blocks: `{section, start, end, lines}`.
+
+    Each marker is `[char_offset, start_seconds]` into the clip's own lyric text
+    (verified against clipmeta: offset 8 is the first `[Verse]` tag, offset 103
+    the first `[Chorus]`, and every offset lands exactly on a `[Section]` tag).
+    One marker is one block, so a block's span runs to the next marker's start.
+    """
+    if not markers:
+        return []
+    tags = [(int(m[0]), float(m[1])) for m in markers]
+    tags.sort()
+    tag_re = re.compile(r"\[([^\]]+)\]")
+    blocks: list[dict] = []
+    for i, (off, t) in enumerate(tags):
+        nxt_t = tags[i + 1][1] if i + 1 < len(tags) else max(t, duration)
+        nxt_off = tags[i + 1][0] if i + 1 < len(tags) else len(lyric_text)
+        # `off` points just past the block's own `[Section]` tag, so the section
+        # is the last tag before the offset — not one inside the slice, which
+        # would pick up the *next* block's tag at the tail.
+        before = tag_re.findall(lyric_text[:off])
+        section = before[-1].strip().lower() if before else ""
+        lines = []
+        for ln in lyric_text[off:nxt_off].splitlines():
+            ln = ln.strip()
+            if ln and not (ln.startswith("[") and ln.endswith("]")):
+                lines.append(ln)
+        blocks.append({"section": section, "start": t,
+                       "end": max(t, nxt_t), "lines": lines})
+    return blocks
+
+
+def lines_from_markers(lyric_text: str, markers: list, duration: float) -> list[dict]:
+    """Real per-line timing from Flow's `lyrics_timing.value.markers`.
+
+    Flow gives one time per *block*, not per line, so a block's span is spread
+    evenly over its sung lines by weight. This is what makes the lyric sweep
+    honest: the estimate K rejected (2026-11-03) guessed the whole song from its
+    length; these markers are the times the model actually sang.
+    """
+    out: list[dict] = []
+    for b in marker_blocks(lyric_text, markers, duration):
+        if not b["lines"]:
+            continue
+        span = max(0.1, b["end"] - b["start"])
+        weights = [max(1, len(l.replace(" ", ""))) for l in b["lines"]]
+        total = sum(weights)
+        t = b["start"]
+        for ln, w in zip(b["lines"], weights):
+            d = span * w / total
+            out.append({"text": ln, "start": t, "end": t + d})
+            t += d
+    return out
+
+
+def load_timing(slug: str) -> list[dict]:
+    """Real per-line timing for a song, from its saved clipmeta. Empty if none.
+
+    A Flow compose clip carries no markers, so this returns `[]` and the caller
+    falls back to the length estimate. Only the Lyria agent path has them.
+    """
+    return _clip_timing(slug)[0]
+
+
+def load_timing_blocks(slug: str) -> list[dict]:
+    """Real per-block timing (with `section`) for a song, or `[]`."""
+    return _clip_timing(slug)[1]
+
+
+def _clip_timing(slug: str) -> tuple[list[dict], list[dict]]:
+    meta = ROOT / "library" / "songs" / f"clipmeta-{slug}.json"
+    if not meta.exists():
+        return [], []
+    try:
+        d = json.loads(meta.read_text(encoding="utf-8"))
+        lt = d.get("lyrics_timing") or {}
+        if lt.get("status") != "completed":
+            return [], []
+        value = lt.get("value") or {}
+        markers = value.get("markers") or []
+        text = (d.get("lyrics") or {}).get("value", {}).get("text") or ""
+        dur = float((d.get("duration") or {}).get("value") or 0.0)
+        if not markers or not text:
+            return [], []
+        blocks = marker_blocks(text, markers, dur or 0.0)
+        return lines_from_markers(text, markers, dur or 0.0), blocks
+    except (ValueError, TypeError, OSError):
+        return [], []
+
+
 def build_ass(timed: list[dict], meta: dict, duration: float,
               captions: bool = False) -> str:
     """Overlay for a song video.

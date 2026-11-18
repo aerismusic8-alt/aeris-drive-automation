@@ -1154,6 +1154,35 @@ def test_shorts() -> None:
     check("the Short thumbnail lifts the dark frame",
           "eq=gamma=" in tf and "unsharp=" in tf, tf[-300:])
 
+    # K, 2026-11-18: the captions were dropped (2026-11-03) because the sweep was
+    # *estimated* from the song length and drifted off the sung line. A Lyria clip
+    # carries `lyrics_timing.value.markers` — `[char_offset, start_seconds]` into
+    # the clip's own lyric text — which are the times the model actually sang. Song
+    # 48 has them (7 markers, one per section), so the sweep can be note-accurate
+    # and the Short opens on the real chorus. These checks pin the adapter and the
+    # real-chorus window; a regression here silently returns to the drifting sweep.
+    blocks = make_karaoke.load_timing_blocks("48-luai-mai-yut-v48")
+    check("markers decode to one block per section", len(blocks) == 7, str(len(blocks)))
+    check("block 0 is the verse at the first marker",
+          blocks and blocks[0]["section"] == "verse"
+          and abs(blocks[0]["start"] - 15.5) < 0.05, str(blocks[0] if blocks else None))
+    check("block 1 is the chorus at the real time",
+          len(blocks) > 1 and blocks[1]["section"] == "chorus"
+          and abs(blocks[1]["start"] - 46.5) < 0.05, str(blocks[1] if len(blocks) > 1 else None))
+    timed = make_karaoke.load_timing("48-luai-mai-yut-v48")
+    check("real timing covers every sung line", len(timed) >= 24, str(len(timed)))
+    check("the first chorus line is timed at the chorus start",
+          any(t["text"].startswith("จัดเต็มบาร์หนึ่งครั้ง") and abs(t["start"] - 46.5) < 0.05
+              for t in timed))
+    # The window must open on the sung chorus (46.5 - HOOK_PAD), not the estimate.
+    w0 = make_short._pick_windows("48-luai-mai-yut-v48", 236.6)[0]
+    check("the hook opens on the real chorus, not the estimate",
+          abs(w0[0] - (46.5 - make_short.HOOK_PAD)) < 0.5, f"{w0[0]:.2f}")
+    # A clip with no markers must fall back to the estimate (empty, not a crash).
+    check("a clip without markers falls back to the estimate",
+          make_karaoke.load_timing("01-khon-di-thi-chak-pai") == []
+          and make_karaoke.load_timing_blocks("01-khon-di-thi-chak-pai") == [])
+
 
 def test_motion_lane() -> None:
     section("motion lane (free image-to-video)")
@@ -4940,8 +4969,15 @@ def test_session_guard() -> None:
     section("session guard (heal without K)")
     ops = ROOT.parent / "ops"
     src = (ops / "session_guard.py").read_text()
-    check("auto-revives Flow Music only, not Facebook",
-          'AUTO_REVIVE = {"flow"}' in src and '"facebook"' not in src.split("AUTO_REVIVE")[1][:40])
+    # Google is auto-revived too, from the same SSO password: Flow can be alive
+    # while the Google account behind it is dead (2026-11-18), which made Gemini
+    # read as a guest. Facebook must stay out — a browser session posting on a
+    # cron cadence is the automation signature Meta caught (K, 2026-11-15).
+    check("auto-revives Flow Music and Google, not Facebook",
+          'AUTO_REVIVE = {"flow", "google"}' in src
+          and '"facebook"' not in src.split("AUTO_REVIVE")[1][:40])
+    check("revives Google at the source", "def _revive_google" in src
+          and "accounts.google.com" in src)
     check("never browser-revives Facebook",
           "import fb_relogin" not in src and "fb_relogin.relogin" not in src
           and "fb_relogin.revive_headless" not in src

@@ -33,7 +33,7 @@ ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from make_karaoke import (  # noqa: E402  reuse the lyric engine
     FONT, LEAD, OUTLINE, PRIMARY, SECONDARY, _duration, _escape, _ts,
-    _words, ass_filter, estimate, load_lyrics,
+    _words, ass_filter, estimate, load_lyrics, load_timing, load_timing_blocks,
 )
 import release  # noqa: E402  the hook titles live with the rest of the copy
 
@@ -41,7 +41,8 @@ W, H = 1080, 1920
 FPS = 30
 MAX_SECONDS = 58.0        # under the 60s Shorts ceiling, with margin
 HOOK_PAD = 0.6            # a beat of lead-in so the hook does not start on frame 0
-ZOOM_MAX = 1.18           # the cover zoom ramp: 1.0 -> ZOOM_MAX across the clip
+ZOOM_MIN = 1.10           # zoom at frame 0; headroom for the pan without edges
+ZOOM_MAX = 1.26           # the cover zoom ramp: ZOOM_MIN -> ZOOM_MAX across the clip
 
 # The opening card. Every platform's ranking leans hardest on the first two
 # seconds — a scroll is decided before the chorus lands — and the file used to
@@ -152,8 +153,27 @@ def _window(duration: float, start_frac: float, len_frac: float) -> tuple[float,
 
 
 def _pick_windows(slug: str, duration: float) -> list[tuple[float, float]]:
-    """One window per chorus, de-duplicated if two land on the same spot."""
-    out: list[tuple[float, float]] = []
+    """One window per chorus, de-duplicated if two land on the same spot.
+
+    When the clip carries real markers, a window starts exactly at a sung chorus
+    (`marker_blocks`), so the Short opens on the hook instead of near it. Without
+    markers it falls back to the share-of-lines estimate.
+    """
+    real = [b for b in load_timing_blocks(slug) if b["section"] == "chorus"
+            and b["lines"]]
+    if real:
+        out: list[tuple[float, float]] = []
+        for b in real:
+            start = max(0.0, b["start"] - HOOK_PAD)
+            length = min(MAX_SECONDS, duration - start)
+            if length < 12:
+                continue
+            if all(abs(start - o[0]) > 5.0 for o in out):
+                out.append((start, length))
+        if out:
+            return out
+
+    out = []
     for sf, lf in chorus_spans(slug):
         w = _window(duration, sf, lf)
         if all(abs(w[0] - o[0]) > 5.0 for o in out):
@@ -167,14 +187,15 @@ def _pick_window(slug: str, duration: float) -> tuple[float, float]:
 
 def build_ass(slug: str, lines: list[str], meta: dict, start: float,
               length: float, duration: float, captions: bool = False,
-              hook: int = 1) -> str:
+              hook: int = 1, timed: list[dict] | None = None) -> str:
     """Vertical overlay: the title card and a watermark, and optionally the
     per-line lyric sweep.
 
-    `captions=False` (default) draws no lyric text. The sweep timing is
-    *estimated* from the song length, not measured, so it drifts off the sung
-    line; K ordered it dropped (2026-11-03). Pass `captions=True` for the old
-    behaviour.
+    `timed` is the real per-line timing from the clip's markers; when it is
+    present the sweep is note-accurate and `captions` should be on. When it is
+    absent the only timing available is `estimate`, which guesses from the song
+    length and drifts off the sung line — that is what K rejected (2026-11-03),
+    so without real markers the default stays captions-off.
     """
     head = f"""[Script Info]
 ScriptType: v4.00+
@@ -197,8 +218,9 @@ Style: FollowSub,{FONT},54,&H00E8E8E8,&H00E8E8E8,{OUTLINE},&H00000000,0,0,0,0,10
 [Events]
 Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
 """
-    # Timing is estimated over the WHOLE song, then shifted into the window.
-    full = estimate(lines, duration)
+    # Timing is real (markers) when the clip carries them, else estimated over
+    # the whole song and shifted into the window.
+    full = timed if timed else estimate(lines, duration)
     events: list[str] = []
 
     # The opening card carries the *first sung line* of this hook, not a generic
@@ -219,11 +241,10 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
             f"{{\\fad({int(HOOK_CARD_FADE*1000)},{int(HOOK_CARD_FADE*1000)})}}"
             f"{_escape(card)}")
 
-    # No overlay text at all. K (2026-11-04): the drifting lyric sweep did not
-    # match the sung line, so every song looked like it was lying to the viewer,
-    # and the channel is now "just songs" — album art and audio. The song title
-    # still appears on the cover art itself, which is normal for a release.
-    for item in (full if captions else []):
+    # Real markers make the sweep honest, so it is drawn whenever they exist;
+    # the estimated sweep stays off unless asked for (K, 2026-11-04: a sweep that
+    # does not match the sung line makes the song look like it is lying).
+    for item in (full if (captions or timed) else []):
         if item["end"] <= start or item["start"] >= start + length:
             continue
         s = max(item["start"], start) - start
@@ -272,8 +293,9 @@ def render(slug: str, *, mix: str = "song", out_dir: Path | None = None,
     The default writes just the first, so a caller that wants one file per song
     still gets exactly that.
 
-    `captions=False` (default) draws no lyric sweep; the estimated timing drifts
-    off the sung line and K ordered it dropped (2026-11-03).
+    `captions=False` (default) draws no *estimated* lyric sweep; the estimate
+    drifts off the sung line and K ordered it dropped (2026-11-03). When the clip
+    carries real markers the sweep is note-accurate and is drawn regardless.
     """
     audio = ROOT / "library" / "songs" / f"{mix}-{slug}.mp3"
     cover = ROOT / "library" / "covers" / f"cover-{slug}.jpg"
@@ -302,6 +324,7 @@ def render(slug: str, *, mix: str = "song", out_dir: Path | None = None,
 
     meta, lines = load_lyrics(slug)
     duration = _duration(audio)
+    timed = load_timing(slug)
     windows = _pick_windows(slug, duration)
     if not all_hooks:
         windows = windows[:1]
@@ -316,35 +339,39 @@ def render(slug: str, *, mix: str = "song", out_dir: Path | None = None,
 
     # The cover is square, so a hard centre crop to 9:16 would slice the title
     # text off the sides. Instead: a blurred, zoomed copy of the cover fills the
-    # vertical frame, the whole cover sits centred on top, and the pair zooms
-    # slowly so the frame is not dead. This is the usual Shorts treatment and it
+    # vertical frame, the whole cover sits centred on top, and the pair zooms and
+    # pans so the frame is not dead. This is the usual Shorts treatment and it
     # keeps the art intact on a phone. The ass filter is per-hook, so the chain is
     # assembled inside the loop.
-    def chain(ass: Path, clip_seconds: float) -> str:
-        # The cover is square, so a hard centre crop to 9:16 would slice its title
-        # text off the sides and drop the captions on top of it. Instead: a
-        # blurred, dimmed copy fills the frame, the whole cover sits in the upper
-        # half, and a scrim below it gives the captions a clean band. The whole
-        # composite zooms slowly so the frame is not dead.
-        cw = int(W * 0.86)
-        cy = int(H * 0.055)
-        scrim = int(H * 0.52)
+    def chain(ass: Path, clip_seconds: float, hook: int = 1) -> str:
+        # A blurred, dimmed copy of the cover fills the frame, the whole cover
+        # sits in the upper half, and a scrim below it gives the captions a clean
+        # band. The whole composite zooms and pans so the frame is not dead.
+        cw = int(W * 0.94)
+        cy = int(H * 0.05)
+        scrim = int(H * 0.44)
         # Zoom off the output frame counter `on`, NOT `zoom+rate`: with `d=1`
         # zoompan treats every input frame as its own still and resets the
         # `zoom` accumulator each frame, so `zoom+0.0005` never accumulated and
         # the "slow zoom" was in fact a dead frame (measured 0.005 mean abs
         # frame diff vs 5.25 for the `on` ramp). Sized so the ramp spans the clip.
         span = max(1.0, clip_seconds * FPS)
-        rate = (ZOOM_MAX - 1.0) / span
+        rate = (ZOOM_MAX - ZOOM_MIN) / span
+        # A slow pan, its direction alternating per hook so the three Shorts do
+        # not move in lockstep. It stays inside the zoom headroom (ZOOM_MIN
+        # leaves ~ (ZOOM_MIN-1)/2 * W px per side) so no black edge is exposed.
+        d = 1 if hook % 2 else -1
+        dx, dy = 26 * d, 14 * d
         return (
             f"[0:v]scale={W}:{H}:force_original_aspect_ratio=increase,crop={W}:{H},"
-            f"gblur=sigma=32,eq=brightness=-0.06:saturation=1.05[bg];"
+            f"gblur=sigma=26,eq=brightness=-0.12:saturation=1.05[bg];"
             f"[0:v]scale={cw}:-1[fg];"
             f"[bg][fg]overlay=(W-w)/2:{cy}[base];"
             f"[base]drawbox=x=0:y={scrim}:w={W}:h={H - scrim}:"
-            f"color=black@0.38:t=fill[scrimd];"
-            f"[scrimd]zoompan=z='min(1+{rate:.8f}*on,{ZOOM_MAX})':d=1:"
-            f"x='iw/2-(iw/zoom/2)':y='ih/2-(ih/zoom/2)':s={W}x{H}:fps={FPS}[zp];"
+            f"color=black@0.42:t=fill[scrimd];"
+            f"[scrimd]zoompan=z='min({ZOOM_MIN}+{rate:.8f}*on,{ZOOM_MAX})':d=1:"
+            f"x='iw/2-(iw/zoom/2)+{dx}*(on/{span:.0f}-0.5)':"
+            f"y='ih/2-(ih/zoom/2)+{dy}*(on/{span:.0f}-0.5)':s={W}x{H}:fps={FPS}[zp];"
             f"[zp]{ass_filter(ass)}[v]"
         )
 
@@ -353,12 +380,12 @@ def render(slug: str, *, mix: str = "song", out_dir: Path | None = None,
         suffix = f"-h{i}" if multi else ""
         ass_path = work / f"short-{mix}{suffix}.ass"
         ass_path.write_text(build_ass(slug, lines, meta, start, length, duration,
-                                      captions=captions, hook=i),
+                                      captions=captions, hook=i, timed=timed),
                             encoding="utf-8")
         out = out_dir / f"short-{mix}{suffix}-{slug}.mp4"
         args = ["-loop", "1", "-i", str(cover),
                 "-ss", f"{start:.3f}", "-i", str(audio),
-                "-filter_complex", chain(ass_path, length)
+                "-filter_complex", chain(ass_path, length, i)
                 + ";[1:a]loudnorm=I=-14:TP=-2.0:LRA=11,alimiter=limit=0.7:level=0[aout]",
                 "-map", "[v]", "-map", "[aout]",
                 "-t", f"{length:.3f}",

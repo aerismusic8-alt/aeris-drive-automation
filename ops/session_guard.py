@@ -48,8 +48,13 @@ CDP = os.environ.get("AERIS_CDP", "http://127.0.0.1:9222")
 #   completes the chooser (verified 2026-11-12: a dead Flow session came back with
 #   no K). It must run on the desktop browser, not headless — Google blocks
 #   headless logins — so it heals whenever a pod is up.
+# google: yes — the same SSO, driven at the source. Flow can stay alive while the
+#   *Google* session behind it is dead (observed 2026-11-18: `.flowmusic.app
+#   alive` + `.google.com DEAD`), which left Gemini reading as a guest and the
+#   revive skipped because only a dead Flow triggered it. Signing in at
+#   accounts.google.com with the vaulted password fixes every Google surface.
 # the rest: no — a device prompt or a slide puzzle, so a dead session is a K task.
-AUTO_REVIVE = {"flow"}
+AUTO_REVIVE = {"flow", "google"}
 
 # domain -> the surface key in channel.json, so a surface a browser must not
 # drive (paused or api-only) is skipped here too. Keeping this in one place is
@@ -116,6 +121,10 @@ def run(check_only: bool = False, push: bool = True) -> int:
         if _revive_flow():
             revived = True
             state[".flowmusic.app"] = True
+    if ".google.com" in dead:
+        if _revive_google():
+            revived = True
+            state[".google.com"] = True
 
     # Always refresh the vault session (that is what CI reads). Push the CI secret
     # only after a revive, so the fallback is refreshed exactly when it changed.
@@ -191,6 +200,60 @@ def _revive_flow() -> bool:
         finally:
             pg.close()
     print("flow music " + ("revived" if ok else "still signed out"))
+    return ok
+
+
+def _revive_google() -> bool:
+    """Sign the desktop back into Google with the vaulted password.
+
+    Flow and Google are separate cookies: Flow can hold a live session while the
+    Google account itself is signed out, which is what made Gemini read as a
+    guest on 2026-11-18. The chooser still lists the account tile, so the whole
+    revive is tile -> password -> account page — no 2FA prompt while the device
+    is trusted. Runs on the desktop browser only; Google blocks headless logins.
+    """
+    import ax_vault  # noqa: PLC0415
+    from playwright.sync_api import sync_playwright  # noqa: PLC0415
+
+    pw = ax_vault.kv_get(ax_vault.ensure_anchor(), "axsecrets:google-password")
+    if not pw:
+        print("no google-password in the vault; cannot revive Google")
+        return False
+    email = "aerismusic8@gmail.com"
+
+    with sync_playwright() as p:
+        br = p.chromium.connect_over_cdp(CDP)
+        ctx = br.contexts[0] if br.contexts else br.new_context()
+        pg = ctx.new_page()
+        try:
+            pg.goto("https://accounts.google.com/", wait_until="domcontentloaded",
+                    timeout=60000)
+            pg.wait_for_timeout(5000)
+            try:
+                pg.get_by_text(email).first.click(timeout=8000)
+            except Exception:  # noqa: BLE001
+                # No tile: the account was fully removed, so type the address.
+                pg.locator("input[type=email]").first.fill(email, timeout=8000)
+                for lbl in ("Next", "ถัดไป"):
+                    try:
+                        pg.get_by_role("button", name=lbl).first.click(timeout=4000)
+                        break
+                    except Exception:  # noqa: BLE001
+                        continue
+                pg.wait_for_timeout(5000)
+            field = pg.locator("input[type=password]").first
+            field.fill(pw, timeout=8000)
+            for lbl in ("Next", "ถัดไป", "ต่อไป"):
+                try:
+                    pg.get_by_role("button", name=lbl).first.click(timeout=5000)
+                    break
+                except Exception:  # noqa: BLE001
+                    continue
+            pg.wait_for_timeout(10000)
+            ok = "myaccount.google.com" in pg.url or "accounts.google.com" not in pg.url
+        finally:
+            pg.close()
+    print("google " + ("revived" if ok else "still signed out"))
     return ok
 
 

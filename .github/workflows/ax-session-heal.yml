@@ -11,9 +11,15 @@ name: AX Session Heal (keep FB/TikTok posting alive without K)
 # (`session_guard.py`, no flag). Both share the same login code, so the fix that
 # works in one works in the other.
 #
-# What still needs K, honestly: TikTok and Google/Flow Music have no headless
-# revive (a device prompt / slide puzzle), so if their session dies this job says
-# so and stops. Everything that *can* be automated here is.
+# What still needs K, honestly: TikTok has no headless revive (a slide puzzle),
+# and a Google session that reaches a real 2FA/device prompt does too — so if one
+# of those dies this job says so and stops. Flow Music itself is *not* in that
+# set: it has no password of its own, so `session_guard._revive_flow` signs it
+# back in through Google SSO with the vaulted password. Google is revived too
+# (`_revive_google`): Flow can stay alive while the Google account behind it is
+# dead, which is what left Gemini reading as a guest on 2026-11-18. Verified that
+# day: `.google.com DEAD` came back to `alive` with no K, password read only from
+# `axsecrets:google-password`.
 
 on:
   schedule:
