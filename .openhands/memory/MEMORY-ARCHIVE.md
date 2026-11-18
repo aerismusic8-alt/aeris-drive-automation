@@ -6328,3 +6328,9 @@ platform-side, not code: the *account* daily new-video cap and the shared 10k AP
 - Writes detail: fresh pod has no App key under `~/.config/aeris/` (ephemeral overlay);
   use the vault KV `axsecrets:gh-workflow-token` (scopes repo,workflow).
 - MV Pages site name is `site-aeris-music` under the `ax-mv-pages` repo.
+
+### moved from MEMORY.md 2026-11-18 (produce-order fix made room)
+- **`videos.list` takes ≤50 ids/call** (past 50 → HTTP 400, once mislabeled
+  "quota"). Chunk via `ops/yt_auth.get_videos`; a non-403 error must fail the rail.
+- **YPP = 1,000 subs AND 4,000 watch-hours.** `goal_watch` reads the Studio scrape
+  and names **retention** when the hour gate is further.

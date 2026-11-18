@@ -79,16 +79,16 @@ failure: each records only successes in a committed `work/*` ledger that **must 
 un-ignored** (`!…`) or `git add` is a silent no-op and it re-posts every tick.
 
 ## Loop health & platform risks
-- **A green run is not a finished job.** `release.py` returns rc 4 +
-  `UPLOAD_LIMIT_EXCEEDED`; `heartbeat` pages when a rail's latest run failed.
-  The cap is **per-channel new-videos/day** (unverified territory), clears over
-  hours, not at the 08:00 UTC API reset; a burst extends it. Read the log.
+- **A green run is not a finished job.** `release.py` rc 4 + `UPLOAD_LIMIT_EXCEEDED`;
+  `heartbeat` pages on a failed latest run. The cap is **per-channel new-videos/day**,
+  clears over hours, not at the 08:00 UTC reset; a burst extends it. Detail: archive.
+- **`continue-on-error` + a wrong step order = a silent broken artifact.**
+  2026-11-18 the produce rail pulled the beds *after* the produce step, so every
+  song shipped `audio: none` and the run stayed green: gate the artifact
+  (`no_audio` → exit 2) and assert the order in a test, not only presence.
 - **Never decide on missing/stale data** (2026-11-12): a blank/stale newest row is
-  `data`, never a guess; `--assert-fresh` gates the dashboard rail. Detail: archive.
-- **`videos.list` takes ≤50 ids/call** (past 50 → HTTP 400, once mislabeled
-  "quota"). Chunk via `ops/yt_auth.get_videos`; a non-403 error must fail the rail.
-- **YPP = 1,000 subs AND 4,000 watch-hours.** `goal_watch` reads the Studio scrape
-  and names **retention** when the hour gate is further (detail: archive).
+  `data`, never a guess; `--assert-fresh` gates the dashboard rail.
+- **`videos.list` ≤50 ids/call; YPP = 1,000 subs AND 4,000 watch-hours.** Detail: archive.
 - Platform risks: `AKATH_CORE/OPENHANDS_RISK_REGISTER.json` + `ops/risk_audit.py`
   (`--strict`); guard `.github/workflows/ax-risk-audit.yml`.
 
