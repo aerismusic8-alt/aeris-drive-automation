@@ -1,413 +1,5 @@
 [
   {
-    "id": "facebook-page:concert-01-khon-di-thi-chak-pai",
-    "platform": "facebook",
-    "slug": "01-khon-di-thi-chak-pai",
-    "hook": 0,
-    "kind": "concert",
-    "video": "library/concert/concert-01-khon-di-thi-chak-pai.mp4",
-    "caption": "🎤 บรรยากาศคอนเสิร์ต ฟังให้เหมือนยืนอยู่หน้าเวที\n🎵 คนดีที่จากไป\n🏟️ คอนเสิร์ตจำลอง — เสียงฮอลล์ เสียงเชียร์ เสียงวง\n💬 อยากให้เพลงไหนออกคอนเสิร์ตต่อ? คอมเมนต์มาเลย\n⚠️ เสียงร้องและภาพสร้างด้วย AI\n🎬 ดูคลิปอื่นที่ YouTube @aerismusicth · TikTok @aeris.music4\n#คอนเสิร์ตจำลอง #เพลงไทย #AERISMusic"
-  },
-  {
-    "id": "tiktok:concert-01-khon-di-thi-chak-pai",
-    "platform": "tiktok",
-    "slug": "01-khon-di-thi-chak-pai",
-    "hook": 0,
-    "kind": "concert",
-    "video": "library/concert/concert-01-khon-di-thi-chak-pai.mp4",
-    "caption": "🎤 บรรยากาศคอนเสิร์ต ฟังให้เหมือนยืนอยู่หน้าเวที\n🎵 คนดีที่จากไป\n🏟️ คอนเสิร์ตจำลอง — เสียงฮอลล์ เสียงเชียร์ เสียงวง\n💬 อยากให้เพลงไหนออกคอนเสิร์ตต่อ? คอมเมนต์มาเลย\n⚠️ เสียงร้องและภาพสร้างด้วย AI\n🎬 ดูเต็ม ๆ ที่ YouTube @aerismusicth · เพจ FB AERIS Music\n#คอนเสิร์ตจำลอง #เพลงไทย #AERISMusic"
-  },
-  {
-    "id": "facebook-page:concert-02-rak-thi-mai-mi-wan-chop",
-    "platform": "facebook",
-    "slug": "02-rak-thi-mai-mi-wan-chop",
-    "hook": 0,
-    "kind": "concert",
-    "video": "library/concert/concert-02-rak-thi-mai-mi-wan-chop.mp4",
-    "caption": "🎤 บรรยากาศคอนเสิร์ต ฟังให้เหมือนยืนอยู่หน้าเวที\n🎵 รักที่ไม่มีวันจบ\n🏟️ คอนเสิร์ตจำลอง — เสียงฮอลล์ เสียงเชียร์ เสียงวง\n💬 อยากให้เพลงไหนออกคอนเสิร์ตต่อ? คอมเมนต์มาเลย\n⚠️ เสียงร้องและภาพสร้างด้วย AI\n🎬 ดูคลิปอื่นที่ YouTube @aerismusicth · TikTok @aeris.music4\n#คอนเสิร์ตจำลอง #เพลงไทย #AERISMusic"
-  },
-  {
-    "id": "tiktok:concert-02-rak-thi-mai-mi-wan-chop",
-    "platform": "tiktok",
-    "slug": "02-rak-thi-mai-mi-wan-chop",
-    "hook": 0,
-    "kind": "concert",
-    "video": "library/concert/concert-02-rak-thi-mai-mi-wan-chop.mp4",
-    "caption": "🎤 บรรยากาศคอนเสิร์ต ฟังให้เหมือนยืนอยู่หน้าเวที\n🎵 รักที่ไม่มีวันจบ\n🏟️ คอนเสิร์ตจำลอง — เสียงฮอลล์ เสียงเชียร์ เสียงวง\n💬 อยากให้เพลงไหนออกคอนเสิร์ตต่อ? คอมเมนต์มาเลย\n⚠️ เสียงร้องและภาพสร้างด้วย AI\n🎬 ดูเต็ม ๆ ที่ YouTube @aerismusicth · เพจ FB AERIS Music\n#คอนเสิร์ตจำลอง #เพลงไทย #AERISMusic"
-  },
-  {
-    "id": "facebook-page:concert-03-khit-thueng-thoe-thuk-khuen",
-    "platform": "facebook",
-    "slug": "03-khit-thueng-thoe-thuk-khuen",
-    "hook": 0,
-    "kind": "concert",
-    "video": "library/concert/concert-03-khit-thueng-thoe-thuk-khuen.mp4",
-    "caption": "🎤 บรรยากาศคอนเสิร์ต ฟังให้เหมือนยืนอยู่หน้าเวที\n🎵 คิดถึงเธอทุกคืน\n🏟️ คอนเสิร์ตจำลอง — เสียงฮอลล์ เสียงเชียร์ เสียงวง\n💬 อยากให้เพลงไหนออกคอนเสิร์ตต่อ? คอมเมนต์มาเลย\n⚠️ เสียงร้องและภาพสร้างด้วย AI\n🎬 ดูคลิปอื่นที่ YouTube @aerismusicth · TikTok @aeris.music4\n#คอนเสิร์ตจำลอง #เพลงไทย #AERISMusic"
-  },
-  {
-    "id": "tiktok:concert-03-khit-thueng-thoe-thuk-khuen",
-    "platform": "tiktok",
-    "slug": "03-khit-thueng-thoe-thuk-khuen",
-    "hook": 0,
-    "kind": "concert",
-    "video": "library/concert/concert-03-khit-thueng-thoe-thuk-khuen.mp4",
-    "caption": "🎤 บรรยากาศคอนเสิร์ต ฟังให้เหมือนยืนอยู่หน้าเวที\n🎵 คิดถึงเธอทุกคืน\n🏟️ คอนเสิร์ตจำลอง — เสียงฮอลล์ เสียงเชียร์ เสียงวง\n💬 อยากให้เพลงไหนออกคอนเสิร์ตต่อ? คอมเมนต์มาเลย\n⚠️ เสียงร้องและภาพสร้างด้วย AI\n🎬 ดูเต็ม ๆ ที่ YouTube @aerismusicth · เพจ FB AERIS Music\n#คอนเสิร์ตจำลอง #เพลงไทย #AERISMusic"
-  },
-  {
-    "id": "facebook-page:text-mood",
-    "platform": "facebook",
-    "slug": "mood",
-    "hook": 0,
-    "kind": "text",
-    "caption": "วันนี้อยากฟังเพลงแนวไหนมากที่สุด? 🎧\nป็อป · แดนซ์ · ร็อก · เพลงเศร้า · ให้กำลังใจ\n💬 พิมพ์บอกได้เลย\n#เพลงส้นทีนไรเนี่ย #เพลงไทย #เพลงใหม่"
-  },
-  {
-    "id": "facebook-page:concert-04-saeng-chao-wan-mai",
-    "platform": "facebook",
-    "slug": "04-saeng-chao-wan-mai",
-    "hook": 0,
-    "kind": "concert",
-    "video": "library/concert/concert-04-saeng-chao-wan-mai.mp4",
-    "caption": "🎤 บรรยากาศคอนเสิร์ต ฟังให้เหมือนยืนอยู่หน้าเวที\n🎵 แสงเช้าวันใหม่\n🏟️ คอนเสิร์ตจำลอง — เสียงฮอลล์ เสียงเชียร์ เสียงวง\n💬 อยากให้เพลงไหนออกคอนเสิร์ตต่อ? คอมเมนต์มาเลย\n⚠️ เสียงร้องและภาพสร้างด้วย AI\n🎬 ดูคลิปอื่นที่ YouTube @aerismusicth · TikTok @aeris.music4\n#คอนเสิร์ตจำลอง #เพลงไทย #AERISMusic"
-  },
-  {
-    "id": "tiktok:concert-04-saeng-chao-wan-mai",
-    "platform": "tiktok",
-    "slug": "04-saeng-chao-wan-mai",
-    "hook": 0,
-    "kind": "concert",
-    "video": "library/concert/concert-04-saeng-chao-wan-mai.mp4",
-    "caption": "🎤 บรรยากาศคอนเสิร์ต ฟังให้เหมือนยืนอยู่หน้าเวที\n🎵 แสงเช้าวันใหม่\n🏟️ คอนเสิร์ตจำลอง — เสียงฮอลล์ เสียงเชียร์ เสียงวง\n💬 อยากให้เพลงไหนออกคอนเสิร์ตต่อ? คอมเมนต์มาเลย\n⚠️ เสียงร้องและภาพสร้างด้วย AI\n🎬 ดูเต็ม ๆ ที่ YouTube @aerismusicth · เพจ FB AERIS Music\n#คอนเสิร์ตจำลอง #เพลงไทย #AERISMusic"
-  },
-  {
-    "id": "facebook-page:photo-43-khuen-ni-mai-tong-khit-arai-v43",
-    "platform": "facebook",
-    "slug": "43-khuen-ni-mai-tong-khit-arai-v43",
-    "hook": 0,
-    "kind": "photo",
-    "image": "library/covers/cover-43-khuen-ni-mai-tong-khit-arai-v43.jpg",
-    "caption": "🎨 คืนนี้ไม่ต้องคิดอะไรอีกครั้ง\n🎵 เพลงให้กำลังใจ เริ่มวันใหม่อีกครั้ง\n🤖 เพลงส้นทีนไรเนี่ย — ค่ายเพลง AI สร้างเพลงและเสียงร้องด้วย AI\n❤️ กดติดตามเพจ ฟังเพลงใหม่ทุกวัน\n🎧 ฟังเต็ม ๆ: YouTube @aerismusicth · TikTok @aeris.music4\n🛒 ของน่าซื้อ 👉 https://s.shopee.co.th/2qVq75ACtW\n#เพลงไทย #เพลงใหม่ #เพลงส้นทีนไรเนี่ย #ค่ายเพลงAI"
-  },
-  {
-    "id": "facebook-page:photo-42-khuen-ni-mai-tong-khit-arai",
-    "platform": "facebook",
-    "slug": "42-khuen-ni-mai-tong-khit-arai",
-    "hook": 0,
-    "kind": "photo",
-    "image": "library/covers/cover-42-khuen-ni-mai-tong-khit-arai.jpg",
-    "caption": "🎨 คืนนี้ไม่ต้องคิดอะไร\n🎵 เพลงให้กำลังใจ เริ่มวันใหม่อีกครั้ง\n🤖 เพลงส้นทีนไรเนี่ย — ค่ายเพลง AI สร้างเพลงและเสียงร้องด้วย AI\n❤️ กดติดตามเพจ ฟังเพลงใหม่ทุกวัน\n🎧 ฟังเต็ม ๆ: YouTube @aerismusicth · TikTok @aeris.music4\n🛒 ของน่าซื้อ 👉 https://s.shopee.co.th/2qVq75ACtW\n#เพลงไทย #เพลงใหม่ #เพลงส้นทีนไรเนี่ย #ค่ายเพลงAI"
-  },
-  {
-    "id": "tiktok:short-karaoke-32-wan-tham-mada-thi-phi-set-v32",
-    "platform": "tiktok",
-    "slug": "32-wan-tham-mada-thi-phi-set-v32",
-    "hook": 0,
-    "kind": "karaoke",
-    "video": "library/shorts/short-karaoke-32-wan-tham-mada-thi-phi-set-v32.mp4",
-    "caption": "วันธรรมดาที่พิเศษในฝัน | คาราโอเกะร้องตาม\n🎵 เพลงอบอุ่น ฟังแล้วใจนุ่ม\n🤖 เพลงส้นทีนไรเนี่ย — ค่ายเพลง AI สร้างเพลงและเสียงร้องด้วย AI\n🎧 กดติดตาม · ของน่าซื้อ 👉 https://s.shopee.co.th/60SrsstoP6\n🎬 ฟังเต็ม ๆ ได้ที่ YouTube @aerismusicth · เพจ FB เพลงส้นทีนไรเนี่ย\n💬 🎤 อยากลองร้องไหม? กดบันทึกไว้ร้องตามได้เลย\n#fyp #เพลงไทย #เพลงใหม่ #ร้องต่อไหม #TikTokเพลงไทย #ค่ายเพลงAI"
-  },
-  {
-    "id": "facebook-page:concert-05-fon-tok-nai-chai",
-    "platform": "facebook",
-    "slug": "05-fon-tok-nai-chai",
-    "hook": 0,
-    "kind": "concert",
-    "video": "library/concert/concert-05-fon-tok-nai-chai.mp4",
-    "caption": "🎤 บรรยากาศคอนเสิร์ต ฟังให้เหมือนยืนอยู่หน้าเวที\n🎵 ฝนตกในใจ\n🏟️ คอนเสิร์ตจำลอง — เสียงฮอลล์ เสียงเชียร์ เสียงวง\n💬 อยากให้เพลงไหนออกคอนเสิร์ตต่อ? คอมเมนต์มาเลย\n⚠️ เสียงร้องและภาพสร้างด้วย AI\n🎬 ดูคลิปอื่นที่ YouTube @aerismusicth · TikTok @aeris.music4\n#คอนเสิร์ตจำลอง #เพลงไทย #AERISMusic"
-  },
-  {
-    "id": "facebook-page:text-chorus",
-    "platform": "facebook",
-    "slug": "chorus",
-    "hook": 0,
-    "kind": "text",
-    "caption": "ท่อนฮุกเพลงไหนของเราที่ติดหูคุณที่สุด? 🎵\nคอมเมนต์บอกได้เลย เดี๋ยวทำเวอร์ชันพิเศษให้\n💬 พิมพ์บอกได้เลย\n#เพลงส้นทีนไรเนี่ย #เพลงไทย #เพลงใหม่"
-  },
-  {
-    "id": "tiktok:concert-05-fon-tok-nai-chai",
-    "platform": "tiktok",
-    "slug": "05-fon-tok-nai-chai",
-    "hook": 0,
-    "kind": "concert",
-    "video": "library/concert/concert-05-fon-tok-nai-chai.mp4",
-    "caption": "🎤 บรรยากาศคอนเสิร์ต ฟังให้เหมือนยืนอยู่หน้าเวที\n🎵 ฝนตกในใจ\n🏟️ คอนเสิร์ตจำลอง — เสียงฮอลล์ เสียงเชียร์ เสียงวง\n💬 อยากให้เพลงไหนออกคอนเสิร์ตต่อ? คอมเมนต์มาเลย\n⚠️ เสียงร้องและภาพสร้างด้วย AI\n🎬 ดูเต็ม ๆ ที่ YouTube @aerismusicth · เพจ FB AERIS Music\n#คอนเสิร์ตจำลอง #เพลงไทย #AERISMusic"
-  },
-  {
-    "id": "facebook-page:concert-06-doen-khon-diao",
-    "platform": "facebook",
-    "slug": "06-doen-khon-diao",
-    "hook": 0,
-    "kind": "concert",
-    "video": "library/concert/concert-06-doen-khon-diao.mp4",
-    "caption": "🎤 บรรยากาศคอนเสิร์ต ฟังให้เหมือนยืนอยู่หน้าเวที\n🎵 เดินคนเดียว\n🏟️ คอนเสิร์ตจำลอง — เสียงฮอลล์ เสียงเชียร์ เสียงวง\n💬 อยากให้เพลงไหนออกคอนเสิร์ตต่อ? คอมเมนต์มาเลย\n⚠️ เสียงร้องและภาพสร้างด้วย AI\n🎬 ดูคลิปอื่นที่ YouTube @aerismusicth · TikTok @aeris.music4\n#คอนเสิร์ตจำลอง #เพลงไทย #เพลงส้นทีนไรเนี่ย"
-  },
-  {
-    "id": "tiktok:concert-06-doen-khon-diao",
-    "platform": "tiktok",
-    "slug": "06-doen-khon-diao",
-    "hook": 0,
-    "kind": "concert",
-    "video": "library/concert/concert-06-doen-khon-diao.mp4",
-    "caption": "🎤 บรรยากาศคอนเสิร์ต ฟังให้เหมือนยืนอยู่หน้าเวที\n🎵 เดินคนเดียว\n🏟️ คอนเสิร์ตจำลอง — เสียงฮอลล์ เสียงเชียร์ เสียงวง\n💬 อยากให้เพลงไหนออกคอนเสิร์ตต่อ? คอมเมนต์มาเลย\n⚠️ เสียงร้องและภาพสร้างด้วย AI\n🎬 ดูเต็ม ๆ ที่ YouTube @aerismusicth · เพจ FB AERIS Music\n#คอนเสิร์ตจำลอง #เพลงไทย #AERISMusic"
-  },
-  {
-    "id": "facebook-page:concert-07-huachai-si-thao",
-    "platform": "facebook",
-    "slug": "07-huachai-si-thao",
-    "hook": 0,
-    "kind": "concert",
-    "video": "library/concert/concert-07-huachai-si-thao.mp4",
-    "caption": "🎤 บรรยากาศคอนเสิร์ต ฟังให้เหมือนยืนอยู่หน้าเวที\n🎵 หัวใจสีเทา\n🏟️ คอนเสิร์ตจำลอง — เสียงฮอลล์ เสียงเชียร์ เสียงวง\n💬 อยากให้เพลงไหนออกคอนเสิร์ตต่อ? คอมเมนต์มาเลย\n⚠️ เสียงร้องและภาพสร้างด้วย AI\n🎬 ดูคลิปอื่นที่ YouTube @aerismusicth · TikTok @aeris.music4\n#คอนเสิร์ตจำลอง #เพลงไทย #เพลงส้นทีนไรเนี่ย"
-  },
-  {
-    "id": "tiktok:concert-07-huachai-si-thao",
-    "platform": "tiktok",
-    "slug": "07-huachai-si-thao",
-    "hook": 0,
-    "kind": "concert",
-    "video": "library/concert/concert-07-huachai-si-thao.mp4",
-    "caption": "🎤 บรรยากาศคอนเสิร์ต ฟังให้เหมือนยืนอยู่หน้าเวที\n🎵 หัวใจสีเทา\n🏟️ คอนเสิร์ตจำลอง — เสียงฮอลล์ เสียงเชียร์ เสียงวง\n💬 อยากให้เพลงไหนออกคอนเสิร์ตต่อ? คอมเมนต์มาเลย\n⚠️ เสียงร้องและภาพสร้างด้วย AI\n🎬 ดูเต็ม ๆ ที่ YouTube @aerismusicth · เพจ FB AERIS Music\n#คอนเสิร์ตจำลอง #เพลงไทย #AERISMusic"
-  },
-  {
-    "id": "facebook-page:concert-08-klap-ban-rao",
-    "platform": "facebook",
-    "slug": "08-klap-ban-rao",
-    "hook": 0,
-    "kind": "concert",
-    "video": "library/concert/concert-08-klap-ban-rao.mp4",
-    "caption": "🎤 บรรยากาศคอนเสิร์ต ฟังให้เหมือนยืนอยู่หน้าเวที\n🎵 กลับบ้านเรา\n🏟️ คอนเสิร์ตจำลอง — เสียงฮอลล์ เสียงเชียร์ เสียงวง\n💬 อยากให้เพลงไหนออกคอนเสิร์ตต่อ? คอมเมนต์มาเลย\n⚠️ เสียงร้องและภาพสร้างด้วย AI\n🎬 ดูคลิปอื่นที่ YouTube @aerismusicth · TikTok @aeris.music4\n#คอนเสิร์ตจำลอง #เพลงไทย #เพลงส้นทีนไรเนี่ย"
-  },
-  {
-    "id": "facebook-page:text-dedicate",
-    "platform": "facebook",
-    "slug": "dedicate",
-    "hook": 0,
-    "kind": "text",
-    "caption": "มีเพลงหนึ่งที่คุณอยากส่งให้ใครสักคนไหม? 💌\nพิมพ์ชื่อเพลงที่อยากให้เราแต่งให้ได้เลย\n💬 พิมพ์บอกได้เลย\n#เพลงส้นทีนไรเนี่ย #เพลงไทย #เพลงใหม่"
-  },
-  {
-    "id": "tiktok:concert-08-klap-ban-rao",
-    "platform": "tiktok",
-    "slug": "08-klap-ban-rao",
-    "hook": 0,
-    "kind": "concert",
-    "video": "library/concert/concert-08-klap-ban-rao.mp4",
-    "caption": "🎤 บรรยากาศคอนเสิร์ต ฟังให้เหมือนยืนอยู่หน้าเวที\n🎵 กลับบ้านเรา\n🏟️ คอนเสิร์ตจำลอง — เสียงฮอลล์ เสียงเชียร์ เสียงวง\n💬 อยากให้เพลงไหนออกคอนเสิร์ตต่อ? คอมเมนต์มาเลย\n⚠️ เสียงร้องและภาพสร้างด้วย AI\n🎬 ดูเต็ม ๆ ที่ YouTube @aerismusicth · เพจ FB AERIS Music\n#คอนเสิร์ตจำลอง #เพลงไทย #AERISMusic"
-  },
-  {
-    "id": "facebook-page:short-karaoke-32-wan-tham-mada-thi-phi-set-v32",
-    "platform": "facebook",
-    "slug": "32-wan-tham-mada-thi-phi-set-v32",
-    "hook": 0,
-    "kind": "karaoke",
-    "video": "library/shorts/short-karaoke-32-wan-tham-mada-thi-phi-set-v32.mp4",
-    "caption": "วันธรรมดาที่พิเศษในฝัน | คาราโอเกะร้องตาม\n🎵 เพลงอบอุ่น ฟังแล้วใจนุ่ม\n🤖 เพลงส้นทีนไรเนี่ย — ค่ายเพลง AI สร้างเพลงและเสียงร้องด้วย AI\n❤️ กดติดตามเพจ · ของน่าซื้อ 👉 https://s.shopee.co.th/2qVq75ACtW\n🎬 ดูใหม่ทุกวัน: YouTube @aerismusicth · TikTok @aeris.music4\n💬 🎤 อยากลองร้องไหม? กดบันทึกไว้ร้องตามได้เลย\n#เพลงไทย #เพลงใหม่ #ร้องต่อไหม #เพลงส้นทีนไรเนี่ย #ค่ายเพลงAI"
-  },
-  {
-    "id": "facebook-page:concert-09-phleng-khong-khon-nueai",
-    "platform": "facebook",
-    "slug": "09-phleng-khong-khon-nueai",
-    "hook": 0,
-    "kind": "concert",
-    "video": "library/concert/concert-09-phleng-khong-khon-nueai.mp4",
-    "caption": "🎤 บรรยากาศคอนเสิร์ต ฟังให้เหมือนยืนอยู่หน้าเวที\n🎵 เพลงของคนเหนื่อย\n🏟️ คอนเสิร์ตจำลอง — เสียงฮอลล์ เสียงเชียร์ เสียงวง\n💬 อยากให้เพลงไหนออกคอนเสิร์ตต่อ? คอมเมนต์มาเลย\n⚠️ เสียงร้องและภาพสร้างด้วย AI\n🎬 ดูคลิปอื่นที่ YouTube @aerismusicth · TikTok @aeris.music4\n#คอนเสิร์ตจำลอง #เพลงไทย #เพลงส้นทีนไรเนี่ย"
-  },
-  {
-    "id": "tiktok:concert-09-phleng-khong-khon-nueai",
-    "platform": "tiktok",
-    "slug": "09-phleng-khong-khon-nueai",
-    "hook": 0,
-    "kind": "concert",
-    "video": "library/concert/concert-09-phleng-khong-khon-nueai.mp4",
-    "caption": "🎤 บรรยากาศคอนเสิร์ต ฟังให้เหมือนยืนอยู่หน้าเวที\n🎵 เพลงของคนเหนื่อย\n🏟️ คอนเสิร์ตจำลอง — เสียงฮอลล์ เสียงเชียร์ เสียงวง\n💬 อยากให้เพลงไหนออกคอนเสิร์ตต่อ? คอมเมนต์มาเลย\n⚠️ เสียงร้องและภาพสร้างด้วย AI\n🎬 ดูเต็ม ๆ ที่ YouTube @aerismusicth · เพจ FB AERIS Music\n#คอนเสิร์ตจำลอง #เพลงไทย #AERISMusic"
-  },
-  {
-    "id": "facebook-page:concert-10-dok-mai-rim-thang",
-    "platform": "facebook",
-    "slug": "10-dok-mai-rim-thang",
-    "hook": 0,
-    "kind": "concert",
-    "video": "library/concert/concert-10-dok-mai-rim-thang.mp4",
-    "caption": "🎤 บรรยากาศคอนเสิร์ต ฟังให้เหมือนยืนอยู่หน้าเวที\n🎵 ดอกไม้ริมทาง\n🏟️ คอนเสิร์ตจำลอง — เสียงฮอลล์ เสียงเชียร์ เสียงวง\n💬 อยากให้เพลงไหนออกคอนเสิร์ตต่อ? คอมเมนต์มาเลย\n⚠️ เสียงร้องและภาพสร้างด้วย AI\n🎬 ดูคลิปอื่นที่ YouTube @aerismusicth · TikTok @aeris.music4\n#คอนเสิร์ตจำลอง #เพลงไทย #เพลงส้นทีนไรเนี่ย"
-  },
-  {
-    "id": "tiktok:concert-10-dok-mai-rim-thang",
-    "platform": "tiktok",
-    "slug": "10-dok-mai-rim-thang",
-    "hook": 0,
-    "kind": "concert",
-    "video": "library/concert/concert-10-dok-mai-rim-thang.mp4",
-    "caption": "🎤 บรรยากาศคอนเสิร์ต ฟังให้เหมือนยืนอยู่หน้าเวที\n🎵 ดอกไม้ริมทาง\n🏟️ คอนเสิร์ตจำลอง — เสียงฮอลล์ เสียงเชียร์ เสียงวง\n💬 อยากให้เพลงไหนออกคอนเสิร์ตต่อ? คอมเมนต์มาเลย\n⚠️ เสียงร้องและภาพสร้างด้วย AI\n🎬 ดูเต็ม ๆ ที่ YouTube @aerismusicth · เพจ FB AERIS Music\n#คอนเสิร์ตจำลอง #เพลงไทย #AERISMusic"
-  },
-  {
-    "id": "facebook-page:text-sad-or-happy",
-    "platform": "facebook",
-    "slug": "sad-or-happy",
-    "hook": 0,
-    "kind": "text",
-    "caption": "ตอนเศร้า คุณเปิดเพลงเศร้า หรือเพลงสนุก? 🎶\nเล่าให้ฟังหน่อยว่าทำไม\n💬 พิมพ์บอกได้เลย\n#เพลงส้นทีนไรเนี่ย #เพลงไทย #เพลงใหม่"
-  },
-  {
-    "id": "facebook-page:concert-11-sanya-chak-chai",
-    "platform": "facebook",
-    "slug": "11-sanya-chak-chai",
-    "hook": 0,
-    "kind": "concert",
-    "video": "library/concert/concert-11-sanya-chak-chai.mp4",
-    "caption": "🎤 บรรยากาศคอนเสิร์ต ฟังให้เหมือนยืนอยู่หน้าเวที\n🎵 สัญญาจากใจ\n🏟️ คอนเสิร์ตจำลอง — เสียงฮอลล์ เสียงเชียร์ เสียงวง\n💬 อยากให้เพลงไหนออกคอนเสิร์ตต่อ? คอมเมนต์มาเลย\n⚠️ เสียงร้องและภาพสร้างด้วย AI\n🎬 ดูคลิปอื่นที่ YouTube @aerismusicth · TikTok @aeris.music4\n#คอนเสิร์ตจำลอง #เพลงไทย #เพลงส้นทีนไรเนี่ย"
-  },
-  {
-    "id": "tiktok:concert-11-sanya-chak-chai",
-    "platform": "tiktok",
-    "slug": "11-sanya-chak-chai",
-    "hook": 0,
-    "kind": "concert",
-    "video": "library/concert/concert-11-sanya-chak-chai.mp4",
-    "caption": "🎤 บรรยากาศคอนเสิร์ต ฟังให้เหมือนยืนอยู่หน้าเวที\n🎵 สัญญาจากใจ\n🏟️ คอนเสิร์ตจำลอง — เสียงฮอลล์ เสียงเชียร์ เสียงวง\n💬 อยากให้เพลงไหนออกคอนเสิร์ตต่อ? คอมเมนต์มาเลย\n⚠️ เสียงร้องและภาพสร้างด้วย AI\n🎬 ดูเต็ม ๆ ที่ YouTube @aerismusicth · เพจ FB AERIS Music\n#คอนเสิร์ตจำลอง #เพลงไทย #AERISMusic"
-  },
-  {
-    "id": "facebook-page:concert-12-khuen-thi-mai-mi-dao",
-    "platform": "facebook",
-    "slug": "12-khuen-thi-mai-mi-dao",
-    "hook": 0,
-    "kind": "concert",
-    "video": "library/concert/concert-12-khuen-thi-mai-mi-dao.mp4",
-    "caption": "🎤 บรรยากาศคอนเสิร์ต ฟังให้เหมือนยืนอยู่หน้าเวที\n🎵 คืนที่ไม่มีดาว\n🏟️ คอนเสิร์ตจำลอง — เสียงฮอลล์ เสียงเชียร์ เสียงวง\n💬 อยากให้เพลงไหนออกคอนเสิร์ตต่อ? คอมเมนต์มาเลย\n⚠️ เสียงร้องและภาพสร้างด้วย AI\n🎬 ดูคลิปอื่นที่ YouTube @aerismusicth · TikTok @aeris.music4\n#คอนเสิร์ตจำลอง #เพลงไทย #เพลงส้นทีนไรเนี่ย"
-  },
-  {
-    "id": "tiktok:concert-12-khuen-thi-mai-mi-dao",
-    "platform": "tiktok",
-    "slug": "12-khuen-thi-mai-mi-dao",
-    "hook": 0,
-    "kind": "concert",
-    "video": "library/concert/concert-12-khuen-thi-mai-mi-dao.mp4",
-    "caption": "🎤 บรรยากาศคอนเสิร์ต ฟังให้เหมือนยืนอยู่หน้าเวที\n🎵 คืนที่ไม่มีดาว\n🏟️ คอนเสิร์ตจำลอง — เสียงฮอลล์ เสียงเชียร์ เสียงวง\n💬 อยากให้เพลงไหนออกคอนเสิร์ตต่อ? คอมเมนต์มาเลย\n⚠️ เสียงร้องและภาพสร้างด้วย AI\n🎬 ดูเต็ม ๆ ที่ YouTube @aerismusicth · เพจ FB เพลงส้นทีนไรเนี่ย\n#คอนเสิร์ตจำลอง #เพลงไทย #เพลงส้นทีนไรเนี่ย"
-  },
-  {
-    "id": "tiktok:short-karaoke-33-wan-tham-mada-thi-phi-set-v33",
-    "platform": "tiktok",
-    "slug": "33-wan-tham-mada-thi-phi-set-v33",
-    "hook": 0,
-    "kind": "karaoke",
-    "video": "library/shorts/short-karaoke-33-wan-tham-mada-thi-phi-set-v33.mp4",
-    "caption": "วันธรรมดาที่พิเศษยามเช้า | คาราโอเกะร้องตาม\n🎵 เพลงอบอุ่น ฟังแล้วใจนุ่ม\n🤖 เพลงส้นทีนไรเนี่ย — ค่ายเพลง AI สร้างเพลงและเสียงร้องด้วย AI\n🎧 กดติดตาม · ของน่าซื้อ 👉 https://s.shopee.co.th/60SrsstoP6\n🎬 ฟังเต็ม ๆ ได้ที่ YouTube @aerismusicth · เพจ FB เพลงส้นทีนไรเนี่ย\n💬 🎤 อยากลองร้องไหม? กดบันทึกไว้ร้องตามได้เลย\n#fyp #เพลงไทย #เพลงใหม่ #ร้องต่อไหม #TikTokเพลงไทย #ค่ายเพลงAI"
-  },
-  {
-    "id": "facebook-page:concert-13-rak-thi-chak-pai",
-    "platform": "facebook",
-    "slug": "13-rak-thi-chak-pai",
-    "hook": 0,
-    "kind": "concert",
-    "video": "library/concert/concert-13-rak-thi-chak-pai.mp4",
-    "caption": "🎤 บรรยากาศคอนเสิร์ต ฟังให้เหมือนยืนอยู่หน้าเวที\n🎵 รักที่จากไป\n🏟️ คอนเสิร์ตจำลอง — เสียงฮอลล์ เสียงเชียร์ เสียงวง\n💬 อยากให้เพลงไหนออกคอนเสิร์ตต่อ? คอมเมนต์มาเลย\n⚠️ เสียงร้องและภาพสร้างด้วย AI\n🎬 ดูคลิปอื่นที่ YouTube @aerismusicth · TikTok @aeris.music4\n#คอนเสิร์ตจำลอง #เพลงไทย #เพลงส้นทีนไรเนี่ย"
-  },
-  {
-    "id": "facebook-page:text-story",
-    "platform": "facebook",
-    "slug": "story",
-    "hook": 0,
-    "kind": "text",
-    "caption": "ถ้าให้เราแต่งเพลงจากเรื่องจริงของคุณ 1 เรื่อง\nคุณจะเล่าเรื่องอะไร? ✍️\n💬 พิมพ์บอกได้เลย\n#เพลงส้นทีนไรเนี่ย #เพลงไทย #เพลงใหม่"
-  },
-  {
-    "id": "tiktok:concert-13-rak-thi-chak-pai",
-    "platform": "tiktok",
-    "slug": "13-rak-thi-chak-pai",
-    "hook": 0,
-    "kind": "concert",
-    "video": "library/concert/concert-13-rak-thi-chak-pai.mp4",
-    "caption": "🎤 บรรยากาศคอนเสิร์ต ฟังให้เหมือนยืนอยู่หน้าเวที\n🎵 รักที่จากไป\n🏟️ คอนเสิร์ตจำลอง — เสียงฮอลล์ เสียงเชียร์ เสียงวง\n💬 อยากให้เพลงไหนออกคอนเสิร์ตต่อ? คอมเมนต์มาเลย\n⚠️ เสียงร้องและภาพสร้างด้วย AI\n🎬 ดูเต็ม ๆ ที่ YouTube @aerismusicth · เพจ FB เพลงส้นทีนไรเนี่ย\n#คอนเสิร์ตจำลอง #เพลงไทย #เพลงส้นทีนไรเนี่ย"
-  },
-  {
-    "id": "facebook-page:concert-14-phleng-klom-khong-mae",
-    "platform": "facebook",
-    "slug": "14-phleng-klom-khong-mae",
-    "hook": 0,
-    "kind": "concert",
-    "video": "library/concert/concert-14-phleng-klom-khong-mae.mp4",
-    "caption": "🎤 บรรยากาศคอนเสิร์ต ฟังให้เหมือนยืนอยู่หน้าเวที\n🎵 เพลงกล่อมของแม่\n🏟️ คอนเสิร์ตจำลอง — เสียงฮอลล์ เสียงเชียร์ เสียงวง\n💬 อยากให้เพลงไหนออกคอนเสิร์ตต่อ? คอมเมนต์มาเลย\n⚠️ เสียงร้องและภาพสร้างด้วย AI\n🎬 ดูคลิปอื่นที่ YouTube @aerismusicth · TikTok @aeris.music4\n#คอนเสิร์ตจำลอง #เพลงไทย #เพลงส้นทีนไรเนี่ย"
-  },
-  {
-    "id": "tiktok:concert-14-phleng-klom-khong-mae",
-    "platform": "tiktok",
-    "slug": "14-phleng-klom-khong-mae",
-    "hook": 0,
-    "kind": "concert",
-    "video": "library/concert/concert-14-phleng-klom-khong-mae.mp4",
-    "caption": "🎤 บรรยากาศคอนเสิร์ต ฟังให้เหมือนยืนอยู่หน้าเวที\n🎵 เพลงกล่อมของแม่\n🏟️ คอนเสิร์ตจำลอง — เสียงฮอลล์ เสียงเชียร์ เสียงวง\n💬 อยากให้เพลงไหนออกคอนเสิร์ตต่อ? คอมเมนต์มาเลย\n⚠️ เสียงร้องและภาพสร้างด้วย AI\n🎬 ดูเต็ม ๆ ที่ YouTube @aerismusicth · เพจ FB เพลงส้นทีนไรเนี่ย\n#คอนเสิร์ตจำลอง #เพลงไทย #เพลงส้นทีนไรเนี่ย"
-  },
-  {
-    "id": "facebook-page:concert-15-thanon-sai-kao",
-    "platform": "facebook",
-    "slug": "15-thanon-sai-kao",
-    "hook": 0,
-    "kind": "concert",
-    "video": "library/concert/concert-15-thanon-sai-kao.mp4",
-    "caption": "🎤 บรรยากาศคอนเสิร์ต ฟังให้เหมือนยืนอยู่หน้าเวที\n🎵 ถนนสายเก่า\n🏟️ คอนเสิร์ตจำลอง — เสียงฮอลล์ เสียงเชียร์ เสียงวง\n💬 อยากให้เพลงไหนออกคอนเสิร์ตต่อ? คอมเมนต์มาเลย\n⚠️ เสียงร้องและภาพสร้างด้วย AI\n🎬 ดูคลิปอื่นที่ YouTube @aerismusicth · TikTok @aeris.music4\n#คอนเสิร์ตจำลอง #เพลงไทย #เพลงส้นทีนไรเนี่ย"
-  },
-  {
-    "id": "tiktok:concert-15-thanon-sai-kao",
-    "platform": "tiktok",
-    "slug": "15-thanon-sai-kao",
-    "hook": 0,
-    "kind": "concert",
-    "video": "library/concert/concert-15-thanon-sai-kao.mp4",
-    "caption": "🎤 บรรยากาศคอนเสิร์ต ฟังให้เหมือนยืนอยู่หน้าเวที\n🎵 ถนนสายเก่า\n🏟️ คอนเสิร์ตจำลอง — เสียงฮอลล์ เสียงเชียร์ เสียงวง\n💬 อยากให้เพลงไหนออกคอนเสิร์ตต่อ? คอมเมนต์มาเลย\n⚠️ เสียงร้องและภาพสร้างด้วย AI\n🎬 ดูเต็ม ๆ ที่ YouTube @aerismusicth · เพจ FB เพลงส้นทีนไรเนี่ย\n#คอนเสิร์ตจำลอง #เพลงไทย #เพลงส้นทีนไรเนี่ย"
-  },
-  {
-    "id": "facebook-page:concert-16-khwam-fan-thi-yang-mai-tai",
-    "platform": "facebook",
-    "slug": "16-khwam-fan-thi-yang-mai-tai",
-    "hook": 0,
-    "kind": "concert",
-    "video": "library/concert/concert-16-khwam-fan-thi-yang-mai-tai.mp4",
-    "caption": "🎤 บรรยากาศคอนเสิร์ต ฟังให้เหมือนยืนอยู่หน้าเวที\n🎵 ความฝันที่ยังไม่ตาย\n🏟️ คอนเสิร์ตจำลอง — เสียงฮอลล์ เสียงเชียร์ เสียงวง\n💬 อยากให้เพลงไหนออกคอนเสิร์ตต่อ? คอมเมนต์มาเลย\n⚠️ เสียงร้องและภาพสร้างด้วย AI\n🎬 ดูคลิปอื่นที่ YouTube @aerismusicth · TikTok @aeris.music4\n#คอนเสิร์ตจำลอง #เพลงไทย #เพลงส้นทีนไรเนี่ย"
-  },
-  {
-    "id": "facebook-page:text-karaoke",
-    "platform": "facebook",
-    "slug": "karaoke",
-    "hook": 0,
-    "kind": "text",
-    "caption": "ใครชอบร้องคาราโอเกะยกมือขึ้นบ้าง? 🙋\nอยากได้เพลงไหนทำคาราโอเกะ บอกได้เลย\n💬 พิมพ์บอกได้เลย\n#เพลงส้นทีนไรเนี่ย #เพลงไทย #เพลงใหม่"
-  },
-  {
-    "id": "tiktok:concert-16-khwam-fan-thi-yang-mai-tai",
-    "platform": "tiktok",
-    "slug": "16-khwam-fan-thi-yang-mai-tai",
-    "hook": 0,
-    "kind": "concert",
-    "video": "library/concert/concert-16-khwam-fan-thi-yang-mai-tai.mp4",
-    "caption": "🎤 บรรยากาศคอนเสิร์ต ฟังให้เหมือนยืนอยู่หน้าเวที\n🎵 ความฝันที่ยังไม่ตาย\n🏟️ คอนเสิร์ตจำลอง — เสียงฮอลล์ เสียงเชียร์ เสียงวง\n💬 อยากให้เพลงไหนออกคอนเสิร์ตต่อ? คอมเมนต์มาเลย\n⚠️ เสียงร้องและภาพสร้างด้วย AI\n🎬 ดูเต็ม ๆ ที่ YouTube @aerismusicth · เพจ FB เพลงส้นทีนไรเนี่ย\n#คอนเสิร์ตจำลอง #เพลงไทย #เพลงส้นทีนไรเนี่ย"
-  },
-  {
-    "id": "facebook-page:short-karaoke-33-wan-tham-mada-thi-phi-set-v33",
-    "platform": "facebook",
-    "slug": "33-wan-tham-mada-thi-phi-set-v33",
-    "hook": 0,
-    "kind": "karaoke",
-    "video": "library/shorts/short-karaoke-33-wan-tham-mada-thi-phi-set-v33.mp4",
-    "caption": "วันธรรมดาที่พิเศษยามเช้า | คาราโอเกะร้องตาม\n🎵 เพลงอบอุ่น ฟังแล้วใจนุ่ม\n🤖 เพลงส้นทีนไรเนี่ย — ค่ายเพลง AI สร้างเพลงและเสียงร้องด้วย AI\n❤️ กดติดตามเพจ · ของน่าซื้อ 👉 https://s.shopee.co.th/2qVq75ACtW\n🎬 ดูใหม่ทุกวัน: YouTube @aerismusicth · TikTok @aeris.music4\n💬 🎤 อยากลองร้องไหม? กดบันทึกไว้ร้องตามได้เลย\n#เพลงไทย #เพลงใหม่ #ร้องต่อไหม #เพลงส้นทีนไรเนี่ย #ค่ายเพลงAI"
-  },
-  {
-    "id": "facebook-page:concert-17-wan-thi-fa-pen-chai",
-    "platform": "facebook",
-    "slug": "17-wan-thi-fa-pen-chai",
-    "hook": 0,
-    "kind": "concert",
-    "video": "library/concert/concert-17-wan-thi-fa-pen-chai.mp4",
-    "caption": "🎤 บรรยากาศคอนเสิร์ต ฟังให้เหมือนยืนอยู่หน้าเวที\n🎵 วันที่ฟ้าเป็นใจ\n🏟️ คอนเสิร์ตจำลอง — เสียงฮอลล์ เสียงเชียร์ เสียงวง\n💬 อยากให้เพลงไหนออกคอนเสิร์ตต่อ? คอมเมนต์มาเลย\n⚠️ เสียงร้องและภาพสร้างด้วย AI\n🎬 ดูคลิปอื่นที่ YouTube @aerismusicth · TikTok @aeris.music4\n#คอนเสิร์ตจำลอง #เพลงไทย #เพลงส้นทีนไรเนี่ย"
-  },
-  {
-    "id": "tiktok:concert-17-wan-thi-fa-pen-chai",
-    "platform": "tiktok",
-    "slug": "17-wan-thi-fa-pen-chai",
-    "hook": 0,
-    "kind": "concert",
-    "video": "library/concert/concert-17-wan-thi-fa-pen-chai.mp4",
-    "caption": "🎤 บรรยากาศคอนเสิร์ต ฟังให้เหมือนยืนอยู่หน้าเวที\n🎵 วันที่ฟ้าเป็นใจ\n🏟️ คอนเสิร์ตจำลอง — เสียงฮอลล์ เสียงเชียร์ เสียงวง\n💬 อยากให้เพลงไหนออกคอนเสิร์ตต่อ? คอมเมนต์มาเลย\n⚠️ เสียงร้องและภาพสร้างด้วย AI\n🎬 ดูเต็ม ๆ ที่ YouTube @aerismusicth · เพจ FB เพลงส้นทีนไรเนี่ย\n#คอนเสิร์ตจำลอง #เพลงไทย #เพลงส้นทีนไรเนี่ย"
-  },
-  {
     "id": "facebook-page:surreal-01-khon-di-thi-chak-pai",
     "platform": "facebook",
     "slug": "01-khon-di-thi-chak-pai",
@@ -910,6 +502,414 @@
     "kind": "surreal",
     "video": "library/surreal/surreal-33-wan-tham-mada-thi-phi-set-v33.mp4",
     "caption": "หอศิลป์-243 · ของธรรมดา 1 อย่าง → ความรู้สึกที่เป็นไปไม่ได้ 1 อย่าง\nหน้าต่างรถเมล์ : ความคิดถึงที่ทอดไข่ได้\n💬 ของธรรมดาอะไรอยากให้เราแปลงเป็นเพลงต่อ? คอมเมนต์มาเลย\n⚠️ เสียงร้องและภาพสร้างด้วย AI\n🎬 ดูเต็ม ๆ ที่ YouTube @aerismusicth · เพจ FB เพลงส้นทีนไรเนี่ย\n#ศิลปะหลุดโลก #เพลงไทย #เพลงส้นทีนไรเนี่ย"
+  },
+  {
+    "id": "facebook-page:concert-01-khon-di-thi-chak-pai",
+    "platform": "facebook",
+    "slug": "01-khon-di-thi-chak-pai",
+    "hook": 0,
+    "kind": "concert",
+    "video": "library/concert/concert-01-khon-di-thi-chak-pai.mp4",
+    "caption": "🎤 บรรยากาศคอนเสิร์ต ฟังให้เหมือนยืนอยู่หน้าเวที\n🎵 คนดีที่จากไป\n🏟️ คอนเสิร์ตจำลอง — เสียงฮอลล์ เสียงเชียร์ เสียงวง\n💬 อยากให้เพลงไหนออกคอนเสิร์ตต่อ? คอมเมนต์มาเลย\n⚠️ เสียงร้องและภาพสร้างด้วย AI\n🎬 ดูคลิปอื่นที่ YouTube @aerismusicth · TikTok @aeris.music4\n#คอนเสิร์ตจำลอง #เพลงไทย #AERISMusic"
+  },
+  {
+    "id": "tiktok:concert-01-khon-di-thi-chak-pai",
+    "platform": "tiktok",
+    "slug": "01-khon-di-thi-chak-pai",
+    "hook": 0,
+    "kind": "concert",
+    "video": "library/concert/concert-01-khon-di-thi-chak-pai.mp4",
+    "caption": "🎤 บรรยากาศคอนเสิร์ต ฟังให้เหมือนยืนอยู่หน้าเวที\n🎵 คนดีที่จากไป\n🏟️ คอนเสิร์ตจำลอง — เสียงฮอลล์ เสียงเชียร์ เสียงวง\n💬 อยากให้เพลงไหนออกคอนเสิร์ตต่อ? คอมเมนต์มาเลย\n⚠️ เสียงร้องและภาพสร้างด้วย AI\n🎬 ดูเต็ม ๆ ที่ YouTube @aerismusicth · เพจ FB AERIS Music\n#คอนเสิร์ตจำลอง #เพลงไทย #AERISMusic"
+  },
+  {
+    "id": "facebook-page:concert-02-rak-thi-mai-mi-wan-chop",
+    "platform": "facebook",
+    "slug": "02-rak-thi-mai-mi-wan-chop",
+    "hook": 0,
+    "kind": "concert",
+    "video": "library/concert/concert-02-rak-thi-mai-mi-wan-chop.mp4",
+    "caption": "🎤 บรรยากาศคอนเสิร์ต ฟังให้เหมือนยืนอยู่หน้าเวที\n🎵 รักที่ไม่มีวันจบ\n🏟️ คอนเสิร์ตจำลอง — เสียงฮอลล์ เสียงเชียร์ เสียงวง\n💬 อยากให้เพลงไหนออกคอนเสิร์ตต่อ? คอมเมนต์มาเลย\n⚠️ เสียงร้องและภาพสร้างด้วย AI\n🎬 ดูคลิปอื่นที่ YouTube @aerismusicth · TikTok @aeris.music4\n#คอนเสิร์ตจำลอง #เพลงไทย #AERISMusic"
+  },
+  {
+    "id": "tiktok:concert-02-rak-thi-mai-mi-wan-chop",
+    "platform": "tiktok",
+    "slug": "02-rak-thi-mai-mi-wan-chop",
+    "hook": 0,
+    "kind": "concert",
+    "video": "library/concert/concert-02-rak-thi-mai-mi-wan-chop.mp4",
+    "caption": "🎤 บรรยากาศคอนเสิร์ต ฟังให้เหมือนยืนอยู่หน้าเวที\n🎵 รักที่ไม่มีวันจบ\n🏟️ คอนเสิร์ตจำลอง — เสียงฮอลล์ เสียงเชียร์ เสียงวง\n💬 อยากให้เพลงไหนออกคอนเสิร์ตต่อ? คอมเมนต์มาเลย\n⚠️ เสียงร้องและภาพสร้างด้วย AI\n🎬 ดูเต็ม ๆ ที่ YouTube @aerismusicth · เพจ FB AERIS Music\n#คอนเสิร์ตจำลอง #เพลงไทย #AERISMusic"
+  },
+  {
+    "id": "facebook-page:concert-03-khit-thueng-thoe-thuk-khuen",
+    "platform": "facebook",
+    "slug": "03-khit-thueng-thoe-thuk-khuen",
+    "hook": 0,
+    "kind": "concert",
+    "video": "library/concert/concert-03-khit-thueng-thoe-thuk-khuen.mp4",
+    "caption": "🎤 บรรยากาศคอนเสิร์ต ฟังให้เหมือนยืนอยู่หน้าเวที\n🎵 คิดถึงเธอทุกคืน\n🏟️ คอนเสิร์ตจำลอง — เสียงฮอลล์ เสียงเชียร์ เสียงวง\n💬 อยากให้เพลงไหนออกคอนเสิร์ตต่อ? คอมเมนต์มาเลย\n⚠️ เสียงร้องและภาพสร้างด้วย AI\n🎬 ดูคลิปอื่นที่ YouTube @aerismusicth · TikTok @aeris.music4\n#คอนเสิร์ตจำลอง #เพลงไทย #AERISMusic"
+  },
+  {
+    "id": "tiktok:concert-03-khit-thueng-thoe-thuk-khuen",
+    "platform": "tiktok",
+    "slug": "03-khit-thueng-thoe-thuk-khuen",
+    "hook": 0,
+    "kind": "concert",
+    "video": "library/concert/concert-03-khit-thueng-thoe-thuk-khuen.mp4",
+    "caption": "🎤 บรรยากาศคอนเสิร์ต ฟังให้เหมือนยืนอยู่หน้าเวที\n🎵 คิดถึงเธอทุกคืน\n🏟️ คอนเสิร์ตจำลอง — เสียงฮอลล์ เสียงเชียร์ เสียงวง\n💬 อยากให้เพลงไหนออกคอนเสิร์ตต่อ? คอมเมนต์มาเลย\n⚠️ เสียงร้องและภาพสร้างด้วย AI\n🎬 ดูเต็ม ๆ ที่ YouTube @aerismusicth · เพจ FB AERIS Music\n#คอนเสิร์ตจำลอง #เพลงไทย #AERISMusic"
+  },
+  {
+    "id": "facebook-page:text-mood",
+    "platform": "facebook",
+    "slug": "mood",
+    "hook": 0,
+    "kind": "text",
+    "caption": "วันนี้อยากฟังเพลงแนวไหนมากที่สุด? 🎧\nป็อป · แดนซ์ · ร็อก · เพลงเศร้า · ให้กำลังใจ\n💬 พิมพ์บอกได้เลย\n#เพลงส้นทีนไรเนี่ย #เพลงไทย #เพลงใหม่"
+  },
+  {
+    "id": "facebook-page:concert-04-saeng-chao-wan-mai",
+    "platform": "facebook",
+    "slug": "04-saeng-chao-wan-mai",
+    "hook": 0,
+    "kind": "concert",
+    "video": "library/concert/concert-04-saeng-chao-wan-mai.mp4",
+    "caption": "🎤 บรรยากาศคอนเสิร์ต ฟังให้เหมือนยืนอยู่หน้าเวที\n🎵 แสงเช้าวันใหม่\n🏟️ คอนเสิร์ตจำลอง — เสียงฮอลล์ เสียงเชียร์ เสียงวง\n💬 อยากให้เพลงไหนออกคอนเสิร์ตต่อ? คอมเมนต์มาเลย\n⚠️ เสียงร้องและภาพสร้างด้วย AI\n🎬 ดูคลิปอื่นที่ YouTube @aerismusicth · TikTok @aeris.music4\n#คอนเสิร์ตจำลอง #เพลงไทย #AERISMusic"
+  },
+  {
+    "id": "tiktok:concert-04-saeng-chao-wan-mai",
+    "platform": "tiktok",
+    "slug": "04-saeng-chao-wan-mai",
+    "hook": 0,
+    "kind": "concert",
+    "video": "library/concert/concert-04-saeng-chao-wan-mai.mp4",
+    "caption": "🎤 บรรยากาศคอนเสิร์ต ฟังให้เหมือนยืนอยู่หน้าเวที\n🎵 แสงเช้าวันใหม่\n🏟️ คอนเสิร์ตจำลอง — เสียงฮอลล์ เสียงเชียร์ เสียงวง\n💬 อยากให้เพลงไหนออกคอนเสิร์ตต่อ? คอมเมนต์มาเลย\n⚠️ เสียงร้องและภาพสร้างด้วย AI\n🎬 ดูเต็ม ๆ ที่ YouTube @aerismusicth · เพจ FB AERIS Music\n#คอนเสิร์ตจำลอง #เพลงไทย #AERISMusic"
+  },
+  {
+    "id": "facebook-page:photo-43-khuen-ni-mai-tong-khit-arai-v43",
+    "platform": "facebook",
+    "slug": "43-khuen-ni-mai-tong-khit-arai-v43",
+    "hook": 0,
+    "kind": "photo",
+    "image": "library/covers/cover-43-khuen-ni-mai-tong-khit-arai-v43.jpg",
+    "caption": "🎨 คืนนี้ไม่ต้องคิดอะไรอีกครั้ง\n🎵 เพลงให้กำลังใจ เริ่มวันใหม่อีกครั้ง\n🤖 เพลงส้นทีนไรเนี่ย — ค่ายเพลง AI สร้างเพลงและเสียงร้องด้วย AI\n❤️ กดติดตามเพจ ฟังเพลงใหม่ทุกวัน\n🎧 ฟังเต็ม ๆ: YouTube @aerismusicth · TikTok @aeris.music4\n🛒 ของน่าซื้อ 👉 https://s.shopee.co.th/2qVq75ACtW\n#เพลงไทย #เพลงใหม่ #เพลงส้นทีนไรเนี่ย #ค่ายเพลงAI"
+  },
+  {
+    "id": "facebook-page:photo-42-khuen-ni-mai-tong-khit-arai",
+    "platform": "facebook",
+    "slug": "42-khuen-ni-mai-tong-khit-arai",
+    "hook": 0,
+    "kind": "photo",
+    "image": "library/covers/cover-42-khuen-ni-mai-tong-khit-arai.jpg",
+    "caption": "🎨 คืนนี้ไม่ต้องคิดอะไร\n🎵 เพลงให้กำลังใจ เริ่มวันใหม่อีกครั้ง\n🤖 เพลงส้นทีนไรเนี่ย — ค่ายเพลง AI สร้างเพลงและเสียงร้องด้วย AI\n❤️ กดติดตามเพจ ฟังเพลงใหม่ทุกวัน\n🎧 ฟังเต็ม ๆ: YouTube @aerismusicth · TikTok @aeris.music4\n🛒 ของน่าซื้อ 👉 https://s.shopee.co.th/2qVq75ACtW\n#เพลงไทย #เพลงใหม่ #เพลงส้นทีนไรเนี่ย #ค่ายเพลงAI"
+  },
+  {
+    "id": "tiktok:short-karaoke-32-wan-tham-mada-thi-phi-set-v32",
+    "platform": "tiktok",
+    "slug": "32-wan-tham-mada-thi-phi-set-v32",
+    "hook": 0,
+    "kind": "karaoke",
+    "video": "library/shorts/short-karaoke-32-wan-tham-mada-thi-phi-set-v32.mp4",
+    "caption": "วันธรรมดาที่พิเศษในฝัน | คาราโอเกะร้องตาม\n🎵 เพลงอบอุ่น ฟังแล้วใจนุ่ม\n🤖 เพลงส้นทีนไรเนี่ย — ค่ายเพลง AI สร้างเพลงและเสียงร้องด้วย AI\n🎧 กดติดตาม · ของน่าซื้อ 👉 https://s.shopee.co.th/60SrsstoP6\n🎬 ฟังเต็ม ๆ ได้ที่ YouTube @aerismusicth · เพจ FB เพลงส้นทีนไรเนี่ย\n💬 🎤 อยากลองร้องไหม? กดบันทึกไว้ร้องตามได้เลย\n#fyp #เพลงไทย #เพลงใหม่ #ร้องต่อไหม #TikTokเพลงไทย #ค่ายเพลงAI"
+  },
+  {
+    "id": "facebook-page:concert-05-fon-tok-nai-chai",
+    "platform": "facebook",
+    "slug": "05-fon-tok-nai-chai",
+    "hook": 0,
+    "kind": "concert",
+    "video": "library/concert/concert-05-fon-tok-nai-chai.mp4",
+    "caption": "🎤 บรรยากาศคอนเสิร์ต ฟังให้เหมือนยืนอยู่หน้าเวที\n🎵 ฝนตกในใจ\n🏟️ คอนเสิร์ตจำลอง — เสียงฮอลล์ เสียงเชียร์ เสียงวง\n💬 อยากให้เพลงไหนออกคอนเสิร์ตต่อ? คอมเมนต์มาเลย\n⚠️ เสียงร้องและภาพสร้างด้วย AI\n🎬 ดูคลิปอื่นที่ YouTube @aerismusicth · TikTok @aeris.music4\n#คอนเสิร์ตจำลอง #เพลงไทย #AERISMusic"
+  },
+  {
+    "id": "facebook-page:text-chorus",
+    "platform": "facebook",
+    "slug": "chorus",
+    "hook": 0,
+    "kind": "text",
+    "caption": "ท่อนฮุกเพลงไหนของเราที่ติดหูคุณที่สุด? 🎵\nคอมเมนต์บอกได้เลย เดี๋ยวทำเวอร์ชันพิเศษให้\n💬 พิมพ์บอกได้เลย\n#เพลงส้นทีนไรเนี่ย #เพลงไทย #เพลงใหม่"
+  },
+  {
+    "id": "tiktok:concert-05-fon-tok-nai-chai",
+    "platform": "tiktok",
+    "slug": "05-fon-tok-nai-chai",
+    "hook": 0,
+    "kind": "concert",
+    "video": "library/concert/concert-05-fon-tok-nai-chai.mp4",
+    "caption": "🎤 บรรยากาศคอนเสิร์ต ฟังให้เหมือนยืนอยู่หน้าเวที\n🎵 ฝนตกในใจ\n🏟️ คอนเสิร์ตจำลอง — เสียงฮอลล์ เสียงเชียร์ เสียงวง\n💬 อยากให้เพลงไหนออกคอนเสิร์ตต่อ? คอมเมนต์มาเลย\n⚠️ เสียงร้องและภาพสร้างด้วย AI\n🎬 ดูเต็ม ๆ ที่ YouTube @aerismusicth · เพจ FB AERIS Music\n#คอนเสิร์ตจำลอง #เพลงไทย #AERISMusic"
+  },
+  {
+    "id": "facebook-page:concert-06-doen-khon-diao",
+    "platform": "facebook",
+    "slug": "06-doen-khon-diao",
+    "hook": 0,
+    "kind": "concert",
+    "video": "library/concert/concert-06-doen-khon-diao.mp4",
+    "caption": "🎤 บรรยากาศคอนเสิร์ต ฟังให้เหมือนยืนอยู่หน้าเวที\n🎵 เดินคนเดียว\n🏟️ คอนเสิร์ตจำลอง — เสียงฮอลล์ เสียงเชียร์ เสียงวง\n💬 อยากให้เพลงไหนออกคอนเสิร์ตต่อ? คอมเมนต์มาเลย\n⚠️ เสียงร้องและภาพสร้างด้วย AI\n🎬 ดูคลิปอื่นที่ YouTube @aerismusicth · TikTok @aeris.music4\n#คอนเสิร์ตจำลอง #เพลงไทย #เพลงส้นทีนไรเนี่ย"
+  },
+  {
+    "id": "tiktok:concert-06-doen-khon-diao",
+    "platform": "tiktok",
+    "slug": "06-doen-khon-diao",
+    "hook": 0,
+    "kind": "concert",
+    "video": "library/concert/concert-06-doen-khon-diao.mp4",
+    "caption": "🎤 บรรยากาศคอนเสิร์ต ฟังให้เหมือนยืนอยู่หน้าเวที\n🎵 เดินคนเดียว\n🏟️ คอนเสิร์ตจำลอง — เสียงฮอลล์ เสียงเชียร์ เสียงวง\n💬 อยากให้เพลงไหนออกคอนเสิร์ตต่อ? คอมเมนต์มาเลย\n⚠️ เสียงร้องและภาพสร้างด้วย AI\n🎬 ดูเต็ม ๆ ที่ YouTube @aerismusicth · เพจ FB AERIS Music\n#คอนเสิร์ตจำลอง #เพลงไทย #AERISMusic"
+  },
+  {
+    "id": "facebook-page:concert-07-huachai-si-thao",
+    "platform": "facebook",
+    "slug": "07-huachai-si-thao",
+    "hook": 0,
+    "kind": "concert",
+    "video": "library/concert/concert-07-huachai-si-thao.mp4",
+    "caption": "🎤 บรรยากาศคอนเสิร์ต ฟังให้เหมือนยืนอยู่หน้าเวที\n🎵 หัวใจสีเทา\n🏟️ คอนเสิร์ตจำลอง — เสียงฮอลล์ เสียงเชียร์ เสียงวง\n💬 อยากให้เพลงไหนออกคอนเสิร์ตต่อ? คอมเมนต์มาเลย\n⚠️ เสียงร้องและภาพสร้างด้วย AI\n🎬 ดูคลิปอื่นที่ YouTube @aerismusicth · TikTok @aeris.music4\n#คอนเสิร์ตจำลอง #เพลงไทย #เพลงส้นทีนไรเนี่ย"
+  },
+  {
+    "id": "tiktok:concert-07-huachai-si-thao",
+    "platform": "tiktok",
+    "slug": "07-huachai-si-thao",
+    "hook": 0,
+    "kind": "concert",
+    "video": "library/concert/concert-07-huachai-si-thao.mp4",
+    "caption": "🎤 บรรยากาศคอนเสิร์ต ฟังให้เหมือนยืนอยู่หน้าเวที\n🎵 หัวใจสีเทา\n🏟️ คอนเสิร์ตจำลอง — เสียงฮอลล์ เสียงเชียร์ เสียงวง\n💬 อยากให้เพลงไหนออกคอนเสิร์ตต่อ? คอมเมนต์มาเลย\n⚠️ เสียงร้องและภาพสร้างด้วย AI\n🎬 ดูเต็ม ๆ ที่ YouTube @aerismusicth · เพจ FB AERIS Music\n#คอนเสิร์ตจำลอง #เพลงไทย #AERISMusic"
+  },
+  {
+    "id": "facebook-page:concert-08-klap-ban-rao",
+    "platform": "facebook",
+    "slug": "08-klap-ban-rao",
+    "hook": 0,
+    "kind": "concert",
+    "video": "library/concert/concert-08-klap-ban-rao.mp4",
+    "caption": "🎤 บรรยากาศคอนเสิร์ต ฟังให้เหมือนยืนอยู่หน้าเวที\n🎵 กลับบ้านเรา\n🏟️ คอนเสิร์ตจำลอง — เสียงฮอลล์ เสียงเชียร์ เสียงวง\n💬 อยากให้เพลงไหนออกคอนเสิร์ตต่อ? คอมเมนต์มาเลย\n⚠️ เสียงร้องและภาพสร้างด้วย AI\n🎬 ดูคลิปอื่นที่ YouTube @aerismusicth · TikTok @aeris.music4\n#คอนเสิร์ตจำลอง #เพลงไทย #เพลงส้นทีนไรเนี่ย"
+  },
+  {
+    "id": "facebook-page:text-dedicate",
+    "platform": "facebook",
+    "slug": "dedicate",
+    "hook": 0,
+    "kind": "text",
+    "caption": "มีเพลงหนึ่งที่คุณอยากส่งให้ใครสักคนไหม? 💌\nพิมพ์ชื่อเพลงที่อยากให้เราแต่งให้ได้เลย\n💬 พิมพ์บอกได้เลย\n#เพลงส้นทีนไรเนี่ย #เพลงไทย #เพลงใหม่"
+  },
+  {
+    "id": "tiktok:concert-08-klap-ban-rao",
+    "platform": "tiktok",
+    "slug": "08-klap-ban-rao",
+    "hook": 0,
+    "kind": "concert",
+    "video": "library/concert/concert-08-klap-ban-rao.mp4",
+    "caption": "🎤 บรรยากาศคอนเสิร์ต ฟังให้เหมือนยืนอยู่หน้าเวที\n🎵 กลับบ้านเรา\n🏟️ คอนเสิร์ตจำลอง — เสียงฮอลล์ เสียงเชียร์ เสียงวง\n💬 อยากให้เพลงไหนออกคอนเสิร์ตต่อ? คอมเมนต์มาเลย\n⚠️ เสียงร้องและภาพสร้างด้วย AI\n🎬 ดูเต็ม ๆ ที่ YouTube @aerismusicth · เพจ FB AERIS Music\n#คอนเสิร์ตจำลอง #เพลงไทย #AERISMusic"
+  },
+  {
+    "id": "facebook-page:short-karaoke-32-wan-tham-mada-thi-phi-set-v32",
+    "platform": "facebook",
+    "slug": "32-wan-tham-mada-thi-phi-set-v32",
+    "hook": 0,
+    "kind": "karaoke",
+    "video": "library/shorts/short-karaoke-32-wan-tham-mada-thi-phi-set-v32.mp4",
+    "caption": "วันธรรมดาที่พิเศษในฝัน | คาราโอเกะร้องตาม\n🎵 เพลงอบอุ่น ฟังแล้วใจนุ่ม\n🤖 เพลงส้นทีนไรเนี่ย — ค่ายเพลง AI สร้างเพลงและเสียงร้องด้วย AI\n❤️ กดติดตามเพจ · ของน่าซื้อ 👉 https://s.shopee.co.th/2qVq75ACtW\n🎬 ดูใหม่ทุกวัน: YouTube @aerismusicth · TikTok @aeris.music4\n💬 🎤 อยากลองร้องไหม? กดบันทึกไว้ร้องตามได้เลย\n#เพลงไทย #เพลงใหม่ #ร้องต่อไหม #เพลงส้นทีนไรเนี่ย #ค่ายเพลงAI"
+  },
+  {
+    "id": "facebook-page:concert-09-phleng-khong-khon-nueai",
+    "platform": "facebook",
+    "slug": "09-phleng-khong-khon-nueai",
+    "hook": 0,
+    "kind": "concert",
+    "video": "library/concert/concert-09-phleng-khong-khon-nueai.mp4",
+    "caption": "🎤 บรรยากาศคอนเสิร์ต ฟังให้เหมือนยืนอยู่หน้าเวที\n🎵 เพลงของคนเหนื่อย\n🏟️ คอนเสิร์ตจำลอง — เสียงฮอลล์ เสียงเชียร์ เสียงวง\n💬 อยากให้เพลงไหนออกคอนเสิร์ตต่อ? คอมเมนต์มาเลย\n⚠️ เสียงร้องและภาพสร้างด้วย AI\n🎬 ดูคลิปอื่นที่ YouTube @aerismusicth · TikTok @aeris.music4\n#คอนเสิร์ตจำลอง #เพลงไทย #เพลงส้นทีนไรเนี่ย"
+  },
+  {
+    "id": "tiktok:concert-09-phleng-khong-khon-nueai",
+    "platform": "tiktok",
+    "slug": "09-phleng-khong-khon-nueai",
+    "hook": 0,
+    "kind": "concert",
+    "video": "library/concert/concert-09-phleng-khong-khon-nueai.mp4",
+    "caption": "🎤 บรรยากาศคอนเสิร์ต ฟังให้เหมือนยืนอยู่หน้าเวที\n🎵 เพลงของคนเหนื่อย\n🏟️ คอนเสิร์ตจำลอง — เสียงฮอลล์ เสียงเชียร์ เสียงวง\n💬 อยากให้เพลงไหนออกคอนเสิร์ตต่อ? คอมเมนต์มาเลย\n⚠️ เสียงร้องและภาพสร้างด้วย AI\n🎬 ดูเต็ม ๆ ที่ YouTube @aerismusicth · เพจ FB AERIS Music\n#คอนเสิร์ตจำลอง #เพลงไทย #AERISMusic"
+  },
+  {
+    "id": "facebook-page:concert-10-dok-mai-rim-thang",
+    "platform": "facebook",
+    "slug": "10-dok-mai-rim-thang",
+    "hook": 0,
+    "kind": "concert",
+    "video": "library/concert/concert-10-dok-mai-rim-thang.mp4",
+    "caption": "🎤 บรรยากาศคอนเสิร์ต ฟังให้เหมือนยืนอยู่หน้าเวที\n🎵 ดอกไม้ริมทาง\n🏟️ คอนเสิร์ตจำลอง — เสียงฮอลล์ เสียงเชียร์ เสียงวง\n💬 อยากให้เพลงไหนออกคอนเสิร์ตต่อ? คอมเมนต์มาเลย\n⚠️ เสียงร้องและภาพสร้างด้วย AI\n🎬 ดูคลิปอื่นที่ YouTube @aerismusicth · TikTok @aeris.music4\n#คอนเสิร์ตจำลอง #เพลงไทย #เพลงส้นทีนไรเนี่ย"
+  },
+  {
+    "id": "tiktok:concert-10-dok-mai-rim-thang",
+    "platform": "tiktok",
+    "slug": "10-dok-mai-rim-thang",
+    "hook": 0,
+    "kind": "concert",
+    "video": "library/concert/concert-10-dok-mai-rim-thang.mp4",
+    "caption": "🎤 บรรยากาศคอนเสิร์ต ฟังให้เหมือนยืนอยู่หน้าเวที\n🎵 ดอกไม้ริมทาง\n🏟️ คอนเสิร์ตจำลอง — เสียงฮอลล์ เสียงเชียร์ เสียงวง\n💬 อยากให้เพลงไหนออกคอนเสิร์ตต่อ? คอมเมนต์มาเลย\n⚠️ เสียงร้องและภาพสร้างด้วย AI\n🎬 ดูเต็ม ๆ ที่ YouTube @aerismusicth · เพจ FB AERIS Music\n#คอนเสิร์ตจำลอง #เพลงไทย #AERISMusic"
+  },
+  {
+    "id": "facebook-page:text-sad-or-happy",
+    "platform": "facebook",
+    "slug": "sad-or-happy",
+    "hook": 0,
+    "kind": "text",
+    "caption": "ตอนเศร้า คุณเปิดเพลงเศร้า หรือเพลงสนุก? 🎶\nเล่าให้ฟังหน่อยว่าทำไม\n💬 พิมพ์บอกได้เลย\n#เพลงส้นทีนไรเนี่ย #เพลงไทย #เพลงใหม่"
+  },
+  {
+    "id": "facebook-page:concert-11-sanya-chak-chai",
+    "platform": "facebook",
+    "slug": "11-sanya-chak-chai",
+    "hook": 0,
+    "kind": "concert",
+    "video": "library/concert/concert-11-sanya-chak-chai.mp4",
+    "caption": "🎤 บรรยากาศคอนเสิร์ต ฟังให้เหมือนยืนอยู่หน้าเวที\n🎵 สัญญาจากใจ\n🏟️ คอนเสิร์ตจำลอง — เสียงฮอลล์ เสียงเชียร์ เสียงวง\n💬 อยากให้เพลงไหนออกคอนเสิร์ตต่อ? คอมเมนต์มาเลย\n⚠️ เสียงร้องและภาพสร้างด้วย AI\n🎬 ดูคลิปอื่นที่ YouTube @aerismusicth · TikTok @aeris.music4\n#คอนเสิร์ตจำลอง #เพลงไทย #เพลงส้นทีนไรเนี่ย"
+  },
+  {
+    "id": "tiktok:concert-11-sanya-chak-chai",
+    "platform": "tiktok",
+    "slug": "11-sanya-chak-chai",
+    "hook": 0,
+    "kind": "concert",
+    "video": "library/concert/concert-11-sanya-chak-chai.mp4",
+    "caption": "🎤 บรรยากาศคอนเสิร์ต ฟังให้เหมือนยืนอยู่หน้าเวที\n🎵 สัญญาจากใจ\n🏟️ คอนเสิร์ตจำลอง — เสียงฮอลล์ เสียงเชียร์ เสียงวง\n💬 อยากให้เพลงไหนออกคอนเสิร์ตต่อ? คอมเมนต์มาเลย\n⚠️ เสียงร้องและภาพสร้างด้วย AI\n🎬 ดูเต็ม ๆ ที่ YouTube @aerismusicth · เพจ FB AERIS Music\n#คอนเสิร์ตจำลอง #เพลงไทย #AERISMusic"
+  },
+  {
+    "id": "facebook-page:concert-12-khuen-thi-mai-mi-dao",
+    "platform": "facebook",
+    "slug": "12-khuen-thi-mai-mi-dao",
+    "hook": 0,
+    "kind": "concert",
+    "video": "library/concert/concert-12-khuen-thi-mai-mi-dao.mp4",
+    "caption": "🎤 บรรยากาศคอนเสิร์ต ฟังให้เหมือนยืนอยู่หน้าเวที\n🎵 คืนที่ไม่มีดาว\n🏟️ คอนเสิร์ตจำลอง — เสียงฮอลล์ เสียงเชียร์ เสียงวง\n💬 อยากให้เพลงไหนออกคอนเสิร์ตต่อ? คอมเมนต์มาเลย\n⚠️ เสียงร้องและภาพสร้างด้วย AI\n🎬 ดูคลิปอื่นที่ YouTube @aerismusicth · TikTok @aeris.music4\n#คอนเสิร์ตจำลอง #เพลงไทย #เพลงส้นทีนไรเนี่ย"
+  },
+  {
+    "id": "tiktok:concert-12-khuen-thi-mai-mi-dao",
+    "platform": "tiktok",
+    "slug": "12-khuen-thi-mai-mi-dao",
+    "hook": 0,
+    "kind": "concert",
+    "video": "library/concert/concert-12-khuen-thi-mai-mi-dao.mp4",
+    "caption": "🎤 บรรยากาศคอนเสิร์ต ฟังให้เหมือนยืนอยู่หน้าเวที\n🎵 คืนที่ไม่มีดาว\n🏟️ คอนเสิร์ตจำลอง — เสียงฮอลล์ เสียงเชียร์ เสียงวง\n💬 อยากให้เพลงไหนออกคอนเสิร์ตต่อ? คอมเมนต์มาเลย\n⚠️ เสียงร้องและภาพสร้างด้วย AI\n🎬 ดูเต็ม ๆ ที่ YouTube @aerismusicth · เพจ FB เพลงส้นทีนไรเนี่ย\n#คอนเสิร์ตจำลอง #เพลงไทย #เพลงส้นทีนไรเนี่ย"
+  },
+  {
+    "id": "tiktok:short-karaoke-33-wan-tham-mada-thi-phi-set-v33",
+    "platform": "tiktok",
+    "slug": "33-wan-tham-mada-thi-phi-set-v33",
+    "hook": 0,
+    "kind": "karaoke",
+    "video": "library/shorts/short-karaoke-33-wan-tham-mada-thi-phi-set-v33.mp4",
+    "caption": "วันธรรมดาที่พิเศษยามเช้า | คาราโอเกะร้องตาม\n🎵 เพลงอบอุ่น ฟังแล้วใจนุ่ม\n🤖 เพลงส้นทีนไรเนี่ย — ค่ายเพลง AI สร้างเพลงและเสียงร้องด้วย AI\n🎧 กดติดตาม · ของน่าซื้อ 👉 https://s.shopee.co.th/60SrsstoP6\n🎬 ฟังเต็ม ๆ ได้ที่ YouTube @aerismusicth · เพจ FB เพลงส้นทีนไรเนี่ย\n💬 🎤 อยากลองร้องไหม? กดบันทึกไว้ร้องตามได้เลย\n#fyp #เพลงไทย #เพลงใหม่ #ร้องต่อไหม #TikTokเพลงไทย #ค่ายเพลงAI"
+  },
+  {
+    "id": "facebook-page:concert-13-rak-thi-chak-pai",
+    "platform": "facebook",
+    "slug": "13-rak-thi-chak-pai",
+    "hook": 0,
+    "kind": "concert",
+    "video": "library/concert/concert-13-rak-thi-chak-pai.mp4",
+    "caption": "🎤 บรรยากาศคอนเสิร์ต ฟังให้เหมือนยืนอยู่หน้าเวที\n🎵 รักที่จากไป\n🏟️ คอนเสิร์ตจำลอง — เสียงฮอลล์ เสียงเชียร์ เสียงวง\n💬 อยากให้เพลงไหนออกคอนเสิร์ตต่อ? คอมเมนต์มาเลย\n⚠️ เสียงร้องและภาพสร้างด้วย AI\n🎬 ดูคลิปอื่นที่ YouTube @aerismusicth · TikTok @aeris.music4\n#คอนเสิร์ตจำลอง #เพลงไทย #เพลงส้นทีนไรเนี่ย"
+  },
+  {
+    "id": "facebook-page:text-story",
+    "platform": "facebook",
+    "slug": "story",
+    "hook": 0,
+    "kind": "text",
+    "caption": "ถ้าให้เราแต่งเพลงจากเรื่องจริงของคุณ 1 เรื่อง\nคุณจะเล่าเรื่องอะไร? ✍️\n💬 พิมพ์บอกได้เลย\n#เพลงส้นทีนไรเนี่ย #เพลงไทย #เพลงใหม่"
+  },
+  {
+    "id": "tiktok:concert-13-rak-thi-chak-pai",
+    "platform": "tiktok",
+    "slug": "13-rak-thi-chak-pai",
+    "hook": 0,
+    "kind": "concert",
+    "video": "library/concert/concert-13-rak-thi-chak-pai.mp4",
+    "caption": "🎤 บรรยากาศคอนเสิร์ต ฟังให้เหมือนยืนอยู่หน้าเวที\n🎵 รักที่จากไป\n🏟️ คอนเสิร์ตจำลอง — เสียงฮอลล์ เสียงเชียร์ เสียงวง\n💬 อยากให้เพลงไหนออกคอนเสิร์ตต่อ? คอมเมนต์มาเลย\n⚠️ เสียงร้องและภาพสร้างด้วย AI\n🎬 ดูเต็ม ๆ ที่ YouTube @aerismusicth · เพจ FB เพลงส้นทีนไรเนี่ย\n#คอนเสิร์ตจำลอง #เพลงไทย #เพลงส้นทีนไรเนี่ย"
+  },
+  {
+    "id": "facebook-page:concert-14-phleng-klom-khong-mae",
+    "platform": "facebook",
+    "slug": "14-phleng-klom-khong-mae",
+    "hook": 0,
+    "kind": "concert",
+    "video": "library/concert/concert-14-phleng-klom-khong-mae.mp4",
+    "caption": "🎤 บรรยากาศคอนเสิร์ต ฟังให้เหมือนยืนอยู่หน้าเวที\n🎵 เพลงกล่อมของแม่\n🏟️ คอนเสิร์ตจำลอง — เสียงฮอลล์ เสียงเชียร์ เสียงวง\n💬 อยากให้เพลงไหนออกคอนเสิร์ตต่อ? คอมเมนต์มาเลย\n⚠️ เสียงร้องและภาพสร้างด้วย AI\n🎬 ดูคลิปอื่นที่ YouTube @aerismusicth · TikTok @aeris.music4\n#คอนเสิร์ตจำลอง #เพลงไทย #เพลงส้นทีนไรเนี่ย"
+  },
+  {
+    "id": "tiktok:concert-14-phleng-klom-khong-mae",
+    "platform": "tiktok",
+    "slug": "14-phleng-klom-khong-mae",
+    "hook": 0,
+    "kind": "concert",
+    "video": "library/concert/concert-14-phleng-klom-khong-mae.mp4",
+    "caption": "🎤 บรรยากาศคอนเสิร์ต ฟังให้เหมือนยืนอยู่หน้าเวที\n🎵 เพลงกล่อมของแม่\n🏟️ คอนเสิร์ตจำลอง — เสียงฮอลล์ เสียงเชียร์ เสียงวง\n💬 อยากให้เพลงไหนออกคอนเสิร์ตต่อ? คอมเมนต์มาเลย\n⚠️ เสียงร้องและภาพสร้างด้วย AI\n🎬 ดูเต็ม ๆ ที่ YouTube @aerismusicth · เพจ FB เพลงส้นทีนไรเนี่ย\n#คอนเสิร์ตจำลอง #เพลงไทย #เพลงส้นทีนไรเนี่ย"
+  },
+  {
+    "id": "facebook-page:concert-15-thanon-sai-kao",
+    "platform": "facebook",
+    "slug": "15-thanon-sai-kao",
+    "hook": 0,
+    "kind": "concert",
+    "video": "library/concert/concert-15-thanon-sai-kao.mp4",
+    "caption": "🎤 บรรยากาศคอนเสิร์ต ฟังให้เหมือนยืนอยู่หน้าเวที\n🎵 ถนนสายเก่า\n🏟️ คอนเสิร์ตจำลอง — เสียงฮอลล์ เสียงเชียร์ เสียงวง\n💬 อยากให้เพลงไหนออกคอนเสิร์ตต่อ? คอมเมนต์มาเลย\n⚠️ เสียงร้องและภาพสร้างด้วย AI\n🎬 ดูคลิปอื่นที่ YouTube @aerismusicth · TikTok @aeris.music4\n#คอนเสิร์ตจำลอง #เพลงไทย #เพลงส้นทีนไรเนี่ย"
+  },
+  {
+    "id": "tiktok:concert-15-thanon-sai-kao",
+    "platform": "tiktok",
+    "slug": "15-thanon-sai-kao",
+    "hook": 0,
+    "kind": "concert",
+    "video": "library/concert/concert-15-thanon-sai-kao.mp4",
+    "caption": "🎤 บรรยากาศคอนเสิร์ต ฟังให้เหมือนยืนอยู่หน้าเวที\n🎵 ถนนสายเก่า\n🏟️ คอนเสิร์ตจำลอง — เสียงฮอลล์ เสียงเชียร์ เสียงวง\n💬 อยากให้เพลงไหนออกคอนเสิร์ตต่อ? คอมเมนต์มาเลย\n⚠️ เสียงร้องและภาพสร้างด้วย AI\n🎬 ดูเต็ม ๆ ที่ YouTube @aerismusicth · เพจ FB เพลงส้นทีนไรเนี่ย\n#คอนเสิร์ตจำลอง #เพลงไทย #เพลงส้นทีนไรเนี่ย"
+  },
+  {
+    "id": "facebook-page:concert-16-khwam-fan-thi-yang-mai-tai",
+    "platform": "facebook",
+    "slug": "16-khwam-fan-thi-yang-mai-tai",
+    "hook": 0,
+    "kind": "concert",
+    "video": "library/concert/concert-16-khwam-fan-thi-yang-mai-tai.mp4",
+    "caption": "🎤 บรรยากาศคอนเสิร์ต ฟังให้เหมือนยืนอยู่หน้าเวที\n🎵 ความฝันที่ยังไม่ตาย\n🏟️ คอนเสิร์ตจำลอง — เสียงฮอลล์ เสียงเชียร์ เสียงวง\n💬 อยากให้เพลงไหนออกคอนเสิร์ตต่อ? คอมเมนต์มาเลย\n⚠️ เสียงร้องและภาพสร้างด้วย AI\n🎬 ดูคลิปอื่นที่ YouTube @aerismusicth · TikTok @aeris.music4\n#คอนเสิร์ตจำลอง #เพลงไทย #เพลงส้นทีนไรเนี่ย"
+  },
+  {
+    "id": "facebook-page:text-karaoke",
+    "platform": "facebook",
+    "slug": "karaoke",
+    "hook": 0,
+    "kind": "text",
+    "caption": "ใครชอบร้องคาราโอเกะยกมือขึ้นบ้าง? 🙋\nอยากได้เพลงไหนทำคาราโอเกะ บอกได้เลย\n💬 พิมพ์บอกได้เลย\n#เพลงส้นทีนไรเนี่ย #เพลงไทย #เพลงใหม่"
+  },
+  {
+    "id": "tiktok:concert-16-khwam-fan-thi-yang-mai-tai",
+    "platform": "tiktok",
+    "slug": "16-khwam-fan-thi-yang-mai-tai",
+    "hook": 0,
+    "kind": "concert",
+    "video": "library/concert/concert-16-khwam-fan-thi-yang-mai-tai.mp4",
+    "caption": "🎤 บรรยากาศคอนเสิร์ต ฟังให้เหมือนยืนอยู่หน้าเวที\n🎵 ความฝันที่ยังไม่ตาย\n🏟️ คอนเสิร์ตจำลอง — เสียงฮอลล์ เสียงเชียร์ เสียงวง\n💬 อยากให้เพลงไหนออกคอนเสิร์ตต่อ? คอมเมนต์มาเลย\n⚠️ เสียงร้องและภาพสร้างด้วย AI\n🎬 ดูเต็ม ๆ ที่ YouTube @aerismusicth · เพจ FB เพลงส้นทีนไรเนี่ย\n#คอนเสิร์ตจำลอง #เพลงไทย #เพลงส้นทีนไรเนี่ย"
+  },
+  {
+    "id": "facebook-page:short-karaoke-33-wan-tham-mada-thi-phi-set-v33",
+    "platform": "facebook",
+    "slug": "33-wan-tham-mada-thi-phi-set-v33",
+    "hook": 0,
+    "kind": "karaoke",
+    "video": "library/shorts/short-karaoke-33-wan-tham-mada-thi-phi-set-v33.mp4",
+    "caption": "วันธรรมดาที่พิเศษยามเช้า | คาราโอเกะร้องตาม\n🎵 เพลงอบอุ่น ฟังแล้วใจนุ่ม\n🤖 เพลงส้นทีนไรเนี่ย — ค่ายเพลง AI สร้างเพลงและเสียงร้องด้วย AI\n❤️ กดติดตามเพจ · ของน่าซื้อ 👉 https://s.shopee.co.th/2qVq75ACtW\n🎬 ดูใหม่ทุกวัน: YouTube @aerismusicth · TikTok @aeris.music4\n💬 🎤 อยากลองร้องไหม? กดบันทึกไว้ร้องตามได้เลย\n#เพลงไทย #เพลงใหม่ #ร้องต่อไหม #เพลงส้นทีนไรเนี่ย #ค่ายเพลงAI"
+  },
+  {
+    "id": "facebook-page:concert-17-wan-thi-fa-pen-chai",
+    "platform": "facebook",
+    "slug": "17-wan-thi-fa-pen-chai",
+    "hook": 0,
+    "kind": "concert",
+    "video": "library/concert/concert-17-wan-thi-fa-pen-chai.mp4",
+    "caption": "🎤 บรรยากาศคอนเสิร์ต ฟังให้เหมือนยืนอยู่หน้าเวที\n🎵 วันที่ฟ้าเป็นใจ\n🏟️ คอนเสิร์ตจำลอง — เสียงฮอลล์ เสียงเชียร์ เสียงวง\n💬 อยากให้เพลงไหนออกคอนเสิร์ตต่อ? คอมเมนต์มาเลย\n⚠️ เสียงร้องและภาพสร้างด้วย AI\n🎬 ดูคลิปอื่นที่ YouTube @aerismusicth · TikTok @aeris.music4\n#คอนเสิร์ตจำลอง #เพลงไทย #เพลงส้นทีนไรเนี่ย"
+  },
+  {
+    "id": "tiktok:concert-17-wan-thi-fa-pen-chai",
+    "platform": "tiktok",
+    "slug": "17-wan-thi-fa-pen-chai",
+    "hook": 0,
+    "kind": "concert",
+    "video": "library/concert/concert-17-wan-thi-fa-pen-chai.mp4",
+    "caption": "🎤 บรรยากาศคอนเสิร์ต ฟังให้เหมือนยืนอยู่หน้าเวที\n🎵 วันที่ฟ้าเป็นใจ\n🏟️ คอนเสิร์ตจำลอง — เสียงฮอลล์ เสียงเชียร์ เสียงวง\n💬 อยากให้เพลงไหนออกคอนเสิร์ตต่อ? คอมเมนต์มาเลย\n⚠️ เสียงร้องและภาพสร้างด้วย AI\n🎬 ดูเต็ม ๆ ที่ YouTube @aerismusicth · เพจ FB เพลงส้นทีนไรเนี่ย\n#คอนเสิร์ตจำลอง #เพลงไทย #เพลงส้นทีนไรเนี่ย"
   },
   {
     "id": "facebook-page:photo-41-luk-khuen-laeo-pai-v41",
