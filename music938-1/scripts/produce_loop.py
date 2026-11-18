@@ -65,14 +65,14 @@ THEMES = [
     ("rock", "ลุกขึ้นยืนอีกครั้ง", "ไม่ยอมแพ้ใครอีก", "epic", "mai-yom-phae-khrai-ik"),
     ("edm", "ปลุกใจก่อนออกไปสู้", "ลุกขึ้นแล้วไป", "epic", "luk-khuen-laeo-pai"),
     ("edm", "ปล่อยใจไปกับจังหวะ", "คืนนี้ไม่ต้องคิดอะไร", "hopeful", "khuen-ni-mai-tong-khit-arai"),
-    ("lofi", "การทำงานดึกอย่างสงบ", "คืนที่ยังไม่หลับ", "calm", "khuen-thi-yang-mai-lap"),
-    ("acoustic", "ความรักเรียบง่ายในบ้านเกิด", "บ้านหลังเล็กของเรา", "warm", "ban-lang-lek-khong-rao"),
-    ("citypop", "ค่ำคืนในเมืองที่ไม่เคยหลับ", "ไฟนีออนกับใจที่ล้า", "mystic", "fai-nion-kap-chai-thi-la"),
+    ("hiphop", "ปาร์ตี้คืนนี้ไม่หยุด", "คืนนี้มันส์สุด", "hopeful", "party-khuen-ni-mai-yut"),
+    ("rap", "ลุยไม่หยุด", "จัดเต็มทุกบาร์", "epic", "luai-mai-yut"),
+    ("alternative", "วันดีที่ได้เจอ", "ใจดีมีสไตล์", "warm", "wan-di-thi-dai-choe"),
     ("synthpop", "ความฝันวัยหนุ่มสาว", "แสงสีที่ยังตามหา", "hopeful", "saeng-si-thi-yang-tam-ha"),
-    ("rnb", "ความคิดถึงที่ไม่กล้าบอก", "ข้อความที่ไม่ได้ส่ง", "sad", "kho-khwam-thi-mai-dai-song"),
-    ("indie", "เพื่อนเก่าที่ห่างกันไป", "เพลงที่เราเคยร้อง", "calm", "phleng-thi-rao-khoei-rong"),
-    ("jazz", "ค่ำคืนในร้านเล็ก ๆ", "แก้วสุดท้ายของคืนนี้", "mystic", "kaeo-sut-thai-khong-khuen-ni"),
-    ("country", "ชีวิตชนบทที่สงบ", "ทุ่งนากับแสงเช้า", "calm", "thung-na-kap-saeng-chao"),
+    ("hiphop", "แก๊งค์เราไม่ทิ้งกัน", "เพื่อนกันตลอด", "hopeful", "kaeng-rao-mai-thing-kan"),
+    ("rap", "ฝันใหญ่ในเมืองใหญ่", "จากศูนย์สู่ร้อย", "mystic", "fan-yai-nai-mueang-yai"),
+    ("alternative", "หนีเมืองไปทะเล", "ลมทะเลกับใจเรา", "calm", "ni-mueang-pai-thale"),
+    ("edm", "แดนซ์ทั้งคืน", "ยกมือขึ้น", "hopeful", "dance-thang-khuen"),
 ]
 
 # Each theme yields several songs before the pool runs dry. The variant is a
