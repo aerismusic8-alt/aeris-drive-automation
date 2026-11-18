@@ -82,7 +82,22 @@ GENRE_BRIEF = {
         "คำหวาน ๆ จังหวะช้า ๆ ฮุกนุ่ม ๆ ซ้ำได้ "
         "วรรคสั้นปานกลาง เน้นอารมณ์และความใกล้ชิด"
     ),
+    "rap": (
+        "แร็ป/ฮิปฮอปไทย — ภาษาพูดมันส์ ๆ จังหวะหนักแน่น สัมผัสในถี่ ๆ "
+        "เนื้อเรื่องความมุ่งมั่น การฝึกฝน พัฒนาตัวเอง ความฝันใหญ่ และการไม่ยอมแพ้ "
+        "ให้กำลังใจคนฟัง มีพลังบวก วรรคสั้นกระชับเข้าจังหวะ ฮุกซ้ำคำได้"
+    ),
 }
+
+# Some keyless drafters refuse a Thai rap brief outright ("I can't help with
+# that") when it reads like it could be about violence or aggression. Naming the
+# tone up front — positive, no violence — clears the filter, and it also matches
+# the brand's message (K wants followers, not shock). The genre still sets the
+# sound; this only removes the framing the filter objects to.
+POSITIVE_TONE = (
+    "โทนเพลง: สร้างสรรค์และให้กำลังใจ ไม่มีความรุนแรง คำหยาบ การต่อสู้ "
+    "หรือการดูถูกใคร เน้นความมุ่งมั่น การฝึกฝน และพลังบวก\n"
+)
 
 # Song 01 is verse8/chorus8/verse4/chorus8/bridge3/chorus8 and renders at the
 # model's create ceiling; the rest of the pack was expanded to match. A rewrite
@@ -116,7 +131,8 @@ def build_prompt(meta: dict, angle: str = "") -> str:
     return (
         "คุณเป็นนักแต่งเนื้อเพลงไทยมืออาชีพที่เพลงติดหูและร้องง่าย "
         "จงเขียนเนื้อเพลงไทยใหม่ทั้งเพลงตามกติกาต่อไปนี้อย่างเคร่งครัด\n"
-        f"ชื่อเพลง: {title}\nแนว: {genre}\n"
+        + POSITIVE_TONE
+        + f"ชื่อเพลง: {title}\nแนว: {genre}\n"
         + (f"แนวนำทาง: {brief}\n" if brief else "")
         + (f"มุมเล่าเรื่อง (สำคัญ): {angle}\n" if angle else "")
         + (f"จังหวะ BPM: {tempo}\n" if tempo else "") +
@@ -346,8 +362,23 @@ def _drive_pollinations(prompt: str, timeout_s: int = 180) -> str:
     return pollinations_ask.ask(prompt, timeout=timeout_s)
 
 
+def _drive_gemini_api(prompt: str, timeout_s: int = 120) -> str:
+    """Draft through the Gemini API free tier — plain HTTP, runs in CI.
+
+    Gemini's own advice (2026-11-18), after the keyless channels refused the Thai
+    rap prompt: the free tier needs no card, its filter is looser, and it needs
+    no browser tab. Raises `GeminiUnavailable` with no key so the loop falls
+    through to the next drafter instead of failing the run.
+    """
+    sys.path.insert(0, str(ROOT.parent / "ops"))
+    import gemini_api  # noqa: PLC0415
+
+    return gemini_api.ask(prompt, timeout=timeout_s)
+
+
 DRAFTERS = {"gemini": _drive_gemini, "chatgpt": _drive_chatgpt,
-            "duck": _drive_duck, "pollinations": _drive_pollinations}
+            "duck": _drive_duck, "pollinations": _drive_pollinations,
+            "gemini-api": _drive_gemini_api}
 
 
 def draft(meta: dict, angle: str = "", drafter: str = "chatgpt"

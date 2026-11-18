@@ -185,11 +185,13 @@ def make_one(theme: tuple[str, str, str, str, str, str], *, flow: bool) -> dict:
             "KEY": MOOD_KEY.get(mood, "C"), "VOICE": "female"}
 
     print(f"[{slug}] {title} ({genre}/{mood}) — drafting lyric…", flush=True)
-    # Duck.ai first (best Thai) but it needs the desktop's CDP port; pollinations
-    # is plain HTTP so the loop still runs on a machine with no browser. The lint
-    # decides either way.
+    # Gemini API first: it is the drafter of record (Gemini's own advice,
+    # 2026-11-18) and the only one that both runs headless in CI and does not
+    # refuse the Thai rap prompt. duck.ai needs a desktop tab (absent on a
+    # runner), pollinations now refuses the content; both stay as fallbacks and
+    # the lint decides either way.
     secs, problems = [], []
-    for drafter in ("duck", "pollinations"):
+    for drafter in ("gemini-api", "duck", "pollinations"):
         try:
             secs, problems = A.draft(meta, angle, drafter=drafter)
         except Exception as exc:  # noqa: BLE001

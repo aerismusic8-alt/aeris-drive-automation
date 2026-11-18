@@ -84,6 +84,11 @@ jobs:
         working-directory: music938-1
         env:
           AX_GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # The drafter of record is the Gemini API free tier (Gemini's own
+          # advice, 2026-11-18): the keyless channels cannot run headless AND
+          # stopped answering the Thai rap prompt. Without this secret the step
+          # falls through to duck/pollinations; add it under repo secrets.
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
           # The song bed must be a real instrument, not the General-MIDI timbre K
           # rejected. With the beds pulled above this renders from a shipped WAV;
           # if neither the sampler nor a pulled bed is present the step fails

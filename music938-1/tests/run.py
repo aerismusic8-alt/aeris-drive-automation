@@ -6454,9 +6454,54 @@ def test_keyless_lyric_drafter() -> None:
           "max_tokens *= 2" in poll)
     check("pollinations retries a transient 400/402/429",
           "in (400, 402, 429)" in poll and "FREE_LIMIT_WAIT" in poll)
+    # A keyless drafter refuses a Thai rap brief outright when it reads as
+    # aggression ("I'm sorry, but I can't help with that" — measured 2026-11-18
+    # on the exact #48 brief). Naming the positive, no-violence tone up front
+    # clears the filter: same brief then returns all 6 sections with no lint
+    # problem. rap also had no GENRE_BRIEF, so its brief was empty.
+    al = (ROOT / "scripts" / "ai_lyrics.py").read_text()
+    check("the prompt states the positive, no-violence tone",
+          "POSITIVE_TONE" in al and "ไม่มีความรุนแรง" in al)
+    check("POSITIVE_TONE is injected into every prompt",
+          "+ POSITIVE_TONE" in al)
+    check("rap has a genre brief", '"rap": (' in al)
+    rap_meta = {"TITLE": "จัดเต็มทุกบาร์อีกครั้ง", "GENRE": "rap", "TEMPO": "95"}
+    check("a rap prompt carries the positive tone",
+          "ไม่มีความรุนแรง" in A.build_prompt(rap_meta, "ลุยไม่หยุด"))
     # --plan must list N distinct songs, not the same theme N times.
     check("the plan advances the picker",
           "seen.add(t[2])" in (ROOT / "scripts" / "produce_loop.py").read_text())
+    # Gemini's own advice (2026-11-18), after the keyless channels refused the
+    # Thai rap prompt: draft through the Gemini API free tier. It is the only
+    # drafter that both runs headless in CI and answers the content, so the loop
+    # tries it first. Pinned so a refactor cannot quietly drop it back to a
+    # channel that cannot run on a runner.
+    check("the gemini-api drafter is registered", "gemini-api" in A.DRAFTERS)
+    ploop = (ROOT / "scripts" / "produce_loop.py").read_text()
+    check("the produce loop tries gemini-api first",
+          'for drafter in ("gemini-api", "duck", "pollinations")' in ploop)
+    gapi = (ROOT.parent / "ops" / "gemini_api.py").read_text()
+    check("gemini_api uses the free generateContent endpoint",
+          "generativelanguage.googleapis.com" in gapi and ":generateContent" in gapi)
+    check("gemini_api reads the key from the environment",
+          "GEMINI_API_KEY" in gapi)
+    check("gemini_api fails soft with no key (falls through)",
+          "GeminiUnavailable" in gapi and "is not set" in gapi)
+    # It must parse a real response shape and report a blocked/empty one as an
+    # error rather than returning "" (an empty draft once looked like a reply).
+    import gemini_api as GA  # noqa: E402
+    text = GA._extract_text({"candidates": [
+        {"content": {"parts": [{"text": "บรรทัดหนึ่ง"}, {"text": "บรรทัดสอง"}]}}]})
+    check("gemini_api joins the candidate's text parts",
+          text == "บรรทัดหนึ่งบรรทัดสอง", text)
+    for payload, why in (({"candidates": []}, "no candidate"),
+                         ({"candidates": [{"content": {"parts": []},
+                                           "finishReason": "SAFETY"}]}, "empty")):
+        try:
+            GA._extract_text(payload)
+            check(f"gemini_api raises on {why}", False)
+        except RuntimeError:
+            check(f"gemini_api raises on {why}", True)
     forge = (ROOT / "scripts" / "forge_song.py").read_text()
     check("the forge tries the keyless drafter first",
           forge.index('for drafter in ("duck", "chatgpt")') > 0)
