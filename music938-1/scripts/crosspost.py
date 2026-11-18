@@ -179,6 +179,19 @@ def photo_caption(slug: str, platform: str = "facebook") -> str:
             f"#เพลงไทย #เพลงใหม่ #เพลงส้นทีนไรเนี่ย #ค่ายเพลงAI")
 
 
+def text_caption(prompt: dict, platform: str = "facebook") -> str:
+    """Caption for a text-only status: the page talking, not selling.
+
+    A Page whose feed is only Reels and covers reads as a catalogue. A plain
+    question is the one post that invites a comment, which is what a new page
+    needs most (K: "must use ideas to build the page"). No link, no ask — a
+    question is answerable, so the reader answers.
+    """
+    return (f"{prompt['text']}\n"
+            f"💬 พิมพ์บอกได้เลย\n"
+            f"#เพลงส้นทีนไรเนี่ย #เพลงไทย #เพลงใหม่")
+
+
 def link_caption(product: dict, platform: str = "facebook") -> str:
     """Caption for a link post: the product card as a clickable link.
 
@@ -245,6 +258,12 @@ def refresh_captions() -> int:
                 want = mood_caption(item["slug"], item["platform"])
             except Exception:  # noqa: BLE001
                 want = item["caption"]
+        elif item.get("kind") == "text":
+            by_id = {p["id"]: p for p in json.loads(
+                (ROOT / "content" / "page-prompts.json").read_text(encoding="utf-8"))} \
+                if (ROOT / "content" / "page-prompts.json").exists() else {}
+            prompt = by_id.get(item["slug"])
+            want = text_caption(prompt) if prompt else item["caption"]
         elif item.get("kind") == "link":
             try:
                 import make_affiliate_short as aff
@@ -376,6 +395,9 @@ def build_queue() -> list[dict]:
     # identity, <=1 link a day). A photo lands after every 3 items and a link after
     # every 8, which at the post cadence is well under one link a day.
     base = interleave(base, photo_items(), every=3, chunk=1)
+    # A plain question every 6 items: the one post that invites a comment, so the
+    # feed reads as a page with a person behind it (K, 2026-11-18).
+    base = interleave(base, text_items(), every=6, chunk=1)
     return interleave(base, link_items(), every=8, chunk=1)
 
 
@@ -425,6 +447,30 @@ def link_items() -> list[dict]:
             "caption": link_caption(product),
         })
     return items
+
+
+def text_items() -> list[dict]:
+    """Text-only statuses, Facebook only: the page talking, not selling.
+
+    K (2026-11-18): a page posts text, images, video and Reels — building it
+    means all of them. A plain question is the one post that invites a comment,
+    so the feed reads as a page with a person behind it instead of a catalogue.
+    The prompts live in `content/page-prompts.json` (a list of {id, text}), so
+    adding one is adding a line, not editing code.
+    """
+    path = ROOT / "content" / "page-prompts.json"
+    try:
+        prompts = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return []
+    return [{
+        "id": f"facebook-page:text-{p['id']}",
+        "platform": "facebook",
+        "slug": p["id"],
+        "hook": 0,
+        "kind": "text",
+        "caption": text_caption(p),
+    } for p in prompts]
 
 
 def affiliate_items() -> list[dict]:
@@ -1145,9 +1191,11 @@ def _publish_api(platform: str, it: dict, media, api) -> str | None:
     Facebook-only formats are special-cased here.
     """
     kind = it.get("kind") or "song"
-    if platform == "facebook" and kind in ("photo", "link"):
+    if platform == "facebook" and kind in ("photo", "link", "text"):
         if kind == "photo":
             pid = fb_graph.post_photo(media, it["caption"])
+        elif kind == "text":
+            pid = fb_graph.post_text(it["caption"])
         else:
             pid = fb_graph.post_link(it["caption"], it["link"])
         # A feed post id is "<page>_<post>"; the canonical permalink uses the
@@ -1188,7 +1236,7 @@ def post(platform: str, limit: int, only: str | None = None) -> int:
     # behind it (FB 22/154 vs TikTok 31/121, 2026-11-13).
     if api is None and platform == "facebook":
         todo = [it for it in todo
-                if (it.get("kind") or "song") not in ("photo", "link")]
+                if (it.get("kind") or "song") not in ("photo", "link", "text")]
     todo = todo[:limit]
     if not todo:
         print("nothing pending")
@@ -1245,11 +1293,11 @@ def post(platform: str, limit: int, only: str | None = None) -> int:
             # is unavailable — it stays pending for when a live token returns,
             # instead of aborting the run that could still post the videos behind
             # it.
-            if api is None and kind in ("photo", "link"):
+            if api is None and kind in ("photo", "link", "text"):
                 print(f"  skip {it['id']}: {kind} needs the Graph API; "
                       f"browser path posts video only")
                 continue
-            if kind == "link":
+            if kind in ("link", "text"):
                 media = None
             else:
                 media = ROOT / (it["image"] if kind == "photo" else it["video"])
@@ -1297,24 +1345,30 @@ def post(platform: str, limit: int, only: str | None = None) -> int:
 # --- cli --------------------------------------------------------------------
 
 def augment_formats() -> int:
-    """Insert the Facebook-only photo and link formats into the committed queue.
+    """Insert the Facebook-only text/photo/link formats into the committed queue.
 
-    `build_queue()` enumerates gitignored media, so on a fresh pod it cannot
-    reconstruct the committed song backlog — it would only see whatever happens
-    to be on disk. This migrates the backlog in place instead: it keeps every
-    existing item and its order, strips any photo/link items from a previous run
-    (so it is idempotent), and re-inserts them interleaved. Returns the number of
-    format items now in the queue.
+    Add-only: it keeps every existing item — including the photo/link items a
+    previous run inserted and every video item — and inserts only the format
+    items whose id is not already present, interleaved so a new one is reached
+    within about a day. It deliberately does NOT rebuild the photo/link set from
+    disk: `photo_items()` enumerates `library/covers/`, which is gitignored, so
+    on a pod holding only some of the covers a rebuild silently drops the items
+    whose cover is absent (observed 2026-11-18: 41 photos -> 20). Returns the
+    number of format items now in the queue.
     """
     if not QUEUE.exists():
         return 0
     cur = json.loads(QUEUE.read_text(encoding="utf-8"))
-    base = [it for it in cur if it.get("kind") not in ("photo", "link")]
-    base = interleave(base, photo_items(), every=3, chunk=1)
-    base = interleave(base, link_items(), every=8, chunk=1)
+    seen = {it["id"] for it in cur}
+    base = cur
+    for lane, every in ((photo_items(), 3), (text_items(), 6), (link_items(), 8)):
+        fresh = [it for it in lane if it["id"] not in seen]
+        if fresh:
+            base = interleave(base, fresh, every=every, chunk=1)
+            seen.update(it["id"] for it in fresh)
     QUEUE.write_text(json.dumps(base, ensure_ascii=False, indent=2) + "\n",
                      encoding="utf-8")
-    return len([it for it in base if it.get("kind") in ("photo", "link")])
+    return len([it for it in base if it.get("kind") in ("photo", "link", "text")])
 
 
 def merge_queue(fresh: list[dict]) -> int:

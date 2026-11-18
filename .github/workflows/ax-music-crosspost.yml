@@ -182,6 +182,20 @@ jobs:
             *) echo "::warning::fb page description not applied (rc $rc; see log)" ;;
           esac
 
+      - name: Keep the queue augmented and the captions current
+        # The committed queue is what actually posts, so a newly added lane (the
+        # text statuses, 2026-11-18) and any caption fix have to be applied to the
+        # file, not only to the code. `--augment-formats` is add-only, so it can
+        # never drop a pending item whose media is absent on the runner; a
+        # `--rebuild-queue` would. Both are idempotent and touch only unposted
+        # items, and the commit step below records the result.
+        run: |
+          set -uo pipefail
+          python3 music938-1/scripts/crosspost.py --augment-formats \
+            || echo "::warning::queue augment failed (see log) — queue left as-is"
+          python3 music938-1/scripts/crosspost.py --refresh-captions \
+            || echo "::warning::caption refresh failed (see log) — captions left as-is"
+
       - name: Read how the last posts are doing and retune the queue
         # K (2026-11-09): before posting the next job, check how the last ones did;
         # change a format that is not getting a response; keep looping until one

@@ -3175,7 +3175,7 @@ def test_crosspost_engine() -> None:
     # mood clip is queued on both platforms; the Facebook-only photo and link
     # formats are added on top of that pair, so the count is the video items
     # times two plus those extras.
-    extras = [it for it in q if it.get("kind") in ("photo", "link")]
+    extras = [it for it in q if it.get("kind") in ("photo", "link", "text")]
     check("every short is queued on both platforms",
           len(q) == (len(shorts) + len(aff) + len(sur) + len(con) + len(moods)) * 2
           + len(extras),
@@ -3202,10 +3202,19 @@ def test_crosspost_engine() -> None:
     # API can publish, so neither may appear on the TikTok surface.
     photos = [it for it in q if it.get("kind") == "photo"]
     links = [it for it in q if it.get("kind") == "link"]
+    texts = [it for it in q if it.get("kind") == "text"]
     check("cover-art photos are queued", len(photos) > 0, f"{len(photos)}")
     check("Shopee link posts are queued", len(links) > 0, f"{len(links)}")
+    check("text statuses are queued", len(texts) > 0, f"{len(texts)}")
     check("photo/link formats are Facebook-only",
           all(it["platform"] == "facebook" for it in photos + links))
+    # A text post is the page talking, not selling: no file and no link, and it
+    # must ask something so a reader can answer (K, 2026-11-18).
+    check("a text item carries no file and no link",
+          all(not it.get("video") and not it.get("image") and not it.get("link")
+              for it in texts))
+    check("every text prompt ends in a question",
+          all("?" in it["caption"] for it in texts))
     check("a photo item carries an image, not a video",
           all(it.get("image") and not it.get("video") for it in photos))
     check("a link item carries a link, not a file",
@@ -3359,7 +3368,7 @@ def test_crosspost_engine() -> None:
     # The browser poster drives only the Reels composer, so a Facebook-only
     # photo/link item must be skipped there, not abort the run of videos.
     check("photo/link items are skipped on the browser path",
-          'if api is None and kind in ("photo", "link")' in src)
+          'if api is None and kind in ("photo", "link", "text")' in src)
     # ... and dropped *before* the limit is applied. Otherwise a photo at the
     # head of the queue eats the one slot (`--limit 1`) every hour and Facebook
     # posts nothing while 100+ Reels wait behind it.
@@ -3690,6 +3699,16 @@ def test_crosspost_blocked_vs_empty() -> None:
     # The healthy no-op path must not fail: no blocked file means exit 0.
     check("empty/healthy run exits clean",
           "no blocked surface with pending work" in wf)
+
+    # A newly added lane and a caption fix must reach the committed queue, not
+    # only the code: the queue file is what posts. The rail keeps it augmented
+    # (add-only) and the captions current on every run, before the commit step.
+    check("workflow augments the queue in place",
+          "--augment-formats" in wf)
+    check("workflow refreshes pending captions", "--refresh-captions" in wf)
+    augment_at = wf.find("--augment-formats")
+    check("augment runs before the commit step",
+          0 < augment_at < wf.find("Commit the crosspost state"))
 
     # The ledger must be committed *before* the gate can fail the run. The gate
     # exits 1, and a non-zero exit skips every later step, so a run that posted to
