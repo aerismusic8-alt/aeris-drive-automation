@@ -347,6 +347,84 @@ def assert_ok(path: str, profile: str | None = None) -> None:
         raise SystemExit("clip below the standard: " + "; ".join(failed))
 
 
+# Loudness a repair normalises to: the middle of the universal band, matching
+# the masterer's -14 LUFS target, with the true-peak ceiling the floor demands.
+REPAIR_TARGET_LUFS = -14.0
+REPAIR_TRUE_PEAK = -1.5
+
+
+def needs_audio_repair(path: str, profile: str | None = None) -> bool:
+    """True when a clip's audio fails the loudness/peak floor (nothing else).
+
+    Only the two audio rules are inspected, and the band is read straight from
+    the profile rather than through `check()` — a clip that fails a *style* rule
+    (frozen picture, missing caption) is a different problem a re-mux cannot fix,
+    so it is left for the gate to refuse. When the file cannot be probed (ffprobe
+    missing) this returns False and the gate fails closed, as it already does.
+    """
+    try:
+        probe(path)
+    except Exception:
+        return False
+    p = PROFILES.get(profile_for(path, profile) or "", {})
+    if p.get("audio_required") is False:
+        return False
+    lufs, peak = loudness(path)
+    if lufs is None or peak is None:
+        return False
+    lo, hi = _thresh(p, "lufs_min"), _thresh(p, "lufs_max")
+    return not (lo <= lufs <= hi and peak <= FLOOR["true_peak_max"])
+
+
+def repair_audio(path: str, out: str | None = None) -> str:
+    """Re-normalise a clip's audio to the floor, copying the video untouched.
+
+    Why this exists (K, 2026-11-18): a video rendered before a song master was
+    re-mastered keeps the old, clipped audio. The floor gate then refuses it and
+    the whole release batch goes red — three releases in a row shipped nothing
+    (2026-11-16..18) because `song-14` carried +0.4 dBTP from a 2026-11-06
+    render. Gemini's advice was to fix this at the source in the pipeline rather
+    than re-render by hand: normalise the audio at the chokepoint, so a stale
+    clip self-heals instead of blocking. The video stream is stream-copied, so
+    this is fast and lossless for the picture.
+
+    Writes to a temp file by default (never into `library/`, which
+    `publish_media.py` sweeps to the release, so a repaired copy must not become
+    a new asset) unless `out` is given, and returns the path that now clears the
+    audio floor.
+    """
+    import os
+    import tempfile
+    src = path
+    if out is None:
+        fd, out = tempfile.mkstemp(suffix=".fixed.mp4")
+        os.close(fd)
+    dst = out
+    measured = _measure_loudnorm(src, target=REPAIR_TARGET_LUFS)
+    filt = (f"loudnorm=I={REPAIR_TARGET_LUFS}:TP={REPAIR_TRUE_PEAK}:LRA=11:"
+            f"linear=true:measured_I={measured.get('input_i')}:"
+            f"measured_TP={measured.get('input_tp')}:"
+            f"measured_LRA={measured.get('input_lra')}:"
+            f"measured_thresh={measured.get('input_thresh')}:"
+            f"offset={measured.get('target_offset', 0)}:print_format=summary")
+    subprocess.run(
+        [ffmpeg(), "-y", "-v", "error", "-i", src,
+         "-c:v", "copy", "-af", filt, "-ar", "48000", "-ac", "2",
+         "-c:a", "aac", "-b:a", "192k", dst], check=True)
+    return dst
+
+
+def _measure_loudnorm(src: str, *, target: float) -> dict:
+    """First pass of a two-pass loudnorm: the source's own measurements."""
+    out = subprocess.run(
+        [ffmpeg(), "-hide_banner", "-i", src,
+         "-af", f"loudnorm=I={target}:TP={REPAIR_TRUE_PEAK}:LRA=11:print_format=json",
+         "-f", "null", "-"], capture_output=True, text=True)
+    blob = out.stderr[out.stderr.rfind("{"):]
+    blob = blob[:blob.rfind("}") + 1]
+    return json.loads(blob)
+
+
 def main() -> int:
     ap = argparse.ArgumentParser(
         description=__doc__,

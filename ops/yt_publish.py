@@ -134,6 +134,18 @@ def main():
     # unconditional: there is no override, so a below-floor clip cannot reach a
     # channel by any route. Fix the clip (or re-master the song) and retry.
     import clip_standard
+    # A clip rendered before its song master was re-mastered keeps the old,
+    # clipped audio; the floor gate would then refuse it and the whole release
+    # batch goes red (three releases shipped nothing on 2026-11-16..18). Repair
+    # the audio in place first — the video stream is copied, so the picture is
+    # untouched — and only then measure. A clip that fails a *style* rule is not
+    # repaired and still fails closed below. (Gemini's advice, 2026-11-18.)
+    if clip_standard.needs_audio_repair(a.video):
+        before = clip_standard.check(a.video)
+        print("CLIP STANDARD: audio out of band — repairing "
+              + "; ".join(f"{n} ({d})" for n, ok, d in before if not ok),
+              file=sys.stderr)
+        a.video = clip_standard.repair_audio(a.video)
     rows = clip_standard.check(a.video)
     bad = [(n, d) for n, ok, d in rows if not ok]
     if bad:

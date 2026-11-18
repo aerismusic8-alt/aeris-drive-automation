@@ -5621,6 +5621,46 @@ def test_clip_standard_is_a_floor() -> None:
     check("a correct vertical clip passes", all(rows.values()),
           "; ".join(f"{n}" for n, ok in rows.items() if not ok))
 
+    # A clip rendered before its song master was re-mastered keeps the old,
+    # clipped audio, and the floor gate then refuses it — which went red for
+    # three release runs in a row (2026-11-16..18, `song-14` at +0.4 dBTP from a
+    # 2026-11-06 render) and shipped nothing. The chokepoint now repairs the
+    # audio in place first (Gemini's advice, 2026-11-18), so a stale clip heals
+    # instead of blocking. Prove the repair turns a floor-failing clip into a
+    # passing one, and that a *style* failure is left for the gate to refuse.
+    clip = os.path.join(tempfile.mkdtemp(), "clipped.mp4")
+    subprocess.run([ff, "-y", "-v", "error", "-f", "lavfi", "-i",
+                    "testsrc2=size=1080x1920:rate=30:duration=6",
+                    "-f", "lavfi", "-i", "sine=frequency=440:duration=6",
+                    "-af", "volume=12dB", "-shortest",
+                    "-c:v", "libx264", "-pix_fmt", "yuv420p",
+                    "-c:a", "aac", "-ar", "48000", "-ac", "2", clip], check=True)
+    check("a clipped clip needs the audio repair", cs.needs_audio_repair(clip))
+    fixed = cs.repair_audio(clip)
+    rows = {n: ok for n, ok, _ in cs.check(fixed)}
+    check("the repair lifts a clipped clip over the floor", all(rows.values()),
+          "; ".join(f"{n}" for n, ok in rows.items() if not ok))
+    check("a repaired clip no longer needs the repair",
+          not cs.needs_audio_repair(fixed))
+    # A frozen picture is a style failure a re-mux cannot fix, so it must not be
+    # "repaired" into passing — it stays for the gate to refuse.
+    frozen = os.path.join(tempfile.mkdtemp(), "frozen.mp4")
+    subprocess.run([ff, "-y", "-v", "error", "-f", "lavfi", "-i",
+                    "color=c=navy:s=1080x1920:r=30:d=6",
+                    "-f", "lavfi", "-i", "sine=frequency=300:duration=6",
+                    "-af", "loudnorm=I=-15:TP=-2:LRA=7", "-shortest",
+                    "-c:v", "libx264", "-pix_fmt", "yuv420p",
+                    "-c:a", "aac", "-ar", "48000", "-ac", "2", frozen], check=True)
+    check("a style failure is not treated as an audio repair",
+          not cs.needs_audio_repair(frozen))
+    # The chokepoint wires the repair *before* the gate, so the gate only ever
+    # measures an in-band clip.
+    ytp = (ops / "yt_publish.py").read_text()
+    check("the upload chokepoint repairs the audio before the gate",
+          "needs_audio_repair" in ytp and "repair_audio" in ytp
+          and ytp.index("needs_audio_repair")
+          < ytp.index("clip_standard.check(a.video)"))
+
     # Prove the trivia crossfade seam is real and that sizing it fixes it. A
     # fixed 0.5 s fade between a bright and a dark clip steps the frame
     # difference over the trivia "no hard cut" limit; the sized fade does not.
