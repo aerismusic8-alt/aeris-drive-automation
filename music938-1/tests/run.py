@@ -4038,6 +4038,25 @@ def test_api_post_formats() -> None:
     # there is no token — the same contract the parking logic relies on.
     check("fb_graph offers post_photo", callable(getattr(fb_graph, "post_photo", None)))
     check("fb_graph offers post_link", callable(getattr(fb_graph, "post_link", None)))
+    # Every native Page format K named (text / image / video / Reel) is a call the
+    # module can make, not just Reels.
+    for name in ("post_text", "post_photo", "post_photos", "post_video", "post_reel"):
+        check(f"fb_graph offers {name}", callable(getattr(fb_graph, name, None)))
+    # A text post and a scheduled post build the right `/feed` fields.
+    seen = {}
+    real_post = fb_graph._post
+    try:
+        fb_graph._post = lambda url, data=None, **kw: seen.update(url=url, data=data) or {"id": "P"}
+        fb_graph.post_text("hello", token="tok")
+        check("post_text hits the page feed", seen["url"].endswith("/1349201551618019/feed"), seen.get("url"))
+        check("post_text sends only a message", seen["data"].get("message") == "hello"
+              and "scheduled_publish_time" not in seen["data"])
+        from datetime import datetime, timedelta
+        fb_graph.post_text("later", when=datetime.now() + timedelta(days=1), token="tok")
+        check("a scheduled text sets published=false + a timestamp",
+              seen["data"].get("published") == "false" and seen["data"].get("scheduled_publish_time", "").isdigit())
+    finally:
+        fb_graph._post = real_post
 
     calls = []
     class _FakeGraph:

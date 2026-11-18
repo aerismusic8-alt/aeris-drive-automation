@@ -26,12 +26,18 @@ The Reels flow is three calls, each verified against Meta's Reels Publishing API
   finish -> POST /{page}/video_reels?upload_phase=finish&...     -> publish
 
 Three post types share the one token, so the Page feed is not wall-to-wall Reels:
-  post_reel  -> /{page}/video_reels   a vertical song video
-  post_photo -> /{page}/photos        cover art + caption (multipart upload)
-  post_link  -> /{page}/feed          a Shopee affiliate link card
+  post_reel   -> /{page}/video_reels   a vertical song video (<=90 s)
+  post_video  -> /{page}/videos        a full song / compilation (any length)
+  post_photo  -> /{page}/photos        cover art + caption (multipart upload)
+  post_photos -> /{page}/feed          a multi-photo album
+  post_text   -> /{page}/feed          a text-only status
+  post_link   -> /{page}/feed          a Shopee affiliate link card
 An advisor panel (2026-11-05, 2 vendors) ranked the mix: Reel for reach, photo
 for the visual identity, and at most one link a day so the feed does not read as
 an ad wall.
+
+`post_text`, `post_video` and `post_photos` take `when=<datetime>` to schedule
+(Meta requires 10 minutes to 75 days ahead); every other call publishes now.
 """
 
 from __future__ import annotations
@@ -46,6 +52,8 @@ import urllib.request
 from pathlib import Path
 
 GRAPH = "https://graph.facebook.com/v21.0"
+# Video bytes go to a separate host; the plain `graph` host refuses `source`.
+GRAPH_VIDEO = "https://graph-video.facebook.com/v21.0"
 RUPLOAD = "https://rupload.facebook.com/video-upload/v21.0"
 # Graph API node id, verified 2026-11-05 with the System User token. The number
 # on the public profile URL (61595890900382) is *not* a Graph node — the Page
@@ -396,6 +404,102 @@ def post_link(message: str, link: str, *, token: str | None = None) -> str | Non
     return pid
 
 
+def _schedule(fields: dict, when: "datetime | None") -> dict:
+    """Add Meta's scheduled-publish fields, or publish immediately.
+
+    `scheduled_publish_time` must be 10 minutes to 75 days ahead and is a unix
+    timestamp. Passing `published=false` *without* a time makes a draft, which is
+    never what a caller here means, so `when=None` omits both fields (publish now).
+    """
+    if when is None:
+        return fields
+    stamp = int(when.timestamp())
+    if stamp < int(time.time()) + 600:
+        raise ValueError("scheduled_publish_time must be at least 10 minutes ahead")
+    fields = dict(fields)
+    fields["published"] = "false"
+    fields["scheduled_publish_time"] = str(stamp)
+    return fields
+
+
+def post_text(message: str, *, when=None, token: str | None = None) -> str | None:
+    """Publish a text-only status. Returns the post id.
+
+    The plainest Page post, and the one the feed needs most: a text status reads
+    as a person talking, where a wall of covers and Reels reads as a catalogue.
+    """
+    t = page_access_token(token) if (token or page_token()) else ""
+    if not t:
+        return None
+    fields = _schedule({"message": message, "access_token": t}, when)
+    out = _post(f"{GRAPH}/{PAGE_ID}/feed", fields)
+    pid = out.get("id") or out.get("post_id")
+    if not pid:
+        raise RuntimeError(f"feed returned {out}")
+    return pid
+
+
+def post_video(video: Path, caption: str, *, title: str | None = None,
+               when=None, token: str | None = None) -> str | None:
+    """Publish a regular (landscape or portrait) video, not a Reel. Returns the id.
+
+    Reels are vertical, <=90 s and short-form only; a full song, a compilation or
+    a film belongs here, on `/{page}/videos`. The bytes go to the `graph-video`
+    host, which is the one that accepts a video upload (the plain `graph` host
+    rejects `source`).
+    """
+    t = page_access_token(token) if (token or page_token()) else ""
+    if not t:
+        return None
+    import clip_standard  # noqa: E402  (same directory)
+    clip_standard.assert_ok(str(video))
+    blob = video.read_bytes()
+    fields = {"description": caption, "access_token": t}
+    if title:
+        fields["title"] = title
+    fields = _schedule(fields, when)
+    out = _post_multipart(f"{GRAPH_VIDEO}/{PAGE_ID}/videos", fields,
+                          "source", video.name, blob, "video/mp4")
+    vid = out.get("id") or out.get("video_id")
+    if not vid:
+        raise RuntimeError(f"videos returned {out}")
+    return vid
+
+
+def post_photos(images: list[Path], caption: str, *, when=None,
+                token: str | None = None) -> str | None:
+    """Publish a multi-photo post (an album). Returns the feed post id.
+
+    Meta has no single multi-upload call: each photo is uploaded unpublished, then
+    one `/feed` post attaches them by id. A single image degrades to `post_photo`.
+    """
+    if len(images) == 1:
+        return post_photo(images[0], caption, token=token)
+    t = page_access_token(token) if (token or page_token()) else ""
+    if not t:
+        return None
+    ids: list[str] = []
+    for image in images:
+        blob = image.read_bytes()
+        ctype = "image/png" if image.suffix.lower() == ".png" else "image/jpeg"
+        out = _post_multipart(f"{GRAPH}/{PAGE_ID}/photos",
+                              {"published": "false", "access_token": t},
+                              "source", image.name, blob, ctype)
+        mid = out.get("id")
+        if not mid:
+            raise RuntimeError(f"photos returned {out}")
+        ids.append(mid)
+    fields = {"message": caption,
+              "attached_media": json.dumps([{"media_fbid": i} for i in ids]),
+              "access_token": t}
+    fields = _schedule(fields, when)
+    out = _post(f"{GRAPH}/{PAGE_ID}/feed", fields)
+    pid = out.get("id") or out.get("post_id")
+    if not pid:
+        raise RuntimeError(f"feed returned {out}")
+    return pid
+
+
 def page_fields(token: str | None = None) -> dict:
     """Read the Page's `name` and `about` (the Edit Page Info "Description")."""
     t = token or page_token()
@@ -484,7 +588,23 @@ def _main(argv: list[str]) -> int:
     if cmd == "expiry":
         print(json.dumps(debug_token(), ensure_ascii=False))
         return 0
-    print(f"unknown command {cmd!r}; use status|refresh|expiry", file=sys.stderr)
+    if cmd == "post-text":
+        print(post_text(argv[1]) or "unavailable")
+        return 0
+    if cmd == "post-link":
+        print(post_link(argv[1], argv[2]) or "unavailable")
+        return 0
+    if cmd == "post-photo":
+        print(post_photo(Path(argv[1]), argv[2]) or "unavailable")
+        return 0
+    if cmd == "post-video":
+        print(post_video(Path(argv[1]), argv[2]) or "unavailable")
+        return 0
+    if cmd == "post-reel":
+        print(post_reel(Path(argv[1]), argv[2]) or "unavailable")
+        return 0
+    print(f"unknown command {cmd!r}; use status|page|refresh|expiry|"
+          "post-text|post-link|post-photo|post-video|post-reel", file=sys.stderr)
     return 2
 
 
