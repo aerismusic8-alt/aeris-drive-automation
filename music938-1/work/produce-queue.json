@@ -419,6 +419,16 @@
       "audio": "synth-bed",
       "offline_rc": 0,
       "instrumental": true
+    },
+    {
+      "slug": "47-luai-mai-yut",
+      "title": "จัดเต็มทุกบาร์",
+      "genre": "rap",
+      "mood": "epic",
+      "result": "no-draft",
+      "problems": [
+        "pollinations: HTTPError: HTTP Error 400: Bad Request"
+      ]
     }
   ]
 }
