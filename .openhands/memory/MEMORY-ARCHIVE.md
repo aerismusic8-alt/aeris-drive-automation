@@ -6345,3 +6345,18 @@ platform-side, not code: the *account* daily new-video cap and the shared 10k AP
   `augment_formats` is add-only (a disk rebuild once dropped 21 photos).
 - **Advisor history:** panel was 5 seats (2026-11-05) → 2 keyless (2026-11-07) →
   **Gemini alone (K, 2026-11-18)**. `consult.py` floor is now MIN_ADVISORS/'MIN_FAMILIES'=1.
+
+## Moved out of the 6 KB index 2026-11-18 (superseded detail)
+- **Desktop view = Live View** (`work-2`, port 12001). noVNC shows a frozen X
+  screen on this sandbox; the live view serves the browser *tab* from CDP 12001.
+- **Playwright `connect_over_cdp` can hang** even while `http://127.0.0.1:9222/json`
+  answers (measured 2026-11-18, `Timeout 30000ms exceeded`). Fix: `pkill -f
+  remote-debugging-port=9222` then re-run `bootstrap.py`; it restores login itself
+  (214 cookies restored, Facebook/TikTok kept as live). Raw CDP websocket
+  (`Runtime.evaluate`) still works when Playwright does not — that is how Gemini
+  was asked while Playwright hung.
+- **Gemini web answers signed-out (guest mode)** but only short prompts; a long
+  question returns "I encountered an error". The Google session is what is lost
+  (vault cookies from 11-17 were rejected 11-18); guest needs no login.
+- **Thai text:** `roblox/src/shared/Text.luau` + `music938-1/fonts/NotoSansThai.ttf`
+  (else tofu); burned ASS has no emoji (`•`/`»`).
