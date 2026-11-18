@@ -1,5 +1,5 @@
 {
-  "made": 18,
+  "made": 21,
   "log": [
     {
       "slug": "25-thai-5bcb50c5",
@@ -344,6 +344,81 @@
       "problems": [
         "pollinations: HTTPError: HTTP Error 400: Bad Request"
       ]
+    },
+    {
+      "slug": "44-party-khuen-ni-mai-yut",
+      "title": "คืนนี้มันส์สุด",
+      "genre": "hiphop",
+      "mood": "hopeful",
+      "result": "no-draft",
+      "problems": [
+        "pollinations: HTTPError: HTTP Error 400: Bad Request"
+      ]
+    },
+    {
+      "slug": "44-party-khuen-ni-mai-yut-v44",
+      "title": "คืนนี้มันส์สุดอีกครั้ง",
+      "genre": "hiphop",
+      "mood": "hopeful",
+      "result": "no-draft",
+      "problems": [
+        "pollinations: HTTPError: HTTP Error 400: Bad Request"
+      ]
+    },
+    {
+      "slug": "44-party-khuen-ni-mai-yut-v44",
+      "title": "คืนนี้มันส์สุดอีกครั้ง",
+      "genre": "hiphop",
+      "mood": "hopeful",
+      "result": "no-draft",
+      "problems": [
+        "[chorus] has Latin text: 'อะ๊พ ซโอเอ หรือ ทาง<|reserved_200303|>'"
+      ]
+    },
+    {
+      "slug": "44-party-khuen-ni-mai-yut-v44",
+      "title": "คืนนี้มันส์สุดอีกครั้ง",
+      "genre": "hiphop",
+      "mood": "hopeful",
+      "result": "no-draft",
+      "problems": [
+        "[chorus] has Latin text: 'อะ๊พ ซโอเอ หรือ ทาง<|reserved_200303|>'"
+      ]
+    },
+    {
+      "slug": "44-party-khuen-ni-mai-yut-v44",
+      "title": "คืนนี้มันส์สุดในฝัน",
+      "genre": "hiphop",
+      "mood": "hopeful",
+      "result": "lyric",
+      "flow": false,
+      "audio": "synth-bed",
+      "offline_rc": 0,
+      "instrumental": true,
+      "note": "rendered 2026-11-18 (numpy was missing from the pod)"
+    },
+    {
+      "slug": "45-party-khuen-ni-mai-yut-v45",
+      "title": "คืนนี้มันส์สุดยามเช้า",
+      "genre": "hiphop",
+      "mood": "hopeful",
+      "result": "lyric",
+      "flow": false,
+      "audio": "synth-bed",
+      "offline_rc": 0,
+      "instrumental": true,
+      "note": "rendered 2026-11-18 (numpy was missing from the pod)"
+    },
+    {
+      "slug": "46-party-khuen-ni-mai-yut-v46",
+      "title": "คืนนี้มันส์สุดยามค่ำ",
+      "genre": "hiphop",
+      "mood": "hopeful",
+      "result": "lyric",
+      "flow": false,
+      "audio": "synth-bed",
+      "offline_rc": 0,
+      "instrumental": true
     }
   ]
 }

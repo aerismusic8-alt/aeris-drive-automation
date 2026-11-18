@@ -27,15 +27,15 @@ FREE_LIMIT_WAIT = 48
 
 
 def ask(problem: str, timeout: float = 180.0, model: str = "openai",
-        max_tokens: int = 2048) -> str:
+        max_tokens: int = 8192) -> str:
     # `reasoning_effort: low` is not cosmetic: the default reasoning budget is
     # spent before the model emits an answer, and a song prompt is long enough to
     # trigger `output_token_limit_exceeded` (HTTP 400). Measured 2026-11-07.
     #
-    # `max_tokens` is the other half of that fix, and it was missing: measured
-    # 2026-11-14, a 1344-char lyric brief still 400s with the identical
-    # `output_token_limit_exceeded` body until the caller raises the ceiling, and
-    # a produce run lost every draft to it. The retry below cannot recover this
+    # `max_tokens` is the other half of that fix. 2048 was still too low for a
+    # song brief: measured 2026-11-18, the 1164-char produce prompt 400s with
+    # `output_token_limit_exceeded` at 2048 and answers at 4096, so every produce
+    # run lost its draft and shipped no song. The retry below cannot recover this
     # one — it is deterministic, not capacity — so the ceiling is the fix.
     body = {"messages": [{"role": "user", "content": problem}],
             "reasoning_effort": "low", "max_tokens": max_tokens}

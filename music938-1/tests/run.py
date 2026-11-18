@@ -6061,6 +6061,22 @@ def test_produce_loop() -> None:
     check("the produce rail gates on the new song's audio",
           "Verify the new song has audio" in wf_src and 'r.get("audio")' in wf_src)
 
+    # A new master arrives at -23.9 LUFS, far under the -16…-12 floor K made
+    # universal (2026-11-18: #44/#45/#46 all shipped that low). Nothing else in
+    # the rail remasters a new song, so the loop must do it for either lane.
+    # Assert the *invocation*, not a variable name: a check on `remaster_rc`
+    # still passes when the subprocess call is deleted.
+    check("the loop remasters the new master before it is published",
+          'REPO / "ops" / "remaster_songs.py"' in src
+          and '"--only", slug' in src and "remaster_rc" in src)
+    check("the remaster covers both render lanes",
+          '"flow", "synth-bed"' in src)
+    # `ops/remaster_songs.py` resolves ffmpeg through imageio_ffmpeg, so a rail
+    # that installs only Pillow/mido/numpy silently skips the remaster and ships
+    # a below-floor master. The dependency is part of the fix, not an aside.
+    check("the produce rail installs the remaster's ffmpeg",
+          "imageio-ffmpeg" in wf_src)
+
 
 def test_share_pack() -> None:
     """The pack must let another AI pick a track, so it must carry the *why*.

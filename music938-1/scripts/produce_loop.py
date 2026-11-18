@@ -239,6 +239,18 @@ def make_one(theme: tuple[str, str, str, str, str, str], *, flow: bool) -> dict:
         print(f"  keyless master: rc={r.returncode} "
               f"{(r.stdout or r.stderr or '').strip()[-120:]}", flush=True)
 
+    # The masterer targets -14 LUFS, but both lanes arrive far under the floor
+    # (-23.9 LUFS measured 2026-11-18) and nothing else in the rail remasters a
+    # new song, so every one of them shipped below the clip floor K forbade.
+    # `remaster_songs` is free and idempotent, so run it for either lane here.
+    if rec.get("audio") in ("flow", "synth-bed"):
+        rm = subprocess.run([sys.executable, str(REPO / "ops" / "remaster_songs.py"),
+                             "--only", slug],
+                            cwd=REPO, capture_output=True, text=True, timeout=900)
+        rec["remaster_rc"] = rm.returncode
+        print(f"  remaster: rc={rm.returncode} "
+              f"{(rm.stdout or rm.stderr or '').strip()[-140:]}", flush=True)
+
     # flow_song --offline already writes `karaoke-<slug>.mp3` beside the master
     # (the synth bed has no vocal, so it *is* the instrumental). A Flow render has
     # a vocal, so its karaoke is a separate stem and must not be overwritten.

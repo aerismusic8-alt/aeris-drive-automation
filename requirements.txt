@@ -18,6 +18,7 @@ trafilatura         # page extraction - ops/websearch.py
 numpy
 pillow
 pythainlp
+python-crfsuite      # pythainlp's syllable tokenizer raises without it (tts.py)
 mido
 edge-tts
 imageio-ffmpeg
