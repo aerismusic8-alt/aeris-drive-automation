@@ -318,6 +318,16 @@
       "problems": [
         "pollinations: HTTPError: HTTP Error 400: Bad Request"
       ]
+    },
+    {
+      "slug": "44-party-khuen-ni-mai-yut",
+      "title": "คืนนี้มันส์สุด",
+      "genre": "hiphop",
+      "mood": "hopeful",
+      "result": "no-draft",
+      "problems": [
+        "pollinations: HTTPError: HTTP Error 400: Bad Request"
+      ]
     }
   ]
 }
