@@ -308,6 +308,16 @@
       "offline_rc": 0,
       "instrumental": true,
       "note": "re-rendered 2026-11-18 after the produce rail was fixed to pull the beds first"
+    },
+    {
+      "slug": "44-party-khuen-ni-mai-yut",
+      "title": "คืนนี้มันส์สุด",
+      "genre": "hiphop",
+      "mood": "hopeful",
+      "result": "no-draft",
+      "problems": [
+        "pollinations: HTTPError: HTTP Error 400: Bad Request"
+      ]
     }
   ]
 }
