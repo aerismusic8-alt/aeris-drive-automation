@@ -68,14 +68,15 @@ Views without follows is the failure. End every clip with `release.FOLLOW_ASK` +
 **sfizz** sampler, not GM; `AX_REQUIRE_REAL_INSTRUMENTS=1` makes a fallback **raise**.
 
 ## Clip + thumbnail quality — one FLOOR, every format/channel (K, 2026-11-17)
-"ห้ามอัพขึ้นเด็ดขาด". The trivia clip is only a **sample**. `ops/clip_standard.py` =
-universal floor + a per-format profile, gated at **every** upload route, no override;
-thumbnails too (`ops/thumb_standard.py`). Docs: `docs/clip-standard.md`,
-`docs/thumbnail-standard.md`; master fix `ops/remaster_songs.py`. Detail: archive.
+"ห้ามอัพขึ้นเด็ดขาด". `ops/clip_standard.py` = universal floor + a per-format
+profile, gated at **every** upload route, no override; thumbnails too
+(`ops/thumb_standard.py`). Detail: `docs/clip-standard.md`; fix `ops/remaster_songs.py`.
 
-## Trivia lane — เกร็ดความรู้ (K, 2026-11-17)
-`ops/trivia_reel.py` renders, `ops/trivia_publish.py` uploads to **ch3**; rail
-`ax-music-trivia.yml`. Detail: archive.
+## Retry lanes → ch3 (trivia + reactive)
+`ops/trivia_publish.py` + `ops/reactive_publish.py` upload via the one chokepoint
+(rails `ax-music-trivia.yml` / `ax-music-reactive.yml`). A cap = **retry**, not
+failure: each records only successes in a committed `work/*` ledger that **must be
+un-ignored** (`!…`) or `git add` is a silent no-op and it re-posts every tick.
 
 ## Loop health & platform risks
 - **A green run is not a finished job.** `release.py` returns rc 4 +
