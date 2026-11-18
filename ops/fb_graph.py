@@ -255,7 +255,7 @@ def get(path: str, params: dict | None = None) -> dict:
     degrade to "unknown" or fall back to the browser.
     """
     p = dict(params or {})
-    p["access_token"] = p.get("access_token") or page_token()
+    p["access_token"] = p.get("access_token") or page_access_token()
     url = f"{GRAPH}/{path.lstrip('/')}?" + urllib.parse.urlencode(p)
     try:
         with urllib.request.urlopen(url, timeout=30) as r:
