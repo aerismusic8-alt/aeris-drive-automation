@@ -265,19 +265,24 @@
    "updated": "2026-11-18T02:20:31+00:00"
   },
   "2026-11-18": {
-   "units": 3064,
+   "units": 3114,
    "calls": {
     "playlistItems.list": 14,
     "thumbnails.set": 48,
     "playlistItems.insert": 12,
-    "channels.update": 1
+    "channels.update": 2
    },
-   "updated": "2026-11-18T17:11:16+00:00",
+   "updated": "2026-11-18T17:11:23+00:00",
    "reserves": [
     {
      "purpose": "release 1 item(s)",
      "units": 100,
      "at": "2026-11-18T08:11:42+00:00"
+    },
+    {
+     "purpose": "release 2 item(s)",
+     "units": 200,
+     "at": "2026-11-18T17:11:23+00:00"
     }
    ]
   }
