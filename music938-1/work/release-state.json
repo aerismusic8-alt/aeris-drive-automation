@@ -547,7 +547,7 @@
    "video_id": "XSDoniGA4nk",
    "at": "2026-11-09T18:39:51+00:00",
    "public": true,
-   "thumb_ok": false,
+   "thumb_ok": true,
    "playlist_ok": true
   },
   {
@@ -557,7 +557,7 @@
    "video_id": "vjzxRMkZtao",
    "at": "2026-11-09T18:39:55+00:00",
    "public": true,
-   "thumb_ok": false,
+   "thumb_ok": true,
    "playlist_ok": true
   },
   {
@@ -567,7 +567,7 @@
    "video_id": "LubwBgOrfBM",
    "at": "2026-11-09T18:39:59+00:00",
    "public": true,
-   "thumb_ok": false,
+   "thumb_ok": true,
    "playlist_ok": true
   },
   {
@@ -577,7 +577,7 @@
    "video_id": "OrXLDpIq7s4",
    "at": "2026-11-10T16:23:08+00:00",
    "public": true,
-   "thumb_ok": false,
+   "thumb_ok": true,
    "playlist_ok": true
   },
   {
@@ -587,7 +587,7 @@
    "video_id": "VszxlNEpS_w",
    "at": "2026-11-10T16:23:13+00:00",
    "public": true,
-   "thumb_ok": false,
+   "thumb_ok": true,
    "playlist_ok": true
   },
   {
@@ -597,7 +597,7 @@
    "video_id": "k0Px6Gf2h4c",
    "at": "2026-11-11T00:32:54+00:00",
    "public": true,
-   "thumb_ok": false,
+   "thumb_ok": true,
    "playlist_ok": true
   },
   {
@@ -607,7 +607,7 @@
    "video_id": "i0f6B26luaw",
    "at": "2026-11-11T00:32:58+00:00",
    "public": true,
-   "thumb_ok": false,
+   "thumb_ok": true,
    "playlist_ok": true
   },
   {
@@ -617,7 +617,7 @@
    "video_id": "d0LS47XbbQo",
    "at": "2026-11-11T00:33:02+00:00",
    "public": true,
-   "thumb_ok": false,
+   "thumb_ok": true,
    "playlist_ok": true
   },
   {
@@ -627,7 +627,7 @@
    "video_id": "MGg7ngnaff0",
    "at": "2026-11-11T00:33:06+00:00",
    "public": true,
-   "thumb_ok": false,
+   "thumb_ok": true,
    "playlist_ok": true
   },
   {
@@ -637,7 +637,7 @@
    "video_id": "iv0tvVxLEX0",
    "at": "2026-11-11T16:03:11+00:00",
    "public": true,
-   "thumb_ok": false,
+   "thumb_ok": true,
    "playlist_ok": true
   },
   {
@@ -728,7 +728,7 @@
    "at": "2026-11-12T16:44:33+00:00",
    "public": true,
    "thumb_ok": false,
-   "playlist_ok": false
+   "playlist_ok": true
   },
   {
    "slug": "12-khuen-thi-mai-mi-dao",
@@ -738,7 +738,7 @@
    "at": "2026-11-12T16:44:37+00:00",
    "public": true,
    "thumb_ok": false,
-   "playlist_ok": false
+   "playlist_ok": true
   },
   {
    "slug": "13-rak-thi-chak-pai",
@@ -748,7 +748,7 @@
    "at": "2026-11-12T16:44:41+00:00",
    "public": true,
    "thumb_ok": false,
-   "playlist_ok": false
+   "playlist_ok": true
   },
   {
    "slug": "07-huachai-si-thao",
@@ -758,7 +758,7 @@
    "at": "2026-11-14T00:51:39+00:00",
    "public": true,
    "thumb_ok": false,
-   "playlist_ok": false
+   "playlist_ok": true
   },
   {
    "slug": "08-klap-ban-rao",
@@ -768,7 +768,7 @@
    "at": "2026-11-14T00:51:43+00:00",
    "public": true,
    "thumb_ok": false,
-   "playlist_ok": false
+   "playlist_ok": true
   },
   {
    "slug": "09-phleng-khong-khon-nueai",
@@ -778,7 +778,7 @@
    "at": "2026-11-14T23:50:31+00:00",
    "public": true,
    "thumb_ok": false,
-   "playlist_ok": false
+   "playlist_ok": true
   },
   {
    "slug": "10-dok-mai-rim-thang",
@@ -788,7 +788,7 @@
    "at": "2026-11-14T23:50:34+00:00",
    "public": true,
    "thumb_ok": false,
-   "playlist_ok": false
+   "playlist_ok": true
   },
   {
    "slug": "11-sanya-chak-chai",
@@ -798,7 +798,7 @@
    "at": "2026-11-15T16:46:41+00:00",
    "public": true,
    "thumb_ok": false,
-   "playlist_ok": false
+   "playlist_ok": true
   },
   {
    "slug": "12-khuen-thi-mai-mi-dao",
@@ -808,7 +808,7 @@
    "at": "2026-11-15T16:46:43+00:00",
    "public": true,
    "thumb_ok": false,
-   "playlist_ok": false
+   "playlist_ok": true
   },
   {
    "slug": "26-ban-lang-lek-khong-rao",
@@ -828,12 +828,13 @@
    "at": "2026-11-16T18:21:41+00:00",
    "public": true,
    "thumb_ok": false,
-   "playlist_ok": false
+   "playlist_ok": true
   }
  ],
  "playlists": {
   "ch3:short": "PLKlARHtRpKkI",
   "ch3:song": "PLeA2Vf8N8O5c",
-  "ch3:karaoke": "PLYqvExU9-SLE"
+  "ch3:karaoke": "PLYqvExU9-SLE",
+  "ch3:affiliate": "PLJGMe_36qsS8"
  }
 }
