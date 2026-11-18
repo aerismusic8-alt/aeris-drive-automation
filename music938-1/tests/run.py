@@ -6088,6 +6088,40 @@ def test_vault_key_fallback() -> None:
     check("ax_vault falls back to ax_secrets for the key",
           "from ax_secrets import get_secret" in src and "_get_secret(\"OPENHANDS_API_KEY\")" in src)
 
+    # A session that has the AX_VAULT_BOOTSTRAP secret (it holds the anchor id)
+    # must never have to list automations: listing is what 401s in an interactive
+    # sandbox whose account key the *list* endpoint rejects, while the same key
+    # reads KV fine. Reading the id straight from the secret is the route that
+    # actually recovers the vault — without it every `ensure_anchor()` caller
+    # (fb_graph, ar_identity, login_vault, ...) silently reports "no token".
+    check("the anchor id comes from AX_VAULT_BOOTSTRAP when present",
+          "def bootstrap_anchor" in src
+          and '_get_secret("AX_VAULT_BOOTSTRAP")' in src
+          and src.index("bootstrap_anchor()") < src.index("find_anchor()\n    if aid:"))
+
+    # Behaviour, not just source shape: with the secret set, ensure_anchor must
+    # return it and never call the list endpoint that 401s.
+    import ax_vault as av  # noqa: E402
+    orig_env, orig_list = os.environ.get("AX_VAULT_BOOTSTRAP"), av.find_anchor
+    called = {"list": False}
+
+    def _boom():
+        called["list"] = True
+        raise SystemExit("listed automations — should have used the secret")
+
+    try:
+        os.environ["AX_VAULT_BOOTSTRAP"] = "anchor-from-secret"
+        av.find_anchor = _boom
+        got = av.ensure_anchor()
+    finally:
+        av.find_anchor = orig_list
+        if orig_env is None:
+            os.environ.pop("AX_VAULT_BOOTSTRAP", None)
+        else:
+            os.environ["AX_VAULT_BOOTSTRAP"] = orig_env
+    check("ensure_anchor returns the secret id without listing",
+          got == "anchor-from-secret" and not called["list"])
+
 
 def test_memory_guard() -> None:
     """The injected memory index must stay under its cap.

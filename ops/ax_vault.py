@@ -140,8 +140,24 @@ def find_anchor():
     return None
 
 
+def bootstrap_anchor():
+    """The anchor id from the `AX_VAULT_BOOTSTRAP` secret, or "".
+
+    That secret holds the anchor id, so a session that has it never needs to
+    list automations. Listing is what fails in an interactive sandbox whose
+    account API key is not accepted (401) even though the KV read works with the
+    same key — so the direct id is the route that actually recovers the vault.
+    """
+    aid = (os.environ.get("AX_VAULT_BOOTSTRAP", "")
+           or _get_secret("AX_VAULT_BOOTSTRAP")).strip()
+    return aid
+
+
 def ensure_anchor():
     """Confirm the anchor exists, creating it disabled if it does not."""
+    aid = bootstrap_anchor()
+    if aid:
+        return aid
     aid = find_anchor()
     if aid:
         return aid
