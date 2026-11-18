@@ -14,9 +14,8 @@ channel without K's approval.
 
 ## Accounts (K, 2026-11-14): every tool uses AR's OWN mail, not K's
 AR mailbox = `araeris4770d7@fldubai.com` (mail.tm; `ops/ar_identity.py`).
-AR self-creatable: **Nostr** (`AR_NOSTR_NSEC`; rail `ops/announce_releases.py`),
-**Telegraph** (`ops/ar_telegraph.py`). Flow Music/Gemini need an AR *Google Account*
-→ K taps a QR once.
+AR self-creatable: **Nostr** (`AR_NOSTR_NSEC`), **Telegraph** (`ops/ar_telegraph.py`).
+Flow Music/Gemini need an AR *Google Account* → K taps a QR once. Detail: archive.
 
 ## Roles and method (K, 2026-10-31)
 - **K = final authority.** Every standing rule is K's.
@@ -45,18 +44,19 @@ Views without follows is the failure. End every clip with `release.FOLLOW_ASK` +
 
 ## Environment facts that cost time
 - **Fresh-pod recovery: `scripts/bootstrap-pod.sh`** — re-run after every pod.
-- **MV links must be durable (K: "ลิงค์ตาย").** GitHub Pages `site-aeris-music` via
-  `ax-mv-pages` (`ops/mv_page.py --all`); a /tmp preview dies on recycle. Detail: archive.
+- **MV links must be durable (K: "ลิงค์ตาย").** GitHub Pages via `ax-mv-pages`
+  (`ops/mv_page.py --all`); a /tmp preview dies on recycle. Detail: archive.
 - **24/7 runs on GitHub Actions, not the sandbox** (public repo → free minutes).
   Judge health from the **rail run history** (API), not `data/heartbeat.json`.
-- **FB browser posting is OFF (K 2026-11-15: "ระบบออโต้เราไม่เนียนมันจับได้").**
-    FB posts only via the Graph API (`crosspost.API_ONLY`); parks green otherwise.
+- **FB posts via the Graph API only (live 2026-11-18).** Browser posting is OFF
+  (K 2026-11-15: "ระบบออโต้เราไม่เนียนมันจับได้"). A System User token is NOT a Page
+  token — `fb_graph.page_access_token()` exchanges it, else writes fail `#210`.
+  Token in vault `axsecrets:fb-page-token` + secret `FB_PAGE_TOKEN` (never expires).
 - **Vault = source of truth; a secret injects only when the command *names* it.**
     Read it by naming `AX_VAULT_BOOTSTRAP`/`OPENHANDS_API_KEY`. `ensure_anchor()` now
     reads the anchor id from the secret (was 401-listing → false "no token").
 - **Writes:** `GITHUB_TOKEN` is 403; push via vault KV `axsecrets:gh-workflow-token`
-  (workflow files need its `workflow` scope). Fresh-pod App key gone → `$AX_GH_TOKEN`
-  writes as the remote userinfo, then reset the URL tokenless. Detail: archive.
+  (workflow files need its `workflow` scope). Detail: archive.
 - **Desktop view = Live View** (`work-2`, port 12001).
 - **Thai text** lives only in `roblox/src/shared/Text.luau` +
   `music938-1/fonts/NotoSansThai.ttf`; without `fonts-thai-tlwg` the SVG renderer
@@ -65,7 +65,6 @@ Views without follows is the failure. End every clip with `release.FOLLOW_ASK` +
 
 ## Real-instrument sound (K)
 **sfizz** sampler, not GM; `AX_REQUIRE_REAL_INSTRUMENTS=1` makes a fallback **raise**.
-Detail: archive.
 
 ## Clip + thumbnail quality — one FLOOR, every format/channel (K, 2026-11-17)
 "ห้ามอัพขึ้นเด็ดขาด". The trivia clip is only a **sample**. `ops/clip_standard.py` =

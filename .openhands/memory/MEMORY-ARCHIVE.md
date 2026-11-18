@@ -6320,3 +6320,11 @@ a secret into the env only when the *command text names the key* — so a comman
 `ops/trivia_publish.py` uploads to **ch3**. Rail `ax-music-trivia.yml` ticks 09:15 +
 21:00 UTC; ledger `work/trivia-state.json` makes tick 2 a retry, not 2x. Walls are
 platform-side, not code: the *account* daily new-video cap and the shared 10k API pool.
+
+## Folded 2026-11-18 (FB unblock + memory hygiene)
+- AR Nostr rail is `ops/announce_releases.py`; mailbox is mail.tm via `ops/ar_identity.py`.
+- `$AX_GH_TOKEN` writes as the git remote userinfo when no App key exists; reset the
+  remote URL tokenless afterwards.
+- Writes detail: fresh pod has no App key under `~/.config/aeris/` (ephemeral overlay);
+  use the vault KV `axsecrets:gh-workflow-token` (scopes repo,workflow).
+- MV Pages site name is `site-aeris-music` under the `ax-mv-pages` repo.
