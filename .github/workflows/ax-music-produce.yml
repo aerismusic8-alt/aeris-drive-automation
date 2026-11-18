@@ -163,6 +163,13 @@ jobs:
           if bad:
               print(f"::error::produced with no audio (a script, not a song): {bad}")
               sys.exit(1)
+          # A draft failure is raw material, not a gate (the produce step is
+          # continue-on-error on purpose), but "every drafter failed" must not be
+          # silent: on 2026-11-18 the rail went green while producing nothing.
+          # Warn so the operator sees it; the mood and publish steps still run.
+          if not [r for r in new if r.get("result") == "lyric"]:
+              print("::warning::no song drafted this run — every drafter failed "
+                    "(read the per-channel lines in the produce step)")
           print(f"{len(new)} new record(s), all with audio")
           PY
 
