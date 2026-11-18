@@ -154,8 +154,6 @@ jobs:
         # seen in the log — it must never fail the revenue step below.
         env:
           FB_PAGE_TOKEN: ${{ secrets.FB_PAGE_TOKEN }}
-          AX_VAULT_BOOTSTRAP: ${{ secrets.AX_VAULT_BOOTSTRAP }}
-          OPENHANDS_API_KEY: ${{ secrets.OPENHANDS_API_KEY }}
         run: |
           set -uo pipefail
           rc=0
