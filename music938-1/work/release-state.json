@@ -518,7 +518,7 @@
    "at": "2026-11-09T18:39:40+00:00",
    "public": true,
    "thumb_ok": true,
-   "playlist_ok": false
+   "playlist_ok": true
   },
   {
    "slug": "sleep-listen-05",
@@ -528,7 +528,7 @@
    "at": "2026-11-09T18:39:43+00:00",
    "public": true,
    "thumb_ok": true,
-   "playlist_ok": false
+   "playlist_ok": true
   },
   {
    "slug": "09-phleng-khong-khon-nueai",
@@ -848,7 +848,7 @@
    "at": "2026-11-18T18:48:04+00:00",
    "public": true,
    "thumb_ok": false,
-   "playlist_ok": false
+   "playlist_ok": true
   }
  ],
  "playlists": {
