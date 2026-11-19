@@ -36,6 +36,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import random
 import shutil
 import subprocess
@@ -52,6 +53,9 @@ BANK_IMG = ROOT / "music938-1" / "library" / "stock" / "img"
 MUSIC = ROOT / "aeris938-1" / "library" / "music"
 OUT = ROOT / "music938-1" / "library" / "shorts"
 FONT = ROOT / "music938-1" / "fonts" / "NotoSansThai.ttf"
+
+REPO = "aerismusic8-alt/aeris-drive-automation"
+RELEASE_TAG = "media-938"
 
 W, H = 1080, 1920
 FPS = 30
@@ -169,11 +173,67 @@ def _card(text: str, out: Path, size: int = 72, pad: int = 40) -> Path:
     return out
 
 
+def _song_path(song: str, log=print) -> Path | None:
+    """Find the audio for a song, fetching it from the release if needed.
+
+    The masters are gitignored (a 240 s mp3 is 5.7 MB), so a fresh runner has the
+    script but no music. They do live on `media-938`, so the lane fetches the one
+    it needs instead of failing — which is what makes the clip lane runnable on
+    Actions at all.
+    """
+    local = MUSIC / f"{song}.mp3"
+    if local.exists():
+        return local
+
+    import urllib.request  # noqa: PLC0415
+
+    url = (f"https://github.com/{REPO}/releases/download/{RELEASE_TAG}/{song}.mp3")
+    dest = MUSIC / f"{song}.mp3"
+    dest.parent.mkdir(parents=True, exist_ok=True)
+    try:
+        with urllib.request.urlopen(url, timeout=300) as resp, dest.open("wb") as f:
+            shutil.copyfileobj(resp, f, 1 << 20)
+        log(f"audio: fetched {song}.mp3 from {RELEASE_TAG}")
+        return dest
+    except Exception as exc:  # noqa: BLE001
+        log(f"audio: {song}.mp3 is neither local nor in {RELEASE_TAG} "
+            f"({type(exc).__name__})")
+        dest.unlink(missing_ok=True)
+        return None
+
+
+def available_songs(log=print) -> list[str]:
+    """Song names usable on this machine: local files first, then the release.
+
+    The workflow needs this because a fresh runner has no music directory at all,
+    and guessing a slug there costs a whole job.
+    """
+    local = sorted(p.stem for p in MUSIC.glob("*.mp3")) if MUSIC.exists() else []
+    if local:
+        return local
+
+    import urllib.request  # noqa: PLC0415
+
+    req = urllib.request.Request(
+        f"https://api.github.com/repos/{REPO}/releases/tags/{RELEASE_TAG}",
+        headers={"Accept": "application/vnd.github+json"})
+    tok = os.environ.get("AX_GH_TOKEN")
+    if tok:
+        req.add_header("Authorization", f"Bearer {tok}")
+    try:
+        with urllib.request.urlopen(req, timeout=120) as r:
+            doc = json.load(r)
+        return sorted(a["name"][:-4] for a in doc.get("assets", [])
+                      if a["name"].endswith(".mp3"))
+    except Exception as exc:  # noqa: BLE001
+        log(f"songs: could not list the release ({type(exc).__name__})")
+        return []
+
+
 def render(song: str, query: str, seconds: float, seed: int, out_dir: Path,
            log=print) -> Path | None:
-    audio = MUSIC / f"{song}.mp3"
-    if not audio.exists():
-        log(f"render: no audio at {audio}")
+    audio = _song_path(song, log=log)
+    if audio is None:
         return None
 
     count = max(6, int(seconds / 7))
@@ -253,12 +313,19 @@ def render(song: str, query: str, seconds: float, seed: int, out_dir: Path,
 
 def main(argv=None) -> int:
     ap = argparse.ArgumentParser(description=__doc__.splitlines()[0])
-    ap.add_argument("--song", required=True, help="a name in aeris938-1/library/music")
+    ap.add_argument("--song", help="a name in aeris938-1/library/music (or the release)")
+    ap.add_argument("--list-songs", action="store_true")
     ap.add_argument("--query", default="bangkok night")
     ap.add_argument("--seconds", type=float, default=58)
     ap.add_argument("--seed", type=int, default=11)
     ap.add_argument("--out", default=str(OUT))
     args = ap.parse_args(argv)
+    if args.list_songs:
+        songs = available_songs()
+        print("\n".join(songs))
+        return 0 if songs else 1
+    if not args.song:
+        ap.error("--song is required unless --list-songs is given")
     got = render(args.song, args.query, args.seconds, args.seed, Path(args.out))
     return 0 if got else 1
 

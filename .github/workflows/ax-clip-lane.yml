@@ -68,8 +68,15 @@ jobs:
         run: |
           set -o pipefail
           if [ -z "$SONG" ]; then
-            SONG=$(ls aeris938-1/library/music/*.mp3 | head -1 | xargs -n1 basename | sed 's/\.mp3$//')
+            # The masters are gitignored, so a fresh runner has none. Ask the tool
+            # which songs exist (it reads the media-938 release) rather than
+            # globbing a directory that is not there.
+            SONG=$(python3 ops/clip_lane.py --list-songs | shuf -n 1)
             echo "picked song: $SONG"
+          fi
+          if [ -z "$SONG" ]; then
+            echo "no song available: neither local nor in media-938"
+            exit 1
           fi
           python ops/clip_lane.py --song "$SONG" --query "$QUERY" --seconds "$SECONDS" 2>&1 | tee render.log
           CLIP=$(grep -o 'PASSED the floor -> .*' render.log | sed 's/.*-> //')
