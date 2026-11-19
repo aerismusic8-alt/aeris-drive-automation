@@ -34,8 +34,11 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import random
 import re
+import shutil
+import subprocess
 import sys
 import time
 import urllib.error
@@ -318,13 +321,50 @@ def _fetch_gemini(prompt: str, key: str, *, force: bool) -> bytes:
     return (REPO / "aeris938-1" / res["entry"]["file"]).read_bytes()
 
 
+def _fetch_dreamina(prompt: str, key: str, *, force: bool) -> bytes:
+    """Seedream 4.0 through the Dreamina Canvas CLI (8 credits per 2K image).
+
+    Free-tier reality: image and TTS work, video is blocked server-side, and the
+    credits expire — so a batch run is the point, not a per-cover call.
+    """
+    cli = shutil.which("dreamina") or "/workspace/ax-tools/bin/dreamina"
+    out = WORK / "ai-bg-dreamina" / f"{key}.png"
+    if out.exists() and not force:
+        return out.read_bytes()
+    out.parent.mkdir(parents=True, exist_ok=True)
+
+    project = os.environ.get("DREAMINA_PROJECT_ID", "").strip()
+    if not project:
+        raise RuntimeError("DREAMINA_PROJECT_ID is unset; run `dreamina canvas create <name> --use` first")
+    base = [cli, "node", "create", "image", "--project-id", project,
+            "--model", "seedream_4.0", "--mode", "t2i", "--ratio", "16:9",
+            "--resolution", "2K", "--title", key[:60], "--prompt", prompt,
+            "--run", "--wait", "--credit-ceiling", "12", "--format", "json"]
+    proc = subprocess.run(base, capture_output=True, text=True, timeout=600)
+    try:
+        doc = json.loads(proc.stdout.strip().splitlines()[-1])
+    except (IndexError, json.JSONDecodeError) as exc:
+        raise RuntimeError(f"dreamina returned no JSON (rc={proc.returncode}): {proc.stdout[-300:]}{proc.stderr[-200:]}") from exc
+    res = (doc.get("data") or {}).get("submission", {}).get("resources") or []
+    if not doc.get("ok") or not res:
+        raise RuntimeError(f"dreamina image failed: {json.dumps(doc.get('error') or doc)[:300]}")
+    dl = subprocess.run([cli, "resource", "download", res[0]["resourceId"],
+                         "--project-id", project, "-o", str(out), "--format", "json"],
+                        capture_output=True, text=True, timeout=300)
+    if not out.exists():
+        raise RuntimeError(f"dreamina download failed: {dl.stdout[-200:]}{dl.stderr[-150:]}")
+    return out.read_bytes()
+
+
 def _background(slug: str, name: str, prompt: str, *, backend: str, force: bool) -> Image.Image:
     """The text-free still, from the chosen backend, cached under work/."""
     cache = WORK / "ai-bg" / f"{slug}-{name}.jpg"
     if cache.exists() and not force:
         return Image.open(cache).convert("RGB")
 
-    if backend == "gemini":
+    if backend == "dreamina":
+        data = _fetch_dreamina(prompt, f"{slug}-{name}", force=force)
+    elif backend == "gemini":
         data = _fetch_gemini(prompt, f"aicover-{slug}-{name}", force=force)
     else:
         # Seed off the slug so a re-run is the same picture, not a new lottery.
@@ -369,7 +409,8 @@ def main() -> int:
     ap.add_argument("--variant", type=int, default=None, help="force an art direction index")
     ap.add_argument("--preview", action="store_true", help="write to work/, keep the live cover")
     ap.add_argument("--force", action="store_true", help="regenerate even if the still exists")
-    ap.add_argument("--backend", default="pollinations", choices=["pollinations", "gemini"],
+    ap.add_argument("--backend", default="pollinations",
+                    choices=["pollinations", "gemini", "dreamina"],
                     help="image backend (default: pollinations, free and key-less)")
     ap.add_argument("--list", action="store_true", help="show the art directions and exit")
     args = ap.parse_args()
