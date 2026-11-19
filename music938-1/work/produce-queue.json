@@ -485,6 +485,16 @@
       "offline_rc": 0,
       "remaster_rc": 0,
       "instrumental": true
+    },
+    {
+      "slug": "51-luai-mai-yut-v51",
+      "title": "จัดเต็มทุกบาร์ยามเช้า",
+      "genre": "rap",
+      "mood": "epic",
+      "result": "no-draft",
+      "problems": [
+        "pollinations: RuntimeError: no reader available: api=GEMINI_API_KEY is not set; web=<urlopen error [Errno 111] Connection refused>"
+      ]
     }
   ],
   "total_made": 22
