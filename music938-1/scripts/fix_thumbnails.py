@@ -158,11 +158,24 @@ def main() -> int:
                 print(f"  would set {path.name} on {e['video_id']} ({e['slug']})")
                 changed = True
             else:
-                code, _ = set_thumbnail(e["video_id"], str(path), tok)
+                try:
+                    code, _ = set_thumbnail(e["video_id"], str(path), tok)
+                except SystemExit as exc:
+                    # A thumbnail below the floor is a per-asset problem. Letting it
+                    # escape aborts the run before save_state, which throws away the
+                    # repairs already made (and re-spends quota on them next time).
+                    print(f"  {e['slug']}: skipped, {exc}", file=sys.stderr)
+                    yt_quota.record("thumbnails.set")
+                    continue
                 print(f"  thumb {e['slug']} ({e['video_id']}): HTTP {code}")
                 yt_quota.record("thumbnails.set")
                 if code == 403:
                     print("quota spent; the rest waits for a fresh Pacific day")
+                    break
+                if code == 429:
+                    # Per-caller rate limit, not the quota pool: keep hammering and
+                    # the limit extends. Stop and let the next run take the rest.
+                    print("rate limited (429); the rest waits for the next run")
                     break
                 if code == 200:
                     e["thumb_ok"] = True
@@ -196,6 +209,10 @@ def main() -> int:
                     changed = True
         if changed:
             fixed += 1
+            # Record each repair as it lands: an exception later in the batch must
+            # not discard repairs that already spent quota on YouTube's side.
+            if not args.dry_run:
+                release.save_state(state)
     if not args.dry_run and (fixed or state_dirty):
         release.save_state(state)
         # Push the repaired ledger back so the next run does not repeat this.

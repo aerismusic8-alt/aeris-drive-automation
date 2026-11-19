@@ -6387,3 +6387,9 @@ platform-side, not code: the *account* daily new-video cap and the shared 10k AP
 ## Moved from MEMORY.md 2026-11-19 (index over cap)
 - **Playwright `connect_over_cdp` can hang** though CDP answers: raw CDP
   websocket works; else re-run `bootstrap.py`.
+
+## Moved from MEMORY.md 2026-11-19 (cap pressure)
+- **A derived artifact outlives its source.** Re-mastering a song leaves older
+  rendered clips clipped; the fail-closed gate then blocks the whole batch (release
+  red 3 runs). Repair at the chokepoint (`clip_standard.needs_audio_repair`/
+  `repair_audio`, before the gate in `yt_publish.py`) — never re-render by hand.

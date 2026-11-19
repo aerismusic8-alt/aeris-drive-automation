@@ -2567,6 +2567,47 @@ def test_thumbnail_repair() -> None:
     check("an unresolved playlist slot stays false",
           saved and saved[-1]["released"][5]["playlist_ok"] is False)
 
+    # A thumbnail below the floor raises SystemExit inside set_thumbnail. That must
+    # not abort the batch: doing so skipped save_state and threw away every repair
+    # already made (2026-11-19: 10 thumbs set on YouTube, 0 recorded, so the next
+    # run re-spent the quota on the same videos).
+    seen2, saved2 = [], []
+
+    def bad_then_good(vid, path, tok):
+        if vid == "B1":
+            raise SystemExit("thumbnail below the standard: 16:9 or 9:16")
+        seen2.append(vid)
+        return 200, {}
+
+    state2 = {"released": [
+        {"slug": "bad", "kind": "song", "variant": "", "video_id": "B1", "thumb_ok": False},
+        {"slug": "good", "kind": "song", "variant": "", "video_id": "G1", "thumb_ok": False},
+    ], "playlists": {"ch3:song": "PL1"}}
+    real2 = (release.load_state, release.save_state, fix_thumbnails.thumb_for,
+             yt_auth.access_token, fix_thumbnails.set_thumbnail, sys.argv,
+             yt_quota.remaining, yt_quota.record, yt_quota.commit)
+    try:
+        release.load_state = lambda: state2
+        release.save_state = lambda s: saved2.append(s)
+        fix_thumbnails.thumb_for = lambda e: Path("/tmp/thumb.png")
+        yt_auth.access_token = lambda ch: "tok"
+        fix_thumbnails.set_thumbnail = bad_then_good
+        yt_quota.remaining = lambda *a, **k: 10_000
+        yt_quota.record = lambda *a, **k: 0
+        yt_quota.commit = lambda *a, **k: True
+        sys.argv = ["fix_thumbnails.py"]
+        fix_thumbnails.main()
+    finally:
+        (release.load_state, release.save_state, fix_thumbnails.thumb_for,
+         yt_auth.access_token, fix_thumbnails.set_thumbnail, sys.argv,
+         yt_quota.remaining, yt_quota.record, yt_quota.commit) = real2
+
+    check("a below-floor thumbnail does not abort the batch", seen2 == ["G1"], f"{seen2}")
+    check("the good repair is recorded despite the bad asset",
+          saved2 and saved2[-1]["released"][1]["thumb_ok"] is True)
+    check("the bad asset stays pending so it is not silently dropped",
+          saved2 and saved2[-1]["released"][0]["thumb_ok"] is False)
+
 
 def test_nostr_identity() -> None:
     """AR's Nostr identity must be a valid secp256k1/Schnorr keypair.

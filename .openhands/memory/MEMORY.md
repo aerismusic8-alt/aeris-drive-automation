@@ -1,9 +1,7 @@
 # MEMORY — index
 
-**How to use.** Injected every session; **capped at 6 KB** (`ops/memory_guard.py`).
-Rules/pointers only — detail in `MEMORY-ARCHIVE.md` + daily logs; new learning →
-today's log, promote only if it changes a decision. **Read `.openhands/CHARTER.md`
-first** — K's mandate (2026-10-31).
+**How to use.** Capped at 6 KB (`ops/memory_guard.py`). Rules/pointers only —
+detail in `MEMORY-ARCHIVE.md` + daily logs. **Read `.openhands/CHARTER.md` first.**
 
 ## 🔴 กฎถาวรข้อที่ 1 (K): ฟรีเท่านั้น — free only
 100% free: no paid API, subscription or credits. Free routes only — login-only web
@@ -15,8 +13,8 @@ reviews a channel's first work; never rename a channel without K's approval.
 AR mailbox = `araeris4770d7@fldubai.com` (mail.tm; `ops/ar_identity.py`).
 AR self-creatable: **Nostr** (`AR_NOSTR_NSEC`), **Telegraph** (`ops/ar_telegraph.py`).
 Flow Music/Gemini = K's account `aerismusic8` (AR never types a password). K taps a
-QR once, then `login_vault.py save` **immediately** — the session lasts ~1 day. A
-synth bed has **no vocal**; Flow is the only real-song route (K: "ยากแค่ทำเพลง").
+QR once, then `login_vault.py save` **immediately** (session ~1 day). A synth bed has
+**no vocal**; Flow is the only real-song route.
 
 ## Roles and method (K, 2026-10-31)
 - **K = final authority.** Every standing rule is K's.
@@ -54,9 +52,8 @@ Roblox game anyone can enter and play, and real revenue from it (Roblox **PARKED
   (workflow files need its `workflow` scope).
 - **Desktop = Live View** (`work-2`:12001); Thai text `Text.luau` +
   `NotoSansThai.ttf` (else tofu); burned ASS has no emoji.
-- **Gemini (`gemini_review.py` + `gemini_gate.py`)**: no pass = no upload, no
-  showing K — **but its score is NOT the judge** (measured 2026-11-19): clean clip
-  5 FAIL vs captionless 7 PASS, letterboxed 7 PASS. Gate = measured rules + K.
+- **Gemini (`gemini_gate.py`)**: no pass = no upload — but **its score is NOT the
+  judge** (2026-11-19): clean clip 5 FAIL, captionless 7 PASS. Gate = rules + K.
 - **`ops/websearch.py`** is the free web search (Tavily has no quota left).
 
 ## Sound + clip quality (K)
@@ -78,18 +75,23 @@ not failure; each `work/*` ledger must be un-ignored (`!…`) or it re-posts eve
 - **`continue-on-error` + a wrong step order = a silent broken artifact** — the
   produce rail pulled beds *after* the produce step, so every song shipped
   `audio: none` while green: gate the artifact, assert the order.
-- **A derived artifact outlives its source.** Re-mastering a song leaves older
-  rendered clips clipped; the fail-closed gate then blocks the whole batch (release
-  red 3 runs). Repair at the chokepoint (`clip_standard.needs_audio_repair`/
-  `repair_audio`, before the gate in `yt_publish.py`) — never re-render by hand.
-- **A free drafter's content filter judges the *framing*.** Detail: archive.
+- **A derived artifact outlives its source** — re-mastering leaves older clips
+  clipped and the fail-closed gate blocks the batch; repair at the chokepoint
+  (`clip_standard.repair_audio`), never re-render by hand. Detail: archive.
+- **A step that lives only in shell history is not reproducible.** An unsaved
+  ad-hoc mux shipped 939/1241 duplicate frames; the segments were fine.
 - **Never decide on missing/stale data** (2026-11-12): a blank/stale newest row is
   `data`, never a guess; `--assert-fresh` gates the dashboard rail.
 - **`videos.list` ≤50 ids/call; YPP = 1,000 subs AND 4,000 watch-hours.**
-- **Bound every rail:** `timeout-minutes` (default 360) + `cancel-in-progress:
-  true`, or a hung step holds the slot. Risks:
-  `AKATH_CORE/OPENHANDS_RISK_REGISTER.json` + `ops/risk_audit.py` (`--strict`).
+- **Bound every rail:** `timeout-minutes` + `cancel-in-progress: true`. Risks:
+  `OPENHANDS_RISK_REGISTER.json` + `ops/risk_audit.py --strict`.
+
+## Dreamina CLI — free-tier reality (measured 2026-11-19)
+`/workspace/ax-tools/bin/dreamina-canvas`. Non-VIP: **image + TTS work; video is
+BLOCKED server-side** on every model (quote error 1 / `state: UNKNOWN` / 40012,
+0 cr) even when it says `vipRequired: false` — `node quote` is the only honest
+test. 8 cr/image, 1 cr/TTS. **No Thai voice** → Thai stays `edge-tts`.
 
 ## Recovery
-Lost rail/file: `$AX_VAULT_BOOTSTRAP` → `ops/ax_vault.py` (`axvault:readme`) or
-`MEMORY-ARCHIVE.md`; a lost `work/*.json` is in the event log.
+`$AX_VAULT_BOOTSTRAP` → `ops/ax_vault.py` (`axvault:readme`); a lost `work/*.json`
+is in the event log.
