@@ -26,7 +26,7 @@ concurrency:
 
 jobs:
   survey:
-    runs-on: [self-hosted, PC1-AERIS]
+    runs-on: [self-hosted, Windows, X64]
     timeout-minutes: 15
     steps:
       - name: Where am I and what drives exist
