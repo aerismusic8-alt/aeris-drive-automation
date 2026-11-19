@@ -1,0 +1,56 @@
+name: AX PC1 Bank Survey (สำรวจคลัง D:)
+
+# K (2026-11-19): "เอาลงไปคลัง pc1 แล้วต้องดึงเอามาใช้เป็นวัตถุดิบสร้างคลิปได้ด้วยนะ"
+#
+# Before the image bank can live on PC1's D: drive, AX has to know what that box
+# actually has: which drive letters exist, how much room is on them, and whether
+# the tools a pull needs (python, curl, ffmpeg) are present. Guessing means a
+# sync job that fails 20 minutes in.
+#
+# Read-only. It runs on the `PC1-AERIS` runner, which is the label that is
+# actually online; `self-hosted` alone resolves to DESKTOP-RGK6JKB, which has
+# been offline since 2026-11-19 and would queue the job forever.
+#
+# The result goes to the job summary and an artifact, so AX can read it with the
+# REST API and no reverse channel.
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ax-pc1-bank-survey
+  cancel-in-progress: true
+
+jobs:
+  survey:
+    runs-on: [self-hosted, PC1-AERIS]
+    timeout-minutes: 15
+    steps:
+      - name: Where am I and what drives exist
+        shell: powershell
+        run: |
+          "COMPUTERNAME=$env:COMPUTERNAME"
+          "USER=$env:USERNAME"
+          Get-PSDrive -PSProvider FileSystem | ForEach-Object {
+            "{0}: used={1}GB free={2}GB" -f $_.Name,
+              [math]::Round($_.Used/1GB,1), [math]::Round($_.Free/1GB,1)
+          }
+
+      - name: Which tools can a pull rely on
+        shell: powershell
+        run: |
+          foreach ($c in 'python','python3','py','curl','tar','ffmpeg','git','7z') {
+            $p = (Get-Command $c -ErrorAction SilentlyContinue)
+            if ($p) { "$c OK -> $($p.Source)" } else { "$c MISSING" }
+          }
+          try { "python-version=" + (& python --version 2>&1) } catch { "python-version=unavailable" }
+
+      - name: Report to the job summary
+        if: always()
+        shell: powershell
+        run: |
+          $log = Join-Path $env:RUNNER_TEMP "survey.txt"
+          "survey written to $log"
