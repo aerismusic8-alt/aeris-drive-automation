@@ -145,7 +145,8 @@ def build_prompt(meta: dict, angle: str = "") -> str:
         "แต่ห้ามฝืนความหมายเพื่อให้สัมผัส\n"
         "5) บรรทัดแรกของทุก [chorus] ต้องเป็นฮุกสั้น จำง่าย และร้องซ้ำได้\n"
         "6) ภาษาเรียบง่าย เป็นธรรมชาติ ไม่ประดิษฐ์คำ\n\n"
-        "ตัวอย่าง 'รูปแบบ' ที่ถูกต้อง (คนละเพลง ห้ามลอกเนื้อความ):\n"
+        "ตัวอย่าง 'รูปแบบ' ที่ถูกต้อง (คนละเพลง ห้ามลอกเนื้อความ ห้ามใช้บรรทัดเหล่านี้ซ้ำ "
+        "เด็ดขาด ให้แต่งใหม่ทั้งหมดตามชื่อเพลงและโจทย์ด้านบน):\n"
         "[verse]\nวันคืนที่ผ่านพ้นไป\nยังเหลือไว้แต่ความหลัง\n"
         "แม้เวลาจะเปลี่ยนผัน\nใจดวงนี้ยังเหมือนเดิม\n"
         "[chorus]\nอยากย้อนเวลากลับไป\nไปวันที่เรายังรักกัน\n"
@@ -220,14 +221,18 @@ def parse_body(raw: str) -> list[tuple[str, list[str]]]:
     """
     low = raw.lower()
     cut = -1
-    for marker in ("gemini said", "chatgpt said"):
+    # "Gemini บอกว่า" is the marker the desktop's Thai UI renders; without it the
+    # cut missed, the echoed prompt survived, and the answer's first section was
+    # the prompt's own example lyric (measured 2026-11-19).
+    for marker in ("gemini said", "chatgpt said", "gemini บอกว่า", "แชทจีพีทีบอกว่า"):
         i = low.rfind(marker)
         if i != -1:
             cut = max(cut, i + len(marker))
     if cut != -1:
         raw = raw[cut:]
     for stop in ("Sign in to connect", "Gemini is AI", "Gemini replied",
-                 "ChatGPT can make mistakes", "About Gemini"):
+                 "ChatGPT can make mistakes", "About Gemini",
+                 "Gemini เป็น AI", "อัปเกรด", "อัตโนมัติ"):
         if stop in raw:
             raw = raw[: raw.find(stop)]
     chrome = {"flash-lite", "flash", "pro", "sign in", "new chat", "images",
@@ -312,7 +317,132 @@ def lint_sections(sections: list[tuple[str, list[str]]]) -> list[str]:
             n = len(re.findall(r"[ก-๙]", ln))
             if n < 8 or n > 42:
                 problems.append(f"[{sec}] line is {n} Thai chars: {ln!r}")
+            if CHROME.search(ln):
+                problems.append(f"[{sec}] carries page chrome: {ln!r}")
     return problems
+
+
+# Gemini's answer arrives with the page footer fused onto the last section
+# ("อัตโนมัติ", "Gemini เป็น AI และอาจทำผิดพลาดได้"). Those are not lyrics and
+# must never reach Flow Music, which would sing them.
+CHROME = re.compile(
+    r"อัตโนมัติ|Gemini|AI และอาจทำผิดพลาด|อัปเกรด|แชท|ข้อความ|เข้าสู่ระบบ"
+)
+
+
+def _default_reader():
+    """A model that can read Thai: the API when a key is set, else the web app.
+
+    The API comes first because the produce rail runs on a GitHub runner, which
+    has no cloud desktop: a web-app-only reader would fail closed on every CI
+    draft and stall the whole lane. `_drive_gemini` is never used — it waits for
+    `[section]` tags to decide an answer is finished, so for a question that has
+    none it never returns and hands back the page sidebar instead.
+    """
+    sys.path.insert(0, str(ROOT.parent / "ops"))
+    import gemini_api  # noqa: PLC0415
+
+    def ask(question: str, timeout_s: int = 240) -> str:
+        try:
+            return gemini_api.ask(question, timeout=timeout_s)
+        except Exception as api_exc:  # noqa: BLE001
+            import gemini_ask  # noqa: PLC0415
+            try:
+                return gemini_ask.ask(question, new_chat=True, timeout=timeout_s)
+            except Exception as web_exc:  # noqa: BLE001
+                raise RuntimeError(
+                    f"no reader available: api={api_exc}; web={web_exc}"
+                ) from web_exc
+
+    return ask
+
+
+def verify_meaning(sections: list[tuple[str, list[str]]],
+                   ask=None, timeout_s: int = 240) -> list[str]:
+    """Ask a model whether the words are actually Thai, and believe the answer.
+
+    Measured 2026-11-19: the free drafters do not all write Thai. Gemini web
+    produced singable Thai ("ปิดไฟห้องแล้วเดินออกไป"), while pollinations'
+    `openai-fast` produced syllable salad that passed every structural test —
+    real syllables, real line lengths, no Latin, no chrome:
+    "ตัดขาออกทางเส้นทางจิต / แสงนี๊ดตอบใจข้างหลัง". A dictionary cannot catch it
+    (every token is a genuine word; `thai_words` coverage scored 1.00 on the
+    worst lines) and neither can a function-word count (measured: a salad line
+    scored 2.0 against a correct line's 0.0, i.e. backwards). Only a reader of
+    the language can, so the check asks one.
+
+    The reader is `ops/gemini_api` when a key is set, else `ops/gemini_ask`
+    (the signed-in web app). The API comes first because the produce rail runs
+    on a GitHub runner, which has no cloud desktop: a web-app-only reader would
+    fail closed on every CI draft and stall the whole lane. `_drive_gemini` is
+    never used — it waits for `[section]` tags to decide an answer is finished,
+    so for a question that has none it never returns and hands back the page
+    sidebar instead.
+
+    A reader that cannot be reached reports a problem rather than passing: an
+    unread lyric is not a lyric we know reads.
+
+    Returns a list of reasons the lyric must not be used; empty means it reads.
+    """
+    if ask is None:
+        ask = _default_reader()
+
+    text = "\n".join(ln for _, lines in sections for ln in lines)
+    question = (
+        "อ่านเนื้อเพลงไทยต่อไปนี้ แล้วตอบว่ามันเป็นประโยคภาษาไทยที่มีความหมาย "
+        "จริงหรือไม่ (ไม่ใช่คำไทยที่เอามาเรียงมั่วจนอ่านไม่รู้เรื่อง)\n"
+        "ตอบบรรทัดแรกด้วยคำเดียว: PASS หรือ FAIL\n"
+        "ถ้า FAIL ให้บอกบรรทัดที่ผิดและเพราะอะไร สั้น ๆ\n\n"
+        f"เนื้อเพลง:\n{text}\n"
+    )
+    answer = ask(question, timeout_s=timeout_s)
+    first = next((ln.strip() for ln in answer.splitlines() if ln.strip()), "")
+    if first.upper().startswith("PASS"):
+        return []
+    reason = " ".join(answer.split())[:300]
+    return [f"meaning check did not pass: {reason}"]
+
+
+def repair_lines(sections: list[tuple[str, list[str]]], reason: str,
+                 ask=None, timeout_s: int = 240) -> list[tuple[str, list[str]]]:
+    """Rewrite only the lines the meaning check objected to.
+
+    Measured 2026-11-19: a rock lyric came back with one weak line
+    ("มองข้างหน้าไม่คลาดแคล้ว" — "not missing" grafted onto a dawn image) among
+    five good ones, and rejecting the whole draft threw away a usable hook and
+    two verses. The check names the offending line, so the fix is surgical: ask
+    for that one line again, keep every other line byte-for-byte.
+
+    A line that cannot be replaced stays as it was, so the caller's next
+    `verify_meaning` still rejects the draft. Repair can improve a draft; it can
+    never launder a bad one through.
+    """
+    ask = ask or _default_reader()
+    bad = re.findall(r"FAIL\s*(.+?)(?:\s*—|\s*-|:|\n|$)", reason)
+    quoted = [b.strip() for b in bad if len(re.findall(r"[ก-๙]", b)) >= 4]
+    fixed = list(sections)
+    for target in quoted:
+        for i, (sec, lines) in enumerate(fixed):
+            for j, ln in enumerate(lines):
+                if ln.strip() != target and target not in ln:
+                    continue
+                question = (
+                    f"ในเพลงไทยนี้ บรรทัดนี้ยังไม่เป็นธรรมชาติ: {ln}\n"
+                    f"เขียนบรรทัดเดิมใหม่ 1 บรรทัด ให้เป็นภาษาไทยที่ลื่นไหล "
+                    f"ความหมายเดิม ยาวพอ ๆ กับเดิม (ราว 8 พยางค์) "
+                    f"และเข้าท่อน [{sec}]\n"
+                    "ตอบเฉพาะบรรทัดใหม่ บรรทัดเดียว ห้ามอธิบาย\n"
+                )
+                try:
+                    out = ask(question, timeout_s=timeout_s)
+                except Exception:  # noqa: BLE001
+                    continue
+                cand = next((c.strip() for c in out.splitlines()
+                             if len(re.findall(r"[ก-๙]", c)) >= 8), "")
+                if cand and not re.search(r"[A-Za-z]", cand):
+                    fixed[i] = (sec, lines[:j] + [cand] + lines[j + 1:])
+                break
+    return fixed
 
 
 def _drive_chatgpt(prompt: str, timeout_s: int = 300) -> str:
@@ -381,12 +511,19 @@ DRAFTERS = {"gemini": _drive_gemini, "chatgpt": _drive_chatgpt,
             "gemini-api": _drive_gemini_api}
 
 
-def draft(meta: dict, angle: str = "", drafter: str = "chatgpt"
+def draft(meta: dict, angle: str = "", drafter: str = "chatgpt",
+          check_meaning: bool = True
           ) -> tuple[list[tuple[str, list[str]]], list[str]]:
     """One draft, parsed and linted. Returns (sections, problems).
 
     A thin public wrapper so the multi-AI forge drives the same prompt, the same
     parser and the same filter as the single-shot path.
+
+    The meaning check lives *here* rather than only in `main()` because this is
+    the path the produce rail takes: gating only the CLI left `produce_loop`
+    free to write a syllable-salad lyric and render it, which is exactly how the
+    2026-11-19 pack shipped. A drafter that fails it is reported like any other
+    bad draft, so the loop tries the next channel instead of using the text.
     """
     raw = DRAFTERS[drafter](build_prompt(meta, angle))
     sections = parse_body(raw)
@@ -398,7 +535,19 @@ def draft(meta: dict, angle: str = "", drafter: str = "chatgpt"
         preview = " / ".join(raw.split())[:300]
         print(f"  {drafter}: parsed 0 sections; raw preview: {preview}",
               flush=True)
-    return sections, lint_sections(sections)
+        return sections, lint_sections(sections)
+    problems = lint_sections(sections)
+    if check_meaning and not problems:
+        problems = verify_meaning(sections)
+        if problems:
+            # One weak line should cost that line, not the whole draft. Repair
+            # only what the check named, then judge the result again: an
+            # unrepaired line still fails, so this cannot launder a bad lyric.
+            repaired = repair_lines(sections, " ".join(problems))
+            again = verify_meaning(repaired)
+            if not again:
+                sections, problems = repaired, []
+    return sections, problems
 
 
 def render_file(meta: dict, sections: list[tuple[str, list[str]]]) -> str:
@@ -449,6 +598,15 @@ def main() -> int:
             print("  - " + p, file=sys.stderr)
         if not args.force:
             return 3
+    # Structure and length cannot tell real Thai from a syllable salad, so a
+    # lyric that reads correctly is a separate gate. Skipped under --force.
+    if not args.force:
+        meaning = verify_meaning(sections)
+        if meaning:
+            print("candidate rejected by the meaning check:", file=sys.stderr)
+            for p in meaning:
+                print("  - " + p, file=sys.stderr)
+            return 4
     text = render_file(meta, sections)
     nlines = sum(len(l) for _, l in sections)
     print(f"# sections: {[s for s, _ in sections]}  lines: {nlines}", file=sys.stderr)

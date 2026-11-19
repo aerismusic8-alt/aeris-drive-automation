@@ -637,6 +637,13 @@
       "instruments": "big open guitar chords, stadium drums, harmonized lead",
       "groove": "anthemic rock stomp",
       "mix": "wide guitars, huge chorus"
+    },
+    {
+      "id": "rock-garage-punk",
+      "genre": "rock",
+      "instruments": "raw fuzzed garage guitar, trashy live kit, driving punk bass, shouted gang vocals",
+      "groove": "fast garage-punk stomp, snare on the backbeat, no fills to speak of",
+      "mix": "loud, dry and in-your-face, guitars panned hard"
     }
   ]
 }

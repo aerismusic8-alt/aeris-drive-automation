@@ -6798,6 +6798,8 @@ def test_keyless_lyric_drafter() -> None:
     ok39 = [("chorus", ["ฟุ้งกรามเสียงกระตุ้นกล้ามเนื้อพยายามวัน"])]
     check("a 39-char Thai line passes the lint",
           not any("Thai chars" in p for p in A.lint_sections(ok39)))
+
+
     check("a fused runaway line still fails the lint",
           any("Thai chars" in p for p in A.lint_sections([("chorus", ["ก" * 90])])))
     # Pollinations returns `output_token_limit_exceeded` (HTTP 400) on a long
@@ -6885,6 +6887,49 @@ def test_keyless_lyric_drafter() -> None:
     # A normal run must never silently downgrade a Flow render to a synth bed.
     check("the offline master is opt-in, not automatic",
           "if args.offline" in flow and "except B.LoginRequired" in flow)
+
+
+def test_lyric_meaning_gate() -> None:
+    """A lyric must read as Thai, not merely be shaped like it.
+
+    On 2026-11-19 eight lyrics shipped as syllable salad — real Thai syllables
+    in no grammatical order ("บวยบอยในใจทำไมดี", "ฝันบีบไหม้ไปดอกไม้ซุ่มดา").
+    Every structural check passed them: correct line lengths, no Latin, no
+    chrome. Two cheaper checks were tried and measured useless:
+    `thai_words` coverage scored 1.00 on the worst lines (every token is a
+    genuine word), and a function-word count scored a salad line 2.0 against a
+    correct line's 0.0 — backwards. So the gate asks a reader of the language.
+
+    Pinned here without the network: the reader is injected.
+    """
+    section("lyric meaning gate")
+    sys.path.insert(0, str(ROOT / "scripts"))
+    import ai_lyrics as A  # noqa: E402
+
+    salad = [("verse", ["คลิกสองสติกแสงไฟเคลื่อนไหว", "บวยบอยในใจทำไมดี",
+                        "สุดที่เราคุยเสียงจ้องแน่นเบา", "ส่องไฟพลุเต็มฟ้าเม่น"])]
+    real = [("verse", ["ปิดไฟห้องแล้วเดินออกไป", "ทิ้งเรื่องวุ่นวายไว้ข้างหลัง",
+                       "แสงไฟยามค่ำส่องนำทาง", "เปิดใจรับความสุขเต็มแรง"])]
+
+    seen: list[str] = []
+
+    def reader(prompt: str, timeout_s: int = 240) -> str:
+        seen.append(prompt)
+        return "FAIL บรรทัดนี้ไม่ใช่ประโยคไทย" if "บวยบอย" in prompt else "PASS"
+
+    check("a syllable salad is rejected",
+          bool(A.verify_meaning(salad, ask=reader)))
+    check("a real lyric passes", A.verify_meaning(real, ask=reader) == [])
+    check("the check is shown the whole lyric, not a line",
+          all("เปิดใจรับความสุขเต็มแรง" in p for p in seen if "บวยบอย" not in p))
+    check("a refusal that is neither PASS nor FAIL still blocks",
+          bool(A.verify_meaning(real, ask=lambda p, timeout_s=240: "ขอโทษครับ")))
+    check("the gate is wired into main",
+          "verify_meaning(sections)" in (ROOT / "scripts" / "ai_lyrics.py").read_text())
+    # Page chrome fused onto the last section would otherwise be sung.
+    check("the Gemini footer is rejected as chrome",
+          any("chrome" in p for p in A.lint_sections(
+              [("chorus", ["รักเธอหมดใจแล้ววันนี้", "Gemini เป็น AI และอาจทำผิดพลาดได้"])])))
 
 
 def test_consult_gate() -> None:
@@ -7385,6 +7430,7 @@ def main() -> int:
     test_fb_page_description()
     test_memory_guard()
     test_keyless_lyric_drafter()
+    test_lyric_meaning_gate()
     test_brand_identity()
     test_watchdog()
     test_fill_playlists()
