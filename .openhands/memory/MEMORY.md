@@ -1,15 +1,15 @@
 # MEMORY — index
 
-**How to use.** Injected every session; **capped at 6 KB** by `ops/memory_guard.py`.
-Rules/pointers only — detail in `MEMORY-ARCHIVE.md` + daily logs. New learning →
-today's log; promote only if it changes a decision; **move** superseded detail to
-the archive. **Read `.openhands/CHARTER.md` first** — K's mandate (2026-10-31).
+**How to use.** Injected every session; **capped at 6 KB** (`ops/memory_guard.py`).
+Rules/pointers only — detail in `MEMORY-ARCHIVE.md` + daily logs; new learning →
+today's log, promote only if it changes a decision. **Read `.openhands/CHARTER.md`
+first** — K's mandate (2026-10-31).
 
 ## 🔴 กฎถาวรข้อที่ 1 (K): ฟรีเท่านั้น — free only
 100% free: no paid API, subscription or credits. Free routes only — login-only web
 apps (K's Chromium), open APIs, self-hosted tooling. **AR never types a password.**
-Related: **AUDIO FIRST**; delete the duplicate and the worthless, never archive it;
-K reviews a channel's first work; never rename a channel without K's approval.
+Related: **AUDIO FIRST**; delete the duplicate/worthless, never archive it; K
+reviews a channel's first work; never rename a channel without K's approval.
 
 ## Accounts (K, 2026-11-14): every tool uses AR's OWN mail, not K's
 AR mailbox = `araeris4770d7@fldubai.com` (mail.tm; `ops/ar_identity.py`).
@@ -43,20 +43,22 @@ Roblox game anyone can enter and play, and real revenue from it (Roblox **PARKED
 
 ## Environment facts that cost time
 - **Fresh-pod recovery: `scripts/bootstrap-pod.sh`** — re-run after every pod.
-- **MV links must be durable (K: "ลิงค์ตาย").** GitHub Pages `ax-mv-pages`
-  (`ops/mv_page.py --all`); a /tmp preview dies on recycle.
+- **MV links must be durable (K: "ลิงค์ตาย")** — `ops/mv_page.py --all`.
+  Detail: archive.
 - **24/7 runs on GitHub Actions** (public repo → free minutes); judge health from
   the **rail run history**, not `heartbeat.json`.
 - **FB = Graph API only (K 2026-11-15); browser OFF.** `api-only`; vault
   `axsecrets:fb-page-token`; lanes in `crosspost.py`.
-- **Vault = source of truth; a secret injects only when the command *names* it**
-  (`AX_VAULT_BOOTSTRAP`/`OPENHANDS_API_KEY`).
+- **Vault = source of truth; a secret injects only when the command *names* it.**
 - **Writes:** `GITHUB_TOKEN` is 403; push via KV `axsecrets:gh-workflow-token`
   (workflow files need its `workflow` scope).
 - **Desktop = Live View** (`work-2`:12001); Thai text `Text.luau` +
   `NotoSansThai.ttf` (else tofu); burned ASS has no emoji.
-- **Playwright `connect_over_cdp` can hang** though CDP answers: kill
-  `remote-debugging-port=9222`, re-run `bootstrap.py`; raw CDP websocket works.
+- **Gemini gate (K 2026-11-19): `ops/gemini_review.py`** — no pass = no upload, no
+  showing K. No video input → contact sheet + measured facts; UI is Thai (send
+  "ส่งข้อความ"); `session_guard.py` revives Google. Detail: archive.
+- **Playwright `connect_over_cdp` can hang** though CDP answers: raw CDP
+  websocket works; else re-run `bootstrap.py`. Detail: archive.
 - **`ops/websearch.py`** is the free web search (Tavily has no quota left).
 
 ## Sound + clip quality (K)
@@ -80,8 +82,7 @@ not failure; each `work/*` ledger must be un-ignored (`!…`) or it re-posts eve
   rendered clips clipped; the fail-closed gate then blocks the whole batch (release
   red 3 runs). Repair at the chokepoint (`clip_standard.needs_audio_repair`/
   `repair_audio`, before the gate in `yt_publish.py`) — never re-render by hand.
-- **A free drafter's content filter judges the *framing*, not the content** — a
-  positive clause clears it; a committed manifest can desync from pulled media.
+- **A free drafter's content filter judges the *framing*.** Detail: archive.
 - **Never decide on missing/stale data** (2026-11-12): a blank/stale newest row is
   `data`, never a guess; `--assert-fresh` gates the dashboard rail.
 - **`videos.list` ≤50 ids/call; YPP = 1,000 subs AND 4,000 watch-hours.**

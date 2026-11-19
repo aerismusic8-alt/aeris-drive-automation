@@ -6360,3 +6360,25 @@ platform-side, not code: the *account* daily new-video cap and the shared 10k AP
   (vault cookies from 11-17 were rejected 11-18); guest needs no login.
 - **Thai text:** `roblox/src/shared/Text.luau` + `music938-1/fonts/NotoSansThai.ttf`
   (else tofu); burned ASS has no emoji (`•`/`»`).
+
+## Moved out of the index 2026-11-19
+- MV links must be durable (K: "ลิงค์ตาย"). GitHub Pages `site-aeris-music` via
+  `ax-mv-pages` (`ops/mv_page.py --all`); a /tmp preview dies on recycle.
+- Playwright `connect_over_cdp` can hang though CDP answers on 9222: kill the
+  `remote-debugging-port=9222` chrome, re-run `bootstrap.py`; the raw CDP
+  websocket is the route that works.
+- Gemini review details (2026-11-19): `ops/gemini_review.py` builds a labelled
+  8-frame contact sheet and asks the signed-in Gemini web app for a SCORE 1-10.
+  Gemini cannot open a video file even signed in. `Runtime.evaluate` needs
+  `returnByValue=False` to yield an objectId for `DOM.setFileInputFiles`; Gemini
+  mounts no `input[type=file]` until "Upload & tools" is clicked (4 appear, the
+  3rd accepts image/*,video/*); the desktop UI is Thai so the send button is
+  "ส่งข้อความ"; navigate to /app and wait for a new message before reading the
+  reply. `login_vault.py restore` restores cookies but can still be SESSION
+  REJECTED — `ops/session_guard.py` (`_revive_google`) is the step that actually
+  revives it. Vault keys are `axlogin:index` / `axlogin:ls:index`.
+  Captions are burned by the ASS filter so ffprobe sees 0 subtitle streams; the
+  record is `music938-1/work/<slug>/short-song-<hook>.ass` (48 h1 = 10 lines,
+  44/45/46/47 = 3 = hook + follow ask, i.e. no lyrics at all).
+- A free drafter's content filter judges the *framing*, not the content: a
+  positive clause clears it, and a committed manifest can desync from pulled media.

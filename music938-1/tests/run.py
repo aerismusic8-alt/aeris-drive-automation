@@ -5794,6 +5794,59 @@ def test_thumb_standard_is_a_floor() -> None:
           {n: ok for n, ok, _ in ts.check(square)}.get("16:9 or 9:16") is False)
 
 
+def test_gemini_gate_blocks_unreviewed() -> None:
+    """No Gemini pass, no upload (K, 2026-11-19).
+
+    K: "ถ้าไม่ผ่านการตรวจสอบผ่านจาก gemini ห้ามเอาอัพขึ้นช่องและห้ามส่งให้ K ดู".
+    `ops/gemini_gate.py` is the chokepoint and must fail closed: no verdict, a
+    verdict bound to different bytes, or a failing score all block.
+    """
+    section("gemini gate (no pass, no upload)")
+    import importlib.util
+    import shutil
+    import tempfile
+    # The verdict dir is env-overridable so a test can never write into the real
+    # one: a stray PASS there would let an unreviewed clip upload.
+    d = tempfile.mkdtemp(prefix="ax-gem-test-")
+    reviews = os.path.join(d, "reviews")
+    os.makedirs(reviews)
+    os.environ["AX_GEMINI_REVIEWS"] = reviews
+    ops = ROOT.parent / "ops"
+    spec = importlib.util.spec_from_file_location("gemini_gate",
+                                                  ops / "gemini_gate.py")
+    gg = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(gg)
+
+    try:
+        clip = os.path.join(d, "short-song-h1-test-slug.mp4")
+        with open(clip, "wb") as f:
+            f.write(b"\x00" * 2048)
+
+        ok, why = gg.check(clip)
+        check("unreviewed clip is blocked", ok is False)
+        check("the reason says review it first", "no Gemini verdict" in why, why)
+
+        gg.record(clip, 4.0, False, verdict="FAIL", note="blurred bars")
+        ok, why = gg.check(clip)
+        check("a FAIL verdict is blocked", ok is False)
+        check("the reason names the FAIL", "FAIL" in why, why)
+
+        # A verdict belongs to the exact bytes Gemini saw. Re-rendering the clip
+        # must invalidate it, or a fixed clip inherits the old score.
+        with open(clip, "wb") as f:
+            f.write(b"\x01" * 2048)
+        ok, why = gg.check(clip)
+        check("a changed file invalidates the verdict", ok is False)
+        check("the reason is a hash mismatch", "hash" in why.lower(), why)
+
+        gg.record(clip, 9.0, True, verdict="PASS", replace=True)
+        ok, why = gg.check(clip)
+        check("a passing verdict on the same bytes is allowed", ok is True, why)
+    finally:
+        os.environ.pop("AX_GEMINI_REVIEWS", None)
+        shutil.rmtree(d, ignore_errors=True)
+
+
 def test_metadata_ab_holds_format_fixed() -> None:
     """The title experiment must change exactly one variable.
 
@@ -7038,6 +7091,7 @@ def main() -> int:
     test_song_analysis()
     test_thumb_contrast()
     test_thumb_standard_is_a_floor()
+    test_gemini_gate_blocks_unreviewed()
     test_ai_covers()
     test_thumbnail_repair()
     test_nostr_identity()
