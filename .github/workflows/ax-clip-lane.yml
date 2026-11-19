@@ -1,0 +1,112 @@
+name: AX Clip Lane (ทำคลิปจากคลังภาพ)
+
+# K (2026-11-19): "ถ้าแยกระบบ สร้างภาพกับทำคลิปได้แยกงานทำคู่ขนานเลย kอยากเห็นงานจากรูปแบบใหม่"
+# — split the system so making pictures and making clips run as two parallel
+# jobs, and show the work the new shape produces.
+#
+# This is the clip half. It is deliberately independent of the art rail:
+#
+#   * the art rail (`ax-image-bank.yml`) sweeps Commons and grows the manifest;
+#   * this rail reads the manifest and renders, on its own schedule.
+#
+# They share only committed files, so neither can starve the other. The two
+# bottlenecks are opposite — the sweep is network-bound and slow, a render is
+# CPU-bound and finishes in ~80 s — which is exactly why one job could not do
+# both well.
+#
+# Every clip is gated by `ops/clip_standard.py` inside `ops/clip_lane.py`: a
+# below-floor render is deleted, not uploaded, and the job goes red so the floor
+# is never quietly skipped. K's rule (2026-11-17) is every channel, no override.
+#
+# The clip is uploaded to the `media-938` release as a durable artifact and its
+# path is printed, so the result is inspectable without a Drive login.
+
+on:
+  schedule:
+    # Every 3 hours, offset from the art rail's ':20 */4' and the PC1 sync's
+    # ':50 */4' so the three never contend for the same minute.
+    - cron: '10 */3 * * *'
+  workflow_dispatch:
+    inputs:
+      song:
+        description: "song slug in aeris938-1/library/music (blank = pick one)"
+        default: ""
+      query:
+        description: "what the clip is about (matched against the bank manifest)"
+        default: "bangkok night"
+      seconds:
+        description: "clip length"
+        default: "58"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: ax-clip-lane
+  cancel-in-progress: false
+
+jobs:
+  render:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Tools
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq ffmpeg fonts-thai-tlwg
+          python -m pip install --quiet --disable-pip-version-check pillow numpy
+
+      - name: Pick a song and render
+        id: render
+        env:
+          SONG: ${{ github.event.inputs.song }}
+          QUERY: ${{ github.event.inputs.query || 'bangkok night' }}
+          SECONDS: ${{ github.event.inputs.seconds || '58' }}
+        run: |
+          set -o pipefail
+          if [ -z "$SONG" ]; then
+            SONG=$(ls aeris938-1/library/music/*.mp3 | head -1 | xargs -n1 basename | sed 's/\.mp3$//')
+            echo "picked song: $SONG"
+          fi
+          python ops/clip_lane.py --song "$SONG" --query "$QUERY" --seconds "$SECONDS" 2>&1 | tee render.log
+          CLIP=$(grep -o 'PASSED the floor -> .*' render.log | sed 's/.*-> //')
+          if [ -z "$CLIP" ] || [ ! -f "$CLIP" ]; then
+            echo "no clip passed the floor this run"
+            exit 1
+          fi
+          echo "clip=$CLIP" >> "$GITHUB_OUTPUT"
+          echo "credits=${CLIP%.mp4}.credits.json" >> "$GITHUB_OUTPUT"
+          echo "song=$SONG" >> "$GITHUB_OUTPUT"
+
+      - name: Show what the new shape produced
+        if: steps.render.outputs.clip
+        run: |
+          CLIP="${{ steps.render.outputs.clip }}"
+          ffprobe -v error -show_entries format=duration,size -show_entries \
+            stream=codec_name,width,height -of default=nw=1 "$CLIP"
+          python ops/clip_standard.py "$CLIP" | tail -6
+
+      - name: Keep the clip durably
+        if: steps.render.outputs.clip
+        env:
+          GH_TOKEN: ${{ secrets.AX_GH_TOKEN || secrets.GITHUB_TOKEN }}
+        run: |
+          CLIP="${{ steps.render.outputs.clip }}"
+          asset="clip-$(date -u +%Y%m%dT%H%M)-$(basename "$CLIP")"
+          gh release upload media-938 "$CLIP#asset" --clobber --repo "$GITHUB_REPOSITORY" \
+            && echo "durable copy: media-938/$asset" \
+            || echo "release upload failed; the artifact below still carries the clip"
+
+      - name: Hand the clip over
+        if: steps.render.outputs.clip
+        uses: actions/upload-artifact@v4
+        with:
+          name: clip-out
+          path: |
+            ${{ steps.render.outputs.clip }}
+            ${{ steps.render.outputs.credits }}
+          retention-days: 14
+          if-no-files-found: error

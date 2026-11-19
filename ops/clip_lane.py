@@ -1,0 +1,267 @@
+#!/usr/bin/env python3
+"""The clip lane: a finished 9:16 Short built from bank stills and a real song.
+
+K (2026-11-19): "ถ้าแยกระบบ สร้างภาพกับทำคลิปได้แยกงานทำคู่ขนานเลย" — split the
+system so making pictures and making clips run as two parallel jobs, and
+"มีวัตถุดิบแล้วก็ทำคลิปต่อเลย".
+
+Why a separate lane rather than a flag on `make_short`. The two jobs have
+opposite bottlenecks and must not wait for each other:
+
+  * the art lane is network-bound (a Commons sweep, or a Dreamina queue) and
+    wants to run for an hour;
+  * the clip lane is CPU-bound (ffmpeg + PIL) and finishes in a couple of
+    minutes once the stills exist.
+
+Running them as one job meant a slow sweep starved the renderer and a long
+render blocked the sweep. Now each has its own workflow and its own cadence, and
+the only thing they share is the manifest — which is committed, so the clip lane
+never waits on a download to start.
+
+The clip is deliberately not `make_short`. That path is a *karaoke* Short: it
+needs lyric timing, ASS captions and a chorus span, and it falls back to a
+letterbox over one cover when it has nothing better. This lane is the simpler,
+more robust thing K actually asked for: real footage stills from the bank, cut
+every few seconds, a Thai title card, the follow ask at the end, and the song
+underneath. It renders even when the lyrics are unknown, which is the common
+case for a bed.
+
+    python3 ops/clip_lane.py --song music-d-44-party-khuen-ni-mai-yut-v44 \
+        --query "bangkok night" --seconds 58
+
+Every clip goes through `ops/clip_standard.py`, so a below-floor render is
+deleted rather than shipped — the same gate every other lane obeys.
+"""
+from __future__ import annotations
+
+import argparse
+import json
+import random
+import shutil
+import subprocess
+import sys
+import tempfile
+from pathlib import Path
+
+ROOT = Path(__file__).resolve().parent.parent
+sys.path.insert(0, str(ROOT / "ops"))
+sys.path.insert(0, str(ROOT / "music938-1" / "scripts"))
+
+MANIFEST = ROOT / "music938-1" / "library" / "stock" / "manifest.json"
+BANK_IMG = ROOT / "music938-1" / "library" / "stock" / "img"
+MUSIC = ROOT / "aeris938-1" / "library" / "music"
+OUT = ROOT / "music938-1" / "library" / "shorts"
+FONT = ROOT / "music938-1" / "fonts" / "NotoSansThai.ttf"
+
+W, H = 1080, 1920
+FPS = 30
+
+
+def _branding():
+    import branding  # noqa: PLC0415
+
+    return branding
+
+
+def _shard_urls() -> dict[str, str]:
+    doc = json.loads(MANIFEST.read_text(encoding="utf-8"))
+    return {s["name"]: s["url"] for s in doc.get("shards", []) if s.get("url")}
+
+
+_SHARD_CACHE: dict[str, Path] = {}
+
+
+def _shard_local(name: str, url: str, log=print) -> Path | None:
+    """Download a shard once per run and reuse it for every still inside it.
+
+    A clip wants ~8 stills and they cluster in a few shards, so fetching a 120 MB
+    tar per still would be a gigabyte for one render. One fetch per shard, cached
+    in the runner's temp dir, is the difference between a 2-minute render and a
+    20-minute one.
+    """
+    import tempfile  # noqa: PLC0415
+    import urllib.request  # noqa: PLC0415
+
+    if name in _SHARD_CACHE:
+        return _SHARD_CACHE[name]
+    dest = Path(tempfile.gettempdir()) / f"ax-{name}"
+    if not dest.exists():
+        try:
+            with urllib.request.urlopen(url, timeout=900) as resp, dest.open("wb") as f:
+                shutil.copyfileobj(resp, f, 1 << 20)
+        except Exception as exc:  # noqa: BLE001
+            log(f"bank: shard {name} fetch failed ({type(exc).__name__})")
+            dest.unlink(missing_ok=True)
+            return None
+    _SHARD_CACHE[name] = dest
+    return dest
+
+
+def _materialise(row: dict, urls: dict[str, str], log=print) -> bool:
+    """Extract one packed still out of its shard, on demand."""
+    import tarfile  # noqa: PLC0415
+
+    name = row.get("shard") or ""
+    url = urls.get(name)
+    if not url:
+        return False
+    shard = _shard_local(name, url, log=log)
+    if not shard:
+        return False
+
+    want = row["file"]
+    dest = BANK_IMG / Path(want).name
+    dest.parent.mkdir(parents=True, exist_ok=True)
+    try:
+        with tarfile.open(shard, mode="r") as tf:
+            for m in tf.getmembers():
+                if m.name == want:
+                    tf.extract(m, ROOT / "music938-1" / "library" / "stock",
+                               filter="data")
+                    return dest.exists()
+    except Exception as exc:  # noqa: BLE001
+        log(f"bank: could not extract {want} ({type(exc).__name__})")
+    return False
+
+
+def bank_stills(query: str, want: int, seed: int, log=print) -> list[dict]:
+    """Pick stills for a query from the committed manifest, fetching what is packed.
+
+    Prefers rows whose file is still on local disk. When a match is only inside a
+    shard, it is materialised on demand, so this lane works on a fresh runner
+    where nothing has been extracted yet — which is the normal case on Actions.
+    """
+    doc = json.loads(MANIFEST.read_text(encoding="utf-8"))
+    terms = [t for t in query.lower().split() if t]
+    rows = [r for r in doc.get("images", [])
+            if all(t in json.dumps(r, ensure_ascii=False).lower() for t in terms)]
+    if not rows:
+        log(f"bank: nothing matches {query!r}")
+        return []
+
+    random.Random(seed).shuffle(rows)
+    urls = _shard_urls()
+    picked = []
+    for r in rows:
+        p = BANK_IMG / Path(r["file"]).name
+        if not p.exists() and not _materialise(r, urls, log=log):
+            continue
+        picked.append({"path": p, **r})
+        if len(picked) >= want:
+            break
+    return picked
+
+
+def _card(text: str, out: Path, size: int = 72, pad: int = 40) -> Path:
+    """A Thai title card as a transparent PNG, sized to the text."""
+    from PIL import Image, ImageDraw, ImageFont  # noqa: PLC0415
+
+    font = ImageFont.truetype(str(FONT), size)
+    tmp = Image.new("RGBA", (10, 10))
+    box = ImageDraw.Draw(tmp).multiline_textbbox((0, 0), text, font=font)
+    w, h = box[2] - box[0] + pad * 2, box[3] - box[1] + pad * 2
+    img = Image.new("RGBA", (w, h), (0, 0, 0, 0))
+    d = ImageDraw.Draw(img)
+    d.rounded_rectangle([0, 0, w - 1, h - 1], radius=24, fill=(0, 0, 0, 150))
+    d.multiline_text((pad - box[0], pad - box[1]), text, font=font,
+                     fill=(255, 255, 255, 255))
+    img.save(out)
+    return out
+
+
+def render(song: str, query: str, seconds: float, seed: int, out_dir: Path,
+           log=print) -> Path | None:
+    audio = MUSIC / f"{song}.mp3"
+    if not audio.exists():
+        log(f"render: no audio at {audio}")
+        return None
+
+    count = max(6, int(seconds / 7))
+    stills = bank_stills(query, count, seed, log=log)
+    if len(stills) < 3:
+        log(f"render: only {len(stills)} usable still(s); a clip needs 3+")
+        return None
+
+    brand = _branding()
+    out_dir.mkdir(parents=True, exist_ok=True)
+    out = out_dir / f"short-bank-{song}-{query.replace(' ', '-')}.mp4"
+
+    with tempfile.TemporaryDirectory() as td:
+        td = Path(td)
+        title = _card(f"{brand.NAME}\n{brand.FOLLOW_PROMISE}", td / "title.png", 64)
+        tail = _card(f"{brand.FOLLOW_ASK}\n{brand.FOLLOW_PROMISE}", td / "tail.png", 58)
+
+        # Each still holds for an equal share, cover-cropped to 9:16 and panned a
+        # little so the frame is never frozen (the vertical profile rejects a
+        # still clip). `zoompan` is the cheap way to get motion without a second
+        # input.
+        per = seconds / len(stills)
+        args = ["ffmpeg", "-y", "-loglevel", "error", "-ss", "0",
+                "-t", f"{seconds:.2f}", "-i", str(audio)]
+        for s in stills:
+            args += ["-loop", "1", "-t", f"{per:.2f}", "-i", str(s["path"])]
+        args += ["-loop", "1", "-t", "3", "-i", str(title)]
+        args += ["-loop", "1", "-t", "3", "-i", str(tail)]
+
+        n = len(stills)
+        parts = []
+        for i in range(n):
+            parts.append(
+                f"[{i + 1}:v]scale={W * 2}:{H * 2}:force_original_aspect_ratio=increase,"
+                f"crop={W * 2}:{H * 2},zoompan=z='min(zoom+0.0006,1.12)':"
+                f"x='iw/2-(iw/zoom/2)':y='ih/2-(ih/zoom/2)':d={int(per * FPS)}:"
+                f"s={W}x{H}:fps={FPS},setsar=1[v{i}]")
+        chain = "".join(f"[v{i}]" for i in range(n)) + f"concat=n={n}:v=1:a=0[base]"
+        parts.append(chain)
+
+        # Title over the first two seconds, follow ask over the last three.
+        parts.append(f"[base][{n + 1}:v]overlay=(W-w)/2:180:enable='lt(t,2.5)'[t1]")
+        parts.append(f"[t1][{n + 2}:v]overlay=(W-w)/2:h-h-420:"
+                     f"enable='gt(t,{seconds - 3:.2f})'[vout]")
+        parts.append("[0:a]loudnorm=I=-15:TP=-1.5:LRA=11[aout]")
+
+        args += ["-filter_complex", ";".join(parts),
+                 "-map", "[vout]", "-map", "[aout]",
+                 "-c:v", "libx264", "-preset", "medium", "-crf", "21",
+                 "-pix_fmt", "yuv420p", "-r", str(FPS),
+                 "-c:a", "aac", "-b:a", "160k", "-ar", "48000", "-ac", "2",
+                 "-movflags", "+faststart", "-shortest", str(out)]
+
+        log(f"render: {n} still(s) over {seconds:.0f}s -> {out.name}")
+        r = subprocess.run(args, capture_output=True, text=True)
+        if r.returncode != 0:
+            log(f"render FAILED: {r.stderr.strip()[:600]}")
+            return None
+
+    import clip_standard  # noqa: PLC0415
+
+    failed = [f"{name}: {detail}" for name, ok, detail
+              in clip_standard.check(str(out), profile="vertical") if not ok]
+    if failed:
+        log("render: below the clip floor, deleted -- " + "; ".join(failed))
+        out.unlink(missing_ok=True)
+        return None
+
+    credits = [{"file": s["path"].name, "licence": s.get("licence"),
+                "credit": s.get("credit"), "source": s.get("source")} for s in stills]
+    out.with_suffix(".credits.json").write_text(
+        json.dumps({"song": song, "query": query, "items": credits},
+                   ensure_ascii=False, indent=1), encoding="utf-8")
+    log(f"render: PASSED the floor -> {out}")
+    return out
+
+
+def main(argv=None) -> int:
+    ap = argparse.ArgumentParser(description=__doc__.splitlines()[0])
+    ap.add_argument("--song", required=True, help="a name in aeris938-1/library/music")
+    ap.add_argument("--query", default="bangkok night")
+    ap.add_argument("--seconds", type=float, default=58)
+    ap.add_argument("--seed", type=int, default=11)
+    ap.add_argument("--out", default=str(OUT))
+    args = ap.parse_args(argv)
+    got = render(args.song, args.query, args.seconds, args.seed, Path(args.out))
+    return 0 if got else 1
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())
