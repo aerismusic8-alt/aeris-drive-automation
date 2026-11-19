@@ -117,6 +117,62 @@ def active() -> list[dict]:
     return [g for g in genres() if not is_parked(g)]
 
 
+def resolve_slug(name: str) -> str | None:
+    """Map a file stem to a lyric slug, or None.
+
+    A master is named `music-am-35-fai-thi-yang-mai-dap.mp3` while the lyric file
+    is `35-fai-thi-yang-mai-dap.txt`, and a bank clip adds its own prefixes
+    (`bank-karaoke-06-doen-khon-diao-...`). Longest suffix match resolves all of
+    them without a prefix table that would rot: the key token, the kind and the
+    `-v36` variant are all just leading text in front of the slug.
+    """
+    stem = name[:-4] if name.endswith(".mp3") else name
+    if (LYRICS / f"{stem}.txt").exists():
+        return stem
+    for slug in sorted((p.stem for p in LYRICS.glob("*.txt")), key=len, reverse=True):
+        if stem.endswith(f"-{slug}") or stem.endswith(slug):
+            return slug
+    return None
+
+
+def publishable(slug: str) -> tuple[bool, str]:
+    """May a clip of this song be published? Returns (ok, why).
+
+    K parked lukthung/morlam on 2026-11-13 and then said "ทำแนวสนุกอย่างเดียว"
+    (2026-11-18). `is_parked` only stopped *new production*; nothing stopped an
+    already-rendered old song from being uploaded, and on 2026-11-19 two
+    เพื่อชีวิต clips went to YouTube and Facebook that way.
+
+    So this is the publishing gate, and it fails closed:
+
+    * a parked genre is refused by name, with K's own word for it;
+    * a song with no `# GENRE:` header is refused too, because it predates the
+      plan and its genre is unknowable -- the original 20 are all เพื่อชีวิต,
+      which is exactly the lane that was parked.
+
+    The 20 original lyric files keep working for playback; they just cannot be
+    published as new work on this channel.
+
+    Accepts a lyric slug or a file stem; see `resolve_slug`.
+    """
+    resolved = resolve_slug(slug)
+    if resolved is None:
+        return False, f"'{slug}' matches no lyric file — its genre is unknowable"
+    slug = resolved
+    hdr = header(slug)
+    gid = hdr.get("genre", "").lower()
+    if not gid:
+        sub = hdr.get("subtitle", "")
+        return False, (f"no # GENRE: header (subtitle: {sub or 'none'}) — "
+                       f"a song outside the plan cannot be published")
+    g = by_id().get(gid)
+    if g is None:
+        return False, f"unknown genre '{gid}' (not in channel/genres.json)"
+    if is_parked(g):
+        return False, f"genre '{gid}' ({g['name_th']}) is parked by K"
+    return True, f"genre '{gid}' ({g['name_th']}) is active"
+
+
 def catalogue_size() -> int:
     return sum(g["planned"] for g in active())
 

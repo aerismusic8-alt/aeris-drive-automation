@@ -11,19 +11,18 @@ channel's first work; never rename a channel without K's approval.
 ## Accounts (K 2026-11-14): every tool uses AR's OWN mail, not K's
 AR mailbox = `araeris4770d7@fldubai.com` (mail.tm; `ops/ar_identity.py`).
 AR self-creatable: **Nostr** (`AR_NOSTR_NSEC`), **Telegraph** (`ops/ar_telegraph.py`).
-Flow Music/Gemini = K's account `aerismusic8` (AR never types a password). K taps a
-QR once, then `login_vault.py save` **immediately** (session ~1 day). A synth bed has
-**no vocal**; Flow is the only real-song route.
+Flow Music/Gemini = K's `aerismusic8` (AR never types a password). K taps a QR once,
+then `login_vault.py save` **immediately** (~1 day). A synth bed has **no vocal**;
+Flow is the only real-song route.
 
 ## Roles and method (K 2026-10-31)
 - **K = final authority.** Every standing rule is K's.
 - **AR = me.** I administer **all** of K's work in K's place — decide, execute,
   report; no per-step approval. Hand K only what needs a credential or authority
   only K holds.
-- **Method: PCSEV** (Problem, Cause, Solution, Execute, Verify). **Advisor =
-  Gemini alone (K, 2026-11-18): "ทีมที่ปรึกษาให้ใช้ gemini คนเดียวพอ" — when stuck,
-  ask Gemini and follow its advice**; `ops/consult.py` is a real gate
-  (→ `consult-log.jsonl`), panel `["gemini"]`, floor 1.
+- **Method: PCSEV** (Problem, Cause, Solution, Execute, Verify). **Advisor = Gemini
+  alone** (K 2026-11-18) — when stuck ask Gemini and follow it; `ops/consult.py`
+  is a real gate (→ `consult-log.jsonl`), panel `["gemini"]`.
 - **Time to K = Thai (UTC+7) 24-hour**, never UTC or AM/PM. Rails stay UTC.
 
 ## What this project is (K's goal)
@@ -38,38 +37,40 @@ Roblox game anyone can enter and play, and real revenue from it (Roblox **PARKED
 **followers** (K 2026-11-09): end every clip with `release.FOLLOW_ASK` +
 `FOLLOW_PROMISE`.
 
+**🎵 แนวช่อง = FUN ONLY** (K 2026-11-18 "ทำแนวสนุกอย่างเดียว"): pop/synthpop/edm/
+rock/hiphop/rap/alternative. **PARKED = ห้ามอัพ**: lukthung ลูกทุ่ง, เพื่อชีวิต,
+morlam, indie, lofi, rnb, jazz, acoustic, country, symphonic. Gate =
+`genres.publishable()`, fails closed. **The 20 `lyrics-original/` songs are ALL
+เพื่อชีวิต — never publish them.**
+
 ## Environment facts that cost time
 - **Fresh-pod recovery: `scripts/bootstrap-pod.sh`** — re-run after every pod.
-- **MV links must be durable (K: "ลิงค์ตาย")** — `ops/mv_page.py --all`.
-  Detail: archive.
-- **24/7 runs on GitHub Actions** (public repo → free minutes); judge health from
-  the **rail run history**, not `heartbeat.json`.
-- **FB = Graph API only (K 2026-11-15); browser OFF.** `api-only`; vault
-  `axsecrets:fb-page-token`; lanes in `crosspost.py`.
-- **Vault = source of truth; a secret injects only when the command *names* it.**
+- **MV links must be durable (K: "ลิงค์ตาย")** — `ops/mv_page.py --all`. Archive.
+- **24/7 on GitHub Actions** (public repo → free minutes); judge health from the
+  **rail run history**, not `heartbeat.json`.
+- **FB = Graph API only (K 2026-11-15); browser OFF** (`axsecrets:fb-page-token`).
+- **Vault = truth; a secret injects only when the command *names* it.**
 - **Writes:** `GITHUB_TOKEN` is 403; push via KV `axsecrets:gh-workflow-token`
-  (workflow files need its `workflow` scope).
-- **Desktop = Live View** (`work-2`:12001); Thai text `Text.luau` +
-  `NotoSansThai.ttf` (else tofu); burned ASS has no emoji.
+  (workflow files need its `workflow` scope). API reads work with `$AX_GH_TOKEN`.
+- **Desktop = Live View** (`work-2`:12001); Thai `Text.luau` + `NotoSansThai.ttf`
+  (else tofu); burned ASS has no emoji.
 - **`ops/websearch.py`** = the free web search (Tavily has no quota).
 
 ## Sound + clip quality (K)
 **sfizz** not GM; `AX_REQUIRE_REAL_INSTRUMENTS=1` → a fallback **raises**.
-**One FLOOR, every format/channel (2026-11-17): "ห้ามอัพขึ้นเด็ดขาด"**
-`ops/clip_standard.py` = floor + a per-format profile, gated at **every** upload
-route, no override; `ops/thumb_standard.py` too. `docs/clip-standard.md`.
-`short` (captions → text floor) ≠ `vertical` (MV → none); unnamed 9:16 permissive.
-Also gates dead silence (≤3 s) + VFR (≤2%), both invisible to LUFS.
+**One FLOOR, every format/channel (K 2026-11-17): "ห้ามอัพขึ้นเด็ดขาด"**
+`ops/clip_standard.py` = floor + per-format profile, gated at **every** upload route,
+no override; `ops/thumb_standard.py` too. `docs/clip-standard.md`. `short` (captions →
+text floor) ≠ `vertical` (MV → none). Also gates dead silence (≤3 s) + VFR (≤2%).
 
 **A gate nothing can pass is broken, not strict (2026-11-19).** PASS_SCORE 8.0 while
-Gemini never gave above **6.0** → the loop would FAIL forever. Calibrate a bar to what
-the judge emits and let the **verdict** decide: the score is noisy (clean clip 5 FAIL,
-captionless 7 PASS), so it is only a sanity floor. The verdict gates **every** upload
-route, not just YouTube. Archive.
+Gemini never gave above 6.0 → the loop fails forever. Calibrate to what the judge
+emits; the **verdict** decides, the score is only a sanity floor (it is noisy).
+Archive.
 
 ## Retry lanes → ch3 (trivia + reactive)
-`trivia_publish.py` + `reactive_publish.py` share one chokepoint; a cap = **retry**,
-not failure; each `work/*` ledger must be un-ignored (`!…`) or it re-posts every tick.
+`trivia_publish.py` + `reactive_publish.py` share one chokepoint; a cap = **retry**;
+each `work/*` ledger must be un-ignored (`!…`) or it re-posts every tick.
 
 ## Loop health & platform risks
 - **A green run is not a finished job.** `release.py` rc 4 + `UPLOAD_LIMIT_EXCEEDED`;
@@ -84,15 +85,13 @@ not failure; each `work/*` ledger must be un-ignored (`!…`) or it re-posts eve
 - **Bound every rail:** `timeout-minutes` + `cancel-in-progress: true`. Risks:
   `OPENHANDS_RISK_REGISTER.json` + `ops/risk_audit.py --strict`.
 
-## Dreamina CLI (2026-11-19): image + TTS only, **video blocked server-side**
-(8 cr/image; no Thai voice → Thai stays `edge-tts`). Detail: archive.
+## Dreamina CLI (2026-11-19): image + TTS only, **video blocked server-side** (8 cr/img;
+no Thai voice → `edge-tts`). Archive.
 
 ## Art + image bank (2026-11-19): our own code, no API
-`ops/genart.py` = 5 algorithms, 4096 px @300 DPI, **reproducible from
-(algo,palette,seed)** — what makes "edition 1/1, seed N" honest; the gate runs
-*inside* `make()`. `ops/image_bank.py` = Commons (500 results/query; the old
-limit of 8 was the bottleneck), photos only. Both shard → `media-938`, commit
-the manifest only. `docs/genart-standard.md`. Detail: archive.
+`ops/genart.py` = 5 algorithms, 4096 px, **reproducible from (algo,palette,seed)**
+so "1/1, seed N" is honest; gate runs *inside* `make()`. `ops/image_bank.py` =
+Commons photos, 500/query. Both shard → `media-938`, commit manifest only. Archive.
 
 ## Recovery
 `$AX_VAULT_BOOTSTRAP` → `ops/ax_vault.py` (`axvault:readme`); a lost `work/*.json`

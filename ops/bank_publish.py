@@ -175,6 +175,22 @@ def tiktok(clip: Path) -> dict:
     return {"ok": bool(res), "id": res}
 
 
+def genre_verdict(clip: Path) -> tuple[bool, str]:
+    """May this clip's song be published at all? (K's genre direction.)
+
+    Checked before the content and technical gates, because a clip in the wrong
+    lane should never reach an audience no matter how good it looks. On
+    2026-11-19 two เพื่อชีวิต clips were published here: the bank held only the
+    original 20 songs, the gate below did not exist, and nothing else looked.
+    """
+    import genres  # noqa: PLC0415
+
+    slug = _song_slug(clip)
+    if not slug:
+        return False, "no song slug in the file name — cannot check its genre"
+    return genres.publishable(slug)
+
+
 def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("clip", nargs="?", help="clip to publish; default: every passed clip")
@@ -201,6 +217,12 @@ def main() -> int:
             continue
         # The gate is checked here for a clear message, and again inside every
         # uploader. Belt and braces on purpose: the message differs, the rule not.
+        ok, why = genre_verdict(clip)
+        if not ok:
+            print(f"BLOCKED  {clip.name}: {why}")
+            rc = 1
+            continue
+        print(f"GENRE OK {clip.name}  ({why})")
         ok, why = gemini_gate.check(clip)
         if not ok:
             print(f"BLOCKED  {clip.name}: {why}")

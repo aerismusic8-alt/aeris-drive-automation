@@ -293,6 +293,29 @@ def _song_path(song: str, log=print) -> Path | None:
         return None
 
 
+def _publishable_only(songs: list[str], log=print) -> list[str]:
+    """Drop songs whose genre K parked, so a render cannot start in the wrong lane.
+
+    The release still carries the original 20 เพื่อชีวิต masters, so without this
+    a scheduled render would keep producing clips of a parked genre and hand them
+    to the publish step. Filtering at the picker is the cheapest place to stop it.
+    """
+    sys.path.insert(0, str(ROOT / "music938-1" / "scripts"))
+    try:
+        import genres  # noqa: PLC0415
+    except Exception as exc:  # noqa: BLE001
+        log(f"genres: cannot load the plan ({type(exc).__name__}); keeping every song")
+        return songs
+    kept, dropped = [], []
+    for s in songs:
+        ok, _why = genres.publishable(s)
+        (kept if ok else dropped).append(s)
+    if dropped:
+        log(f"songs: skipped {len(dropped)} in a parked/unknown genre: "
+            f"{', '.join(dropped[:4])}{'...' if len(dropped) > 4 else ''}")
+    return kept
+
+
 def available_songs(log=print) -> list[str]:
     """Song names usable on this machine: local files first, then the release.
 
@@ -301,7 +324,7 @@ def available_songs(log=print) -> list[str]:
     """
     local = sorted(p.stem for p in MUSIC.glob("*.mp3")) if MUSIC.exists() else []
     if local:
-        return local
+        return _publishable_only(local, log=log)
 
     import urllib.request  # noqa: PLC0415
 
@@ -314,8 +337,9 @@ def available_songs(log=print) -> list[str]:
     try:
         with urllib.request.urlopen(req, timeout=120) as r:
             doc = json.load(r)
-        return sorted(a["name"][:-4] for a in doc.get("assets", [])
-                      if a["name"].endswith(".mp3"))
+        remote = sorted(a["name"][:-4] for a in doc.get("assets", [])
+                        if a["name"].endswith(".mp3"))
+        return _publishable_only(remote, log=log)
     except Exception as exc:  # noqa: BLE001
         log(f"songs: could not list the release ({type(exc).__name__})")
         return []
@@ -443,6 +467,12 @@ def main(argv=None) -> int:
         return 0 if songs else 1
     if not args.song:
         ap.error("--song is required unless --list-songs is given")
+    # An explicit --song bypasses the picker, so the gate has to be repeated here
+    # or a hand-run could still render a parked genre.
+    if _publishable_only([args.song]) != [args.song]:
+        print(f"refusing --song {args.song}: its genre is parked or unknown "
+              f"(see music938-1/channel/genres.json)")
+        return 1
     got = render(args.song, args.query, args.seconds, args.seed, Path(args.out))
     return 0 if got else 1
 

@@ -5944,6 +5944,55 @@ def test_thumb_standard_is_a_floor() -> None:
           {n: ok for n, ok, _ in ts.check(square)}.get("16:9 or 9:16") is False)
 
 
+def test_genre_gate_blocks_parked_lanes() -> None:
+    """A parked genre may not be published, however good the clip looks.
+
+    K parked lukthung/morlam (2026-11-13) and said "ทำแนวสนุกอย่างเดียว"
+    (2026-11-18). On 2026-11-19 two เพื่อชีวิต clips still reached YouTube and
+    Facebook, because `is_parked` only gated *production* and no publish path
+    looked at the genre at all.
+
+    This pins the publishing gate from the outside: the two clips that shipped
+    must be refused, an in-direction song must pass, and both publish paths must
+    actually call the gate (a source check, because the call is the thing that
+    was missing).
+    """
+    section("genre gate (parked lanes never publish)")
+    sys.path.insert(0, str(ROOT / "scripts"))
+    import importlib
+    import genres
+    importlib.reload(genres)
+
+    ok, why = genres.publishable("19-lom-nao-kap-khwam-khit-thueng")
+    check("the lukthung clip that shipped is now refused", ok is False, why)
+    check("the refusal names lukthung", "lukthung" in why, why)
+
+    ok, why = genres.publishable("06-doen-khon-diao")
+    check("the indie clip that shipped is now refused", ok is False, why)
+
+    ok, why = genres.publishable("01-khon-di-thi-chak-pai")
+    check("a song with no GENRE header is refused (fails closed)", ok is False, why)
+
+    ok, why = genres.publishable("35-fai-thi-yang-mai-dap")
+    check("an active genre (rock) is allowed", ok is True, why)
+
+    # The gate has to accept what the pickers actually hand it, or it would block
+    # every real render instead of the parked ones.
+    ok, why = genres.publishable("music-am-35-fai-thi-yang-mai-dap")
+    check("a master's file stem resolves and is allowed", ok is True, why)
+    ok, why = genres.publishable("bank-karaoke-06-doen-khon-diao-guitar-player")
+    check("a bank clip name resolves to its parked song", ok is False, why)
+
+    # Both publish paths must call it. Removing the call is the regression that
+    # caused this, and it leaves no trace at runtime, so read the source.
+    bp = (ROOT.parent / "ops" / "bank_publish.py").read_text(encoding="utf-8")
+    check("bank_publish checks the genre before uploading",
+          "genre_verdict(clip)" in bp)
+    lane = (ROOT.parent / "ops" / "clip_lane.py").read_text(encoding="utf-8")
+    check("clip_lane filters parked songs at the picker",
+          "_publishable_only" in lane)
+
+
 def test_gemini_gate_blocks_unreviewed() -> None:
     """No Gemini pass, no upload (K, 2026-11-19).
 
@@ -7717,6 +7766,7 @@ def main() -> int:
     test_refresh_sleep_video()
     test_provenance()
     test_genres()
+    test_genre_gate_blocks_parked_lanes()
     test_arrangement_no_repeat()
     test_song_analysis()
     test_thumb_contrast()
