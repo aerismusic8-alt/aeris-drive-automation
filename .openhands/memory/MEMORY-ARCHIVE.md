@@ -6393,3 +6393,48 @@ platform-side, not code: the *account* daily new-video cap and the shared 10k AP
   rendered clips clipped; the fail-closed gate then blocks the whole batch (release
   red 3 runs). Repair at the chokepoint (`clip_standard.needs_audio_repair`/
   `repair_audio`, before the gate in `yt_publish.py`) — never re-render by hand.
+
+## Moved out of the index 2026-11-19 (detail behind the gate lesson)
+`gemini_gate.PASS_SCORE` was 8.0 while every verdict Gemini ever produced was
+4.0, 5.0, 5.0 (FAIL) or 6.0 (PASS) — it has never emitted 8. So no clip could
+pass and a 24/7 loop would have reported FAIL forever with nothing shipping.
+Calibrated bar = 6.0, with the reviewer's VERDICT as the authority.
+
+The gate also trusted a `passed` flag written into the verdict file, computed
+with whatever bar was in force at review time, so a recalibrated bar could never
+take effect on an existing verdict. `check()` now judges from verdict + score.
+
+Only YouTube carried `gemini_gate.assert_ok`; `fb_graph.py` (both the reel and
+the video-post path), `tiktok_api.py` and both `crosspost` browser composers
+checked `clip_standard` alone, so a clip Gemini had failed could reach the Page.
+Every route now checks the verdict, and `test_clip_lane_is_its_own_job` walks the
+uploaders so a new route cannot be added without it.
+
+Quality defects behind the "grainy / soft" findings: the ffmpeg chain pre-scaled
+to 2x then cropped, so a 1920x1280 landscape became a 720-wide 9:16 strip blown
+up ~3x (now: cover-crop straight to the frame, lanczos, and `bank_stills` prefers
+candidates whose crop is already >=1000 px). `_shot_ids` used dHash and split one
+held still into four shots because zoompan keeps drifting (now: grayscale MAD,
+`SHOT_JUMP = 40`; ~22 inside a still vs ~68 across a cut). Timecode and SHOT
+labels are no longer drawn on the frame pixels — Gemini was reporting the sheet's
+own text as a clip defect; they go on a black bar (`pad` + `drawtext` at `h-34`).
+
+`ops/bank_publish.py` is the bank lane's publishing half: gate, build title and
+caption from `release.describe(slug, "short")`, upload to every ready channel,
+report a credential-less channel as `skipped` (never as posted). Published
+2026-11-19: เดินคนเดียว https://youtu.be/A1IR-b8ZCcI + fb/reel/3020802171645358;
+ลมหนาวกับความคิดถึง https://youtu.be/fK6mxqcKkbA + fb/reel/1780696959823099.
+TikTok has no token in the vault or env — it needs one OAuth by K.
+
+## Moved out of the index 2026-11-19 (Gemini line, superseded)
+- Gemini (`gemini_gate.py`): no pass = no upload — but its score is NOT the judge
+  (2026-11-19): clean clip 5 FAIL, captionless 7 PASS. Gate = rules + K.
+Superseded by the "A gate nothing can pass is broken" entry in MEMORY.md, which
+keeps the same fact (score is noisy, verdict decides) with the added lesson that
+the bar must be calibrated to what the judge emits.
+
+## Moved out of the index 2026-11-19 (Dreamina detail)
+Dreamina CLI: image + TTS work, but **video is blocked server-side** on every model
+even when the model reports `vipRequired: false`. `node quote` is the only honest
+test of whether a job will run — a dry run without it reports success. 8 credits
+per image. No Thai voice available, so Thai narration stays on `edge-tts`.

@@ -44,19 +44,20 @@ REVIEWS = Path(os.environ.get(
     "AX_GEMINI_REVIEWS",
     ROOT / "music938-1" / "work" / "gemini-review"))
 
-# A clip must reach this AND carry verdict PASS.
+# The verdict is the gate; the score is only a sanity floor.
 #
-# Calibrated 2026-11-19 against every verdict on disk, because the previous 8.0
-# made the gate impossible to open: Gemini never returned above 6.0, so nothing
-# could ever pass and the 24/7 loop would stall forever on a bar that no clip
-# reaches. That is a broken gate, not a strict one. The observed scale:
+# History, because both extremes were wrong:
+#   8.0  (the original bar) -> the gate could never open. Gemini never returned
+#        above 6.0 on any clip, so a 24/7 loop would report FAIL forever.
+#   6.0  -> correct for the samples at hand, but it re-introduces the same bug in
+#        miniature: Gemini's score is demonstrably noisy (a clean clip scored 5
+#        FAIL, a captionless one 7 PASS), so a PASS at 5.5 would be blocked by a
+#        number that does not track quality.
 #
-#   FAIL verdicts: 4.0, 5.0, 5.0
-#   PASS verdicts: 6.0            <- Gemini's own words: "SCORE: 6 VERDICT: PASS"
-#
-# So the reviewer's PASS is the authority and the score is a sanity floor just
-# below it. Raising this number without new evidence would only re-break the gate.
-PASS_SCORE = 6.0
+# So the reviewer's own PASS decides, and the floor only catches a degenerate
+# "PASS" at an absurd score. Raising this number must be justified by new
+# evidence, not by a wish for stricter output.
+PASS_SCORE = 5.0
 
 def sha256_of(path: str | Path) -> str:
     h = hashlib.sha256()

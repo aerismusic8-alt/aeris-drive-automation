@@ -6839,6 +6839,11 @@ def test_clip_lane_is_its_own_job() -> None:
     import gemini_gate as gg  # noqa: E402
     check("the pass bar is one Gemini actually reaches", gg.PASS_SCORE <= 6.5,
           f"PASS_SCORE={gg.PASS_SCORE:g}")
+    # The verdict is the gate, the score only a sanity floor: Gemini's score is
+    # noisy (clean clip 5 FAIL, captionless 7 PASS), so the floor must sit below
+    # the PASS band or a good clip is blocked by a number that does not track
+    # quality.
+    check("the score floor sits below the PASS band", gg.PASS_SCORE <= 6.0)
 
     # ...and it must still be a gate: the verdict, not a stored flag, decides.
     gate_src = Path(gg.__file__).read_text(encoding="utf-8")

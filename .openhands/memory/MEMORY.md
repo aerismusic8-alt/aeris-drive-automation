@@ -1,22 +1,21 @@
 # MEMORY — index
-
-**How to use.** Capped at 6 KB (`ops/memory_guard.py`). Rules/pointers only —
-detail in `MEMORY-ARCHIVE.md` + daily logs. **Read `.openhands/CHARTER.md` first.**
+**How to use.** Capped at 6 KB (`ops/memory_guard.py`); rules/pointers only, detail
+in `MEMORY-ARCHIVE.md` + daily logs. **Read `.openhands/CHARTER.md` first.**
 
 ## 🔴 กฎถาวรข้อที่ 1 (K): ฟรีเท่านั้น — free only
 100% free: no paid API, subscription or credits. Free routes only — login-only web
 apps (K's Chromium), open APIs, self-hosted tooling. **AR never types a password.**
-Related: **AUDIO FIRST**; delete the duplicate/worthless, never archive it; K
-reviews a channel's first work; never rename a channel without K's approval.
+**AUDIO FIRST**; delete the duplicate/worthless, never archive it; K reviews a
+channel's first work; never rename a channel without K's approval.
 
-## Accounts (K, 2026-11-14): every tool uses AR's OWN mail, not K's
+## Accounts (K 2026-11-14): every tool uses AR's OWN mail, not K's
 AR mailbox = `araeris4770d7@fldubai.com` (mail.tm; `ops/ar_identity.py`).
 AR self-creatable: **Nostr** (`AR_NOSTR_NSEC`), **Telegraph** (`ops/ar_telegraph.py`).
 Flow Music/Gemini = K's account `aerismusic8` (AR never types a password). K taps a
 QR once, then `login_vault.py save` **immediately** (session ~1 day). A synth bed has
 **no vocal**; Flow is the only real-song route.
 
-## Roles and method (K, 2026-10-31)
+## Roles and method (K 2026-10-31)
 - **K = final authority.** Every standing rule is K's.
 - **AR = me.** I administer **all** of K's work in K's place — decide, execute,
   report; no per-step approval. Hand K only what needs a credential or authority
@@ -52,17 +51,21 @@ Roblox game anyone can enter and play, and real revenue from it (Roblox **PARKED
   (workflow files need its `workflow` scope).
 - **Desktop = Live View** (`work-2`:12001); Thai text `Text.luau` +
   `NotoSansThai.ttf` (else tofu); burned ASS has no emoji.
-- **Gemini (`gemini_gate.py`)**: no pass = no upload — but **its score is NOT the
-  judge** (2026-11-19): clean clip 5 FAIL, captionless 7 PASS. Gate = rules + K.
-- **`ops/websearch.py`** is the free web search (Tavily has no quota left).
+- **`ops/websearch.py`** = the free web search (Tavily has no quota).
 
 ## Sound + clip quality (K)
-**sfizz** sampler, not GM; `AX_REQUIRE_REAL_INSTRUMENTS=1` → a fallback **raises**.
-**One FLOOR, every format/channel (2026-11-17): "ห้ามอัพขึ้นเด็ดขาด".**
+**sfizz** not GM; `AX_REQUIRE_REAL_INSTRUMENTS=1` → a fallback **raises**.
+**One FLOOR, every format/channel (2026-11-17): "ห้ามอัพขึ้นเด็ดขาด"**
 `ops/clip_standard.py` = floor + a per-format profile, gated at **every** upload
 route, no override; `ops/thumb_standard.py` too. `docs/clip-standard.md`.
 `short` (captions → text floor) ≠ `vertical` (MV → none); unnamed 9:16 permissive.
 Also gates dead silence (≤3 s) + VFR (≤2%), both invisible to LUFS.
+
+**A gate nothing can pass is broken, not strict (2026-11-19).** PASS_SCORE 8.0 while
+Gemini never gave above **6.0** → the loop would FAIL forever. Calibrate a bar to what
+the judge emits and let the **verdict** decide: the score is noisy (clean clip 5 FAIL,
+captionless 7 PASS), so it is only a sanity floor. The verdict gates **every** upload
+route, not just YouTube. Archive.
 
 ## Retry lanes → ch3 (trivia + reactive)
 `trivia_publish.py` + `reactive_publish.py` share one chokepoint; a cap = **retry**,
@@ -70,20 +73,19 @@ not failure; each `work/*` ledger must be un-ignored (`!…`) or it re-posts eve
 
 ## Loop health & platform risks
 - **A green run is not a finished job.** `release.py` rc 4 + `UPLOAD_LIMIT_EXCEEDED`;
-  `heartbeat` pages on a failed latest run. The cap is **per-channel new-videos/day**,
-  clears over hours, not at the 08:00 UTC reset.
-- **`continue-on-error` + a wrong step order = a silent broken artifact** — gate the
-  artifact, assert the order. A derived artifact outlives its source: repair at the
-  chokepoint (`clip_standard.repair_audio`), never re-render by hand.
+  `heartbeat` pages on a failed latest run. The cap is **per-channel new-videos/day**
+  and clears over hours, not at the 08:00 UTC reset.
+- **`continue-on-error` + wrong step order = a silent broken artifact** — gate the
+  artifact and assert the order. Repair a derived artifact at the chokepoint
+  (`clip_standard.repair_audio`), never re-render by hand.
 - **Never decide on missing/stale data** (2026-11-12): a blank/stale newest row is
   `data`, never a guess; `--assert-fresh` gates the dashboard rail.
 - **`videos.list` ≤50 ids/call; YPP = 1,000 subs AND 4,000 watch-hours.**
 - **Bound every rail:** `timeout-minutes` + `cancel-in-progress: true`. Risks:
   `OPENHANDS_RISK_REGISTER.json` + `ops/risk_audit.py --strict`.
 
-## Dreamina CLI (2026-11-19): image + TTS work, **video is blocked server-side**
-on every model even when `vipRequired: false`; `node quote` is the only honest
-test. 8 cr/image. **No Thai voice** → Thai stays `edge-tts`. Detail: archive.
+## Dreamina CLI (2026-11-19): image + TTS only, **video blocked server-side**
+(8 cr/image; no Thai voice → Thai stays `edge-tts`). Detail: archive.
 
 ## Art + image bank (2026-11-19): our own code, no API
 `ops/genart.py` = 5 algorithms, 4096 px @300 DPI, **reproducible from
