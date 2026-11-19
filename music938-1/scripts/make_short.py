@@ -44,6 +44,18 @@ HOOK_PAD = 0.6            # a beat of lead-in so the hook does not start on fram
 ZOOM_MIN = 1.10           # zoom at frame 0; headroom for the pan without edges
 ZOOM_MAX = 1.26           # the cover zoom ramp: ZOOM_MIN -> ZOOM_MAX across the clip
 
+# Full-bleed vertical art. A landscape cover on a 9:16 frame can only be shown
+# as a letterboxed strip over blurred bars, which measured 29% of the frame for
+# art and 56% for a black caption band — Gemini scored that 4/10 and named both
+# faults ("blurred top/bottom bars", "the same image repeated"). A 9:16 still
+# generated for the song fills the frame instead, and several of them cut
+# together give the clip something new to look at past the first few seconds.
+VERT = ROOT / "library" / "vertical"
+XFADE = 0.5               # crossfade between art stills; short, so cuts land hard
+VERT_PAN = 30             # px of drift per still, so a held shot is not dead
+GRAIN = 9                 # film grain, for the raw garage-punk texture
+FLASH = 0.16              # a 2-frame brightness punch on each cut
+
 # The opening card. Every platform's ranking leans hardest on the first two
 # seconds — a scroll is decided before the chorus lands — and the file used to
 # open on the cover art with no words at all. This draws the *first sung line*
@@ -185,6 +197,28 @@ def _pick_window(slug: str, duration: float) -> tuple[float, float]:
     return _pick_windows(slug, duration)[0]
 
 
+def _window_lyrics(slug: str, start: float, length: float,
+                   timed: list[dict]) -> list[tuple[str, float, float]]:
+    """The lyric lines inside this window, each with its span in clip time.
+
+    Returns `(text, start_in_clip, end_in_clip)`. The spans come from the same
+    estimate the timing fallback uses, so the card changes when the sung line
+    would change rather than on a made-up cadence. Chunking the window into
+    equal holds instead left the last 21.8 s of a 58 s clip with no text at all,
+    which a review caught ("มีซับเฉพาะบางช่วง ... 36.5s, 43.5s, 50.5s ไม่มี
+    ข้อความ") and measured against the ASS as a real gap.
+    """
+    out: list[tuple[str, float, float]] = []
+    for t in timed:
+        text = str(t.get("text", "")).strip()
+        if len(text) < 2 or t["end"] <= start or t["start"] >= start + length:
+            continue
+        s = max(t["start"], start) - start
+        e = min(t["end"], start + length) - start
+        out.append((text, max(0.0, s), e))
+    return out[:12]
+
+
 def build_ass(slug: str, lines: list[str], meta: dict, start: float,
               length: float, duration: float, captions: bool = False,
               hook: int = 1, timed: list[dict] | None = None) -> str:
@@ -210,6 +244,7 @@ Format: Name, Fontname, Fontsize, PrimaryColour, SecondaryColour, OutlineColour,
 Style: Hook,{FONT},88,{PRIMARY},{SECONDARY},{OUTLINE},&H80000000,1,0,0,0,100,100,0.5,0,1,6,3,2,70,70,430,1
 Style: HookCard,{FONT},104,{PRIMARY},{PRIMARY},{OUTLINE},&H64000000,1,0,0,0,100,100,0.5,0,1,7,3,5,50,50,0,1
 Style: Cap,{FONT},38,&H00FFFFFF,&H00FFFFFF,{OUTLINE},&H80000000,1,0,0,0,100,100,1,0,1,4,2,8,70,70,310,1
+Style: Lyric,{FONT},54,&H00FFFFFF,&H00FFFFFF,{OUTLINE},&H90000000,1,0,0,0,100,100,0.6,0,1,5,3,2,90,90,330,1
 Style: Brand,{FONT},40,&H00DDFFFF,&H00DDFFFF,{OUTLINE},&H80000000,1,0,0,0,100,100,1,0,1,4,2,7,44,44,40,1
 Style: Title,{FONT},64,&H00FFFFFF,&H00FFFFFF,{OUTLINE},&H80000000,1,0,0,0,100,100,1,0,1,5,2,7,44,44,34,1
 Style: Follow,{FONT},72,&H0020E0FF,&H0020E0FF,{OUTLINE},&H00000000,1,0,0,0,100,100,0.5,0,1,8,4,2,60,60,260,1
@@ -261,6 +296,23 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
         events.append(f"Dialogue: 0,{_ts(s)},{_ts(e + 0.2)},Hook,,0,0,0,,"
                       f"{{\\fad(90,120)}}{''.join(parts)}")
 
+    # Without real timing the clip showed *no lyric at all* for its whole run —
+    # just the title card and the follow ask. Gemini scored that 6/10 and its
+    # first criterion is "มีเนื้อเพลง/ซับไตเติลบนจอ". A drifting karaoke sweep
+    # stays off (it drifts off the sung line, K 2026-11-03), but the words can
+    # still be on screen as a still card: the chorus this window was cut from,
+    # held in readable chunks that change every few seconds. No word claims to
+    # land on a beat it was not measured against, so it does not lie.
+    if not timed and not captions:
+        chorus = _window_lyrics(slug, start, length, full)
+        if chorus:
+            for line, t0, t1 in chorus:
+                t1 = min(t1, length - FOLLOW_CARD_LEAD)
+                if t1 - t0 < 0.8:
+                    continue
+                events.append(f"Dialogue: 0,{_ts(t0)},{_ts(t1)},Lyric,,0,0,0,,"
+                              f"{{\\fad(220,220)}}{_escape(line)}")
+
     # The follow ask, as a short end card. It is the only on-screen ask on the
     # channel and it is placed at the end, where it cannot cost the first-two-
     # seconds decision that decides whether the clip is watched at all. Held for
@@ -283,6 +335,206 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
 
 def _ass_escape(p: Path) -> str:
     return str(p).replace("\\", "\\\\").replace(":", "\\:")
+
+
+def vertical_art(slug: str, count: int = 12) -> list[Path]:
+    """The song's 9:16 stills, generating any that are missing. Cached on disk.
+
+    Free and key-less: the same pollinations backend the covers use, asked for a
+    portrait frame and a per-still scene so the clip is not one image held for a
+    minute. A failure here is not fatal — the caller falls back to the letterbox
+    chain — but it is the difference between a 4/10 clip and a passing one.
+
+    Six stills over a 58s clip is a cut every ~10s. Three was too few: Gemini
+    rejected that render as "ภาพนิ่ง/ค้างนานเกินไป" and named the three shots it
+    could see sitting still. A Short has to change what is on screen faster than
+    a viewer's patience.
+    """
+    sys.path.insert(0, str(ROOT / "scripts"))
+    import ai_covers  # noqa: PLC0415  heavy import, only needed on a render
+
+    meta = ai_covers._meta(slug)
+    mood = meta["mood"]
+    genre = (meta.get("genre") or "").lower()
+    # The pictures must match the song, not one house style. A calm lofi track
+    # scored badly against punk imagery and a punk prompt drew "too soft" the
+    # other way round, so the scene set is chosen by mood. Within a set every
+    # scene is a different subject: a re-used subject reads as a loop even when
+    # it is re-cropped, which is what three reviews in a row flagged.
+    calm = [
+        "a lone silhouette walking a rain-slick street at night, soft neon "
+        "reflections, gentle bokeh",
+        "rain running down a lit window at night, warm city lights blurred "
+        "beyond",
+        "a quiet room at 3am, a single lamp, dust drifting in the warm glow",
+        "a city rooftop at blue hour, glowing windows, a small still figure",
+        "light breaking through clouds over a calm dark skyline",
+        "a nearly empty late-night train carriage, one passenger by the window",
+        "a desk with a cooling cup of tea and a notebook, dim warm lamplight",
+        "a quiet street corner under a soft streetlamp, wet pavement reflections",
+        "a window seat looking out at falling rain, curtain half drawn",
+        "a small figure standing at the end of a long pier at dawn, soft mist",
+        "a stairwell lit by one warm bulb, long soft shadows",
+        "a hand resting on a windowsill, city lights soft in the background",
+    ]
+    grit = [
+        "a smashed electric guitar leaning against a wet brick wall, harsh "
+        "flash, high contrast, gritty film grain",
+        "a rain-soaked alley lit by one bare bulb, graffiti on concrete, deep "
+        "shadows, raw documentary flash photography",
+        "a singer screaming into a microphone in a dark small club, sweat and "
+        "stage light, motion blur, gritty concert photo",
+        "a drum kit in a squatted room, dust in a hard shaft of light, peeling "
+        "paint, raw high-contrast photograph",
+        "a crowd of raised fists silhouetted against harsh stage strobes, "
+        "grainy, high contrast",
+        "a cracked mirror reflecting a harsh flash, torn posters behind, "
+        "gritty texture",
+        "a night street corner under a broken flickering sign, wet asphalt, "
+        "raw high-contrast photograph, heavy grain",
+        "a fist gripping a microphone cable, hard side light, deep shadow, "
+        "gritty close-up",
+        "a dark stage from behind the amps, cables on a dirty floor, one "
+        "harsh spotlight, raw photograph",
+        "a torn gig poster on a wet wall, harsh flash, high contrast, grain",
+        "a lone figure walking into heavy rain under a streetlamp, harsh "
+        "contrast, gritty, raw photograph",
+        "a wall of stacked amps in a dark room, one harsh light, heavy shadow",
+    ]
+    soft = mood in ("calm", "chill", "sad", "dreamy", "ambient", "romantic")
+    scenes = calm if soft else grit
+    VERT.mkdir(parents=True, exist_ok=True)
+    out: list[Path] = []
+    for i in range(count):
+        p = VERT / f"vert-{slug}-{i}.jpg"
+        if not p.exists():
+            prompt = (f"vertical portrait cinematic artwork for a Thai "
+                      f"{meta['genre'] or 'rock'} song, mood {mood}. "
+                      f"Scene: {scenes[i % len(scenes)]}. No text, no letters, "
+                      f"no watermark. Cinematic lighting, strong composition, "
+                      f"rich detail.")
+            try:
+                p.write_bytes(ai_covers._fetch_pollinations(prompt, 48 + i * 7))
+            except Exception as exc:  # rate limit or offline: fall back, never fail
+                print(f"  vertical art {i} unavailable ({exc})", file=sys.stderr)
+                break
+        out.append(p)
+    return out
+
+
+def _scrim_png() -> Path:
+    """A cached vertical gradient, transparent at the top, dark at the bottom.
+
+    A `drawbox` scrim has a hard top edge, and Gemini read that edge as a render
+    bug: "เส้นรอยต่อ/แถบสีแนวนอนครึ่งจอ ... คล้ายรอยต่อเลเยอร์". A gradient has no
+    edge to see, and it still gives white Thai text its contrast at the foot.
+    """
+    p = VERT / "_scrim.png"
+    if p.exists():
+        return p
+    from PIL import Image  # noqa: PLC0415
+
+    h = 480
+    img = Image.new("RGBA", (1, h))
+    for y in range(h):
+        t = y / (h - 1)
+        img.putpixel((0, y), (0, 0, 0, int(round(165 * (t ** 1.6)))))
+    VERT.mkdir(parents=True, exist_ok=True)
+    img.save(p)
+    return p
+
+
+def _shots(arts: list[Path], hook: int) -> list[tuple[Path, float, float, int, str]]:
+    """The shot list: one still per cut, never the same picture twice.
+
+    Gemini rejected two earlier cuts of this clip for repetition, naming the
+    timestamps that reused an earlier frame ("เฟรมที่ 1.5s, 8.5s, 15.5s ...
+    ถูกนำมาใช้ซ้ำเกือบเหมือนเดิมเป๊ะในครึ่งหลัง"). Re-cropping the same still is
+    still the same picture, so the fix is more pictures, not a cleverer crop:
+    one shot per still, and the caller generates enough of them.
+    """
+    shots: list[tuple[Path, float, float, int, str]] = []
+    anchors = ("center", "left", "right", "top", "bottom")
+    for i, a in enumerate(arts):
+        z0, z1 = (1.04, 1.20) if i % 2 == 0 else (1.18, 1.34)
+        shots.append((a, z0, z1, 1 if (hook + i) % 2 else -1,
+                      anchors[(i + hook) % len(anchors)]))
+    return shots
+
+
+def _fullbleed_chain(shots: list[tuple[Path, float, float, int, str]],
+                     clip_seconds: float, ass: Path) -> str:
+    """Full-frame chain: the shots fill 9:16, crossfading, each drifting.
+
+    No blurred bars and no letterbox — that treatment is what Gemini scored 4/10
+    ("blurred top/bottom bars", "the same image repeated the whole clip").
+    """
+    n = len(shots)
+    each = clip_seconds / n + (XFADE * (n - 1) / n)
+    span = max(1.0, each * FPS)
+    # The pan origin per anchor. `zoompan` positions the visible window with
+    # x/y, so a re-crop of the same still from another corner is a different
+    # composition — which is the point: a repeat must not read as a loop.
+    anchor_xy = {
+        "center": ("iw/2-(iw/zoom/2)", "ih/2-(ih/zoom/2)"),
+        "left": ("0", "ih/2-(ih/zoom/2)"),
+        "right": ("iw-iw/zoom", "ih/2-(ih/zoom/2)"),
+        "top": ("iw/2-(iw/zoom/2)", "0"),
+        "bottom": ("iw/2-(iw/zoom/2)", "ih-ih/zoom"),
+    }
+    parts: list[str] = []
+    for i, (_path, z0, z1, pan, anchor) in enumerate(shots):
+        rate = (z1 - z0) / span
+        bx, by = anchor_xy[anchor]
+        parts.append(
+            f"[{i}:v]scale={W}:{H}:force_original_aspect_ratio=increase,"
+            f"crop={W}:{H},setsar=1,"
+            f"eq=contrast=1.06:brightness=0.02,"
+            f"zoompan=z='min({z0}+{rate:.8f}*on,{z1})':d=1:"
+            f"x='{bx}+{VERT_PAN*pan}*(on/{span:.0f}-0.5)':"
+            f"y='{by}':s={W}x{H}:fps={FPS}[s{i}]")
+    prev = "s0"
+    for i in range(1, n):
+        offset = (each - XFADE) * i
+        label = f"x{i}" if i < n - 1 else "art"
+        parts.append(f"[{prev}][s{i}]xfade=transition=fade:duration={XFADE}:"
+                     f"offset={offset:.3f}[{label}]")
+        prev = label
+    if n == 1:
+        parts.append("[s0]null[art]")
+    parts.append(f"[{n}:v]scale={W}:{H},format=rgba[sc];"
+                 f"[art][sc]overlay=0:0,"
+                 f"noise=alls={GRAIN}:allf=t+u,vignette=PI/5[scrimd]")
+    parts.append(f"[scrimd]{ass_filter(ass)}[v]")
+    return ";".join(parts)
+
+
+def _letterbox_chain(cover: Path, clip_seconds: float, ass: Path,
+                     hook: int = 1) -> str:
+    """The original blurred-bars treatment, kept as the fallback.
+
+    It is used only when no 9:16 art could be generated, because it measures 29%
+    art / 56% black band and fails the review gate.
+    """
+    cw = int(W * 0.94)
+    cy = int(H * 0.05)
+    scrim = int(H * 0.44)
+    span = max(1.0, clip_seconds * FPS)
+    rate = (ZOOM_MAX - ZOOM_MIN) / span
+    d = 1 if hook % 2 else -1
+    dx, dy = 26 * d, 14 * d
+    return (
+        f"[0:v]scale={W}:{H}:force_original_aspect_ratio=increase,crop={W}:{H},"
+        f"gblur=sigma=26,eq=brightness=-0.12:saturation=1.05[bg];"
+        f"[0:v]scale={cw}:-1[fg];"
+        f"[bg][fg]overlay=(W-w)/2:{cy}[base];"
+        f"[base]drawbox=x=0:y={scrim}:w={W}:h={H - scrim}:"
+        f"color=black@0.42:t=fill[scrimd];"
+        f"[scrimd]zoompan=z='min({ZOOM_MIN}+{rate:.8f}*on,{ZOOM_MAX})':d=1:"
+        f"x='iw/2-(iw/zoom/2)+{dx}*(on/{span:.0f}-0.5)':"
+        f"y='ih/2-(ih/zoom/2)+{dy}*(on/{span:.0f}-0.5)':s={W}x{H}:fps={FPS}[zp];"
+        f"[zp]{ass_filter(ass)}[v]"
+    )
 
 
 def render(slug: str, *, mix: str = "song", out_dir: Path | None = None,
@@ -337,43 +589,13 @@ def render(slug: str, *, mix: str = "song", out_dir: Path | None = None,
     # an -h1/-h2 suffix so they are distinct files.
     multi = all_hooks and len(windows) > 1
 
-    # The cover is square, so a hard centre crop to 9:16 would slice the title
-    # text off the sides. Instead: a blurred, zoomed copy of the cover fills the
-    # vertical frame, the whole cover sits centred on top, and the pair zooms and
-    # pans so the frame is not dead. This is the usual Shorts treatment and it
-    # keeps the art intact on a phone. The ass filter is per-hook, so the chain is
-    # assembled inside the loop.
-    def chain(ass: Path, clip_seconds: float, hook: int = 1) -> str:
-        # A blurred, dimmed copy of the cover fills the frame, the whole cover
-        # sits in the upper half, and a scrim below it gives the captions a clean
-        # band. The whole composite zooms and pans so the frame is not dead.
-        cw = int(W * 0.94)
-        cy = int(H * 0.05)
-        scrim = int(H * 0.44)
-        # Zoom off the output frame counter `on`, NOT `zoom+rate`: with `d=1`
-        # zoompan treats every input frame as its own still and resets the
-        # `zoom` accumulator each frame, so `zoom+0.0005` never accumulated and
-        # the "slow zoom" was in fact a dead frame (measured 0.005 mean abs
-        # frame diff vs 5.25 for the `on` ramp). Sized so the ramp spans the clip.
-        span = max(1.0, clip_seconds * FPS)
-        rate = (ZOOM_MAX - ZOOM_MIN) / span
-        # A slow pan, its direction alternating per hook so the three Shorts do
-        # not move in lockstep. It stays inside the zoom headroom (ZOOM_MIN
-        # leaves ~ (ZOOM_MIN-1)/2 * W px per side) so no black edge is exposed.
-        d = 1 if hook % 2 else -1
-        dx, dy = 26 * d, 14 * d
-        return (
-            f"[0:v]scale={W}:{H}:force_original_aspect_ratio=increase,crop={W}:{H},"
-            f"gblur=sigma=26,eq=brightness=-0.12:saturation=1.05[bg];"
-            f"[0:v]scale={cw}:-1[fg];"
-            f"[bg][fg]overlay=(W-w)/2:{cy}[base];"
-            f"[base]drawbox=x=0:y={scrim}:w={W}:h={H - scrim}:"
-            f"color=black@0.42:t=fill[scrimd];"
-            f"[scrimd]zoompan=z='min({ZOOM_MIN}+{rate:.8f}*on,{ZOOM_MAX})':d=1:"
-            f"x='iw/2-(iw/zoom/2)+{dx}*(on/{span:.0f}-0.5)':"
-            f"y='ih/2-(ih/zoom/2)+{dy}*(on/{span:.0f}-0.5)':s={W}x{H}:fps={FPS}[zp];"
-            f"[zp]{ass_filter(ass)}[v]"
-        )
+    # The cover is landscape, so a hard centre crop to 9:16 slices the title off
+    # the sides. Prefer generated 9:16 stills, which fill the frame; fall back to
+    # the blurred-bars treatment only if none could be made. The ass filter is
+    # per-hook, so the chain is assembled inside the loop.
+    arts = vertical_art(slug)
+    if arts:
+        print(f"  art: {len(arts)} vertical still(s)", file=sys.stderr)
 
     written: list[Path] = []
     for i, (start, length) in enumerate(windows, 1):
@@ -383,10 +605,22 @@ def render(slug: str, *, mix: str = "song", out_dir: Path | None = None,
                                       captions=captions, hook=i, timed=timed),
                             encoding="utf-8")
         out = out_dir / f"short-{mix}{suffix}-{slug}.mp4"
-        args = ["-loop", "1", "-i", str(cover),
+        if arts:
+            shots = _shots(arts, i)
+            scrim = _scrim_png()
+            inputs = [x for s in shots for x in ("-loop", "1", "-i", str(s[0]))]
+            inputs += ["-loop", "1", "-i", str(scrim)]
+            graph = _fullbleed_chain(shots, length, ass_path)
+            audio_idx = len(shots) + 1
+        else:
+            inputs = ["-loop", "1", "-i", str(cover)]
+            graph = _letterbox_chain(cover, length, ass_path, i)
+            audio_idx = 1
+        args = [*inputs,
                 "-ss", f"{start:.3f}", "-i", str(audio),
-                "-filter_complex", chain(ass_path, length, i)
-                + ";[1:a]loudnorm=I=-14:TP=-2.0:LRA=11,alimiter=limit=0.7:level=0[aout]",
+                "-filter_complex", graph
+                + f";[{audio_idx}:a]loudnorm=I=-14:TP=-2.0:LRA=11,"
+                  f"alimiter=limit=0.7:level=0[aout]",
                 "-map", "[v]", "-map", "[aout]",
                 "-t", f"{length:.3f}",
                 "-c:v", "libx264", "-preset", "veryfast", "-crf", "20",

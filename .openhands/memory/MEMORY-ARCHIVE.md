@@ -6382,3 +6382,8 @@ platform-side, not code: the *account* daily new-video cap and the shared 10k AP
   44/45/46/47 = 3 = hook + follow ask, i.e. no lyrics at all).
 - A free drafter's content filter judges the *framing*, not the content: a
   positive clause clears it, and a committed manifest can desync from pulled media.
+
+
+## Moved from MEMORY.md 2026-11-19 (index over cap)
+- **Playwright `connect_over_cdp` can hang** though CDP answers: raw CDP
+  websocket works; else re-run `bootstrap.py`.

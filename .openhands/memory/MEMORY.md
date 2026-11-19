@@ -54,11 +54,9 @@ Roblox game anyone can enter and play, and real revenue from it (Roblox **PARKED
   (workflow files need its `workflow` scope).
 - **Desktop = Live View** (`work-2`:12001); Thai text `Text.luau` +
   `NotoSansThai.ttf` (else tofu); burned ASS has no emoji.
-- **Gemini gate (K 2026-11-19): `ops/gemini_review.py`** — no pass = no upload, no
-  showing K. No video input → contact sheet + measured facts; UI is Thai (send
-  "ส่งข้อความ"); `session_guard.py` revives Google. Detail: archive.
-- **Playwright `connect_over_cdp` can hang** though CDP answers: raw CDP
-  websocket works; else re-run `bootstrap.py`. Detail: archive.
+- **Gemini (`gemini_review.py` + `gemini_gate.py`)**: no pass = no upload, no
+  showing K — **but its score is NOT the judge** (measured 2026-11-19): clean clip
+  5 FAIL vs captionless 7 PASS, letterboxed 7 PASS. Gate = measured rules + K.
 - **`ops/websearch.py`** is the free web search (Tavily has no quota left).
 
 ## Sound + clip quality (K)
@@ -66,6 +64,8 @@ Roblox game anyone can enter and play, and real revenue from it (Roblox **PARKED
 **One FLOOR, every format/channel (2026-11-17): "ห้ามอัพขึ้นเด็ดขาด".**
 `ops/clip_standard.py` = floor + a per-format profile, gated at **every** upload
 route, no override; `ops/thumb_standard.py` too. `docs/clip-standard.md`.
+`short` (captions → text floor) ≠ `vertical` (MV → none); unnamed 9:16 permissive.
+Also gates dead silence (≤3 s) + VFR (≤2%), both invisible to LUFS.
 
 ## Retry lanes → ch3 (trivia + reactive)
 `trivia_publish.py` + `reactive_publish.py` share one chokepoint; a cap = **retry**,

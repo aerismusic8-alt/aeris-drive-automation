@@ -36,6 +36,12 @@ music938-1/work/*
 # release.py writes it under work/. If it is ignored, a fresh clone re-uploads
 # every song as a duplicate.
 !music938-1/work/release-state.json
+# The Gemini calibration report is the evidence for "its score is not the
+# judge" (K, 2026-11-19) and the test reads it. The probe MP4s are built on
+# demand, so only the 28 KB JSON is kept.
+!music938-1/work/gemini-calibration/
+music938-1/work/gemini-calibration/*
+!music938-1/work/gemini-calibration/report.json
 # The audio-reactive lane's ledger: which clip has reached ch3. Ignored, the
 # retry rail would re-upload the same clip on every tick once the cap clears.
 !music938-1/work/reactive-state.json
@@ -107,6 +113,10 @@ music938-1/library/songs/clipmeta-*.json
 # Shorts, thumbnails and cover jpgs are regenerable renders; the durable copy
 # lives in the GitHub Release (see the 24h release mechanism).
 music938-1/library/shorts/*.mp4
+# make_short.py draws its frames here; a frame is re-generatable from the
+# song and the caption, so only the finished Short in library/shorts/ matters.
+music938-1/library/vertical/*.jpg
+music938-1/library/vertical/*.png
 # The music-video rail (make_music_video.py): the finished video and the AI
 # scenes are large, and a scene is re-generatable from its prompt in seconds.
 # The scenes live under library/mv/, the video under library/musicvideo/.

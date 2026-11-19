@@ -32,10 +32,21 @@ Measured from the live library on 2026-11-17:
 | Profile | Shape | fps | Lanes | Extra rules |
 | --- | --- | --- | --- | --- |
 | `trivia` | 1280×720 | 24 | เกร็ดความรู้ | not frozen, no hard cut, caption |
-| `vertical` | 1080×1920 | 30 | short, MV, affiliate, surreal, concert, moods | not frozen |
+| `short` | 1080×1920 | 30 | short (hook lane, `library/shorts/`) | not frozen, caption, no bars |
+| `vertical` | 1080×1920 | 30 | MV, affiliate, surreal, concert, moods | not frozen, no bars |
 | `film` | 1920×1080 | 30 | film / long-form landscape | (cuts by design — no style rule) |
 | `horizontal` | 1920×1080 | 25 | karaoke, compilation | (a lyric sheet is nearly still) |
 | `motion` | 832×480 | 16 | internal motion asset | silent allowed |
+
+Two rules apply to every profile with audio, because the loudness band cannot
+see either defect:
+
+- **No dead silence** — the longest gap must be ≤ 3 s (`silencedetect` at −45 dB).
+  Integrated LUFS and true peak both stay in band across a dead stretch, so a
+  broken render passed the audio floor before this rule existed.
+- **Constant frame rate** — `avg_frame_rate` must agree with `r_frame_rate` within
+  2%. A concat of a 30 fps and a 24 fps render reads 33.75 against a real 30
+  (12.5% drift) while its nominal rate still looks legal.
 
 A profile may **tighten** any floor value and add style rules. A style rule is
 applied only where the format calls for it — that is the point of splitting the
@@ -46,8 +57,18 @@ floor from the style:
   false failure.
 - **Not frozen** belongs to trivia and the vertical lanes. A karaoke lyric sheet
   is meant to be almost still (measured 0.0).
-- **Caption present** is checked on trivia (white Thai on footage) and is not
-  reliable on karaoke (white lyric on video — the heuristic cannot see it).
+- **Caption present** is checked on trivia (white Thai on footage) and on the
+  `short` lane, which is watched muted so text is mandatory. It is **not** checked
+  on `vertical`: an MV shows artwork, not subtitles, and holding it to a text
+  floor blocked a finished video (2026-11-19). It is also not reliable on karaoke
+  (white lyric on video — the heuristic cannot see it).
+- **No black bars** applies to every 9:16 profile: wasted screen is a defect
+  whatever the lane. Only *edge-anchored* bands count, so a dark scene is not
+  mistaken for a letterbox.
+
+`short` and `vertical` share 1080×1920/30, so shape cannot tell them apart. The
+lane is read from the path first (`LANE_PROFILE`), and `SHAPE_DEFAULT` maps an
+unnamed 1080×1920 clip to the permissive `vertical` profile.
 
 ## 3. How it is enforced
 

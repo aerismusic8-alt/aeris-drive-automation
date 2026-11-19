@@ -146,11 +146,18 @@ def build_sheet(clip: str | Path, out: Path) -> Path:
     for i in range(FRAMES):
         t = 1.5 + i * step
         f = tmp / f"f{i:02d}.png"
-        _run(["ffmpeg", "-hide_banner", "-loglevel", "error", "-ss", f"{t:.2f}",
-              "-i", str(clip), "-frames:v", "1", "-vf",
-              f"scale={SHEET_WIDTH}:-2,drawtext=text='{t:.1f}s':x=8:y=8:"
-              f"fontsize=26:fontcolor=white:box=1:boxcolor=black@0.6",
-              str(f)])
+        for seek in (t, 0.0):
+            # A clip that is genuinely frozen carries a single frame, so seeking
+            # to 1.5 s yields nothing at all — the one defect this sheet exists
+            # to expose was the one it could not render, and the review aborted
+            # with "could not extract any frame". Fall back to the first frame.
+            _run(["ffmpeg", "-hide_banner", "-loglevel", "error", "-ss",
+                  f"{seek:.2f}", "-i", str(clip), "-frames:v", "1", "-vf",
+                  f"scale={SHEET_WIDTH}:-2,drawtext=text='{t:.1f}s':x=8:y=8:"
+                  f"fontsize=26:fontcolor=white:box=1:boxcolor=black@0.6",
+                  str(f)])
+            if f.exists():
+                break
         if f.exists():
             files.append(f)
     if not files:
@@ -338,7 +345,9 @@ def ask(sess: Session, prompt: str, sheet: Path | None, wait: float = 240.0) -> 
 
 # --- the review --------------------------------------------------------------
 
-PROMPT = """คุณเป็นผู้ตรวจคุณภาพคลิปของช่อง "เพลงส้นทีนไรเนี่ย" (เพลงไทยแนวการาจพังค์)
+PROMPT = """คุณเป็นผู้ตรวจคุณภาพคลิปของช่อง "เพลงส้นทีนไรเนี่ย"
+เพลงนี้เป็นแนว **{genre}** อารมณ์ **{mood}** — ให้ตัดสินภาพให้เข้ากับแนวนี้นะ
+อย่าตัดสินว่าต้องดิบแบบการาจพังค์ ถ้าเพลงนี้ไม่ใช่พังค์
 
 ผมแนบ contact sheet ของคลิป Short 9:16 ยาว {dur:.1f} วินาที (เฟรมตัวอย่าง {n} เฟรม
 พร้อมเวลา) และค่าที่วัดได้จริงจากไฟล์:
@@ -347,12 +356,13 @@ PROMPT = """คุณเป็นผู้ตรวจคุณภาพคล�
 - จำนวนบรรทัดซับไตเติล = {lines} (วิธี: {how})
 - loudness = {lufs} LUFS, true peak = {tp} dBTP
 
-เกณฑ์ของช่อง (ต้องได้ทุกข้อ):
+เกณฑ์ของช่อง (ต้องได้ทุกข้อ — ตัดสินจากที่เห็นในภาพเท่านั้น):
 1. มีเนื้อเพลง/ซับไตเติลบนจอ และอ่านออก
-2. ภาพไม่นิ่งสนิท มีการเคลื่อนไหว/ซูม/แพน
+2. ภาพไม่นิ่งสนิท มีการเคลื่อนไหว/ซูม/แพน หรือเปลี่ยนภาพ
 3. ใช้พื้นที่แนวตั้งเต็ม ไม่มีแถบดำหรือขอบเบลอเสียเปล่า
 4. ตัวอักษรไทยอ่านชัด ไม่ถูกตัดขอบ
-5. ดูพรีเมียม พร้อมลงช่องจริง
+5. ภาพไม่ซ้ำซากจนน่าเบื่อ และเข้ากับอารมณ์เพลงแนว {genre}
+6. ดูพรีเมียม พร้อมลงช่องจริง
 
 ตอบตามรูปแบบนี้เท่านั้น ห้ามมีอย่างอื่นก่อน SCORE:
 SCORE: <ตัวเลข 1-10>
@@ -362,18 +372,70 @@ REASON2: <เหตุผลสั้น>
 REASON3: <เหตุผลสั้น>"""
 
 
+def song_style(clip: Path) -> tuple[str, str]:
+    """The song's real genre and mood, read from its lyric header.
+
+    The review prompt used to hard-code "การาจพังค์" for every clip, so a lofi
+    song was marked down every time for not being punk — a real clip was scored
+    4/10 for not matching a genre it was never in. The lyric file carries the
+    truth in its `# GENRE:` / `# MOOD:` headers; when it cannot be read, say so
+    rather than guess a genre.
+    """
+    stem = clip.stem
+    slug = re.sub(r"^short-(?:song|karaoke)-h\d+-", "", stem)
+    slug = re.sub(r"-h\d+$", "", slug)
+    lyrics = ROOT / "music938-1" / "lyrics"
+    genre = mood = ""
+    cand = lyrics / f"{slug}.txt"
+    if cand.exists():
+        for line in cand.read_text(encoding="utf-8").splitlines()[:12]:
+            if line.startswith("# GENRE:"):
+                genre = line.split(":", 1)[1].strip()
+            elif line.startswith("# MOOD:"):
+                mood = line.split(":", 1)[1].strip()
+    return genre or "ไม่ระบุ", mood or "ไม่ระบุ"
+
+
 def parse(answer: str) -> tuple[float | None, str, list[str]]:
+    """Read a verdict out of Gemini's answer, formatted or not.
+
+    Gemini often ignores the requested `SCORE:` block and answers in prose
+    instead — a real review, just not the shape we asked for. Requiring the exact
+    label made the gate impossible to pass: every clip recorded "could not parse
+    a SCORE" and nothing could ever ship. So the labelled form is tried first,
+    then a bare "7/10" or "ให้ 7 คะแนน", and the verdict is inferred from the
+    prose when it is not stated. Fail-closed still holds: no score found at all
+    means no verdict, which blocks the clip.
+    """
     score = None
-    m = re.search(r"SCORE\s*[:：]\s*([0-9]+(?:\.[0-9]+)?)", answer)
-    if m:
-        score = float(m.group(1))
-    v = ""
+    for pat in (r"SCORE\s*[:：]\s*([0-9]+(?:\.[0-9]+)?)",
+                r"\b([0-9]+(?:\.[0-9]+)?)\s*/\s*10\b",
+                r"ให้\s*([0-9]+(?:\.[0-9]+)?)\s*คะแนน",
+                r"([0-9]+(?:\.[0-9]+)?)\s*คะแนน"):
+        m = re.search(pat, answer)
+        if m:
+            v = float(m.group(1))
+            if 0 < v <= 10:
+                score = v
+                break
+    verdict = ""
     m = re.search(r"VERDICT\s*[:：]\s*(PASS|FAIL)", answer, re.I)
     if m:
-        v = m.group(1).upper()
+        verdict = m.group(1).upper()
+    elif re.search(r"ยังไม่ผ่าน|ไม่ผ่าน(?:เกณฑ์)?|Needs\s+Revision|FAIL", answer, re.I):
+        verdict = "FAIL"
+    elif re.search(r"\bPASS\b|ผ่าน(?:เกณฑ์|ทุกข้อ)", answer, re.I):
+        verdict = "PASS"
     reasons = [x.strip() for x in
                re.findall(r"REASON\d\s*[:：]\s*(.+)", answer)]
-    return score, v, reasons
+    if not reasons:
+        # The prose form has no REASON labels; the first substantive lines are
+        # the findings, and they are what a human reads to fix the clip.
+        lines = [ln.strip(" -*•\t") for ln in answer.splitlines()]
+        reasons = [ln for ln in lines
+                   if len(ln) > 12 and not re.match(r"^(สรุป|สถานะ|จุด|ตาราง|ช่วงเวลา)",
+                                                    ln)][:3]
+    return score, verdict, reasons
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -405,9 +467,11 @@ def main(argv: list[str] | None = None) -> int:
     print(f"measured: {info['width']}x{info['height']}@{info['fps']}  "
           f"motion {mo}  captions {lines} ({how})  {lufs} LUFS  {tp} dBTP")
 
+    genre, mood = song_style(clip)
     prompt = PROMPT.format(dur=info["duration"], n=FRAMES, w=info["width"],
                            h=info["height"], fps=info["fps"], motion=mo,
-                           lines=lines, how=how, lufs=lufs, tp=tp)
+                           lines=lines, how=how, lufs=lufs, tp=tp,
+                           genre=genre, mood=mood)
     if a.dry_run:
         print("\n--- prompt ---\n" + prompt)
         return 0
@@ -427,13 +491,39 @@ def main(argv: list[str] | None = None) -> int:
 
     score, verdict, reasons = parse(answer)
     if score is None:
+        # A prose review is a real review, it just left the number out. Asking
+        # for the number is not a re-review: the findings are already given, and
+        # the clip is still judged by them. Without this the gate blocked every
+        # clip Gemini chose to answer in paragraphs.
+        follow = ("ให้คะแนนรวมคลิปนี้เป็นตัวเลข 1-10 ตามที่วิจารณ์ไปแล้ว "
+                  "ตอบสั้น ๆ ว่า: SCORE: <เลข> VERDICT: <PASS หรือ FAIL>")
+        try:
+            sess = Session()
+            try:
+                second = ask(sess, follow, None, min(a.wait, 90.0))
+            finally:
+                sess.close()
+            s2, v2, _ = parse(second or "")
+            if s2 is not None:
+                score, verdict = s2, (v2 or verdict)
+                print(f"\n--- Gemini (score follow-up) ---\n{(second or '').strip()[:400]}")
+        except SystemExit:
+            pass
+    if score is None:
         print("could not parse a SCORE out of the answer", file=sys.stderr)
         return 2
     passed = verdict == "PASS" and score >= gemini_gate.PASS_SCORE
     p = gemini_gate.record(
         clip, score, passed, verdict=verdict or ("PASS" if passed else "FAIL"),
-        note=" | ".join(reasons)[:500], sheet=str(sheet), replace=a.replace)
-    print(f"\nrecorded {p}")
+        note=" | ".join(reasons)[:2000], sheet=str(sheet), replace=a.replace)
+    # Keep the whole answer beside the verdict. The stored `note` is capped, and
+    # a truncated review cannot be acted on: the actionable points sat past the
+    # cut and had to be re-fetched by running the review again.
+    raw = p.with_suffix(".md")
+    raw.write_text(f"# {Path(clip).name}\n\nscore {score:g} / verdict "
+                   f"{verdict or '-'}\n\n{(answer or '').strip()}\n",
+                   encoding="utf-8")
+    print(f"\nrecorded {p}  (full review: {raw.name})")
     print(f"SCORE {score:g}  VERDICT {verdict or '-'}  -> "
           f"{'PASS (may publish)' if passed else 'FAIL (must be fixed)'}")
     return 0 if passed else 1

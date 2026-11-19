@@ -36,6 +36,7 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import re
 import shutil
 import subprocess
 
@@ -66,6 +67,21 @@ PROFILES: dict[str, dict] = {
         "motion_max": 20.0,          # a hard cut measures ~94
         "text_px_min": 120,          # white Thai + thin dark outline
     },
+    "short": {
+        "label": "vertical 9:16 Short with burned captions (the hook lane)",
+        "resolutions": [(1080, 1920)],
+        "fps": (30,),
+        "min_seconds": 5.0,
+        "motion_median_min": 0.03,
+        "motion_max": None,
+        # A Short must carry its words on screen: it is watched muted, and a
+        # calibration probe with the caption band painted out scored 9/10 from
+        # Gemini while every measured rule passed it. K's list names captions and
+        # no wasted vertical space, so both are enforced here, on the lane that
+        # actually burns them.
+        "text_px_min": 60,
+        "bar_max_frac": 0.06,
+    },
     "vertical": {
         "label": "vertical 9:16 (shorts, MV, affiliate, surreal, concert)",
         "resolutions": [(1080, 1920)],
@@ -73,7 +89,11 @@ PROFILES: dict[str, dict] = {
         "min_seconds": 5.0,
         "motion_median_min": 0.03,   # zoompan on a still is small but nonzero
         "motion_max": None,          # MVs cut between shots by design
+        # No caption rule: an MV shows artwork, not subtitles, and holding it to
+        # a text floor would block a finished video. The caption floor lives on
+        # the `short` profile, which is the lane that burns text.
         "text_px_min": None,
+        "bar_max_frac": 0.06,        # wasted screen is a defect in any 9:16 clip
     },
     "film": {
         "label": "film / long-form landscape (public-domain film MV)",
@@ -112,12 +132,20 @@ PROFILES: dict[str, dict] = {
 # Which lane (source dir / script) uses which standard — documentation + tests.
 LANE_PROFILE = {
     "trivia": "trivia",
-    "short": "vertical", "mv": "vertical", "affiliate": "vertical",
+    "short": "short",
+    "mv": "vertical", "affiliate": "vertical",
     "surreal": "vertical", "concert": "vertical", "moods": "vertical",
     "film": "film",
     "karaoke": "horizontal", "compilation": "horizontal",
     "motion": "motion",
 }
+
+# The profile a shape falls back to when nothing names its lane. `short` and
+# `vertical` share 1080x1920 and 30 fps, so without this the caption rule would
+# apply to every anonymous vertical clip — including an MV, which carries no
+# text by design. An unnamed 9:16 clip gets the permissive standard; the shorts
+# lane opts into the caption floor by its path.
+SHAPE_DEFAULT = {(1080, 1920): "vertical"}
 
 ANALYZE_W = 480
 ANALYZE_MAX_SECONDS = 120.0
@@ -150,10 +178,13 @@ def probe(path: str) -> dict:
     a = next((s for s in data["streams"] if s["codec_type"] == "audio"), {})
     num, den = (v.get("avg_frame_rate") or "0/1").split("/")
     fps = (float(num) / float(den)) if float(den) else 0.0
+    rnum, rden = (v.get("r_frame_rate") or "0/1").split("/")
+    rfps = (float(rnum) / float(rden)) if float(rden) else 0.0
     return {
         "width": int(v.get("width") or 0),
         "height": int(v.get("height") or 0),
         "fps": round(fps, 3),
+        "r_fps": round(rfps, 3),
         "video_codec": v.get("codec_name") or "",
         "pix_fmt": v.get("pix_fmt") or "",
         "audio_codec": a.get("codec_name") or "",
@@ -173,6 +204,18 @@ def profile_for(path: str, hint: str | None = None) -> str | None:
     """
     if hint:
         return hint if hint in PROFILES else None
+    # A file in library/shorts/ is the hook lane, which burns captions; the same
+    # 1080x1920 shape in library/mv/ is artwork with no text. Shape alone cannot
+    # tell them apart, so the path decides before the shape does.
+    posix = str(path).replace("\\", "/")
+    for lane, prof in LANE_PROFILE.items():
+        if f"/{lane}/" in posix or posix.startswith(f"{lane}/"):
+            try:
+                info = probe(path)
+            except Exception:
+                return prof
+            if (info["width"], info["height"]) in PROFILES[prof]["resolutions"]:
+                return prof
     try:
         info = probe(path)
     except Exception:
@@ -181,10 +224,13 @@ def profile_for(path: str, hint: str | None = None) -> str | None:
     by_shape = [n for n, p in PROFILES.items() if shape in p["resolutions"]]
     if not by_shape:
         return None
+    if shape in SHAPE_DEFAULT:
+        return SHAPE_DEFAULT[shape]
     for n in by_shape:
         if info["fps"] in PROFILES[n]["fps"]:
             return n
     return by_shape[0]
+
 
 
 def _frames(path: str):
@@ -249,6 +295,57 @@ def text_pixels(path: str) -> int:
     return vals[len(vals) // 2]
 
 
+def bar_frac(path: str) -> float:
+    """Letterbox size: the black band hugging the frame edge, as a fraction.
+
+    A bar is a black band **anchored to the top or bottom edge** and present in
+    **most** frames. Measuring the tallest black run anywhere counted a dark
+    scene and the follow-card gradient as bars — the good clip measured 14.3%
+    and was wrongly blocked. A real letterbox is 33% at an edge in every frame.
+    So: per frame take the run touching the top or the bottom edge, then take the
+    median across frames. A transient dark scene drops out; a bar cannot.
+    """
+    import numpy as np
+    vals: list[float] = []
+    for i, f in enumerate(_frames(path)):
+        if i % 12:
+            continue
+        h = f.shape[0]
+        dark = f.reshape(h, -1).max(axis=1) <= 10
+        top = 0
+        for d in dark:
+            if not d:
+                break
+            top += 1
+        bot = 0
+        for d in dark[::-1]:
+            if not d:
+                break
+            bot += 1
+        vals.append(max(top, bot) / h)
+    if not vals:
+        return 0.0
+    vals.sort()
+    return round(vals[len(vals) // 2], 4)
+
+
+def silence_max(path: str) -> float:
+    """Longest silent stretch in seconds (-inf threshold, 1.0 s minimum).
+
+    A phone clip with a dead gap reads as a broken render, and the audio floor
+    cannot see it: integrated loudness and true peak both stay in band while two
+    seconds of nothing sit in the middle. This is the check that catches it.
+    """
+    out = subprocess.run(
+        [ffmpeg(), "-hide_banner", "-i", path, "-af",
+         "silencedetect=n=-45dB:d=1.0", "-f", "null", "-"],
+        capture_output=True, text=True)
+    best = 0.0
+    for m in re.finditer(r"silence_duration:\s*([0-9.]+)", out.stderr or ""):
+        best = max(best, float(m.group(1)))
+    return round(best, 3)
+
+
 def loudness(path: str):
     """(integrated LUFS, true peak dBTP) via ffmpeg's EBU R128 meter."""
     out = subprocess.run(
@@ -264,12 +361,12 @@ def loudness(path: str):
     return lufs, peak
 
 
-def _thresh(p: dict, key: str):
-    """A profile value, else the universal FLOOR value."""
+def _thresh(p: dict, key: str, default=None):
+    """A profile value, else the universal FLOOR value, else `default`."""
     v = p.get(key)
     if v is None:
         v = FLOOR.get(key)
-    return v
+    return default if v is None else v
 
 
 def check(path: str, profile: str | None = None) -> list[tuple[str, bool, str]]:
@@ -300,6 +397,14 @@ def check(path: str, profile: str | None = None) -> list[tuple[str, bool, str]]:
     add(f"shape is {want[0]}x{want[1]}", shape in p["resolutions"],
         f"{info['width']}x{info['height']}")
     add("frame rate", info["fps"] in _thresh(p, "fps"), f"{info['fps']} fps")
+    # A variable frame rate means the renderer dropped or duplicated frames. The
+    # nominal rate can still read 30 while playback stutters, so compare the
+    # average against the real base rate instead of trusting one field.
+    if info.get("r_fps"):
+        drift = abs(info["fps"] - info["r_fps"]) / max(1e-6, info["r_fps"])
+        add("frame rate is constant", drift <= 0.02,
+            f"avg {info['fps']} vs real {info['r_fps']} "
+            f"({drift:.1%} drift, max 2%)")
     add("video codec", info["video_codec"] == FLOOR["video_codec"],
         info["video_codec"])
     add("pixel format", info["pix_fmt"] in FLOOR["pix_fmt"], info["pix_fmt"])
@@ -323,6 +428,15 @@ def check(path: str, profile: str | None = None) -> list[tuple[str, bool, str]]:
             f"{lufs} LUFS (want {lo}..{hi})")
         add("no clipping", peak is not None and peak <= FLOOR["true_peak_max"],
             f"{peak} dBTP (max {FLOOR['true_peak_max']})")
+        # Integrated loudness and true peak both stay in band across a dead gap,
+        # so a silent stretch is invisible to the two rules above. The limit is
+        # generous on purpose: a song intro or a held note is not a defect, and
+        # the value is per-profile so a lane can tighten it.
+        limit = _thresh(p, "silence_max_seconds", 3.0)
+        if limit is not None:
+            sm = silence_max(path)
+            add("no dead silence", sm <= limit,
+                f"longest gap {sm}s (max {limit}s)")
 
     if (p.get("motion_median_min") is not None or p.get("motion_max") is not None
             or p.get("text_px_min") is not None):
@@ -337,6 +451,10 @@ def check(path: str, profile: str | None = None) -> list[tuple[str, bool, str]]:
             tx = text_pixels(path)
             add("caption is present and big", tx >= p["text_px_min"],
                 f"{tx} text px (min {p['text_px_min']})")
+    if p.get("bar_max_frac") is not None:
+        bf = bar_frac(path)
+        add("no wasted black bars", bf <= p["bar_max_frac"],
+            f"tallest black band {bf:.1%} of height (max {p['bar_max_frac']:.0%})")
     return res
 
 

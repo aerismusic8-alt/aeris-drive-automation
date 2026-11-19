@@ -5527,6 +5527,18 @@ def test_clip_standard_is_a_floor() -> None:
           cs.PROFILES["film"].get("motion_max") is None)
     check("karaoke is not held to a frozen-picture floor",
           cs.PROFILES["horizontal"].get("motion_median_min") is None)
+    # The caption floor belongs to the lane that burns text. A Short is watched
+    # muted, so text is mandatory; an MV is artwork and holding it to a text
+    # floor blocked a finished video in this suite. Shape alone cannot tell them
+    # apart (both 1080x1920/30), so the lane decides.
+    check("the shorts lane requires on-screen text",
+          cs.LANE_PROFILE["short"] == "short"
+          and cs.PROFILES["short"].get("text_px_min"))
+    check("the MV lane does not require text",
+          cs.LANE_PROFILE["mv"] == "vertical"
+          and not cs.PROFILES["vertical"].get("text_px_min"))
+    check("an unnamed 9:16 clip gets the permissive profile",
+          cs.SHAPE_DEFAULT.get((1080, 1920)) == "vertical")
     check("silent motion asset is allowed to have no audio",
           cs.PROFILES["motion"].get("audio_required") is False)
 
@@ -5656,6 +5668,54 @@ def test_clip_standard_is_a_floor() -> None:
     rows = {n: ok for n, ok, _ in cs.check(good)}
     check("a correct vertical clip passes", all(rows.values()),
           "; ".join(f"{n}" for n, ok in rows.items() if not ok))
+
+
+    # Two defects the floor could not see, both measured on purpose-built clips
+    # (2026-11-19): a dead gap sits inside the loudness band, and a mixed-rate
+    # render keeps a legal nominal fps. Each rule must actually reject its clip.
+    good = os.path.join(tempfile.mkdtemp(), "silence-ok.mp4")
+    subprocess.run([ff, "-y", "-v", "error", "-f", "lavfi", "-i",
+                    "testsrc2=size=1080x1920:rate=30:duration=6",
+                    "-f", "lavfi", "-i", "sine=frequency=330:duration=6",
+                    "-af", "loudnorm=I=-15:TP=-2:LRA=7",
+                    "-shortest", "-c:v", "libx264", "-pix_fmt", "yuv420p",
+                    "-c:a", "aac", "-ar", "48000", "-ac", "2", good], check=True)
+    check("a continuous clip has no dead silence",
+          cs.silence_max(good) < 1.0, cs.silence_max(good))
+
+    gap = os.path.join(tempfile.mkdtemp(), "silence-gap.mp4")
+    subprocess.run([ff, "-y", "-v", "error", "-f", "lavfi", "-i",
+                    "testsrc2=size=1080x1920:rate=30:duration=10",
+                    "-f", "lavfi", "-i", "sine=frequency=330:duration=10",
+                    "-af", "loudnorm=I=-15:TP=-2:LRA=7,"
+                           "volume=enable='between(t,4,7)':volume=0",
+                    "-shortest", "-c:v", "libx264", "-pix_fmt", "yuv420p",
+                    "-c:a", "aac", "-ar", "48000", "-ac", "2", gap], check=True)
+    rows = {n: ok for n, ok, _ in cs.check(gap)}
+    check("a 3 s dead gap is rejected", rows.get("no dead silence") is False,
+          f"measured {cs.silence_max(gap)}s")
+
+    # A render whose two halves disagree on frame rate: nominal 30, average 33.75.
+    a = os.path.join(tempfile.mkdtemp(), "a.mp4")
+    b = os.path.join(tempfile.mkdtemp(), "b.mp4")
+    for path, rate in ((a, 30), (b, 24)):
+        subprocess.run([ff, "-y", "-v", "error", "-f", "lavfi", "-i",
+                        f"testsrc2=size=1080x1920:rate={rate}:duration=3",
+                        "-f", "lavfi", "-i", "sine=frequency=330:duration=3",
+                        "-af", "loudnorm=I=-15:TP=-2:LRA=7", "-shortest",
+                        "-c:v", "libx264", "-pix_fmt", "yuv420p",
+                        "-c:a", "aac", "-ar", "48000", "-ac", "2", path],
+                       check=True)
+    lst = os.path.join(tempfile.mkdtemp(), "l.txt")
+    with open(lst, "w", encoding="utf-8") as fh:
+        fh.write(f"file '{a}'\nfile '{b}'\n")
+    mixed = os.path.join(tempfile.mkdtemp(), "mixed.mp4")
+    subprocess.run([ff, "-y", "-v", "error", "-f", "concat", "-safe", "0",
+                    "-i", lst, "-c", "copy", mixed], check=True)
+    rows = {n: ok for n, ok, _ in cs.check(mixed)}
+    check("a variable frame rate is rejected",
+          rows.get("frame rate is constant") is False,
+          f"avg {cs.probe(mixed)['fps']} vs real {cs.probe(mixed)['r_fps']}")
 
     # A clip rendered before its song master was re-mastered keeps the old,
     # clipped audio, and the floor gate then refuses it — which went red for
@@ -5845,6 +5905,79 @@ def test_gemini_gate_blocks_unreviewed() -> None:
     finally:
         os.environ.pop("AX_GEMINI_REVIEWS", None)
         shutil.rmtree(d, ignore_errors=True)
+
+
+def test_gemini_review_reads_a_prose_verdict() -> None:
+    """The reviewer's answer must be readable whether or not it follows the form.
+
+    Gemini routinely ignores the requested `SCORE:` block and answers in prose.
+    The first version of the parser only accepted the labelled form, so every
+    review recorded "could not parse a SCORE" and no clip could ever pass — a
+    gate that blocks everything is broken, not strict. The prose form must parse,
+    and a reply with no score at all must still fail closed.
+    """
+    section("gemini review parses prose")
+    import importlib.util
+    path = ROOT.parent / "ops" / "gemini_review.py"
+    spec = importlib.util.spec_from_file_location("gemini_review", path)
+    m = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(m)
+
+    s, v, r = m.parse("SCORE: 9\nVERDICT: PASS\nREASON1: ok\nREASON2: ok")
+    check("the labelled form parses", (s, v) == (9.0, "PASS"), f"{s} {v}")
+
+    s, v, r = m.parse("ภาพรวมดีมาก ใช้พื้นที่เต็มจอ ไม่มีแถบดำ\n"
+                      "ให้ 9 คะแนน ผ่านเกณฑ์ทุกข้อ")
+    check("a Thai prose pass parses", (s, v) == (9.0, "PASS"), f"{s} {v}")
+
+    s, v, r = m.parse("ผมให้ 8/10 ผ่านครับ")
+    check("a bare fraction parses", s == 8.0, s)
+
+    s, v, r = m.parse("สรุปผลการตรวจ: ปรับปรุง ยังไม่ผ่านเกณฑ์\n"
+                      "จุดที่พบ: การวนซ้ำของภาพชัดเจนมาก\n"
+                      "สรุปสถานะ: ยังไม่ผ่าน (Needs Revision)")
+    check("a Thai prose fail parses as FAIL", v == "FAIL", v)
+
+    s, v, r = m.parse("ผมดูแล้วรู้สึกว่าโอเคนะ แต่ยังไม่แน่ใจ")
+    check("a reply with no score fails closed", s is None, s)
+    check("a reply with no score records no pass", v != "PASS", v)
+
+
+def test_gemini_score_is_not_authoritative() -> None:
+    """Gemini's score does not detect real defects, so it cannot be the judge.
+
+    K (2026-11-19): "ถ้า gemini ให้ผ่านแต่ K ไม่ผ่าน อันนี้จะต้องรื้อระบบตรวจสอบ
+    ของ gemini ด้วยนะ ว่ามาตรฐานอยู่ระดับไหน". A blind run on 2026-11-19 measured
+    the scale against clips whose defects are *known* (a clean clip, no captions,
+    frozen picture, letterbox, clipped audio):
+
+        clean 5 · no-captions 7 (PASS) · black-bars 7 (PASS)
+        frozen 2 · clipped-audio 5
+
+    A clip with the caption band painted out scored *higher* than the finished
+    clip and was called PASS. So the score is a second opinion, never a gate: a
+    publish decision rests on measured rules (clip_standard) and K's judgement.
+    This test pins that ordering so the reviewer cannot quietly regain authority.
+    """
+    section("gemini score is not authoritative")
+    report = ROOT / "work" / "gemini-calibration" / "report.json"
+    if not report.exists():
+        print("  skip: no calibration report yet (run ops/gemini_calibrate.py --run)")
+        return
+    rows = json.loads(report.read_text(encoding="utf-8"))
+    by = {r["probe"]: r for r in rows}
+    clean = by.get("clean", {}).get("score")
+    check("the clean clip was scored as a baseline", clean is not None, clean)
+    if clean is None:
+        return
+    missed = [n for n, r in by.items()
+              if n != "clean" and r.get("score") is not None
+              and r["score"] >= clean]
+    check("the calibration found at least one undetected defect", bool(missed),
+          f"{missed}")
+    check("a captionless clip is not scored below a finished one",
+          by.get("no-captions", {}).get("score", 0) >= clean,
+          f"{by.get('no-captions', {}).get('score')} vs clean {clean}")
 
 
 def test_metadata_ab_holds_format_fixed() -> None:
@@ -7092,6 +7225,7 @@ def main() -> int:
     test_thumb_contrast()
     test_thumb_standard_is_a_floor()
     test_gemini_gate_blocks_unreviewed()
+    test_gemini_review_reads_a_prose_verdict()
     test_ai_covers()
     test_thumbnail_repair()
     test_nostr_identity()
@@ -7147,6 +7281,7 @@ def main() -> int:
     test_trivia_publish()
     test_reactive_publish()
     test_clip_standard_is_a_floor()
+    test_gemini_score_is_not_authoritative()
     test_metadata_ab_holds_format_fixed()
     test_login_vault_never_clobbers_a_live_surface()
     test_ar_identity_survives_a_lost_pod()
