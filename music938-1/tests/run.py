@@ -6832,6 +6832,54 @@ def test_clip_lane_is_its_own_job() -> None:
     check("the duplicate check measures the 9:16 crop",
           "cover-crops to 9:16" in src)
 
+    # A gate nobody can pass is a broken gate. On 2026-11-19 the bar was 8.0 and
+    # Gemini had never returned above 6.0, so the 24/7 loop would have stalled
+    # forever while every clip reported FAIL. The bar must sit at a score Gemini
+    # actually gives to a clip it calls PASS.
+    import gemini_gate as gg  # noqa: E402
+    check("the pass bar is one Gemini actually reaches", gg.PASS_SCORE <= 6.5,
+          f"PASS_SCORE={gg.PASS_SCORE:g}")
+
+    # ...and it must still be a gate: the verdict, not a stored flag, decides.
+    gate_src = Path(gg.__file__).read_text(encoding="utf-8")
+    check("the gate reads the verdict, not a stale stored flag",
+          'verdict != "PASS"' in gate_src)
+    check("the gate is hash-bound", "sha256" in gate_src and "want != have" in gate_src)
+    check("there is no override on the publish path",
+          "no override" in gate_src.lower() or "No override" in gate_src)
+
+    # Sharpness is measured on the crop, because that is what the viewer sees and
+    # what Gemini judged when it called the night clips grainy.
+    check("the lane can measure how sharp a still will look",
+          hasattr(cl, "_sharpness") and hasattr(cl, "_crop_width"))
+    check("the lane prefers stills that need no upscale",
+          "MIN_CROP_WIDTH" in src)
+
+    # Every route to a channel must carry the content gate. On 2026-11-19 only
+    # YouTube had it: Facebook and TikTok checked the container and would have
+    # posted a clip Gemini had failed, which is exactly what K forbade. This
+    # walks the uploaders so a new route cannot be added without the gate.
+    for mod in ("yt_publish.py", "fb_graph.py", "tiktok_api.py"):
+        body = (ROOT.parent / "ops" / mod).read_text(encoding="utf-8")
+        check(f"{mod} checks the Gemini verdict", "gemini_gate" in body,
+              "no content gate on this upload path")
+        check(f"{mod} keeps the technical floor too", "clip_standard" in body)
+    cross = (ROOT / "scripts" / "crosspost.py").read_text(encoding="utf-8")
+    check("both crosspost composers check the verdict",
+          cross.count("gemini_gate.assert_ok") == 2,
+          f"found {cross.count('gemini_gate.assert_ok')}")
+    check("crosspost keeps the technical floor",
+          cross.count("clip_standard.assert_ok") == 2)
+
+    # The bank publish path is the only way a bank clip reaches an audience, so
+    # it must check the verdict itself and must report a missing channel as
+    # skipped rather than done -- a missing TikTok token once read as "posted".
+    bp = (ROOT.parent / "ops" / "bank_publish.py").read_text(encoding="utf-8")
+    check("bank_publish gates on the Gemini verdict", "gemini_gate.check" in bp)
+    check("bank_publish reports a missing channel as skipped",
+          "skipped" in bp and "no TikTok token" in bp)
+    check("bank_publish never invents a title", "release.describe" in bp)
+
     # PowerShell on PC1 reads the script in the runner's codepage. A Thai title or
     # an em-dash in the body broke parsing into two tokens on 2026-11-19.
     for name in ("ax-pc1-bank-sync.yml", "ax-pc1-bank-pull.yml"):

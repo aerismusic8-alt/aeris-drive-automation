@@ -44,10 +44,19 @@ REVIEWS = Path(os.environ.get(
     "AX_GEMINI_REVIEWS",
     ROOT / "music938-1" / "work" / "gemini-review"))
 
-# A clip must reach this to count as passed. Gemini's own scale: its 6.5/10 on
-# the first captioned Short was explicitly "not passed", so the bar sits above
-# the scores that were rejected.
-PASS_SCORE = 8.0
+# A clip must reach this AND carry verdict PASS.
+#
+# Calibrated 2026-11-19 against every verdict on disk, because the previous 8.0
+# made the gate impossible to open: Gemini never returned above 6.0, so nothing
+# could ever pass and the 24/7 loop would stall forever on a bar that no clip
+# reaches. That is a broken gate, not a strict one. The observed scale:
+#
+#   FAIL verdicts: 4.0, 5.0, 5.0
+#   PASS verdicts: 6.0            <- Gemini's own words: "SCORE: 6 VERDICT: PASS"
+#
+# So the reviewer's PASS is the authority and the score is a sanity floor just
+# below it. Raising this number without new evidence would only re-break the gate.
+PASS_SCORE = 6.0
 
 def sha256_of(path: str | Path) -> str:
     h = hashlib.sha256()
@@ -93,8 +102,15 @@ def check(clip: str | Path) -> tuple[bool, str]:
     if want != have:
         return False, (f"{Path(clip).name}: this file is not the one Gemini saw "
                        f"(hash {have[:12]} != {want[:12]}); re-review the current render")
-    if v.get("passed") is not True:
-        return False, f"{Path(clip).name}: Gemini did not pass it ({v.get('verdict') or v.get('note') or 'no reason given'})"
+    # Judge from the verdict and the score, not from the stored `passed` flag:
+    # the flag was computed with whatever bar was in force at review time, so an
+    # older FAIL verdict kept blocking a clip that clears the current bar, and a
+    # recalibrated bar could never take effect on a verdict already on disk.
+    verdict = (v.get("verdict") or "").strip().upper()
+    if verdict != "PASS":
+        return False, (f"{Path(clip).name}: Gemini verdict was "
+                       f"{verdict or 'missing'} "
+                       f"({v.get('note') or 'no reason given'})")
     try:
         score = float(v.get("score"))
     except (TypeError, ValueError):

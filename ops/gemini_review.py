@@ -135,19 +135,16 @@ def caption_lines(path: str | Path) -> tuple[int, str]:
     return total, ("stream" if total else "none")
 
 
-def _fingerprint(path: Path, size: int = 8) -> int:
-    """64-bit difference hash of a frame, so two samples of one still match."""
+def _gray(path: Path) -> "np.ndarray":
+    """A small grayscale copy of a frame, for comparing frames."""
+    import numpy as np  # noqa: PLC0415
     from PIL import Image  # noqa: PLC0415
 
     with Image.open(path) as im:
-        g = im.convert("L").resize((size + 1, size), Image.LANCZOS)
-    px = list(g.getdata())
-    bits = 0
-    for row in range(size):
-        for col in range(size):
-            i = row * (size + 1) + col
-            bits = (bits << 1) | (px[i] > px[i + 1])
-    return bits
+        return np.asarray(im.convert("L").resize((64, 114)), dtype=np.float32)
+
+
+SHOT_JUMP = 40.0   # mean-abs-difference between frames of different shots
 
 
 def _shot_ids(files: list[Path]) -> list[int]:
@@ -157,14 +154,21 @@ def _shot_ids(files: list[Path]) -> list[int]:
     not a repeated shot — but a contact sheet cannot show that, and Gemini read
     the pair as a duplicate and marked the clip down. Grouping gives each cell a
     shot number, and the prompt says a shared number is one continuous shot.
+
+    A per-pixel difference beats a hash here: the render keeps zooming inside a
+    still, and that tiny drift moves every hash bit at once, so a hash split one
+    shot into four. Measured on a real clip, two samples of one still differ by
+    ~22 and two different stills by ~68, so the cut is unambiguous.
     """
+    import numpy as np  # noqa: PLC0415
+
     ids, cur, prev = [], 0, None
     for f in files:
-        h = _fingerprint(f)
-        if prev is not None and bin(h ^ prev).count("1") > 6:
+        g = _gray(f)
+        if prev is not None and float(np.abs(g - prev).mean()) > SHOT_JUMP:
             cur += 1
         ids.append(cur)
-        prev = h
+        prev = g
     return ids
 
 
@@ -187,8 +191,7 @@ def build_sheet(clip: str | Path, out: Path) -> Path:
             # with "could not extract any frame". Fall back to the first frame.
             _run(["ffmpeg", "-hide_banner", "-loglevel", "error", "-ss",
                   f"{seek:.2f}", "-i", str(clip), "-frames:v", "1", "-vf",
-                  f"scale={SHEET_WIDTH}:-2,drawtext=text='{t:.1f}s':x=8:y=8:"
-                  f"fontsize=26:fontcolor=white:box=1:boxcolor=black@0.6",
+                  f"scale={SHEET_WIDTH}:-2",
                   str(f)])
             if f.exists():
                 break
@@ -199,16 +202,18 @@ def build_sheet(clip: str | Path, out: Path) -> Path:
         raise SystemExit("could not extract any frame from the clip")
     shots = _shot_ids(files)
     rows = (len(files) + SHEET_COLS - 1) // SHEET_COLS
-    # Write the shot id into each cell. Two samples of one held still are not a
-    # repeated shot, but a contact sheet cannot say that: on 2026-11-19 Gemini
+    # Add a caption BAR under each frame. Two samples of one held still are not
+    # a repeated shot, but a contact sheet cannot say that: on 2026-11-19 Gemini
     # failed a correct clip for "ช็อตซ้ำ" at 15.5s and 19.0s when both were the
-    # same 5-second still. Labelling the shot makes the difference visible
-    # instead of leaving Gemini to guess.
+    # same 5-second still. The label goes on a black bar, never on the picture,
+    # because text drawn over the pixels made Gemini warn about burned-in timecode
+    # and about legibility -- two findings that were about the sheet, not the clip.
     for f, sid, t in zip(files, shots, labels):
         tagged = tmp / f"tag-{f.name}"
         _run(["ffmpeg", "-hide_banner", "-loglevel", "error", "-i", str(f),
-              "-vf", (f"drawtext=text='SHOT {sid} · {t:.1f}s':x=8:y=40:"
-                      f"fontsize=24:fontcolor=yellow:box=1:boxcolor=black@0.7"),
+              "-vf", (f"pad=iw:ih+46:0:0:black,"
+                      f"drawtext=text='SHOT {sid}   {t:.1f}s':x=8:y=h-38:"
+                      f"fontsize=26:fontcolor=white"),
               "-frames:v", "1", str(tagged)])
         if tagged.exists():
             files[files.index(f)] = tagged

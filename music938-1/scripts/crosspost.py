@@ -974,6 +974,11 @@ def post_tiktok(page, video: Path, text: str) -> str | None:
     # K (2026-11-17): nothing below the channel floor may be uploaded anywhere.
     import clip_standard  # noqa: E402  (ops/ is on sys.path)
     clip_standard.assert_ok(str(video))
+    # K (2026-11-19): "คลิปต้องผ่านระบบqcก่อนนะ". The floor proves the file is
+    # well-formed; only the Gemini verdict speaks to the content, and this
+    # browser route was gating just the container.
+    import gemini_gate  # noqa: E402  (ops/ is on sys.path)
+    gemini_gate.assert_ok(str(video))
     page.goto(PLATFORMS["tiktok"]["upload"], wait_until="domcontentloaded", timeout=60000)
     page.wait_for_timeout(4000)
     if not _signed_in(page):
@@ -1017,6 +1022,11 @@ def post_facebook(page, video: Path, text: str) -> str | None:
     # K (2026-11-17): nothing below the channel floor may be uploaded anywhere.
     import clip_standard  # noqa: E402  (ops/ is on sys.path)
     clip_standard.assert_ok(str(video))
+    # K (2026-11-19): "คลิปต้องผ่านระบบqcก่อนนะ". The floor proves the file is
+    # well-formed; only the Gemini verdict speaks to the content, and this
+    # browser route was gating just the container.
+    import gemini_gate  # noqa: E402  (ops/ is on sys.path)
+    gemini_gate.assert_ok(str(video))
     page.goto(PLATFORMS["facebook"]["upload"], wait_until="domcontentloaded", timeout=60000)
     page.wait_for_timeout(7000)
     if not _signed_in(page):

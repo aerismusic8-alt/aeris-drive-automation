@@ -188,6 +188,10 @@ def post_video(video: Path, caption: str, *, allow_private: bool = False) -> str
     # K (2026-11-17): nothing below the channel floor may be uploaded anywhere.
     import clip_standard  # noqa: E402  (same directory)
     clip_standard.assert_ok(str(video))
+    # K (2026-11-19): "คลิปต้องผ่านระบบqcก่อนนะ" — the floor measures the file,
+    # not the content, so the Gemini verdict is checked here too.
+    import gemini_gate  # noqa: E402  (same directory)
+    gemini_gate.assert_ok(str(video))
 
     size = video.stat().st_size
     chunks = max(1, (size + CHUNK - 1) // CHUNK)

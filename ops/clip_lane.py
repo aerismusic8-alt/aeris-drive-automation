@@ -168,6 +168,44 @@ def _hamming(a: int, b: int) -> int:
     return bin(a ^ b).count("1")
 
 
+MIN_CROP_WIDTH = 1000   # below this the 9:16 crop is upscaled and goes soft
+
+
+def _crop_width(path: Path) -> int:
+    """Width of the 9:16 picture this file yields, in pixels."""
+    from PIL import Image  # noqa: PLC0415
+
+    with Image.open(path) as im:
+        w, h = im.size
+    return int(h * W / H) if w / h > W / H else w
+
+
+def _sharpness(path: Path) -> float:
+    """Variance of the Laplacian on the 9:16 crop: higher is crisper.
+
+    Gemini named "เกรน/นอยส์ค่อนข้างเยอะในฉากมืด" on every version of the clip.
+    The bank's night photos are grainy, and a noisy source plus an upscale reads
+    as a bad clip no matter how good the edit is. Measuring the crop lets the
+    lane pick the cleaner frame instead of trusting the query alone.
+    """
+    import numpy as np  # noqa: PLC0415
+    from PIL import Image  # noqa: PLC0415
+
+    with Image.open(path) as im:
+        im = im.convert("RGB")
+        w, h = im.size
+        if w / h > W / H:
+            nw = int(round(h * W / H))
+            im = im.crop(((w - nw) // 2, 0, (w - nw) // 2 + nw, h))
+        else:
+            nh = int(round(w * H / W))
+            im = im.crop((0, (h - nh) // 2, w, (h - nh) // 2 + nh))
+        a = np.asarray(im.convert("L").resize((270, 480)), dtype=np.float32)
+    lap = (a[1:-1, :-2] + a[1:-1, 2:] + a[:-2, 1:-1] + a[2:, 1:-1]
+           - 4 * a[1:-1, 1:-1])
+    return float(lap.var())
+
+
 def bank_stills(query: str, want: int, seed: int, log=print) -> list[dict]:
     """Pick stills for a query from the committed manifest, fetching what is packed.
 
@@ -189,6 +227,11 @@ def bank_stills(query: str, want: int, seed: int, log=print) -> list[dict]:
     for r in rows:
         p = BANK_IMG / Path(r["file"]).name
         if not p.exists() and not _materialise(r, urls, log=log):
+            continue
+        # A crop narrower than the frame is upscaled to fill 1080x1920, and that
+        # upscale is what reads as soft and noisy. Skip such a candidate while
+        # enough sharp ones remain.
+        if len(picked) < want and _crop_width(p) < MIN_CROP_WIDTH:
             continue
         h = _dhash(p)
         # Two frames of the same corner of the same street are the same picture
@@ -320,9 +363,15 @@ def render(song: str, query: str, seconds: float, seed: int, out_dir: Path,
         n = len(stills)
         parts = []
         for i in range(n):
+            # Cover-crop straight to the frame, then let zoompan push in. The old
+            # chain pre-scaled to 2x and cropped that, which turned a 1920x1280
+            # landscape into a 720-wide 9:16 strip blown up 3x -- the noise and
+            # softness Gemini reported on every night clip. Lanczos keeps a
+            # genuine upscale clean when the bank has nothing larger.
             parts.append(
-                f"[{i + 1}:v]scale={W * 2}:{H * 2}:force_original_aspect_ratio=increase,"
-                f"crop={W * 2}:{H * 2},zoompan=z='min(zoom+0.0006,1.12)':"
+                f"[{i + 1}:v]scale={W}:{H}:force_original_aspect_ratio=increase:"
+                f"flags=lanczos,crop={W}:{H},"
+                f"zoompan=z='min(zoom+0.0006,1.12)':"
                 f"x='iw/2-(iw/zoom/2)':y='ih/2-(ih/zoom/2)':d={int(per * FPS)}:"
                 f"s={W}x{H}:fps={FPS},setsar=1[v{i}]")
         chain = "".join(f"[v{i}]" for i in range(n)) + f"concat=n={n}:v=1:a=0[base]"
