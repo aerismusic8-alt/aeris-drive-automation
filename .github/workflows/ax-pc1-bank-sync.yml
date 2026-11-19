@@ -51,7 +51,7 @@ jobs:
         run: |
           python -m pip install --quiet --disable-pip-version-check requests
 
-      - name: Place the bank on D:
+      - name: "Place the bank on D:"
         shell: powershell
         env:
           AX_GH_TOKEN: ${{ secrets.AX_GH_TOKEN || secrets.GITHUB_TOKEN }}
@@ -62,7 +62,7 @@ jobs:
           python ops/pc1_bank.py push --from-release --limit $env:LIMIT
           if ($LASTEXITCODE -ne 0) { throw "PUSH_EXIT:$LASTEXITCODE" }
 
-      - name: Report what is on D:
+      - name: "Report what is on D:"
         if: always()
         shell: powershell
         run: |

@@ -1,4 +1,4 @@
-name: AX PC1 Bank Pull (ดึงภาพจาก D: มาทำคลิป)
+name: "AX PC1 Bank Pull (ดึงภาพจาก D: มาทำคลิป)"
 
 # The other half of K's 2026-11-19 ask: "ต้องดึงเอามาใช้เป็นวัตถุดิบสร้างคลิปได้ด้วยนะ"
 # — the bank on PC1 has to come back out as clip material.
@@ -42,7 +42,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Select stills from the bank on D:
+      - name: "Select stills from the bank on D:"
         shell: powershell
         env:
           QUERY: ${{ github.event.inputs.query }}
