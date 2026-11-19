@@ -1,4 +1,4 @@
-name: AX PC1 Bank Sync (คลังภาพลง D:)
+name: "AX PC1 Bank Sync (bank to D:)"
 
 # K (2026-11-19): "เอาลงไปคลัง pc1 แล้วต้องดึงเอามาใช้เป็นวัตถุดิบสร้างคลิปได้ด้วยนะ"
 #
@@ -58,7 +58,7 @@ jobs:
           LIMIT: ${{ github.event.inputs.limit || '50' }}
         run: |
           $ErrorActionPreference = 'Stop'
-          if (-not $env:AX_GH_TOKEN) { throw "no token — refusing to claim a sync that cannot read the release" }
+          if (-not $env:AX_GH_TOKEN) { throw "no token set: a sync without one cannot read the release" }
           python ops/pc1_bank.py push --from-release --limit $env:LIMIT
           if ($LASTEXITCODE -ne 0) { throw "PUSH_EXIT:$LASTEXITCODE" }
 
