@@ -1,0 +1,63 @@
+name: AX PC1 Bank Pull (ดึงภาพจาก D: มาทำคลิป)
+
+# The other half of K's 2026-11-19 ask: "ต้องดึงเอามาใช้เป็นวัตถุดิบสร้างคลิปได้ด้วยนะ"
+# — the bank on PC1 has to come back out as clip material.
+#
+# The sandbox has no route to D:, so this runs on PC1, selects stills by query,
+# and hands them out as an artifact. `ops/pc1_bank.py fetch` in the sandbox takes
+# the newest successful run's artifact, so the clip build is one command:
+#
+#     python3 ops/pc1_bank.py fetch --out work/stills
+#
+# Every file arrives with `selection.json`, which carries licence, credit and the
+# source URL per still. A clip that uses these must show attribution; keeping it
+# beside the pixels is what makes that possible rather than forgotten.
+
+on:
+  workflow_dispatch:
+    inputs:
+      query:
+        description: "what the clip needs (matches title/query/origin)"
+        required: true
+        default: "bangkok night"
+      want:
+        description: "how many stills"
+        default: "12"
+      seed:
+        description: "shuffle seed, so two runs can differ"
+        default: "7"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ax-pc1-bank-pull
+  cancel-in-progress: true
+
+jobs:
+  pull:
+    runs-on: [self-hosted, Windows, X64]
+    timeout-minutes: 30
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Select stills from the bank on D:
+        shell: powershell
+        env:
+          QUERY: ${{ github.event.inputs.query }}
+          WANT: ${{ github.event.inputs.want || '12' }}
+          SEED: ${{ github.event.inputs.seed || '7' }}
+        run: |
+          $ErrorActionPreference = 'Stop'
+          python ops/pc1_bank.py pull --query $env:QUERY --want $env:WANT --seed $env:SEED --out out
+          if ($LASTEXITCODE -ne 0) { throw "PULL_EXIT:$LASTEXITCODE" }
+          Get-ChildItem out | Select-Object Name, Length | Format-Table -AutoSize
+
+      - name: Hand the stills to the sandbox
+        uses: actions/upload-artifact@v4
+        with:
+          name: bank-stills
+          path: out/
+          retention-days: 14
+          if-no-files-found: error

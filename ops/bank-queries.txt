@@ -72,3 +72,293 @@ minimal empty room light
 window rain condensation
 shattered glass abstract
 paint splash abstract colour
+
+# --- wide sweeps (K 2026-11-19: 5,000 images first) ----------------------
+# Measured: 4-word AND queries keep ~12 hits, 2-word queries keep ~40-47.
+# Keep these short on purpose; a long query is a narrow query.
+bangkok night
+bangkok street
+bangkok rain
+bangkok traffic
+thailand temple
+thailand beach
+thailand market
+thailand street
+thailand village
+thailand mountain
+chiang mai
+phuket
+pattaya
+ayutthaya
+sukhothai
+kanchanaburi
+krabi
+koh samui
+chiang rai
+udon thani
+khon kaen
+hat yai
+night market
+street food
+thai food
+thai cooking
+thai dance
+thai music
+thai boxing
+thai wedding
+thai monk
+thai boat
+thai rice
+thai farm
+thai buffalo
+thai elephant
+thai temple fair
+thai lantern
+thai fireworks
+thai river
+thai canal
+thai bridge
+thai train
+thai bus
+thai taxi
+thai tuk tuk
+thai motorcycle
+thai bicycle
+thai shop
+thai house
+thai apartment
+thai school
+thai hospital
+thai airport
+thai stadium
+thai pool
+thai gym
+neon sign
+neon light
+neon night
+wet asphalt
+rain street
+rain window
+rain umbrella
+storm cloud
+lightning storm
+fog street
+mist morning
+sunset city
+sunrise city
+golden hour
+blue hour
+night sky
+star trail
+moon night
+cloudscape
+skyline night
+city lights
+traffic light
+street lamp
+headlight night
+concert stage
+concert crowd
+live music
+band stage
+guitar player
+drum kit
+microphone stage
+dj booth
+dance floor
+disco ball
+strobe light
+smoke stage
+crowd hands
+festival crowd
+party night
+wedding party
+bar counter
+cocktail bar
+coffee shop
+cafe window
+restaurant night
+kitchen cooking
+street vendor
+food grill
+steam food
+noodle soup
+fruit market
+flower market
+fish market
+spice market
+textile market
+clothes shop
+book shop
+record shop
+vinyl record
+cassette tape
+turntable
+old radio
+television static
+computer screen
+phone screen
+camera lens
+film camera
+photo album
+letter writing
+paper texture
+concrete wall
+brick wall
+graffiti wall
+rust metal
+wood grain
+fabric fold
+water ripple
+water splash
+fire spark
+candle light
+lantern light
+window light
+door light
+shadow wall
+staircase light
+corridor light
+empty room
+abandoned building
+rooftop view
+balcony view
+bridge night
+tunnel light
+underpass night
+parking garage
+elevator light
+escalator
+skytrain
+subway station
+bus stop
+train station
+platform night
+railway track
+harbour night
+pier night
+boat night
+fishing boat
+cargo ship
+container yard
+crane night
+factory night
+power line
+wind turbine
+solar panel
+rice terrace
+palm tree
+banana leaf
+tropical plant
+moss stone
+rock texture
+sand texture
+sea wave
+beach sunset
+coral reef
+underwater light
+waterfall
+river rapid
+lake mist
+mountain fog
+forest path
+jungle leaf
+bamboo forest
+rainforest
+desert dune
+snow mountain
+glacier
+volcano
+cave light
+cliff edge
+field grass
+wheat field
+flower field
+sunflower
+lotus pond
+garden night
+greenhouse
+farmer field
+buffalo field
+village road
+country road
+highway night
+truck road
+car night
+car rain
+motorcycle rain
+scooter street
+rickshaw
+bicycle city
+skateboard street
+runner night
+football field
+basketball court
+swimming pool
+boxing gym
+muay thai
+weight lifting
+yoga studio
+portrait light
+portrait shadow
+face close
+hands close
+eye close
+silhouette light
+shadow figure
+reflection mirror
+glass reflection
+window reflection
+puddle reflection
+bokeh light
+light leak
+motion blur
+long exposure
+double exposure
+abstract colour
+paint splash
+ink water
+smoke abstract
+dust light
+sparkler night
+fireworks night
+confetti
+balloon sky
+kite sky
+paper plane
+origami
+clock face
+map paper
+compass
+key old
+lock old
+rope knot
+net fishing
+basket weave
+pottery clay
+silk weave
+embroidery
+tattoo arm
+jewellery gold
+amulet thai
+incense smoke
+offering flower
+monk alms
+temple bell
+buddha statue
+stupa temple
+mural temple
+teak house
+wooden boat
+bamboo bridge
+floating market
+longtail boat
+kathoey cabaret
+songkran water
+loy krathong
+yi peng
+vegetarian festival
+buffalo race
+boat race
+cockfight
+kite fight

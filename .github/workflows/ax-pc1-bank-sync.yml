@@ -1,0 +1,76 @@
+name: AX PC1 Bank Sync (คลังภาพลง D:)
+
+# K (2026-11-19): "เอาลงไปคลัง pc1 แล้วต้องดึงเอามาใช้เป็นวัตถุดิบสร้างคลิปได้ด้วยนะ"
+#
+# The image bank's working copy lives on PC1's D: drive. The sandbox cannot reach
+# D: (no route, and the PC1 MCP endpoint answers 401), so the move happens where
+# the disk is: this workflow runs *on* PC1, reads the committed manifest, and
+# extracts the shards from the `media-938` release straight onto D:.
+#
+# Why the release is the carrier and not a direct upload: the sandbox and PC1
+# share no filesystem, but both can reach GitHub. The release is already the
+# bank's off-site copy, so this adds a hop without adding a store.
+#
+# Resumable by design: `ops/pc1_bank.py push` writes a marker per shard recording
+# the release size, so a tick after a partial run skips what is already on D:
+# instead of re-downloading a multi-GB bank. The bank only grows, so a full sync
+# happens once and later ticks only fetch the new shards.
+#
+# Labels: `self-hosted` alone resolves to DESKTOP-RGK6JKB, which went offline on
+# 2026-11-19 and queues forever. `PC1-AERIS` is the runner that is online, and its
+# advertised labels are exactly these three.
+
+on:
+  schedule:
+    # After the bank rail's own ticks (':20 */4'), so a new shard is usually
+    # already in the release when this runs.
+    - cron: '50 */4 * * *'
+  workflow_dispatch:
+    inputs:
+      limit:
+        description: "max shards to place this run"
+        default: "50"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ax-pc1-bank-sync
+  cancel-in-progress: false
+
+jobs:
+  sync:
+    runs-on: [self-hosted, Windows, X64]
+    timeout-minutes: 90
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Python deps
+        shell: powershell
+        run: |
+          python -m pip install --quiet --disable-pip-version-check requests
+
+      - name: Place the bank on D:
+        shell: powershell
+        env:
+          AX_GH_TOKEN: ${{ secrets.AX_GH_TOKEN || secrets.GITHUB_TOKEN }}
+          LIMIT: ${{ github.event.inputs.limit || '50' }}
+        run: |
+          $ErrorActionPreference = 'Stop'
+          if (-not $env:AX_GH_TOKEN) { throw "no token — refusing to claim a sync that cannot read the release" }
+          python ops/pc1_bank.py push --from-release --limit $env:LIMIT
+          if ($LASTEXITCODE -ne 0) { throw "PUSH_EXIT:$LASTEXITCODE" }
+
+      - name: Report what is on D:
+        if: always()
+        shell: powershell
+        run: |
+          $bank = if ($env:AX_PC1_BANK) { $env:AX_PC1_BANK } else { 'D:\AX-bank' }
+          if (Test-Path $bank) {
+            $files = Get-ChildItem -Path $bank -Recurse -File -ErrorAction SilentlyContinue
+            $mb = [math]::Round((($files | Measure-Object -Property Length -Sum).Sum)/1MB,1)
+            "BANK=$bank files=$($files.Count) size=${mb}MB"
+            $d = Get-PSDrive D -ErrorAction SilentlyContinue
+            if ($d) { "D: free={0}GB used={1}GB" -f [math]::Round($d.Free/1GB,1), [math]::Round($d.Used/1GB,1) }
+          } else { "BANK=$bank MISSING" }
