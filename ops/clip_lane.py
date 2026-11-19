@@ -48,10 +48,14 @@ ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / "ops"))
 sys.path.insert(0, str(ROOT / "music938-1" / "scripts"))
 
+# Clips built from the bank live in their own namespace. `library/shorts` is the
+# posting queue, and `crosspost._slug_of` derives a lyrics slug from every
+# `short-*.mp4` name there -- a bank clip has no lyric timing, so putting it in
+# that directory would make the queue look for lyrics that do not exist.
 MANIFEST = ROOT / "music938-1" / "library" / "stock" / "manifest.json"
 BANK_IMG = ROOT / "music938-1" / "library" / "stock" / "img"
 MUSIC = ROOT / "aeris938-1" / "library" / "music"
-OUT = ROOT / "music938-1" / "library" / "shorts"
+OUT = ROOT / "music938-1" / "library" / "bank"
 FONT = ROOT / "music938-1" / "fonts" / "NotoSansThai.ttf"
 
 REPO = "aerismusic8-alt/aeris-drive-automation"
@@ -244,7 +248,7 @@ def render(song: str, query: str, seconds: float, seed: int, out_dir: Path,
 
     brand = _branding()
     out_dir.mkdir(parents=True, exist_ok=True)
-    out = out_dir / f"short-bank-{song}-{query.replace(' ', '-')}.mp4"
+    out = out_dir / f"bank-{song}-{query.replace(' ', '-')}.mp4"
 
     with tempfile.TemporaryDirectory() as td:
         td = Path(td)

@@ -6780,6 +6780,18 @@ def test_clip_lane_is_its_own_job() -> None:
           "below the clip floor, deleted" in Path(cl.__file__).read_text(encoding="utf-8"))
     check("the lane renders the vertical profile", cl.W == 1080 and cl.H == 1920)
 
+    # A bank clip has no lyric timing, so it must not land in `library/shorts`:
+    # `crosspost._slug_of` derives a lyrics slug from every `short-*.mp4` there,
+    # and a clip in that directory crashed the whole suite on 2026-11-19 looking
+    # for lyrics that cannot exist.
+    check("bank clips live outside the posting queue",
+          cl.OUT.name == "bank" and cl.OUT.parent.name == "library",
+          str(cl.OUT.relative_to(ROOT.parent)))
+    check("a bank clip is not named like a lyric Short",
+          not cl.OUT.name.startswith("short-"))
+    check("rendered clips are gitignored (they ride the release)",
+          "library/bank/" in (ROOT.parent / ".gitignore").read_text(encoding="utf-8"))
+
     # A bare runner: no music on disk, no pixels on disk. Both must be reachable.
     src = Path(cl.__file__).read_text(encoding="utf-8")
     check("audio falls back to the release", "releases/download" in src)

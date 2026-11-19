@@ -15,6 +15,8 @@ aeris938-1/work/
 aeris938-1/library/img/*.png
 aeris938-1/library/img/*.jpg
 aeris938-1/library/music/*.mp3
+# Bank clips are rendered, not source: they ride the media-938 release.
+music938-1/library/bank/
 aeris938-1/library/covers/*.png
 !aeris938-1/library/*/manifest.json
 
