@@ -1,0 +1,99 @@
+name: AX Generative Art (งานศิลป์คำนวณ)
+
+# Renders original, print-resolution generative art every day and parks it in the
+# durable media release.
+#
+# K (2026-11-19): "สร้างงานคุณภาพสูงด้วยโค้ดเอง — generative art แบบ algorithmic
+# ที่ขายได้จริงและไม่ต้องพึ่ง API ใดๆ".
+#
+# Why this can be sold, and a downloaded image cannot:
+#   * every pixel is arithmetic over a seeded PRNG in `ops/genart.py`, so the
+#     copyright is ours outright — no model terms, no stock licence, no credit;
+#   * each work is `(algorithm, palette, seed)` and reproducible, so a listing
+#     can honestly say "edition 1/1, seed 4242" and rebuild it on demand;
+#   * 4096 px at a 300 DPI tag = 13.7 in, which is what a print shop needs.
+#
+# The rail advances a committed counter, so every day's seeds are new and no
+# work is ever re-rendered by accident. A re-run of the same tick is therefore a
+# no-op rather than a duplicate.
+#
+# Free only (Rule #1): numpy and Pillow, no API, no key, no credits.
+
+on:
+  schedule:
+    # 05:40 UTC — ahead of the 08:05 release rail, so a render never competes
+    # with the day's uploads for a runner or for API quota.
+    - cron: '40 5 * * *'
+  workflow_dispatch:
+    inputs:
+      count:
+        description: "works to render this run"
+        default: "4"
+      algo:
+        description: "one algorithm, or 'mix'"
+        default: "mix"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: ax-genart
+  cancel-in-progress: false
+
+jobs:
+  render:
+    runs-on: ubuntu-latest
+    timeout-minutes: 180
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Python deps
+        run: |
+          set -euo pipefail
+          python3 -m pip install --quiet --disable-pip-version-check Pillow numpy
+
+      - name: Render today's works
+        env:
+          COUNT: ${{ github.event.inputs.count || '4' }}
+          ALGO: ${{ github.event.inputs.algo || 'mix' }}
+        run: |
+          set -uo pipefail
+          python3 ops/genart_plan.py --count "$COUNT" --algo "$ALGO"
+
+      - name: Gate every work before it can ship
+        run: |
+          set -uo pipefail
+          # The same floor `genart.py check` enforces: 1600 px, not flat, enough
+          # tones. `make` already runs it per file, so a failure here means the
+          # manifest and the disk disagree — never something to publish.
+          python3 ops/genart.py check "music938-1/library/art/**/*.png"
+
+      - name: Pack + upload a shard, free the runner's disk
+        env:
+          AX_GH_TOKEN: ${{ secrets.AX_GH_TOKEN }}
+        run: |
+          set -uo pipefail
+          if [ -z "${AX_GH_TOKEN:-}" ]; then
+            echo "::warning::no AX_GH_TOKEN — shard upload skipped, works kept for the next tick"
+            exit 0
+          fi
+          python3 ops/genart.py shard \
+            || echo "::warning::shard upload failed — works kept for the next tick"
+
+      - name: Report
+        run: python3 ops/genart.py stats
+
+      - name: Commit the manifest and the counter
+        run: |
+          set -euo pipefail
+          git config user.name  "ax-genart"
+          git config user.email "ax-genart@users.noreply.github.com"
+          git add music938-1/library/art/manifest.json music938-1/library/art/counter.json
+          if git diff --cached --quiet; then
+            echo "no change to record"
+            exit 0
+          fi
+          git commit -m "data(art): generative art $(date -u +%Y-%m-%dT%H:%MZ)"
+          git pull --rebase --autostash origin "${GITHUB_REF_NAME}"
+          git push

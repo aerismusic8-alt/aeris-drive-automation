@@ -26,6 +26,7 @@ import make_karaoke  # noqa: E402
 import make_song  # noqa: E402
 import music  # noqa: E402
 import audio  # noqa: E402
+import genres  # noqa: E402
 import tts  # noqa: E402
 
 import numpy as np  # noqa: E402
@@ -7327,6 +7328,186 @@ def test_ax_team_is_well_formed() -> None:
         check(f"README lists {path.stem}", path.stem in readme)
 
 
+
+def test_image_bank_is_a_library_not_a_cache() -> None:
+    """K (2026-11-19): "ภาพสร้างเข้าคลังไว้เลยสิ ... แล้วค่อยไปดึงมาใช้ไง".
+
+    The point of the bank is that a picture is paid for once. Two properties
+    pin it: a pick is free and advances the use counter, and a lane is filled
+    from its own beats so a second fill extends the bank instead of duplicating
+    the first six pictures.
+    """
+    import image_library as bank
+
+    check("bank has one prompt per active lane",
+          set(bank.GENRE_PROMPTS) == {g["id"] for g in genres.active()},
+          f"prompts={sorted(bank.GENRE_PROMPTS)}")
+
+    doc = bank.load()
+    for row in doc["images"]:
+        check(f"{row['id']} keeps its prompt", bool(row.get("prompt")))
+        check(f"{row['id']} is under its lane", row["file"].startswith(row["genre"] + "/"))
+
+    # pick() must never generate and never need the network.
+    before = {r["id"]: r.get("uses", 0) for r in bank.load()["images"]}
+    got = bank.pick("rock", 2, shuffle=False, mark=True)
+    check("pick returns files that exist", all(q.exists() for q in got), str(got))
+    after = {r["id"]: r.get("uses", 0) for r in bank.load()["images"]}
+    check("pick advances the use counter",
+          any(after[k] == before[k] + 1 for k in after if k in before))
+    # ...and is least-used-first, so the next song does not reuse the same images.
+    order = sorted(before, key=lambda k: (before[k], k))
+    check("pick prefers the least-used images",
+          [q.stem for q in got] == [k for k in order if (bank.LIB / f"rock/{k}.png").exists()][:2],
+          f"got={[q.stem for q in got]}")
+
+    # A dry-run fill must propose only beats the lane has not used yet.
+    lanes = {r["genre"]: {x["beat"] for x in doc["images"] if x["genre"] == r["genre"]}
+             for r in doc["images"]}
+    for lane, used in lanes.items():
+        check(f"{lane} reuses no beat", len(used) == sum(1 for r in doc["images"]
+                                                        if r["genre"] == lane))
+
+    src = Path(bank.__file__).read_text(encoding="utf-8")
+    check("fill refuses to spend past the balance", "have < need" in src)
+    check("a bank image is durable, not a cache", "NOT re-generatable" in
+          (ROOT.parent / ".gitignore").read_text(encoding="utf-8"))
+
+
+def test_stock_bank_scales_and_stays_licensed() -> None:
+    """The bank is built to reach 100k images (K, 2026-11-19).
+
+    Three properties make that possible and must not regress:
+      * only sources that return photographs — a museum API answered every query
+        with paintings, and 37 of the first 60 images were unusable artwork;
+      * every row carries a licence we may monetise, and the credit to show;
+      * a shard is the durable copy, so the manifest is complete even when the
+        local files are gone — that is what lets a 12 GB pod hold a 30 GB bank.
+    """
+    import image_bank
+
+    check("bank keeps only photo sources",
+          image_bank.PHOTO_SOURCES == ("Wikimedia Commons", "Openverse", "NASA"))
+    paintings = [{"origin": "Art Institute of Chicago"}, {"origin": "Cleveland Museum"}]
+    check("museum artwork is rejected",
+          image_bank.photo_only(paintings) == [])
+    check("a Commons photo is kept",
+          len(image_bank.photo_only([{"origin": "Wikimedia Commons"}])) == 1)
+
+    # The licence gate is still stills_rail's, not a second copy that could drift.
+    import stills_rail
+    check("licence gate is shared with stills_rail",
+          "stills_rail.OK_LICENCE" in Path(image_bank.__file__).read_text(encoding="utf-8"))
+
+    doc = image_bank.load()
+    rows = doc.get("images", [])
+    if rows:
+        check("every row is a commercial-use licence",
+              all(stills_rail.OK_LICENCE.search(r.get("licence", ""))
+                  and not stills_rail.BAD_LICENCE.search(r.get("licence", ""))
+                  for r in rows))
+        check("every row records its source page",
+              all(r.get("source") for r in rows))
+        check("every row is at least 1080 px wide",
+              all(r.get("w", 0) >= 1080 for r in rows))
+        # A shard row has no local file on purpose; that is the design.
+        check("sharded rows are recorded in a shard entry",
+              all(r["shard"] in {s["name"] for s in doc.get("shards", [])}
+                  for r in rows if r.get("shard")))
+
+    src = Path(image_bank.__file__).read_text(encoding="utf-8")
+    check("harvest resumes from a stored offset", "cursors" in src)
+    check("a shard is uploaded then deleted", ".unlink(missing_ok=True)" in src)
+    check("shard size stays under the asset cap", "SHARD_MAX" in src)
+
+    # The rail must exist and must not carry a push trigger (it races itself).
+    rail = ROOT.parent / ".github" / "workflows" / "ax-image-bank.yml"
+    check("the bank has a rail", rail.exists())
+    if rail.exists():
+        text = rail.read_text(encoding="utf-8")
+        check("the rail runs on a schedule", "schedule:" in text and "cron:" in text)
+        check("the rail does not trigger on push", "\n  push:" not in text)
+        check("the rail commits the manifest", "stock/manifest.json" in text)
+
+    # Picking is free: it must not touch the network or a generator.
+    pick_src = Path(ROOT.parent / "ops" / "image_library.py").read_text(encoding="utf-8")
+    check("pick falls back to the stock bank", "pick_stock" in pick_src)
+
+
+def test_genart_is_original_reproducible_print_art() -> None:
+    """K (2026-11-19): generative art made with our own code, no API, sellable.
+
+    What makes it sellable is not "it looks nice" — it is four properties that a
+    buyer relies on, and each one is asserted here:
+      * the pixels are ours (no download, no model, no third-party licence);
+      * a work is reproducible from (algorithm, palette, seed);
+      * it is big enough to print, with a real DPI tag;
+      * a bad draw cannot enter the library — the gate runs at creation.
+    """
+    import genart
+
+    # 1. Originality: no fetch inside any render path. `shard`/`pull` do use the
+    # network, but only to move a finished file — never to obtain pixels.
+    src = Path(genart.__file__).read_text(encoding="utf-8")
+    for fn in ("alg_warp", "alg_flow", "alg_react", "alg_attr", "alg_tiles"):
+        body = src.split(f"def {fn}(", 1)[1].split("\ndef ", 1)[0]
+        check(f"{fn} downloads nothing",
+              "urllib" not in body and "requests" not in body)
+
+    # 2. Every work states its own provenance.
+    doc = genart.load()
+    works = doc.get("works", [])
+    if works:
+        check("every work records algo/palette/seed",
+              all(w.get("algo") and w.get("palette") and isinstance(w.get("seed"), int)
+                  for w in works))
+        check("every work is marked as ours",
+              all("original" in (w.get("licence") or "") for w in works))
+        check("every work records a content hash",
+              all(len(w.get("sha") or "") >= 12 for w in works))
+
+    # 3. Print resolution: the default size is 4096 px and says 300 DPI.
+    check("the print profile is 4096 px", genart.SIZES["print"] == (4096, 4096))
+    check("the DPI tag is 300", "dpi=(300, 300)" in src)
+
+    # 4. The gate is real, and it runs inside make().
+    check("make() gates before recording", "problems = check(png)" in src)
+    check("make() deletes a work that fails", "png.unlink(missing_ok=True)" in src)
+    check("the gate has a resolution floor", "1600" in src)
+    check("the gate rejects a flat image", '"std"' in src or "std\"] < 8" in src)
+
+    # 5. Reproducible: same seed, same bytes. Rendering twice is the only proof.
+    import tempfile
+    with tempfile.TemporaryDirectory() as td:
+        d = Path(td)
+        a = genart.make("warp", "small", "ash", 4242, "_t", out_dir=d)
+        h1 = __import__("hashlib").sha256(a.read_bytes()).hexdigest()
+        b = genart.make("warp", "small", "ash", 4242, "_t", out_dir=d)
+        h2 = __import__("hashlib").sha256(b.read_bytes()).hexdigest()
+        check("the same seed renders the same picture", h1 == h2)
+    # `make` records into the manifest; drop the probe rows it just added.
+    doc = genart.load()
+    doc["works"] = [w for w in doc.get("works", []) if w.get("series") != "_t"]
+    genart.save(doc)
+
+    # 6. Palettes are curated, so a series is coherent rather than random RGB.
+    check("at least eight curated palettes", len(genart.PALETTES) >= 8)
+    check("each palette has five stops",
+          all(len(v) == 5 for v in genart.PALETTES.values()))
+    check("each palette ends bright",
+          all(sum(v[-1][1]) > sum(v[0][1]) for v in genart.PALETTES.values()))
+
+    # 7. The 24/7 rail exists and commits the counter, not the pixels.
+    rail = ROOT.parent / ".github" / "workflows" / "ax-genart.yml"
+    check("the art rail exists", rail.exists())
+    if rail.exists():
+        text = rail.read_text(encoding="utf-8")
+        check("the rail is scheduled", "cron:" in text)
+        check("the rail does not trigger on push", "\n  push:" not in text)
+        check("the rail gates before shipping", "genart.py check" in text)
+        check("the rail commits the counter", "counter.json" in text)
+
+
 def main() -> int:
     test_lyrics()
     test_tokenizer()
@@ -7451,6 +7632,9 @@ def main() -> int:
     test_risk_audit()
     test_render_workflow_deps()
     test_ax_team_is_well_formed()
+    test_image_bank_is_a_library_not_a_cache()
+    test_stock_bank_scales_and_stays_licensed()
+    test_genart_is_original_reproducible_print_art()
     test_outputs()
     print(f"\n{PASS} passed, {FAIL} failed")
     if FAILURES:

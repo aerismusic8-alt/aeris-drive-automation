@@ -49,6 +49,10 @@ SOURCES = [
     ("ambient", "sampler1-*.wav"),
     ("covers", "*.jpg"),
     ("thumbs", "*.png"),
+    # The AI image bank. These are NOT regenerable on demand — 8 credits each,
+    # and the free credits expire — so they must survive a fresh pod or every
+    # clip pays for the same pictures again.
+    ("scenes", "*/*.png"),
 ]
 
 

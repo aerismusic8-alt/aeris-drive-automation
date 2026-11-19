@@ -134,7 +134,8 @@ def render(scenes: list[Path], out: Path, seconds: float) -> Path:
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__,
                                  formatter_class=argparse.RawDescriptionHelpFormatter)
-    ap.add_argument("--theme", required=True, help="one sentence of visual language")
+    ap.add_argument("--theme", help="one sentence of visual language (needed only when the bank is empty)")
+    ap.add_argument("--genre", help="draw the scenes from this lane of the image bank")
     ap.add_argument("--scenes", type=int, default=4)
     ap.add_argument("--seconds", type=float, default=6.0, help="seconds per scene")
     ap.add_argument("--out", default="work/ai-loop.mp4")
@@ -142,26 +143,45 @@ def main() -> int:
     ap.add_argument("--dry-run", action="store_true", help="print the plan, spend nothing")
     args = ap.parse_args()
 
+    # Reuse first, generate only as a fallback. A clip is not worth 8 credits a
+    # scene when the bank already holds pictures from the same lane.
+    import image_library as bank
+    reused: list[Path] = []
+    if args.genre:
+        reused = bank.pick(args.genre, args.scenes, shuffle=False, mark=True)
+        if reused:
+            print(f"{len(reused)} scene(s) from the bank ({args.genre}), no credits spent")
+    if len(reused) < args.scenes and not args.theme:
+        raise SystemExit(
+            f"bank has {len(reused)} usable image(s) for {args.genre or 'no lane'}; "
+            f"run `python3 ops/image_library.py fill --genre {args.genre}` "
+            "or pass --theme to generate the rest")
+
     beats = [
         "a wide establishing shot", "a low close detail", "a figure turning away",
         "light breaking across the frame", "an empty room after", "the horizon",
     ]
+    missing = args.scenes - len(reused)
     prompts = [f"{args.theme}. {beats[i % len(beats)]}, cinematic, no text, no letters"
-               for i in range(args.scenes)]
+               for i in range(missing)]
 
     if args.dry_run:
+        print(f"reuse {len(reused)}, generate {missing}")
         for p in prompts:
             print("scene:", p)
-        print(f"plan: {args.scenes} scenes x {args.seconds}s, {args.scenes * 8} credits")
+        print(f"plan: {args.scenes} scenes x {args.seconds}s, {missing * 8} credits")
         return 0
 
-    if not args.project_id:
-        raise SystemExit("--project-id or DREAMINA_PROJECT_ID is required")
-    with tempfile.TemporaryDirectory() as td:
-        paths = [_dreamina(p, Path(td) / f"scene{i}.png", args.project_id)
-                 for i, p in enumerate(prompts)]
-        out = Path(args.out)
-        render(paths, out, args.seconds)
+    out = Path(args.out)
+    if missing:
+        if not args.project_id:
+            raise SystemExit("--project-id or DREAMINA_PROJECT_ID is required to generate")
+        with tempfile.TemporaryDirectory() as td:
+            paths = reused + [_dreamina(p, Path(td) / f"scene{i}.png", args.project_id)
+                              for i, p in enumerate(prompts)]
+            render(paths, out, args.seconds)
+    else:
+        render(reused, out, args.seconds)
 
     import clip_standard
     try:

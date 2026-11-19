@@ -1,0 +1,105 @@
+name: AX Image Bank (คลังภาพสะสม)
+
+# Grows the free, licence-clean image bank every few hours and parks it in the
+# durable media release.
+#
+# K (2026-11-19): "เราต้องหาวิธีสร้างภาพความละเอียดสูงสะสมไว้ในคลังเราเยอะๆเลย
+# เป็นแสนรูปเลยก็ได้" and "เราทำสะสมไปเรื่อยๆ".
+#
+# Why a rail and not a one-off run: the bank is only useful if it keeps growing
+# after this pod is gone, and GitHub Actions is the only host that runs 24/7 for
+# free here. The sandbox caps a foreground job at ~18 minutes and its disk is
+# gone on the next recycle.
+#
+# Why Commons and not a generator (measured on this pod, 2026-11-19):
+#   * Commons: 250 images in ~3 min, 1920 px, 130 MB, every file licence-tagged.
+#   * Pollinations free: one 1024x576 JPEG per 45 s per IP.
+#   * Dreamina: 8 expiring credits per picture.
+# At 100k images the first is a day and the others are never. Rule #1 is free
+# only, so the generator routes are out on their own merits anyway.
+#
+# The rail does three things per tick and then exits:
+#   1. harvest a slice (the per-query offset is stored, so runs never overlap),
+#   2. pack what it has into a shard, upload it, and delete the local copy,
+#   3. commit the manifest so the next tick — and a fresh pod — knows the index.
+# A manifest that names a shard but has no local file is a normal state: `pull`
+# brings files back when a clip needs them.
+
+on:
+  schedule:
+    # Every 4 hours. The bank has no deadline, so this is deliberately gentle:
+    # it stays well inside Commons' politeness expectations and inside the free
+    # Actions minutes a public repo gets.
+    - cron: '20 */4 * * *'
+  workflow_dispatch:
+    inputs:
+      want:
+        description: "images to harvest this run"
+        default: "600"
+      per_query:
+        description: "images kept per query per page"
+        default: "40"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: ax-image-bank
+  cancel-in-progress: false
+
+jobs:
+  accumulate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Python deps
+        run: |
+          set -euo pipefail
+          python3 -m pip install --quiet --disable-pip-version-check Pillow requests
+
+      - name: Harvest a slice into the bank
+        env:
+          WANT: ${{ github.event.inputs.want || '600' }}
+          PER_QUERY: ${{ github.event.inputs.per_query || '40' }}
+        run: |
+          set -uo pipefail
+          python3 ops/image_bank.py harvest \
+            --queries ops/bank-queries.txt \
+            --want "$WANT" --per-query "$PER_QUERY" --min-width 1600 --sleep 0.2
+
+      - name: Pack + upload a shard, free the runner's disk
+        env:
+          AX_GH_TOKEN: ${{ secrets.AX_GH_TOKEN }}
+        run: |
+          set -uo pipefail
+          # A missing token must not lose the harvest: the manifest and the
+          # images stay in the workspace, and the commit below still records
+          # them. The next tick with a token shards them.
+          if [ -z "${AX_GH_TOKEN:-}" ]; then
+            echo "::warning::no AX_GH_TOKEN — shard upload skipped, images kept for the next tick"
+            exit 0
+          fi
+          python3 ops/image_bank.py shard \
+            || echo "::warning::shard upload failed — images kept for the next tick"
+
+      - name: Report the bank size
+        run: python3 ops/image_bank.py stats
+
+      - name: Commit the manifest
+        run: |
+          set -euo pipefail
+          git config user.name  "ax-image-bank"
+          git config user.email "ax-image-bank@users.noreply.github.com"
+          # Only the index is tracked; the images themselves live in the release
+          # and are gitignored on purpose (see .gitignore).
+          git add music938-1/library/stock/manifest.json
+          if git diff --cached --quiet; then
+            echo "no change to record"
+            exit 0
+          fi
+          git commit -m "data(bank): image bank $(date -u +%Y-%m-%dT%H:%MZ)"
+          git pull --rebase --autostash origin "${GITHUB_REF_NAME}"
+          git push

@@ -1,0 +1,74 @@
+# Queries for ops/image_bank.py — one per line, English (Commons returns ~0 for Thai).
+#
+# These are the visual ingredients a clip actually needs: places a Thai song can
+# be set in, light and weather, textures, crowds, and the abstract frames that
+# work as a cutaway. The bank grows by adding lines here, not by editing code.
+#
+# Keep them concrete. A query like "music" returns album covers and logos;
+# "live concert stage lights crowd" returns pictures a video can actually use.
+
+# --- the places a Thai song is set in -------------------------------------
+bangkok street night neon
+bangkok skytrain station
+bangkok rooftop skyline sunset
+thailand night market food stall
+thailand temple sunrise
+thailand rice field countryside
+thailand beach longtail boat
+thailand mountain road fog
+chiang mai old city wall
+phuket coastline aerial
+thai motorcycle street traffic
+thai apartment balcony laundry
+thai convenience store night
+thai school uniform students street
+thai boxing ring muay thai
+thai festival lantern
+thai street food grill smoke
+thai river boat pier
+thai train station platform
+thai highway overpass dusk
+
+# --- light, weather, sky ------------------------------------------------
+thunderstorm lightning night
+heavy rain street reflection
+golden hour backlight silhouette
+neon sign reflection wet asphalt
+fog forest morning light
+sunset gradient clouds sky
+night sky stars long exposure
+city lights bokeh night
+smoke stage light beam
+strobe light concert crowd
+
+# --- texture and detail -------------------------------------------------
+concrete wall texture graffiti
+rust metal texture close up
+fabric cloth texture fold
+water surface ripple abstract
+fire sparks embers night
+cassette tape close up
+vinyl record turntable close up
+guitar strings macro
+drum kit close up stage
+microphone stage close up
+
+# --- people and energy --------------------------------------------------
+concert crowd hands raised
+dancer silhouette stage
+skateboarder street dusk
+bicycle rider city dusk
+friends laughing street night
+portrait backlit silhouette
+runner motion blur street
+motorcycle rider helmet road
+
+# --- abstract / cutaway -------------------------------------------------
+light leak film texture
+bokeh abstract colour
+motion blur abstract colour
+geometric shadow architecture
+minimal empty room light
+window rain condensation
+shattered glass abstract
+paint splash abstract colour

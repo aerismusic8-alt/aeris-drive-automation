@@ -125,6 +125,20 @@ music938-1/library/mv/*.jpg
 music938-1/library/mv/*.mp4
 # The motion lane (make_motion.py): a 3-4 s regenerable render per song.
 music938-1/library/motion/*.mp4
+# The AI image bank (ops/image_library.py). NOT re-generatable on demand: a
+# seedream scene costs 8 credits and the free credits expire, so a generated
+# picture is a durable asset, not a cache. The manifest is committed and the
+# PNGs ride the media-938 release.
+music938-1/library/scenes/*/*.png
+music938-1/library/scenes/*/*.jpg
+!music938-1/library/scenes/manifest.json
+# The stock image bank (ops/image_bank.py). Like the AI scenes, these are not
+# re-derivable for free: each is a licence-checked download, re-fetching 100k of
+# them is a day of network. The manifest is committed; the WebP files and the
+# shard tars ride the media-938 release.
+music938-1/library/stock/img/*.webp
+music938-1/library/stock/shards/*.tar
+!music938-1/library/stock/manifest.json
 music938-1/library/affiliate/*.mp4
 # The absurdist "exhibit" clips (K's FB/TK rebrand) are regenerable ffmpeg
 # renders over the covers we already own; the durable copy is the media release.
@@ -171,3 +185,11 @@ share/aeris-music/covers/*.jpg
 # K's reference uploads at the repo root (a sample clip) are inputs, not sources;
 # the standard derived from one lives in docs/trivia-clip-standard.md.
 /*.mp4
+
+# Generative art (ops/genart.py). The manifest and the seed counter are the
+# record; the 10-20 MB PNGs ride the media-938 release, not the repo.
+music938-1/library/art/*/*.png
+music938-1/library/art/*/*.svg
+music938-1/library/art/*.tar
+!music938-1/library/art/manifest.json
+!music938-1/library/art/counter.json
