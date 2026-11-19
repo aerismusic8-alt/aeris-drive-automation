@@ -2540,6 +2540,7 @@ def test_thumbnail_repair() -> None:
         yt_quota.remaining = lambda *a, **k: 10_000
         yt_quota.record = lambda *a, **k: 0
         yt_quota.commit = lambda *a, **k: True
+        fix_thumbnails.THUMB_PACE_SECONDS = 0
         sys.argv = ["fix_thumbnails.py"]
         fix_thumbnails.main()
     finally:
@@ -2595,6 +2596,7 @@ def test_thumbnail_repair() -> None:
         yt_quota.remaining = lambda *a, **k: 10_000
         yt_quota.record = lambda *a, **k: 0
         yt_quota.commit = lambda *a, **k: True
+        fix_thumbnails.THUMB_PACE_SECONDS = 0
         sys.argv = ["fix_thumbnails.py"]
         fix_thumbnails.main()
     finally:

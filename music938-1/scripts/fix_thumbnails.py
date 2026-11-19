@@ -18,6 +18,7 @@ import base64
 import json
 import os
 import sys
+import time
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -30,6 +31,10 @@ import yt_quota  # noqa: E402
 from yt_publish import set_thumbnail  # noqa: E402
 
 LEDGER = "music938-1/work/release-state.json"
+
+# YouTube's per-account thumbnail upload window is undocumented; a few
+# seconds between calls keeps a backlog run under it.
+THUMB_PACE_SECONDS = 3.0
 
 
 def write_ledger(content: bytes) -> bool:
@@ -180,6 +185,10 @@ def main() -> int:
                 if code == 200:
                     e["thumb_ok"] = True
                     changed = True
+                    # YouTube also caps thumbnail uploads per account per window
+                    # (reason `uploadRateLimitExceeded`). Pace the batch so a
+                    # 21-item backlog does not trip that limit on its own.
+                    time.sleep(THUMB_PACE_SECONDS)
         if e.get("playlist_ok") is False and not args.dry_run:
             key = f"{args.ch}:{e['kind']}"
             # Create the playlist if the state has no id for it. The 2026-11-09
