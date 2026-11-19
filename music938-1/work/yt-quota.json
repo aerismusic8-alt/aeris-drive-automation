@@ -297,13 +297,21 @@
    ]
   },
   "2026-11-19": {
-   "units": 1955,
+   "units": 2005,
    "calls": {
     "playlistItems.list": 5,
     "thumbnails.set": 38,
-    "playlistItems.insert": 1
+    "playlistItems.insert": 1,
+    "channels.update": 1
    },
-   "updated": "2026-11-19T17:18:28+00:00"
+   "updated": "2026-11-19T17:18:34+00:00",
+   "reserves": [
+    {
+     "purpose": "release 0 item(s)",
+     "units": 0,
+     "at": "2026-11-19T17:18:34+00:00"
+    }
+   ]
   }
  }
 }
