@@ -2610,6 +2610,52 @@ def test_thumbnail_repair() -> None:
     check("the bad asset stays pending so it is not silently dropped",
           saved2 and saved2[-1]["released"][0]["thumb_ok"] is False)
 
+    # A batch that died before save_state leaves thumb_ok false on videos whose art
+    # is already live. Re-uploading them spends 50 units each and trips the
+    # per-account window, so --reconcile must read the live thumbnail, trust it only
+    # when it passes the same floor, and never write.
+    seen3, saved3, calls3 = [], [], []
+
+    def fake_live(vid, path, tok):
+        calls3.append(vid)
+        return {"L1": True, "L2": False, "L3": None}[vid]
+
+    state3 = {"released": [
+        {"slug": "a", "kind": "song", "variant": "", "video_id": "L1", "thumb_ok": False},
+        {"slug": "b", "kind": "song", "variant": "", "video_id": "L2", "thumb_ok": False},
+        {"slug": "c", "kind": "song", "variant": "", "video_id": "L3", "thumb_ok": False},
+    ], "playlists": {"ch3:song": "PL1"}}
+    real3 = (release.load_state, release.save_state, fix_thumbnails.thumb_for,
+             yt_auth.access_token, fix_thumbnails.set_thumbnail, sys.argv,
+             fix_thumbnails.live_thumbnail_passes, yt_quota.remaining,
+             yt_quota.record, yt_quota.commit)
+    try:
+        release.load_state = lambda: state3
+        release.save_state = lambda s: saved3.append(s)
+        fix_thumbnails.thumb_for = lambda e: Path("/tmp/thumb.png")
+        yt_auth.access_token = lambda ch: "tok"
+        fix_thumbnails.set_thumbnail = lambda vid, p, t: (seen3.append(vid), (200, {}))[1]
+        fix_thumbnails.live_thumbnail_passes = fake_live
+        yt_quota.remaining = lambda *a, **k: 10_000
+        yt_quota.record = lambda *a, **k: 0
+        yt_quota.commit = lambda *a, **k: True
+        sys.argv = ["fix_thumbnails.py", "--reconcile"]
+        fix_thumbnails.main()
+    finally:
+        (release.load_state, release.save_state, fix_thumbnails.thumb_for,
+         yt_auth.access_token, fix_thumbnails.set_thumbnail, sys.argv,
+         fix_thumbnails.live_thumbnail_passes, yt_quota.remaining,
+         yt_quota.record, yt_quota.commit) = real3
+
+    check("reconcile uploads nothing", seen3 == [], f"{seen3}")
+    check("reconcile checks every pending entry", calls3 == ["L1", "L2", "L3"], f"{calls3}")
+    check("a live passing thumbnail is recorded", saved3 and
+          saved3[-1]["released"][0]["thumb_ok"] is True)
+    check("a live failing thumbnail stays pending", saved3 and
+          saved3[-1]["released"][1]["thumb_ok"] is False)
+    check("an unreadable live thumbnail is not assumed good", saved3 and
+          saved3[-1]["released"][2]["thumb_ok"] is False)
+
 
 def test_nostr_identity() -> None:
     """AR's Nostr identity must be a valid secp256k1/Schnorr keypair.

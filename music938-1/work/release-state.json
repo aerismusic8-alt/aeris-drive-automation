@@ -647,7 +647,7 @@
    "video_id": "-x5O8EJAoqQ",
    "at": "2026-11-11T16:03:14+00:00",
    "public": true,
-   "thumb_ok": false,
+   "thumb_ok": true,
    "playlist_ok": true
   },
   {
@@ -657,7 +657,7 @@
    "video_id": "2pte2hsHtGg",
    "at": "2026-11-11T16:03:16+00:00",
    "public": true,
-   "thumb_ok": false,
+   "thumb_ok": true,
    "playlist_ok": true
   },
   {
@@ -667,7 +667,7 @@
    "video_id": "0odhiX5ZS94",
    "at": "2026-11-11T16:03:19+00:00",
    "public": true,
-   "thumb_ok": false,
+   "thumb_ok": true,
    "playlist_ok": true
   },
   {
@@ -757,7 +757,7 @@
    "video_id": "4G3m3btgHTQ",
    "at": "2026-11-14T00:51:39+00:00",
    "public": true,
-   "thumb_ok": false,
+   "thumb_ok": true,
    "playlist_ok": true
   },
   {
@@ -767,7 +767,7 @@
    "video_id": "SlvZsEx7wsM",
    "at": "2026-11-14T00:51:43+00:00",
    "public": true,
-   "thumb_ok": false,
+   "thumb_ok": true,
    "playlist_ok": true
   },
   {
@@ -777,7 +777,7 @@
    "video_id": "p1pYKxfyoUA",
    "at": "2026-11-14T23:50:31+00:00",
    "public": true,
-   "thumb_ok": false,
+   "thumb_ok": true,
    "playlist_ok": true
   },
   {
@@ -787,7 +787,7 @@
    "video_id": "LfXEhBO7sPM",
    "at": "2026-11-14T23:50:34+00:00",
    "public": true,
-   "thumb_ok": false,
+   "thumb_ok": true,
    "playlist_ok": true
   },
   {
@@ -797,7 +797,7 @@
    "video_id": "b8-SUnuTudU",
    "at": "2026-11-15T16:46:41+00:00",
    "public": true,
-   "thumb_ok": false,
+   "thumb_ok": true,
    "playlist_ok": true
   },
   {
@@ -807,7 +807,7 @@
    "video_id": "zdKXATDrDW8",
    "at": "2026-11-15T16:46:43+00:00",
    "public": true,
-   "thumb_ok": false,
+   "thumb_ok": true,
    "playlist_ok": true
   },
   {
@@ -827,7 +827,7 @@
    "video_id": "mNR4FpPt81s",
    "at": "2026-11-16T18:21:41+00:00",
    "public": true,
-   "thumb_ok": false,
+   "thumb_ok": true,
    "playlist_ok": true
   },
   {
@@ -847,7 +847,7 @@
    "video_id": "rZRcsC2-tOA",
    "at": "2026-11-18T18:48:04+00:00",
    "public": true,
-   "thumb_ok": false,
+   "thumb_ok": true,
    "playlist_ok": true
   }
  ],

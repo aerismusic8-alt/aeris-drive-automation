@@ -115,11 +115,72 @@ def in_playlist(playlist_id: str, video_id: str, token: str) -> bool | None:
         return None
 
 
+def live_thumbnail_passes(video_id: str, path, token: str) -> bool | None:
+    """Is the thumbnail already on YouTube the one we would upload, and is it good?
+
+    The ledger records a repair only if the run reached `save_state`, so a batch
+    that died mid-way leaves `thumb_ok: false` on videos whose art is already
+    live. Re-uploading those spends quota and trips the per-account upload window
+    for no gain. This reads the live thumbnail and runs it through the same floor
+    the upload gate uses, so a stale `false` is corrected without a write.
+    `None` means the check itself failed, which must never be read as "good".
+    """
+    import io
+    import urllib.error
+    import urllib.parse
+    import urllib.request
+
+    import thumb_standard
+    from PIL import Image
+
+    q = urllib.parse.urlencode({"part": "snippet", "id": video_id})
+    req = urllib.request.Request(f"https://www.googleapis.com/youtube/v3/videos?{q}",
+                                 headers={"Authorization": f"Bearer {token}"})
+    try:
+        with urllib.request.urlopen(req, timeout=60) as r:
+            items = json.load(r).get("items", [])
+    except urllib.error.HTTPError as e:
+        print(f"live lookup failed: HTTP {e.code}", file=sys.stderr)
+        return None
+    if not items:
+        return None
+    thumbs = items[0]["snippet"]["thumbnails"]
+    url = (thumbs.get("maxres") or thumbs.get("standard") or thumbs.get("high") or {}).get("url")
+    if not url:
+        return None
+    try:
+        raw = urllib.request.urlopen(url, timeout=60).read()
+        live = Image.open(io.BytesIO(raw)).convert("RGB")
+    except Exception:
+        return None
+    # The live file is what a viewer sees, so gate that file rather than our local
+    # copy: a bad upload must not be mistaken for a good one.
+    tmp = Path(f"/tmp/live-{video_id}.jpg")
+    try:
+        live.save(tmp, "JPEG", quality=95)
+        thumb_standard.assert_ok(str(tmp))
+    except SystemExit:
+        return False
+    finally:
+        tmp.unlink(missing_ok=True)
+
+    # Passing the floor only proves it is a good frame; compare it to the art we
+    # intended, or YouTube's auto frame would also pass on a busy video.
+    if not path or not Path(path).exists():
+        return None
+    mine = Image.open(path).convert("RGB").resize(live.size)
+    a, b = live.tobytes()[::97], mine.tobytes()[::97]
+    diff = sum(abs(x - y) for x, y in zip(a, b)) / max(1, len(a))
+    return diff < 12
+
+
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument("--ch", default="ch3")
     ap.add_argument("--limit", type=int, default=0, help="stop after N repairs")
     ap.add_argument("--dry-run", action="store_true")
+    ap.add_argument("--reconcile", action="store_true",
+                    help="record repairs already live on YouTube instead of uploading")
     args = ap.parse_args()
 
     state = release.load_state()
@@ -139,7 +200,7 @@ def main() -> int:
     # already live and already earning nothing. If the pool cannot cover the whole
     # backlog, repair what it can and leave the rest for tomorrow rather than
     # failing halfway on a 403.
-    need_each = yt_quota.UNITS_PER_RELEASE
+    need_each = 1 if args.reconcile else yt_quota.UNITS_PER_RELEASE
     if not args.dry_run:
         room = yt_quota.remaining() // need_each
         if room < len(todo):
@@ -162,6 +223,17 @@ def main() -> int:
             elif args.dry_run:
                 print(f"  would set {path.name} on {e['video_id']} ({e['slug']})")
                 changed = True
+            elif args.reconcile:
+                live = live_thumbnail_passes(e["video_id"], path, tok)
+                if live:
+                    print(f"  {e['slug']}: already live and passing, recorded")
+                    e["thumb_ok"] = True
+                    changed = True
+                elif live is False:
+                    print(f"  {e['slug']}: live thumbnail still needs a repair")
+                else:
+                    print(f"  {e['slug']}: could not read the live thumbnail, left pending",
+                          file=sys.stderr)
             else:
                 try:
                     code, _ = set_thumbnail(e["video_id"], str(path), tok)
@@ -189,7 +261,7 @@ def main() -> int:
                     # (reason `uploadRateLimitExceeded`). Pace the batch so a
                     # 21-item backlog does not trip that limit on its own.
                     time.sleep(THUMB_PACE_SECONDS)
-        if e.get("playlist_ok") is False and not args.dry_run:
+        if e.get("playlist_ok") is False and not args.dry_run and not args.reconcile:
             key = f"{args.ch}:{e['kind']}"
             # Create the playlist if the state has no id for it. The 2026-11-09
             # affiliate uploads recorded `playlist_ok: false` because the create
