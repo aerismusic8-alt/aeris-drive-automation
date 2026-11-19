@@ -132,6 +132,42 @@ def _materialise(row: dict, urls: dict[str, str], log=print) -> bool:
     return False
 
 
+NEAR_DUP_BITS = 6   # a 64-bit dHash this close is the same scene to a viewer
+
+
+def _dhash(path: Path, size: int = 8) -> int:
+    """64-bit difference hash of the picture *as the clip will show it*.
+
+    Hashing the whole file missed two stills that the render made identical: the
+    clip cover-crops to 9:16, so two photos that differ only outside the crop
+    look the same on screen. Gemini flagged the repeat; this measures the crop.
+    """
+    from PIL import Image  # noqa: PLC0415
+
+    with Image.open(path) as im:
+        im = im.convert("RGB")
+        w, h = im.size
+        want = W / H
+        if w / h > want:
+            nw = int(round(h * want))
+            im = im.crop(((w - nw) // 2, 0, (w - nw) // 2 + nw, h))
+        else:
+            nh = int(round(w / want))
+            im = im.crop((0, (h - nh) // 2, w, (h - nh) // 2 + nh))
+        g = im.convert("L").resize((size + 1, size), Image.LANCZOS)
+    px = list(g.getdata())
+    bits = 0
+    for row in range(size):
+        for col in range(size):
+            i = row * (size + 1) + col
+            bits = (bits << 1) | (px[i] > px[i + 1])
+    return bits
+
+
+def _hamming(a: int, b: int) -> int:
+    return bin(a ^ b).count("1")
+
+
 def bank_stills(query: str, want: int, seed: int, log=print) -> list[dict]:
     """Pick stills for a query from the committed manifest, fetching what is packed.
 
@@ -149,11 +185,19 @@ def bank_stills(query: str, want: int, seed: int, log=print) -> list[dict]:
 
     random.Random(seed).shuffle(rows)
     urls = _shard_urls()
-    picked = []
+    picked, seen = [], []
     for r in rows:
         p = BANK_IMG / Path(r["file"]).name
         if not p.exists() and not _materialise(r, urls, log=log):
             continue
+        h = _dhash(p)
+        # Two frames of the same corner of the same street are the same picture
+        # to a viewer, and Gemini failed a clip for exactly that ("ช็อตซ้ำในลำดับ
+        # ใกล้กัน ... มุมเกือบเหมือนกันเป๊ะ"). The bank has many near-duplicates,
+        # so reject a candidate that looks like one already chosen.
+        if any(_hamming(h, q) <= NEAR_DUP_BITS for q in seen):
+            continue
+        seen.append(h)
         picked.append({"path": p, **r})
         if len(picked) >= want:
             break
@@ -259,11 +303,17 @@ def render(song: str, query: str, seconds: float, seed: int, out_dir: Path,
         # little so the frame is never frozen (the vertical profile rejects a
         # still clip). `zoompan` is the cheap way to get motion without a second
         # input.
+        #
+        # A still must enter as ONE frame: `zoompan`'s `d` is frames per INPUT
+        # frame, so looping the image for `per` seconds and asking for `per * FPS`
+        # output frames each multiplies out to per^2 * FPS^2 frames from the first
+        # image alone (18,750 for a 30 s clip) and stills 2..n never appear. The
+        # clip played as one still that slowly zoomed.
         per = seconds / len(stills)
         args = ["ffmpeg", "-y", "-loglevel", "error", "-ss", "0",
                 "-t", f"{seconds:.2f}", "-i", str(audio)]
         for s in stills:
-            args += ["-loop", "1", "-t", f"{per:.2f}", "-i", str(s["path"])]
+            args += ["-i", str(s["path"])]
         args += ["-loop", "1", "-t", "3", "-i", str(title)]
         args += ["-loop", "1", "-t", "3", "-i", str(tail)]
 
@@ -305,6 +355,20 @@ def render(song: str, query: str, seconds: float, seed: int, out_dir: Path,
         log("render: below the clip floor, deleted -- " + "; ".join(failed))
         out.unlink(missing_ok=True)
         return None
+
+    # The floor above measures the file, not the content: a clip whose six
+    # stills collapsed into one frozen picture passed all 14 rules on
+    # 2026-11-19 and reached K. Content needs its own gate, and K's rule is
+    # absolute — "ถ้าไม่ผ่านการตรวจสอบผ่านจาก gemini ห้ามเอาอัพขึ้นช่องและห้ามส่ง
+    # ให้ K ดู" — so a clip with no passing verdict is not shown and not kept.
+    import gemini_gate  # noqa: PLC0415
+
+    ok, why = gemini_gate.check(out)
+    if not ok:
+        log(f"render: NOT SHOWN, waiting for a Gemini pass -- {why}")
+        log("render: review it with "
+            f"`python3 ops/gemini_review.py {out}`")
+        return out
 
     credits = [{"file": s["path"].name, "licence": s.get("licence"),
                 "credit": s.get("credit"), "source": s.get("source")} for s in stills]

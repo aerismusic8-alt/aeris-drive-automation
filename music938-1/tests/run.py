@@ -6799,6 +6799,39 @@ def test_clip_lane_is_its_own_job() -> None:
     check("a shard is fetched once, not per still", "_SHARD_CACHE" in src)
     check("the lane can list songs on a bare runner", hasattr(cl, "available_songs"))
 
+    # K (2026-11-19): "คลิปต้องผ่านระบบqcก่อนนะ". The floor above measures the
+    # file, not the content: a clip whose six stills had collapsed into one
+    # frozen picture passed all 14 technical rules and reached K. So the render
+    # must consult the Gemini verdict too, and a clip without a pass must not be
+    # presented as finished.
+    check("the render consults the Gemini verdict", "gemini_gate" in src)
+    check("a clip with no pass is not presented as done",
+          "NOT SHOWN, waiting for a Gemini pass" in src)
+
+    # The bug behind that: `zoompan`'s `d` is frames per INPUT frame, so looping
+    # a still for `per` seconds multiplied out to per^2*FPS^2 frames from image
+    # one and the other stills never appeared. The still must enter as a single
+    # frame, which means no `-loop 1` on the image inputs.
+    check("a still enters as one frame, not a loop",
+          '"-loop", "1", "-t", f"{per' not in src)
+    check("zoompan holds each still for its share of the clip",
+          "d={int(per * FPS)}" in src)
+
+    # Two frames of one held still are not a repeated shot, but the sheet could
+    # not say so and Gemini failed a correct clip for "ช็อตซ้ำ".
+    sys.path.insert(0, str(ROOT.parent / "ops"))
+    import gemini_review as gr  # noqa: E402
+    check("the review sheet labels each sample with its shot id",
+          "_shot_ids" in Path(gr.__file__).read_text(encoding="utf-8"))
+    check("the review prompt explains that a shared shot id is one still",
+          "ไม่ใช่ช็อตซ้ำ" in gr.PROMPT)
+
+    # Near-identical stills must not be selected in the first place. The hash is
+    # taken on the 9:16 crop, because that is the picture the viewer sees.
+    check("still selection rejects near-duplicates", hasattr(cl, "_dhash"))
+    check("the duplicate check measures the 9:16 crop",
+          "cover-crops to 9:16" in src)
+
     # PowerShell on PC1 reads the script in the runner's codepage. A Thai title or
     # an em-dash in the body broke parsing into two tokens on 2026-11-19.
     for name in ("ax-pc1-bank-sync.yml", "ax-pc1-bank-pull.yml"):

@@ -135,6 +135,39 @@ def caption_lines(path: str | Path) -> tuple[int, str]:
     return total, ("stream" if total else "none")
 
 
+def _fingerprint(path: Path, size: int = 8) -> int:
+    """64-bit difference hash of a frame, so two samples of one still match."""
+    from PIL import Image  # noqa: PLC0415
+
+    with Image.open(path) as im:
+        g = im.convert("L").resize((size + 1, size), Image.LANCZOS)
+    px = list(g.getdata())
+    bits = 0
+    for row in range(size):
+        for col in range(size):
+            i = row * (size + 1) + col
+            bits = (bits << 1) | (px[i] > px[i + 1])
+    return bits
+
+
+def _shot_ids(files: list[Path]) -> list[int]:
+    """Group sampled frames into shots: consecutive frames that look the same.
+
+    A still that holds for five seconds is ONE shot, so two samples inside it are
+    not a repeated shot — but a contact sheet cannot show that, and Gemini read
+    the pair as a duplicate and marked the clip down. Grouping gives each cell a
+    shot number, and the prompt says a shared number is one continuous shot.
+    """
+    ids, cur, prev = [], 0, None
+    for f in files:
+        h = _fingerprint(f)
+        if prev is not None and bin(h ^ prev).count("1") > 6:
+            cur += 1
+        ids.append(cur)
+        prev = h
+    return ids
+
+
 def build_sheet(clip: str | Path, out: Path) -> Path:
     info = probe(clip)
     dur = info["duration"]
@@ -143,6 +176,7 @@ def build_sheet(clip: str | Path, out: Path) -> Path:
     step = (dur - 2.0) / FRAMES
     tmp = Path(tempfile.mkdtemp(prefix="ax-sheet-"))
     files = []
+    labels = []
     for i in range(FRAMES):
         t = 1.5 + i * step
         f = tmp / f"f{i:02d}.png"
@@ -160,9 +194,24 @@ def build_sheet(clip: str | Path, out: Path) -> Path:
                 break
         if f.exists():
             files.append(f)
+            labels.append(t)
     if not files:
         raise SystemExit("could not extract any frame from the clip")
+    shots = _shot_ids(files)
     rows = (len(files) + SHEET_COLS - 1) // SHEET_COLS
+    # Write the shot id into each cell. Two samples of one held still are not a
+    # repeated shot, but a contact sheet cannot say that: on 2026-11-19 Gemini
+    # failed a correct clip for "ช็อตซ้ำ" at 15.5s and 19.0s when both were the
+    # same 5-second still. Labelling the shot makes the difference visible
+    # instead of leaving Gemini to guess.
+    for f, sid, t in zip(files, shots, labels):
+        tagged = tmp / f"tag-{f.name}"
+        _run(["ffmpeg", "-hide_banner", "-loglevel", "error", "-i", str(f),
+              "-vf", (f"drawtext=text='SHOT {sid} · {t:.1f}s':x=8:y=40:"
+                      f"fontsize=24:fontcolor=yellow:box=1:boxcolor=black@0.7"),
+              "-frames:v", "1", str(tagged)])
+        if tagged.exists():
+            files[files.index(f)] = tagged
     lst = tmp / "list.txt"
     lst.write_text("".join(f"file '{f}'\n" for f in files), encoding="utf-8")
     # Pad the last row so the tile grid is rectangular, or xstack refuses.
@@ -186,12 +235,28 @@ def build_sheet(clip: str | Path, out: Path) -> Path:
 # --- the CDP driver ----------------------------------------------------------
 
 def _ws_url() -> str:
+    """A CDP target for the review, in a tab this script owns.
+
+    It used to grab the first gemini.google.com tab and navigate it to a fresh
+    chat. On 2026-11-19 that tab was K's own conversation: the review destroyed
+    K's work, and because the tab was mid-stream the websocket dropped with
+    "Connection to remote host was lost" and the review returned nothing. A
+    review must never touch a tab it did not open.
+    """
     with urllib.request.urlopen(f"{CDP}/json", timeout=10) as f:
         tabs = json.load(f)
-    for t in tabs:
-        if "gemini.google.com" in (t.get("url") or ""):
-            return t["webSocketDebuggerUrl"]
-    raise SystemExit("no gemini.google.com tab on the desktop — open one first")
+    mine = [t for t in tabs if t.get("type") == "page"
+            and "gemini.google.com" in (t.get("url") or "")
+            and os.environ.get("AX_QC_TAB_ID") == t.get("id")]
+    if mine:
+        return mine[0]["webSocketDebuggerUrl"]
+
+    req = urllib.request.Request(
+        f"{CDP}/json/new?https://gemini.google.com/app", method="PUT")
+    with urllib.request.urlopen(req, timeout=20) as f:
+        tab = json.load(f)
+    os.environ["AX_QC_TAB_ID"] = tab["id"]
+    return tab["webSocketDebuggerUrl"]
 
 
 class Session:
@@ -353,6 +418,8 @@ PROMPT = """คุณเป็นผู้ตรวจคุณภาพคล�
 พร้อมเวลา) และค่าที่วัดได้จริงจากไฟล์:
 - ขนาด {w}x{h} ที่ {fps} fps
 - ค่า motion (ผลต่างเฟรมเฉลี่ย) = {motion} (ค่าต่ำกว่า 0.03 = ภาพนิ่งสนิท)
+- ในแต่ละช่องมีป้าย "SHOT n" กำกับ ช่องที่เลข SHOT **ซ้ำกันคือภาพเดียวกันที่ยังฉายอยู่**
+  (ไม่ใช่ช็อตซ้ำ) — ช็อตซ้ำคือคนละเลข SHOT แต่ภาพเหมือนกัน
 - จำนวนบรรทัดซับไตเติล = {lines} (วิธี: {how})
 - loudness = {lufs} LUFS, true peak = {tp} dBTP
 
@@ -361,7 +428,7 @@ PROMPT = """คุณเป็นผู้ตรวจคุณภาพคล�
 2. ภาพไม่นิ่งสนิท มีการเคลื่อนไหว/ซูม/แพน หรือเปลี่ยนภาพ
 3. ใช้พื้นที่แนวตั้งเต็ม ไม่มีแถบดำหรือขอบเบลอเสียเปล่า
 4. ตัวอักษรไทยอ่านชัด ไม่ถูกตัดขอบ
-5. ภาพไม่ซ้ำซากจนน่าเบื่อ และเข้ากับอารมณ์เพลงแนว {genre}
+5. ภาพไม่ซ้ำซากจนน่าเบื่อ (ดูจากเลข SHOT ที่ต่างกัน) และเข้ากับอารมณ์เพลงแนว {genre}
 6. ดูพรีเมียม พร้อมลงช่องจริง
 
 ตอบตามรูปแบบนี้เท่านั้น ห้ามมีอย่างอื่นก่อน SCORE:
@@ -382,9 +449,26 @@ def song_style(clip: Path) -> tuple[str, str]:
     rather than guess a genre.
     """
     stem = clip.stem
+    # Two naming schemes reach this: the posting queue's `short-song-hN-<slug>`
+    # and the clip lane's `bank-<song>-<theme>`. Matching only the first left a
+    # bank clip with genre/mood "ไม่ระบุ", and the review then judged the pictures
+    # against no genre at all. The theme tail is not part of the song name.
     slug = re.sub(r"^short-(?:song|karaoke)-h\d+-", "", stem)
     slug = re.sub(r"-h\d+$", "", slug)
     lyrics = ROOT / "music938-1" / "lyrics"
+    if not (lyrics / f"{slug}.txt").exists():
+        # The clip lane names a clip `bank-<song>-<theme>`, and the song slug is
+        # whatever part of that name matches a lyric file. Resolve it against the
+        # files that exist rather than stripping fixed prefixes: a theme word is
+        # free text, so a prefix list silently missed `bank-song-19-...`.
+        found = ""
+        for f in lyrics.glob("*.txt"):
+            # The theme is appended after the song slug, so the lyric name sits
+            # *inside* the clip name, not at its end.
+            if f.stem in stem and len(f.stem) > len(found):
+                found = f.stem
+        if found:
+            slug = found
     genre = mood = ""
     cand = lyrics / f"{slug}.txt"
     if cand.exists():
