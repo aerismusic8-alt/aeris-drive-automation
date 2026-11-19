@@ -336,7 +336,21 @@
       "bytes_written": 757698,
       "width": 1024,
       "height": 572
+    },
+    {
+      "id": "img-art-probe-001",
+      "kind": "img",
+      "file": "library/img/img-art-probe-001.png",
+      "bytes": 606059,
+      "sha256": "0d88b58b986976a74dbc31aff4ee99c90bea9ff8f54fee703aa9e3a020c912b5",
+      "created_at": "2026-11-19T15:16:42Z",
+      "source": "gemini-web",
+      "prompt": "ภาพแนวภาพยนตร์ แสงนุ่ม โทนสีอบอุ่น องค์ประกอบแนวตั้ง 9:16 ฉากถนนยามค่ำคืนหลังฝนตก มีแสงนีออนสะท้อนบนพื้นถนน ไม่มีข้อความ ไม่มีลายน้ำ",
+      "provider": "gemini.google.com",
+      "bytes_written": 606059,
+      "width": 572,
+      "height": 1024
     }
   ],
-  "updated_at": "2026-11-06T17:51:17Z"
+  "updated_at": "2026-11-19T15:16:42Z"
 }

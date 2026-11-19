@@ -193,3 +193,8 @@ music938-1/library/art/*/*.svg
 music938-1/library/art/*.tar
 !music938-1/library/art/manifest.json
 !music938-1/library/art/counter.json
+
+# AI art bank (K 2026-11-19): the JPEGs ride the media-938 release as
+# aiart-000N.tar.gz shards; the manifest is the committed index.
+music938-1/library/aiart/*.jpg
+!music938-1/library/aiart/manifest.json

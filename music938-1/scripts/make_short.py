@@ -338,88 +338,32 @@ def _ass_escape(p: Path) -> str:
 
 
 def vertical_art(slug: str, count: int = 12) -> list[Path]:
-    """The song's 9:16 stills, generating any that are missing. Cached on disk.
-
-    Free and key-less: the same pollinations backend the covers use, asked for a
-    portrait frame and a per-still scene so the clip is not one image held for a
-    minute. A failure here is not fatal — the caller falls back to the letterbox
-    chain — but it is the difference between a 4/10 clip and a passing one.
+    """The song's 9:16 stills, drawing any that are missing. Cached on disk.
 
     Six stills over a 58s clip is a cut every ~10s. Three was too few: Gemini
     rejected that render as "ภาพนิ่ง/ค้างนานเกินไป" and named the three shots it
     could see sitting still. A Short has to change what is on screen faster than
     a viewer's patience.
+
+    The pictures come from `ops/clip_art.py`, which draws them with the same
+    numpy constructions `ops/genart.py` sells as prints — no model, no key, no
+    network. That is not only Rule #1: the previous source was pollinations,
+    which allows one image per 45 s per IP and answers a burst with 402, and the
+    fetch retried eight times with a 180 s timeout. One song could sit there for
+    hours without printing a line (measured 2026-11-19: the first request never
+    returned). Twelve local stills cost about ten seconds.
+
+    A failure here is not fatal — the caller falls back to the letterbox chain —
+    but it is the difference between a 4/10 clip and a passing one.
     """
     sys.path.insert(0, str(ROOT / "scripts"))
+    sys.path.insert(0, str(ROOT.parent / "ops"))
     import ai_covers  # noqa: PLC0415  heavy import, only needed on a render
+    import clip_art  # noqa: PLC0415  local drawing, no network
 
     meta = ai_covers._meta(slug)
-    mood = meta["mood"]
-    genre = (meta.get("genre") or "").lower()
-    # The pictures must match the song, not one house style. A calm lofi track
-    # scored badly against punk imagery and a punk prompt drew "too soft" the
-    # other way round, so the scene set is chosen by mood. Within a set every
-    # scene is a different subject: a re-used subject reads as a loop even when
-    # it is re-cropped, which is what three reviews in a row flagged.
-    calm = [
-        "a lone silhouette walking a rain-slick street at night, soft neon "
-        "reflections, gentle bokeh",
-        "rain running down a lit window at night, warm city lights blurred "
-        "beyond",
-        "a quiet room at 3am, a single lamp, dust drifting in the warm glow",
-        "a city rooftop at blue hour, glowing windows, a small still figure",
-        "light breaking through clouds over a calm dark skyline",
-        "a nearly empty late-night train carriage, one passenger by the window",
-        "a desk with a cooling cup of tea and a notebook, dim warm lamplight",
-        "a quiet street corner under a soft streetlamp, wet pavement reflections",
-        "a window seat looking out at falling rain, curtain half drawn",
-        "a small figure standing at the end of a long pier at dawn, soft mist",
-        "a stairwell lit by one warm bulb, long soft shadows",
-        "a hand resting on a windowsill, city lights soft in the background",
-    ]
-    grit = [
-        "a smashed electric guitar leaning against a wet brick wall, harsh "
-        "flash, high contrast, gritty film grain",
-        "a rain-soaked alley lit by one bare bulb, graffiti on concrete, deep "
-        "shadows, raw documentary flash photography",
-        "a singer screaming into a microphone in a dark small club, sweat and "
-        "stage light, motion blur, gritty concert photo",
-        "a drum kit in a squatted room, dust in a hard shaft of light, peeling "
-        "paint, raw high-contrast photograph",
-        "a crowd of raised fists silhouetted against harsh stage strobes, "
-        "grainy, high contrast",
-        "a cracked mirror reflecting a harsh flash, torn posters behind, "
-        "gritty texture",
-        "a night street corner under a broken flickering sign, wet asphalt, "
-        "raw high-contrast photograph, heavy grain",
-        "a fist gripping a microphone cable, hard side light, deep shadow, "
-        "gritty close-up",
-        "a dark stage from behind the amps, cables on a dirty floor, one "
-        "harsh spotlight, raw photograph",
-        "a torn gig poster on a wet wall, harsh flash, high contrast, grain",
-        "a lone figure walking into heavy rain under a streetlamp, harsh "
-        "contrast, gritty, raw photograph",
-        "a wall of stacked amps in a dark room, one harsh light, heavy shadow",
-    ]
-    soft = mood in ("calm", "chill", "sad", "dreamy", "ambient", "romantic")
-    scenes = calm if soft else grit
-    VERT.mkdir(parents=True, exist_ok=True)
-    out: list[Path] = []
-    for i in range(count):
-        p = VERT / f"vert-{slug}-{i}.jpg"
-        if not p.exists():
-            prompt = (f"vertical portrait cinematic artwork for a Thai "
-                      f"{meta['genre'] or 'rock'} song, mood {mood}. "
-                      f"Scene: {scenes[i % len(scenes)]}. No text, no letters, "
-                      f"no watermark. Cinematic lighting, strong composition, "
-                      f"rich detail.")
-            try:
-                p.write_bytes(ai_covers._fetch_pollinations(prompt, 48 + i * 7))
-            except Exception as exc:  # rate limit or offline: fall back, never fail
-                print(f"  vertical art {i} unavailable ({exc})", file=sys.stderr)
-                break
-        out.append(p)
-    return out
+    return clip_art.stills(slug, meta.get("mood"), count, VERT,
+                           log=lambda m: print(m, file=sys.stderr))
 
 
 def _scrim_png() -> Path:
