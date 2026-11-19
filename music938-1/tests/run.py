@@ -6730,6 +6730,76 @@ def test_fb_page_description() -> None:
         fb.page_token, fb._get, fb._post = orig
 
 
+def test_clip_lane_is_its_own_job() -> None:
+    """Art and clips must run as two lanes, not one (K, 2026-11-19).
+
+    K: "ถ้าแยกระบบ สร้างภาพกับทำคลิปได้แยกงานทำคู่ขนานเลย kอยากเห็นงานจากรูปแบบใหม่"
+    -- split the system so making pictures and making clips run in parallel, and
+    show the output of the new shape.
+
+    The reason it has to be two jobs, not one with a flag: the art sweep is
+    network-bound and wants to run for an hour, the render is CPU-bound and takes
+    ~85 s. A single job can only starve one of them. So this pins that the two
+    workflows exist separately, that neither triggers the other, and that the
+    clip lane obeys the floor K set.
+
+    It also pins the two things that cost a full red run on 2026-11-19: a bare
+    runner has neither the masters (gitignored) nor the pixels (in shards), so the
+    lane must be able to fetch both, and the PowerShell body must stay ASCII.
+    """
+    section("clip lane (art and clips are parallel jobs)")
+    sys.path.insert(0, str(ROOT.parent / "ops"))
+    import clip_lane as cl  # noqa: E402
+
+    wf = ROOT.parent / ".github" / "workflows"
+    art = wf / "ax-image-bank.yml"
+    clip = wf / "ax-clip-lane.yml"
+    check("the art rail exists", art.exists())
+    check("the clip lane exists as its own workflow", clip.exists())
+
+    text = clip.read_text(encoding="utf-8")
+    check("the clip lane runs on its own schedule", "schedule:" in text)
+    check("...and can be dispatched by hand", "workflow_dispatch:" in text)
+    # Neither may trigger the other: that is what "parallel" rules out.
+    check("the clip lane does not wait on the art rail",
+          "workflow_run" not in text)
+    art_text = art.read_text(encoding="utf-8")
+    check("the art rail does not wait on the clip lane",
+          "ax-clip-lane" not in art_text)
+    def group_of(t: str) -> str:
+        m = re.search(r"concurrency:\s*\n\s*group:\s*(\S+)", t)
+        return m.group(1) if m else ""
+
+    check("they do not share a concurrency group",
+          group_of(text) != group_of(art_text),
+          f"{group_of(text)!r} vs {group_of(art_text)!r}")
+
+    # The floor is enforced inside the render, not by the workflow: a below-floor
+    # clip must never reach an upload step.
+    check("the render deletes a below-floor clip",
+          "below the clip floor, deleted" in Path(cl.__file__).read_text(encoding="utf-8"))
+    check("the lane renders the vertical profile", cl.W == 1080 and cl.H == 1920)
+
+    # A bare runner: no music on disk, no pixels on disk. Both must be reachable.
+    src = Path(cl.__file__).read_text(encoding="utf-8")
+    check("audio falls back to the release", "releases/download" in src)
+    check("stills fall back to the shards", "shard" in src and "_materialise" in src)
+    check("a shard is fetched once, not per still", "_SHARD_CACHE" in src)
+    check("the lane can list songs on a bare runner", hasattr(cl, "available_songs"))
+
+    # PowerShell on PC1 reads the script in the runner's codepage. A Thai title or
+    # an em-dash in the body broke parsing into two tokens on 2026-11-19.
+    for name in ("ax-pc1-bank-sync.yml", "ax-pc1-bank-pull.yml"):
+        f = wf / name
+        if not f.exists():
+            continue
+        body = [ln for ln in f.read_text(encoding="utf-8").splitlines()
+                if ln.strip() and not ln.strip().startswith("#")
+                and not ln.lstrip().startswith("name:")]
+        bad = [ln for ln in body if any(ord(c) > 127 for c in ln)]
+        check(f"{name} body is ASCII for PowerShell", not bad,
+              f"{len(bad)} non-ASCII line(s): {bad[:2]}")
+
 def test_memory_guard() -> None:
     """The injected memory index must stay under its cap.
 
@@ -7624,6 +7694,7 @@ def main() -> int:
     test_vault_key_fallback()
     test_fb_page_description()
     test_memory_guard()
+    test_clip_lane_is_its_own_job()
     test_keyless_lyric_drafter()
     test_lyric_meaning_gate()
     test_brand_identity()
