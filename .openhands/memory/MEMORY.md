@@ -72,25 +72,25 @@ not failure; each `work/*` ledger must be un-ignored (`!…`) or it re-posts eve
 - **A green run is not a finished job.** `release.py` rc 4 + `UPLOAD_LIMIT_EXCEEDED`;
   `heartbeat` pages on a failed latest run. The cap is **per-channel new-videos/day**,
   clears over hours, not at the 08:00 UTC reset.
-- **`continue-on-error` + a wrong step order = a silent broken artifact** — the
-  produce rail pulled beds *after* the produce step, so every song shipped
-  `audio: none` while green: gate the artifact, assert the order.
-- **A derived artifact outlives its source** — re-mastering leaves older clips
-  clipped and the fail-closed gate blocks the batch; repair at the chokepoint
-  (`clip_standard.repair_audio`), never re-render by hand. Detail: archive.
-- **A step that lives only in shell history is not reproducible.** An unsaved
-  ad-hoc mux shipped 939/1241 duplicate frames; the segments were fine.
+- **`continue-on-error` + a wrong step order = a silent broken artifact** — gate the
+  artifact, assert the order. A derived artifact outlives its source: repair at the
+  chokepoint (`clip_standard.repair_audio`), never re-render by hand.
 - **Never decide on missing/stale data** (2026-11-12): a blank/stale newest row is
   `data`, never a guess; `--assert-fresh` gates the dashboard rail.
 - **`videos.list` ≤50 ids/call; YPP = 1,000 subs AND 4,000 watch-hours.**
 - **Bound every rail:** `timeout-minutes` + `cancel-in-progress: true`. Risks:
   `OPENHANDS_RISK_REGISTER.json` + `ops/risk_audit.py --strict`.
 
-## Dreamina CLI — free-tier reality (measured 2026-11-19)
-`/workspace/ax-tools/bin/dreamina-canvas`. Non-VIP: **image + TTS work; video is
-BLOCKED server-side** on every model (quote error 1 / `state: UNKNOWN` / 40012,
-0 cr) even when it says `vipRequired: false` — `node quote` is the only honest
-test. 8 cr/image, 1 cr/TTS. **No Thai voice** → Thai stays `edge-tts`.
+## Dreamina CLI (2026-11-19): image + TTS work, **video is blocked server-side**
+on every model even when `vipRequired: false`; `node quote` is the only honest
+test. 8 cr/image. **No Thai voice** → Thai stays `edge-tts`. Detail: archive.
+
+## Art + image bank (2026-11-19): our own code, no API
+`ops/genart.py` = 5 algorithms, 4096 px @300 DPI, **reproducible from
+(algo,palette,seed)** — what makes "edition 1/1, seed N" honest; the gate runs
+*inside* `make()`. `ops/image_bank.py` = Commons (500 results/query; the old
+limit of 8 was the bottleneck), photos only. Both shard → `media-938`, commit
+the manifest only. `docs/genart-standard.md`. Detail: archive.
 
 ## Recovery
 `$AX_VAULT_BOOTSTRAP` → `ops/ax_vault.py` (`axvault:readme`); a lost `work/*.json`
