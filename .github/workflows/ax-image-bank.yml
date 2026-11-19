@@ -72,14 +72,19 @@ jobs:
 
       - name: Pack + upload a shard, free the runner's disk
         env:
-          AX_GH_TOKEN: ${{ secrets.AX_GH_TOKEN }}
+          # The built-in token is enough: it is minted per run with the
+          # `contents: write` this job already declares, so a release upload
+          # needs no hand-made secret. A repo secret named AX_GH_TOKEN never
+          # existed, which silently skipped every shard upload.
+          AX_GH_TOKEN: ${{ secrets.AX_GH_TOKEN || secrets.GITHUB_TOKEN }}
         run: |
           set -uo pipefail
           # A missing token must not lose the harvest: the manifest and the
           # images stay in the workspace, and the commit below still records
           # them. The next tick with a token shards them.
           if [ -z "${AX_GH_TOKEN:-}" ]; then
-            echo "::warning::no AX_GH_TOKEN — shard upload skipped, images kept for the next tick"
+            echo "::error::no token — refusing to record images whose pixels cannot be stored"
+            exit 1
             exit 0
           fi
           python3 ops/image_bank.py shard \

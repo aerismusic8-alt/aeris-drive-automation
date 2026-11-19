@@ -7455,6 +7455,7 @@ def test_genart_is_original_reproducible_print_art() -> None:
               "urllib" not in body and "requests" not in body)
 
     # 2. Every work states its own provenance.
+    ARTDIR = Path(genart.__file__).resolve().parent.parent / "music938-1" / "library" / "art"
     doc = genart.load()
     works = doc.get("works", [])
     if works:
@@ -7497,7 +7498,16 @@ def test_genart_is_original_reproducible_print_art() -> None:
     check("each palette ends bright",
           all(sum(v[-1][1]) > sum(v[0][1]) for v in genart.PALETTES.values()))
 
-    # 7. The 24/7 rail exists and commits the counter, not the pixels.
+    # 7. A row must never outlive its pixels. A rail run on 2026-11-19 recorded
+    # two works while the shard upload was skipped for want of a secret, so the
+    # manifest claimed 29 works and 2 of them existed nowhere — the ephemeral
+    # runner had already been destroyed. Every row must name a shard or a local
+    # file, and the rail must fail closed instead of warning past it.
+    for w in genart.load().get("works", []):
+        check(f"{w['id']} has its pixels somewhere",
+              bool(w.get("shard")) or (ARTDIR / w["png"]).exists())
+
+    # 8. The rail exists and commits the counter, not the pixels.
     rail = ROOT.parent / ".github" / "workflows" / "ax-genart.yml"
     check("the art rail exists", rail.exists())
     if rail.exists():
@@ -7506,6 +7516,10 @@ def test_genart_is_original_reproducible_print_art() -> None:
         check("the rail does not trigger on push", "\n  push:" not in text)
         check("the rail gates before shipping", "genart.py check" in text)
         check("the rail commits the counter", "counter.json" in text)
+        check("the rail fails closed when it cannot store pixels",
+              "::error::no token" in text and "shard upload skipped" not in text)
+        check("the rail does not depend on a hand-made secret",
+              "secrets.GITHUB_TOKEN" in text)
 
 
 def main() -> int:
