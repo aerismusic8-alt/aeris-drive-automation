@@ -3078,6 +3078,12 @@ def test_volume_series() -> None:
     check("title carries เลือกเพลงฟังได้", "เลือกเพลงฟังได้" in title, title)
     check("title fits 100 chars", len(title) <= 100, f"{len(title)}")
     # Consecutive volumes are different listening, not one tracklist re-titled.
+    # The picker needs real masters to measure durations, and a fresh pod has
+    # none (they are gitignored and live on the media-938 release). Skip only
+    # when the catalogue is genuinely empty, so a broken picker still fails.
+    if not vs.ca.available_songs():
+        skip("no song masters on disk yet")
+        return
     v1, v2 = vs.pick_volume(1), vs.pick_volume(2)
     check("a volume reaches the honest track floor",
           len(v1) >= vs.MIN_VOLUME_TRACKS, f"{len(v1)}")
