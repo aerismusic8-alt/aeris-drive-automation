@@ -1,11 +1,11 @@
 {
-  "at": "2026-11-20T02:54:36Z",
+  "at": "2026-11-20T10:51:38Z",
   "winner": "song",
   "trailing": "concert",
   "stats": {
     "song": {
-      "n": 11,
-      "median_per_day": 0.07182028503331038
+      "n": 10,
+      "median_per_day": 0.03813024175922068
     },
     "affiliate": {
       "n": 3,
@@ -21,7 +21,7 @@
     },
     "karaoke": {
       "n": 2,
-      "median_per_day": 0.42891292317470564
+      "median_per_day": 0.33399827605600163
     }
   }
 }
