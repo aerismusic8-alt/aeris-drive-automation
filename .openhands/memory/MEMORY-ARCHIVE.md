@@ -6459,3 +6459,7 @@ The Gemini review gate ran PASS_SCORE 8.0 while Gemini never emitted above 6.0, 
 the loop failed forever and looked like "the songs are bad". Calibrate a gate to what
 the judge actually emits; the **verdict** decides, the score is only a noisy sanity
 floor. An always-red gate is a bug, not a high standard.
+
+## Dreamina CLI (2026-11-19): image + TTS only, video blocked server-side
+8 credits per image; video generation is blocked server-side, and it has no Thai
+voice. So images may come from Dreamina, speech stays on `edge-tts`.

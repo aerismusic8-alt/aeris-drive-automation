@@ -1,6 +1,6 @@
 # MEMORY — index
-**How to use.** Capped at 6 KB (`ops/memory_guard.py`); rules/pointers only, detail
-in `MEMORY-ARCHIVE.md` + daily logs. **Read `.openhands/CHARTER.md` first.**
+**How to use.** Capped 6 KB (`ops/memory_guard.py`); rules/pointers only, detail in
+`MEMORY-ARCHIVE.md` + daily logs. **Read `.openhands/CHARTER.md` first.**
 
 ## 🔴 กฎถาวรข้อที่ 1 (K): ฟรีเท่านั้น — free only
 100% free: no paid API, subscription or credits. Free routes only — login-only web
@@ -57,6 +57,9 @@ stay pure — a log line piped to `shuf` killed the clip lane (2026-11-20).
 - **Desktop = Live View** (`work-2`:12001); Thai `Text.luau` + `NotoSansThai.ttf`
   (else tofu); burned ASS has no emoji.
 - **`ops/websearch.py`** = the free web search (Tavily has no quota).
+- **A shell step failing "for no reason":** replay it with `bash -e -o pipefail`.
+  An unmatched `grep` in `X=$(...)` returns 1 and `-e` kills the step before your
+  error branch — add `|| true`.
 
 ## Sound + clip quality (K)
 **sfizz** not GM; `AX_REQUIRE_REAL_INSTRUMENTS=1` → a fallback **raises**.
@@ -73,17 +76,14 @@ each `work/*` ledger must be un-ignored (`!…`) or it re-posts every tick.
 - **A green run is not a finished job.** `release.py` rc 4 + `UPLOAD_LIMIT_EXCEEDED`;
   `heartbeat` pages on a failed latest run. The cap is **per-channel new-videos/day**
   and clears over hours, not at the 08:00 UTC reset.
-- **`continue-on-error` + wrong step order = a silent broken artifact** — gate the
-  artifact and assert the order. Repair a derived artifact at the chokepoint
-  (`clip_standard.repair_audio`), never re-render by hand.
+- **`continue-on-error` + wrong step order = a silent broken artifact** — gate it
+  and assert the order; repair at the chokepoint, never re-render by hand.
 - **Never decide on missing/stale data** (2026-11-12): a blank/stale newest row is
   `data`, never a guess; `--assert-fresh` gates the dashboard rail.
 - **`videos.list` ≤50 ids/call; YPP = 1,000 subs AND 4,000 watch-hours.**
 - **Bound every rail:** `timeout-minutes` + `cancel-in-progress: true`. Risks:
   `OPENHANDS_RISK_REGISTER.json` + `ops/risk_audit.py --strict`.
 
-## Dreamina CLI (2026-11-19): image + TTS only, **video blocked server-side** (8 cr/img;
-no Thai voice → `edge-tts`). Archive.
 
 ## Art + image bank (2026-11-19): our own code, no API
 `ops/genart.py` = 5 algorithms, 4096 px, **reproducible from (algo,palette,seed)**
