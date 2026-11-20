@@ -6087,6 +6087,89 @@ def test_genre_gate_blocks_parked_lanes() -> None:
         check(f"bank stills for {q!r} fill a clip", len(got) >= 3, f"{len(got)}")
 
 
+def test_a_director_cuts_on_the_music() -> None:
+    """A clip is directed, not sliced evenly (K, 2026-11-20).
+
+    K: "k อยากได้ผู้กำกับภาพยนต์ มาสร้างวีดีโอให้ ทำได้ไหม". The lane gave every
+    still `seconds / len(stills)`, so a cut landed wherever arithmetic fell and
+    the clip read as a slideshow. A director cuts where the music moves.
+
+    The rules pinned here are the ones that make a cut read as deliberate rather
+    than random, and each was a real defect or a real risk:
+
+      * boundaries snap to an onset, because a cut 300 ms before the hit reads as
+        a mistake;
+      * shot length follows the energy, so a loud chorus is cut faster than a
+        quiet verse instead of both at one rate;
+      * no shot is a flash frame or a still;
+      * the camera move never repeats back to back, which would read as one
+        stuttering shot;
+      * `zoompan d=1` with a still looped at the output rate -- passing the shot
+        length as `d` is the per^2 bug that produced a frozen picture and was
+        caught by the floor, not by a test.
+    """
+    section("a director cuts on the music")
+    sys.path.insert(0, str(ROOT.parent / "ops"))
+    import shot_director as sd  # noqa: E402
+
+    src = Path(sd.__file__).read_text(encoding="utf-8")
+    check("the shot bounds keep a shot readable",
+          sd.MIN_SHOT >= 1.0 and sd.MAX_SHOT <= 8.0,
+          f"{sd.MIN_SHOT}..{sd.MAX_SHOT}")
+    check("a loud passage is cut faster than a quiet one",
+          sd.LOUD_TARGET < sd.QUIET_TARGET,
+          f"loud {sd.LOUD_TARGET} quiet {sd.QUIET_TARGET}")
+
+    songs = sorted((ROOT.parent / "aeris938-1" / "library" / "music").glob("*.mp3"))
+    check("there is a song to direct", bool(songs), f"{len(songs)}")
+    if not songs:
+        return
+
+    song = songs[0]
+    shots = sd.plan(song, 6, 40.0, 11, log=lambda *_: None)
+    check("a director returns a shot list", len(shots) >= 3, f"{len(shots)}")
+    check("the shots cover the whole clip",
+          abs(sum(s["dur"] for s in shots) - 40.0) < 0.05,
+          f"{sum(s['dur'] for s in shots):.3f}s")
+    check("the shots are contiguous",
+          all(abs(shots[i]["start"] + shots[i]["dur"] - shots[i + 1]["start"]) < 0.01
+              for i in range(len(shots) - 1)))
+    check("no shot is a flash frame",
+          all(s["dur"] >= sd.MIN_SHOT - 0.01 for s in shots),
+          f"min {min(s['dur'] for s in shots):.2f}")
+    check("no shot is a still",
+          all(s["dur"] <= sd.MAX_SHOT + 0.01 for s in shots),
+          f"max {max(s['dur'] for s in shots):.2f}")
+    check("the camera move never repeats back to back",
+          all(shots[i]["move"] != shots[i + 1]["move"]
+              for i in range(len(shots) - 1)))
+    # A real cut lands on a real onset. The first shot starts at 0 by definition,
+    # so this checks the interior boundaries against the detected marks.
+    env = sd.envelope(song, 40.0)
+    marks = sd.onsets(env)
+    check("the audio actually yields onsets", len(marks) >= 3, f"{len(marks)}")
+    # Measured on two masters: 10/11 and 9/12 land exactly on an onset. A shot
+    # that runs to the end of the clip has no onset to snap to, so this is a
+    # ratio, not all-of.
+    snapped = [s for s in shots[1:]
+               if any(abs(s["start"] - m) <= 0.05 for m in marks)]
+    check("most interior cuts land on an onset",
+          len(snapped) >= int(0.7 * (len(shots) - 1)),
+          f"{len(snapped)}/{len(shots) - 1}")
+
+    # d=1 is the difference between a moving camera and a frozen frame.
+    z = sd.zoompan(shots[0], 120, 1080, 1920, 30)
+    check("zoompan emits one frame per input frame", "d=1" in z, z[:60])
+    check("the moves are distinct expressions",
+          len({sd.zoompan({"move": m}, 90, 1080, 1920, 30) for m in sd.MOVES}) == len(sd.MOVES))
+    check("the lane feeds stills at the output rate",
+          '"-framerate"' in (ROOT.parent / "ops" / "clip_lane.py"
+                             ).read_text(encoding="utf-8"))
+    check("an even grid is still available",
+          "--no-direct" in (ROOT.parent / "ops" / "clip_lane.py"
+                            ).read_text(encoding="utf-8"))
+
+
 def test_gemini_gate_blocks_unreviewed() -> None:
     """No Gemini pass, no upload (K, 2026-11-19).
 
@@ -7026,12 +7109,18 @@ def test_clip_lane_is_its_own_job() -> None:
 
     # The bug behind that: `zoompan`'s `d` is frames per INPUT frame, so looping
     # a still for `per` seconds multiplied out to per^2*FPS^2 frames from image
-    # one and the other stills never appeared. The still must enter as a single
-    # frame, which means no `-loop 1` on the image inputs.
-    check("a still enters as one frame, not a loop",
-          '"-loop", "1", "-t", f"{per' not in src)
-    check("zoompan holds each still for its share of the clip",
-          "d={int(per * FPS)}" in src)
+    # one and the other stills never appeared.
+    #
+    # The director keeps the loop -- a shot needs one input frame per output frame
+    # for `on` to walk the move across it -- and avoids the multiplication the
+    # other way: `d=1`, and the still is looped at the OUTPUT framerate. Passing
+    # the shot length as `d` is the same bug back again: the move finishes in the
+    # first n frames and the shot repeats one frozen image, which the floor
+    # catches as "picture is frozen" (measured 0.001 median) rather than a test.
+    check("zoompan emits one frame per input frame, not a shot's worth",
+          "d=1" in src and "d={int(per * FPS)}" not in src)
+    check("a shot's still is looped at the output framerate",
+          '"-loop", "1", "-framerate", str(FPS)' in src)
 
     # Two frames of one held still are not a repeated shot, but the sheet could
     # not say so and Gemini failed a correct clip for "ช็อตซ้ำ".

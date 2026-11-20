@@ -530,7 +530,7 @@ def available_songs(log=print) -> list[str]:
 
 
 def render(song: str, query: str, seconds: float, seed: int, out_dir: Path,
-           log=print, mix: bool = True) -> Path | None:
+           log=print, mix: bool = True, direct: bool = True) -> Path | None:
     audio = _song_path(song, log=log)
     if audio is None:
         return None
@@ -543,6 +543,8 @@ def render(song: str, query: str, seconds: float, seed: int, out_dir: Path,
         return None
 
     brand = _branding()
+    import shot_director as director  # noqa: PLC0415
+
     out_dir.mkdir(parents=True, exist_ok=True)
     out = out_dir / f"bank-{song}-{query.replace(' ', '-')}.mp4"
 
@@ -551,28 +553,46 @@ def render(song: str, query: str, seconds: float, seed: int, out_dir: Path,
         title = _card(f"{brand.NAME}\n{brand.FOLLOW_PROMISE}", td / "title.png", 64)
         tail = _card(f"{brand.FOLLOW_ASK}\n{brand.FOLLOW_PROMISE}", td / "tail.png", 58)
 
-        # Each still holds for an equal share, cover-cropped to 9:16 and panned a
-        # little so the frame is never frozen (the vertical profile rejects a
-        # still clip). `zoompan` is the cheap way to get motion without a second
-        # input.
+        # A director cuts on the music, not on the clock. Every still used to
+        # hold `seconds / len(stills)`, which put the cut wherever arithmetic
+        # landed -- a slideshow. `shot_director` reads the song and returns a
+        # shot list: boundaries snapped to onsets, shot length following the
+        # energy, and the camera move rotating so no two shots look alike.
         #
-        # A still must enter as ONE frame: `zoompan`'s `d` is frames per INPUT
-        # frame, so looping the image for `per` seconds and asking for `per * FPS`
-        # output frames each multiplies out to per^2 * FPS^2 frames from the first
-        # image alone (18,750 for a 30 s clip) and stills 2..n never appear. The
-        # clip played as one still that slowly zoomed.
-        per = seconds / len(stills)
+        # Each shot is its own `-loop 1 -t dur` input, so `zoompan`'s `d` is 1
+        # (one output frame per input frame) and `on` runs 0..n-1 for the move
+        # expressions. The old form looped the image and asked for `per * FPS`
+        # output frames each, which multiplied out to per^2 * FPS^2 frames from
+        # the first image alone (18,750 for a 30 s clip) and stills 2..n never
+        # appeared; the clip played as one still that slowly zoomed.
+        shots = (director.plan(audio, len(stills), seconds, seed, log=log)
+                 if direct else [])
+        if not shots:
+            per = seconds / len(stills)
+            shots = [{"start": i * per, "dur": per, "still": i,
+                      "move": "push_in", "energy": 0.5}
+                     for i in range(len(stills))]
+        if log is not None and direct:
+            log("director: shot list\n" + director.describe(shots))
+
         args = ["ffmpeg", "-y", "-loglevel", "error", "-ss", "0",
                 "-t", f"{seconds:.2f}", "-i", str(audio)]
-        for s in stills:
-            args += ["-i", str(s["path"])]
+        for s in shots:
+            # `-framerate` matters: without it the still loop runs at ffmpeg's
+            # default 25 fps while the output is 30, so the shot drifts and the
+            # concat stretches it. One input frame per output frame is what lets
+            # `zoompan d=1` walk the move across the whole shot.
+            args += ["-loop", "1", "-framerate", str(FPS),
+                     "-t", f"{s['dur']:.3f}",
+                     "-i", str(stills[s["still"]]["path"])]
+        n = len(shots)
         args += ["-loop", "1", "-t", "3", "-i", str(title)]
         args += ["-loop", "1", "-t", "3", "-i", str(tail)]
 
-        n = len(stills)
         parts = []
-        for i in range(n):
-            # Cover-crop straight to the frame, then let zoompan push in. The old
+        for i, s in enumerate(shots):
+            frames = max(1, int(round(s["dur"] * FPS)))
+            # Cover-crop straight to the frame, then let zoompan move. The old
             # chain pre-scaled to 2x and cropped that, which turned a 1920x1280
             # landscape into a 720-wide 9:16 strip blown up 3x -- the noise and
             # softness Gemini reported on every night clip. Lanczos keeps a
@@ -580,9 +600,7 @@ def render(song: str, query: str, seconds: float, seed: int, out_dir: Path,
             parts.append(
                 f"[{i + 1}:v]scale={W}:{H}:force_original_aspect_ratio=increase:"
                 f"flags=lanczos,crop={W}:{H},"
-                f"zoompan=z='min(zoom+0.0006,1.12)':"
-                f"x='iw/2-(iw/zoom/2)':y='ih/2-(ih/zoom/2)':d={int(per * FPS)}:"
-                f"s={W}x{H}:fps={FPS},setsar=1[v{i}]")
+                f"{director.zoompan(s, frames, W, H, FPS)},setsar=1[v{i}]")
         chain = "".join(f"[v{i}]" for i in range(n)) + f"concat=n={n}:v=1:a=0[base]"
         parts.append(chain)
 
@@ -670,6 +688,8 @@ def main(argv=None) -> int:
     ap.add_argument("--out", default=str(OUT))
     ap.add_argument("--photos-only", action="store_true",
                     help="skip the generated bank and use photographs alone")
+    ap.add_argument("--no-direct", action="store_true",
+                    help="cut on an even grid instead of on the music")
     args = ap.parse_args(argv)
     if args.list_songs:
         songs = available_songs()
@@ -684,7 +704,7 @@ def main(argv=None) -> int:
               f"(see music938-1/channel/genres.json)")
         return 1
     got = render(args.song, args.query, args.seconds, args.seed, Path(args.out),
-                 mix=not args.photos_only)
+                 mix=not args.photos_only, direct=not args.no_direct)
     return 0 if got else 1
 
 
