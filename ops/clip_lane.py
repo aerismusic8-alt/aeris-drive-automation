@@ -38,6 +38,7 @@ import argparse
 import json
 import os
 import random
+import re
 import shutil
 import subprocess
 import sys
@@ -68,6 +69,17 @@ SCENES_IMG = ROOT / "music938-1" / "library" / "scenes"
 
 W, H = 1080, 1920
 FPS = 30
+
+# A still that trips an advertiser filter costs the whole upload: YouTube and
+# TikTok demote or age-gate a clip for a profanity neon sign in the background,
+# and the channel's revenue gate is watch-hours, so a demoted clip is a lost
+# month. Gemini flagged a "bangkok night" render for exactly this (SHOT 5, a bar
+# strip sign, 2026-11-20). The bank is large enough that dropping these rows
+# still fills a clip, so the match is a reject, not a warning.
+ADULT_TITLE = re.compile(
+    r"patpong|soi cowboy|nana plaza|go-?go|red.?light|nightlife|"
+    r"bars? (and|&) clubs?|strip ?club|adult|sex|ping ?pong|massage parlou?r|"
+    r"ladyboy|girly ?bar|beer ?bar", re.I)
 
 
 def _branding():
@@ -255,6 +267,34 @@ def _sharpness(path: Path) -> float:
     return float(lap.var())
 
 
+def _safe_rows(rows: list[dict], log=print) -> tuple[list[dict], int]:
+    """Drop rows that would embarrass the channel, and collapse duplicate ids.
+
+    Two separate defects live here. The manifest carries 14 ids twice with
+    different `file` values, so the same picture arrives under two names and the
+    de-duplication by image hash cannot see it — the picture simply appears
+    twice in one clip. And 44 rows are bar-strip / nightlife scenes whose neon
+    signage trips an advertiser filter. Both are dropped before any hash work,
+    so a rejected row costs nothing.
+    """
+    seen_ids: set[str] = set()
+    out: list[dict] = []
+    risky = dup = 0
+    for r in rows:
+        if ADULT_TITLE.search(r.get("title", "") or ""):
+            risky += 1
+            continue
+        if r.get("id") in seen_ids:
+            dup += 1
+            continue
+        seen_ids.add(r.get("id"))
+        out.append(r)
+    if risky or dup:
+        log(f"bank: dropped {risky} adult/nightlife row(s) and {dup} duplicate "
+            f"manifest id(s) before picking")
+    return out, risky + dup
+
+
 def bank_stills(query: str, want: int, seed: int, log=print) -> list[dict]:
     """Pick stills for a query from the committed manifest, fetching what is packed.
 
@@ -266,6 +306,7 @@ def bank_stills(query: str, want: int, seed: int, log=print) -> list[dict]:
     terms = [t for t in query.lower().split() if t]
     rows = [r for r in doc.get("images", [])
             if all(t in json.dumps(r, ensure_ascii=False).lower() for t in terms)]
+    rows, dropped = _safe_rows(rows, log=log)
     if not rows:
         log(f"bank: nothing matches {query!r}")
         return []
@@ -529,21 +570,63 @@ def available_songs(log=print) -> list[str]:
         return []
 
 
+def _merge_to(shots: list[dict], n: int) -> list[dict]:
+    """Fold a shot list down to `n` shots, so no picture has to repeat.
+
+    Merging keeps the cut that mattered — the boundary with the most energy —
+    rather than re-timing everything to a flat grid, which is the slideshow this
+    lane replaced. `still` is reassigned 0..n-1 in order, so every picture is
+    used exactly once.
+    """
+    if n <= 0:
+        return []
+    out = [dict(s) for s in shots]
+    while len(out) > n:
+        # Drop the boundary whose two sides are closest in energy: that cut is
+        # the least audible, so removing it changes the rhythm least.
+        i = min(range(len(out) - 1),
+                key=lambda k: abs(out[k]["energy"] - out[k + 1]["energy"]))
+        out[i]["dur"] = round(out[i]["dur"] + out[i + 1]["dur"], 3)
+        del out[i + 1]
+    t = 0.0
+    for i, s in enumerate(out):
+        s["start"] = round(t, 3)
+        s["still"] = i
+        t += s["dur"]
+    # Absorb the rounding drift so the video stays exactly `seconds` long.
+    out[-1]["dur"] = round(out[-1]["dur"] + (shots[-1]["start"] + shots[-1]["dur"]
+                                             - t), 3)
+    return out
+
+
 def render(song: str, query: str, seconds: float, seed: int, out_dir: Path,
            log=print, mix: bool = True, direct: bool = True) -> Path | None:
     audio = _song_path(song, log=log)
     if audio is None:
         return None
 
-    count = max(6, int(seconds / 7))
+    import shot_director as director  # noqa: PLC0415
+
+    # Plan first, then fetch as many stills as the song wants cuts. The director
+    # assigns `still = idx % n_stills`, so a pool smaller than its shot list
+    # repeats a picture and Gemini fails the clip for "ช็อตซ้ำ" — a 58 s song
+    # asked for 16 cuts from 8 stills, so shots 0-7 came back verbatim in 8-15
+    # (2026-11-20). One picture per cut is the honest fix; merging is the
+    # fallback for a pool that cannot supply them.
+    planned = (director.plan(audio, 64, seconds, seed, log=lambda *_: None)
+               if direct else [])
+    count = len(planned) if planned else max(6, int(seconds / 7))
     stills = (mixed_stills(song, query, count, seed, log=log) if mix
               else bank_stills(query, count, seed, log=log))
     if len(stills) < 3:
         log(f"render: only {len(stills)} usable still(s); a clip needs 3+")
         return None
+    if planned and len(planned) > len(stills):
+        log(f"render: {len(planned)} cut(s) but only {len(stills)} still(s); "
+            f"merging the closest cuts so no picture repeats")
+        planned = _merge_to(planned, len(stills))
 
     brand = _branding()
-    import shot_director as director  # noqa: PLC0415
 
     out_dir.mkdir(parents=True, exist_ok=True)
     out = out_dir / f"bank-{song}-{query.replace(' ', '-')}.mp4"
@@ -565,13 +648,11 @@ def render(song: str, query: str, seconds: float, seed: int, out_dir: Path,
         # output frames each, which multiplied out to per^2 * FPS^2 frames from
         # the first image alone (18,750 for a 30 s clip) and stills 2..n never
         # appeared; the clip played as one still that slowly zoomed.
-        shots = (director.plan(audio, len(stills), seconds, seed, log=log)
-                 if direct else [])
-        if not shots:
-            per = seconds / len(stills)
-            shots = [{"start": i * per, "dur": per, "still": i,
-                      "move": "push_in", "energy": 0.5}
-                     for i in range(len(stills))]
+        shots = (planned if planned else
+                 [{"start": i * (seconds / len(stills)),
+                   "dur": seconds / len(stills), "still": i,
+                   "move": "push_in", "energy": 0.5}
+                  for i in range(len(stills))])
         if log is not None and direct:
             log("director: shot list\n" + director.describe(shots))
 

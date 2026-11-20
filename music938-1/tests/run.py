@@ -6169,6 +6169,61 @@ def test_a_director_cuts_on_the_music() -> None:
           "--no-direct" in (ROOT.parent / "ops" / "clip_lane.py"
                             ).read_text(encoding="utf-8"))
 
+    # Gemini failed a real clip for "ช็อตซ้ำ" and it was right: the director
+    # assigns `still = idx % n_stills`, so a 58 s song that asked for 16 cuts but
+    # had only 8 stills showed shots 0-7 again verbatim in 8-15 (2026-11-20).
+    # `render` now plans first and fetches one still per cut; when the pool is
+    # still short, `_merge_to` folds the least-audible boundaries until every
+    # picture is used exactly once. A repeat here is the defect, not a taste call.
+    import clip_lane as lane  # noqa: E402
+    planned = sd.plan(song, 64, 40.0, 11, log=lambda *_: None)
+    check("the director plans more cuts than there are stills in this test",
+          len(planned) > 8, f"{len(planned)}")
+    folded = lane._merge_to(planned, 8)
+    check("merging yields exactly the requested shot count", len(folded) == 8,
+          f"{len(folded)}")
+    check("every still is used exactly once after merging",
+          [s["still"] for s in folded] == list(range(8)),
+          str([s["still"] for s in folded]))
+    check("the merged cut list still covers the clip",
+          abs(sum(s["dur"] for s in folded) - sum(s["dur"] for s in planned)) < 0.05)
+    check("the merged shots stay contiguous",
+          all(abs(folded[i]["start"] + folded[i]["dur"] - folded[i + 1]["start"])
+              < 0.01 for i in range(len(folded) - 1)))
+    # A pool of one picture can never be merged to zero: the guard must return a
+    # usable list, not crash, because a render still has to happen.
+    check("merging to the pool size never drops a picture",
+          len(lane._merge_to(planned, 3)) == 3)
+    # And the render path must ask for one still per planned cut, not a fixed
+    # seconds/7 estimate that under-supplies the director.
+    render_src = (ROOT.parent / "ops" / "clip_lane.py").read_text(encoding="utf-8")
+    check("render sizes the still pool from the planned cuts",
+          "count = len(planned)" in render_src, render_src[:0])
+
+    # Gemini flagged SHOT 5 of a real "bangkok night" render for a bar-strip neon
+    # sign, and that is a monetisation defect, not a taste one: an age-gated clip
+    # cannot earn watch-hours. The bank query that produced it (`bangkok night`)
+    # matched Patpong and nightlife rows. Those must be dropped before a pick, and
+    # the manifest's duplicated ids must collapse so one picture cannot fill two
+    # shots under two names.
+    picked = lane.bank_stills("bangkok night", 8, 11, log=lambda *_: None)
+    check("a night-street query still fills a clip", len(picked) >= 3,
+          f"{len(picked)}")
+    check("no picked still is an adult/nightlife row",
+          not any(lane.ADULT_TITLE.search(s.get("title", "") or "")
+                  for s in picked),
+          str([s.get("title", "")[:40] for s in picked]))
+    check("no picked still is the same manifest id twice",
+          len({s["id"] for s in picked}) == len(picked),
+          str([s["id"] for s in picked]))
+    rows = [{"id": "a", "title": "Soi Cowboy, Bangkok"},
+            {"id": "b", "title": "Wat Arun at night"},
+            {"id": "b", "title": "Wat Arun again"}]
+    safe, dropped = lane._safe_rows(rows, log=lambda *_: None)
+    check("the filter drops a named red-light street", dropped == 2, str(dropped))
+    check("the filter keeps the clean row", [r["id"] for r in safe] == ["b"],
+          str(safe))
+
 
 def test_gemini_gate_blocks_unreviewed() -> None:
     """No Gemini pass, no upload (K, 2026-11-19).
