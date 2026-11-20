@@ -53,11 +53,7 @@ stay pure — a log line piped to `shuf` killed the clip lane (2026-11-20).
 - **Writes:** `GITHUB_TOKEN` is 403; push via KV `axsecrets:gh-workflow-token`
   (workflow files need its `workflow` scope). API reads work with `$AX_GH_TOKEN`.
 - **Desktop = Live View** (`work-2`:12001); Thai `Text.luau` + `NotoSansThai.ttf`
-  (else tofu); burned ASS has no emoji.
-- **`ops/websearch.py`** = the free web search (Tavily has no quota).
-- **A shell step failing "for no reason":** replay it with `bash -e -o pipefail`.
-  An unmatched `grep` in `X=$(...)` returns 1 and `-e` kills the step before your
-  error branch — add `|| true`.
+  (else tofu); burned ASS has no emoji. `ops/websearch.py` = free web search.
 
 ## Sound + clip quality (K)
 **sfizz** not GM; `AX_REQUIRE_REAL_INSTRUMENTS=1` → a fallback **raises**.
@@ -65,6 +61,10 @@ stay pure — a log line piped to `shuf` killed the clip lane (2026-11-20).
 `ops/clip_standard.py` = floor + per-format profile, gated at **every** upload route,
 no override; `ops/thumb_standard.py` too. `docs/clip-standard.md`. `short` (captions →
 text floor) ≠ `vertical` (MV → none). Also gates dead silence (≤3 s) + VFR (≤2%).
+
+## Motion (2026-11-20): Dreamina video VIP-gated; HF Wan = free i2v
+Dreamina **images work** (seedream_4.0, 8 cr), **video is VIP-gated**. Free i2v =
+`make_motion.py` HF Wan (no token, ~90 s, diff 8.06), `--image` = any still.
 
 ## Retry lanes → ch3 (trivia + reactive)
 `trivia_publish.py` + `reactive_publish.py` share one chokepoint; a cap = **retry**;

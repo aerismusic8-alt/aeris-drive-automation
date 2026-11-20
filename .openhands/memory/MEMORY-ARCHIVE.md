@@ -6487,3 +6487,27 @@ Flow Music/Gemini = K's `aerismusic8`; K taps a QR once, then `login_vault.py sa
 The cap is **per-channel new-videos/day** and clears over hours, not at the 08:00 UTC
 reset. `continue-on-error` + wrong step order = a silent broken artifact — gate it and
 assert the order; repair at the chokepoint, never re-render by hand.
+
+## Moved from the index 2026-11-20 (motion + rail-failure detail)
+**Dreamina video is a membership gate, not a credit gate.** Every video model
+(dreamina_vidu_q4, seedance_2.0/_fast/_mini/2.5/2.5_flash, wan_3.0, ltx_2.5_fast,
+grok_imagine*, pixverse_v5*) answers `serviceCode 1 "temporarily unavailable"` on
+`node quote`; `node run` stops at `cli.generation_not_quotable`. The account has
+450 credits, so balance is not the cause. The web UI confirms it independently: a
+PixVerse 5 node shows "Current price 125" then hangs on **"Checking price and
+access"**. `vipRequired: false` in the model list is wrong — `seedance_2.5_flash`
+create returns `service.10000 … requires VIP membership`.
+**Images do work**: `node create image --mode t2i --model seedream_4.0 --ratio 9:16
+--resolution 2K --run --wait --credit-ceiling 12` = 8 credits, 1440x2560 PNG.
+Login detail: the overseas `dreamina-canvas` v1.0.1 build (the CN builds offer no
+Google); the credential lives in
+`$HOME/.local/share/dreamina_canvas_device_login_v1_<hash>/`, so the wrapper must
+pin `HOME`; consent needs a JS `.click()`, not a CDP mouse click.
+**Free i2v verified 2026-11-20:** `kulkas2pintu/wan777` (one of the five Spaces in
+`make_motion.py`) returned 480x832 h264 16 fps 3.56 s in ~90 s, no token, no
+credits, 8.06 mean abs frame diff (a zoomed still measures 0.77). The five were
+reported dead on 2026-11-19 on ZeroGPU quota; the quota recovers, so retry the
+list before concluding the lane is gone.
+**A rail step failing "for no reason":** replay it with `bash -e -o pipefail`. An
+unmatched `grep` in `X=$(...)` returns 1 and `-e` kills the step before the error
+branch runs — add `|| true`.
