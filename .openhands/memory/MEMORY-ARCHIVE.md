@@ -6463,3 +6463,27 @@ floor. An always-red gate is a bug, not a high standard.
 ## Dreamina CLI (2026-11-19): image + TTS only, video blocked server-side
 8 credits per image; video generation is blocked server-side, and it has no Thai
 voice. So images may come from Dreamina, speech stays on `edge-tts`.
+
+## Moved from the index 2026-11-20 (art + image bank detail)
+`ops/genart.py` = 5 algorithms, 4096 px, **reproducible from (algo,palette,seed)**
+so "1/1, seed N" is honest; gate runs *inside* `make()`. `ops/image_bank.py` =
+Commons photos, 500/query. Both shard → `media-938`, commit manifest only.
+`ops/image_library.py` = AI frames under `library/scenes/<genre>/`, gitignored;
+`publish` packs one tar per genre to a `scenes-938` release (created on first use,
+asset replaced on re-publish) and `clip_lane._fetch_scenes()` pulls them back, so
+a fresh runner really has AI frames. A dead docstring reference to a
+non-existent `publish_media.py` is why they were never published at all.
+
+## Moved from the index 2026-11-20 (accounts + method detail)
+AR mailbox = `araeris4770d7@fldubai.com` (mail.tm; `ops/ar_identity.py`).
+AR self-creatable: **Nostr** (`AR_NOSTR_NSEC`), **Telegraph** (`ops/ar_telegraph.py`).
+Flow Music/Gemini = K's `aerismusic8`; K taps a QR once, then `login_vault.py save`
+**immediately** (~1 day). A synth bed has **no vocal** — Flow is the only real-song route.
+**Advisor = Gemini alone** (K 2026-11-18) — when stuck ask Gemini and follow it;
+`ops/consult.py` is a real gate (→ `consult-log.jsonl`), panel `["gemini"]`.
+
+## Moved from the index 2026-11-20 (loop health detail)
+`release.py` rc 4 + `UPLOAD_LIMIT_EXCEEDED`; `heartbeat` pages on a failed latest run.
+The cap is **per-channel new-videos/day** and clears over hours, not at the 08:00 UTC
+reset. `continue-on-error` + wrong step order = a silent broken artifact — gate it and
+assert the order; repair at the chokepoint, never re-render by hand.

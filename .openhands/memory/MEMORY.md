@@ -9,19 +9,17 @@ apps (K's Chromium), open APIs, self-hosted tooling. **AR never types a password
 channel's first work; never rename a channel without K's approval.
 
 ## Accounts (K 2026-11-14): every tool uses AR's OWN mail, not K's
-AR mailbox = `araeris4770d7@fldubai.com` (mail.tm; `ops/ar_identity.py`).
-AR self-creatable: **Nostr** (`AR_NOSTR_NSEC`), **Telegraph** (`ops/ar_telegraph.py`).
-Flow Music/Gemini = K's `aerismusic8`; K taps a QR once, then `login_vault.py save`
-**immediately** (~1 day). A synth bed has **no vocal** — Flow is the only real-song route.
+AR mail (`ar_identity.py`) + self-creatable Nostr/Telegraph. Flow Music/Gemini =
+K's `aerismusic8`; a QR once, then `login_vault.py save` **immediately**. A synth
+bed has **no vocal** — Flow is the only real-song route. Detail: archive.
 
 ## Roles and method (K 2026-10-31)
 - **K = final authority.** Every standing rule is K's.
 - **AR = me.** I administer **all** of K's work in K's place — decide, execute,
   report; no per-step approval. Hand K only what needs a credential or authority
   only K holds.
-- **Method: PCSEV** (Problem, Cause, Solution, Execute, Verify). **Advisor = Gemini
-  alone** (K 2026-11-18) — when stuck ask Gemini and follow it; `ops/consult.py`
-  is a real gate (→ `consult-log.jsonl`), panel `["gemini"]`.
+- **Method: PCSEV.** **Advisor = Gemini alone** (K 2026-11-18); `ops/consult.py`
+  is a real gate (→ `consult-log.jsonl`).
 - **Time to K = Thai (UTC+7) 24-hour**, never UTC or AM/PM. Rails stay UTC.
 
 ## What this project is (K's goal)
@@ -73,11 +71,10 @@ text floor) ≠ `vertical` (MV → none). Also gates dead silence (≤3 s) + VFR
 each `work/*` ledger must be un-ignored (`!…`) or it re-posts every tick.
 
 ## Loop health & platform risks
-- **A green run is not a finished job.** `release.py` rc 4 + `UPLOAD_LIMIT_EXCEEDED`;
-  `heartbeat` pages on a failed latest run. The cap is **per-channel new-videos/day**
-  and clears over hours, not at the 08:00 UTC reset.
-- **`continue-on-error` + wrong step order = a silent broken artifact** — gate it
-  and assert the order; repair at the chokepoint, never re-render by hand.
+- **A green run is not a finished job.** rc 4 + `UPLOAD_LIMIT_EXCEEDED` = the
+  per-channel daily cap, which clears over hours. Detail: archive.
+- **`continue-on-error` + wrong step order = a silent broken artifact** — assert
+  the order; repair at the chokepoint, never re-render by hand.
 - **Never decide on missing/stale data** (2026-11-12): a blank/stale newest row is
   `data`, never a guess; `--assert-fresh` gates the dashboard rail.
 - **`videos.list` ≤50 ids/call; YPP = 1,000 subs AND 4,000 watch-hours.**
@@ -86,9 +83,14 @@ each `work/*` ledger must be un-ignored (`!…`) or it re-posts every tick.
 
 
 ## Art + image bank (2026-11-19): our own code, no API
-`ops/genart.py` = 5 algorithms, 4096 px, **reproducible from (algo,palette,seed)**
-so "1/1, seed N" is honest; gate runs *inside* `make()`. `ops/image_bank.py` =
-Commons photos, 500/query. Both shard → `media-938`, commit manifest only. Archive.
+`genart.py` + `image_bank.py` shard → `media-938`; `image_library.py publish` →
+**`scenes-938`** (`_fetch_scenes()` pulls). Commit the manifest only. Archive.
+
+## The director (K 2026-11-20 "อยากได้ผู้กำกับภาพยนตร์")
+`shot_director.py` cuts **on the music**: onset-snapped, shot length follows energy
+(1.2-6 s), move never repeats. ffmpeg→numpy, no librosa. `--no-direct` = old grid.
+**`zoompan d` = frames per INPUT frame** → loop at OUTPUT fps, `d=1`.
+A green CI run is not proof a feature ran: read the log for its own line.
 
 ## Recovery
 `$AX_VAULT_BOOTSTRAP` → `ops/ax_vault.py` (`axvault:readme`); a lost `work/*.json`
