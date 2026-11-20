@@ -18,6 +18,12 @@ not paid for; that is why there is a list of them and not one.
     python3 scripts/make_motion.py 01-khon-di-thi-chak-pai
     python3 scripts/make_motion.py 01-khon-di-thi-chak-pai --backend wan777
     python3 scripts/make_motion.py --all
+    python3 scripts/make_motion.py --image /tmp/still.png --out-dir /tmp
+
+The `--image` form animates any still (an image-bank photo, a text-to-image
+result) rather than a song cover, so the lane is not tied to `library/covers/`.
+Verified 2026-11-20: wan777 returned a 480x832 h264 clip in ~90 s, measured at
+8.06 mean abs frame diff — real motion, against 0.77 for a zoomed still.
 
 The output is a silent 3-4 s clip in `library/motion/`. `make_short.py` does not
 use it yet; this rail only produces the raw motion so it can be reviewed and
@@ -104,10 +110,21 @@ def _generate(backend: tuple[str, str, str], cover: Path, out: Path,
 
 
 def build(slug: str, *, backend: str | None = None, prompt: str | None = None,
-          force: bool = False) -> dict:
-    cover = _cover(slug)
-    OUT_DIR.mkdir(parents=True, exist_ok=True)
-    out = OUT_DIR / f"motion-{slug}.mp4"
+          force: bool = False, image: Path | None = None,
+          out_dir: Path | None = None) -> dict:
+    """Animate `image`, or the cover art for `slug` when no image is given.
+
+    `--image` exists because the cover table is not the only source of art: a
+    still from the image bank or from a text-to-image call is just as good a
+    starting frame, and copying it into `covers/` to satisfy `_cover` would
+    invent a cover that no song owns.
+    """
+    cover = Path(image) if image else _cover(slug)
+    if not cover.exists():
+        raise SystemExit(f"no image to animate: {cover}")
+    dest = Path(out_dir) if out_dir else OUT_DIR
+    dest.mkdir(parents=True, exist_ok=True)
+    out = dest / f"motion-{slug}.mp4"
     if out.exists() and not force:
         return {"slug": slug, "path": str(out), "backend": "cached"}
 
@@ -143,6 +160,8 @@ def main() -> int:
     ap.add_argument("--all", action="store_true", help="every song with a cover")
     ap.add_argument("--backend", help="force one backend by name")
     ap.add_argument("--prompt", help="override the motion prompt")
+    ap.add_argument("--image", help="animate this image instead of a song's cover")
+    ap.add_argument("--out-dir", help="write the clip here instead of library/motion")
     ap.add_argument("--force", action="store_true", help="redo even if cached")
     ap.add_argument("--list", action="store_true", help="list the free backends")
     args = ap.parse_args()
@@ -157,13 +176,17 @@ def main() -> int:
                        for p in COVERS.glob("cover-*.jpg"))
     elif args.slug:
         slugs = [args.slug]
+    elif args.image:
+        slugs = [Path(args.image).stem]
     else:
-        ap.error("give a slug or --all")
+        ap.error("give a slug, --image or --all")
 
     for slug in slugs:
         try:
             info = build(slug, backend=args.backend, prompt=args.prompt,
-                         force=args.force)
+                         force=args.force,
+                         image=Path(args.image) if args.image else None,
+                         out_dir=Path(args.out_dir) if args.out_dir else None)
             print(f"{slug}: {info['path']} ({info.get('backend')})")
         except SystemExit as e:
             print(f"{slug}: FAILED {e}", file=sys.stderr)

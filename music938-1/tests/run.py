@@ -1216,6 +1216,16 @@ def test_motion_lane() -> None:
           all(w in p for w in ("wind", "particle", "parallax")))
     check("motion output lives under library/motion",
           make_motion.OUT_DIR.name == "motion")
+    # The lane must accept a still that no song owns. `--image` was added
+    # 2026-11-20 because the only other way to animate a bank still or a
+    # text-to-image result was to copy it into library/covers/ under a fake slug,
+    # which invents a cover no song has. A signature check is enough: the real
+    # call needs network and the Space's daily quota.
+    sig = inspect.signature(make_motion.build)
+    check("motion rail can animate an arbitrary image",
+          {"image", "out_dir"} <= set(sig.parameters), str(list(sig.parameters)))
+    check("motion build still defaults to the song cover table",
+          sig.parameters["image"].default is None)
 
 
 def test_music_video() -> None:
