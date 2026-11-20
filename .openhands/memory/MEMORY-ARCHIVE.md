@@ -6511,3 +6511,15 @@ list before concluding the lane is gone.
 **A rail step failing "for no reason":** replay it with `bash -e -o pipefail`. An
 unmatched `grep` in `X=$(...)` returns 1 and `-e` kills the step before the error
 branch runs — add `|| true`.
+
+
+## Moved from the index 2026-11-20 (Gemini review removal)
+Gemini review removed from the video system (K 2026-11-20: "ตัดการตรวจสอบของ gemini ออกจากระบบสร้างวีดีโอใหม่เลย"). Call sites cleared: `release.py` (`_gemini_passed`), `yt_publish.py`, `fb_graph.py` (2), `tiktok_api.py`, `bank_publish.py`, `clip_lane.py` (`AWAITING GEMINI REVIEW` gone), `crosspost.py` (2), and the awaiting-review branch in `ax-clip-lane.yml`. `ops/gemini_gate.py` and `ops/gemini_review.py` remain as manual tools. Reason it could not stay: the verdict needed a signed-in desktop, so on a runner its absence was permanent (a rail that can never go green is not a gate), and the PROMPT rubric was written for a 9:16 Short (captions, hook timing) — the wrong test for an MV. Suite after the change: 3373 passed, 0 failed.
+Art + image bank (full): `genart.py` = 5 algorithms, 4096 px, reproducible from (algo,palette,seed) so "1/1, seed N" is honest; the gate runs inside `make()`. `image_bank.py` = Commons photos, 500/query. Both shard → `media-938`; `image_library.py publish` → `scenes-938`, which `_fetch_scenes()` pulls. Commit the manifest only.
+
+## Moved 2026-11-20 (index compression)
+Project-scope lines (full): revenue gate ch3 = 1,000 subs AND 4,000 watch-hours/12 mo; follower metric per K 2026-11-09. Genre gate detail: `yt_publish` refuses without `--song SLUG` or `--not-a-song WHY`; `compile_album.available_songs()` narrows the pool 46→27. `--list-songs` must keep stdout pure — a log line piped into `shuf` killed the clip lane on 2026-11-20.
+Environment (detail): a fresh pod loses `~/.config/aeris/`; `scripts/bootstrap-pod.sh` restores what it can. Durable MV pages are `ops/mv_page.py --all` because a pod-local link dies (K: "ลิงค์ตาย"). Judge rail health from the Actions run history; `heartbeat.json` can be stale. Facebook posts through the Graph API only since 2026-11-15 — the browser route is off; the Page token is `axsecrets:fb-page-token`.
+Loop health (detail): `continue-on-error` plus a wrong step order once produced a silently broken artifact — gate the artifact and assert the step order; repair a derived artifact at the chokepoint (`clip_standard.repair_audio`), never by hand. The per-channel daily new-video cap does not clear at the 08:00 UTC reset; it clears over hours.
+Accounts/roles (detail): every tool AR signs up to uses AR's own mail, not K's (K 2026-11-14). The Gemini advisor is a consultation gate, not a content gate: when stuck, ask it and follow the advice (`ops/gemini_ask.py`).
+The director (full): `shot_director.py` cuts on the music — onsets snapped, shot length follows energy 1.2-6 s, a move never repeats — using ffmpeg→numpy, no librosa. `--no-direct` falls back to the old even grid. K asked for it 2026-11-20 as "อยากได้ผู้กำกับภาพยนตร์".

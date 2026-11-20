@@ -173,6 +173,12 @@ Run the tests before every push:
 cd roblox && ../tools/luau/luau tests/run.luau
 ```
 
+The Python suite is `python3 music938-1/tests/run.py` (a few minutes, no pytest).
+It has **no test discovery**: `main()` calls every test by name, so adding or
+renaming one means editing that list too. A rename alone fails at the very end
+with `NameError: name 'test_x' is not defined` — after the whole run has looked
+green.
+
 Publishing does not need Roblox Studio: `AX_PC_CONTROL/pc1-roblox-build.ps1` builds the
 place with Rojo and `pc1-roblox-publish.ps1` uploads it through the Open Cloud API. What
 Studio is still needed for is *creating* a new experience. `roblox/PUBLISH-FROM-PHONE.md`
