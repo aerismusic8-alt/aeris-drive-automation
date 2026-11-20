@@ -3037,9 +3037,15 @@ def test_themed_compilations() -> None:
     check("a theme below the floor is refused, not rendered",
           "len(slugs) < floor" in ca_src and "Nothing written." in ca_src)
     # At least one theme must still be shippable, or the lever is dead.
-    check("at least one theme is currently shippable",
-          any(len(s) >= compile_album.MIN_THEME_TRACKS for s in picked.values()),
-          str({t: len(s) for t, s in picked.items()}))
+    # Only meaningful when masters are on disk: a fresh pod has none (they are
+    # gitignored, on the media-938 release), so every theme is legitimately empty
+    # and this would read as a broken picker rather than an empty catalogue.
+    if compile_album.available_songs():
+        check("at least one theme is currently shippable",
+              any(len(s) >= compile_album.MIN_THEME_TRACKS for s in picked.values()),
+              str({t: len(s) for t, s in picked.items()}))
+    else:
+        print("  skip at least one theme is currently shippable (no masters on disk)")
     title = compile_album.compilation_title(
         compile_album.THEMES["chill"]["name"], 9,
         compile_album.THEMES["chill"]["use_case"])
