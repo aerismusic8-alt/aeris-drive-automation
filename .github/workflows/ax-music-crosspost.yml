@@ -264,8 +264,21 @@ jobs:
               continue
             fi
             echo "--- $p ---"
+            # A gate refusal (clip floor / Gemini verdict) is not "nothing to
+            # post". The two looked identical here because `|| echo` swallowed
+            # both, so every run was green while the surface posted nothing for
+            # days. Capture the log, surface refusals as an annotation, and keep
+            # the run green (a refusal is a content fix, not a broken rail).
+            postlog=$(mktemp)
             python3 music938-1/scripts/crosspost.py --post --platform "$p" --limit "$LIMIT" \
+              2>&1 | tee "$postlog" \
               || echo "$p: nothing posted this run (cadence hold or signed out)"
+            refused=$(grep -c "REFUSED by a gate" "$postlog" || true)
+            if [ "${refused:-0}" -gt 0 ]; then
+              echo "::warning::$p: $refused clip(s) refused by the QC gate — review them with ops/gemini_review.py"
+              grep "REFUSED by a gate" "$postlog" | head -5
+            fi
+            rm -f "$postlog"
           done
 
       - name: Commit the crosspost state

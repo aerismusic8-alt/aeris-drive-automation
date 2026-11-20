@@ -656,8 +656,15 @@ def save_state(state: dict) -> None:
 
 def pending(queue: list[dict], state: dict, platform: str | None) -> list[dict]:
     done = state.get("posted", {})
-    return [it for it in queue
+    # A refused item stays pending (the gate is not bypassed), but it must not
+    # hold the head of the queue: with `--limit 1` an unreviewed clip at the front
+    # consumed the only slot every hour and the surface posted nothing at all.
+    # Sink it so the rotation advances; it returns once it is reviewed.
+    refused = state.get("refused", {})
+    live = [it for it in queue
             if it["id"] not in done and (platform is None or it["platform"] == platform)]
+    return ([it for it in live if it["id"] not in refused]
+            + [it for it in live if it["id"] in refused])
 
 
 # --- cadence ----------------------------------------------------------------
@@ -1343,6 +1350,28 @@ def post(platform: str, limit: int, only: str | None = None) -> int:
                 save_state(state)
                 posted += 1
                 print(f"  {it['id']}: posted -> {real or '(url unknown)'}")
+                # A re-reviewed clip that now posts must leave the sink list, or
+                # the stale refusal would keep demoting it on every future tick.
+                if it["id"] in state.get("refused", {}):
+                    state["refused"].pop(it["id"], None)
+                    save_state(state)
+            except SystemExit as exc:
+                # The clip gates (`clip_standard` / `gemini_gate`) refuse by
+                # raising SystemExit, which `except Exception` does not catch —
+                # so one refused clip used to kill the whole run, and because the
+                # refused item stays first in the queue the next tick died on it
+                # again. The gate still refuses this file; only the queue survives.
+                if pg is not None:
+                    _abort(pg, it["platform"], str(exc))
+                # Record the refusal so `pending()` sinks this item behind the
+                # rest. It is NOT marked posted: it stays queued and the gate
+                # refuses it again until a verdict exists.
+                state.setdefault("refused", {})[it["id"]] = {
+                    "at": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
+                    "reason": str(exc)[:300],
+                }
+                save_state(state)
+                print(f"  {it['id']}: REFUSED by a gate — left pending ({exc})")
             except Exception as exc:  # noqa: BLE001
                 if pg is not None:
                     _abort(pg, it["platform"], str(exc))

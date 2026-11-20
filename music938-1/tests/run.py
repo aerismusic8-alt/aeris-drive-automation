@@ -6319,6 +6319,72 @@ def test_gemini_gate_blocks_unreviewed() -> None:
         shutil.rmtree(d, ignore_errors=True)
 
 
+def test_a_refused_clip_does_not_kill_the_queue() -> None:
+    """A gate refusal must skip one clip, not end the run (2026-11-20).
+
+    `clip_standard.assert_ok` and `gemini_gate.assert_ok` refuse by raising
+    `SystemExit`, which is a `BaseException` — `except Exception` in the posting
+    loop never caught it. One unreviewed clip at the head of the queue therefore
+    killed the whole Facebook run, and because a refused item stays pending it
+    killed the next tick too: FB posted nothing for days while every run was
+    green. The loop must survive the refusal and leave the item pending.
+    """
+    section("a refused clip does not kill the queue")
+    import importlib.util
+    import subprocess
+    import tempfile
+    src = (ROOT / "scripts" / "crosspost.py").read_text(encoding="utf-8")
+    check("the posting loop catches a gate refusal",
+          "except SystemExit" in src, "no `except SystemExit` in crosspost.py")
+    # A refusal must still leave the item out of the ledger, or the gate would be
+    # bypassed on the next tick.
+    check("a refused item is left pending, not marked posted",
+          "REFUSED by a gate" in src and "left pending" in src)
+
+    # Sinking is the half that actually unblocks the surface: with `--limit 1`
+    # the refused item at the head ate the only slot every tick, so the queue
+    # never advanced even after the run stopped dying.
+    import importlib.util
+    spec = importlib.util.spec_from_file_location(
+        "crosspost_pending", ROOT / "scripts" / "crosspost.py")
+    cp = importlib.util.module_from_spec(spec)
+    sys.modules["crosspost_pending"] = cp
+    spec.loader.exec_module(cp)
+    queue = [{"id": "a", "platform": "facebook"},
+             {"id": "b", "platform": "facebook"}]
+    order = cp.pending(queue, {"posted": {}, "refused": {"a": {}}}, "facebook")
+    check("a refused item sinks behind the rest", [i["id"] for i in order] == ["b", "a"],
+          str([i["id"] for i in order]))
+    check("a refused item is not dropped from the queue",
+          any(i["id"] == "a" for i in order))
+    check("an old state without `refused` still works",
+          [i["id"] for i in cp.pending(queue, {"posted": {}}, "facebook")] == ["a", "b"])
+
+    # Prove the exception really escapes `except Exception`: this is the whole
+    # reason the bug was invisible.
+    d = tempfile.mkdtemp(prefix="ax-sysexit-")
+    try:
+        probe = os.path.join(d, "probe.py")
+        with open(probe, "w", encoding="utf-8") as f:
+            f.write(
+                "escaped = False\n"
+                "try:\n"
+                "    try:\n"
+                "        raise SystemExit('gate refused')\n"
+                "    except Exception:\n"
+                "        pass\n"
+                "except SystemExit:\n"
+                "    escaped = True\n"
+                "print('ESCAPED' if escaped else 'CAUGHT')\n")
+        out = subprocess.run([sys.executable, probe], capture_output=True,
+                             text=True, timeout=60)
+        check("SystemExit escapes `except Exception`",
+              "ESCAPED" in out.stdout, out.stdout.strip() + out.stderr.strip())
+    finally:
+        import shutil
+        shutil.rmtree(d, ignore_errors=True)
+
+
 def test_gemini_review_reads_a_prose_verdict() -> None:
     """The reviewer's answer must be readable whether or not it follows the form.
 
@@ -8124,6 +8190,7 @@ def main() -> int:
     test_thumb_contrast()
     test_thumb_standard_is_a_floor()
     test_gemini_gate_blocks_unreviewed()
+    test_a_refused_clip_does_not_kill_the_queue()
     test_gemini_review_reads_a_prose_verdict()
     test_ai_covers()
     test_thumbnail_repair()
