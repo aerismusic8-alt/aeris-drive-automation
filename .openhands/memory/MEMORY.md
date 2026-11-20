@@ -62,9 +62,9 @@ stay pure — a log line piped to `shuf` killed the clip lane (2026-11-20).
 no override; `ops/thumb_standard.py` too. `docs/clip-standard.md`. `short` (captions →
 text floor) ≠ `vertical` (MV → none). Also gates dead silence (≤3 s) + VFR (≤2%).
 
-## Motion (2026-11-20): Dreamina video VIP-gated; HF Wan = free i2v
-Dreamina **images work** (seedream_4.0, 8 cr), **video is VIP-gated**. Free i2v =
-`make_motion.py` HF Wan (no token, ~90 s, diff 8.06), `--image` = any still.
+## Motion: Dreamina video VIP-gated; HF Wan = free i2v
+Dreamina **images work**, **video VIP-gated** (`vipRequired:false` lies; gate is
+per model+res). Free i2v = `make_motion.py` HF Wan (~90 s). Setup: `docs/dreamina-access.md`.
 
 ## Retry lanes → ch3 (trivia + reactive)
 `trivia_publish.py` + `reactive_publish.py` share one chokepoint; a cap = **retry**;
