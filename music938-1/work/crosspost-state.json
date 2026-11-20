@@ -529,5 +529,15 @@
       "at": "2026-11-19T12:32:26Z",
       "url": "https://www.tiktok.com/@aeris.music4/video/7709859384909679880"
     }
+  },
+  "refused": {
+    "facebook-page:short-song-h2-29-takorn-kong-fa": {
+      "at": "2026-11-20T15:13:37Z",
+      "reason": "clip below the standard: loudness normalised; no clipping; picture is not frozen"
+    },
+    "facebook-page:short-song-h3-29-takorn-kong-fa": {
+      "at": "2026-11-20T15:13:44Z",
+      "reason": "clip below the standard: loudness normalised; no clipping; picture is not frozen"
+    }
   }
 }
