@@ -256,6 +256,113 @@ def bank_stills(query: str, want: int, seed: int, log=print) -> list[dict]:
     return picked[:want]
 
 
+def song_genre(song: str) -> str | None:
+    """The genre id for a song, from whichever record knows it.
+
+    A produced song carries `# GENRE:` in its lyric header, but the masters that
+    actually get rendered are older and have no header, so the produce queue is
+    the second source. Returns None when nothing knows, and the caller mixes
+    across genres rather than guessing one.
+    """
+    try:
+        sys.path.insert(0, str(ROOT / "music938-1" / "scripts"))
+        import genres  # noqa: PLC0415
+        g = genres.genre_of(song)
+        if g:
+            return g["id"]
+    except Exception:  # noqa: BLE001 - a missing genre is not a render failure
+        pass
+    try:
+        doc = json.loads((ROOT / "music938-1" / "work" / "produce-queue.json")
+                         .read_text(encoding="utf-8"))
+        for row in doc.get("log", []):
+            if row.get("slug") == song and row.get("genre"):
+                return row["genre"].lower()
+    except Exception:  # noqa: BLE001
+        pass
+    return None
+
+
+def ai_stills(genre: str | None, want: int, seed: int, log=print) -> list[dict]:
+    """Stills from the AI lane (`ops/image_library.py`), which costs nothing now.
+
+    K (2026-11-20): "เราใช้ผสมกันได้ไม่ใช่เหรอ ขึ้นกับไอเดียในการสร้างวีดีโอ" —
+    real photographs and generated frames are both legitimate, and the channel
+    says openly that it is AI-made. The generated bank already holds 42 frames
+    at 2560x1440 (a 810 px 9:16 crop, the same as the photo bank's median), so
+    they pass the same soft-crop rule and add the one thing photographs cannot:
+    a frame built for the song instead of found for it.
+
+    An unknown genre is not a reason to skip them. It is a reason to draw from
+    every genre, so a song nobody classified still gets generated frames.
+    """
+    try:
+        sys.path.insert(0, str(ROOT / "ops"))
+        import image_library  # noqa: PLC0415
+    except Exception as exc:  # noqa: BLE001
+        log(f"ai: image_library unavailable ({type(exc).__name__}); photos only")
+        return []
+
+    doc = image_library.load()
+    rows = [r for r in doc.get("images", []) if (image_library.LIB / r["file"]).exists()]
+    if genre:
+        rows = [r for r in rows if r.get("genre") == genre] or rows
+    if not rows:
+        return []
+
+    random.Random(seed).shuffle(rows)
+    picked, seen = [], []
+    for r in rows:
+        p = image_library.LIB / r["file"]
+        h = _dhash(p)
+        if any(_hamming(h, q) <= NEAR_DUP_BITS for q in seen):
+            continue
+        seen.append(h)
+        picked.append({"path": p, "soft": _crop_width(p) < MIN_CROP_WIDTH,
+                       "origin": "ai", **r})
+        if len(picked) >= want:
+            break
+    if picked:
+        log(f"ai: {len(picked)} generated still(s)"
+            + (f" for genre {genre}" if genre else " (genre unknown, mixed)"))
+    return picked
+
+
+def mixed_stills(song: str, query: str, want: int, seed: int, log=print) -> list[dict]:
+    """Photographs and generated frames, interleaved so neither dominates.
+
+    Variety is the point (K 2026-11-20), and a clip that is all photos looks
+    like a documentary while a clip that is all generated frames looks synthetic.
+    Alternating them gives each cut a different texture, which is what keeps a
+    58 s vertical clip watchable.
+
+    The photo bank stays the base: it is unlimited and free to re-pull, while the
+    generated bank is finite, so a shortage on either side is filled from the
+    other instead of failing the render.
+    """
+    genre = song_genre(song)
+    ai = ai_stills(genre, max(2, want // 2), seed, log=log)
+    photos = bank_stills(query, want, seed, log=log)
+    if not ai:
+        return photos
+    if not photos:
+        return ai
+
+    out, i, j = [], 0, 0
+    while len(out) < want and (i < len(photos) or j < len(ai)):
+        # A photo first: it establishes the place, a generated frame then sets
+        # the mood. A clip that opens on generated art reads as a slideshow of
+        # wallpapers rather than a song about a real street.
+        if i < len(photos):
+            out.append(photos[i]); i += 1
+        if len(out) >= want:
+            break
+        if j < len(ai):
+            out.append(ai[j]); j += 1
+    log(f"mix: {len(out)} still(s) = {i} photo(s) + {j} generated")
+    return out[:want]
+
+
 def _card(text: str, out: Path, size: int = 72, pad: int = 40) -> Path:
     """A Thai title card as a transparent PNG, sized to the text."""
     from PIL import Image, ImageDraw, ImageFont  # noqa: PLC0415
@@ -358,13 +465,14 @@ def available_songs(log=print) -> list[str]:
 
 
 def render(song: str, query: str, seconds: float, seed: int, out_dir: Path,
-           log=print) -> Path | None:
+           log=print, mix: bool = True) -> Path | None:
     audio = _song_path(song, log=log)
     if audio is None:
         return None
 
     count = max(6, int(seconds / 7))
-    stills = bank_stills(query, count, seed, log=log)
+    stills = (mixed_stills(song, query, count, seed, log=log) if mix
+              else bank_stills(query, count, seed, log=log))
     if len(stills) < 3:
         log(f"render: only {len(stills)} usable still(s); a clip needs 3+")
         return None
@@ -441,11 +549,32 @@ def render(song: str, query: str, seconds: float, seed: int, out_dir: Path,
         out.unlink(missing_ok=True)
         return None
 
+    # Written before the Gemini gate, not after: a clip kept for review still has
+    # sources to attribute, and CC BY-SA requires the credit wherever the clip
+    # goes. Writing it only on the pass path left a clip that was reviewed later
+    # and then published with no credit file at all.
+    #
+    # A generated frame has no Commons licence to attribute, and `licence: null`
+    # would read as a missing credit rather than a different kind of source. K
+    # (2026-11-20) is explicit that the channel does not hide the AI, so the file
+    # says it plainly.
+    credits = []
+    for s in stills:
+        if s.get("origin") == "ai":
+            credits.append({"file": s["path"].name, "origin": "ai",
+                            "model": s.get("model"), "prompt": s.get("prompt")})
+        else:
+            credits.append({"file": s["path"].name, "licence": s.get("licence"),
+                            "credit": s.get("credit"), "source": s.get("source")})
+    out.with_suffix(".credits.json").write_text(
+        json.dumps({"song": song, "query": query, "items": credits},
+                   ensure_ascii=False, indent=1), encoding="utf-8")
+
     # The floor above measures the file, not the content: a clip whose six
     # stills collapsed into one frozen picture passed all 14 rules on
     # 2026-11-19 and reached K. Content needs its own gate, and K's rule is
-    # absolute — "ถ้าไม่ผ่านการตรวจสอบผ่านจาก gemini ห้ามเอาอัพขึ้นช่องและห้ามส่ง
-    # ให้ K ดู" — so a clip with no passing verdict is not shown and not kept.
+    # absolute -- "no Gemini pass, no upload" -- so a
+    # clip with no passing verdict is not shown and not kept.
     import gemini_gate  # noqa: PLC0415
 
     ok, why = gemini_gate.check(out)
@@ -454,7 +583,7 @@ def render(song: str, query: str, seconds: float, seed: int, out_dir: Path,
         # and what it waits for is a Gemini verdict, which needs the signed-in
         # desktop and so cannot happen on a runner. The marker is distinct from
         # PASSED so the workflow reports "awaiting review" instead of going red
-        # forever — a permanently red rail is how a real red gets ignored.
+        # forever -- a permanently red rail is how a real red gets ignored.
         # Nothing is uploaded from this branch; K's rule is no verdict, no channel.
         log(f"render: AWAITING GEMINI REVIEW -> {out}")
         log(f"render: NOT SHOWN, waiting for a Gemini pass -- {why}")
@@ -462,11 +591,6 @@ def render(song: str, query: str, seconds: float, seed: int, out_dir: Path,
             f"`python3 ops/gemini_review.py {out}`")
         return out
 
-    credits = [{"file": s["path"].name, "licence": s.get("licence"),
-                "credit": s.get("credit"), "source": s.get("source")} for s in stills]
-    out.with_suffix(".credits.json").write_text(
-        json.dumps({"song": song, "query": query, "items": credits},
-                   ensure_ascii=False, indent=1), encoding="utf-8")
     log(f"render: PASSED the floor -> {out}")
     return out
 
@@ -479,6 +603,8 @@ def main(argv=None) -> int:
     ap.add_argument("--seconds", type=float, default=58)
     ap.add_argument("--seed", type=int, default=11)
     ap.add_argument("--out", default=str(OUT))
+    ap.add_argument("--photos-only", action="store_true",
+                    help="skip the generated bank and use photographs alone")
     args = ap.parse_args(argv)
     if args.list_songs:
         songs = available_songs()
@@ -492,7 +618,8 @@ def main(argv=None) -> int:
         print(f"refusing --song {args.song}: its genre is parked or unknown "
               f"(see music938-1/channel/genres.json)")
         return 1
-    got = render(args.song, args.query, args.seconds, args.seed, Path(args.out))
+    got = render(args.song, args.query, args.seconds, args.seed, Path(args.out),
+                 mix=not args.photos_only)
     return 0 if got else 1
 
 

@@ -6942,6 +6942,44 @@ def test_clip_lane_is_its_own_job() -> None:
     check("a shard is fetched once, not per still", "_SHARD_CACHE" in src)
     check("the lane can list songs on a bare runner", hasattr(cl, "available_songs"))
 
+    # K (2026-11-20): "เราใช้ผสมกันได้ไม่ใช่เหรอ ขึ้นกับไอเดียในการสร้างวีดีโอ" —
+    # a clip may mix real photographs with generated frames, and the channel says
+    # openly that it is AI-made. The generated bank is a second palette, not a
+    # fallback for when photos run out, so a mix must actually contain both. If
+    # this ever returns photos alone the mix has silently degraded.
+    ai = cl.ai_stills(None, 3, 11, log=lambda *_: None)
+    check("the generated bank is reachable and costs nothing now", len(ai) >= 1,
+          f"{len(ai)} frame(s)")
+    if ai:
+        check("a generated still is marked as generated",
+              all(c.get("origin") == "ai" for c in ai))
+    mixed = cl.mixed_stills("song-33-wan-tham-mada-thi-phi-set-v33",
+                            "bangkok night", 6, 11, log=lambda *_: None)
+    origins = [c.get("origin") for c in mixed]
+    # A photo keeps its real provenance ("Wikimedia Commons"), which is what the
+    # credit file is built from, so "not ai" is the photo test -- not None.
+    check("a mix contains photographs and generated frames",
+          "ai" in origins and any(o != "ai" for o in origins),
+          f"origins={origins}")
+    check("every still still names where it came from",
+          all(origins), f"origins={origins}")
+    check("a mix interleaves rather than appending",
+          origins.index("ai") <= 1, f"origins={origins}")
+    check("--photos-only still renders a photo-only clip",
+          "--photos-only" in src and "mix=not args.photos_only" in src)
+    # The older masters carry no genre header, and that must not drop the
+    # generated lane -- it means the mix draws across genres instead.
+    check("an unknown genre still gets generated frames", "genre unknown" in src)
+    # A CC BY-SA photo must keep its credit, and a generated frame must be named
+    # as generated rather than shown with an empty licence. The credit file is
+    # written before the Gemini gate so a clip reviewed later still carries it.
+    check("a photo keeps its licence and credit in the credit file",
+          '"credit": s.get("credit")' in src and '"licence": s.get("licence")' in src)
+    check("a generated frame is credited as generated, not as unlicensed",
+          '"origin": "ai"' in src and '"model": s.get("model")' in src)
+    check("the credit file is written even for a clip awaiting review",
+          src.index("credits.json") < src.index("AWAITING GEMINI REVIEW"))
+
     # K (2026-11-19): "คลิปต้องผ่านระบบqcก่อนนะ". The floor above measures the
     # file, not the content: a clip whose six stills had collapsed into one
     # frozen picture passed all 14 technical rules and reached K. So the render
