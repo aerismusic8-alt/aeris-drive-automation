@@ -6963,6 +6963,16 @@ def test_clip_lane_is_its_own_job() -> None:
     check("the workflow still publishes only a passed clip",
           lane_yaml.count("steps.render.outputs.clip") >= 3
           and "steps.render.outputs.pending" in lane_yaml)
+    # The step runs under `set -o pipefail`, so an unmatched grep exits 1 and
+    # `bash -e` kills the step before the branch below can say what happened.
+    # That is what kept the rail red even after an unreviewed render was made a
+    # normal outcome: a real 58 s clip rendered fine on 2026-11-20 and the step
+    # still died on the grep. A grep whose "no match" is expected must be told
+    # so, or the explanation never runs.
+    check("an expected no-match grep cannot kill the step",
+          "sed 's/.*-> //' || true)" in lane_yaml)
+    check("the awaiting branch really exits zero",
+          "awaiting Gemini review" in lane_yaml and "exit 0" in lane_yaml)
 
     # The bug behind that: `zoompan`'s `d` is frames per INPUT frame, so looping
     # a still for `per` seconds multiplied out to per^2*FPS^2 frames from image

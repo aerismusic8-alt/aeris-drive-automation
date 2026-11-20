@@ -79,7 +79,11 @@ jobs:
             exit 1
           fi
           python ops/clip_lane.py --song "$SONG" --query "$QUERY" --seconds "$SECONDS" 2>&1 | tee render.log
-          CLIP=$(grep -o 'PASSED the floor -> .*' render.log | sed 's/.*-> //')
+          # `|| true` matters: this step runs with `set -o pipefail`, so a grep
+          # that matches nothing returns 1 and `bash -e` kills the step before
+          # the checks below can explain why. That is how a rendered-but-
+          # unreviewed clip still turned the rail red.
+          CLIP=$(grep -o 'PASSED the floor -> .*' render.log | sed 's/.*-> //' || true)
           if [ -z "$CLIP" ]; then
             # A rendered clip that only lacks a Gemini verdict is a success for
             # this lane, not a red run: the verdict needs the signed-in desktop,
