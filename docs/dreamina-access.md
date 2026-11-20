@@ -129,3 +129,30 @@ HOME=/path/to/other/home /path/to/dreamina-canvas auth status
 
 Hand the credential over out of band. It is K's live Google-backed session; it
 does not belong in a public repository, a release asset, or a chat message.
+
+### Durable route: the vault, not a file copy
+
+The credential is stored in the account KV vault under
+`axsecrets:dreamina-cred` (dict: `rel_dir`, `payload`, `note`). A fresh pod
+restores the session with no password and no operator:
+
+```bash
+cd <repo>
+python3 - <<'PY'
+import sys, json, os
+sys.path.insert(0, 'ops')
+import ax_vault
+blob = ax_vault.kv_get(ax_vault.ensure_anchor(), 'axsecrets:dreamina-cred')
+home = os.path.expanduser('~')          # or the agent's pinned HOME
+d = os.path.join(home, '.local/share', blob['rel_dir'])
+os.makedirs(d, mode=0o700, exist_ok=True)
+p = os.path.join(d, 'dreamina_canvas_cli_device_login.json')
+open(p, 'w').write(json.dumps(blob['payload']))
+os.chmod(p, 0o600)
+PY
+/workspace/ax-tools/bin/dreamina auth status     # loggedIn: true
+```
+
+Verified: a clean `HOME` restored this way answers `loggedIn: true` and
+`canvas ls` returns the real canvases. The vault is account-scoped and private,
+which is why the credential goes there and not into the repository.
