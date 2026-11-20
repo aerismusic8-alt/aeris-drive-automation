@@ -109,14 +109,36 @@ def probe(path: Path) -> dict:
     return {"seconds": float(out or 0)}
 
 
+PAGES_MAX_BYTES = 100 * 1024 * 1024
+# Aim well under the Pages cap: a preview that only just fits fails the moment a
+# song runs a few seconds longer, and Pages rejects the push rather than the file.
+PREVIEW_BUDGET = int(PAGES_MAX_BYTES * 0.55)
+PREVIEW_AUDIO_BPS = 96_000
+
+
+def preview_bitrate(seconds: float) -> str:
+    """A video bitrate that keeps the preview inside the Pages budget at any length."""
+    if seconds <= 0:
+        return "1200k"
+    available = PREVIEW_BUDGET - PREVIEW_AUDIO_BPS / 8 * seconds
+    kbps = max(400, int(available * 8 / seconds / 1000))
+    return f"{min(kbps, 4000)}k"
+
+
 def build_preview(src: Path, out: Path) -> None:
+    # crf alone is unbounded: a busy 3.7-minute clip encoded to 99 MB, a hair under
+    # the Pages limit, so the next slightly longer song would have been rejected at
+    # push time. Cap the bitrate from the duration instead of hoping.
+    secs = probe(src)["seconds"]
     subprocess.run(
         ["ffmpeg", "-v", "error", "-y", "-i", str(src), "-vf", "scale=1280:-2",
          "-c:v", "libx264", "-preset", "veryfast", "-crf", "26",
-         "-c:a", "aac", "-b:a", "96k", str(out)], check=True)
-    if out.stat().st_size > 100 * 1024 * 1024:      # GitHub Pages file limit
+         "-maxrate", preview_bitrate(secs), "-bufsize", "2M",
+         "-c:a", "aac", "-b:a", f"{PREVIEW_AUDIO_BPS // 1000}k", str(out)], check=True)
+    if out.stat().st_size > PAGES_MAX_BYTES:         # GitHub Pages file limit
         raise SystemExit(f"preview {out.stat().st_size} bytes exceeds the Pages "
-                         "100 MB limit; lower crf/scale")
+                         f"{PAGES_MAX_BYTES} limit; lower the budget in "
+                         "preview_bitrate()")
 
 
 def render(slug: str, meta: dict, secs: float, poster: str, preview: str,

@@ -1754,6 +1754,22 @@ def test_mv_page() -> None:
         check(f"the MV page never asks for a credential ({bad})",
               bad.lower() not in code.lower())
 
+    # A crf-only preview is unbounded. MV 12 encoded to 99.08 MB against the
+    # 100 MB Pages limit — it passed, but the next song a little longer would
+    # have been refused at push time, after the whole encode. The preview must
+    # therefore be budgeted from the duration, not left to crf.
+    check("the preview bitrate is capped from the duration, not left to crf",
+          "maxrate" in inspect.getsource(mv.build_preview)
+          and "preview_bitrate" in inspect.getsource(mv.build_preview))
+    for secs in (60, 120, 222.7, 300, 420, 600, 1200):
+        kbps = int(mv.preview_bitrate(secs).rstrip("k"))
+        est_mb = (kbps * 1000 / 8 + mv.PREVIEW_AUDIO_BPS / 8) * secs / 1024 / 1024
+        check(f"a {secs}s preview fits the Pages budget ({est_mb:.0f} MB)",
+              est_mb <= mv.PAGES_MAX_BYTES / 1024 / 1024,
+              f"{est_mb:.1f} MB at {kbps}k")
+    check("the preview budget leaves real headroom under the Pages limit",
+          mv.PREVIEW_BUDGET <= mv.PAGES_MAX_BYTES * 0.7, mv.PREVIEW_BUDGET)
+
 
 def test_follow_end_card() -> None:
     section("follow ask (the only on-screen follow prompt)")
