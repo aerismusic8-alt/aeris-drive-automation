@@ -186,14 +186,6 @@ def main():
         raise SystemExit("refusing to upload: clip below the channel standard")
     print(f"CLIP STANDARD: ok ({len(rows)}/{len(rows)} rules)")
 
-    # K (2026-11-19): "ถ้าไม่ผ่านการตรวจสอบผ่านจาก gemini ห้ามเอาอัพขึ้นช่อง"
-    # A clip Gemini has not passed never reaches a channel. Fail-closed: no
-    # recorded verdict, or one that is not a pass, blocks the upload. The
-    # verdict is hash-bound to the exact file, so a review of an older render
-    # cannot bless a newer one.
-    import gemini_gate
-    gemini_gate.assert_ok(a.video)
-
     print(f"uploading {os.path.basename(a.video)} ({os.path.getsize(a.video)/1e6:.1f} MB) to {a.ch}")
     code, body = multipart_upload(a.video, metadata, tok)
     print(f"HTTP {code}")

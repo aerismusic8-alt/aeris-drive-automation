@@ -228,6 +228,67 @@ Rules learned the hard way:
 - A red test run must never reach players, so the dispatch sits after the last
   test step and only runs for a push to `ax-arena-roblox-game`.
 
+## The product is a MUSIC VIDEO (K, 2026-11-20)
+
+> "วีดีโอผ่านใช้ได้ แต่เราทำเพลงนะไม่ใช่คลิปบรรยาย แก้ไขคำสั่ง k ด้วย ทำเป็น mv"
+
+The first delivered batch passed QC and was still the wrong product. This is a
+**music** channel: the video is the **song**, and the picture serves it. A Thai
+voice-over narrating a story over stills is not our format, no matter how clean
+the render.
+
+- **The video rail is `music938-1/scripts/make_music_video.py`.** The song is the
+  mix — there is no narration track. Many short shots, each with a real camera
+  move, cut on the song's own BPM (two beats per cut, clamped 1.6–4.0 s), a
+  title card and a follow card, an audio-reactive VJ bar, and `loudnorm` at the
+  mux so every MV meets the floor.
+- **Scenes come from the 4K picture library first.** `ops/picture_library.py`
+  fills a themed shelf (horror/lesson/humour/city/nature/temple/abstract) from
+  Wikimedia Commons at ≥3840 px plus `ops/genart.py` originals at 4096 px. The
+  song's `# MOOD:` picks the theme. The free AI image route (Pollinations) is a
+  gap-filler only: it answers at 1024×576, which softens the moment the camera
+  moves, so it is never mixed in beside a 3840 px still.
+
+- **A camera move must not squash the picture.** The library is landscape 4K and
+  the frame is 9:16, so every move carries
+  `scale=...:force_original_aspect_ratio=increase` before its `crop`. Without it
+  a 1.5 source is squeezed to 0.56 — a 2.7× horizontal squash that flattens
+  every face. Verified by rendering a circle through all eight moves and
+  measuring it: correct moves give ratio 1.000, the bug gave 0.34. The test
+  `test_mv_keeps_picture_proportions` pins the whole move table.
+- **The genre gate and the clip floor both run in `build()`.** An MV is a
+  publish, so a parked genre is refused before any render and a below-floor
+  render is deleted rather than left on disk looking shippable. A passing MV is
+  shelved with `media_home.finished()`.
+
+### The Gemini review is not part of the video system (K, 2026-11-20)
+
+> "ตอนนี้ตัดการตรวจสอบของ gemini ออกจากระบบสร้างวีดีโอใหม่เลย"
+
+The review was a fail-closed gate on every render and every upload route: a
+verdict hash-bound to the exact file, or nothing shipped. It is **optional** now.
+`ops/gemini_gate.py` and `ops/gemini_review.py` remain as tools you may run by
+hand; no pipeline path calls them, and `test_no_gemini_gate_in_the_video_system`
+fails if one is wired back in.
+
+Do not confuse this with QC. **QC is still mandatory** and still blocks:
+
+- `ops/clip_standard.py` — the technical floor (codec, −16…−12 LUFS, ≤ −1.0 dBTP,
+  no dead silence, not frozen, no black bars), measured on the file itself.
+- `ops/genre_gate.py` — fun-only genres; a parked genre never publishes.
+- `ops/thumb_standard.py` — the thumbnail floor.
+
+The distinction that matters: those measure the artifact and run anywhere. The
+Gemini review needed a signed-in desktop, so on a runner its absence was
+permanent — a rail that can never go green is not a gate. Its rubric was also
+written for a 9:16 Short (captions, hook timing), which is the wrong test for an
+MV.
+
+`ops/story_reel.py` remains as a tool (and its 4K stills, instrumental-bed and
+crossfade fixes are real), but it is no longer a format to produce. The trivia
+lane (`ops/trivia_reel.py`) is a separate factual format K named explicitly and
+is unaffected.
+
 ## Clip quality — one floor, every format (K, 2026-11-17)
 
 > "อันนี้เป็นแค่มาตรฐานเริ่มต้นสามารถทำได้ ห้ามมาตรฐานต่ำกว่านี้เด็ดขาดในช่องของเรา"

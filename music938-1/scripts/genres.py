@@ -125,12 +125,22 @@ def resolve_slug(name: str) -> str | None:
     (`bank-karaoke-06-doen-khon-diao-...`). Longest suffix match resolves all of
     them without a prefix table that would rot: the key token, the kind and the
     `-v36` variant are all just leading text in front of the slug.
+
+    The slug is not always at the end: a bank clip appends its own theme
+    (`bank-song-40-luk-khuen-laeo-pai-v40-bangkok-night.mp4`). A suffix-only
+    match returned None for those, and because an unresolvable clip is refused,
+    a publishable EDM song was blocked. So the last resort is a whole-token
+    match anywhere in the stem, longest slug first.
     """
     stem = Path(name).stem if Path(name).suffix in (".mp3", ".mp4", ".wav", ".m4a") else name
     if (LYRICS / f"{stem}.txt").exists():
         return stem
-    for slug in sorted((p.stem for p in LYRICS.glob("*.txt")), key=len, reverse=True):
+    slugs = sorted((p.stem for p in LYRICS.glob("*.txt")), key=len, reverse=True)
+    for slug in slugs:
         if stem.endswith(f"-{slug}") or stem.endswith(slug):
+            return slug
+    for slug in slugs:
+        if f"-{slug}-" in stem:
             return slug
     return None
 

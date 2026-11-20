@@ -734,27 +734,6 @@ def render(song: str, query: str, seconds: float, seed: int, out_dir: Path,
         json.dumps({"song": song, "query": query, "items": credits},
                    ensure_ascii=False, indent=1), encoding="utf-8")
 
-    # The floor above measures the file, not the content: a clip whose six
-    # stills collapsed into one frozen picture passed all 14 rules on
-    # 2026-11-19 and reached K. Content needs its own gate, and K's rule is
-    # absolute -- "no Gemini pass, no upload" -- so a
-    # clip with no passing verdict is not shown and not kept.
-    import gemini_gate  # noqa: PLC0415
-
-    ok, why = gemini_gate.check(out)
-    if not ok:
-        # Not a failure of this lane: the file is rendered and above the floor,
-        # and what it waits for is a Gemini verdict, which needs the signed-in
-        # desktop and so cannot happen on a runner. The marker is distinct from
-        # PASSED so the workflow reports "awaiting review" instead of going red
-        # forever -- a permanently red rail is how a real red gets ignored.
-        # Nothing is uploaded from this branch; K's rule is no verdict, no channel.
-        log(f"render: AWAITING GEMINI REVIEW -> {out}")
-        log(f"render: NOT SHOWN, waiting for a Gemini pass -- {why}")
-        log("render: review it with "
-            f"`python3 ops/gemini_review.py {out}`")
-        return out
-
     log(f"render: PASSED the floor -> {out}")
     return out
 

@@ -28,6 +28,8 @@ ffmpeg, the audio is the song we already own. Nothing is paid for.
 from __future__ import annotations
 
 import argparse
+import datetime
+import json
 import math
 import subprocess
 import sys
@@ -69,29 +71,32 @@ SCENE_PROMPTS: list[tuple[str, str]] = [
 # A shot is short (2-4 s) so a strong move reads as energy, not as a drift.
 MOVES: dict[str, str] = {
     # Push in: the classic, but over a SHORT shot it actually reads as motion.
-    "push": ("scale={ow}:{oh},crop={w}:{h}:x='(iw-{w})/2':y='(ih-{h})/2',"
+    "push": ("scale={ow}:{oh}:force_original_aspect_ratio=increase,"
+             "crop={w}:{h}:x='(iw-{w})/2':y='(ih-{h})/2',"
              "zoompan=z='min(1+0.16*on/{n},1.34)':d=1:"
              "x='iw/2-(iw/zoom/2)':y='ih/2-(ih/zoom/2)':s={w}x{h}:fps={fps}"),
-    "pull": ("scale={ow}:{oh},crop={w}:{h}:x='(iw-{w})/2':y='(ih-{h})/2',"
+    "pull": ("scale={ow}:{oh}:force_original_aspect_ratio=increase,"
+             "crop={w}:{h}:x='(iw-{w})/2':y='(ih-{h})/2',"
              "zoompan=z='max(1.34-0.16*on/{n},1.0)':d=1:"
              "x='iw/2-(iw/zoom/2)':y='ih/2-(ih/zoom/2)':s={w}x{h}:fps={fps}"),
     # Pan right/left across the oversize: the strongest cheap move (7.2 measured).
-    "pan_r": ("scale={ow}:{oh},crop={w}:{h}:"
-              "x='(iw-{w})*min(t/{d},1)':y='(ih-{h})/2'"),
-    "pan_l": ("scale={ow}:{oh},crop={w}:{h}:"
-              "x='(iw-{w})*(1-min(t/{d},1))':y='(ih-{h})/2'"),
+    "pan_r": ("scale={ow}:{oh}:force_original_aspect_ratio=increase,"
+              "crop={w}:{h}:x='(iw-{w})*min(t/{d},1)':y='(ih-{h})/2'"),
+    "pan_l": ("scale={ow}:{oh}:force_original_aspect_ratio=increase,"
+              "crop={w}:{h}:x='(iw-{w})*(1-min(t/{d},1))':y='(ih-{h})/2'"),
     # Tilt up/down, for the sky and the console.
-    "tilt_u": ("scale={ow}:{oh},crop={w}:{h}:"
-               "x='(iw-{w})/2':y='(ih-{h})*(1-min(t/{d},1))'"),
-    "tilt_d": ("scale={ow}:{oh},crop={w}:{h}:"
-               "x='(iw-{w})/2':y='(ih-{h})*min(t/{d},1)'"),
+    "tilt_u": ("scale={ow}:{oh}:force_original_aspect_ratio=increase,"
+               "crop={w}:{h}:x='(iw-{w})/2':y='(ih-{h})*(1-min(t/{d},1))'"),
+    "tilt_d": ("scale={ow}:{oh}:force_original_aspect_ratio=increase,"
+               "crop={w}:{h}:x='(iw-{w})/2':y='(ih-{h})*min(t/{d},1)'"),
     # Diagonal drift: pan and push at once, the most "shot on a gimbal" of them.
-    "drift": ("scale={ow}:{oh},crop={w}:{h}:"
-              "x='(iw-{w})*min(t/{d},1)':y='(ih-{h})*(1-min(t/{d},1))',"
+    "drift": ("scale={ow}:{oh}:force_original_aspect_ratio=increase,"
+              "crop={w}:{h}:x='(iw-{w})*min(t/{d},1)':y='(ih-{h})*(1-min(t/{d},1))',"
               "zoompan=z='min(1+0.08*on/{n},1.16)':d=1:"
               "x='iw/2-(iw/zoom/2)':y='ih/2-(ih/zoom/2)':s={w}x{h}:fps={fps}"),
     # Push with a slow sway, for the emotional chorus.
-    "push_rotate": ("scale={ow}:{oh},crop={w}:{h}:x='(iw-{w})/2':y='(ih-{h})/2',"
+    "push_rotate": ("scale={ow}:{oh}:force_original_aspect_ratio=increase,"
+                    "crop={w}:{h}:x='(iw-{w})/2':y='(ih-{h})/2',"
                     "zoompan=z='min(1+0.14*on/{n},1.30)':d=1:"
                     "x='iw/2-(iw/zoom/2)':y='ih/2-(ih/zoom/2)':s={w}x{h}:fps={fps},"
                     "rotate='0.015*sin(2*PI*t/{d})':fillcolor=black"),
@@ -132,6 +137,50 @@ def _scene(slug: str, name: str) -> Path:
 
 def scene_prompt(name: str) -> str:
     return next(p for n, p in SCENE_PROMPTS if n == name)
+
+
+# Song mood -> picture-library theme. The library holds real 4K photographs, and
+# a 4K source is what lets a pan or push stay sharp; Pollinations answers at
+# 1024x576, which softens the moment the camera moves. So the library is tried
+# first and the AI route is only a gap-filler.
+MOOD_THEMES: dict[str, str] = {
+    "sad": "lesson", "hopeful": "nature", "warm": "city", "mystic": "horror",
+    "calm": "nature", "epic": "temple",
+}
+
+
+def library_scenes(slug: str, want: int, log=print) -> list[Path]:
+    """4K stills from the picture library, chosen by the song's mood."""
+    try:
+        sys.path.insert(0, str(ROOT.parent / "ops"))
+        import media_home  # noqa: PLC0415
+    except Exception:  # noqa: BLE001
+        return []
+    meta, _ = load_lyrics(slug)
+    theme = MOOD_THEMES.get((meta.get("mood") or "").lower(), "city")
+    try:
+        lib = media_home.pictures()
+    except SystemExit:
+        return []
+    idx = lib / "index.json"
+    if not idx.exists():
+        return []
+    try:
+        rows = json.loads(idx.read_text(encoding="utf-8")).get("images", [])
+    except (OSError, ValueError):
+        return []
+    rows = [r for r in rows if r.get("theme") == theme and (lib / r["file"]).exists()]
+    rows.sort(key=lambda r: (r.get("uses") or 0, r.get("id") or ""))
+    picked = [lib / r["file"] for r in rows[:want]]
+    for r in rows[:want]:
+        r["uses"] = (r.get("uses") or 0) + 1
+    if picked:
+        try:
+            idx.write_text(json.dumps({"images": rows}, ensure_ascii=False, indent=1))
+        except OSError:
+            pass
+        log(f"  [mv] {len(picked)} scene(s) from the 4K library ({theme})")
+    return picked
 
 
 def make_scene(slug: str, name: str, *, force: bool = False) -> Path:
@@ -190,11 +239,44 @@ def _cut_card(text: str, sub: str, out: Path, *, fade: bool = True) -> None:
     img.save(out)
 
 
+def shelve(clip: str, title: str, theme: str) -> str:
+    """Move a QC-passed MV onto the finished shelf and index it (K 2026-11-20)."""
+    sys.path.insert(0, str(ROOT.parent / "ops"))
+    import media_home  # noqa: PLC0415
+
+    dest_dir = media_home.finished()
+    dest = dest_dir / Path(clip).name
+    if Path(clip).resolve() != dest.resolve():
+        Path(clip).replace(dest)
+    idx = dest_dir / "index.json"
+    try:
+        data = json.loads(idx.read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        data = {"clips": []}
+    clips = [c for c in data.get("clips", []) if c.get("file") != dest.name]
+    clips.append({
+        "file": dest.name, "title": title, "theme": theme,
+        "bytes": dest.stat().st_size,
+        "at": datetime.datetime.now(datetime.timezone.utc).isoformat(
+            timespec="seconds"),
+        "uploaded": False,
+    })
+    idx.write_text(json.dumps({"clips": clips}, ensure_ascii=False, indent=1),
+                   encoding="utf-8")
+    return str(dest)
+
+
 def build(slug: str, *, seconds: float | None = None, full: bool = False,
           ffmpeg: str = "ffmpeg", force_scenes: bool = False) -> dict:
     song = SONGS / f"song-{slug}.mp3"
     if not song.exists():
         raise SystemExit(f"no song: {song}")
+    # The genre gate every publish path uses. An MV is a publish, so a parked
+    # genre (lukthung, เพื่อชีวิต, ...) must never reach this rail either.
+    import genres  # noqa: PLC0415
+    gate_ok, gate_why = genres.publishable(slug)
+    if not gate_ok:
+        raise SystemExit(f"genre gate refuses {slug}: {gate_why}")
     meta, _ = load_lyrics(slug)
 
     total = _duration(song)
@@ -217,13 +299,18 @@ def build(slug: str, *, seconds: float | None = None, full: bool = False,
 
     WORK.mkdir(parents=True, exist_ok=True)
     shots: list[Path] = []
-    sources: list[Path] = []
-    for name, _ in SCENE_PROMPTS:
-        try:
-            sources.append(make_scene(slug, name, force=force_scenes))
-        except Exception as e:  # noqa: BLE001 - a missing scene must not kill the video
-            print(f"  scene {name} unavailable: {type(e).__name__}: {str(e)[:100]}",
-                  file=sys.stderr)
+    # The 4K library first: it is the only source that stays sharp under a pan.
+    # The AI scenes only fill what the library cannot cover for this mood, and
+    # they are never mixed in when the library already has enough pictures —
+    # a 1024 px scene next to a 3840 px one reads as a soft shot.
+    sources: list[Path] = list(library_scenes(slug, want=8))
+    if len(sources) < 4:
+        for name, _ in SCENE_PROMPTS:
+            try:
+                sources.append(make_scene(slug, name, force=force_scenes))
+            except Exception as e:  # noqa: BLE001 - a missing scene must not kill the video
+                print(f"  scene {name} unavailable: {type(e).__name__}: {str(e)[:100]}",
+                      file=sys.stderr)
     for p in (COVERS / f"cover-{slug}.jpg", STORIES / f"story-{slug}.jpg"):
         if p.exists():
             sources.append(p)
@@ -281,9 +368,21 @@ def build(slug: str, *, seconds: float | None = None, full: bool = False,
          "-c:a", "aac", "-ar", "48000", "-b:a", "192k", "-shortest", str(out)],
         check=True)
 
-    return {"slug": slug, "path": str(out), "shots": n_shots,
+    # The floor gate. K: "คลิปวีดีโอที่ต่ำกว่าเกณฑ์มาตรฐาน ห้ามอัพขึ้นเด็ดขาด", so an
+    # MV below the floor is deleted here rather than left on disk looking shippable.
+    sys.path.insert(0, str(ROOT.parent / "ops"))
+    import clip_standard as cs  # noqa: PLC0415
+    problems = cs.check(str(out), "vertical")
+    for name, ok, detail in problems:
+        print(f"  [qc] {'ok  ' if ok else 'FAIL'} {name}: {detail}")
+    if not all(ok for _, ok, _ in problems):
+        out.unlink(missing_ok=True)
+        raise SystemExit("MV below the clip floor, deleted")
+
+    dest = shelve(str(out), meta.get("title", slug), "mv")
+    return {"slug": slug, "path": str(dest), "shots": n_shots,
             "seconds": round(length, 1), "bpm": bpm,
-            "bytes": out.stat().st_size}
+            "bytes": Path(dest).stat().st_size}
 
 
 def main() -> int:

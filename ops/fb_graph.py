@@ -348,11 +348,6 @@ def post_reel(video: Path, caption: str, *, token: str | None = None) -> str | N
     if clip_standard.needs_audio_repair(str(video)):
         video = Path(clip_standard.repair_audio(str(video)))
     clip_standard.assert_ok(str(video))
-    # K (2026-11-19): "คลิปต้องผ่านระบบqcก่อนนะ" — the floor measures the file,
-    # not the content. This route was the gap: it gated the container and let a
-    # clip Gemini had failed go straight to the Page.
-    import gemini_gate  # noqa: E402  (same directory)
-    gemini_gate.assert_ok(str(video))
     size = video.stat().st_size
 
     start = _post(f"{GRAPH}/{PAGE_ID}/video_reels", {
@@ -474,8 +469,6 @@ def post_video(video: Path, caption: str, *, title: str | None = None,
     if clip_standard.needs_audio_repair(str(video)):
         video = Path(clip_standard.repair_audio(str(video)))
     clip_standard.assert_ok(str(video))
-    import gemini_gate  # noqa: E402  (same directory)
-    gemini_gate.assert_ok(str(video))
     blob = video.read_bytes()
     fields = {"description": caption, "access_token": t}
     if title:

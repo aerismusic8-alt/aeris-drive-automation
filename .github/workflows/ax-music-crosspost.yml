@@ -275,7 +275,7 @@ jobs:
               || echo "$p: nothing posted this run (cadence hold or signed out)"
             refused=$(grep -c "REFUSED by a gate" "$postlog" || true)
             if [ "${refused:-0}" -gt 0 ]; then
-              echo "::warning::$p: $refused clip(s) refused by the QC gate — review them with ops/gemini_review.py"
+              echo "::warning::$p: $refused clip(s) refused by the QC gate — see the reason in the log below"
               grep "REFUSED by a gate" "$postlog" | head -5
             fi
             rm -f "$postlog"

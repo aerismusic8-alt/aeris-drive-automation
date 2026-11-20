@@ -7,8 +7,7 @@ the QC gate cannot be bypassed by picking a different script.
 
 The order is fixed and it matters:
 
-1. `gemini_gate.assert_ok` — the content verdict, hash-bound to this file. A clip
-   Gemini did not pass is not published, whatever else is true of it.
+1. `genre_verdict` — the song must be in a publishable genre.
 2. `clip_standard.assert_ok` — the technical floor (loudness, codec, motion).
 3. `thumb_standard.assert_ok` — the thumbnail floor.
 4. Upload.
@@ -200,8 +199,6 @@ def main() -> int:
     ap.add_argument("--dry-run", action="store_true", help="gate and build, upload nothing")
     a = ap.parse_args()
 
-    import gemini_gate  # noqa: PLC0415
-
     clips = [Path(a.clip)] if a.clip else sorted(BANK.glob("*.mp4"))
     if not clips:
         raise SystemExit("no clips in the bank")
@@ -223,12 +220,6 @@ def main() -> int:
             rc = 1
             continue
         print(f"GENRE OK {clip.name}  ({why})")
-        ok, why = gemini_gate.check(clip)
-        if not ok:
-            print(f"BLOCKED  {clip.name}: {why}")
-            rc = 1
-            continue
-        print(f"PASSED   {clip.name}  ({why.split(':')[-1].strip()})")
         if a.dry_run:
             print(f"  title: {clip_title(clip)}")
             continue

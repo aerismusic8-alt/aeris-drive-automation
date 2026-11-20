@@ -48,12 +48,20 @@ def _get_json(url, timeout=40):
 
 
 def search(query, limit=8, min_width=1400, max_tries=2):
-    """Wikimedia Commons candidates: high-res, wide-enough, licence we can use."""
+    """Wikimedia Commons candidates: high-res, wide-enough, licence we can use.
+
+    `iiurlwidth` follows `min_width` (never below 1920) instead of being pinned
+    at 1920. A caller that asks for 4K material was previously handed a 1920
+    thumbnail whose *reported* size was the original, so the file silently
+    arrived too small for a 4K pan. Measured 2026-11-20: a 3840 request returned
+    a 1280 px JPEG.
+    """
+    thumb_w = max(int(min_width), 1920)
     params = {
         "action": "query", "generator": "search",
         "gsrsearch": f"{query} filetype:bitmap", "gsrnamespace": "6",
         "gsrlimit": str(limit * 3), "prop": "imageinfo",
-        "iiprop": "url|size|extmetadata|mime", "iiurlwidth": "1920",
+        "iiprop": "url|size|extmetadata|mime", "iiurlwidth": str(thumb_w),
         "format": "json",
     }
     out = []

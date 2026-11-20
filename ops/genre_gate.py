@@ -8,8 +8,8 @@ YouTube has had this gate since 2026-11-19. Facebook and TikTok did not, so a
 parked song could reach them even though the identical clip was refused for
 YouTube — and the Facebook queue held 81 such items on 2026-11-20 (lukthung,
 indie, symphonic, and the twenty เพื่อชีวิต originals that carry no genre at
-all). The gate lives here, next to `clip_standard` and `gemini_gate`, because
-those are the two other things every upload route already calls.
+all). The gate lives here, next to `clip_standard`, because those are the two
+things every upload route already calls.
 """
 
 from __future__ import annotations

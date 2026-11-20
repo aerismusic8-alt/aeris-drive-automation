@@ -937,6 +937,154 @@ def test_ledger_write_merges_instead_of_clobbering() -> None:
     check("a sha race is retried", "for attempt in range(4)" in src)
 
 
+def test_picture_library_is_4k() -> None:
+    """K (2026-11-20): pictures are video *material*, so the library is 4K only.
+
+    The defect this pins: `stills_rail.search` asked Commons for a 1920 px
+    render regardless of the caller's floor, and `image_bank.encode` downscaled
+    to 1920 on the way in, so the library was 2K while claiming to be a source.
+    A 2K still cannot fill a 4K pan without upscaling, and the softness shows.
+    """
+    section("picture library (4K material)")
+    import importlib.util
+    ops = ROOT.parent / "ops"
+
+    def load(name):
+        spec = importlib.util.spec_from_file_location(name, ops / f"{name}.py")
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        return mod
+
+    ib = load("image_bank")
+    check("image bank keeps a 4K long edge",
+          ib.TARGET_W >= 3840 and ib.MIN_W >= 3840,
+          f"TARGET_W={ib.TARGET_W} MIN_W={ib.MIN_W}")
+
+    pl = load("picture_library")
+    check("picture library refuses a sub-4K source",
+          pl.MIN_W >= 3840, f"MIN_W={pl.MIN_W}")
+    check("every theme the renderer uses has a picture theme",
+          {"horror", "lesson", "humour"} <= set(pl.THEMES))
+    check("the abstract theme is served by genart, not Commons",
+          pl.THEMES["abstract"] == [])
+
+    sr_mod = load("stills_rail")
+    import inspect
+    src = inspect.getsource(sr_mod.search)
+    check("Commons search sizes its thumbnail to the caller's floor",
+          "thumb_w" in src,
+          "search() must not pin iiurlwidth at 1920")
+
+    ga = load("genart")
+    check("genart renders natively at 4K",
+          ga.SIZES["print"][0] >= 3840, f"print={ga.SIZES['print']}")
+
+
+def test_media_home_falls_back() -> None:
+    """K (2026-11-20): when PC1's D: is unreachable, a new library must be made.
+
+    Two things have to hold: the resolver picks a writable place instead of
+    raising, and it never mistakes a Windows path for a Linux directory. The
+    second was a real bug — `Path(r"D:\\AX-bank")` is relative on Linux, so the
+    resolver created a directory literally named `D:\\AX-bank` in the repo and
+    reported PC1 as reachable.
+    """
+    section("media home (library fallback)")
+    import importlib.util
+    spec = importlib.util.spec_from_file_location("media_home",
+                                                  ROOT.parent / "ops" / "media_home.py")
+    mh = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mh)
+
+    check("a Windows path is refused off Windows",
+          os.name == "nt" or mh._usable(r"D:\AX-bank\pictures") is None,
+          "a Windows drive must not resolve to a relative Linux dir")
+    check("an empty candidate is skipped", mh._usable("") is None)
+    check("a normal temp path is usable", mh._usable("/tmp") is not None)
+    check("pictures and finished are separate shelves",
+          mh.PICTURES_CANDIDATES != mh.FINISHED_CANDIDATES)
+    check("finished has its own directory name",
+          all("finished" in c or not c for c in mh.FINISHED_CANDIDATES))
+
+
+def test_story_reel_contract() -> None:
+    """The image>video lane: 4K in, 720p out, instrumental bed, QC before shelve.
+
+    K (2026-11-20) asked for clips made from images + AI music + sound. The
+    pieces that must not silently regress are the ones that were wrong on the
+    first run: a sung track competing with the narration, a hard cut at every
+    still change, and a clip that reaches the shelf without passing QC.
+    """
+    section("story reel (image > video)")
+    import importlib.util
+    ops = ROOT.parent / "ops"
+    spec = importlib.util.spec_from_file_location("story_reel", ops / "story_reel.py")
+    srm = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(srm)
+
+    check("stills are asked for at 4K", srm.SOURCE_MIN_W >= 3840,
+          f"SOURCE_MIN_W={srm.SOURCE_MIN_W}")
+    import inspect
+    bv = inspect.getsource(srm.build_video)
+    check("stills are blended, not butted together",
+          "xfade" in bv and "-f\", \"concat" not in bv,
+          "a concat seam measures as a hard cut")
+    check("the finished mix is loudness-normalised once", "loudnorm" in bv)
+    mv = inspect.getsource(srm.main)
+    check("QC runs before a clip is shelved",
+          "clip_standard" in mv and mv.index("cs.check") < mv.index("shelve("))
+    check("a below-floor clip is deleted", "os.unlink" in mv)
+    pm = inspect.getsource(srm.pick_music)
+    check("the bed prefers an instrumental", "karaoke" in pm)
+    check("the bed still runs the genre gate", "publishable" in pm)
+
+
+def test_mv_keeps_picture_proportions() -> None:
+    """A camera move must not squash the picture into the 9:16 frame.
+
+    The library holds landscape 4K photographs (3840x2560, aspect 1.5). Every
+    move scaled to an exact oversize box, so a 1.5 source was squeezed to 0.56 —
+    a 2.7x horizontal squash that flattens every face. Measured with a circle:
+    a correct move keeps it round, the bug turned it into an ellipse of ratio
+    0.34. `force_original_aspect_ratio=increase` + crop is the fix, and every
+    move has to carry it, so this checks the table rather than one render.
+    """
+    section("MV (picture proportions)")
+    import importlib.util
+    ops = ROOT.parent / "ops"
+    spec = importlib.util.spec_from_file_location("make_music_video",
+                                                  ROOT / "scripts" / "make_music_video.py")
+    mv = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mv)
+
+    check("every camera move preserves the aspect ratio",
+          all("force_original_aspect_ratio=increase" in f for f in mv.MOVES.values()),
+          ", ".join(n for n, f in mv.MOVES.items()
+                    if "force_original_aspect_ratio=increase" not in f))
+    check("every camera move crops to the frame after scaling",
+          all("crop={w}:{h}" in f for f in mv.MOVES.values()))
+    check("a shot is short enough to read as motion",
+          1.0 <= mv.SHOT_MIN and mv.SHOT_MAX <= 5.0,
+          f"{mv.SHOT_MIN}..{mv.SHOT_MAX}")
+    check("the song's own tempo drives the cut",
+          "bpm" in __import__("inspect").getsource(mv.plan_shots))
+    check("the MV is a vertical 1080x1920 at 30 fps",
+          (mv.W, mv.H, mv.FPS) == (1080, 1920, 30))
+    # The gate and the shelf, so a below-floor MV cannot sit on disk looking done.
+    bsrc = __import__("inspect").getsource(mv.build)
+    check("the genre gate runs before any render", "genres.publishable" in bsrc)
+    check("the clip floor is enforced", "clip_standard" in bsrc or "cs.check" in bsrc)
+    check("a below-floor MV is deleted", "unlink" in bsrc)
+    check("a passing MV is shelved", "shelve(" in bsrc)
+    check("the 4K library is the first scene source",
+          bsrc.index("library_scenes") < bsrc.index("make_scene("))
+    check("song mood maps to a library theme",
+          {"sad", "mystic", "hopeful", "calm", "epic"} <= set(mv.MOOD_THEMES))
+    check("a theme mapping only names themes the library fills",
+          all(t in ("horror", "lesson", "humour", "city", "nature", "temple", "abstract")
+              for t in mv.MOOD_THEMES.values()))
+
+
 def test_outputs() -> None:
     section("rendered output")
     songs = sorted((common.LIBRARY / "songs").glob("song-*.mp3"))
@@ -1158,27 +1306,84 @@ def test_shorts() -> None:
     # K, 2026-11-18: the captions were dropped (2026-11-03) because the sweep was
     # *estimated* from the song length and drifted off the sung line. A Lyria clip
     # carries `lyrics_timing.value.markers` — `[char_offset, start_seconds]` into
-    # the clip's own lyric text — which are the times the model actually sang. Song
-    # 48 has them (7 markers, one per section), so the sweep can be note-accurate
-    # and the Short opens on the real chorus. These checks pin the adapter and the
-    # real-chorus window; a regression here silently returns to the drifting sweep.
-    blocks = make_karaoke.load_timing_blocks("48-luai-mai-yut-v48")
-    check("markers decode to one block per section", len(blocks) == 7, str(len(blocks)))
-    check("block 0 is the verse at the first marker",
-          blocks and blocks[0]["section"] == "verse"
-          and abs(blocks[0]["start"] - 15.5) < 0.05, str(blocks[0] if blocks else None))
-    check("block 1 is the chorus at the real time",
-          len(blocks) > 1 and blocks[1]["section"] == "chorus"
-          and abs(blocks[1]["start"] - 46.5) < 0.05, str(blocks[1] if len(blocks) > 1 else None))
-    timed = make_karaoke.load_timing("48-luai-mai-yut-v48")
-    check("real timing covers every sung line", len(timed) >= 24, str(len(timed)))
-    check("the first chorus line is timed at the chorus start",
-          any(t["text"].startswith("จัดเต็มบาร์หนึ่งครั้ง") and abs(t["start"] - 46.5) < 0.05
-              for t in timed))
-    # The window must open on the sung chorus (46.5 - HOOK_PAD), not the estimate.
-    w0 = make_short._pick_windows("48-luai-mai-yut-v48", 236.6)[0]
-    check("the hook opens on the real chorus, not the estimate",
-          abs(w0[0] - (46.5 - make_short.HOOK_PAD)) < 0.5, f"{w0[0]:.2f}")
+    # the clip's own lyric text — which are the times the model actually sang.
+    #
+    # The real clipmeta is gitignored media, and until 2026-11-20 it was in no
+    # release, so on a fresh pod it is simply absent and these checks went red for
+    # a missing asset rather than a broken parser. The fixture below is a real
+    # clipmeta written to the real path and read back through the real loader, so
+    # the adapter is still tested end to end without depending on a download.
+    # When the genuine file is present its own values are checked as well.
+    import json as _json
+    fixture = make_karaoke.ROOT / "library" / "songs" / "clipmeta-fixture-markers.json"
+
+    def _clipmeta_text(sections: list[tuple[str, list[str]]]) -> tuple[str, list[int]]:
+        """Build lyric text plus each block's char offset, the way Flow emits it."""
+        text, offsets = "", []
+        for tag, body in sections:
+            text += f"[{tag.title()}]\n"
+            offsets.append(len(text))
+            text += "\n".join(body) + "\n"
+        return text, offsets
+
+    verse = ["คืนนี้ฟ้าไม่มีดาว", "เธอจากไปไม่หวนคืน", "เหลือเพียงเงาในใจ", "ลมหนาวพัดผ่านมา"]
+    chorus = ["จัดเต็มบาร์หนึ่งครั้ง", "เสียงเพลงยังก้องในใจ",
+              "เต้นจนเช้าอีกครั้ง", "ไม่สนใครทั้งนั้น"]
+    # The first chorus tag has to end at offset 103 to reproduce the real clip's
+    # shape, so the verse block is padded to that exact width.
+    v0 = "\n".join(verse)
+    v0 += "ๆ" * (86 - len(v0))
+    sections = [("verse", v0.split("\n")), ("chorus", chorus),
+                ("verse", verse), ("chorus", chorus),
+                ("bridge", verse), ("chorus", chorus), ("outro", verse)]
+    text, offsets = _clipmeta_text(sections)
+    times = [15.5, 46.5, 88.0, 120.0, 152.0, 175.0, 215.0]
+    doc = {"lyrics_timing": {"status": "completed",
+                             "value": {"markers": [[o, t] for o, t in zip(offsets, times)]}},
+           "lyrics": {"value": {"text": text}},
+           "duration": {"value": 236.6}}
+    fixture.parent.mkdir(parents=True, exist_ok=True)
+    fixture.write_text(_json.dumps(doc, ensure_ascii=False), encoding="utf-8")
+    try:
+        blocks = make_karaoke.load_timing_blocks("fixture-markers")
+        check("markers decode to one block per section", len(blocks) == 7, str(len(blocks)))
+        check("block 0 is the verse at the first marker",
+              blocks and blocks[0]["section"] == "verse"
+              and abs(blocks[0]["start"] - 15.5) < 0.05,
+              str(blocks[0] if blocks else None))
+        check("block 1 is the chorus at the real time",
+              len(blocks) > 1 and blocks[1]["section"] == "chorus"
+              and abs(blocks[1]["start"] - 46.5) < 0.05,
+              str(blocks[1] if len(blocks) > 1 else None))
+        timed = make_karaoke.load_timing("fixture-markers")
+        check("real timing covers every sung line", len(timed) >= 24, str(len(timed)))
+        check("the first chorus line is timed at the chorus start",
+              any(t["text"].startswith("จัดเต็มบาร์หนึ่งครั้ง")
+                  and abs(t["start"] - 46.5) < 0.05 for t in timed))
+        w0 = make_short._pick_windows("fixture-markers", 236.6)[0]
+        check("the hook opens on the real chorus, not the estimate",
+              abs(w0[0] - (46.5 - make_short.HOOK_PAD)) < 0.5, f"{w0[0]:.2f}")
+    finally:
+        fixture.unlink(missing_ok=True)
+
+    # The genuine song, when the media is present: same adapter, real values.
+    if (make_karaoke.ROOT / "library" / "songs"
+            / "clipmeta-48-luai-mai-yut-v48.json").exists():
+        real_blocks = make_karaoke.load_timing_blocks("48-luai-mai-yut-v48")
+        check("the real clip decodes to seven section blocks", len(real_blocks) == 7,
+              str(len(real_blocks)))
+        check("the real clip's first chorus is at 46.5 s",
+              any(b["section"] == "chorus" and abs(b["start"] - 46.5) < 0.05
+                  for b in real_blocks))
+    else:
+        note("real clipmeta absent (gitignored media) — fixture covers the adapter")
+
+    # The rail must carry clipmeta to the release, or a fresh pod loses it again.
+    import inspect as _inspect
+    pub = _inspect.getsource(__import__("publish_media"))
+    pull = _inspect.getsource(__import__("pull_media"))
+    check("clipmeta is published to the media release", "clipmeta-*.json" in pub)
+    check("clipmeta is restored on a fresh pod", "clipmeta-" in pull)
     # A clip with no markers must fall back to the estimate (empty, not a crash).
     check("a clip without markers falls back to the estimate",
           make_karaoke.load_timing("01-khon-di-thi-chak-pai") == []
@@ -1423,12 +1628,27 @@ def test_mv_is_the_release() -> None:
         release.is_bed = lambda s: False
         release.affiliate_cards = lambda: []
         release.all_slugs = lambda: ["with-mv", "no-mv"]
-        items = release.plan(3)
-        longform = {i["slug"]: i["video"].name for i in items if i["kind"] == "song"}
-        check("the song with an MV schedules the MV file",
-              longform.get("with-mv") == "film-with-mv.mp4", str(longform))
-        check("the song without an MV falls back to the lyric render",
-              longform.get("no-mv") == "song-no-mv.mp4", str(longform))
+        # `plan()` no longer consults a Gemini verdict (K, 2026-11-20: the review
+        # is out of the video system), so the plan only has to name the right
+        # file for each song. The files are still created so a future check that
+        # stats them does not silently pass on a stub name.
+        made: list[Path] = []
+        try:
+            targets = [release.MUSICVIDEO / "film-with-mv.mp4",
+                       release.KARAOKE / "song-no-mv.mp4"]
+            for f in targets:
+                f.parent.mkdir(parents=True, exist_ok=True)
+                f.write_bytes(b"\x00\x00\x00\x18ftypmp42" + b"test" * 64)
+                made.append(f)
+            items = release.plan(3)
+            longform = {i["slug"]: i["video"].name for i in items if i["kind"] == "song"}
+            check("the song with an MV schedules the MV file",
+                  longform.get("with-mv") == "film-with-mv.mp4", str(longform))
+            check("the song without an MV falls back to the lyric render",
+                  longform.get("no-mv") == "song-no-mv.mp4", str(longform))
+        finally:
+            for f in made:
+                f.unlink(missing_ok=True)
     finally:
         release.mv_files = real_mv
         release.has_video = real_hv
@@ -6300,57 +6520,48 @@ def test_a_director_cuts_on_the_music() -> None:
           str(safe))
 
 
-def test_gemini_gate_blocks_unreviewed() -> None:
-    """No Gemini pass, no upload (K, 2026-11-19).
+def test_no_gemini_gate_in_the_video_system() -> None:
+    """The Gemini review is out of the video system (K, 2026-11-20).
 
-    K: "ถ้าไม่ผ่านการตรวจสอบผ่านจาก gemini ห้ามเอาอัพขึ้นช่องและห้ามส่งให้ K ดู".
-    `ops/gemini_gate.py` is the chokepoint and must fail closed: no verdict, a
-    verdict bound to different bytes, or a failing score all block.
+    K: "ตอนนี้ตัดการตรวจสอบของ gemini ออกจากระบบสร้างวีดีโอใหม่เลย". The review
+    used to be a hard, fail-closed gate on every render and every upload route.
+    It is now optional: `ops/gemini_gate.py` still exists and can be run by hand,
+    but nothing in the pipeline may block on it.
+
+    This is a source check because the rule is about wiring, not behaviour: a
+    gate that is silently still called from one route is exactly the failure
+    that would reappear. The technical floor (`clip_standard`) and the genre
+    gate stay — those are K's standing rules and are unrelated to this one.
     """
-    section("gemini gate (no pass, no upload)")
-    import importlib.util
-    import shutil
-    import tempfile
-    # The verdict dir is env-overridable so a test can never write into the real
-    # one: a stray PASS there would let an unreviewed clip upload.
-    d = tempfile.mkdtemp(prefix="ax-gem-test-")
-    reviews = os.path.join(d, "reviews")
-    os.makedirs(reviews)
-    os.environ["AX_GEMINI_REVIEWS"] = reviews
-    ops = ROOT.parent / "ops"
-    spec = importlib.util.spec_from_file_location("gemini_gate",
-                                                  ops / "gemini_gate.py")
-    gg = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(gg)
+    section("no gemini gate in the video system (K, 2026-11-20)")
+    routes = ["ops/yt_publish.py", "ops/fb_graph.py", "ops/tiktok_api.py",
+              "ops/bank_publish.py", "ops/clip_lane.py",
+              "music938-1/scripts/release.py",
+              "music938-1/scripts/crosspost.py"]
+    for rel in routes:
+        src = (ROOT.parent / rel).read_text(encoding="utf-8")
+        code = "\n".join(ln for ln in src.splitlines()
+                         if not ln.lstrip().startswith("#"))
+        check(f"{rel} no longer calls the Gemini gate", "gemini_gate" not in code)
 
-    try:
-        clip = os.path.join(d, "short-song-h1-test-slug.mp4")
-        with open(clip, "wb") as f:
-            f.write(b"\x00" * 2048)
+    # The floor and the genre gate are NOT part of this reversal.
+    for rel in ("ops/yt_publish.py", "ops/fb_graph.py", "ops/tiktok_api.py"):
+        src = (ROOT.parent / rel).read_text(encoding="utf-8")
+        check(f"{rel} still enforces the clip floor", "clip_standard" in src)
 
-        ok, why = gg.check(clip)
-        check("unreviewed clip is blocked", ok is False)
-        check("the reason says review it first", "no Gemini verdict" in why, why)
+    # A render that passes the floor is finished; it must not be reported as
+    # waiting for a review that will never come.
+    lane = (ROOT.parent / "ops" / "clip_lane.py").read_text(encoding="utf-8")
+    check("a floor-passing render is reported as passed, not pending",
+          "PASSED the floor" in lane and "AWAITING GEMINI" not in lane)
+    yml = (ROOT.parent / ".github" / "workflows" / "ax-clip-lane.yml"
+           ).read_text(encoding="utf-8")
+    check("the clip lane workflow has no awaiting-review branch",
+          "AWAITING GEMINI" not in yml and "awaiting-gemini-review" not in yml)
 
-        gg.record(clip, 4.0, False, verdict="FAIL", note="blurred bars")
-        ok, why = gg.check(clip)
-        check("a FAIL verdict is blocked", ok is False)
-        check("the reason names the FAIL", "FAIL" in why, why)
-
-        # A verdict belongs to the exact bytes Gemini saw. Re-rendering the clip
-        # must invalidate it, or a fixed clip inherits the old score.
-        with open(clip, "wb") as f:
-            f.write(b"\x01" * 2048)
-        ok, why = gg.check(clip)
-        check("a changed file invalidates the verdict", ok is False)
-        check("the reason is a hash mismatch", "hash" in why.lower(), why)
-
-        gg.record(clip, 9.0, True, verdict="PASS", replace=True)
-        ok, why = gg.check(clip)
-        check("a passing verdict on the same bytes is allowed", ok is True, why)
-    finally:
-        os.environ.pop("AX_GEMINI_REVIEWS", None)
-        shutil.rmtree(d, ignore_errors=True)
+    # The module itself stays: it is a tool K can still use by hand.
+    check("the gate module is kept as an optional tool",
+          (ROOT.parent / "ops" / "gemini_gate.py").exists())
 
 
 def test_a_refused_clip_does_not_kill_the_queue() -> None:
@@ -7251,13 +7462,14 @@ def test_clip_lane_is_its_own_job() -> None:
     check("an unknown genre still gets generated frames", "genre unknown" in src)
     # A CC BY-SA photo must keep its credit, and a generated frame must be named
     # as generated rather than shown with an empty licence. The credit file is
-    # written before the Gemini gate so a clip reviewed later still carries it.
+    # written next to the clip, before the floor gate, so a refused render still
+    # carries the provenance that explains it.
     check("a photo keeps its licence and credit in the credit file",
           '"credit": s.get("credit")' in src and '"licence": s.get("licence")' in src)
     check("a generated frame is credited as generated, not as unlicensed",
           '"origin": "ai"' in src and '"model": s.get("model")' in src)
-    check("the credit file is written even for a clip awaiting review",
-          src.index("credits.json") < src.index("AWAITING GEMINI REVIEW"))
+    check("the credit file is written before the floor gate",
+          src.index("credits.json") < src.index("PASSED the floor"))
     # The frames are gitignored, so a runner starts with the manifest and no
     # pixels. That is exactly what happened on 2026-11-20: the lane went green
     # with a photo-only clip and the log said nothing, because the mix had
@@ -7271,37 +7483,18 @@ def test_clip_lane_is_its_own_job() -> None:
           "scenes-{genre}.tar" in (ROOT.parent / "ops" / "image_library.py"
                                    ).read_text(encoding="utf-8"))
 
-    # K (2026-11-19): "คลิปต้องผ่านระบบqcก่อนนะ". The floor above measures the
-    # file, not the content: a clip whose six stills had collapsed into one
-    # frozen picture passed all 14 technical rules and reached K. So the render
-    # must consult the Gemini verdict too, and a clip without a pass must not be
-    # presented as finished.
-    check("the render consults the Gemini verdict", "gemini_gate" in src)
-    check("a clip with no pass is not presented as done",
-          "NOT SHOWN, waiting for a Gemini pass" in src)
-    # The verdict needs the signed-in desktop, so on a runner it can never
-    # arrive: treating its absence as a red run made the clip lane red forever
-    # and hid every real failure behind it. An unreviewed render is its own
-    # outcome — reported, kept for review, and still never published.
-    check("an unreviewed render is reported apart from a pass",
-          "AWAITING GEMINI REVIEW" in src)
+    # K (2026-11-20): the Gemini review is out of the video system, so a render
+    # that clears the floor is finished. The floor is still the gate — it is
+    # what caught the frozen six-still clip — and it is asserted above.
+    check("the render does not consult a Gemini verdict", "gemini_gate" not in src)
     lane_yaml = (ROOT.parent / ".github" / "workflows" / "ax-clip-lane.yml"
                  ).read_text(encoding="utf-8")
-    check("the workflow accepts an unreviewed render without going red",
-          "AWAITING GEMINI REVIEW" in lane_yaml and "pending=" in lane_yaml)
-    check("the workflow still publishes only a passed clip",
-          lane_yaml.count("steps.render.outputs.clip") >= 3
-          and "steps.render.outputs.pending" in lane_yaml)
     # The step runs under `set -o pipefail`, so an unmatched grep exits 1 and
-    # `bash -e` kills the step before the branch below can say what happened.
-    # That is what kept the rail red even after an unreviewed render was made a
-    # normal outcome: a real 58 s clip rendered fine on 2026-11-20 and the step
-    # still died on the grep. A grep whose "no match" is expected must be told
-    # so, or the explanation never runs.
+    # `bash -e` kills the step before the branch below can say what happened. A
+    # grep whose "no match" is expected must be told so, or the explanation
+    # never runs.
     check("an expected no-match grep cannot kill the step",
           "sed 's/.*-> //' || true)" in lane_yaml)
-    check("the awaiting branch really exits zero",
-          "awaiting Gemini review" in lane_yaml and "exit 0" in lane_yaml)
 
     # The bug behind that: `zoompan`'s `d` is frames per INPUT frame, so looping
     # a still for `per` seconds multiplied out to per^2*FPS^2 frames from image
@@ -7361,27 +7554,26 @@ def test_clip_lane_is_its_own_job() -> None:
     check("the lane prefers stills that need no upscale",
           "MIN_CROP_WIDTH" in src)
 
-    # Every route to a channel must carry the content gate. On 2026-11-19 only
-    # YouTube had it: Facebook and TikTok checked the container and would have
-    # posted a clip Gemini had failed, which is exactly what K forbade. This
-    # walks the uploaders so a new route cannot be added without the gate.
+    # Every route to a channel must carry the technical floor. K removed the
+    # Gemini review from the video system on 2026-11-20, so what a route owes is
+    # `clip_standard` (plus `genre_gate`), not a content verdict. This walks the
+    # uploaders so a new route cannot be added without the floor.
     for mod in ("yt_publish.py", "fb_graph.py", "tiktok_api.py"):
         body = (ROOT.parent / "ops" / mod).read_text(encoding="utf-8")
-        check(f"{mod} checks the Gemini verdict", "gemini_gate" in body,
-              "no content gate on this upload path")
-        check(f"{mod} keeps the technical floor too", "clip_standard" in body)
+        check(f"{mod} keeps the technical floor", "clip_standard" in body)
+        check(f"{mod} has no Gemini gate", "gemini_gate" not in body)
     cross = (ROOT / "scripts" / "crosspost.py").read_text(encoding="utf-8")
-    check("both crosspost composers check the verdict",
-          cross.count("gemini_gate.assert_ok") == 2,
-          f"found {cross.count('gemini_gate.assert_ok')}")
-    check("crosspost keeps the technical floor",
-          cross.count("clip_standard.assert_ok") == 2)
+    check("both crosspost composers keep the floor",
+          cross.count("clip_standard.assert_ok") == 2,
+          f"found {cross.count('clip_standard.assert_ok')}")
+    check("crosspost has no Gemini gate", "gemini_gate" not in cross)
 
     # The bank publish path is the only way a bank clip reaches an audience, so
-    # it must check the verdict itself and must report a missing channel as
-    # skipped rather than done -- a missing TikTok token once read as "posted".
+    # it must check the genre and the floor itself, and must report a missing
+    # channel as skipped rather than done -- a missing TikTok token once read as
+    # "posted".
     bp = (ROOT.parent / "ops" / "bank_publish.py").read_text(encoding="utf-8")
-    check("bank_publish gates on the Gemini verdict", "gemini_gate.check" in bp)
+    check("bank_publish gates on the genre", "genre_verdict" in bp)
     check("bank_publish reports a missing channel as skipped",
           "skipped" in bp and "no TikTok token" in bp)
     check("bank_publish never invents a title", "release.describe" in bp)
@@ -8223,7 +8415,7 @@ def main() -> int:
     test_song_analysis()
     test_thumb_contrast()
     test_thumb_standard_is_a_floor()
-    test_gemini_gate_blocks_unreviewed()
+    test_no_gemini_gate_in_the_video_system()
     test_a_refused_clip_does_not_kill_the_queue()
     test_gemini_review_reads_a_prose_verdict()
     test_ai_covers()
@@ -8321,6 +8513,10 @@ def main() -> int:
     test_image_bank_is_a_library_not_a_cache()
     test_stock_bank_scales_and_stays_licensed()
     test_genart_is_original_reproducible_print_art()
+    test_picture_library_is_4k()
+    test_media_home_falls_back()
+    test_story_reel_contract()
+    test_mv_keeps_picture_proportions()
     test_outputs()
     print(f"\n{PASS} passed, {FAIL} failed")
     if FAILURES:

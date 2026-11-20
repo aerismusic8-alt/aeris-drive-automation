@@ -47,6 +47,12 @@ SOURCES = [
     # only tiles them. They are ~30 MB each, so they ride the media release like
     # every other gitignored asset.
     ("ambient", "sampler1-*.wav"),
+    # The Lyria clip metadata. It holds `lyrics_timing.value.markers` — the times
+    # the model actually sang each section — which is the only source of real
+    # per-line timing. Without it `make_karaoke` falls back to an estimated sweep
+    # that drifts off the sung line, and six tests go red on a fresh pod because
+    # the file simply is not there. It is small JSON, so it rides along cheaply.
+    ("songs", "clipmeta-*.json"),
     ("covers", "*.jpg"),
     ("thumbs", "*.png"),
     # The AI image bank. These are NOT regenerable on demand — 8 credits each,

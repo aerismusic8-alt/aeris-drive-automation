@@ -34,6 +34,12 @@ def group_of(name: str) -> str | None:
         return "ambient"
     if name.endswith(".mp3") or name.endswith(".wav"):
         return "songs"
+    # The Lyria clip metadata carries the real per-section marker times. It is
+    # gitignored media like everything else here, so without this rule a fresh
+    # pod has no clipmeta and `make_karaoke` silently falls back to the estimated
+    # lyric sweep — the exact drift K ordered dropped on 2026-11-03.
+    if name.startswith("clipmeta-") and name.endswith(".json"):
+        return "songs"
     if name.startswith("karaoke-") and name.endswith(".mp4"):
         return "karaoke"
     # Affiliate product cards are also `short-*`, so they must be tested before

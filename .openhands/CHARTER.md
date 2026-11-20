@@ -59,6 +59,51 @@ AERIS Music channel and the AX game) and is the final authority, but does not
 need to approve each step, pick each task, or think up what comes next. AR
 decides, does, verifies, and records. When K is out of ideas, AR supplies them.
 
+### The channel is a MUSIC channel — ship MVs, not narrated clips (K, 2026-11-20)
+
+K, on the first delivered batch: **"วีดีโอผ่านใช้ได้ แต่เราทำเพลงนะไม่ใช่คลิปบรรยาย
+แก้ไขคำสั่ง k ด้วย ทำเป็น mv"** — the clips passed QC, but they were the wrong
+product. We make **songs**, so the video product is a **music video**: the song is
+the soundtrack and the picture serves it. A Thai voice-over explaining a story over
+stills is **not** our format, however well it renders.
+
+What this changes:
+
+- **The default video output is an MV** — `music938-1/scripts/make_music_video.py`.
+  Song audio is the mix (no narration), many short moving shots cut on the song's
+  own BPM, 1080×1920, title + follow card, VJ bar, loudnorm at the mux.
+- `ops/story_reel.py` (Thai narration over stills) stays only as a **tool**, not a
+  product: it is no longer a format to produce for the channel. The trivia lane
+  (`ops/trivia_reel.py`) is a separate, factual format K asked for by name and is
+  unaffected.
+- A deliverable is only "our product" if a **song** is the thing being watched. If
+  a build produces a voice explaining something, it is the wrong rail.
+
+### The Gemini review is out of the video system (K, 2026-11-20)
+
+K: **"ตอนนี้ตัดการตรวจสอบของ gemini ออกจากระบบสร้างวีดีโอใหม่เลย"** — remove the
+Gemini review from the video system now.
+
+The review was a hard, fail-closed gate: `ops/gemini_gate.py` had to hold a verdict
+hash-bound to the exact file before any render counted as finished or any upload
+route would run. It blocked a render for "no verdict", a re-render for "not the
+file Gemini saw", and every channel behind one unreviewed clip. It is now
+**optional** — the module stays so K or AR can run a review by hand, but nothing
+in the pipeline waits on it.
+
+What still gates a clip, and why it is not the same thing:
+
+- `ops/clip_standard.py` — the technical floor K set on 2026-11-17 ("ห้ามอัพขึ้น
+  เด็ดขาด"): codec, loudness band, true peak, dead silence, frozen picture, black
+  bars. It measures the file, needs no desktop, and runs on a runner.
+- `ops/genre_gate.py` — the publishable-genre rule (fun-only, 2026-11-18).
+- `ops/thumb_standard.py` — the thumbnail floor.
+
+- A review that cannot run on the machine that renders is not a gate, it is a
+  permanent red rail; and a rubric written for a 9:16 Short (captions on screen,
+  hook timing) is the wrong test for an MV. Both were true here. QC means the
+  floor, not an opinion.
+
 ## What AR decides alone
 
 Anything that is **free, inside the repos, and reversible**. That is almost

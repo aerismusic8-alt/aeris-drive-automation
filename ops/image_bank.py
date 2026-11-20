@@ -54,8 +54,12 @@ REPO = "aerismusic8-alt/aeris-drive-automation"
 API = "https://api.github.com"
 RELEASE = "media-938"
 
-TARGET_W = 1920          # long edge; a clip needs 1080p at most, 1920 leaves a crop
-WEBP_Q = 80              # 52% of the source at 1920 px, measured on this pod
+# K (2026-11-20): the picture library is clip *material*, so it is kept at 4K.
+# A 3840 long edge leaves room to crop, pan and push without ever upscaling the
+# output, which is what makes a 720p/1080p render look sharp instead of soft.
+TARGET_W = 3840          # long edge, 4K UHD
+MIN_W = 3840             # below this the source is refused at ingest
+WEBP_Q = 88              # a 4K still needs the extra bits; measured on this pod
 SHARD_MAX = 400 * 1024 * 1024   # 400 MB keeps one upload under the 2 GB asset cap
 
 # Museum APIs answer every query with paintings — measured on a 60-image run,
@@ -117,12 +121,19 @@ def release_id(tok: str) -> int:
 
 
 def encode(src: Path, dest: Path) -> tuple[int, int, int] | None:
-    """Re-encode one still to a 1920 px WebP. Returns (w, h, bytes)."""
+    """Re-encode one still to a 4K WebP. Returns (w, h, bytes), or None if refused.
+
+    A source smaller than MIN_W is refused rather than upscaled: stretching a
+    1280 px photo to 3840 adds no detail and the softness shows on screen. The
+    caller keeps the file out of the manifest, so the library stays honestly 4K.
+    """
     from PIL import Image  # noqa: PLC0415 - only needed when actually encoding
 
     try:
         with Image.open(src) as im:
             im = im.convert("RGB")
+            if max(im.size) < MIN_W:
+                return None
             if max(im.size) > TARGET_W:
                 im.thumbnail((TARGET_W, TARGET_W * 2), Image.LANCZOS)
             dest.parent.mkdir(parents=True, exist_ok=True)
@@ -148,7 +159,9 @@ def commons_page(query: str, min_width: int, offset: int, limit: int = 500) -> t
         "gsrsearch": f"{query} filetype:bitmap", "gsrnamespace": "6",
         "gsrlimit": str(limit), "gsroffset": str(offset),
         "prop": "imageinfo", "iiprop": "url|size|extmetadata|mime",
-        "iiurlwidth": "1920",
+        # Ask Commons for a 4K render rather than its 1920 thumbnail: the bank is
+        # clip material and a 1920 source cannot fill a 4K pan without upscaling.
+        "iiurlwidth": str(TARGET_W),
     }
     try:
         data = stills_rail._get_json(f"{stills_rail.API}?{urllib.parse.urlencode(params)}",
@@ -349,7 +362,7 @@ def main() -> int:
     h.add_argument("--queries", required=True, help="text file, one query per line")
     h.add_argument("--want", type=int, default=500)
     h.add_argument("--per-query", type=int, default=6)
-    h.add_argument("--min-width", type=int, default=1600)
+    h.add_argument("--min-width", type=int, default=MIN_W)
     h.add_argument("--sleep", type=float, default=0.0)
 
     s = sub.add_parser("shard", help="pack + upload + free local disk")

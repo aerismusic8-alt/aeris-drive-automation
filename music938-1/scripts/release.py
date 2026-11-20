@@ -745,35 +745,6 @@ def pinned_songs() -> list[str]:
     return [s for s in songs if isinstance(s, str)]
 
 
-def _gemini_passed(items: list[dict]) -> list[dict]:
-    """Drop items whose clip has no passing Gemini verdict (K, 2026-11-19).
-
-    "ถ้าไม่ผ่านการตรวจสอบผ่านจาก gemini ห้ามเอาอัพขึ้นช่องและห้ามส่งให้ K ดู
-    ทำให้ผ่านก่อน" — an unreviewed clip waits in the backlog instead of going
-    live. It is dropped here rather than failed at the upload so a half-reviewed
-    queue still releases the clips that *are* approved.
-
-    The gate is fail-closed when the module itself cannot be imported: an
-    unverifiable clip is not an approved clip. The `--plan` output says which
-    ones were held, so the backlog is visible instead of looking empty.
-    """
-    try:
-        sys.path.insert(0, str(OPS))
-        import gemini_gate
-    except Exception as exc:
-        print(f"gemini gate unavailable ({type(exc).__name__}); holding every "
-              f"clip until it can be checked", file=sys.stderr)
-        return []
-    kept: list[dict] = []
-    for it in items:
-        ok, why = gemini_gate.check(it["video"])
-        if ok:
-            kept.append(it)
-        else:
-            print(f"hold {it['slug']} ({it['kind']}): {why}", file=sys.stderr)
-    return kept
-
-
 def _pin_front(todo: list[dict], pins: list[str]) -> list[dict]:
     """Move the pinned songs' items to the front of the pending queue.
 
@@ -893,11 +864,6 @@ def plan(days: int, shorts: bool = False, spread: float = 0,
     # yet) is exactly the case K pins most often: the Short is all there is.
     pending_songs = {i["slug"] for i in todo}
     todo = _pin_front(todo, [s for s in pinned_songs() if s in pending_songs])
-    # K (2026-11-19): a clip Gemini has not passed must not reach a channel.
-    # The publish path enforces this too, but filtering here keeps the rail from
-    # picking an unreviewed clip and going red halfway through the batch — the
-    # unreviewed ones simply wait until a review is recorded.
-    todo = _gemini_passed(todo)
     start = datetime.now(timezone.utc)
     for i, item in enumerate(todo):
         if spread:
