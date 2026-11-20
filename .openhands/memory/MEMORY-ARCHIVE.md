@@ -6438,3 +6438,24 @@ Dreamina CLI: image + TTS work, but **video is blocked server-side** on every mo
 even when the model reports `vipRequired: false`. `node quote` is the only honest
 test of whether a job will run — a dry run without it reports success. 8 credits
 per image. No Thai voice available, so Thai narration stays on `edge-tts`.
+
+## Moved from the index 2026-11-20 (yt_auth / ch3 facts)
+- `yt_auth.api_get(path, token, **params)` builds `API/<path>` itself: pass
+  `"channels"`, not a full URL. Passing a URL returns `404 {'raw': ''}`.
+- `uploads_playlist(token)` and `all_upload_ids(token)` die with `KeyError: 'items'`
+  when `channels?part=contentDetails&mine=true` is quota-limited; the fix is to ask
+  for `part=snippet,contentDetails` and page `playlistItems?part=contentDetails`
+  yourself. `yt_auth.get_videos(token, ids)` takes <=50 ids and returns
+  `(status, items)`.
+- A YouTube Data API 403 quota error is intermittent on this project's pool: the
+  same call succeeds seconds later. Retry with `time.sleep(3..5)`, do not report
+  "quota exhausted" from one 403.
+- ch3 "เพลงส้นทีนไรเนี่ย" = channel id `UCm44BjAn03ruOF-WaA3ZRww`, 100 videos as of
+  2026-11-20, all public, newest 2026-11-16. Read it with
+  `python3 ops/yt_auth.py videos ch3` once `uploads_playlist` is fixed.
+
+## A gate nothing can pass is broken, not strict (2026-11-19)
+The Gemini review gate ran PASS_SCORE 8.0 while Gemini never emitted above 6.0, so
+the loop failed forever and looked like "the songs are bad". Calibrate a gate to what
+the judge actually emits; the **verdict** decides, the score is only a noisy sanity
+floor. An always-red gate is a bug, not a high standard.

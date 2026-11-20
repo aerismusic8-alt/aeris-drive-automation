@@ -6057,6 +6057,20 @@ def test_genre_gate_blocks_parked_lanes() -> None:
     check("the compilation uploader passes every track to the gate",
           '"--song", s' in uc_src)
 
+    # `--list-songs` is consumed by a shell pipe (`| shuf -n 1`), so anything
+    # that is not a song name on stdout becomes a "song" and the job dies at the
+    # download. The skip note did exactly that on 2026-11-20 and the clip lane
+    # went red with "no song available". Keep stdout machine-readable.
+    import subprocess
+    lane = ROOT.parent / "ops" / "clip_lane.py"
+    out = subprocess.run([sys.executable, str(lane), "--list-songs"],
+                         capture_output=True, text=True, timeout=300)
+    lines = [l for l in out.stdout.splitlines() if l.strip()]
+    check("--list-songs prints only song names on stdout",
+          bool(lines) and all(" " not in l and ":" not in l for l in lines),
+          f"{len(lines)} lines; first={lines[0] if lines else ''!r}")
+    check("--list-songs returns at least one publishable song", len(lines) > 0)
+
 
 def test_gemini_gate_blocks_unreviewed() -> None:
     """No Gemini pass, no upload (K, 2026-11-19).

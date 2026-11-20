@@ -11,9 +11,8 @@ channel's first work; never rename a channel without K's approval.
 ## Accounts (K 2026-11-14): every tool uses AR's OWN mail, not K's
 AR mailbox = `araeris4770d7@fldubai.com` (mail.tm; `ops/ar_identity.py`).
 AR self-creatable: **Nostr** (`AR_NOSTR_NSEC`), **Telegraph** (`ops/ar_telegraph.py`).
-Flow Music/Gemini = K's `aerismusic8` (AR never types a password). K taps a QR once,
-then `login_vault.py save` **immediately** (~1 day). A synth bed has **no vocal**;
-Flow is the only real-song route.
+Flow Music/Gemini = K's `aerismusic8`; K taps a QR once, then `login_vault.py save`
+**immediately** (~1 day). A synth bed has **no vocal** — Flow is the only real-song route.
 
 ## Roles and method (K 2026-10-31)
 - **K = final authority.** Every standing rule is K's.
@@ -29,8 +28,8 @@ Flow is the only real-song route.
 "เราไม่ได้เป็นคนสร้างช่อง เราสร้าง ai openhands" — the deliverable is **the agent**,
 built from free cloud tools. Scope = **4 channels** (focus aeris938-2 = Facebook,
 TikTok, YouTube `@aerismusicth`, Shopee Affiliate). Two goals in
-`AKATH_CORE/CANONICAL_TASK_REGISTRY.json` must never close as ordinary tasks: a
-Roblox game anyone can enter and play, and real revenue from it (Roblox **PARKED**).
+`AKATH_CORE/CANONICAL_TASK_REGISTRY.json` never close as ordinary tasks: a Roblox
+game anyone can play, and real revenue from it (Roblox **PARKED**).
 **Brand = เพลงส้นทีนไรเนี่ย** (handle `@aerismusicth`); the name lives only in
 `music938-1/scripts/branding.py` — never hardcode it.
 **Revenue gate = ch3**: **1,000 subs AND 4,000 watch-hours/12 mo**. The metric is
@@ -39,17 +38,20 @@ Roblox game anyone can enter and play, and real revenue from it (Roblox **PARKED
 
 **🎵 แนวช่อง = FUN ONLY** (K 2026-11-18 "ทำแนวสนุกอย่างเดียว"): pop/synthpop/edm/
 rock/hiphop/rap/alternative. **PARKED = ห้ามอัพ**: lukthung ลูกทุ่ง, เพื่อชีวิต,
-morlam, indie, lofi, rnb, jazz, acoustic, country, symphonic. Gate =
-`genres.publishable()`, fails closed. **The 20 `lyrics-original/` songs are ALL
-เพื่อชีวิต — never publish them.**
+morlam, indie, lofi, rnb, jazz, acoustic, country, symphonic. **The 20
+`lyrics-original/` songs are ALL เพื่อชีวิต — never publish them.**
+Gate = `genres.publishable()`, fails closed, and runs at **every** publish path
+(`yt_publish` needs `--song SLUG`/`--not-a-song WHY`, else refuses; `bank_publish`,
+`clip_lane`, `compile_album.available_songs()` 46→27). `--list-songs` stdout must
+stay pure — a log line piped to `shuf` killed the clip lane (2026-11-20).
 
 ## Environment facts that cost time
-- **Fresh-pod recovery: `scripts/bootstrap-pod.sh`** — re-run after every pod.
+- **Fresh pod: `scripts/bootstrap-pod.sh`** — re-run after every pod.
 - **MV links must be durable (K: "ลิงค์ตาย")** — `ops/mv_page.py --all`. Archive.
 - **24/7 on GitHub Actions** (public repo → free minutes); judge health from the
   **rail run history**, not `heartbeat.json`.
 - **FB = Graph API only (K 2026-11-15); browser OFF** (`axsecrets:fb-page-token`).
-- **Vault = truth; a secret injects only when the command *names* it.**
+- **Vault = truth; a secret injects only when the command *names* it** (else 401).
 - **Writes:** `GITHUB_TOKEN` is 403; push via KV `axsecrets:gh-workflow-token`
   (workflow files need its `workflow` scope). API reads work with `$AX_GH_TOKEN`.
 - **Desktop = Live View** (`work-2`:12001); Thai `Text.luau` + `NotoSansThai.ttf`
@@ -62,11 +64,6 @@ morlam, indie, lofi, rnb, jazz, acoustic, country, symphonic. Gate =
 `ops/clip_standard.py` = floor + per-format profile, gated at **every** upload route,
 no override; `ops/thumb_standard.py` too. `docs/clip-standard.md`. `short` (captions →
 text floor) ≠ `vertical` (MV → none). Also gates dead silence (≤3 s) + VFR (≤2%).
-
-**A gate nothing can pass is broken, not strict (2026-11-19).** PASS_SCORE 8.0 while
-Gemini never gave above 6.0 → the loop fails forever. Calibrate to what the judge
-emits; the **verdict** decides, the score is only a sanity floor (it is noisy).
-Archive.
 
 ## Retry lanes → ch3 (trivia + reactive)
 `trivia_publish.py` + `reactive_publish.py` share one chokepoint; a cap = **retry**;

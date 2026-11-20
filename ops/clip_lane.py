@@ -320,11 +320,14 @@ def available_songs(log=print) -> list[str]:
     """Song names usable on this machine: local files first, then the release.
 
     The workflow needs this because a fresh runner has no music directory at all,
-    and guessing a slug there costs a whole job.
+    and guessing a slug there costs a whole job. The list is the machine-readable
+    output (`--list-songs | shuf -n 1`), so progress notes must not share stdout:
+    a log line picked as a "song" fails the download and the job with it.
     """
+    note = lambda m: print(m, file=sys.stderr)  # noqa: E731
     local = sorted(p.stem for p in MUSIC.glob("*.mp3")) if MUSIC.exists() else []
     if local:
-        return _publishable_only(local, log=log)
+        return _publishable_only(local, log=note)
 
     import urllib.request  # noqa: PLC0415
 
@@ -339,9 +342,9 @@ def available_songs(log=print) -> list[str]:
             doc = json.load(r)
         remote = sorted(a["name"][:-4] for a in doc.get("assets", [])
                         if a["name"].endswith(".mp3"))
-        return _publishable_only(remote, log=log)
+        return _publishable_only(remote, log=note)
     except Exception as exc:  # noqa: BLE001
-        log(f"songs: could not list the release ({type(exc).__name__})")
+        note(f"songs: could not list the release ({type(exc).__name__})")
         return []
 
 
