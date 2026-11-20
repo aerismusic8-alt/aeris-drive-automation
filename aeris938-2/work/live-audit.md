@@ -1,6 +1,6 @@
 # ตรวจของจริงบนช่อง — เพลงส้นทีนไรเนี่ย
 
-ตรวจเมื่อ: 2026-11-19T17:31:59Z
+ตรวจเมื่อ: 2026-11-20T01:51:21Z
 
 ⚠️ อ่านไม่ได้วันนี้: channels.list/playlistItems.list returned no items (quota spent or API error)
 
