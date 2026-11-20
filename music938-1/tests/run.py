@@ -5732,6 +5732,40 @@ def test_clip_standard_is_a_floor() -> None:
         check(f"crosspost.{fn} clears the standard before upload",
               "clip_standard.assert_ok" in body)
 
+    # K (2026-11-18): "ทำแนวสนุกอย่างเดียว" — a PARKED genre must never reach any
+    # surface. YouTube had this gate; Facebook and TikTok did not, and the
+    # Facebook queue held 81 parked items on 2026-11-20 (lukthung, indie,
+    # symphonic, plus the twenty เพื่อชีวิต originals with no genre header). The
+    # gate is only real if every video poster calls it.
+    for label, path in (
+        ("facebook Reel poster", ROOT.parent / "ops" / "fb_graph.py"),
+        ("facebook video poster", ROOT.parent / "ops" / "fb_graph.py"),
+        ("tiktok API poster", ROOT.parent / "ops" / "tiktok_api.py"),
+    ):
+        check(f"{label} clears the genre gate before upload",
+              "genre_gate.assert_ok" in path.read_text())
+    gg = ROOT.parent / "ops" / "genre_gate.py"
+    check("the genre gate refuses an unresolvable clip",
+          "its genre is unknowable" in gg.read_text())
+    # The parked songs really are refused, and a fun-only song really passes:
+    # this is the behaviour, not just the presence of a call.
+    import importlib.util as _ilu
+    _spec = _ilu.spec_from_file_location("genre_gate_t", gg)
+    _gg = _ilu.module_from_spec(_spec)
+    _spec.loader.exec_module(_gg)
+    for stem, want in (
+        ("short-song-h2-29-takorn-kong-fa.mp4", False),   # symphonic — parked
+        ("surreal-08-klap-ban-rao.mp4", False),           # lukthung — parked
+        ("short-song-h1-24-yut-mai-yom.mp4", True),       # rock — publishable
+    ):
+        try:
+            _gg.assert_ok(stem)
+            got = True
+        except SystemExit:
+            got = False
+        check(f"genre gate {'allows' if want else 'refuses'} {stem}",
+              got == want, f"got {'allow' if got else 'refuse'}")
+
     # The gate measures a clip with ffprobe (from the ffmpeg package) plus the
     # numpy/Pillow it imports. A workflow that runs a gated upload path without
     # those cannot read the file, so the gate fails closed and refuses *every*

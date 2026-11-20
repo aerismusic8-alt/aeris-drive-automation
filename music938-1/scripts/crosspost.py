@@ -30,6 +30,7 @@ import argparse
 import calendar
 import contextlib
 import json
+import os
 import re
 import sys
 import time
@@ -41,6 +42,7 @@ sys.path.insert(0, str(ROOT.parent / "aeris938-1" / "scripts"))
 sys.path.insert(0, str(ROOT.parent / "ops"))  # fb_graph / tiktok_api live here
 
 import browser as B  # noqa: E402
+import genres  # noqa: E402  (the genre gate: FUN ONLY)
 import monetize  # noqa: E402
 import release  # noqa: E402
 from branding import NAME as BRAND, HANDLE  # noqa: E402
@@ -314,6 +316,21 @@ def _hook_of(stem: str) -> int:
 def _kind_of(short: Path) -> str:
     """`karaoke` for a sing-along clip, `song` otherwise."""
     return "karaoke" if short.stem.startswith("short-karaoke-") else "song"
+
+
+def _genre_ok(it: dict) -> bool:
+    """Is this queue item's song in a publishable genre?
+
+    A non-song format (photo, text, link) has no song and always passes. A song
+    item is judged on its own `slug` when the queue carries one, otherwise on
+    the file name. Anything unresolvable is treated as *not* publishable: the
+    twenty เพื่อชีวิต originals carry no genre header, and assuming them safe is
+    how two of them shipped on 2026-11-19.
+    """
+    if (it.get("kind") or "song") not in ("song", "karaoke", "surreal", "concert", "mood"):
+        return True
+    slug = it.get("slug") or genres.resolve_slug(os.path.basename(it.get("file") or ""))
+    return bool(slug) and genres.publishable(slug)[0]
 
 
 def interleave(primary: list[dict], secondary: list[dict], every: int,
@@ -1248,6 +1265,11 @@ def post(platform: str, limit: int, only: str | None = None) -> int:
             print(f"nothing pending for {only}")
             return 0
     api = api_poster(platform)
+    # K (2026-11-18): a PARKED genre must never be uploaded. The posters enforce
+    # it, but a refused item still consumes the one slot `--limit 1` gives, so a
+    # parked song at the head starves the queue exactly like an unreviewed clip
+    # did. Drop them before the limit is applied; they stay in the queue.
+    todo = [it for it in todo if _genre_ok(it)]
     # A browser poster drives only the Reels composer, so on the browser path a
     # photo/link item can never be published. Drop them *before* the limit is
     # applied: with `--limit 1` a photo sitting at the head of the queue ate the

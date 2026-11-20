@@ -472,9 +472,14 @@ def check(path: str, profile: str | None = None) -> list[tuple[str, bool, str]]:
 
 def assert_ok(path: str, profile: str | None = None) -> None:
     """Raise unless every rule passes. Used on the publish path."""
-    failed = [n for n, ok, _ in check(path, profile) if not ok]
+    # Report the *measured* value, not just the rule name: the names are phrased
+    # positively ("no clipping", "picture is not frozen"), so a list of failed
+    # names read like a list of passes — an operator saw "below the standard:
+    # loudness normalised; no clipping" and concluded the clip was fine.
+    failed = [(n, d) for n, ok, d in check(path, profile) if not ok]
     if failed:
-        raise SystemExit("clip below the standard: " + "; ".join(failed))
+        raise SystemExit("clip below the standard: "
+                         + "; ".join(f"{n} ({d})" if d else n for n, d in failed))
 
 
 # Loudness a repair normalises to: the middle of the universal band, matching

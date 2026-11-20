@@ -333,8 +333,20 @@ def post_reel(video: Path, caption: str, *, token: str | None = None) -> str | N
     t = page_access_token(token) if (token or page_token()) else ""
     if not t:
         return None
+    # K (2026-11-18): a PARKED genre must never be uploaded. YouTube has gated
+    # this since 2026-11-19; this route did not, so a lukthung/indie/symphonic
+    # song could reach the Page while the same clip was refused for YouTube.
+    import genre_gate  # noqa: E402  (same directory)
+    genre_gate.assert_ok(str(video))
     # K (2026-11-17): nothing below the channel floor may be uploaded anywhere.
     import clip_standard  # noqa: E402  (same directory)
+    # Same self-heal as `yt_publish`: a clip rendered before its master was
+    # re-mastered carries stale audio, and refusing it here while YouTube repairs
+    # and ships the identical file left Facebook permanently behind. Repair the
+    # audio (video stream copied, picture untouched) before measuring; a style
+    # failure is still refused below.
+    if clip_standard.needs_audio_repair(str(video)):
+        video = Path(clip_standard.repair_audio(str(video)))
     clip_standard.assert_ok(str(video))
     # K (2026-11-19): "คลิปต้องผ่านระบบqcก่อนนะ" — the floor measures the file,
     # not the content. This route was the gap: it gated the container and let a
@@ -456,7 +468,11 @@ def post_video(video: Path, caption: str, *, title: str | None = None,
     t = page_access_token(token) if (token or page_token()) else ""
     if not t:
         return None
+    import genre_gate  # noqa: E402  (same directory)
+    genre_gate.assert_ok(str(video))
     import clip_standard  # noqa: E402  (same directory)
+    if clip_standard.needs_audio_repair(str(video)):
+        video = Path(clip_standard.repair_audio(str(video)))
     clip_standard.assert_ok(str(video))
     import gemini_gate  # noqa: E402  (same directory)
     gemini_gate.assert_ok(str(video))

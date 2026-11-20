@@ -185,8 +185,13 @@ def post_video(video: Path, caption: str, *, allow_private: bool = False) -> str
         print("  tiktok: account is unaudited (SELF_ONLY only) — keeping the browser route")
         return None
 
+    # K (2026-11-18): a PARKED genre must never be uploaded, on any surface.
+    import genre_gate  # noqa: E402  (same directory)
+    genre_gate.assert_ok(str(video))
     # K (2026-11-17): nothing below the channel floor may be uploaded anywhere.
     import clip_standard  # noqa: E402  (same directory)
+    if clip_standard.needs_audio_repair(str(video)):
+        video = Path(clip_standard.repair_audio(str(video)))
     clip_standard.assert_ok(str(video))
     # K (2026-11-19): "คลิปต้องผ่านระบบqcก่อนนะ" — the floor measures the file,
     # not the content, so the Gemini verdict is checked here too.
