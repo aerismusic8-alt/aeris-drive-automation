@@ -5661,6 +5661,25 @@ def test_clip_standard_is_a_floor() -> None:
           cs.SHAPE_DEFAULT.get((1080, 1920)) == "vertical")
     check("silent motion asset is allowed to have no audio",
           cs.PROFILES["motion"].get("audio_required") is False)
+    # The motion profile is an intermediate: silent, 832x480, 16 fps. Because a
+    # file under `library/motion/` resolves to it by lane, every numeric rule can
+    # pass and the gate would wave a fragment through to an uploader. K's rule is
+    # that nothing below the standard reaches a channel, so the profile itself
+    # must be unpublishable and `check()` must say so.
+    check("the motion asset is not a publishable format",
+          cs.PROFILES["motion"].get("publishable") is False)
+    import shutil as _sh
+    import subprocess as _sp
+    import tempfile as _tf
+    _ff = _sh.which("ffmpeg") or cs.ffmpeg()
+    _motion_probe = os.path.join(_tf.mkdtemp(), "fragment.mp4")
+    _sp.run([_ff, "-y", "-v", "error", "-f", "lavfi", "-i",
+             "testsrc=s=832x480:d=2", "-r", "16", "-pix_fmt",
+             "yuv420p", "-c:v", "libx264", _motion_probe], check=True)
+    _rows = cs.check(_motion_probe, profile="motion")
+    check("a well-formed intermediate still cannot pass the gate",
+          any(n == "is a publishable format" and not ok for n, ok, _ in _rows),
+          str([n for n, ok, _ in _rows if not ok]))
 
     # The renderer enforces it, and so does the upload chokepoint.
     check("trivia_reel runs the gate",

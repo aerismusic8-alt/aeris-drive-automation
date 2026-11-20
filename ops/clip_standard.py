@@ -126,6 +126,10 @@ PROFILES: dict[str, dict] = {
         "motion_median_min": 0.03,
         "motion_max": None,
         "text_px_min": None,
+        # An intermediate is not a clip. Without this, a file under
+        # `library/motion/` resolved to this profile and *passed* the gate, so a
+        # silent 832x480 fragment could be handed to an uploader and shipped.
+        "publishable": False,
     },
 }
 
@@ -391,6 +395,14 @@ def check(path: str, profile: str | None = None) -> list[tuple[str, bool, str]]:
         return res
     p = PROFILES[name]
     add("known format", True, f"{name} ({p['label']})")
+    # An intermediate asset can satisfy every numeric rule and still be the wrong
+    # thing to publish: `motion` is silent 832x480 by design. The rule is reported
+    # so `check()` stays a pure reader, but it fails, so `assert_ok()` and every
+    # upload chokepoint that calls it refuse the file.
+    if p.get("publishable") is False:
+        add("is a publishable format", False,
+            f"{name} is an internal intermediate, not a clip — "
+            f"render it into a published profile first")
 
     shape = (info["width"], info["height"])
     want = p["resolutions"][0]
