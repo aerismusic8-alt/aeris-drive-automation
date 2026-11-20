@@ -244,10 +244,67 @@ voice-over narrating a story over stills is not our format, no matter how clean
 the render.
 
 - **The video rail is `music938-1/scripts/make_music_video.py`.** The song is the
-  mix — there is no narration track. Many short shots, each with a real camera
-  move, cut on the song's own BPM (two beats per cut, clamped 1.6–4.0 s), a
+  mix — there is no narration track. Many shots, each with a real camera move,
+  cut on the song's own BPM (a whole number of beats per shot, 2.8–5.5 s), a
   title card and a follow card, an audio-reactive VJ bar, and `loudnorm` at the
   mux so every MV meets the floor.
+
+### The picture must not move too fast (K, 2026-11-20)
+
+> "ภาพเลื่อนเร็วเกิน" / "ภาพเลื่อแทค"
+
+The cut used to land every two beats, and a 120 bpm song changed shot every
+1.6 s — 140 shots in 222 s, 37.7 cuts a minute. Each shot also slid 45% of the
+frame, so the picture moved 28% of the screen width every second. Measured on
+the shipped MV-12: motion median 14.8, p99 81.9.
+
+Two numbers set the pace, and both are pinned by tests:
+
+- `shot_seconds()` picks a whole number of beats that lasts at least
+  `SHOT_MIN` (2.8 s) and at most `SHOT_MAX` (5.5 s). 68 bpm → four beats
+  (3.53 s), 120 bpm → six (3.0 s). No tempo exceeds **22 cuts/min**.
+- `OVERSIZE` (1.20) is both the pan source's margin and the distance a pan
+  travels in one shot, so it sets the slide speed. 1.45 over a 1.6 s shot was a
+  whip pan; 1.20 over 3 s is **6.7%/s**. `ZOOM_RATE` 0.10 (max 1.18) replaces the
+  0.16–0.34 lunge.
+
+The re-rendered MV-12 measures motion median **9.5** (from 14.8) and p99 **56.9**
+(from 81.9) at **18.1 cuts/min**, and still passes every clip-floor check. When
+changing pacing, re-render and re-measure — do not trust the constants alone.
+
+### One song, one take (K, 2026-11-20)
+
+> "เพลงเก่าลบออกให้หมด ใช้เพลงใหม่ล่าสุด"
+
+The auto-producer appends a template suffix when it wants more songs (อีกครั้ง /
+ในฝัน / ยามเช้า / ยามค่ำ), so one song became up to five files with different
+lyrics but the same structure. They are not versions of one master — the audio
+differs, so a SHA comparison does not catch them. `ops/song_prune.py` groups a
+*family* (the slug minus its leading number and trailing `-vNN`) and keeps only
+the **newest take**, the highest number.
+
+```bash
+python3 ops/song_prune.py            # dry run: print the plan
+python3 ops/song_prune.py --apply --release
+```
+
+- `--release` is not optional in practice. `pull_media.py` restores **every**
+  asset on `media-938`, so pruning only the local file means a fresh pod pulls
+  the deleted takes straight back.
+- It also drops queued clips for a deleted song from `crosspost-queue.json`.
+  The crosspost *state* (what already went out) is history and is left alone.
+- Anything that pins a slug by name has to move to the kept take:
+  `work/release-priority.json` named `48-luai-mai-yut-v48` and now names `-v49`.
+  A stale pin makes `release.py` look for a file that no longer exists.
+- `review-pending.html` links release assets directly, so rebuild it after a
+  prune (`ops/review_gallery.py`) or the gallery shows dead links.
+- Masters are recoverable from the release before the prune, and the lyric text
+  is tracked in git, so this is not a one-way door — but the audio is not
+  recoverable after `--release`, so read the dry run first.
+
+Applied 2026-11-20: 47 files → 32 songs, 15 superseded takes and 145 release
+assets deleted (175 MB local).
+
 - **Scenes come from the 4K picture library first.** `ops/picture_library.py`
   fills a themed shelf (horror/lesson/humour/city/nature/temple/abstract) from
   Wikimedia Commons at ≥3840 px plus `ops/genart.py` originals at 4096 px. The

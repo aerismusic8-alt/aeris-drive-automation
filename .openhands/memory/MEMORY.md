@@ -11,7 +11,6 @@ channel's first work; never rename a channel without K's approval.
 ## Accounts (K 2026-11-14): AR's OWN mail, never K's
 AR mail (`ar_identity.py`) + self-creatable Nostr/Telegraph. Flow Music/Gemini run
 on K's `aerismusic8`; K taps a QR once, then `login_vault.py save` **immediately**.
-A synth bed has **no vocal** — Flow is the only real-song route.
 
 ## Roles and method (K 2026-10-31)
 - **K = final authority.** Every standing rule is K's.
@@ -57,22 +56,23 @@ publish path (`yt_publish` needs `--song SLUG`/`--not-a-song WHY`; also
 `ops/clip_standard.py` = floor + per-format profile, gated at **every** upload
 route, no override; `ops/thumb_standard.py` too. `short` (captions → text floor) ≠
 `vertical` (MV → none). Also gates dead silence (≤3 s) + VFR (≤2%).
-
 ## Gemini review is OUT of the video system (K 2026-11-20)
-"ตัดการตรวจสอบของ gemini ออกจากระบบสร้างวีดีโอใหม่เลย" — `gemini_gate` was
-fail-closed on every render + upload route; now **optional** (hand tool only).
-**QC stays and blocks**: `clip_standard` + `genre_gate` + `thumb_standard` — they
-measure the file and run anywhere; the review needed a signed-in desktop, so on a
-runner it could never pass. Pinned by `test_no_gemini_gate_in_the_video_system`.
+"ตัดการตรวจสอบของ gemini ออกจากระบบสร้างวีดีโอใหม่เลย" — hand tool only.
+**QC stays and blocks**: `clip_standard` + `genre_gate` + `thumb_standard` (they
+measure the file); the review needed a signed-in desktop. Pinned by
+`test_no_gemini_gate_in_the_video_system`. Detail: AGENTS.md.
 
-## Motion: Dreamina video VIP-gated; HF Wan = free i2v
-Dreamina **images work**, **video VIP-gated**. Free i2v = `make_motion.py` HF Wan.
-Detail: `docs/dreamina-access.md`.
+## Pace + prune (K 2026-11-20) — "ภาพเลื่อนเร็วเกิน", "เพลงเก่าลบออกให้หมด"
+MV shot = a WHOLE number of beats, 2.8–5.5 s, **≤22 cuts/min any tempo**; `OVERSIZE`
+1.20 IS the pan travel (= slide speed; 1.45/1.6 s = whip pan). Re-measure the file:
+MV-12 median 14.8→**9.5**, p99 81.9→**56.9**, 18.1/min.
+`ops/song_prune.py`: family = slug minus number and `-vNN`, keep newest; **`--release`
+mandatory** (`pull_media` restores every asset). Repoint slug pins + rebuild
+`review-pending.html`. Done: 47→32 songs, 145 assets.
 
-## Retry lanes → ch3 (trivia + reactive)
+## Retry lanes → ch3 + loop health
 `trivia_publish.py` + `reactive_publish.py` — one chokepoint; a cap = **retry**;
 each `work/*` ledger must be un-ignored (`!…`) or it re-posts every tick.
-## Loop health & platform risks
 - **A green run is not a finished job.** rc 4 + `UPLOAD_LIMIT_EXCEEDED` = the
   per-channel daily cap; clears over hours, so a cap is a **retry**.
 - **Never decide on missing/stale data** (2026-11-12): a blank/stale newest row is
@@ -81,15 +81,11 @@ each `work/*` ledger must be un-ignored (`!…`) or it re-posts every tick.
 - **Bound every rail:** `timeout-minutes` + `cancel-in-progress: true`; see
   `OPENHANDS_RISK_REGISTER.json` + `ops/risk_audit.py --strict`.
 
-## Art + image bank: our own code, no API
+## Art + director
 `genart.py` + `image_bank.py` shard → `media-938`; `image_library.py publish` →
-`scenes-938`. Commit the manifest only.
-
-## The director (K 2026-11-20 "อยากได้ผู้กำกับภาพยนตร์")
-`shot_director.py` cuts **on the music**: onset-snapped, shot length follows energy
-(1.2-6 s), the move never repeats. **`zoompan d` = frames per INPUT frame** → loop
-at OUTPUT fps, `d=1`. A green CI run is not proof a feature ran: read its own log
-line. Detail: archive.
+`scenes-938`; commit the manifest only. `shot_director.py` cuts **on the music**
+(onset-snapped, 1.2-6 s by energy, move never repeats). **`zoompan d` = frames per
+INPUT frame** → `d=1` at OUTPUT fps. Read a run's own log line: green ≠ it ran.
 
 ## Recovery
 `$AX_VAULT_BOOTSTRAP` → `ops/ax_vault.py` (`axvault:readme`); a lost `work/*.json`

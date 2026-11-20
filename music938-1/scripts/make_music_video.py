@@ -73,11 +73,11 @@ MOVES: dict[str, str] = {
     # Push in: the classic, but over a SHORT shot it actually reads as motion.
     "push": ("scale={ow}:{oh}:force_original_aspect_ratio=increase,"
              "crop={w}:{h}:x='(iw-{w})/2':y='(ih-{h})/2',"
-             "zoompan=z='min(1+0.16*on/{n},1.34)':d=1:"
+             "zoompan=z='min(1+{zr}*on/{n},{zmax})':d=1:"
              "x='iw/2-(iw/zoom/2)':y='ih/2-(ih/zoom/2)':s={w}x{h}:fps={fps}"),
     "pull": ("scale={ow}:{oh}:force_original_aspect_ratio=increase,"
              "crop={w}:{h}:x='(iw-{w})/2':y='(ih-{h})/2',"
-             "zoompan=z='max(1.34-0.16*on/{n},1.0)':d=1:"
+             "zoompan=z='max({zmax}-{zr}*on/{n},1.0)':d=1:"
              "x='iw/2-(iw/zoom/2)':y='ih/2-(ih/zoom/2)':s={w}x{h}:fps={fps}"),
     # Pan right/left across the oversize: the strongest cheap move (7.2 measured).
     "pan_r": ("scale={ow}:{oh}:force_original_aspect_ratio=increase,"
@@ -92,14 +92,16 @@ MOVES: dict[str, str] = {
     # Diagonal drift: pan and push at once, the most "shot on a gimbal" of them.
     "drift": ("scale={ow}:{oh}:force_original_aspect_ratio=increase,"
               "crop={w}:{h}:x='(iw-{w})*min(t/{d},1)':y='(ih-{h})*(1-min(t/{d},1))',"
-              "zoompan=z='min(1+0.08*on/{n},1.16)':d=1:"
+              "zoompan=z='min(1+{zr}*on/{n},{zdmax})':d=1:"
               "x='iw/2-(iw/zoom/2)':y='ih/2-(ih/zoom/2)':s={w}x{h}:fps={fps}"),
-    # Push with a slow sway, for the emotional chorus.
+    # Push with a slow sway, for the emotional chorus. It starts already zoomed
+    # (Z_MIN) because `rotate` runs after the crop: at z=1.0 there is no overscan
+    # for the rotation to eat, and the frame's corners go black.
     "push_rotate": ("scale={ow}:{oh}:force_original_aspect_ratio=increase,"
                     "crop={w}:{h}:x='(iw-{w})/2':y='(ih-{h})/2',"
-                    "zoompan=z='min(1+0.14*on/{n},1.30)':d=1:"
+                    "zoompan=z='min({zmin}+{zr}*on/{n},{zmax})':d=1:"
                     "x='iw/2-(iw/zoom/2)':y='ih/2-(ih/zoom/2)':s={w}x{h}:fps={fps},"
-                    "rotate='0.015*sin(2*PI*t/{d})':fillcolor=black"),
+                    "rotate='0.012*sin(2*PI*t/{d})':fillcolor=black"),
 }
 
 # One move per shot, chosen so no two neighbours repeat and the song's arc rises:
@@ -107,18 +109,41 @@ MOVES: dict[str, str] = {
 MOVE_ORDER = ("pan_r", "push", "drift", "tilt_u", "pull", "pan_l",
               "push_rotate", "tilt_d")
 
-OVERSIZE = 1.45  # how much bigger than the frame the pan source is
+# How much bigger than the frame the pan source is. This is also the distance a
+# pan travels in one shot, so it sets how fast the picture slides: 1.45 moved 45%
+# of the frame width inside a 1.6 s shot, which reads as a whip pan rather than a
+# camera. 1.20 halves that travel and the longer shot below quarters the speed.
+OVERSIZE = 1.20
 
-# A cut every two beats. Slow ballads (68 bpm) still change picture every 1.8 s;
-# the clamp keeps a very fast song from strobing.
-BEATS_PER_CUT = 2
-SHOT_MIN, SHOT_MAX = 1.6, 4.0
+# Zoom travel per shot. The old 0.16-0.34 range was a lunge; a push that grows
+# ~10% over three seconds reads as a deliberate move.
+ZOOM_RATE = 0.10
+ZOOM_MAX = 1.18
+ZOOM_DRIFT_MAX = 1.08
+# `push_rotate` rotates after the crop, so it needs overscan to rotate into or
+# the corners swing black. Start it already inside the zoom range.
+ZOOM_MIN_ROTATE = 1.10
+
+# K, 2026-11-20: "ภาพเลื่อนเร็วเกิน" — the picture moved too fast. At two beats
+# per cut a 120 bpm song changed shot every 1.6 s (140 shots in 222 s), and each
+# shot slid 45% of the frame. The cut now lands on the beat but only where a shot
+# is long enough to read: three to four seconds.
+SHOT_MIN, SHOT_MAX = 2.8, 5.5
 
 
 def shot_seconds(bpm: float) -> float:
-    """Per-shot length for a song at `bpm`: two beats, clamped to a watchable band."""
+    """Per-shot length for a song at `bpm`: a whole number of beats, 2.8-5.5 s.
+
+    The multiple is chosen rather than fixed, so a cut still lands on the beat at
+    any tempo while the shot itself stays long enough to watch: 68 bpm gives four
+    beats (3.5 s), 120 bpm six (3.0 s), 180 bpm eight (2.7 s).
+    """
     beat = 60.0 / max(bpm, 40.0)
-    return min(SHOT_MAX, max(SHOT_MIN, beat * BEATS_PER_CUT))
+    for beats in (2, 3, 4, 6, 8, 10, 12, 16):
+        length = beat * beats
+        if length >= SHOT_MIN:
+            return min(SHOT_MAX, length)
+    return SHOT_MAX
 
 
 def plan_shots(length: float, bpm: float) -> tuple[int, float]:
@@ -204,7 +229,8 @@ def make_scene(slug: str, name: str, *, force: bool = False) -> Path:
 def _shot_filter(move: str, frames: int, dur: float) -> str:
     ow, oh = int(W * OVERSIZE), int(H * OVERSIZE)
     return MOVES[move].format(w=W, h=H, ow=ow, oh=oh, n=frames, d=f"{dur:.3f}",
-                              fps=FPS)
+                              fps=FPS, zr=ZOOM_RATE, zmax=ZOOM_MAX,
+                              zdmax=ZOOM_DRIFT_MAX, zmin=ZOOM_MIN_ROTATE)
 
 
 def render_shot(src: Path, move: str, dur: float, out: Path,

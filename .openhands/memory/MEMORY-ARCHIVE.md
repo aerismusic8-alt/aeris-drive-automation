@@ -6523,3 +6523,10 @@ Environment (detail): a fresh pod loses `~/.config/aeris/`; `scripts/bootstrap-p
 Loop health (detail): `continue-on-error` plus a wrong step order once produced a silently broken artifact — gate the artifact and assert the step order; repair a derived artifact at the chokepoint (`clip_standard.repair_audio`), never by hand. The per-channel daily new-video cap does not clear at the 08:00 UTC reset; it clears over hours.
 Accounts/roles (detail): every tool AR signs up to uses AR's own mail, not K's (K 2026-11-14). The Gemini advisor is a consultation gate, not a content gate: when stuck, ask it and follow the advice (`ops/gemini_ask.py`).
 The director (full): `shot_director.py` cuts on the music — onsets snapped, shot length follows energy 1.2-6 s, a move never repeats — using ffmpeg→numpy, no librosa. `--no-direct` falls back to the old even grid. K asked for it 2026-11-20 as "อยากได้ผู้กำกับภาพยนตร์".
+
+## [moved 2026-11-20 from MEMORY.md] Motion: Dreamina video VIP-gated
+Dreamina **images work**, **video VIP-gated**. Free i2v = `make_motion.py` HF Wan.
+Detail: `docs/dreamina-access.md`.
+
+## [moved 2026-11-20] synth bed has no vocal
+A synth bed has **no vocal** — Flow Music is the only real-song route.

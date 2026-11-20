@@ -1063,9 +1063,20 @@ def test_mv_keeps_picture_proportions() -> None:
                     if "force_original_aspect_ratio=increase" not in f))
     check("every camera move crops to the frame after scaling",
           all("crop={w}:{h}" in f for f in mv.MOVES.values()))
-    check("a shot is short enough to read as motion",
-          1.0 <= mv.SHOT_MIN and mv.SHOT_MAX <= 5.0,
+    check("a shot is long enough to watch",
+          2.5 <= mv.SHOT_MIN and mv.SHOT_MAX <= 6.0,
           f"{mv.SHOT_MIN}..{mv.SHOT_MAX}")
+    # K, 2026-11-20: "ภาพเลื่อนเร็วเกิน". The picture must not slide faster than
+    # a camera: a pan covers (OVERSIZE-1) of the frame inside one shot, so a
+    # short shot with a big oversize is a whip pan. Pin both halves of that.
+    check("a pan travels a small part of the frame per shot",
+          mv.OVERSIZE <= 1.25, f"{mv.OVERSIZE}")
+    check("a pan never slides faster than 10% of the frame per second",
+          (mv.OVERSIZE - 1) * 100 / mv.SHOT_MIN <= 10.0,
+          f"{(mv.OVERSIZE - 1) * 100 / mv.SHOT_MIN:.1f}%/s")
+    check("the zoom travels a gentle amount per shot",
+          mv.ZOOM_RATE <= 0.12 and mv.ZOOM_MAX <= 1.20,
+          f"{mv.ZOOM_RATE}..{mv.ZOOM_MAX}")
     check("the song's own tempo drives the cut",
           "bpm" in __import__("inspect").getsource(mv.plan_shots))
     check("the MV is a vertical 1080x1920 at 30 fps",
@@ -1444,14 +1455,24 @@ def test_music_video() -> None:
     import inspect
     import make_music_video as mv
 
-    # A cut every two beats. A slow ballad must still change picture faster than
-    # a viewer's patience: at 68 bpm that is 1.76 s, well inside the 4 s ceiling.
-    check("68 bpm cuts about every 2 beats", abs(mv.shot_seconds(68) - 1.765) < 0.05,
+    # K, 2026-11-20: "ภาพเลื่อนเร็วเกิน" / "ภาพเลื่อแทค" — the picture changed
+    # too fast. The cut now lands on the beat but the shot itself is a whole
+    # multiple of it that lasts seconds: 68 bpm gives four beats (3.53 s), 120
+    # bpm six (3.0 s). The old two-beat rule cut a 120 bpm song every 1.6 s.
+    check("68 bpm holds a shot for four beats", abs(mv.shot_seconds(68) - 3.529) < 0.05,
           f"{mv.shot_seconds(68):.3f}")
-    check("a slow song still cuts under 4 s", mv.shot_seconds(50) <= mv.SHOT_MAX,
-          f"{mv.shot_seconds(50):.3f}")
+    check("120 bpm holds a shot for at least 2.8 s",
+          mv.shot_seconds(120) >= mv.SHOT_MIN, f"{mv.shot_seconds(120):.3f}")
+    check("a slow song still cuts under the ceiling",
+          mv.shot_seconds(50) <= mv.SHOT_MAX, f"{mv.shot_seconds(50):.3f}")
     check("a fast song does not strobe", mv.shot_seconds(180) >= mv.SHOT_MIN,
           f"{mv.shot_seconds(180):.3f}")
+    # The real complaint, measured: no tempo may produce a cut rate a viewer
+    # calls fast. 20 cuts/min is a shot every 3 s.
+    for bpm in (50, 68, 80, 100, 120, 140, 180, 220):
+        check(f"{bpm} bpm cuts no faster than 22/min",
+              60 / mv.shot_seconds(bpm) <= 22.0,
+              f"{60 / mv.shot_seconds(bpm):.1f}/min")
 
     # Shots tile the song exactly: n * shot == length, so the audio and the cut
     # both end together and the last shot is not a stub.
@@ -1659,6 +1680,51 @@ def test_mv_is_the_release() -> None:
         release.is_bed = real_bed
         release.affiliate_cards = real_aff
         release.all_slugs = real_all_slugs
+
+
+def test_song_prune() -> None:
+    section("one song, one take (old versions pruned, newest kept)")
+    # K, 2026-11-20: "เพลงเก่าลบออกให้หมด ใช้เพลงใหม่ล่าสุด". The auto-producer
+    # appends a template suffix when it wants more songs (อีกครั้ง / ในฝัน /
+    # ยามเช้า / ยามค่ำ), so one song became five files. `ops/song_prune.py` keeps
+    # the newest take of each family and deletes the rest with their media.
+    import importlib.util
+    import inspect
+    ops_dir = ROOT.parent / "ops"
+    spec = importlib.util.spec_from_file_location("song_prune", ops_dir / "song_prune.py")
+    sp = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(sp)
+
+    # A family is the slug minus its number and version: the version marker is
+    # not part of the song's identity, which is exactly why they collide.
+    check("a take and its original are one family",
+          sp.family("30-wan-tham-mada-thi-phi-set")
+          == sp.family("34-wan-tham-mada-thi-phi-set-v34"))
+    check("a versioned slug loses both the number and the version",
+          sp.family("49-luai-mai-yut-v49") == "luai-mai-yut")
+
+    keep, prune = sp.plan()
+    check("no family keeps two takes", len(keep) + len(prune) == len(set(keep + prune)))
+    check("nothing is both kept and pruned", not (set(keep) & set(prune)))
+    # The highest take number survives: that is what "เพลงใหม่ล่าสุด" means.
+    import collections
+    fams = collections.defaultdict(list)
+    for s in keep + prune:
+        fams[sp.family(s)].append(s)
+    check("every family keeps its newest take",
+          all(max(v, key=sp.number) in keep for v in fams.values()))
+    # Deleting the master is not enough: `pull_media` restores every release
+    # asset, so a fresh pod would bring the pruned takes back.
+    check("the pruner can also delete from the media release",
+          "--release" in inspect.getsource(sp.main)
+          and "releases/assets" in inspect.getsource(sp._release_delete))
+    # And a deleted song must not stay in the posting queue, or the rail tries
+    # to post a file that no longer exists.
+    check("the pruner drops queued clips for a deleted song",
+          "QUEUE" in inspect.getsource(sp.main)
+          and "crosspost-queue" in sp.QUEUE.name)
+    check("the pruner is a dry run unless asked to delete",
+          "--apply" in inspect.getsource(sp.main))
 
 
 def test_mv_page() -> None:
@@ -7459,7 +7525,7 @@ def test_clip_lane_is_its_own_job() -> None:
     if ai:
         check("a generated still is marked as generated",
               all(c.get("origin") == "ai" for c in ai))
-    mixed = cl.mixed_stills("song-33-wan-tham-mada-thi-phi-set-v33",
+    mixed = cl.mixed_stills("song-34-wan-tham-mada-thi-phi-set-v34",
                             "bangkok night", 6, 11, log=lambda *_: None)
     origins = [c.get("origin") for c in mixed]
     # A photo keeps its real provenance ("Wikimedia Commons"), which is what the
@@ -8416,6 +8482,7 @@ def main() -> int:
     test_music_video()
     test_film_video()
     test_mv_is_the_release()
+    test_song_prune()
     test_mv_page()
     test_follow_end_card()
     test_ambient_loop()
