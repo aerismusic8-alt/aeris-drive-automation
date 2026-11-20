@@ -60,6 +60,11 @@ FONT = ROOT / "music938-1" / "fonts" / "NotoSansThai.ttf"
 
 REPO = "aerismusic8-alt/aeris-drive-automation"
 RELEASE_TAG = "media-938"
+# The generated frames ride their own release: they are 164 MB of PNG, so they
+# cannot be committed, and reusing media-938 would mean re-uploading every song
+# master to add a picture.
+SCENES_TAG = "scenes-938"
+SCENES_IMG = ROOT / "music938-1" / "library" / "scenes"
 
 W, H = 1080, 1920
 FPS = 30
@@ -103,6 +108,50 @@ def _shard_local(name: str, url: str, log=print) -> Path | None:
             return None
     _SHARD_CACHE[name] = dest
     return dest
+
+
+def _fetch_scenes(rows: list[dict], log=print) -> int:
+    """Pull generated frames from the scenes release into `library/scenes/`.
+
+    Same reason the photo bank is sharded: the pictures are 4-5 MB each and
+    gitignored, so a runner starts with the manifest and no pixels. One tarball
+    per genre keeps it to a single download instead of 42. Returns how many files
+    it landed; 0 means the release does not carry them yet.
+    """
+    import tempfile  # noqa: PLC0415
+    import tarfile  # noqa: PLC0415
+    import urllib.error  # noqa: PLC0415
+    import urllib.request  # noqa: PLC0415
+
+    genres = sorted({(r.get("genre") or "") for r in rows} - {""})
+    base = f"https://github.com/{REPO}/releases/download/{SCENES_TAG}"
+    landed = 0
+    for g in genres:
+        url = f"{base}/scenes-{g}.tar"
+        dest = Path(tempfile.gettempdir()) / f"ax-scenes-{g}.tar"
+        try:
+            if not dest.exists():
+                with urllib.request.urlopen(url, timeout=600) as resp, \
+                        dest.open("wb") as f:
+                    shutil.copyfileobj(resp, f, 1 << 20)
+            with tarfile.open(dest, mode="r") as tf:
+                for m in tf.getmembers():
+                    if not m.isfile():
+                        continue
+                    name = Path(m.name).name
+                    if not name.lower().endswith((".png", ".jpg", ".jpeg", ".webp")):
+                        continue
+                    out = SCENES_IMG / g / name
+                    out.parent.mkdir(parents=True, exist_ok=True)
+                    with tf.extractfile(m) as src, out.open("wb") as dst:
+                        shutil.copyfileobj(src, dst)
+                    landed += 1
+        except (urllib.error.HTTPError, urllib.error.URLError, OSError) as exc:
+            log(f"ai: scenes-{g}.tar not fetched ({type(exc).__name__})")
+            continue
+    if landed:
+        log(f"ai: fetched {landed} generated frame(s) from {SCENES_TAG}")
+    return landed
 
 
 def _materialise(row: dict, urls: dict[str, str], log=print) -> bool:
@@ -304,7 +353,23 @@ def ai_stills(genre: str | None, want: int, seed: int, log=print) -> list[dict]:
         return []
 
     doc = image_library.load()
-    rows = [r for r in doc.get("images", []) if (image_library.LIB / r["file"]).exists()]
+    rows = [r for r in doc.get("images", [])]
+    if not rows:
+        log("ai: the generated bank is empty; using photographs alone")
+        return []
+    on_disk = [r for r in rows if (image_library.LIB / r["file"]).exists()]
+    if not on_disk:
+        # The frames are gitignored (164 MB of PNG), so a fresh runner has the
+        # manifest and none of the pictures. Fetch them from the release the same
+        # way the photo shards are fetched, then carry on: a mix that silently
+        # degrades to photographs looks exactly like a working mix in the log.
+        got = _fetch_scenes(rows, log=log)
+        on_disk = [r for r in rows if (image_library.LIB / r["file"]).exists()]
+        if not got:
+            log(f"ai: {len(rows)} generated frame(s) in the manifest but none on "
+                f"disk and none in {SCENES_TAG}; using photographs alone")
+            return []
+    rows = on_disk
     if genre:
         rows = [r for r in rows if r.get("genre") == genre] or rows
     if not rows:

@@ -6979,6 +6979,18 @@ def test_clip_lane_is_its_own_job() -> None:
           '"origin": "ai"' in src and '"model": s.get("model")' in src)
     check("the credit file is written even for a clip awaiting review",
           src.index("credits.json") < src.index("AWAITING GEMINI REVIEW"))
+    # The frames are gitignored, so a runner starts with the manifest and no
+    # pixels. That is exactly what happened on 2026-11-20: the lane went green
+    # with a photo-only clip and the log said nothing, because the mix had
+    # silently degraded. The fix is a fetch from the scenes release, and the
+    # silent path must say so.
+    check("a runner can fetch the generated frames from a release",
+          "_fetch_scenes" in src and "releases/download" in src)
+    check("a missing generated bank is reported, not silently skipped",
+          "using photographs alone" in src)
+    check("the frames are published per genre as one tarball",
+          "scenes-{genre}.tar" in (ROOT.parent / "ops" / "image_library.py"
+                                   ).read_text(encoding="utf-8"))
 
     # K (2026-11-19): "คลิปต้องผ่านระบบqcก่อนนะ". The floor above measures the
     # file, not the content: a clip whose six stills had collapsed into one

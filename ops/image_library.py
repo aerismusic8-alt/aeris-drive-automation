@@ -18,9 +18,10 @@ counter, so consecutive songs do not reuse the same three images; `--shuffle`
 draws a random set instead.
 
 Files live under `library/scenes/<genre>/`, which is gitignored like the other
-media and rides the durable `media-938` release (see `publish_media.py`). The
-manifest is the index and *is* committed, so a fresh pod knows what the bank
-holds before it downloads anything.
+media, so `publish` packs each genre into one tar on the `scenes-938` release and
+the clip lane fetches it back on a fresh runner. The manifest is the index and
+*is* committed, so a fresh pod knows what the bank holds before it downloads
+anything.
 """
 from __future__ import annotations
 
@@ -229,6 +230,109 @@ def pick_stock(count: int, shuffle: bool, mark: bool, query: str | None = None) 
     return [image_bank.LIB / r["file"] for r in chosen]
 
 
+REPO = "aerismusic8-alt/aeris-drive-automation"
+API = "https://api.github.com"
+SCENES_TAG = "scenes-938"
+
+
+def _token() -> str:
+    tok = os.environ.get("AX_GH_TOKEN") or os.environ.get("GITHUB_TOKEN")
+    if not tok:
+        f = Path("/workspace/ax-tools/ar-identity/gh-token")
+        if f.exists():
+            tok = f.read_text().strip()
+    if not tok:
+        raise SystemExit("no AX_GH_TOKEN / GITHUB_TOKEN")
+    return tok
+
+
+def _api(path: str, tok: str, method="GET", data=None, raw=None,
+         ctype="application/json"):
+    import urllib.error  # noqa: PLC0415
+    import urllib.request  # noqa: PLC0415
+
+    url = path if path.startswith("http") else API + path
+    body = raw if raw is not None else (
+        json.dumps(data).encode() if data is not None else None)
+    req = urllib.request.Request(url, data=body, method=method, headers={
+        "Authorization": f"token {tok}", "Accept": "application/vnd.github+json",
+        "User-Agent": "ax-image-library", "Content-Type": ctype})
+    try:
+        with urllib.request.urlopen(req, timeout=900) as r:
+            txt = r.read().decode()
+            return r.status, (json.loads(txt) if txt else {})
+    except urllib.error.HTTPError as e:
+        return e.code, {"error": e.read().decode()[:300]}
+
+
+def publish(log=print) -> int:
+    """Pack each genre's frames into one tar and attach it to `scenes-938`.
+
+    The frames are gitignored, so without this a runner has the manifest and none
+    of the pictures and every mix silently falls back to photographs. One tarball
+    per genre is a single download per lane instead of 42 separate ones.
+
+    The release is created on first use, so a fresh account needs no manual step.
+    """
+    import io  # noqa: PLC0415
+    import tarfile  # noqa: PLC0415
+
+    doc = load()
+    rows = doc.get("images", [])
+    if not rows:
+        log("publish: the bank is empty")
+        return 1
+
+    tok = _token()
+    st, rel = _api(f"/repos/{REPO}/releases/tags/{SCENES_TAG}", tok)
+    if st == 404:
+        st, rel = _api(f"/repos/{REPO}/releases", tok, "POST", {
+            "tag_name": SCENES_TAG, "name": "AERIS — generated scene bank",
+            "body": "AI-generated scene frames for the clip lanes. Free to "
+                    "re-pull; see ops/image_library.py.",
+            "draft": False, "prerelease": False})
+    if st not in (200, 201):
+        log(f"publish: cannot reach release {SCENES_TAG}: {st} {rel}")
+        return 1
+    rid = rel["id"]
+    existing = {a["name"] for a in rel.get("assets", [])}
+
+    by_genre: dict[str, list[dict]] = {}
+    for r in rows:
+        if (LIB / r["file"]).exists():
+            by_genre.setdefault(r.get("genre") or "misc", []).append(r)
+    if not by_genre:
+        log("publish: no frames on disk to publish")
+        return 1
+
+    rc = 0
+    for genre, group in sorted(by_genre.items()):
+        name = f"scenes-{genre}.tar"
+        buf = io.BytesIO()
+        with tarfile.open(fileobj=buf, mode="w") as tf:
+            for r in group:
+                p = LIB / r["file"]
+                tf.addfile(tf.gettarinfo(str(p), arcname=f"{genre}/{p.name}"),
+                           p.open("rb"))
+        data = buf.getvalue()
+        if name in existing:
+            # A re-publish replaces the asset, or the runner keeps the old tar
+            # and a newly generated frame never reaches a clip.
+            aid = next(a["id"] for a in rel["assets"] if a["name"] == name)
+            _api(f"/repos/{REPO}/releases/assets/{aid}", tok, "DELETE")
+        st, res = _api(
+            f"https://uploads.github.com/repos/{REPO}/releases/{rid}/assets"
+            f"?name={name}", tok, "POST", raw=data,
+            ctype="application/octet-stream")
+        if st not in (200, 201):
+            log(f"publish: FAIL {name}: {st} {res}")
+            rc = 1
+            continue
+        log(f"publish: {name} -> {len(group)} frame(s), "
+            f"{len(data) / 1e6:.1f} MB, {res.get('browser_download_url', '')[-40:]}")
+    return rc
+
+
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__,
                                  formatter_class=argparse.RawDescriptionHelpFormatter)
@@ -258,6 +362,7 @@ def main() -> int:
     fa.add_argument("--ceiling", type=int, default=12)
     fa.add_argument("--dry-run", action="store_true")
 
+    sub.add_parser("publish", help="attach the frames to the scenes release")
     sub.add_parser("list", help="show the bank")
     sub.add_parser("stats", help="counts per lane and credit balance")
 
@@ -280,6 +385,9 @@ def main() -> int:
             rc |= fill(lane, a.per_lane, a.project_id, a.ratio, None,
                        a.ceiling, a.dry_run)
         return rc
+
+    if a.cmd == "publish":
+        return publish()
 
     if a.cmd == "pick":
         if a.stock or (a.query and not a.genre):
