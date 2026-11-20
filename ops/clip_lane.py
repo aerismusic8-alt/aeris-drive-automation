@@ -228,23 +228,32 @@ def bank_stills(query: str, want: int, seed: int, log=print) -> list[dict]:
         p = BANK_IMG / Path(r["file"]).name
         if not p.exists() and not _materialise(r, urls, log=log):
             continue
-        # A crop narrower than the frame is upscaled to fill 1080x1920, and that
-        # upscale is what reads as soft and noisy. Skip such a candidate while
-        # enough sharp ones remain.
-        if len(picked) < want and _crop_width(p) < MIN_CROP_WIDTH:
-            continue
         h = _dhash(p)
         # Two frames of the same corner of the same street are the same picture
         # to a viewer, and Gemini failed a clip for exactly that ("ช็อตซ้ำในลำดับ
         # ใกล้กัน ... มุมเกือบเหมือนกันเป๊ะ"). The bank has many near-duplicates,
-        # so reject a candidate that looks like one already chosen.
+        # so reject a candidate that looks like one already chosen. A duplicate
+        # is worse than a soft frame, so this rejection is never relaxed.
         if any(_hamming(h, q) <= NEAR_DUP_BITS for q in seen):
             continue
         seen.append(h)
-        picked.append({"path": p, **r})
+        # A crop narrower than the frame is upscaled to fill 1080x1920, and that
+        # upscale is what reads as soft and noisy. Prefer sharp candidates, but
+        # keep the narrow one when the sharp pool runs out: the bank's median
+        # 9:16 crop is 810 px, so a hard 1000 px cut left the lane with one
+        # usable still for "bangkok night" and it refused to render at all
+        # (2026-11-20). A soft-but-real frame still beats no clip.
+        narrow = _crop_width(p) < MIN_CROP_WIDTH
+        picked.append({"path": p, "soft": narrow, **r})
         if len(picked) >= want:
             break
-    return picked
+    sharp = [c for c in picked if not c.get("soft")]
+    if len(sharp) >= want:
+        picked = sharp
+    elif picked:
+        log(f"bank: kept {len(picked) - len(sharp)} narrow crop(s) under "
+            f"{MIN_CROP_WIDTH}px — sharp pool had only {len(sharp)} of {want}")
+    return picked[:want]
 
 
 def _card(text: str, out: Path, size: int = 72, pad: int = 40) -> Path:
@@ -441,6 +450,13 @@ def render(song: str, query: str, seconds: float, seed: int, out_dir: Path,
 
     ok, why = gemini_gate.check(out)
     if not ok:
+        # Not a failure of this lane: the file is rendered and above the floor,
+        # and what it waits for is a Gemini verdict, which needs the signed-in
+        # desktop and so cannot happen on a runner. The marker is distinct from
+        # PASSED so the workflow reports "awaiting review" instead of going red
+        # forever — a permanently red rail is how a real red gets ignored.
+        # Nothing is uploaded from this branch; K's rule is no verdict, no channel.
+        log(f"render: AWAITING GEMINI REVIEW -> {out}")
         log(f"render: NOT SHOWN, waiting for a Gemini pass -- {why}")
         log("render: review it with "
             f"`python3 ops/gemini_review.py {out}`")

@@ -6071,6 +6071,21 @@ def test_genre_gate_blocks_parked_lanes() -> None:
           f"{len(lines)} lines; first={lines[0] if lines else ''!r}")
     check("--list-songs returns at least one publishable song", len(lines) > 0)
 
+    # A hard sharpness cut starves the lane: the bank's median 9:16 crop is
+    # 810 px against MIN_CROP_WIDTH 1000, so "bangkok night" matched 54 rows and
+    # yielded ONE usable still, and the render refused ("a clip needs 3+").
+    # Prefer sharp, do not require it. The duplicate rejection stays hard.
+    lane_src = (ROOT.parent / "ops" / "clip_lane.py").read_text(encoding="utf-8")
+    check("a narrow crop is ranked below a sharp one, not discarded",
+          '"soft": narrow' in lane_src and 'sharp = [c for c in picked' in lane_src)
+    check("a near-duplicate is still rejected outright",
+          "<= NEAR_DUP_BITS" in lane_src and "continue" in lane_src)
+    sys.path.insert(0, str(ROOT.parent / "ops"))
+    import clip_lane
+    for q in ("bangkok night", "band stage"):
+        got = clip_lane.bank_stills(q, 8, 11, log=lambda *_: None)
+        check(f"bank stills for {q!r} fill a clip", len(got) >= 3, f"{len(got)}")
+
 
 def test_gemini_gate_blocks_unreviewed() -> None:
     """No Gemini pass, no upload (K, 2026-11-19).
@@ -6935,6 +6950,19 @@ def test_clip_lane_is_its_own_job() -> None:
     check("the render consults the Gemini verdict", "gemini_gate" in src)
     check("a clip with no pass is not presented as done",
           "NOT SHOWN, waiting for a Gemini pass" in src)
+    # The verdict needs the signed-in desktop, so on a runner it can never
+    # arrive: treating its absence as a red run made the clip lane red forever
+    # and hid every real failure behind it. An unreviewed render is its own
+    # outcome — reported, kept for review, and still never published.
+    check("an unreviewed render is reported apart from a pass",
+          "AWAITING GEMINI REVIEW" in src)
+    lane_yaml = (ROOT.parent / ".github" / "workflows" / "ax-clip-lane.yml"
+                 ).read_text(encoding="utf-8")
+    check("the workflow accepts an unreviewed render without going red",
+          "AWAITING GEMINI REVIEW" in lane_yaml and "pending=" in lane_yaml)
+    check("the workflow still publishes only a passed clip",
+          lane_yaml.count("steps.render.outputs.clip") >= 3
+          and "steps.render.outputs.pending" in lane_yaml)
 
     # The bug behind that: `zoompan`'s `d` is frames per INPUT frame, so looping
     # a still for `per` seconds multiplied out to per^2*FPS^2 frames from image

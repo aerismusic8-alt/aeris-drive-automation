@@ -80,13 +80,34 @@ jobs:
           fi
           python ops/clip_lane.py --song "$SONG" --query "$QUERY" --seconds "$SECONDS" 2>&1 | tee render.log
           CLIP=$(grep -o 'PASSED the floor -> .*' render.log | sed 's/.*-> //')
-          if [ -z "$CLIP" ] || [ ! -f "$CLIP" ]; then
+          if [ -z "$CLIP" ]; then
+            # A rendered clip that only lacks a Gemini verdict is a success for
+            # this lane, not a red run: the verdict needs the signed-in desktop,
+            # which a runner cannot have, so a red run here would stay red no
+            # matter what anyone fixed. Report it as awaiting review and hand
+            # nothing over — K's rule is no verdict, no channel and no inbox.
+            PENDING=$(grep -o 'AWAITING GEMINI REVIEW -> .*' render.log | sed 's/.*-> //')
+            if [ -n "$PENDING" ] && [ -f "$PENDING" ]; then
+              echo "rendered, awaiting Gemini review: $PENDING"
+              echo "pending=$PENDING" >> "$GITHUB_OUTPUT"
+              python ops/clip_standard.py "$PENDING" | tail -3
+              exit 0
+            fi
             echo "no clip passed the floor this run"
             exit 1
           fi
           echo "clip=$CLIP" >> "$GITHUB_OUTPUT"
           echo "credits=${CLIP%.mp4}.credits.json" >> "$GITHUB_OUTPUT"
           echo "song=$SONG" >> "$GITHUB_OUTPUT"
+
+      - name: Keep the unreviewed render for review
+        if: steps.render.outputs.pending
+        uses: actions/upload-artifact@v4
+        with:
+          name: awaiting-gemini-review
+          path: ${{ steps.render.outputs.pending }}
+          retention-days: 14
+          if-no-files-found: error
 
       - name: Show what the new shape produced
         if: steps.render.outputs.clip
