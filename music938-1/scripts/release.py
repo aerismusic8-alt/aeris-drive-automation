@@ -1058,7 +1058,8 @@ def release_one(item: dict, args) -> int:
            "--video", str(video), "--title", title,
            "--desc-file", str(desc_file), "--tags-file", str(tags_file),
            "--category", "22" if kind == "affiliate" else "10",
-           "--privacy", "public" if args.public else "private"]
+           "--privacy", "public" if args.public else "private",
+           "--song", slug]
     # A scheduled publish is how the channel stays active around the clock:
     # YouTube flips it to public at the given time without anything running here.
     when = args.schedule_at or item.get("schedule")

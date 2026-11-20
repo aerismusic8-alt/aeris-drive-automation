@@ -107,7 +107,8 @@ def _upload(mp4: Path, txt: Path, title_file: Path) -> str | None:
     cmd = [sys.executable, str(OPS / "yt_publish.py"), "--ch", CHANNEL,
            "--video", str(mp4), "--title", title[:100],
            "--desc-file", str(desc_file), "--tags-file", str(tags_file),
-           "--category", "10", "--privacy", "public"]
+           "--category", "10", "--privacy", "public",
+           "--not-a-song", f"sleep loop ({STEM})"]
     if thumb.exists():
         cmd += ["--thumb", str(thumb)]
     proc = subprocess.run(cmd, text=True, capture_output=True)

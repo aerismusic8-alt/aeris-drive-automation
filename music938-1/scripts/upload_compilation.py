@@ -151,6 +151,20 @@ def main() -> int:
            "--video", str(mp4), "--title", title,
            "--desc-file", str(desc_file), "--tags-file", str(tags_file),
            "--category", "10", "--privacy", "public"]
+    # Every song in the album has to clear the genre gate, so the render's own
+    # track list is passed through. An ambient loop is not a song at all, so it
+    # declares that instead. A song build with no sidecar (rendered before this
+    # existed) is not guessed at: the uploader refuses rather than assume.
+    songs_file = COMPILED / f"{args.stem}.songs"
+    if args.stem.startswith("ambient-"):
+        cmd += ["--not-a-song", f"ambient loop ({args.stem})"]
+    elif songs_file.exists():
+        for s in songs_file.read_text(encoding="utf-8").split():
+            cmd += ["--song", s]
+    else:
+        print(f"no {songs_file.name}: the genre gate cannot check the tracks",
+              file=sys.stderr)
+        return 4
     thumb = Path(args.thumb) if args.thumb else THUMB
     if thumb.exists():
         cmd += ["--thumb", str(thumb)]

@@ -89,7 +89,17 @@ def available_songs() -> list[str]:
     slugs = []
     for f in sorted(SONGS.glob("song-*.mp3")):
         slug = f.stem[len("song-"):]
-        if (COVERS / f"cover-{slug}.jpg").exists():
+        if not (COVERS / f"cover-{slug}.jpg").exists():
+            continue
+        # A compilation is a new upload of every song it carries, so a parked
+        # genre must not reach it by the back door. K parked lukthung/morlam
+        # (2026-11-13) and the live 16-track album is titled เพื่อชีวิต.
+        try:
+            import genres
+            ok, _ = genres.publishable(slug)
+        except Exception:
+            ok = False
+        if ok:
             slugs.append(slug)
     return slugs
 
@@ -287,6 +297,9 @@ def main() -> int:
     desc_file.write_text(compilation_description(args.name, slugs, use_case),
                          encoding="utf-8")
     (COMPILED / f"{stem}.title").write_text(title, encoding="utf-8")
+    # The uploader has to name every song it carries so the genre gate can run
+    # on each one; the chaptered description is for viewers, this is for the gate.
+    (COMPILED / f"{stem}.songs").write_text("\n".join(slugs) + "\n", encoding="utf-8")
     print(f"\ntitle: {title}\ndesc -> {desc_file}")
     if args.list or not args.render:
         print("\n(pass --render to build it)")

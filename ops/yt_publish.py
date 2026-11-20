@@ -17,6 +17,8 @@ import sys
 import time
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
+                                "music938-1", "scripts"))
 import yt_auth  # noqa: E402
 
 UPLOAD = "https://www.googleapis.com/upload/youtube/v3/videos"
@@ -84,6 +86,14 @@ def main():
     ap.add_argument("--schedule", help="ISO8601 UTC, e.g. 2026-10-25T11:00:00Z")
     ap.add_argument("--now", action="store_true", help="publish immediately")
     ap.add_argument("--privacy", default="private")
+    # K (2026-11-19): a parked genre must never reach a channel again. The
+    # caller has to say what the clip carries, because only the caller knows:
+    # a song slug, a list of them for an album, or that it is not a song at all.
+    # Silence is refused, so a new lane cannot ship by forgetting this gate.
+    ap.add_argument("--song", action="append", default=[], metavar="SLUG",
+                    help="a song slug this clip carries (repeatable)")
+    ap.add_argument("--not-a-song", metavar="WHY", default=None,
+                    help="declare non-song content, e.g. 'trivia' or 'ambient loop'")
     a = ap.parse_args()
 
     # Require a deliberate choice, but let an explicit --privacy count as one:
@@ -91,6 +101,27 @@ def main():
     explicit_privacy = "--privacy" in sys.argv
     if not (a.now or a.schedule or explicit_privacy):
         raise SystemExit("refusing to upload: pass --now, --schedule, or --privacy explicitly")
+
+    # The genre gate. Declared songs are checked by name; a clip that declares
+    # nothing falls back to the filename, and one that resolves to no song is
+    # refused rather than assumed safe. Two เพื่อชีวิต clips shipped this way on
+    # 2026-11-19 because the chokepoint looked at quality and not at genre.
+    import genres
+    declared = list(a.song)
+    if not declared and not a.not_a_song:
+        auto = genres.resolve_slug(os.path.basename(a.video))
+        if auto is None:
+            raise SystemExit(
+                f"refusing to upload: {os.path.basename(a.video)} declares no song "
+                f"and its name matches no lyric file. Pass --song SLUG (repeatable) "
+                f"or --not-a-song WHY, so the genre gate can run.")
+        print(f"GENRE: no --song given; name resolves to '{auto}'", file=sys.stderr)
+        declared = [auto]
+    for slug in declared:
+        ok, why = genres.publishable(slug)
+        if not ok:
+            raise SystemExit(f"refusing to upload: {why}")
+        print(f"GENRE: ok — {slug}: {why}")
 
     tags = []
     if a.tags_file and os.path.exists(a.tags_file):

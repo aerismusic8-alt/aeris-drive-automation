@@ -53,7 +53,7 @@ def _publish(slug: str, kind: str, ch: str, video: Path, variant: str = "") -> s
     cmd = [sys.executable, str(OPS / "yt_publish.py"), "--ch", ch,
            "--video", str(video), "--title", title,
            "--desc-file", str(desc_file), "--tags-file", str(tags_file),
-           "--category", "10", "--privacy", "public"]
+           "--category", "10", "--privacy", "public", "--song", slug]
     if thumb.exists():
         cmd += ["--thumb", str(thumb)]
     proc = subprocess.run(cmd, text=True, capture_output=True)

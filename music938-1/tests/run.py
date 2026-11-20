@@ -3008,8 +3008,28 @@ def test_themed_compilations() -> None:
                 check(f"themes {a} and {b} share no song", not overlap,
                       str(sorted(overlap)))
     for t, slugs in picked.items():
-        check(f"theme {t} reaches the honest floor",
-              len(slugs) >= compile_album.MIN_THEME_TRACKS, f"{len(slugs)}")
+        # K's floor is not negotiable and it is not lowered to fit the
+        # catalogue: a theme either has MIN_THEME_TRACKS publishable songs or it
+        # is not built at all (`main()` refuses and writes nothing). Requiring
+        # every theme to reach the floor would instead force a parked-genre song
+        # back in, which is the exact bug this gate exists to stop. On
+        # 2026-11-17 the gate left sad at 2 and chill at 7 because the songs
+        # left in those moods are เพื่อชีวิต/indie -- so those two themes are
+        # correctly refused until the catalogue grows, and `power` ships.
+        #
+        # What must hold for *every* theme is that nothing parked is in it.
+        import genres
+        parked = [s for s in slugs if not genres.publishable(s)[0]]
+        check(f"theme {t} carries no parked song", not parked, str(parked[:3]))
+    # The rule that matters: nothing below the floor may be rendered. `main()`
+    # is what enforces it, so pin the guard, not just the picker.
+    ca_src = (ROOT / "scripts" / "compile_album.py").read_text(encoding="utf-8")
+    check("a theme below the floor is refused, not rendered",
+          "len(slugs) < floor" in ca_src and "Nothing written." in ca_src)
+    # At least one theme must still be shippable, or the lever is dead.
+    check("at least one theme is currently shippable",
+          any(len(s) >= compile_album.MIN_THEME_TRACKS for s in picked.values()),
+          str({t: len(s) for t, s in picked.items()}))
     title = compile_album.compilation_title(
         compile_album.THEMES["chill"]["name"], 9,
         compile_album.THEMES["chill"]["use_case"])
@@ -5991,6 +6011,51 @@ def test_genre_gate_blocks_parked_lanes() -> None:
     lane = (ROOT.parent / "ops" / "clip_lane.py").read_text(encoding="utf-8")
     check("clip_lane filters parked songs at the picker",
           "_publishable_only" in lane)
+
+    # `yt_publish.py` is the single chokepoint every YouTube route passes, so a
+    # genre gate there covers lanes nobody remembered to filter. It refuses a
+    # caller that declares nothing, which is what makes a new lane fail closed
+    # instead of shipping by omission.
+    ytp = (ROOT.parent / "ops" / "yt_publish.py").read_text(encoding="utf-8")
+    check("the upload chokepoint runs the genre gate",
+          "genres.publishable" in ytp)
+    check("the chokepoint refuses an undeclared clip",
+          "declares no song" in ytp)
+    check("the chokepoint gate runs before the upload",
+          ytp.index("genres.publishable") < ytp.index("multipart_upload(a.video"))
+
+    # Every caller must declare what it carries, or the gate has nothing to check.
+    for label, path, token in (
+        ("release", ROOT / "scripts" / "release.py", '"--song", slug'),
+        ("replace_video", ROOT / "scripts" / "replace_video.py", '"--song", slug'),
+        ("trivia_publish", ROOT.parent / "ops" / "trivia_publish.py",
+         '"--not-a-song"'),
+        ("refresh_sleep_video", ROOT / "scripts" / "refresh_sleep_video.py",
+         '"--not-a-song"'),
+    ):
+        check(f"{label} declares its content to the chokepoint",
+              token in path.read_text(encoding="utf-8"))
+
+    # A compilation is a fresh upload of every track it carries, so a parked
+    # song must not reach it through the song pool. The live 16-track album is
+    # titled เพื่อชีวิต; this is the same hole one level up.
+    import compile_album
+    importlib.reload(compile_album)
+    pool = compile_album.available_songs()
+    parked_in_pool = [s for s in pool if not genres.publishable(s)[0]]
+    check("the compilation pool holds no parked song",
+          not parked_in_pool, f"{len(parked_in_pool)}: {parked_in_pool[:3]}")
+    check("the compilation pool is not empty after filtering", len(pool) > 0)
+    chosen = compile_album.pick(60)
+    check("a 60-minute pick carries no parked song",
+          not [s for s in chosen if not genres.publishable(s)[0]])
+    # The uploader has to name the tracks, so the renderer must write them down.
+    ca_src = (ROOT / "scripts" / "compile_album.py").read_text(encoding="utf-8")
+    check("the renderer records its tracklist for the gate",
+          '.songs").write_text' in ca_src)
+    uc_src = (ROOT / "scripts" / "upload_compilation.py").read_text(encoding="utf-8")
+    check("the compilation uploader passes every track to the gate",
+          '"--song", s' in uc_src)
 
 
 def test_gemini_gate_blocks_unreviewed() -> None:

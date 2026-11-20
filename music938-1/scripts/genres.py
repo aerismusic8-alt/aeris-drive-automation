@@ -126,7 +126,7 @@ def resolve_slug(name: str) -> str | None:
     them without a prefix table that would rot: the key token, the kind and the
     `-v36` variant are all just leading text in front of the slug.
     """
-    stem = name[:-4] if name.endswith(".mp3") else name
+    stem = Path(name).stem if Path(name).suffix in (".mp3", ".mp4", ".wav", ".m4a") else name
     if (LYRICS / f"{stem}.txt").exists():
         return stem
     for slug in sorted((p.stem for p in LYRICS.glob("*.txt")), key=len, reverse=True):

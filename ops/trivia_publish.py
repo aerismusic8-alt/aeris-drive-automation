@@ -197,7 +197,7 @@ def upload(clip: Path, thumb: Path, title: str, desc: str, tags: list[str],
         cmd = [sys.executable, str(HERE / "yt_publish.py"), "--ch", CH,
                "--video", str(clip), "--thumb", str(thumb), "--title", title,
                "--desc-file", str(descf), "--tags-file", str(tagf),
-               "--category", "27"]
+               "--category", "27", "--not-a-song", "trivia (เกร็ดความรู้)"]
         if now:
             cmd.append("--now")
         elif schedule:
