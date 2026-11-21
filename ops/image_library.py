@@ -52,10 +52,6 @@ GENRE_PROMPTS = {
            "cinematic still, no text, no letters",
     "hiphop": "Thai hiphop, night soi and sodium street light, low camera, concrete texture, "
               "cinematic still, film grain, no text, no letters",
-    "rap": "Thai rap, rain on asphalt, hard rim light, tight framing, "
-           "cinematic still, film grain, no text, no letters",
-    "synthpop": "Synthpop, retro chrome and sunset gradient, 1980s sheen, "
-                "cinematic still, no text, no letters",
     "alternative": "Thai alternative, washed-out film, empty roadside, soft haze, "
                    "cinematic still, no text, no letters",
 }

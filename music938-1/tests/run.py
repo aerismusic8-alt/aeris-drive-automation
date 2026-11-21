@@ -2798,6 +2798,17 @@ def test_genres() -> None:
           sum(g["planned"] for g in genres.active()))
     check("the focus genres are active",
           {"pop", "edm", "rock"} <= active, str(sorted(active)))
+    # K (2026-11-20) fixed the lane list at five: pop / dance (id `edm`) /
+    # hiphop / rock / alternative. Anything else is parked, so a sixth active
+    # genre would quietly re-open a lane K closed. `rap` in particular was in
+    # the plan and is out now, and `dance` is K's word for the `edm` id.
+    check("exactly the five lanes K named are active",
+          active == {"pop", "edm", "hiphop", "rock", "alternative"},
+          str(sorted(active)))
+    check("K's word 'dance' resolves to the edm id",
+          genres.canonical("dance") == "edm"
+          and genres.canonical("แดนซ์") == "edm"
+          and genres.canonical("rock") == "rock")
     # The focus genres must be able to hold their planned songs without reusing
     # music (K, 2026-11-06: ดนตรีห้ามซ้ำกัน), so each needs at least one
     # arrangement per planned song.
@@ -6747,6 +6758,16 @@ def test_genre_gate_blocks_parked_lanes() -> None:
           '"soft": narrow' in lane_src and 'sharp = [c for c in picked' in lane_src)
     check("a near-duplicate is still rejected outright",
           "<= NEAR_DUP_BITS" in lane_src and "continue" in lane_src)
+    # Ranking has to happen over a wider pool than the clip needs. The old picker
+    # stopped at exactly `want` and then filtered, so the "sharp pool" was a
+    # random draw ("sharp pool had only 8 of 9") and a crisp frame could lose to
+    # a soft one. K's source rule is 4K in / 720p out; the pick is where that
+    # reaches the screen, so the pool and the ranking are both pinned.
+    check("the picker gathers a wider pool than it needs",
+          "POOL_FACTOR" in lane_src and "want * POOL_FACTOR" in lane_src)
+    check("the rank puts a sharp, wide crop first",
+          "_sharpness(c[\"path\"])" in lane_src
+          and lane_src.index("picked.sort") < lane_src.index("return picked[:want]"))
     sys.path.insert(0, str(ROOT.parent / "ops"))
     import clip_lane
     for q in ("bangkok night", "band stage"):
@@ -7755,6 +7776,7 @@ def test_clip_lane_is_its_own_job() -> None:
     section("clip lane (art and clips are parallel jobs)")
     sys.path.insert(0, str(ROOT.parent / "ops"))
     import clip_lane as cl  # noqa: E402
+    import clip_standard as cs  # noqa: E402
 
     wf = ROOT.parent / ".github" / "workflows"
     art = wf / "ax-image-bank.yml"
@@ -7783,7 +7805,18 @@ def test_clip_lane_is_its_own_job() -> None:
     # clip must never reach an upload step.
     check("the render deletes a below-floor clip",
           "below the clip floor, deleted" in Path(cl.__file__).read_text(encoding="utf-8"))
-    check("the lane renders the vertical profile", cl.W == 1080 and cl.H == 1920)
+    # K (2026-11-20): "คุณภาพวีดีโอใช้ภาพ 4k outputงาน720p". The bank's photos are
+    # a 1920x1280 median, so a 9:16 crop clears 720 px on 81% of rows and 1080 px
+    # on only 24% -- a 1080 render upscales three frames in four, which is the
+    # softness the reviews named. Pin 720p, and pin that the profile that judges
+    # it is the 720p one, or the gate would pass the clip against a 1080 rule it
+    # no longer renders.
+    check("the lane renders the 720p bank profile", cl.W == 720 and cl.H == 1280)
+    check("the 720p clip is judged by its own profile",
+          cs.LANE_PROFILE["bank"] == "bank"
+          and cs.PROFILES["bank"]["resolutions"] == [(720, 1280)])
+    check("the render gate asks for the bank profile",
+          'profile="bank"' in Path(cl.__file__).read_text(encoding="utf-8"))
 
     # A bank clip has no lyric timing, so it must not land in `library/shorts`:
     # `crosspost._slug_of` derives a lyrics slug from every `short-*.mp4` there,

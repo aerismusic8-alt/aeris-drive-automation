@@ -1,5 +1,5 @@
 {
-  "_comment": "The catalogue plan. K, 2026-11-01: unlimited songs, any genre, AR plans the catalogue. Each genre carries its own Flow Music style prompt and its own Thai tagline, so a new song needs only a lyric file with `# GENRE: <id>` in its header. mood stays the fallback for the original 20 Thai songs. K, 2026-11-18: 'ทำแนวสนุกอย่างเดียวเลยนะต่อไป แดนซ์ แรพ ฮิปฮอป ร็อก อัลเทอร์นาทีพ' — FUN ONLY. Active lanes are pop / synthpop / edm (dance) / rock / hiphop / rap / alternative; every other genre is PARKED (no new songs, excluded from the total). A parked genre keeps its style and tagline because its existing songs still resolve their sound and tagline through it.",
+  "_comment": "The catalogue plan. K, 2026-11-01: unlimited songs, any genre, AR plans the catalogue. Each genre carries its own Flow Music style prompt and its own Thai tagline, so a new song needs only a lyric file with `# GENRE: <id>` in its header. mood stays the fallback for the original 20 Thai songs. K, 2026-11-20 (the five lanes, final): pop / dance (id `edm`) / hiphop / rock / alternative. Every other genre is PARKED (no new songs, excluded from the total). A parked genre keeps its style and tagline because its existing songs still resolve their sound and tagline through it.",
   "genres": [
     {
       "id": "lukthung",
@@ -54,7 +54,8 @@
         "เพลงป็อป",
         "เพลงใหม่"
       ],
-      "planned": 4
+      "planned": 4,
+      "status": "parked"
     },
     {
       "id": "rnb",
@@ -126,8 +127,8 @@
     },
     {
       "id": "edm",
-      "name_th": "อีดีเอ็ม",
-      "name_en": "EDM",
+      "name_th": "แดนซ์",
+      "name_en": "Dance",
       "tagline": "อีดีเอ็ม จังหวะมันส์ ปลุกทุกงานปาร์ตี้",
       "style": "EDM dance pop, four-on-the-floor kick, big synth lead, euphoric drop, bright lead vocal singing in Thai",
       "hashtags": [
@@ -217,7 +218,8 @@
         "rap",
         "แรพไทย"
       ],
-      "planned": 8
+      "planned": 8,
+      "status": "parked"
     },
     {
       "id": "alternative",

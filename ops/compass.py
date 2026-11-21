@@ -110,7 +110,7 @@ LANES: dict[str, dict] = {
     },
     "bank": {
         "script": "ops/clip_lane.py",
-        "kind": PRODUCT, "audio": SONG, "profile": "vertical",
+        "kind": PRODUCT, "audio": SONG, "profile": "bank",
         "out": "music938-1/library/bank", "name": "bank-<mix>-<id>-<theme>.mp4",
         "rail": ".github/workflows/ax-clip-lane.yml",
         "publish_rail": ".github/workflows/ax-bank-publish.yml",

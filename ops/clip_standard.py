@@ -22,6 +22,7 @@ Per-format profiles (auto-detected from the resolution):
     profile      shape        fps   extra rules
     -----------  -----------  ----  ------------------------------------------
     trivia       1280x720     24    picture must move, no hard cut, caption
+    bank         720x1280     30    (the clip lane) 720p from a 4K source bank
     vertical     1080x1920    30    (shorts, MV) picture must move a little
     film         1920x1080    30    cuts allowed, no style check
     horizontal   1920x1080    25    (karaoke, compilation) caption, may be still
@@ -80,6 +81,16 @@ PROFILES: dict[str, dict] = {
         # no wasted vertical space, so both are enforced here, on the lane that
         # actually burns them.
         "text_px_min": 60,
+        "bar_max_frac": 0.06,
+    },
+    "bank": {
+        "label": "bank clip 9:16 720p — the clip lane's product (K 2026-11-20)",
+        "resolutions": [(720, 1280)],
+        "fps": (30,),
+        "min_seconds": 5.0,
+        "motion_median_min": 0.03,   # zoompan on a still is small but nonzero
+        "motion_max": None,          # the director cuts between stills by design
+        "text_px_min": None,         # a title card and a follow ask, not captions
         "bar_max_frac": 0.06,
     },
     "vertical": {
@@ -142,6 +153,7 @@ LANE_PROFILE = {
     "film": "film",
     "karaoke": "horizontal", "compilation": "horizontal",
     "motion": "motion",
+    "bank": "bank",
 }
 
 # The profile a shape falls back to when nothing names its lane. `short` and
@@ -149,7 +161,7 @@ LANE_PROFILE = {
 # apply to every anonymous vertical clip — including an MV, which carries no
 # text by design. An unnamed 9:16 clip gets the permissive standard; the shorts
 # lane opts into the caption floor by its path.
-SHAPE_DEFAULT = {(1080, 1920): "vertical"}
+SHAPE_DEFAULT = {(1080, 1920): "vertical", (720, 1280): "bank"}
 
 ANALYZE_W = 480
 ANALYZE_MAX_SECONDS = 120.0

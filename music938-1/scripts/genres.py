@@ -38,6 +38,12 @@ PALETTE_FOR = {
     "symphonic": "epic", "hiphop": "epic", "rap": "epic", "alternative": "hopeful",
 }
 
+# K (2026-11-20) names the second lane "แดนซ์" (dance), not EDM. The id stays
+# `edm` because a lyric file's `# GENRE:` header, the arrangement signatures and
+# the image prompts all key off it — renaming the id would orphan every existing
+# song. This is the display name and the accepted alias, nothing more.
+ALIASES = {"dance": "edm", "แดนซ์": "edm"}
+
 
 def plan() -> dict:
     return json.loads(PLAN.read_text(encoding="utf-8"))
@@ -49,6 +55,12 @@ def genres() -> list[dict]:
 
 def by_id() -> dict[str, dict]:
     return {g["id"]: g for g in genres()}
+
+
+def canonical(gid: str) -> str:
+    """Resolve a genre name to its plan id (`dance` -> `edm`)."""
+    gid = (gid or "").strip().lower()
+    return ALIASES.get(gid, gid)
 
 
 def header(slug: str) -> dict[str, str]:
@@ -65,7 +77,7 @@ def header(slug: str) -> dict[str, str]:
 
 
 def genre_of(slug: str) -> dict | None:
-    g = header(slug).get("genre", "").lower()
+    g = canonical(header(slug).get("genre", ""))
     return by_id().get(g) if g else None
 
 
@@ -97,7 +109,7 @@ def counts() -> dict[str, int]:
     """genre id -> songs on disk (a lyric file with that GENRE header)."""
     out = {g["id"]: 0 for g in genres()}
     for path in sorted(LYRICS.glob("*.txt")):
-        g = header(path.stem).get("genre", "").lower()
+        g = canonical(header(path.stem).get("genre", ""))
         if g in out:
             out[g] += 1
     return out
@@ -170,7 +182,7 @@ def publishable(slug: str) -> tuple[bool, str]:
         return False, f"'{slug}' matches no lyric file — its genre is unknowable"
     slug = resolved
     hdr = header(slug)
-    gid = hdr.get("genre", "").lower()
+    gid = canonical(hdr.get("genre", ""))
     if not gid:
         sub = hdr.get("subtitle", "")
         return False, (f"no # GENRE: header (subtitle: {sub or 'none'}) — "

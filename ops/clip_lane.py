@@ -67,7 +67,13 @@ RELEASE_TAG = "media-938"
 SCENES_TAG = "scenes-938"
 SCENES_IMG = ROOT / "music938-1" / "library" / "scenes"
 
-W, H = 1080, 1920
+# 720p, not 1080p (K, 2026-11-20: "คุณภาพวีดีโอใช้ภาพ 4k outputงาน720p").
+# The bank's photographs are a 1920x1280 median, so a 9:16 crop yields ~720 px
+# on 81% of rows and ~1080 px on only 24%. Rendering 1080 therefore *upscales*
+# three frames in four, which is exactly the softness and grain the reviews
+# named; rendering 720 downsamples instead and the frame stays crisp. The source
+# stays as large as the bank can give -- the output is the 720p master.
+W, H = 720, 1280
 FPS = 30
 
 # A still that trips an advertiser filter costs the whole upload: YouTube and
@@ -229,7 +235,16 @@ def _hamming(a: int, b: int) -> int:
     return bin(a ^ b).count("1")
 
 
-MIN_CROP_WIDTH = 1000   # below this the 9:16 crop is upscaled and goes soft
+# Below this the 9:16 crop is upscaled and goes soft. Scaled to the frame, not a
+# constant: at 1080x1920 a 1000 px crop was 93% of the width, and the same
+# absolute number at 720x1280 would reject almost the whole bank.
+MIN_CROP_WIDTH = int(W * 0.93)
+
+# How many candidates to gather before ranking. The picker used to stop at
+# exactly `want`, which meant the "sharp pool" was a random draw and the log
+# reported "8 of 9"; gathering a wider pool is what lets the rank promote a
+# crisp frame over a soft one.
+POOL_FACTOR = 4
 
 
 def _crop_width(path: Path) -> int:
@@ -327,21 +342,43 @@ def bank_stills(query: str, want: int, seed: int, log=print) -> list[dict]:
         if any(_hamming(h, q) <= NEAR_DUP_BITS for q in seen):
             continue
         seen.append(h)
-        # A crop narrower than the frame is upscaled to fill 1080x1920, and that
-        # upscale is what reads as soft and noisy. Prefer sharp candidates, but
-        # keep the narrow one when the sharp pool runs out: the bank's median
-        # 9:16 crop is 810 px, so a hard 1000 px cut left the lane with one
-        # usable still for "bangkok night" and it refused to render at all
-        # (2026-11-20). A soft-but-real frame still beats no clip.
+        # A crop narrower than the frame is upscaled, and that upscale is what
+        # reads as soft and noisy. Keep the narrow candidate only when the sharp
+        # pool runs out: the bank's median 9:16 crop is 810 px, so a hard cut
+        # left the lane with one usable still for "bangkok night" and it refused
+        # to render at all (2026-11-20). A soft-but-real frame still beats no clip.
         narrow = _crop_width(p) < MIN_CROP_WIDTH
         picked.append({"path": p, "soft": narrow, **r})
-        if len(picked) >= want:
+        # Enough to rank from without hashing the whole bank: the pool only has
+        # to be wider than `want`, and the cap is generous so a query with many
+        # narrow rows still has sharp ones to promote.
+        if len(picked) >= want * POOL_FACTOR:
             break
-    sharp = [c for c in picked if not c.get("soft")]
-    if len(sharp) >= want:
-        picked = sharp
-    elif picked:
-        log(f"bank: kept {len(picked) - len(sharp)} narrow crop(s) under "
+
+    # Rank *after* collecting, not by taking the first `want` and hoping: the old
+    # order shuffled, cut at `want`, then filtered, so the "sharp pool" was
+    # whatever survived a random draw and the log said "8 of 9". K's source rule
+    # is 4K in / 720p out, and the way that reaches the screen is picking the
+    # largest, crispest crop the bank has. Duplicate rejection above still wins
+    # over sharpness, because a repeat shot is worse than a soft one.
+    # Width first (cheap), then the Laplacian on a shortlist only: measuring
+    # sharpness for every candidate in a 6,876-row bank costs more than the
+    # render itself.
+    picked.sort(key=lambda c: (c["soft"], -_crop_width(c["path"])))
+    shortlist = picked[: max(want * 3, want)]
+    shortlist.sort(key=lambda c: (c["soft"], -_sharpness(c["path"]),
+                                 -_crop_width(c["path"])))
+    picked = shortlist + picked[len(shortlist):]
+    sharp = [c for c in picked if not c["soft"]]
+    # Report the two different shortfalls separately: a narrow crop that had to
+    # be used, and a pool that simply ran out of matches. The old single message
+    # said "kept 0 narrow crop(s) ... sharp pool had only 8 of 9", which reads
+    # like a defect when the bank simply held eight rows for that query.
+    if len(picked) < want:
+        log(f"bank: only {len(picked)} candidate(s) for {query!r} "
+            f"({len(sharp)} sharp); the mix fills the rest")
+    elif len(sharp) < want:
+        log(f"bank: kept {want - len(sharp)} narrow crop(s) under "
             f"{MIN_CROP_WIDTH}px — sharp pool had only {len(sharp)} of {want}")
     return picked[:want]
 
@@ -696,8 +733,12 @@ def render(song: str, query: str, seconds: float, seed: int, out_dir: Path,
 
     with tempfile.TemporaryDirectory() as td:
         td = Path(td)
-        title = _card(f"{brand.NAME}\n{brand.FOLLOW_PROMISE}", td / "title.png", 64)
-        tail = _card(f"{brand.FOLLOW_ASK}\n{brand.FOLLOW_PROMISE}", td / "tail.png", 58)
+        # Card type scales with the frame: 64 px was sized for a 1080-wide
+        # canvas and reads oversized at 720.
+        title = _card(f"{brand.NAME}\n{brand.FOLLOW_PROMISE}", td / "title.png",
+                      int(W * 64 / 1080))
+        tail = _card(f"{brand.FOLLOW_ASK}\n{brand.FOLLOW_PROMISE}", td / "tail.png",
+                     int(W * 58 / 1080))
 
         # A director cuts on the music, not on the clock. Every still used to
         # hold `seconds / len(stills)`, which put the cut wherever arithmetic
@@ -749,8 +790,12 @@ def render(song: str, query: str, seconds: float, seed: int, out_dir: Path,
         parts.append(chain)
 
         # Title over the first two seconds, follow ask over the last three.
-        parts.append(f"[base][{n + 1}:v]overlay=(W-w)/2:180:enable='lt(t,2.5)'[t1]")
-        parts.append(f"[t1][{n + 2}:v]overlay=(W-w)/2:h-h-420:"
+        # Offsets are fractions of the frame so a 720p render keeps the same
+        # composition the 1080p one had (180/1920 top, 420/1920 bottom margin).
+        top = int(H * 180 / 1920)
+        bottom = int(H * 420 / 1920)
+        parts.append(f"[base][{n + 1}:v]overlay=(W-w)/2:{top}:enable='lt(t,2.5)'[t1]")
+        parts.append(f"[t1][{n + 2}:v]overlay=(W-w)/2:h-h-{bottom}:"
                      f"enable='gt(t,{seconds - 3:.2f})'[vout]")
         parts.append("[0:a]loudnorm=I=-15:TP=-1.5:LRA=11[aout]")
 
@@ -770,7 +815,7 @@ def render(song: str, query: str, seconds: float, seed: int, out_dir: Path,
     import clip_standard  # noqa: PLC0415
 
     failed = [f"{name}: {detail}" for name, ok, detail
-              in clip_standard.check(str(out), profile="vertical") if not ok]
+              in clip_standard.check(str(out), profile="bank") if not ok]
     if failed:
         log("render: below the clip floor, deleted -- " + "; ".join(failed))
         out.unlink(missing_ok=True)

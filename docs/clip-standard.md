@@ -32,11 +32,30 @@ Measured from the live library on 2026-11-17:
 | Profile | Shape | fps | Lanes | Extra rules |
 | --- | --- | --- | --- | --- |
 | `trivia` | 1280×720 | 24 | เกร็ดความรู้ | not frozen, no hard cut, caption |
+| `bank` | 720×1280 | 30 | the clip lane (`library/bank/`, the warehouse) | not frozen, no bars |
 | `short` | 1080×1920 | 30 | short (hook lane, `library/shorts/`) | not frozen, caption, no bars |
 | `vertical` | 1080×1920 | 30 | MV, affiliate, surreal, concert, moods | not frozen, no bars |
 | `film` | 1920×1080 | 30 | film / long-form landscape | (cuts by design — no style rule) |
 | `horizontal` | 1920×1080 | 25 | karaoke, compilation | (a lyric sheet is nearly still) |
 | `motion` | 832×480 | 16 | internal motion asset | silent allowed |
+
+### Why the clip lane renders 720p, not 1080p
+
+K (2026-11-20): "คุณภาพวีดีโอใช้ภาพ 4k outputงาน720p" — 4K sources, 720p output.
+
+The number is not a concession, it is what the source can support. Measured over
+the committed photo bank (6,876 rows, 2026-11-20):
+
+| Render | 9:16 crop needs | Rows that clear it without upscaling |
+| --- | --- | --- |
+| 1080×1920 | 1080 px | 1,704 / 6,876 = **24%** |
+| 720×1280 | 720 px | 5,579 / 6,876 = **81%** |
+
+A 1080 render therefore upscales three frames in four, and an upscale is exactly
+the softness and grain the reviews named. Rendering 720 downsamples instead: the
+frame stays crisp and the file is a quarter of the size. `bank` is a separate
+profile so this does **not** lower the floor on `short` or `vertical`, which are
+still held to 1080×1920.
 
 Two rules apply to every profile with audio, because the loudness band cannot
 see either defect:
