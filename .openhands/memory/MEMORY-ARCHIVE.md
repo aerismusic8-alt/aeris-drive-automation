@@ -6590,3 +6590,28 @@ more. If a note here contradicts `ops/compass.py`, the compass wins.
 `make_music_video.py` or `make_film_video.py`; the rails rendered shorts,
 exhibits, concerts, moods and product cards. That gap is why the compass records
 `rail: None` for the `mv` and `film` rows instead of pretending they ship.
+
+## Moved from MEMORY.md index 2026-11-20 (condensed in place)
+- Full wording: "Two goals in `AKATH_CORE/CANONICAL_TASK_REGISTRY.json` never
+  close as ordinary tasks: a Roblox game anyone can play, and revenue from it
+  (Roblox **PARKED**)."
+- Full wording: "`genres.publishable()` fails closed and runs at **every**
+  publish path (`yt_publish` needs `--song SLUG`/`--not-a-song WHY`; also
+  `bank_publish`, `clip_lane`, `compile_album`). `--list-songs` stdout must stay
+  pure — a log line piped to `shuf` killed the lane."
+- Full wording: "**K = final authority.** **AR = me**: I administer all of K's
+  work in K's place — decide, execute, report; no per-step approval. Hand K only
+  what needs a credential only K holds." / "**Method: PCSEV.** **Advisor =
+  Gemini alone** (K 2026-11-18); `ops/consult.py` → `consult-log.jsonl`.
+  Advisory only." / "**Time to K = Thai (UTC+7) 24-hour.** Rails stay UTC."
+- Full wording 2026-11-20: "`genres.publishable()` fails closed and runs at
+  **every** publish path (`yt_publish` needs `--song SLUG`/`--not-a-song WHY`;
+  also `bank_publish`, `clip_lane`, `compile_album`). `--list-songs` stdout must
+  stay pure — a log line piped to `shuf` killed the lane."
+- Full wording 2026-11-20: "`ops/compass.py --list | --songs LANE | --check`;
+  `--check` must be clean, pinned by `test_compass_is_the_one_direction`
+  (asserts the *call*, not a word)." / "**The product is a SONG clip, not a
+  narrated one.** `narration` is legal only where K asked by name (`trivia`);
+  `story` is a **tool**. Old posted clips are untouched — the compass constrains
+  new work only." / "**Known gap:** `mv`/`film` (the declared product) have
+  `rail: None` — no workflow renders an MV. Do not claim an MV ships."

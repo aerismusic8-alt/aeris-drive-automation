@@ -17,40 +17,32 @@ folder*. **Read it before touching a clip lane; add a row before adding a rail.*
 It **fails closed**: `assert_lane` refuses an unregistered lane, `may_render`
 refuses a `retired` one.
 - **`compass.songs(lane)` is the only way a lane lists songs**;
-  `compass.is_publishable(slug)` is the single-slug form. Globbing `song-*.mp3`
-  rendered 18 of 32 masters in a parked genre that could never upload.
-- `ops/compass.py --list | --songs LANE | --check`; `--check` must be clean,
-  pinned by `test_compass_is_the_one_direction` (asserts the *call*, not a word).
-- **The product is a SONG clip, not a narrated one.** `narration` is legal only
-  where K asked by name (`trivia`); `story` is a **tool**. Old posted clips are
-  untouched — the compass constrains new work only.
-- **Known gap:** `mv`/`film` (the declared product) have `rail: None` — no
-  workflow renders an MV. Do not claim an MV ships.
+  `compass.is_publishable(slug)` is the single-slug form; `--check` must be
+  clean. Globbing `song-*.mp3` rendered 18 of 32 masters in a parked genre.
+- **The product is a SONG clip, not a narrated one** (`narration` only where K
+  asked by name: `trivia`; `story` is a **tool**). Old posted clips untouched.
+- **Known gap:** `mv`/`film` have `rail: None` — no workflow renders an MV. Do
+  not claim an MV ships.
 
 ## Genre = FUN ONLY (K 2026-11-18 "ทำแนวสนุกอย่างเดียว")
 **Active:** pop/synthpop/edm/rock/hiphop/rap/alt. **PARKED = ห้ามอัพ:** lukthung,
 เพื่อชีวิต, morlam, indie, lofi, rnb, jazz, acoustic, country, symphonic.
 **The 20 `lyrics-original/` songs are ALL เพื่อชีวิต — never publish them.**
-`genres.publishable()` fails closed and runs at **every** publish path
-(`yt_publish` needs `--song SLUG`/`--not-a-song WHY`; also `bank_publish`,
-`clip_lane`, `compile_album`). `--list-songs` stdout must stay pure — a log line
-piped to `shuf` killed the lane.
+`genres.publishable()` fails closed at **every** publish path; `--list-songs`
+stdout must stay pure (a log line piped to `shuf` killed the lane).
 
 ## Roles and method (K 2026-10-31)
-- **K = final authority.** **AR = me**: I administer all of K's work in K's place
-  — decide, execute, report; no per-step approval. Hand K only what needs a
-  credential only K holds.
-- **Method: PCSEV.** **Advisor = Gemini alone** (K 2026-11-18); `ops/consult.py`
-  → `consult-log.jsonl`. Advisory only.
-- **Time to K = Thai (UTC+7) 24-hour.** Rails stay UTC.
+**K = final authority.** **AR = me**: I administer all of K's work in K's place —
+decide, execute, report; no per-step approval. Method: **PCSEV**. Advisor =
+**Gemini alone** (`ops/consult.py`, advisory). **Time to K = Thai (UTC+7) 24h**;
+rails stay UTC.
 
 ## What this project is (K's goal)
 "เราไม่ได้เป็นคนสร้างช่อง เราสร้าง ai openhands" — the deliverable is **the agent**,
 from free cloud tools. Scope = **4 channels** (aeris938-2 = Facebook, TikTok,
-YouTube `@aerismusicth`, Shopee Affiliate). Two goals in
-`AKATH_CORE/CANONICAL_TASK_REGISTRY.json` never close as ordinary tasks: a Roblox
-game anyone can play, and revenue from it (Roblox **PARKED**).
-**Brand = เพลงส้นทีนไรเนี่ย** — only in `branding.py`.
+YouTube `@aerismusicth`, Shopee Affiliate). Two goals in the task registry never
+close as ordinary tasks: a Roblox game anyone can play, and revenue from it
+(Roblox **PARKED**). **Brand = เพลงส้นทีนไรเนี่ย** — only in `branding.py`.
 **Revenue gate = ch3**: 1,000 subs AND 4,000 watch-hours/12 mo; the metric is
 **followers** — end every clip with `release.FOLLOW_ASK` + `FOLLOW_PROMISE`.
 
@@ -59,6 +51,10 @@ game anyone can play, and revenue from it (Roblox **PARKED**).
 **One FLOOR, every format/channel (K 2026-11-17): "ห้ามอัพขึ้นเด็ดขาด"**
 `ops/clip_standard.py` = floor + per-format profile, gated at **every** upload
 route, no override; `ops/thumb_standard.py` too (dead silence ≤3 s, VFR ≤2%).
+**Bank clips = `ops/clip_lane.py --song X --query "..." --seconds 58`** → into
+`library/bank/` (gitignored; rides media-938), QC 14/14. Picker must sort bank
+rows by width **before** the pool cap or a 4K row never enters it (600/6,879 are
+4K); drop rows with no `shard` or `_materialise` fails silently.
 QC is mechanical only — **Gemini review is OUT** (2026-11-20), pinned by
 `test_no_gemini_gate_in_the_video_system`. **A gate nothing can pass is broken,
 not strict** — the verdict decides, the score is only a sanity floor.
@@ -81,7 +77,8 @@ Flow Music/Gemini run on K's `aerismusic8`; K taps a QR once, then
   guess. **`videos.list` ≤50 ids; YPP = 1,000 subs AND 4,000 watch-hours.**
 - **Bound every rail:** `timeout-minutes` + `cancel-in-progress: true`;
   `OPENHANDS_RISK_REGISTER.json` + `ops/risk_audit.py --strict`.
-- **`ops/HOLD.md` decides whether rails may run** (lifted 11-13).
+- **`ops/HOLD.md` decides whether rails may run** (lifted 11-13; K's
+  **posting stop** 2026-11-20 is `ops/PUBLISH-HOLD` → `hold_gate.active()`).
 
 ## Art, director, and picking NEW work
 `genart.py` + `image_bank.py` → `media-938`, manifest only. `shot_director.py`
