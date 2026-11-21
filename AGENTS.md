@@ -447,6 +447,49 @@ a Thai string lives; every screen, sign and notification reads from it.
   `%d` placeholders, and that each line actually contains a Thai codepoint
   (U+0E00-U+0E7F). Add a key to the checked list when you add a string.
 
+## The AF advisor (advice without a browser)
+
+The standing panel in `ops/consult.py` drives a signed-in browser. That is the
+right tool for K's own desktop and the wrong one for a rail: on a runner the
+desktop is absent, so a gate built on it can never go green.
+`tools/af_advisor.py` is the rail-side advisor, free and keyless:
+
+| Transport | Vendors | Note |
+| --- | --- | --- |
+| g4f provider classes | Gemini, KiloCode, G4FSpace, Yqcloud | call `create(provider=...)`; a *model* name returns the same advert for every model |
+| plain HTTPS | pollinations | `text.pollinations.ai/openai`, `max_tokens=4000`, `reasoning_effort=low` |
+
+```bash
+python3 tools/af_advisor.py "question" --advisor gemini --json artifacts/vendor_consult/x.json
+python3 tools/af_advisor.py "blocker" --stuck "<the real error>"
+python3 tools/af_advisor.py "question" --vendors Gemini,KiloCode,pollinations --quorum 2
+python3 tools/af_advisor.py --check      # roster + last bench
+python3 tools/af_advisor.py --selftest   # the guards, offline
+```
+
+The rules that make it safe, and must not be removed:
+
+- **Fail closed.** `consult()` returns `met = ok_count >= quorum`; a vendor that
+  does not answer is `FAIL`, never filled in from another vendor, and `main()`
+  exits non-zero when the quorum is not met.
+- **A 200 response is not an answer.** `looks_like_error_answer` rejects an error
+  page or a refusal ("having a hard time fulfilling") that arrives as HTTP 200.
+- **A short answer is an answer.** `MIN_CHARS` is 20. "Opportunity cost: 4.5 /
+  DECLINE" is correct; a high floor deleted exactly those rows.
+- **A rate hint waits.** 3 s then 6 s normally, 50 s when the error mentions a
+  quota or 429 — pollinations allows one call per 45 s per IP.
+- **The roster is the registry** (`tools/af_advisor_roster.json`): mandate,
+  advisors, dead vendors with a reason, the last bench, the trading advisor. A
+  vendor is never dropped because one call failed; a dead pipe is a retry.
+- Every consultation is appended to `ops/consult-log.jsonl` in the shape
+  `ops/consult.py` writes, so the "consult before acting" gate sees it even on a
+  pod with no playwright.
+
+Changing the vendor list means running all three benches and writing the result
+back (`--write`). Scores swing about ±2 between rounds, so the CEO bench defaults
+to three rounds and reports the median. `--regrade <raw.json>` re-scores saved
+answers into a new file; it never overwrites the raw capture.
+
 ## Workflows
 
 `runs-on: self-hosted` is a **Windows** machine (PC1, `DESKTOP-RGK6JKB`), so

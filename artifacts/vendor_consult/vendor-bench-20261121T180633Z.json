@@ -1,0 +1,160 @@
+{
+  "at": "2026-11-21T18:06:33+00:00",
+  "tool": "af_vendor_bench",
+  "prompt": "Reply with JSON only and no prose: {\"alive\": true, \"sum\": <17*3>}",
+  "rounds": 2,
+  "results": {
+    "Gemini": [
+      {
+        "vendor": "Gemini",
+        "status": "OK",
+        "ok": true,
+        "chars": 26,
+        "seconds": 15.5,
+        "answer": "{\"alive\": true, \"sum\": 51}",
+        "error": "",
+        "round": 1
+      },
+      {
+        "vendor": "Gemini",
+        "status": "OK",
+        "ok": true,
+        "chars": 38,
+        "seconds": 14.4,
+        "answer": "```json\n{\"alive\": true, \"sum\": 51}\n```",
+        "error": "",
+        "round": 2
+      }
+    ],
+    "KiloCode": [
+      {
+        "vendor": "KiloCode",
+        "status": "OK",
+        "ok": true,
+        "chars": 26,
+        "seconds": 1.8,
+        "answer": "{\"alive\": true, \"sum\": 51}",
+        "error": "",
+        "round": 1
+      },
+      {
+        "vendor": "KiloCode",
+        "status": "OK",
+        "ok": true,
+        "chars": 26,
+        "seconds": 2.0,
+        "answer": "{\"alive\": true, \"sum\": 51}",
+        "error": "",
+        "round": 2
+      }
+    ],
+    "G4FSpace": [
+      {
+        "vendor": "G4FSpace",
+        "status": "OK",
+        "ok": true,
+        "chars": 26,
+        "seconds": 4.3,
+        "answer": "{\"alive\": true, \"sum\": 51}",
+        "error": "",
+        "round": 1
+      },
+      {
+        "vendor": "G4FSpace",
+        "status": "OK",
+        "ok": true,
+        "chars": 26,
+        "seconds": 2.5,
+        "answer": "{\"alive\": true, \"sum\": 51}",
+        "error": "",
+        "round": 2
+      }
+    ],
+    "pollinations": [
+      {
+        "vendor": "pollinations",
+        "status": "OK",
+        "ok": true,
+        "chars": 26,
+        "seconds": 0.3,
+        "answer": "{\"alive\": true, \"sum\": 51}",
+        "error": "",
+        "round": 1
+      },
+      {
+        "vendor": "pollinations",
+        "status": "OK",
+        "ok": true,
+        "chars": 26,
+        "seconds": 0.2,
+        "answer": "{\"alive\": true, \"sum\": 51}",
+        "error": "",
+        "round": 2
+      }
+    ],
+    "Yqcloud": [
+      {
+        "vendor": "Yqcloud",
+        "status": "OK",
+        "ok": true,
+        "chars": 26,
+        "seconds": 4.2,
+        "answer": "{\"alive\": true, \"sum\": 51}",
+        "error": "",
+        "round": 1
+      },
+      {
+        "vendor": "Yqcloud",
+        "status": "OK",
+        "ok": true,
+        "chars": 26,
+        "seconds": 1.2,
+        "answer": "{\"alive\": true, \"sum\": 51}",
+        "error": "",
+        "round": 2
+      }
+    ]
+  },
+  "verdicts": {
+    "Gemini": {
+      "rounds": 2,
+      "answered": 2,
+      "passed": 2,
+      "pipe_dead": 0,
+      "verdict": "alive",
+      "answers_wrong": 0
+    },
+    "KiloCode": {
+      "rounds": 2,
+      "answered": 2,
+      "passed": 2,
+      "pipe_dead": 0,
+      "verdict": "alive",
+      "answers_wrong": 0
+    },
+    "G4FSpace": {
+      "rounds": 2,
+      "answered": 2,
+      "passed": 2,
+      "pipe_dead": 0,
+      "verdict": "alive",
+      "answers_wrong": 0
+    },
+    "pollinations": {
+      "rounds": 2,
+      "answered": 2,
+      "passed": 2,
+      "pipe_dead": 0,
+      "verdict": "alive",
+      "answers_wrong": 0
+    },
+    "Yqcloud": {
+      "rounds": 2,
+      "answered": 2,
+      "passed": 2,
+      "pipe_dead": 0,
+      "verdict": "alive",
+      "answers_wrong": 0
+    }
+  }
+}

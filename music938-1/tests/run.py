@@ -8766,6 +8766,153 @@ def test_lyric_meaning_gate() -> None:
               [("chorus", ["รักเธอหมดใจแล้ววันนี้", "Gemini เป็น AI และอาจทำผิดพลาดได้"])])))
 
 
+def test_af_advisor() -> None:
+    """The AF advisor: several free vendors, keyless, and fail-closed.
+
+    `ops/consult.py` drives a signed-in browser, which a rail does not have. The
+    AF advisor reaches the same kind of vendor over g4f and plain HTTPS, so it is
+    the one an autonomous loop can actually use. Its whole value is that a
+    missing answer stays missing, so the guards below are the contract:
+
+    * `looks_like_error_answer` rejects an error page served as HTTP 200.
+    * `MIN_CHARS` is 20: a terse correct answer is not a dead pipe.
+    * a rate hint waits out the 45 s pollinations window instead of burning the
+      three attempts in nine seconds.
+    * a bench never overwrites its raw answers, so a regrade can re-score them.
+    """
+    section("af advisor (multi-vendor, keyless, fail-closed)")
+    tools = ROOT.parent / "tools"
+    for name in ("af_advisor.py", "af_advisor_roster.json", "af_vendor_bench.py",
+                 "af_pick_trading_advisor.py", "af_ceo_bench.py"):
+        check(f"{name} exists", (tools / name).exists())
+
+    sys.path.insert(0, str(tools))
+    import af_advisor as af  # noqa: E402
+    import af_ceo_bench as ceo  # noqa: E402
+    import af_pick_trading_advisor as trading  # noqa: E402
+
+    src = (tools / "af_advisor.py").read_text()
+    check("three attempts per vendor", af.ATTEMPTS == 3)
+    check("the backoff is 3s, 6s", af.BACKOFF_SECONDS == 3)
+    check("a rate hint waits out the free-tier window",
+          af.RATE_BACKOFF_SECONDS >= 45, str(af.RATE_BACKOFF_SECONDS))
+    check("pollinations gets a 4000-token ceiling",
+          af.POLLINATIONS_MAX_TOKENS == 4000)
+    check("pollinations asks for low reasoning effort",
+          '"reasoning_effort": "low"' in src)
+    check("g4f is called by provider, never by model name",
+          "provider=provider" in src and 'model=""' in src)
+    check("g4f installs itself after a container restart",
+          "def ensure_g4f" in src and "pip" in src)
+    check("a silent vendor times out at timeout + 60", "timeout + 60" in src)
+
+    check("an empty answer is not an answer", af.looks_like_error_answer(""))
+    check("an error page served as 200 is not an answer",
+          af.looks_like_error_answer(
+              "Sorry, I'm having a hard time fulfilling this request."))
+    check("a terse correct answer is not a dead pipe",
+          not af.looks_like_error_answer(
+              "Opportunity cost: 6.75 / Net loss: 5.25 / DECLINE"))
+    advert = ("### Copilot moved to a new app\n- Install the new Copilot app "
+              + "filler " * 80 + "\n[Install now](https://unifiedlink.svc.cloud"
+              ".microsoft/app/copilot/?openAppStoreOnLoad=true)")
+    check("an advert is not an answer even past the 400-char bound",
+          len(advert) > 500 and af.looks_like_error_answer(advert))
+    check("a long real answer is not mistaken for an advert",
+          not af.is_advert("The publish step ran at 18:02 and the live place "
+                           "version moved, so the rail shipped."))
+    check("the short-answer floor is 20 chars, not 200", af.MIN_CHARS == 20)
+    check("a chat envelope is unwrapped, not returned",
+          af._text_from_chat_json('{"choices":[{"message":{"content":"x"}}]}') == "x")
+
+    roster = af.load_roster()
+    advisors = roster["advisors"]
+    check("five live vendors are registered", len(advisors) == 5, str(sorted(advisors)))
+    check("the pool names only live vendors",
+          all(v in advisors for v in roster["default_pool"]))
+    check("dead vendors are out of the pool",
+          "LLM7" not in roster["default_pool"]
+          and "CohereForAI_C4AI_Command" not in roster["default_pool"])
+    check("every dead vendor keeps its reason",
+          all(info.get("reason") for info in af.dead_vendors(roster).values()))
+    check("the default advisor resolves to a real vendor",
+          af.resolve_vendor(roster["default_advisor"], roster) in advisors)
+    check("advise() starts at the default advisor",
+          af.advise_order()[0] == af.resolve_vendor(roster["default_advisor"], roster))
+    check("pollinations is the keyless, g4f-free fallback",
+          af.vendor_spec("pollinations", roster).get("transport") == "http")
+    check("--advisor gemini resolves to the Gemini provider",
+          af.resolve_vendor("gemini", roster) == "Gemini")
+
+    check("the trading bench is worth 11 points",
+          sum(q["max"] for q in trading.QUESTIONS) == 11)
+    check("the CEO bench is worth 12 points",
+          sum(q["max"] for q in ceo.QUESTIONS) == 12)
+
+    ceo_gold = {
+        "kill": '{"kill": "A", "net_a": -0.3, "net_b": 1.4, '
+                '"reasoning": "A loses 0.3/h, B makes 1.4/h"}',
+        "allocate": '{"hours_x": 6, "hours_y": 4, "hours_z": 0, "total_ev": 54, '
+                    '"reasoning": "highest EV per hour first, up to capacity"}',
+        "sayno": '{"call": "DECLINE", "opportunity_cost_per_hour": 4.5, '
+                 '"net": -18, "reasoning": "12 - 4 x 7.5 = -18"}',
+        "price": '{"revenue_025": 0.2, "revenue_150": 0.3, "revenue_300": 0.6, '
+                 '"price": 3.0, "reasoning": "revenue is highest at 3.00"}',
+    }
+    total = sum(ceo.score_answer(q, ceo_gold[q["id"]])["points"] for q in ceo.QUESTIONS)
+    check("gold CEO answers score 12/12", total == 12, str(total))
+    trading_gold = {
+        "expectancy": '{"value": 0.4, "reasoning": "0.40 * 2.5 + 0.60 * -1.0", '
+                      '"call": "TAKE"}',
+        "friction": '{"value": 62, "reasoning": "100 - 30 - 3 - 5 = 62", '
+                    '"margin": "62%"}',
+        "growth": '{"value": 1771.56, "reasoning": "1000 * 1.10^6, compounded"}',
+        "reconcile": '{"value": 350, "reasoning": "the 30 is a receivable held '
+                     'by the platform"}',
+    }
+    total = sum(trading.score_answer(q, trading_gold[q["id"]])["points"]
+                for q in trading.QUESTIONS)
+    check("gold trading answers score 11/11", total == 11, str(total))
+    check("a wrong price is not full marks",
+          ceo.score_answer(ceo.QUESTIONS[3],
+                           ceo_gold["price"].replace('"price": 3.0',
+                                                     '"price": 0.25'))["points"] < 3)
+    check("an uppercase KILL A still matches the lower-case pattern",
+          ceo.score_answer(ceo.QUESTIONS[0],
+                           "KILL A. Net -0.3 vs +1.4.")["points"] == 2)
+    check("a terse prose answer scores full marks",
+          ceo.score_answer(ceo.QUESTIONS[2],
+                           "Opportunity cost 4.5/hour. Net -18. Decline.")["points"] == 3)
+
+    import tempfile
+    with tempfile.TemporaryDirectory() as tmp:
+        target = Path(tmp) / "raw.json"
+        first = af.write_json(target, {"run": 1})
+        second = af.write_json(target, {"run": 2})
+        check("a second write never overwrites the raw capture",
+              first != second
+              and json.loads(first.read_text(encoding="utf-8"))["run"] == 1)
+
+    import contextlib
+    import io
+    quiet = io.StringIO()
+    with contextlib.redirect_stdout(quiet), contextlib.redirect_stderr(quiet):
+        selftest_rc = af.main(["--selftest"])
+        unknown_rc = af.main(["--vendors", "NoSuchVendor", "q"])
+    check("--selftest passes", selftest_rc == 0)
+    check("an unknown vendor is a usage error, not a silent answer",
+          unknown_rc == 2)
+
+    for rel in ("tools/af_advisor.py", "tools/af_advisor_roster.json"):
+        try:
+            r = subprocess.run(["git", "check-ignore", "-q", "--no-index", rel],
+                               cwd=str(ROOT.parent), capture_output=True)
+        except (OSError, FileNotFoundError):
+            break
+        check(f"{Path(rel).name} is tracked, not swallowed by tools/",
+              r.returncode != 0, "git check-ignore says it is ignored")
+
+
 def test_consult_gate() -> None:
     """K's standing rule: consult the advisors BEFORE acting.
 
@@ -9496,6 +9643,7 @@ def main() -> int:
     test_studio_read_parses_analytics()
     test_heartbeat_repair_signal()
     test_consult_gate()
+    test_af_advisor()
     test_produce_loop()
     test_share_pack()
     test_k_free_status()

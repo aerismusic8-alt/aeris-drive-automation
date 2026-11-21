@@ -1,6 +1,9 @@
 
-# Vendored tooling (fetch with scripts/install-luau.sh)
-tools/
+# Vendored tooling (fetch with scripts/install-luau.sh). The AF advisor is
+# source, not a vendored binary, so its files are re-included below.
+tools/*
+!tools/af_*.py
+!tools/af_advisor_roster.json
 
 # Credentials must never be committed. They live in OpenHands secrets and the KV
 # vault, or on disk outside the repo (/workspace/.secrets, /workspace/ax-tools).

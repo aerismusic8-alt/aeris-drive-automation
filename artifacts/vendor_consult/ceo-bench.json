@@ -1,0 +1,634 @@
+{
+  "at": "2026-11-21T18:00:43+00:00",
+  "tool": "af_ceo_bench",
+  "rounds": 3,
+  "rows": [
+    {
+      "round": 1,
+      "vendor": "Gemini",
+      "question": "kill",
+      "status": "OK",
+      "seconds": 47.5,
+      "text": "{\"kill\": \"A\", \"net_a\": -0.3, \"net_b\": 1.4, \"reasoning\": \"Project A loses 0.3 units/hour while Project B profits 1.4 units/hour; assuming linear scaling and no strategic lock-in, kill A unless its user growth or unit economics can flip net margin positive.\"}",
+      "error": ""
+    },
+    {
+      "round": 1,
+      "vendor": "Gemini",
+      "question": "allocate",
+      "status": "OK",
+      "seconds": 107.4,
+      "text": "{\"hours_x\": 6, \"hours_y\": 4, \"hours_z\": 0, \"total_ev\": 54.0, \"reasoning\": \"Allocate full capacity to highest-EV tasks first: 6h to X (36 EV) and 4h to Y (18 EV), leaving 0h for Z.\"}",
+      "error": ""
+    },
+    {
+      "round": 1,
+      "vendor": "Gemini",
+      "question": "sayno",
+      "status": "OK",
+      "seconds": 15.1,
+      "text": "```json\n{\"call\": \"DECLINE\", \"opportunity_cost_per_hour\": 7.5, \"net\": -18, \"reasoning\": \"The offer pays 3 units/hr (12 total) versus 7.5 units/hr (30 total) over 4 hours, a net loss of 18 units.\"}\n```",
+      "error": ""
+    },
+    {
+      "round": 1,
+      "vendor": "Gemini",
+      "question": "price",
+      "status": "OK",
+      "seconds": 81.1,
+      "text": "```json\n{\"revenue_025\": 0.2, \"revenue_150\": 0.3, \"revenue_300\": 0.6, \"price\": 3.0, \"reasoning\": \"Set price to 3.00 because it yields 0.60/hr (double the 0.30/hr at 1.50 and triple the 0.20/hr at 0.25), unless unit variable costs exceed 1.50 or demand above 1.50 drops below 0.10 units/hr.\"}\n```",
+      "error": ""
+    },
+    {
+      "round": 1,
+      "vendor": "KiloCode",
+      "question": "kill",
+      "status": "OK",
+      "seconds": 4.5,
+      "text": "{\"kill\": \"A\", \"net_a\": -0.3, \"net_b\": 1.4, \"reasoning\": \"A loses $0.30/hr, B earns $1.40/hr\"}",
+      "error": ""
+    },
+    {
+      "round": 1,
+      "vendor": "KiloCode",
+      "question": "allocate",
+      "status": "OK",
+      "seconds": 6.7,
+      "text": "{\"hours_x\": 6, \"hours_y\": 4, \"hours_z\": 0, \"total_ev\": 54, \"reasoning\": \"Fill highest EV/hour tasks X (6h) and Y (4h) to capacity, using all 10 hours.\"}",
+      "error": ""
+    },
+    {
+      "round": 1,
+      "vendor": "KiloCode",
+      "question": "sayno",
+      "status": "OK",
+      "seconds": 4.4,
+      "text": "{\"call\": \"DECLINE\", \"opportunity_cost_per_hour\": 7.5, \"net\": -18, \"reasoning\": \"Client pays 3/hr vs 7.5/hr alternative, losing 4.5/hr\"}",
+      "error": ""
+    },
+    {
+      "round": 1,
+      "vendor": "KiloCode",
+      "question": "price",
+      "status": "OK",
+      "seconds": 9.2,
+      "text": "{\"revenue_025\": 0.2, \"revenue_150\": 0.3, \"revenue_300\": 0.6, \"price\": 3.0, \"reasoning\": \"Price 3.00 yields highest revenue per hour at 0.60.\"}",
+      "error": ""
+    },
+    {
+      "round": 1,
+      "vendor": "G4FSpace",
+      "question": "kill",
+      "status": "OK",
+      "seconds": 6.0,
+      "text": "{\"kill\": \"A\", \"net_a\": -0.3, \"net_b\": 1.4, \"reasoning\": \"A loses $0.30/hr; B earns $1.40/hr\"}",
+      "error": ""
+    },
+    {
+      "round": 1,
+      "vendor": "G4FSpace",
+      "question": "allocate",
+      "status": "OK",
+      "seconds": 5.7,
+      "text": "{\"hours_x\": 6, \"hours_y\": 4, \"hours_z\": 0, \"total_ev\": 54, \"reasoning\": \"Greedy by EV/hour: fill X (6h @ 6.0), then Y (4h @ 4.5), Z gets remainder (0h).\"}",
+      "error": ""
+    },
+    {
+      "round": 1,
+      "vendor": "G4FSpace",
+      "question": "sayno",
+      "status": "OK",
+      "seconds": 5.5,
+      "text": "{\"call\": \"DECLINE\", \"opportunity_cost_per_hour\": 7.5, \"net\": -18, \"reasoning\": \"Client pays 3/hr vs 7.5/hr alternative, losing 4.5/hr\"}",
+      "error": ""
+    },
+    {
+      "round": 1,
+      "vendor": "G4FSpace",
+      "question": "price",
+      "status": "OK",
+      "seconds": 4.5,
+      "text": "{\"revenue_025\": 0.2, \"revenue_150\": 0.3, \"revenue_300\": 0.6, \"price\": 3.0, \"reasoning\": \"$3.00 yields $0.60/hr, highest of the three.\"}",
+      "error": ""
+    },
+    {
+      "round": 1,
+      "vendor": "pollinations",
+      "question": "kill",
+      "status": "OK",
+      "seconds": 4.2,
+      "text": "{\"kill\":\"A\",\"net_a\":-0.3,\"net_b\":1.4,\"reasoning\":\"Project A is losing money while B is profitable\"}",
+      "error": ""
+    },
+    {
+      "round": 1,
+      "vendor": "pollinations",
+      "question": "allocate",
+      "status": "OK",
+      "seconds": 105.9,
+      "text": "{\"hours_x\": 6, \"hours_y\": 4, \"hours_z\": 0, \"total_ev\": 54, \"reasoning\": \"Maximize EV by fully allocating capacity of higher-earning tasks; remaining time filled by next best.\"}",
+      "error": ""
+    },
+    {
+      "round": 1,
+      "vendor": "pollinations",
+      "question": "sayno",
+      "status": "OK",
+      "seconds": 54.2,
+      "text": "{\"call\":\"DECLINE\",\"opportunity_cost_per_hour\":4.5,\"net\":-18,\"reasoning\":\"Offer earns 3 units/hr vs 7.5 units/hr alternative; better to decline\"}",
+      "error": ""
+    },
+    {
+      "round": 1,
+      "vendor": "pollinations",
+      "question": "price",
+      "status": "OK",
+      "seconds": 105.1,
+      "text": "{\"revenue_025\":0.2,\"revenue_150\":0.3,\"revenue_300\":0.6,\"price\":3.0,\"reasoning\":\"Higher price yields highest revenue due to demand staying constant.\"}",
+      "error": ""
+    },
+    {
+      "round": 1,
+      "vendor": "Yqcloud",
+      "question": "kill",
+      "status": "OK",
+      "seconds": 3.9,
+      "text": "{\"kill\": \"A\", \"net_a\": -0.3, \"net_b\": 1.4, \"reasoning\": \"Project A has a negative hourly net profit while Project B has a positive hourly net profit\"}",
+      "error": ""
+    },
+    {
+      "round": 1,
+      "vendor": "Yqcloud",
+      "question": "allocate",
+      "status": "OK",
+      "seconds": 4.7,
+      "text": "{\"hours_x\": 6, \"hours_y\": 4, \"hours_z\": 0, \"total_ev\": 54, \"reasoning\": \"Prioritize tasks by highest EV per hour, allocate full 6h capacity of X and 4h capacity of Y which sum to 10 available hours to maximize total EV\"}",
+      "error": ""
+    },
+    {
+      "round": 1,
+      "vendor": "Yqcloud",
+      "question": "sayno",
+      "status": "OK",
+      "seconds": 6.2,
+      "text": "{\"call\": \"DECLINE\", \"opportunity_cost_per_hour\": 7.5, \"net\": -18, \"reasoning\": \"The client offer yields 3 units per hour, which is lower than the 7.5 units per hour opportunity cost of the best alternative, so declining avoids a net loss\"}",
+      "error": ""
+    },
+    {
+      "round": 1,
+      "vendor": "Yqcloud",
+      "question": "price",
+      "status": "OK",
+      "seconds": 2.8,
+      "text": "{\"revenue_025\": 0.2, \"revenue_150\": 0.3, \"revenue_300\": 0.6, \"price\": 3.0, \"reasoning\": \"Calculate hourly revenue as price multiplied by demand per hour for each point, 3.00 yields the highest hourly revenue of 0.6 units\"}",
+      "error": ""
+    },
+    {
+      "round": 2,
+      "vendor": "Gemini",
+      "question": "kill",
+      "status": "OK",
+      "seconds": 57.7,
+      "text": "{\"kill\": \"A\", \"net_a\": -0.3, \"net_b\": 1.4, \"reasoning\": \"Project A loses 0.3 units/hour while Project B nets +1.4 units/hour; assuming linear unit economics with no strategic dependencies, cut the cash burn unless A's user base has near-term monetization leverage above 0.05/user.\"}",
+      "error": ""
+    },
+    {
+      "round": 2,
+      "vendor": "Gemini",
+      "question": "allocate",
+      "status": "OK",
+      "seconds": 14.5,
+      "text": "{\"hours_x\": 6, \"hours_y\": 4, \"hours_z\": 0, \"total_ev\": 54.0, \"reasoning\": \"Allocate full capacity to highest-EV tasks X (36.0) and Y (18.0) first, leaving 0 hours for Z.\"}",
+      "error": ""
+    },
+    {
+      "round": 2,
+      "vendor": "Gemini",
+      "question": "sayno",
+      "status": "OK",
+      "seconds": 17.6,
+      "text": "```json\n{\"call\": \"DECLINE\", \"opportunity_cost_per_hour\": 7.5, \"net\": -18, \"reasoning\": \"The offer pays 3 units per hour (12 total), resulting in a net loss of 18 units compared to the 30 units earned from your best alternative over 4 hours.\"}\n```",
+      "error": ""
+    },
+    {
+      "round": 2,
+      "vendor": "Gemini",
+      "question": "price",
+      "status": "OK",
+      "seconds": 53.0,
+      "text": "{\"revenue_025\": 0.2, \"revenue_150\": 0.3, \"revenue_300\": 0.6, \"price\": 3.0, \"reasoning\": \"Demand is completely inelastic between 1.50 and 3.00 at 0.2 units/hr, making 3.00 the revenue-maximizing price at 0.60/hr; if demand drops below 0.1 units/hr at 3.00 (elasticity > 1), switch to 1.50.\"}",
+      "error": ""
+    },
+    {
+      "round": 2,
+      "vendor": "KiloCode",
+      "question": "kill",
+      "status": "OK",
+      "seconds": 3.2,
+      "text": "{\"kill\": \"A\", \"net_a\": -0.3, \"net_b\": 1.4, \"reasoning\": \"A loses 0.3/hr, B earns 1.4/hr\"}",
+      "error": ""
+    },
+    {
+      "round": 2,
+      "vendor": "KiloCode",
+      "question": "allocate",
+      "status": "OK",
+      "seconds": 4.3,
+      "text": "{\"hours_x\": 6, \"hours_y\": 4, \"hours_z\": 0, \"total_ev\": 54, \"reasoning\": \"Allocate to highest EV/hour tasks first: X (6/h, cap 6h) then Y (4.5/h, cap 4h) uses all 10 hours.\"}",
+      "error": ""
+    },
+    {
+      "round": 2,
+      "vendor": "KiloCode",
+      "question": "sayno",
+      "status": "OK",
+      "seconds": 3.8,
+      "text": "{\"call\": \"DECLINE\", \"opportunity_cost_per_hour\": 7.5, \"net\": -18, \"reasoning\": \"Client pays 3 units/hour vs 7.5 units/hour alternative, losing 4.5 units/hour\"}",
+      "error": ""
+    },
+    {
+      "round": 2,
+      "vendor": "KiloCode",
+      "question": "price",
+      "status": "OK",
+      "seconds": 4.1,
+      "text": "{\"revenue_025\": 0.2, \"revenue_150\": 0.3, \"revenue_300\": 0.6, \"price\": 3.0, \"reasoning\": \"Revenue = price × demand; 3.00 × 0.2 = 0.60 exceeds 0.25 × 0.8 = 0.20 and 1.50 × 0.2 = 0.30.\"}",
+      "error": ""
+    },
+    {
+      "round": 2,
+      "vendor": "G4FSpace",
+      "question": "kill",
+      "status": "OK",
+      "seconds": 4.9,
+      "text": "{\"kill\": \"A\", \"net_a\": -0.3, \"net_b\": 1.4, \"reasoning\": \"A loses $0.30/hr while B earns $1.40/hr\"}",
+      "error": ""
+    },
+    {
+      "round": 2,
+      "vendor": "G4FSpace",
+      "question": "allocate",
+      "status": "OK",
+      "seconds": 4.9,
+      "text": "{\"hours_x\": 6, \"hours_y\": 4, \"hours_z\": 0, \"total_ev\": 54, \"reasoning\": \"Fill highest EV/hr tasks first: X to cap (6h), then Y to cap (4h), Z gets remainder (0h).\"}",
+      "error": ""
+    },
+    {
+      "round": 2,
+      "vendor": "G4FSpace",
+      "question": "sayno",
+      "status": "OK",
+      "seconds": 7.0,
+      "text": "{\"call\": \"DECLINE\", \"opportunity_cost_per_hour\": 7.5, \"net\": -18, \"reasoning\": \"Client rate 3/hr < alternative 7.5/hr, net loss 18 units over 4 hours.\"}",
+      "error": ""
+    },
+    {
+      "round": 2,
+      "vendor": "G4FSpace",
+      "question": "price",
+      "status": "OK",
+      "seconds": 2.7,
+      "text": "{\"revenue_025\": 0.2, \"revenue_150\": 0.3, \"revenue_300\": 0.6, \"price\": 3.0, \"reasoning\": \"Revenue = price × demand; 3.00 × 0.2 = 0.60, highest of the three.\"}",
+      "error": ""
+    },
+    {
+      "round": 2,
+      "vendor": "pollinations",
+      "question": "kill",
+      "status": "OK",
+      "seconds": 1.5,
+      "text": "{\"kill\":\"A\",\"net_a\":-0.3,\"net_b\":1.4,\"reasoning\":\"Project A is losing money while B is profitable\"}",
+      "error": ""
+    },
+    {
+      "round": 2,
+      "vendor": "pollinations",
+      "question": "allocate",
+      "status": "OK",
+      "seconds": 0.4,
+      "text": "{\"hours_x\": 6, \"hours_y\": 4, \"hours_z\": 0, \"total_ev\": 54, \"reasoning\": \"Maximize EV by fully allocating capacity of higher-earning tasks; remaining time filled by next best.\"}",
+      "error": ""
+    },
+    {
+      "round": 2,
+      "vendor": "pollinations",
+      "question": "sayno",
+      "status": "OK",
+      "seconds": 0.4,
+      "text": "{\"call\":\"DECLINE\",\"opportunity_cost_per_hour\":4.5,\"net\":-18,\"reasoning\":\"Offer earns 3 units/hr vs 7.5 units/hr alternative; better to decline\"}",
+      "error": ""
+    },
+    {
+      "round": 2,
+      "vendor": "pollinations",
+      "question": "price",
+      "status": "OK",
+      "seconds": 0.4,
+      "text": "{\"revenue_025\":0.2,\"revenue_150\":0.3,\"revenue_300\":0.6,\"price\":3.0,\"reasoning\":\"Higher price yields highest revenue due to demand staying constant.\"}",
+      "error": ""
+    },
+    {
+      "round": 2,
+      "vendor": "Yqcloud",
+      "question": "kill",
+      "status": "OK",
+      "seconds": 3.8,
+      "text": "{\"kill\": \"A\", \"net_a\": -0.3, \"net_b\": 1.4, \"reasoning\": \"Project A has a negative hourly net profit of -0.3 units, while Project B has a positive hourly net profit of 1.4 units, so killing the loss-making Project A is optimal\"}",
+      "error": ""
+    },
+    {
+      "round": 2,
+      "vendor": "Yqcloud",
+      "question": "allocate",
+      "status": "OK",
+      "seconds": 3.4,
+      "text": "{\"hours_x\": 6, \"hours_y\": 4, \"hours_z\": 0, \"total_ev\": 54, \"reasoning\": \"Prioritize tasks by highest EV per hour, allocate full 6h capacity of X and 4h capacity of Y which sum to 10 available hours to maximize total EV\"}",
+      "error": ""
+    },
+    {
+      "round": 2,
+      "vendor": "Yqcloud",
+      "question": "sayno",
+      "status": "OK",
+      "seconds": 3.4,
+      "text": "{\"call\": \"DECLINE\", \"opportunity_cost_per_hour\": 7.5, \"net\": -18, \"reasoning\": \"The client offer yields 3 units per hour, which is lower than the 7.5 units per hour opportunity cost of the best alternative, so declining avoids a net loss\"}",
+      "error": ""
+    },
+    {
+      "round": 2,
+      "vendor": "Yqcloud",
+      "question": "price",
+      "status": "OK",
+      "seconds": 3.2,
+      "text": "{\"revenue_025\": 0.2, \"revenue_150\": 0.3, \"revenue_300\": 0.6, \"price\": 3.0, \"reasoning\": \"Calculate hourly revenue as price multiplied by demand per hour for each point, 3.00 yields the highest hourly revenue of 0.6 units\"}",
+      "error": ""
+    },
+    {
+      "round": 3,
+      "vendor": "Gemini",
+      "question": "kill",
+      "status": "OK",
+      "seconds": 122.1,
+      "text": "{\"kill\": \"A\", \"net_a\": -0.3, \"net_b\": 1.4, \"reasoning\": \"Project A loses 0.3 units per hour while Project B generates 1.4 units of net profit per hour; I assume current unit economics are steady and neither project has unmodeled near-term growth or strategic dependencies.\"}",
+      "error": ""
+    },
+    {
+      "round": 3,
+      "vendor": "Gemini",
+      "question": "allocate",
+      "status": "OK",
+      "seconds": 14.7,
+      "text": "{\"hours_x\": 6, \"hours_y\": 4, \"hours_z\": 0, \"total_ev\": 54.0, \"reasoning\": \"Max out highest-EV task X (6h at 6.0/hr = 36) and task Y (4h at 4.5/hr = 18) to exhaust all 10 hours.\"}",
+      "error": ""
+    },
+    {
+      "round": 3,
+      "vendor": "Gemini",
+      "question": "sayno",
+      "status": "OK",
+      "seconds": 13.2,
+      "text": "{\"call\": \"DECLINE\", \"opportunity_cost_per_hour\": 7.5, \"net\": -18, \"reasoning\": \"4 hours at 7.5 units/hr yields 30 units vs. 12 offered (-18 net), assuming no unstated fixed or switching costs.\"}",
+      "error": ""
+    },
+    {
+      "round": 3,
+      "vendor": "Gemini",
+      "question": "price",
+      "status": "OK",
+      "seconds": 113.8,
+      "text": "{\"revenue_025\": 0.20, \"revenue_150\": 0.30, \"revenue_300\": 0.60, \"price\": 3.00, \"reasoning\": \"Pricing at 3.00 yields 0.60/hr, double the 0.30/hr at 1.50 and triple the 0.20/hr at 0.25, though any drop in demand above 1.50 would flip this.\"}",
+      "error": ""
+    },
+    {
+      "round": 3,
+      "vendor": "KiloCode",
+      "question": "kill",
+      "status": "OK",
+      "seconds": 3.1,
+      "text": "{\"kill\": \"A\", \"net_a\": -0.3, \"net_b\": 1.4, \"reasoning\": \"A loses 0.3/hr; B earns 1.4/hr.\"}",
+      "error": ""
+    },
+    {
+      "round": 3,
+      "vendor": "KiloCode",
+      "question": "allocate",
+      "status": "OK",
+      "seconds": 8.1,
+      "text": "{\"hours_x\": 6, \"hours_y\": 4, \"hours_z\": 0, \"total_ev\": 54, \"reasoning\": \"Allocate to highest EV/hour tasks first: X (6.0) up to 6h cap, then Y (4.5) up to 4h cap, exactly fills 10h.\"}",
+      "error": ""
+    },
+    {
+      "round": 3,
+      "vendor": "KiloCode",
+      "question": "sayno",
+      "status": "OK",
+      "seconds": 4.5,
+      "text": "{\"call\": \"DECLINE\", \"opportunity_cost_per_hour\": 7.5, \"net\": -18, \"reasoning\": \"Offer pays 3/hr vs 7.5/hr alternative, losing 4.5/hr (18 total)\"}",
+      "error": ""
+    },
+    {
+      "round": 3,
+      "vendor": "KiloCode",
+      "question": "price",
+      "status": "OK",
+      "seconds": 5.2,
+      "text": "{\"revenue_025\": 0.2, \"revenue_150\": 0.3, \"revenue_300\": 0.6, \"price\": 3.0, \"reasoning\": \"Revenue = price × demand; 3.00 × 0.2 = 0.60 beats 1.50 × 0.2 = 0.30 and 0.25 × 0.8 = 0.20.\"}",
+      "error": ""
+    },
+    {
+      "round": 3,
+      "vendor": "G4FSpace",
+      "question": "kill",
+      "status": "OK",
+      "seconds": 5.5,
+      "text": "{\"kill\": \"A\", \"net_a\": -0.3, \"net_b\": 1.4, \"reasoning\": \"A loses $0.30/hr while B earns $1.40/hr\"}",
+      "error": ""
+    },
+    {
+      "round": 3,
+      "vendor": "G4FSpace",
+      "question": "allocate",
+      "status": "OK",
+      "seconds": 8.4,
+      "text": "{\"hours_x\": 6, \"hours_y\": 4, \"hours_z\": 0, \"total_ev\": 54, \"reasoning\": \"Fill highest EV/hr tasks first: X at capacity (6h), Y at capacity (4h), Z gets remainder (0h).\"}",
+      "error": ""
+    },
+    {
+      "round": 3,
+      "vendor": "G4FSpace",
+      "question": "sayno",
+      "status": "OK",
+      "seconds": 5.0,
+      "text": "{\"call\": \"DECLINE\", \"opportunity_cost_per_hour\": 7.5, \"net\": -18, \"reasoning\": \"Offer pays 3/hr vs 7.5/hr alternative\"}",
+      "error": ""
+    },
+    {
+      "round": 3,
+      "vendor": "G4FSpace",
+      "question": "price",
+      "status": "OK",
+      "seconds": 5.6,
+      "text": "{\"revenue_025\": 0.2, \"revenue_150\": 0.3, \"revenue_300\": 0.6, \"price\": 3.0, \"reasoning\": \"Revenue = price × quantity; $3.00 × 0.2 = $0.60/hr beats $1.50 × 0.2 = $0.30 and $0.25 × 0.8 = $0.20.\"}",
+      "error": ""
+    },
+    {
+      "round": 3,
+      "vendor": "pollinations",
+      "question": "kill",
+      "status": "OK",
+      "seconds": 0.3,
+      "text": "{\"kill\":\"A\",\"net_a\":-0.3,\"net_b\":1.4,\"reasoning\":\"Project A is losing money while B is profitable\"}",
+      "error": ""
+    },
+    {
+      "round": 3,
+      "vendor": "pollinations",
+      "question": "allocate",
+      "status": "OK",
+      "seconds": 0.3,
+      "text": "{\"hours_x\": 6, \"hours_y\": 4, \"hours_z\": 0, \"total_ev\": 54, \"reasoning\": \"Maximize EV by fully allocating capacity of higher-earning tasks; remaining time filled by next best.\"}",
+      "error": ""
+    },
+    {
+      "round": 3,
+      "vendor": "pollinations",
+      "question": "sayno",
+      "status": "OK",
+      "seconds": 0.5,
+      "text": "{\"call\":\"DECLINE\",\"opportunity_cost_per_hour\":4.5,\"net\":-18,\"reasoning\":\"Offer earns 3 units/hr vs 7.5 units/hr alternative; better to decline\"}",
+      "error": ""
+    },
+    {
+      "round": 3,
+      "vendor": "pollinations",
+      "question": "price",
+      "status": "OK",
+      "seconds": 0.2,
+      "text": "{\"revenue_025\":0.2,\"revenue_150\":0.3,\"revenue_300\":0.6,\"price\":3.0,\"reasoning\":\"Higher price yields highest revenue due to demand staying constant.\"}",
+      "error": ""
+    },
+    {
+      "round": 3,
+      "vendor": "Yqcloud",
+      "question": "kill",
+      "status": "OK",
+      "seconds": 4.1,
+      "text": "{\"kill\": \"A\", \"net_a\": -0.3, \"net_b\": 1.4, \"reasoning\": \"Project A has a negative hourly net profit of -0.3 units while Project B has a positive hourly net profit of 1.4 units, so killing the loss-making Project A is optimal\"}",
+      "error": ""
+    },
+    {
+      "round": 3,
+      "vendor": "Yqcloud",
+      "question": "allocate",
+      "status": "OK",
+      "seconds": 3.6,
+      "text": "{\"kill\": \"A\", \"net_a\": -0.3, \"net_b\": 1.4, \"reasoning\": \"Project A has a negative hourly net profit of -0.3 units while Project B has a positive hourly net profit of 1.4 units, so killing the loss-making Project A is optimal\"}",
+      "error": ""
+    },
+    {
+      "round": 3,
+      "vendor": "Yqcloud",
+      "question": "sayno",
+      "status": "OK",
+      "seconds": 4.8,
+      "text": "{\"call\": \"DECLINE\", \"opportunity_cost_per_hour\": 7.5, \"net\": -18, \"reasoning\": \"The client offer yields 3 units per hour, which is lower than the 7.5 units per hour opportunity cost of the best alternative, so declining avoids a net loss\"}",
+      "error": ""
+    },
+    {
+      "round": 3,
+      "vendor": "Yqcloud",
+      "question": "price",
+      "status": "OK",
+      "seconds": 3.6,
+      "text": "{\"revenue_025\": 0.2, \"revenue_150\": 0.3, \"revenue_300\": 0.6, \"price\": 3.0, \"reasoning\": \"Calculate hourly revenue as price multiplied by demand per hour for each price point, the 3.00 price yields the highest hourly revenue of 0.6 units\"}",
+      "error": ""
+    }
+  ],
+  "scores": {
+    "Gemini": {
+      "rounds": 3,
+      "median": 11,
+      "scores": [
+        11,
+        11,
+        11
+      ],
+      "per_question": {
+        "kill": 2,
+        "allocate": 4,
+        "sayno": 2,
+        "price": 3
+      },
+      "answered": 12,
+      "asked": 12
+    },
+    "KiloCode": {
+      "rounds": 3,
+      "median": 11,
+      "scores": [
+        11,
+        11,
+        11
+      ],
+      "per_question": {
+        "kill": 2,
+        "allocate": 4,
+        "sayno": 2,
+        "price": 3
+      },
+      "answered": 12,
+      "asked": 12
+    },
+    "G4FSpace": {
+      "rounds": 3,
+      "median": 11,
+      "scores": [
+        10,
+        11,
+        11
+      ],
+      "per_question": {
+        "kill": 2,
+        "allocate": 4,
+        "sayno": 2,
+        "price": 3
+      },
+      "answered": 12,
+      "asked": 12
+    },
+    "pollinations": {
+      "rounds": 3,
+      "median": 12,
+      "scores": [
+        12,
+        12,
+        12
+      ],
+      "per_question": {
+        "kill": 2,
+        "allocate": 4,
+        "sayno": 3,
+        "price": 3
+      },
+      "answered": 12,
+      "asked": 12
+    },
+    "Yqcloud": {
+      "rounds": 3,
+      "median": 11,
+      "scores": [
+        11,
+        11,
+        7
+      ],
+      "per_question": {
+        "kill": 2,
+        "allocate": 4,
+        "sayno": 2,
+        "price": 3
+      },
+      "answered": 12,
+      "asked": 12
+    }
+  }
+}
