@@ -1682,6 +1682,92 @@ def test_mv_is_the_release() -> None:
         release.all_slugs = real_all_slugs
 
 
+def test_drop_pending_clips() -> None:
+    section("a deleted clip leaves no dead link behind (K, 2026-11-20)")
+    # K: "งานที่อยู่ในลิงก์ทั้งหมดให้ลบทิ้งเลยนะ". The clips on review-pending.html
+    # were deleted from the media release, which breaks any watch page that
+    # still points at them — and a dead link is the failure K named. mv_page
+    # must therefore drop the download paragraph when the asset is gone, while
+    # keeping the 720p preview it serves itself.
+    import importlib.util
+    spec = importlib.util.spec_from_file_location(
+        "mv_page", ROOT.parent / "ops" / "mv_page.py")
+    mp = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mp)
+
+    gone = mp.render("12-x", {}, 200.0, "p.jpg", "pre.mp4", asset="")
+    check("a deleted asset leaves no download link",
+          "releases/download" not in gone)
+    check("the page still plays the preview it serves itself",
+          'src="pre.mp4"' in gone)
+    alive = mp.render("12-x", {}, 200.0, "p.jpg", "pre.mp4", asset="film-12-x.mp4")
+    check("a live asset keeps its download link",
+          "releases/download/media-938/film-12-x.mp4" in alive)
+    # The default must stay a real asset name: `asset or f"film-{slug}.mp4"`
+    # turned an explicit "" back into a link, which is how the first attempt at
+    # this fix silently did nothing.
+    check("an empty asset is not replaced by the default",
+          "film-12-x.mp4" not in gone)
+
+    # The pruner reads the list K saw, never a recomputed one.
+    src = (ROOT.parent / "ops" / "drop_pending_clips.py").read_text(encoding="utf-8")
+    check("the delete list comes from the page, not from a rebuild",
+          "def page_clips" in src and "PAGE_URL" in src)
+    check("the release asset is deleted before the page is removed",
+          src.index('gh("DELETE"') < src.index("delete_page(tok)"))
+    check("deleting is opt-in", 'add_argument("--apply"' in src)
+
+
+def test_the_picker_never_repeats_old_work() -> None:
+    """K (2026-11-20): "ทีนี้เวลาให้ตรวจสอบสร้างงานรูปแบบใหม่ก็ไปวนเอาของเก่ามาทำ".
+
+    The lane kept re-cutting songs that already had five clips each while other
+    songs had never been touched. Two independent causes, both pinned here with
+    real calls rather than source greps:
+
+      * the clip picker ranked every song the same, so a song with 7 clips was as
+        likely as one with none;
+      * the producer's "already used" set came from the queue log alone, which
+        named 29 titles while `lyrics/` held 47 — so 23 finished songs were
+        invisible and their themes were chosen again (`วันธรรมดาที่พิเศษ` shipped
+        5 times).
+    """
+    section("the picker never repeats old work")
+    sys.path.insert(0, str(ROOT.parent / "ops"))
+    import clip_lane as cl  # noqa: E402
+
+    assets = [
+        "song-01-a.mp3", "karaoke-01-a.mp3",
+        "song-02-b.mp3", "karaoke-02-b.mp3",
+        "concert-01-a.mp4", "short-karaoke-01-a.mp4", "surreal-01-a.mp4",
+    ]
+    check("both mixes of a song are one song",
+          cl._song_id("karaoke-01-a") == cl._song_id("song-01-a") == "01-a")
+    used = cl._used_ids({"01-a", "02-b"}, assets)
+    check("a song with any clip counts as used", used == {"01-a"})
+    check("an untouched song is offered first",
+          cl.unused_first(["01-a", "02-b"], used, log=lambda *_: None) == ["02-b"])
+    # Never starve: with every song used, the whole catalogue is fair game again.
+    check("a fully used catalogue still offers songs",
+          cl.unused_first(["01-a"], {"01-a"}, log=lambda *_: None) == ["01-a"])
+
+    sys.path.insert(0, str(ROOT / "scripts"))
+    import produce_loop as pl  # noqa: E402
+
+    on_disk = pl.lyric_titles()
+    check("the producer sees the songs that exist on disk", len(on_disk) > 30,
+          f"{len(on_disk)} titles")
+    # The queue log is a partial record; the picker must not be limited by it.
+    seen = pl.taken_titles({"log": []})
+    check("a song on disk is never picked again even with an empty log",
+          on_disk <= seen, f"{len(on_disk - seen)} would be re-picked")
+    # ...while a lone draft failure must still be retried (a pollinations 400 is
+    # usually transient), so the disk titles are added at the picker, not baked
+    # into the failure counting.
+    check("one failed draft is still retried",
+          pl.attempted_titles({"log": [{"title": "x", "result": "no-draft"}]}) == set())
+
+
 def test_song_prune() -> None:
     section("one song, one take (old versions pruned, newest kept)")
     # K, 2026-11-20: "เพลงเก่าลบออกให้หมด ใช้เพลงใหม่ล่าสุด". The auto-producer
@@ -8482,6 +8568,8 @@ def main() -> int:
     test_music_video()
     test_film_video()
     test_mv_is_the_release()
+    test_drop_pending_clips()
+    test_the_picker_never_repeats_old_work()
     test_song_prune()
     test_mv_page()
     test_follow_end_card()

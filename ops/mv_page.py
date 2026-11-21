@@ -148,8 +148,13 @@ def render(slug: str, meta: dict, secs: float, poster: str, preview: str,
     tagline = TAGLINE.format(num=meta.get("number", "—"),
                              mood_th=meta.get("mood_th", "เพลงไทยต้นฉบับ"),
                              mmss=mmss(secs), film=film)
-    asset = asset or f"film-{slug}.mp4"
+    if asset is None:
+        asset = f"film-{slug}.mp4"
     full = f"https://github.com/{DOWNLOADS}/releases/download/{RELEASE}/{asset}"
+    # An empty asset means the file is gone from the release; the page then
+    # offers only the 720p preview it serves itself, instead of a dead link.
+    dl = (f'  <p class="note">ไฟล์เต็ม 1080p: <a href="{full}">{asset}</a></p>\n'
+          if asset else "")
     return f'''<!doctype html>
 <html lang="th">
 <head>
@@ -191,8 +196,7 @@ footer{{border-top:1px solid #1e1e2e;margin-top:34px;padding:26px 0;color:var(--
   <h1>{title}</h1>
   <div class="sub">{tagline}</div>
   <video controls playsinline preload="metadata" poster="{poster}" src="{preview}"></video>
-  <p class="note">ไฟล์เต็ม 1080p: <a href="{full}">film-{slug}.mp4</a></p>
-  <p class="note">หน้านี้อยู่บน GitHub Pages — ลิงก์ถาวร ไม่หายเมื่อ pod รีไซเคิล</p>
+{dl}  <p class="note">หน้านี้อยู่บน GitHub Pages — ลิงก์ถาวร ไม่หายเมื่อ pod รีไซเคิล</p>
   <footer>
     <a href="./">← กลับหน้าแรก เพลงส้นทีนไรเนี่ย</a> ·
     <a href="https://www.youtube.com/@aerismusicth" target="_blank" rel="noopener">YouTube</a>
@@ -383,6 +387,12 @@ def publish(slug: str, dry_run: bool = False, force: bool = False) -> str:
     src, asset = film_asset(slug)
     meta = song_meta(slug)
     secs = probe(src)["seconds"]
+    # The local file may exist while its release copy was deleted (K asked for
+    # that on 2026-11-20). A download link to a missing asset is a dead link, so
+    # the page keeps only the preview it serves itself.
+    if asset not in {a["name"] for a in _release_assets()}:
+        print(f"note: {asset} is not on {RELEASE} — page will omit the download link")
+        asset = ""
 
     poster, preview = f"mv-{slug}-poster.jpg", f"mv-{slug}-720p.mp4"
     subprocess.run(["ffmpeg", "-v", "error", "-y", "-ss", str(secs / 2), "-i", str(src),

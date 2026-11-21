@@ -120,6 +120,28 @@ def save_queue(q: dict) -> None:
 MAX_DRAFT_ATTEMPTS = 3
 
 
+def lyric_titles() -> set[str]:
+    """Titles of every song that actually exists, read from the lyric files.
+
+    The log alone is not the catalogue. Measured 2026-11-20: the queue log named
+    29 titles while `lyrics/` held 47, so 23 songs that had already been written
+    were invisible to the picker and their themes were chosen again — `วันธรรมดา
+    ที่พิเศษ` shipped 5 times and `ลุกขึ้นแล้วไป` 4 times. Reading the files makes
+    the picker's view of "already done" match the songs on disk.
+    """
+    titles: set[str] = set()
+    for f in (ROOT / "lyrics").glob("*.txt"):
+        try:
+            head = f.read_text(encoding="utf-8").splitlines()[:10]
+        except OSError:
+            continue
+        for line in head:
+            if line.startswith("# TITLE:"):
+                titles.add(line.split(":", 1)[1].strip())
+                break
+    return titles
+
+
 def attempted_titles(q: dict) -> set[str]:
     """Titles the picker must skip: the ones already made, and the ones that have
     failed to draft too many times.
@@ -133,6 +155,10 @@ def attempted_titles(q: dict) -> set[str]:
     then succeeding), so a theme is retried up to `MAX_DRAFT_ATTEMPTS` times
     before it is set aside: transient failures recover, a persistent one cannot
     wedge the loop.
+
+    The log is a partial record, so the caller that picks a theme uses
+    `taken_titles`, which adds the songs that already exist on disk. This function
+    stays about the log alone so a single transient failure is still retried.
     """
     made: set[str] = set()
     fails: dict[str, int] = {}
@@ -145,6 +171,18 @@ def attempted_titles(q: dict) -> set[str]:
         else:
             fails[title] = fails.get(title, 0) + 1
     return made | {t for t, n in fails.items() if n >= MAX_DRAFT_ATTEMPTS}
+
+
+def taken_titles(q: dict) -> set[str]:
+    """Every title the picker must not choose: the log's record plus the songs on
+    disk.
+
+    Measured 2026-11-20: the log named 29 titles while `lyrics/` held 47, so 23
+    finished songs were invisible and their themes were chosen again —
+    `วันธรรมดาที่พิเศษ` shipped 5 times, `ลุกขึ้นแล้วไป` 4 times. K: "ก็ไปวนเอาของ
+    เก่ามาทำ". A song that exists is done, whether or not this queue made it.
+    """
+    return attempted_titles(q) | lyric_titles()
 
 
 def pick_theme(used: set[str], counts: dict[str, int] | None = None) -> tuple[str, str, str, str, str, str] | None:
@@ -302,7 +340,7 @@ def main() -> int:
     args = ap.parse_args()
 
     q = load_queue()
-    used = attempted_titles(q)
+    used = taken_titles(q)
     if args.plan:
         # Advance the picker the way main() does, so N planned rows are N
         # *distinct* songs. The old form only excluded the base title of the
@@ -323,7 +361,7 @@ def main() -> int:
     made = []
     no_audio = []
     for _ in range(max(1, args.count)):
-        used = attempted_titles(q)
+        used = taken_titles(q)
         theme = pick_theme(used)
         if not theme:
             print("theme pool exhausted — extend THEMES in produce_loop.py")
