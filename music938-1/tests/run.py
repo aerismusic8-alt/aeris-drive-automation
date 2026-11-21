@@ -6748,6 +6748,20 @@ def test_genre_gate_blocks_parked_lanes() -> None:
           bool(lines) and all(" " not in l and ":" not in l for l in lines),
           f"{len(lines)} lines; first={lines[0] if lines else ''!r}")
     check("--list-songs returns at least one publishable song", len(lines) > 0)
+    # Every name the picker offers must be fetchable, or `shuf` eventually picks
+    # the one that is not and the job dies at the download. A local mp3 that the
+    # release does not carry did exactly that on 2026-11-20 (`song-40-...` was
+    # listed from this pod's cache and is absent from media-938).
+    import clip_lane as _cl
+    _assets = _cl._release_assets(lambda *_: None)
+    if _assets:
+        _names = set(_assets)
+        _undownloadable = [l for l in lines if f"{l}.mp3" not in _names]
+        check("every offered song is actually on the release",
+              not _undownloadable, f"{_undownloadable[:3]}")
+    check("a local-only mp3 is not offered to a runner that cannot have it",
+          "local-only mp3(s) not offered" in (ROOT.parent / "ops" / "clip_lane.py")
+          .read_text(encoding="utf-8"))
 
     # A hard sharpness cut starves the lane: the bank's median 9:16 crop is
     # 810 px against MIN_CROP_WIDTH 1000, so "bangkok night" matched 54 rows and
@@ -6758,6 +6772,15 @@ def test_genre_gate_blocks_parked_lanes() -> None:
           '"soft": narrow' in lane_src and 'sharp = [c for c in picked' in lane_src)
     check("a near-duplicate is still rejected outright",
           "<= NEAR_DUP_BITS" in lane_src and "continue" in lane_src)
+    # The 4K-in / 720p-out rule only reaches the screen if a 4K row can enter the
+    # candidate pool. Shuffling before the `want * POOL_FACTOR` cut meant a
+    # random draw almost never reached one of the 600 4K rows in a 6,876-row
+    # bank, so every still was a 1920-wide crop and the render upscaled.
+    check("the widest rows enter the pool before the shuffle",
+          'rows.sort(key=lambda r: -int(r.get("w") or 0))' in lane_src
+          and "pool = rows[:cap]" in lane_src)
+    check("the pool cap is still bounded",
+          "cap = max(want * POOL_FACTOR, want)" in lane_src)
     # Ranking has to happen over a wider pool than the clip needs. The old picker
     # stopped at exactly `want` and then filtered, so the "sharp pool" was a
     # random draw ("sharp pool had only 8 of 9") and a crisp frame could lose to

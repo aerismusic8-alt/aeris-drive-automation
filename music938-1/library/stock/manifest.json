@@ -113069,6 +113069,54 @@
 "at": "2026-11-21T02:11:40+00:00",
 "uses": 0,
 "shard": "bank-0008.tar"
+},
+{
+"id": "st-006877",
+"file": "img/st-006877.webp",
+"title": "\"Night\" at Chulalongkorn University Museum of Natural History (Dec 2022) img 05.jpg",
+"query": "bangkok night street",
+"licence": "CC BY 4.0",
+"origin": "Wikimedia Commons",
+"credit": "Chainwit.",
+"source": "https://commons.wikimedia.org/wiki/File:%22Night%22_at_Chulalongkorn_University_Museum_of_Natural_History_(Dec_2022)_img_05.jpg",
+"w": 3840,
+"h": 2880,
+"bytes": 904358,
+"sha": "72e03c16b84bf9f07bc9",
+"at": "2026-11-21T04:32:29+00:00",
+"uses": 0
+},
+{
+"id": "st-006878",
+"file": "img/st-006878.webp",
+"title": "\"Night\" at Chulalongkorn University Museum of Natural History (Dec 2022) img 09.jpg",
+"query": "bangkok night street",
+"licence": "CC BY 4.0",
+"origin": "Wikimedia Commons",
+"credit": "Chainwit.",
+"source": "https://commons.wikimedia.org/wiki/File:%22Night%22_at_Chulalongkorn_University_Museum_of_Natural_History_(Dec_2022)_img_09.jpg",
+"w": 3840,
+"h": 2880,
+"bytes": 1146130,
+"sha": "0ab55b0cf8c4537e9944",
+"at": "2026-11-21T04:32:30+00:00",
+"uses": 0
+},
+{
+"id": "st-006879",
+"file": "img/st-006879.webp",
+"title": "\"Night\" at Chulalongkorn University Museum of Natural History (Dec 2022) img 10.jpg",
+"query": "bangkok night street",
+"licence": "CC BY 4.0",
+"origin": "Wikimedia Commons",
+"credit": "Chainwit.",
+"source": "https://commons.wikimedia.org/wiki/File:%22Night%22_at_Chulalongkorn_University_Museum_of_Natural_History_(Dec_2022)_img_10.jpg",
+"w": 3840,
+"h": 2880,
+"bytes": 1264228,
+"sha": "7e4f4e4c6f7f5793e93f",
+"at": "2026-11-21T04:32:31+00:00",
+"uses": 0
 }
 ],
 "shards": [
@@ -116430,6 +116478,7 @@
 "lake mist": 0,
 "mountain fog": 0,
 "forest path": 0,
-"jungle leaf": 0
+"jungle leaf": 0,
+"bangkok night street": 0
 }
 }

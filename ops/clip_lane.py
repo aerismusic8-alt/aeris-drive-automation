@@ -326,10 +326,28 @@ def bank_stills(query: str, want: int, seed: int, log=print) -> list[dict]:
         log(f"bank: nothing matches {query!r}")
         return []
 
-    random.Random(seed).shuffle(rows)
+    # Take the widest candidates into the pool, then shuffle for variety.
+    # Shuffling first was a defect: only 600 of 6,876 rows are 4K, so a random
+    # draw almost never reached one and the "4K in / 720p out" rule never got a
+    # 4K frame to work with. `w` is on the manifest row, so this costs no I/O.
+    #
+    # A row is only a candidate if it can actually be produced: a freshly
+    # harvested row has no `shard` yet, and `_materialise` then returns False
+    # without a word. Sorting by width put those rows first and the whole query
+    # yielded zero stills ("band stage", 2026-11-20) while eight usable frames
+    # sat on disk. Keep cached rows and rows with a shard.
     urls = _shard_urls()
+    usable = [r for r in rows
+              if (BANK_IMG / Path(r["file"]).name).exists()
+              or (r.get("shard") and r["shard"] in urls)]
+    if usable:
+        rows = usable
+    cap = max(want * POOL_FACTOR, want)
+    rows.sort(key=lambda r: -int(r.get("w") or 0))
+    pool = rows[:cap]
+    random.Random(seed).shuffle(pool)
     picked, seen = [], []
-    for r in rows:
+    for r in pool:
         p = BANK_IMG / Path(r["file"]).name
         if not p.exists() and not _materialise(r, urls, log=log):
             continue
@@ -662,10 +680,21 @@ def available_songs(log=print) -> list[str]:
         local = sorted(p.stem for p in MUSIC.glob("*.mp3")) if MUSIC.exists() else []
         return _publishable_only(local, log=note)
 
-    stems = sorted({a[:-4] for a in assets if a.endswith(".mp3")})
+    stems = {a[:-4] for a in assets if a.endswith(".mp3")}
     if MUSIC.exists():
-        stems = sorted(set(stems) | {p.stem for p in MUSIC.glob("*.mp3")})
-    songs = _publishable_only(stems, log=note)
+        local = {p.stem for p in MUSIC.glob("*.mp3")}
+        if not stems:
+            stems = local          # the release lists no audio: the cache is all we have
+        elif local - stems:
+            # A local mp3 is offered only if it is also on the release. This list
+            # is consumed by `--list-songs | shuf -n 1` on a fresh runner, and a
+            # stem that exists only in this pod's cache gets picked there and then
+            # fails the download ("is neither local nor in media-938") — a wasted
+            # job for a song the runner cannot have.
+            extra = sorted(local - stems)
+            note(f"songs: {len(extra)} local-only mp3(s) not offered — absent "
+                 f"from {RELEASE_TAG}: {', '.join(extra[:3])}")
+    songs = _publishable_only(sorted(stems), log=note)
     return unused_first(songs, _used_ids({_song_id(s) for s in songs}, assets),
                         key=_song_id, log=note)
 
