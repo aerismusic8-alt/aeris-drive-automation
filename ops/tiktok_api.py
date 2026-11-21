@@ -170,6 +170,12 @@ def post_video(video: Path, caption: str, *, allow_private: bool = False) -> str
     """
     if not available():
         return None
+    # K's hold: `_req` also serves token refresh and reads, so the gate belongs
+    # on the publish entry point rather than the transport.
+    sys.path.insert(0, str(Path(__file__).resolve().parent))
+    import hold_gate  # noqa: PLC0415
+
+    hold_gate.assert_open("tiktok_api.post_video")
     # Rotating burns the stored refresh token, so only the agent — the one place
     # that can write the new value back to the vault — may do it. CI has no
     # vault, `_put` returns False, so this stays a plain read there and the

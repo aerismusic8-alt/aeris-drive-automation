@@ -192,8 +192,21 @@ def token_alive(refresh: bool = False) -> bool:
     return _ALIVE
 
 
+def _hold() -> object:
+    """The publish hold, imported by path: this module is loaded both as a
+    script in ops/ and as a library from music938-1/scripts, so `import
+    hold_gate` alone is not reliable."""
+    sys.path.insert(0, str(Path(__file__).resolve().parent))
+    import hold_gate  # noqa: PLC0415
+
+    return hold_gate
+
+
 def _post(url: str, data: dict | None = None, *, raw: bytes | None = None,
           headers: dict | None = None) -> dict:
+    # Every write in this module goes through here or `_post_multipart`, so K's
+    # hold is enforced at one place instead of at six call sites that can drift.
+    _hold().assert_open("fb_graph")
     hdr = {"Accept": "application/json"}
     hdr.update(headers or {})
     body = raw
@@ -218,6 +231,7 @@ def _post_multipart(url: str, fields: dict, file_field: str, filename: str,
     boundary is derived from the payload length so it cannot collide with the
     bytes it is delimiting.
     """
+    _hold().assert_open("fb_graph")
     boundary = f"----axfb{len(blob):x}{int(time.time() * 1000) & 0xffffff:x}"
     out = bytearray()
     for k, v in fields.items():

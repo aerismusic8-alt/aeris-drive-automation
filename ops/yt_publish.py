@@ -102,6 +102,11 @@ def main():
     if not (a.now or a.schedule or explicit_privacy):
         raise SystemExit("refusing to upload: pass --now, --schedule, or --privacy explicitly")
 
+    # K's hold, first: a disabled workflow stops a cron, not a manual dispatch or
+    # a script that calls this directly. This stops all of them.
+    import hold_gate
+    hold_gate.assert_open("yt_publish")
+
     # The genre gate. Declared songs are checked by name; a clip that declares
     # nothing falls back to the filename, and one that resolves to no song is
     # refused rather than assumed safe. Two เพื่อชีวิต clips shipped this way on

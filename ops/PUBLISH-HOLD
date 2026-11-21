@@ -1,0 +1,53 @@
+# PUBLISH HOLD — ACTIVE
+
+K (2026-11-20, Thai UTC+7): "หยุดระบบโพสต์ไว้ทั้งหมดก่อน เรากำลังวางระบบผลิตคลิปอยู่"
+— stop all publishing while the clip production system is being built.
+
+**Nothing may be uploaded to YouTube, Facebook or TikTok while this file exists.**
+This is not a reminder: `ops/hold_gate.py` raises `PublishHeld` inside every
+uploader, so the block does not depend on a workflow being disabled.
+
+## Why a marker and not a disabled workflow
+
+A disabled workflow only stops its *schedule*. On 2026-11-21 a manual dispatch, a
+re-run of an old job, a local `python3 ops/bank_publish.py` and an agent session
+would all have kept posting. `ops/HOLD.md` was documentation only — nothing read
+it. This file is read by code, so "the hold is on" is a fact the uploader checks,
+not a note a human is trusted to remember.
+
+## What is stopped
+
+Gated in code (raises `PublishHeld`):
+
+| surface | where |
+| --- | --- |
+| YouTube upload | `ops/yt_publish.py` `main()`, before the genre gate |
+| Facebook (API) | `ops/fb_graph.py` `_post` / `_post_multipart` — every write |
+| Facebook (browser) | `music938-1/scripts/crosspost.py` `post_facebook` |
+| TikTok (API) | `ops/tiktok_api.py` `post_video` |
+| TikTok (browser) | `music938-1/scripts/crosspost.py` `post_tiktok` |
+
+Also disabled at the GitHub level (belt and braces, schedule off):
+
+`ax-bank-publish`, `ax-music-release`, `ax-music-crosspost`, `ax-music-trivia`,
+`ax-music-reactive`, `ax-music-compilation`, `ax-music-produce`,
+`ax-music-affiliate-render`, `ax-music-concert-render`, `ax-music-karaoke-render`,
+`ax-music-surreal-render`, `ax-clip-lane`, `ax-session-heal`.
+
+## What still runs
+
+Read-only watchers stay on, because a hold is not a blackout and K still needs to
+see the account: `ax-rail-watchdog`, `ax-memory-guard`, `ax-risk-audit`,
+`ax-roblox-live-state`, `ax-image-bank`, `ax-genart`, `ax-pc1-*` (PC1 tooling),
+`ax-arena-*` / `ax-breachline-*` (Roblox). Rendering to local disk is also
+allowed — K is rebuilding the production system, which needs renders.
+
+## How to lift it
+
+1. Delete this file: `git rm ops/PUBLISH-HOLD`.
+2. Re-enable the rails K wants back:
+   `PUT /actions/workflows/<id>/enable`.
+3. Run `python3 ops/hold_gate.py` — it must print `open`.
+
+Lifting the hold is K's call, not the agent's. Do not delete this file to make a
+test or a run pass.

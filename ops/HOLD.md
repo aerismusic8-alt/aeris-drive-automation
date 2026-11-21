@@ -1,6 +1,20 @@
-# ⛔ WORK SUSPENDED — 2026-10-26, re-issued 2026-11-13
+# ⛔ WORK SUSPENDED — 2026-10-26, re-issued 2026-11-13, re-issued 2026-11-20
 
-> **STATUS 2026-11-13 (late): HOLD FULLY LIFTED — all 11 rails are back on.**
+> **STATUS 2026-11-20 (Thai UTC+7): PUBLISHING IS ON HOLD AGAIN.**
+> K: "หยุดระบบโพสต์ไว้ทั้งหมดก่อน เรากำลังวางระบบผลิตคลิปอยู่" — stop all posting
+> while the clip production system is being rebuilt.
+>
+> **The live switch is `ops/PUBLISH-HOLD`, enforced by `ops/hold_gate.py`, not this
+> file.** This document is history and context; the marker is what the uploaders
+> actually check. Nothing uploads to YouTube / Facebook / TikTok while the marker
+> exists, whatever this file says.
+>
+> **Rendering is allowed.** K is rebuilding production, which needs renders. The
+> hold covers the upload surfaces only.
+>
+> Read `ops/PUBLISH-HOLD` for what is stopped, what still runs, and how K lifts it.
+
+## Status 2026-11-13 (late): HOLD FULLY LIFTED — all 11 rails were back on.
 > K: "ให้ทำการยกเลิกเงื่อนไขเลย" (cancel the conditions). The five *render* rails
 > that were still `disabled_manually` (affiliate, concert, karaoke, produce,
 > surreal) are now `active`, so the whole publishing/rendering set runs again:

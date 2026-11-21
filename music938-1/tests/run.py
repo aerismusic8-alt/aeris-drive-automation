@@ -6140,6 +6140,74 @@ def test_reactive_publish() -> None:
 
 
 
+def test_publish_hold_is_enforced() -> None:
+    """K's hold must be a fact the code checks, not a note a human remembers.
+
+    K (2026-11-20): "หยุดระบบโพสต์ไว้ทั้งหมดก่อน". Disabling a workflow only stops
+    its schedule — a manual dispatch, a re-run, a local script and an agent
+    session all still post. `ops/PUBLISH-HOLD` is read by `ops/hold_gate.py`, and
+    every uploader calls it before any network call.
+
+    This test does two things: it asserts each route carries the gate, and it
+    proves the gate actually raises while the marker exists. It deliberately does
+    NOT assert the hold is on — lifting it is K's call, and a test that fails
+    when K resumes would force someone to edit the test to ship.
+    """
+    ops = ROOT.parent / "ops"
+    gate = ops / "hold_gate.py"
+    check("the hold gate exists", gate.exists())
+
+    # Assert the *call*, not the word: the import line alone contains "hold_gate",
+    # so a grep for the module name passes with the check deleted. That is the
+    # same trap the compass test fell into on 2026-11-20.
+    routes = {
+        "ops/yt_publish.py": "hold_gate.assert_open",
+        "ops/fb_graph.py": "_hold().assert_open",
+        "ops/tiktok_api.py": "hold_gate.assert_open",
+        "music938-1/scripts/crosspost.py": "hold_gate.assert_open",
+    }
+    for rel, marker in routes.items():
+        body = (ROOT.parent / rel).read_text(encoding="utf-8")
+        check(f"{rel} enforces the publish hold", marker in body)
+
+    # The browser composers are a second TikTok/Facebook route that never passes
+    # through the API modules, so it needs its own gate.
+    cross = (ROOT / "scripts" / "crosspost.py").read_text(encoding="utf-8")
+    check("both browser composers check the hold",
+          cross.count("hold_gate.assert_open") == 2,
+          f"found {cross.count('hold_gate.assert_open')}")
+
+    # Prove the mechanism, not just its presence: with a marker present the gate
+    # raises, and with it gone it opens. Drive it through a temp copy so the real
+    # marker is never touched.
+    import importlib.util
+    spec = importlib.util.spec_from_file_location("hold_gate_probe", gate)
+    hg = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(hg)
+    real = hg.MARKER
+    import tempfile
+    td = Path(tempfile.mkdtemp())
+    try:
+        hg.MARKER = td / "PUBLISH-HOLD"
+        check("the gate is open when no marker exists", not hg.active())
+        hg.MARKER.write_text("# test hold\n", encoding="utf-8")
+        check("the gate is active when a marker exists", hg.active())
+        raised = False
+        try:
+            hg.assert_open("test")
+        except hg.PublishHeld:
+            raised = True
+        check("assert_open raises while the hold is on", raised)
+        hg.MARKER.unlink()
+        try:
+            hg.assert_open("test")
+            check("assert_open passes once the marker is gone", True)
+        except hg.PublishHeld:
+            check("assert_open passes once the marker is gone", False)
+    finally:
+        hg.MARKER = real
+
+
 def test_clip_standard_is_a_floor() -> None:
     """The standard is one floor for every format (K, 2026-11-17).
 
@@ -8821,6 +8889,7 @@ def main() -> int:
     test_trivia_reel()
     test_trivia_publish()
     test_reactive_publish()
+    test_publish_hold_is_enforced()
     test_clip_standard_is_a_floor()
     test_gemini_score_is_not_authoritative()
     test_metadata_ab_holds_format_fixed()

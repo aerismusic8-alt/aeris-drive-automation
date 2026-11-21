@@ -995,6 +995,10 @@ def _fill_caption(page, box, text: str) -> bool:
 
 
 def post_tiktok(page, video: Path, text: str) -> str | None:
+    # K's hold. The browser composer reaches TikTok without passing through
+    # `tiktok_api`, so the API-level gate does not cover this route.
+    import hold_gate  # noqa: E402  (ops/ is on sys.path)
+    hold_gate.assert_open("crosspost.post_tiktok")
     # K (2026-11-17): nothing below the channel floor may be uploaded anywhere.
     import clip_standard  # noqa: E402  (ops/ is on sys.path)
     clip_standard.assert_ok(str(video))
@@ -1038,6 +1042,8 @@ def post_facebook(page, video: Path, text: str) -> str | None:
         page and must be dismissed first, or the upload control is unclickable.
       * Buttons repeat across the header/footer, so click the *last* match.
     """
+    import hold_gate  # noqa: E402  (ops/ is on sys.path)
+    hold_gate.assert_open("crosspost.post_facebook")
     # K (2026-11-17): nothing below the channel floor may be uploaded anywhere.
     import clip_standard  # noqa: E402  (ops/ is on sys.path)
     clip_standard.assert_ok(str(video))
