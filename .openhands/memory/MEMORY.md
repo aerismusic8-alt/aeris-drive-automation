@@ -26,12 +26,13 @@ Row shape in archive; it **fails closed** (`assert_lane`, `may_render`).
 - **Known gap:** `mv`/`film` have `rail: None` — no workflow renders an MV. Do
   not claim an MV ships.
 
-## Genre = FUN ONLY (K 2026-11-18 "ทำแนวสนุกอย่างเดียว")
-**Active:** pop/synthpop/edm/rock/hiphop/rap/alt. **PARKED = ห้ามอัพ:** lukthung,
-เพื่อชีวิต, morlam, indie, lofi, rnb, jazz, acoustic, country, symphonic.
-**The 20 `lyrics-original/` songs are ALL เพื่อชีวิต — never publish them.**
+## Genre = FUN ONLY — **five lanes, final** (K 2026-11-20)
+**Active: pop / edm (dance) / hiphop / rock / alternative.** Everything else is
+PARKED = ห้ามอัพ (rap, synthpop, citypop, เพื่อชีวิต … — full list = `status`
+in `channel/genres.json`).
+**All 20 `lyrics-original/` songs are เพื่อชีวิต — never publish them.**
 `genres.publishable()` fails closed at **every** publish path; `--list-songs`
-stdout must stay pure (a log line piped to `shuf` killed the lane).
+stdout must stay pure (a log line piped to `shuf` killed the lane once).
 
 ## Roles and method (K 2026-10-31)
 **K = final authority.** **AR = me**: I administer all of K's work in K's place —

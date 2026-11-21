@@ -1218,6 +1218,17 @@ def test_compass_is_the_one_direction() -> None:
         check(f"{lane_file} gates a single slug through the compass",
               "compass.require_publishable(args.slug)" in src)
 
+    # A publish route is the worse place for the hole: a lane renders a bad clip
+    # to disk, but these put it in front of an audience. `song_to_page --post`
+    # writes to the Facebook Page and `bank_publish` to every channel, so both
+    # must ask the compass before they touch a network.
+    page_src = (ROOT.parent / "ops" / "song_to_page.py").read_text(encoding="utf-8")
+    check("song_to_page gates its slug through the compass (--post is a publish)",
+          "compass.require_publishable(args.slug)" in page_src)
+    bank_src = (ROOT.parent / "ops" / "bank_publish.py").read_text(encoding="utf-8")
+    check("bank_publish asks the compass for its clip's song",
+          "compass.is_publishable(" in bank_src)
+
     # --- no lane may re-derive the genre rule locally ------------------------
     # The duplicated `genres.publishable` loops are what let the answers drift.
     for lane, row in cp.LANES.items():

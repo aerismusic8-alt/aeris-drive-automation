@@ -33,8 +33,9 @@
 "bytes": 240414,
 "sha": "3daa19a7d9863164d266",
 "at": "2026-11-19T13:16:06+00:00",
-"uses": 0,
-"shard": "bank-0001.tar"
+"uses": 1,
+"shard": "bank-0001.tar",
+"last_used": 3
 },
 {
 "id": "st-000005",
@@ -50,8 +51,9 @@
 "bytes": 258942,
 "sha": "042c8280a0da2bfb2947",
 "at": "2026-11-19T13:16:07+00:00",
-"uses": 0,
-"shard": "bank-0001.tar"
+"uses": 1,
+"shard": "bank-0001.tar",
+"last_used": 3
 },
 {
 "id": "st-000007",
@@ -187,9 +189,9 @@
 "bytes": 82422,
 "sha": "e68e29ec4b18c6145cb9",
 "at": "2026-11-19T13:16:38+00:00",
-"uses": 1,
+"uses": 2,
 "shard": "bank-0001.tar",
-"last_used": 2
+"last_used": 3
 },
 {
 "id": "st-000027",
@@ -205,9 +207,9 @@
 "bytes": 490996,
 "sha": "f885770d601c3487b647",
 "at": "2026-11-19T13:16:38+00:00",
-"uses": 1,
+"uses": 2,
 "shard": "bank-0001.tar",
-"last_used": 2
+"last_used": 3
 },
 {
 "id": "st-000031",
@@ -428,9 +430,9 @@
 "bytes": 345196,
 "sha": "ad37459e8fc765479920",
 "at": "2026-11-19T13:18:41+00:00",
-"uses": 1,
+"uses": 2,
 "shard": "bank-0001.tar",
-"last_used": 2
+"last_used": 3
 },
 {
 "id": "st-000026",
@@ -446,9 +448,9 @@
 "bytes": 366482,
 "sha": "fa93f8a87aa860a107da",
 "at": "2026-11-19T13:18:42+00:00",
-"uses": 1,
+"uses": 2,
 "shard": "bank-0001.tar",
-"last_used": 2
+"last_used": 3
 },
 {
 "id": "st-000027",
@@ -464,9 +466,9 @@
 "bytes": 396420,
 "sha": "9960ce614038223c67e3",
 "at": "2026-11-19T13:18:42+00:00",
-"uses": 1,
+"uses": 2,
 "shard": "bank-0001.tar",
-"last_used": 2
+"last_used": 3
 },
 {
 "id": "st-000028",
@@ -499,8 +501,9 @@
 "bytes": 89882,
 "sha": "7875fb36fde1fb3babc2",
 "at": "2026-11-19T13:18:42+00:00",
-"uses": 0,
-"shard": "bank-0001.tar"
+"uses": 1,
+"shard": "bank-0001.tar",
+"last_used": 3
 },
 {
 "id": "st-000030",
@@ -72386,9 +72389,9 @@
 "bytes": 451342,
 "sha": "8cfe2a26aa9b999c36e8",
 "at": "2026-11-19T23:08:09+00:00",
-"uses": 1,
+"uses": 2,
 "shard": "bank-0003.tar",
-"last_used": 2
+"last_used": 3
 },
 {
 "id": "st-004483",
@@ -72439,8 +72442,9 @@
 "bytes": 196522,
 "sha": "2fbc1be640824dd1fee8",
 "at": "2026-11-19T23:08:09+00:00",
-"uses": 0,
-"shard": "bank-0003.tar"
+"uses": 1,
+"shard": "bank-0003.tar",
+"last_used": 3
 },
 {
 "id": "st-004486",
@@ -72473,9 +72477,9 @@
 "bytes": 741446,
 "sha": "fcbaa10295b1543e6931",
 "at": "2026-11-19T23:08:10+00:00",
-"uses": 1,
+"uses": 2,
 "shard": "bank-0003.tar",
-"last_used": 2
+"last_used": 3
 },
 {
 "id": "st-004488",

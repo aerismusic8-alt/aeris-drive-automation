@@ -276,6 +276,15 @@ def main() -> int:
 
     if not args.src.exists():
         raise SystemExit(f"no such master: {args.src}")
+
+    # This is a publish route, not just a render: `--post` writes to the Page.
+    # So the slug goes through the compass first, exactly as the four render
+    # lanes do — a slug on argv is not exempt from K's genre rule, and a
+    # synthesised bed is not a song.
+    sys.path.insert(0, str(Path(__file__).resolve().parent))
+    import compass  # noqa: PLC0415
+    compass.require_publishable(args.slug)
+
     sys.path.insert(0, str(MUSIC / "scripts"))
     import branding
 

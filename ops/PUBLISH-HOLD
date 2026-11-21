@@ -36,11 +36,21 @@ Also disabled at the GitHub level (belt and braces, schedule off):
 
 ## What still runs
 
-Read-only watchers stay on, because a hold is not a blackout and K still needs to
-see the account: `ax-rail-watchdog`, `ax-memory-guard`, `ax-risk-audit`,
-`ax-roblox-live-state`, `ax-image-bank`, `ax-genart`, `ax-pc1-*` (PC1 tooling),
-`ax-arena-*` / `ax-breachline-*` (Roblox). Rendering to local disk is also
-allowed — K is rebuilding the production system, which needs renders.
+**Nothing runs on a schedule right now.** K escalated on 2026-11-20 from "stop the
+posting systems" to "หยุดทุกระบบทุกงาน" (stop every system, every job), and all
+44 workflows are `disabled_manually` as of 2026-11-21T03:07Z. That includes the
+read-only watchers this file used to list as staying on (`ax-rail-watchdog`,
+`ax-memory-guard`, `ax-risk-audit`, `ax-roblox-live-state`, `ax-image-bank`,
+`ax-genart`, `ax-pc1-*`, `ax-arena-*`, `ax-breachline-*`).
+
+So do not read a green run list as health: the last run of each rail is simply
+its last run before the stop, and nothing has been checked since. Until K lifts
+the stop, the guards (`ops/memory_guard.py`, `ops/risk_audit.py --strict`,
+`ops/compass.py --check`) and the test suite are things an agent runs **by hand**
+in a session, not things that run themselves.
+
+Rendering to local disk is still allowed — K is rebuilding the production system,
+which needs renders.
 
 ## How to lift it
 
@@ -51,3 +61,26 @@ allowed — K is rebuilding the production system, which needs renders.
 
 Lifting the hold is K's call, not the agent's. Do not delete this file to make a
 test or a run pass.
+
+## Four videos are public that the current rules refuse (audit 2026-11-21)
+
+The channel audit (`videos.list` on `UCm44BjAn03ruOF-WaA3ZRww`, 92 uploads) found
+four videos that went out **before** the gate that would now stop them. Nothing
+was deleted: unpublishing is a channel-level action and therefore K's, and a
+wrong removal costs watch-hours on a channel that needs them.
+
+| published (UTC) | video | why current code refuses it |
+| --- | --- | --- |
+| 2026-11-21 02:42 | `R_kUrvKYVRI` จัดเต็มทุกบาร์ในฝัน | slug `49-luai-mai-yut-v49`, genre `rap` — parked |
+| 2026-11-21 02:30 | `GuvVvc9vF_A` คืนนี้ไม่ต้องคิดอะไรอีกครั้ง | slug `43-…-v43` is a **synthesised bed**, not a song |
+| 2026-11-19 18:23 | `fK6mxqcKkbA` ลมหนาวกับความคิดถึง | slug `19-…`, genre `lukthung` — parked |
+| 2026-11-19 18:23 | `A1IR-b8ZCcI` เดินคนเดียว | slug `06-…`, genre `indie` — parked |
+
+Provenance, verified rather than assumed: the two 2026-11-21 videos are in
+`music938-1/work/bank-publish-state.json` under their clip names
+(`bank-karaoke-43-…`, `bank-karaoke-49-…`). The 2026-11-19 pair is **not** in that
+ledger — it is the earlier incident `bank_publish.genre_verdict` was written for,
+so the ledger alone would not have found it; the channel itself did. The hold is
+why these are the last four: no upload path can run while this file exists.
+
+
