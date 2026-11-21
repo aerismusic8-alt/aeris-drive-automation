@@ -86,22 +86,17 @@ def duration(path: Path) -> float:
 
 
 def available_songs() -> list[str]:
-    slugs = []
-    for f in sorted(SONGS.glob("song-*.mp3")):
-        slug = f.stem[len("song-"):]
-        if not (COVERS / f"cover-{slug}.jpg").exists():
-            continue
-        # A compilation is a new upload of every song it carries, so a parked
-        # genre must not reach it by the back door. K parked lukthung/morlam
-        # (2026-11-13) and the live 16-track album is titled เพื่อชีวิต.
-        try:
-            import genres
-            ok, _ = genres.publishable(slug)
-        except Exception:
-            ok = False
-        if ok:
-            slugs.append(slug)
-    return slugs
+    """Songs a compilation may carry: publishable genre, and a cover to paint.
+
+    A compilation is a new upload of every song it carries, so a parked genre
+    must not reach it by the back door (K parked lukthung/morlam 2026-11-13).
+    The genre answer comes from `ops/compass.py`, the one place that decides it.
+    """
+    sys.path.insert(0, str(ROOT.parent / "ops"))
+    import compass  # noqa: PLC0415
+
+    return [s for s in compass.songs("compilation")
+            if (COVERS / f"cover-{s}.jpg").exists()]
 
 
 def pick(max_minutes: float, theme: str | None = None) -> list[str]:

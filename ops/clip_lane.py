@@ -520,18 +520,13 @@ def _publishable_only(songs: list[str], log=print) -> list[str]:
 
     The release still carries the original 20 เพื่อชีวิต masters, so without this
     a scheduled render would keep producing clips of a parked genre and hand them
-    to the publish step. Filtering at the picker is the cheapest place to stop it.
+    to the publish step. The rule itself lives in `ops/compass.py`; this is only
+    the bank lane's call into it, so there is one answer for every lane.
     """
-    sys.path.insert(0, str(ROOT / "music938-1" / "scripts"))
-    try:
-        import genres  # noqa: PLC0415
-    except Exception as exc:  # noqa: BLE001
-        log(f"genres: cannot load the plan ({type(exc).__name__}); keeping every song")
-        return songs
-    kept, dropped = [], []
-    for s in songs:
-        ok, _why = genres.publishable(s)
-        (kept if ok else dropped).append(s)
+    import compass  # noqa: PLC0415  (ops/ is on sys.path)
+
+    kept = compass.songs("bank", available=songs)
+    dropped = sorted(set(songs) - set(kept))
     if dropped:
         log(f"songs: skipped {len(dropped)} in a parked/unknown genre: "
             f"{', '.join(dropped[:4])}{'...' if len(dropped) > 4 else ''}")

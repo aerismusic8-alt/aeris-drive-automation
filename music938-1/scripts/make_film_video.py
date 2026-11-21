@@ -561,7 +561,11 @@ def main() -> int:
         return 0
 
     if args.all:
-        slugs = sorted(p.stem[len("song-"):] for p in SONGS.glob("song-*.mp3"))
+        # `ops/compass.py` decides which songs a lane may render; globbing
+        # here rendered parked-genre clips that could never be uploaded.
+        sys.path.insert(0, str(ROOT.parent / "ops"))
+        import compass  # noqa: PLC0415
+        slugs = compass.songs("film")
     elif args.slug:
         slugs = [args.slug]
     else:

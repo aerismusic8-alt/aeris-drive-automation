@@ -297,10 +297,11 @@ def build(slug: str, *, seconds: float | None = None, full: bool = False,
     song = SONGS / f"song-{slug}.mp3"
     if not song.exists():
         raise SystemExit(f"no song: {song}")
-    # The genre gate every publish path uses. An MV is a publish, so a parked
-    # genre (lukthung, เพื่อชีวิต, ...) must never reach this rail either.
-    import genres  # noqa: PLC0415
-    gate_ok, gate_why = genres.publishable(slug)
+    # An MV is a publish, so the genre rule applies. It is asked of the
+    # compass, which is the one place that answers it.
+    sys.path.insert(0, str(ROOT.parent / "ops"))
+    import compass  # noqa: PLC0415
+    gate_ok, gate_why = compass.is_publishable(slug)
     if not gate_ok:
         raise SystemExit(f"genre gate refuses {slug}: {gate_why}")
     meta, _ = load_lyrics(slug)
@@ -430,7 +431,11 @@ def main() -> int:
         return 0
 
     if args.all:
-        slugs = sorted(p.stem[len("song-"):] for p in SONGS.glob("song-*.mp3"))
+        # `ops/compass.py` decides which songs a lane may render; globbing
+        # here rendered parked-genre clips that could never be uploaded.
+        sys.path.insert(0, str(ROOT.parent / "ops"))
+        import compass  # noqa: PLC0415
+        slugs = compass.songs("mv")
     elif args.slug:
         slugs = [args.slug]
     else:

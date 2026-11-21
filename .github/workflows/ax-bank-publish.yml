@@ -1,0 +1,121 @@
+name: AX Bank Publish (คลิปคลังภาพ → ทุกช่อง)
+
+# `ops/bank_publish.py` is documented as "the only way a bank clip reaches an
+# audience", and until 2026-11-20 nothing called it: `ax-clip-lane.yml` rendered
+# a clip, stored it on the `media-938` release and stopped there, so no bank clip
+# had ever been published. A lane whose publishing half is unwired is a render
+# with no destination — the compass (`ops/compass.py`, row `bank`) now names this
+# rail as that destination, and a test pins that it exists.
+#
+# Why this is a separate rail and not a step in the clip lane: the render is
+# CPU-bound and finishes in ~80 s, while the upload talks to three platforms with
+# three different failure modes. Splitting them means a YouTube cap cannot stop a
+# render, and a re-run of this rail never re-renders anything.
+#
+# The gate order lives in `bank_publish` and is not repeated here:
+# genre → `clip_standard` → `thumb_standard` → upload, each re-checked inside the
+# uploader. K's rule (2026-11-17) is every channel, no override.
+#
+# The pilot caps still apply (ops/HOLD.md): a small batch per run, and a platform
+# cap is a *retry*, not a red run — the ledger is only written on a real post.
+
+on:
+  schedule:
+    # Every 4 hours, offset from the clip lane's ':10 */3' so a freshly rendered
+    # clip is picked up within one tick and the two rails never share a minute.
+    - cron: '25 */4 * * *'
+  workflow_dispatch:
+    inputs:
+      clip:
+        description: "one clip file name in library/bank (blank = next pending)"
+        default: ""
+      limit:
+        description: "clips to publish this run"
+        default: "1"
+      channels:
+        description: "comma list: youtube,facebook,tiktok"
+        default: "youtube,facebook,tiktok"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: ax-bank-publish
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Tools
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq ffmpeg
+          python -m pip install --quiet --disable-pip-version-check pillow numpy
+
+      - name: Fetch the bank clips from the durable release
+        # `music938-1/library/bank/` is gitignored, so a fresh runner has none.
+        # The clip lane uploads every render to `media-938`; this pulls the mp4s
+        # back rather than re-rendering, which would cost 80 s per clip and could
+        # pick a different song than the one that was published.
+        env:
+          GH_TOKEN: ${{ secrets.AX_GH_TOKEN || secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          mkdir -p music938-1/library/bank
+          gh release download media-938 --dir music938-1/library/bank \
+            --pattern '*.mp4' --clobber || echo "no mp4 assets in media-938 yet"
+          n=$(ls music938-1/library/bank/*.mp4 2>/dev/null | wc -l)
+          echo "bank clips available: $n"
+          if [ "$n" -eq 0 ]; then
+            echo "nothing to publish — the clip lane has not stored a render yet"
+            exit 0
+          fi
+
+      - name: Publish through the gate
+        env:
+          YT_CLIENT_ID: ${{ secrets.YT_CLIENT_ID }}
+          YT_CLIENT_SECRET: ${{ secrets.YT_CLIENT_SECRET }}
+          YT_CH3_REFRESH_TOKEN: ${{ secrets.YT_CH3_REFRESH_TOKEN }}
+          FB_PAGE_TOKEN: ${{ secrets.FB_PAGE_TOKEN }}
+          FB_APP_ID: ${{ secrets.FB_APP_ID }}
+          FB_APP_SECRET: ${{ secrets.FB_APP_SECRET }}
+          TT_CLIENT_KEY: ${{ secrets.TT_CLIENT_KEY }}
+          TT_CLIENT_SECRET: ${{ secrets.TT_CLIENT_SECRET }}
+          TT_REFRESH_TOKEN: ${{ secrets.TT_REFRESH_TOKEN }}
+        run: |
+          set -o pipefail
+          CLIP="${{ github.event.inputs.clip }}"
+          LIMIT="${{ github.event.inputs.limit || '1' }}"
+          CHANNELS="${{ github.event.inputs.channels || 'youtube,facebook,tiktok' }}"
+          ARGS=(--channels "$CHANNELS" --limit "$LIMIT")
+          if [ -n "$CLIP" ]; then
+            ARGS=("music938-1/library/bank/$CLIP" --channels "$CHANNELS")
+          fi
+          python3 ops/bank_publish.py "${ARGS[@]}" 2>&1 | tee publish.log
+          # A platform cap is a retry, not a failure: the clip stays pending and
+          # the next tick tries again. Only an unexpected error is red.
+          if grep -qE "UPLOAD_LIMIT_EXCEEDED|uploadLimitExceeded" publish.log; then
+            echo "::warning::YouTube account daily cap — the clip stays pending, retried next tick"
+          fi
+
+      - name: Commit the ledger
+        # Without this the next tick re-posts everything: the ledger is the only
+        # memory of what shipped, because the clips themselves are gitignored.
+        if: always()
+        run: |
+          set -euo pipefail
+          git config user.name  "ax-bank-publish"
+          git config user.email "ax-bank-publish@users.noreply.github.com"
+          git add music938-1/work/bank-publish-state.json 2>/dev/null || true
+          if git diff --cached --quiet; then
+            echo "no change to record"
+            exit 0
+          fi
+          git commit -m "data(music): bank publish state $(date -u +%Y-%m-%dT%H:%MZ)"
+          git pull --rebase --autostash origin "${GITHUB_REF_NAME}"
+          git push

@@ -8,86 +8,87 @@ apps (K's Chromium), open APIs, self-hosted tooling. **AR never types a password
 **AUDIO FIRST**; delete the duplicate/worthless, never archive it; K reviews a
 channel's first work; never rename a channel without K's approval.
 
-## Accounts (K 2026-11-14): AR's OWN mail, never K's
-AR mail + self-creatable Nostr/Telegraph (`ar_identity.py`). Flow Music/Gemini run
-on K's `aerismusic8`; K taps a QR once, then `login_vault.py save` **immediately**.
+## 🧭 THE COMPASS — the one direction for NEW work (K 2026-11-20)
+K: "แนวเพลงสร้างคลิป ไม่มี เข็มทิศหายแบบนี้ก็หลงทางสิ". `ops/compass.py` is the
+single answer to *which lane may produce what, at which standard, into which
+folder*. **Read it before touching a clip lane; add a row before adding a rail.**
+`LANES[lane]` = `script`, `kind` (product/tool/retired), `audio`
+(song/bed/narration/silent), `profile`, `out`, `rail`/`publish_rail`, `note`.
+It **fails closed**: `assert_lane` refuses an unregistered lane, `may_render`
+refuses a `retired` one.
+- **`compass.songs(lane)` is the only way a lane lists songs**;
+  `compass.is_publishable(slug)` is the single-slug form. Globbing `song-*.mp3`
+  rendered 18 of 32 masters in a parked genre that could never upload.
+- `ops/compass.py --list | --songs LANE | --check`; `--check` must be clean,
+  pinned by `test_compass_is_the_one_direction` (asserts the *call*, not a word).
+- **The product is a SONG clip, not a narrated one.** `narration` is legal only
+  where K asked by name (`trivia`); `story` is a **tool**. Old posted clips are
+  untouched — the compass constrains new work only.
+- **Known gap:** `mv`/`film` (the declared product) have `rail: None` — no
+  workflow renders an MV. Do not claim an MV ships.
+
+## Genre = FUN ONLY (K 2026-11-18 "ทำแนวสนุกอย่างเดียว")
+**Active:** pop/synthpop/edm/rock/hiphop/rap/alt. **PARKED = ห้ามอัพ:** lukthung,
+เพื่อชีวิต, morlam, indie, lofi, rnb, jazz, acoustic, country, symphonic.
+**The 20 `lyrics-original/` songs are ALL เพื่อชีวิต — never publish them.**
+`genres.publishable()` fails closed and runs at **every** publish path
+(`yt_publish` needs `--song SLUG`/`--not-a-song WHY`; also `bank_publish`,
+`clip_lane`, `compile_album`). `--list-songs` stdout must stay pure — a log line
+piped to `shuf` killed the lane.
 
 ## Roles and method (K 2026-10-31)
-- **K = final authority.** Every standing rule is K's.
-- **AR = me.** I administer **all** of K's work in K's place — decide, execute,
-  report; no per-step approval. Hand K only what needs a credential only K holds.
+- **K = final authority.** **AR = me**: I administer all of K's work in K's place
+  — decide, execute, report; no per-step approval. Hand K only what needs a
+  credential only K holds.
 - **Method: PCSEV.** **Advisor = Gemini alone** (K 2026-11-18); `ops/consult.py`
   → `consult-log.jsonl`. Advisory only.
-- **Time to K = Thai (UTC+7) 24-hour**, never UTC or AM/PM. Rails stay UTC.
+- **Time to K = Thai (UTC+7) 24-hour.** Rails stay UTC.
 
 ## What this project is (K's goal)
 "เราไม่ได้เป็นคนสร้างช่อง เราสร้าง ai openhands" — the deliverable is **the agent**,
-built from free cloud tools. Scope = **4 channels** (aeris938-2 = Facebook, TikTok,
+from free cloud tools. Scope = **4 channels** (aeris938-2 = Facebook, TikTok,
 YouTube `@aerismusicth`, Shopee Affiliate). Two goals in
 `AKATH_CORE/CANONICAL_TASK_REGISTRY.json` never close as ordinary tasks: a Roblox
 game anyone can play, and revenue from it (Roblox **PARKED**).
-**Brand = เพลงส้นทีนไรเนี่ย**; the name lives only in `music938-1/scripts/branding.py`.
+**Brand = เพลงส้นทีนไรเนี่ย** — only in `branding.py`.
 **Revenue gate = ch3**: 1,000 subs AND 4,000 watch-hours/12 mo; the metric is
 **followers** — end every clip with `release.FOLLOW_ASK` + `FOLLOW_PROMISE`.
-**🎵 FUN ONLY** (K 2026-11-18): pop/synthpop/edm/rock/hiphop/rap/alt.
-**PARKED = ห้ามอัพ**: lukthung, เพื่อชีวิต, morlam, indie, lofi, rnb, jazz,
-acoustic, country, symphonic. **The 20 `lyrics-original/` songs are ALL เพื่อชีวิต
-— never publish them.** Gate = `genres.publishable()`, fails closed, at **every**
-publish path (`yt_publish` needs `--song SLUG`/`--not-a-song WHY`; also
-`bank_publish`, `clip_lane`, `compile_album.available_songs()` 46→27).
-`--list-songs` stdout must stay pure — a log line piped to `shuf` killed the lane.
-
-## Environment facts that cost time
-- **Fresh pod: `scripts/bootstrap-pod.sh`** — re-run after every pod.
-- **MV links must be durable (K: "ลิงค์ตาย")** — `ops/mv_page.py --all`.
-- **24/7 on GitHub Actions** (public repo → free minutes); judge health from the
-  **rail run history**, not `heartbeat.json`.
-- **FB = Graph API only (K 2026-11-15); browser OFF** (`axsecrets:fb-page-token`).
-- **Vault = truth; a secret injects only when the command *names* it** (else 401).
-- **Writes:** `GITHUB_TOKEN` is 403; push via KV `axsecrets:gh-workflow-token`
-  (workflow files need its `workflow` scope). API reads work with `$AX_GH_TOKEN`.
-- **Desktop = Live View** (`work-2`:12001); Thai `Text.luau` + `NotoSansThai.ttf`
-  (else tofu); burned ASS has no emoji. `ops/websearch.py` = free search.
 
 ## Sound + clip quality (K)
 **sfizz** not GM; `AX_REQUIRE_REAL_INSTRUMENTS=1` → a fallback **raises**.
 **One FLOOR, every format/channel (K 2026-11-17): "ห้ามอัพขึ้นเด็ดขาด"**
 `ops/clip_standard.py` = floor + per-format profile, gated at **every** upload
-route, no override; `ops/thumb_standard.py` too. `short` (captions → text floor) ≠
-`vertical` (MV → none). Also gates dead silence (≤3 s) + VFR (≤2%).
-## Gemini review is OUT of the video system (K 2026-11-20)
-QC stays and blocks: `clip_standard` + `genre_gate` + `thumb_standard` measure the
-file. Pinned by `test_no_gemini_gate_in_the_video_system`; detail: AGENTS.md.
+route, no override; `ops/thumb_standard.py` too (dead silence ≤3 s, VFR ≤2%).
+QC is mechanical only — **Gemini review is OUT** (2026-11-20), pinned by
+`test_no_gemini_gate_in_the_video_system`. **A gate nothing can pass is broken,
+not strict** — the verdict decides, the score is only a sanity floor.
 
-## Pace + prune (K 2026-11-20) — "ภาพเลื่อนเร็วเกิน", "เพลงเก่าลบออกให้หมด"
-MV shot = a WHOLE number of beats, 2.8–5.5 s, **≤22 cuts/min any tempo**.
-`ops/song_prune.py --release` keeps the newest of a family. See archive.
+## Accounts (K 2026-11-14): AR's OWN mail, never K's
+Flow Music/Gemini run on K's `aerismusic8`; K taps a QR once, then
+`login_vault.py save` **immediately**.
 
-## Retry lanes → ch3 + loop health
-`trivia_publish.py` + `reactive_publish.py` — one chokepoint; a cap = **retry**;
-each `work/*` ledger must be un-ignored (`!…`) or it re-posts every tick.
+## Environment + platform risks
+- **Fresh pod: `scripts/bootstrap-pod.sh`**; MV links must be durable
+  (`ops/mv_page.py --all`). Judge rail health from the **run history**.
+- **FB = Graph API only** (K 2026-11-15); browser posting is off.
+- **Vault = truth; a secret injects only when the command *names* it.**
+- **Writes:** `GITHUB_TOKEN` is 403; push via KV `axsecrets:gh-workflow-token`
+  (workflow files need its `workflow` scope). Reads work with `$AX_GH_TOKEN`.
+- **A `work/*` ledger must be un-ignored (`!…`) or a rail re-posts every tick.**
 - **A green run is not a finished job.** rc 4 + `UPLOAD_LIMIT_EXCEEDED` = the
-  per-channel daily cap; clears over hours, so a cap is a **retry**.
-- **Never decide on missing/stale data** (2026-11-12): a blank/stale newest row is
-  `data`, never a guess; `--assert-fresh` gates the dashboard rail.
-- **`videos.list` ≤50 ids/call; YPP = 1,000 subs AND 4,000 watch-h.**
-- **Bound every rail:** `timeout-minutes` + `cancel-in-progress: true`; see
+  per-channel daily cap — a cap is a **retry**, not a failure.
+- **Never decide on missing/stale data** — a blank/stale row is `data`, never a
+  guess. **`videos.list` ≤50 ids; YPP = 1,000 subs AND 4,000 watch-hours.**
+- **Bound every rail:** `timeout-minutes` + `cancel-in-progress: true`;
   `OPENHANDS_RISK_REGISTER.json` + `ops/risk_audit.py --strict`.
+- **`ops/HOLD.md` decides whether rails may run** (lifted 11-13).
 
-## Art + director
-`genart.py` + `image_bank.py` shard → `media-938`; `image_library.py publish` →
-`scenes-938`; commit the manifest only. `shot_director.py` cuts **on the music**
-(onset-snapped, 1.2-6 s by energy, move never repeats). **`zoompan d` = frames per
-INPUT frame** → `d=1` at OUTPUT fps.
-
-## The picker must offer NEW work (K 2026-11-20)
-"ก็ไปวนเอาของเก่ามาทำ" — 22 songs had 5-7 clips, 10 had none. **No ledger knows
-this**: `crosspost-state` named none; only asset filenames are truthful.
-`clip_lane`: `_song_id` (song-/karaoke- = one song), `_used_ids` (a `.mp4` holding
-the id), `unused_first` (un-clipped first, all when none left); the **release** is
-the catalogue — a local cache must never narrow it. `produce_loop`:
-`taken_titles` = log **+** `lyric_titles()`; `attempted_titles` stays log-only or a
-transient failure is never retried.
+## Art, director, and picking NEW work
+`genart.py` + `image_bank.py` → `media-938`, manifest only. `shot_director.py`
+cuts **on the music**. MV shot = a WHOLE number of beats, 2.8–5.5 s, **≤22
+cuts/min any tempo**; `ops/song_prune.py --release` keeps the newest.
+**Pick an un-clipped song (K: "ก็ไปวนเอาของเก่ามาทำ")** — only asset filenames
+tell the truth; the **release** is the catalogue, a local cache must not narrow it.
 
 ## Recovery
 `$AX_VAULT_BOOTSTRAP` → `ops/ax_vault.py` (`axvault:readme`); a lost `work/*.json`

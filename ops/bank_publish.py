@@ -181,13 +181,16 @@ def genre_verdict(clip: Path) -> tuple[bool, str]:
     lane should never reach an audience no matter how good it looks. On
     2026-11-19 two เพื่อชีวิต clips were published here: the bank held only the
     original 20 songs, the gate below did not exist, and nothing else looked.
+
+    The rule itself lives in `ops/compass.py`; asking it here rather than calling
+    `genres` directly is what keeps one answer for the whole account.
     """
-    import genres  # noqa: PLC0415
+    import compass  # noqa: PLC0415
 
     slug = _song_slug(clip)
     if not slug:
         return False, "no song slug in the file name — cannot check its genre"
-    return genres.publishable(slug)
+    return compass.is_publishable(slug)
 
 
 def main() -> int:
@@ -197,6 +200,8 @@ def main() -> int:
     ap.add_argument("--schedule", help="ISO8601 UTC for YouTube")
     ap.add_argument("--privacy", help="explicit YouTube privacy instead of --now")
     ap.add_argument("--dry-run", action="store_true", help="gate and build, upload nothing")
+    ap.add_argument("--limit", type=int, default=1,
+                    help="clips to publish this run (the pilot caps: small batches)")
     a = ap.parse_args()
 
     clips = [Path(a.clip)] if a.clip else sorted(BANK.glob("*.mp4"))
@@ -206,6 +211,21 @@ def main() -> int:
     state = json.loads(STATE.read_text(encoding="utf-8")) if STATE.exists() else {}
     wanted = [c.strip() for c in a.channels.split(",") if c.strip()]
     rc = 0
+
+    # A small batch must advance, not retry the same clip forever. A clip is
+    # "done" only when every wanted channel has posted it, so a clip that
+    # reached YouTube but not TikTok is still picked up.
+    def finished(c: Path) -> bool:
+        rec = state.get(c.name, {})
+        return all(rec.get(ch, {}).get("ok") for ch in wanted)
+
+    if a.limit and not a.clip:
+        pending = [c for c in clips if not finished(c)]
+        clips = pending[:a.limit]
+        if not clips:
+            print(f"nothing pending: all {len(pending)} bank clips are published")
+            return 0
+        print(f"batch: {len(clips)} of {len(pending)} pending clips")
 
     for clip in clips:
         if not clip.exists():

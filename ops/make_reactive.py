@@ -385,6 +385,13 @@ def main() -> int:
 
     sys.path.insert(0, str(MUSIC / "scripts"))
     import branding
+    # The compass decides which songs may be rendered at all; a slug passed in
+    # from a rail is not exempt from the genre rule (K: every route, no override).
+    import compass  # noqa: PLC0415
+    if args.slug not in compass.songs("reactive"):
+        raise SystemExit(
+            f"COMPASS: '{args.slug}' is not a song the reactive lane may render — "
+            f"its genre is parked or unknowable")
     dur = duration(args.src)
     out_dir = Path("/workspace/ax-tools/incoming/reactive")
     out_dir.mkdir(parents=True, exist_ok=True)

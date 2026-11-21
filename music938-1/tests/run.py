@@ -1082,8 +1082,17 @@ def test_mv_keeps_picture_proportions() -> None:
     check("the MV is a vertical 1080x1920 at 30 fps",
           (mv.W, mv.H, mv.FPS) == (1080, 1920, 30))
     # The gate and the shelf, so a below-floor MV cannot sit on disk looking done.
+    # The rule moved into `ops/compass.py` (the one direction), so assert the gate
+    # is *asked for* before the render starts — not that it names a module.
     bsrc = __import__("inspect").getsource(mv.build)
-    check("the genre gate runs before any render", "genres.publishable" in bsrc)
+    gate_at = min((i for i in (bsrc.find("compass.is_publishable("),
+                               bsrc.find("genres.publishable(")) if i >= 0), default=-1)
+    # `render_shot(` is the first call that writes pixels; "ffmpeg" is not a
+    # marker because it is also a default argument name.
+    render_at = bsrc.find("render_shot(")
+    check("the genre gate runs before any render",
+          gate_at >= 0 and render_at >= 0 and gate_at < render_at,
+          f"gate@{gate_at} render@{render_at}")
     check("the clip floor is enforced", "clip_standard" in bsrc or "cs.check" in bsrc)
     check("a below-floor MV is deleted", "unlink" in bsrc)
     check("a passing MV is shelved", "shelve(" in bsrc)
@@ -1094,6 +1103,127 @@ def test_mv_keeps_picture_proportions() -> None:
     check("a theme mapping only names themes the library fills",
           all(t in ("horror", "lesson", "humour", "city", "nature", "temple", "abstract")
               for t in mv.MOOD_THEMES.values()))
+
+
+def test_compass_is_the_one_direction() -> None:
+    """`ops/compass.py` is the single answer to "what may new work be?".
+
+    K (2026-11-20): "แนวเพลงสร้างคลิป ไม่มี เข็มทิศหายแบบนี้ก็หลงทางสิ" — the
+    direction was lost because nothing said which lane may produce what, bound
+    to which standard. The rules existed (`genres.publishable`, the
+    `clip_standard` floor); the *compass* did not, so five rails rendered clips
+    while none rendered the declared product, and three lanes globbed every song
+    on disk and rendered 18 of 32 in a parked genre.
+
+    This pins the compass, not just its output: every render lane must be a row,
+    every row must name a real script and a real profile, and a lane that is not
+    a row must be refused rather than defaulted.
+    """
+    section("the compass (one direction for new work)")
+    sys.path.insert(0, str(ROOT.parent / "ops"))
+    import compass as cp  # noqa: E402
+
+    # --- the shape -----------------------------------------------------------
+    check("every lane names a script that exists",
+          all((ROOT.parent / r["script"]).exists() for r in cp.LANES.values()),
+          str([k for k, r in cp.LANES.items()
+               if not (ROOT.parent / r["script"]).exists()]))
+    check("every product lane carries a real clip_standard profile",
+          all(r["profile"] in cp.clip_standard.PROFILES
+              for r in cp.products().values()))
+    check("a product lane always has an audio source",
+          all(r["audio"] for r in cp.products().values()))
+
+    # The declared product must be a lane, or the compass has already drifted.
+    check("the MV is a lane", "mv" in cp.LANES)
+    check("the MV is a product", cp.LANES["mv"]["kind"] == cp.PRODUCT)
+    check("the MV is song audio, not narration",
+          cp.LANES["mv"]["audio"] == cp.SONG)
+
+    # --- it fails closed -----------------------------------------------------
+    raised = False
+    try:
+        cp.assert_lane("a-lane-nobody-registered")
+    except SystemExit:
+        raised = True
+    check("an unregistered lane is refused, not defaulted", raised)
+
+    # --- a retired lane may not render new work ------------------------------
+    ok, why = cp.may_render("karaoke")
+    check("a retired lane may not render", not ok and "retired" in why, why)
+
+    # --- the song list is the genre rule, applied once -----------------------
+    real = sorted(p.stem[5:] for p in
+                  (ROOT / "library" / "songs").glob("song-*.mp3"))
+    if real:
+        import genres  # noqa: E402
+        kept = cp.songs("mv", available=real)
+        check("the compass keeps only publishable songs",
+              all(genres.publishable(s)[0] for s in kept))
+        check("the compass drops the parked ones",
+              set(kept) == {s for s in real if genres.publishable(s)[0]})
+        check("a lane that is not song-based has no song list",
+              _raises(lambda: cp.songs("moods")))
+    else:
+        note("no masters on disk — the song-list checks need one")
+
+    # --- the lanes actually call it -----------------------------------------
+    # A row that the lane ignores is documentation, not a compass. Assert the
+    # *call*, not the word: a comment mentioning `compass` must not pass this,
+    # or the check guards nothing (verified by reverting make_short to a glob).
+    for lane in ("short", "surreal", "concert", "mv", "film", "compilation"):
+        src = (ROOT.parent / cp.LANES[lane]["script"]).read_text(encoding="utf-8")
+        check(f"{lane}: its script asks the compass for songs",
+              "compass.songs(" in src, cp.LANES[lane]["script"])
+    for lane in ("reactive", "affiliate"):
+        src = (ROOT.parent / cp.LANES[lane]["script"]).read_text(encoding="utf-8")
+        check(f"{lane}: its script refuses a non-publishable song",
+              "compass.songs(" in src or "compass.is_publishable(" in src,
+              cp.LANES[lane]["script"])
+    bank = (ROOT.parent / "ops" / "clip_lane.py").read_text(encoding="utf-8")
+    check("the bank lane asks the compass, not its own copy of the rule",
+          "compass.songs(" in bank)
+    mvsrc = (ROOT.parent / cp.LANES["mv"]["script"]).read_text(encoding="utf-8")
+    check("the MV refuses a parked genre through the compass",
+          "compass.is_publishable(" in mvsrc)
+
+    # --- no lane may re-derive the genre rule locally ------------------------
+    # The duplicated `genres.publishable` loops are what let the answers drift.
+    for lane, row in cp.LANES.items():
+        script = ROOT.parent / row["script"]
+        src = script.read_text(encoding="utf-8")
+        check(f"{lane}: no local publishable() loop",
+              "genres.publishable" not in src, row["script"])
+
+    # --- the self-check the CLI exposes --------------------------------------
+    bad = [(n, d) for n, ok, d in cp.check() if not ok]
+    check("compass --check is clean", not bad, str(bad[:3]))
+
+    # --- and the rails that exist are all registered ------------------------
+    # A workflow that renders a clip with an unregistered script is exactly how
+    # the direction was lost, so the mapping must be complete.
+    registered = {Path(r["script"]).name for r in cp.LANES.values()}
+    workflows = sorted((ROOT.parent / ".github" / "workflows").glob("*.yml"))
+    offenders = []
+    for wf in workflows:
+        text = wf.read_text(encoding="utf-8")
+        for name in ("make_short.py", "make_surreal_short.py", "make_concert_short.py",
+                     "make_mood_short.py", "make_affiliate_short.py",
+                     "make_music_video.py", "make_film_video.py", "clip_lane.py",
+                     "make_reactive.py", "compile_album.py", "trivia_reel.py",
+                     "story_reel.py"):
+            if name in text and name not in registered:
+                offenders.append(f"{wf.name}:{name}")
+    check("every clip renderer a rail calls is a registered lane", not offenders,
+          str(offenders[:4]))
+
+
+def _raises(fn) -> bool:
+    try:
+        fn()
+    except SystemExit:
+        return True
+    return False
 
 
 def test_outputs() -> None:
@@ -8694,6 +8824,7 @@ def main() -> int:
     test_media_home_falls_back()
     test_story_reel_contract()
     test_mv_keeps_picture_proportions()
+    test_compass_is_the_one_direction()
     test_outputs()
     print(f"\n{PASS} passed, {FAIL} failed")
     if FAILURES:

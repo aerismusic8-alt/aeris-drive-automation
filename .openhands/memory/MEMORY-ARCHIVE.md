@@ -6548,3 +6548,45 @@ A synth bed has **no vocal** — Flow Music is the only real-song route.
   the tracked manifest, so the manifest claimed a work whose pixels were in
   `/tmp` and `has its pixels somewhere` failed for every session. Only art inside
   `ART` is recorded now.
+
+---
+
+## SUPERSEDED 2026-11-20 — the pre-compass clip doctrine (moved, not deleted)
+
+K: "แนวเพลงสร้างคลิป ไม่มี เข็มทิศหายแบบนี้ก็หลงทางสิ" — the direction was lost.
+Everything below is the state *before* `ops/compass.py` existed. It is kept
+because the lessons in it are still true; it is **not** the operating rule any
+more. If a note here contradicts `ops/compass.py`, the compass wins.
+
+### What the old per-lane arrangement said (now one row each in the compass)
+
+- `clip_standard` PROFILES were listed by hand in memory: trivia 1280x720/24
+  (picture must move, no hard cut), vertical 1080x1920/30 (shorts, MV), film
+  1920x1080/30, horizontal 1920x1080/25 (karaoke/compilation), motion 832x480/16.
+  **Now** `compass.LANES[lane]["profile"]` names the profile and
+  `clip_standard.PROFILES` is the only list of profiles.
+- `short` (captions → text floor) ≠ `vertical` (MV → no text floor). Still true,
+  now carried by the lane row rather than remembered per task.
+- Each render lane used to decide its own song list. Three of them
+  (`make_short`, `make_surreal_short`, `make_concert_short`) globbed
+  `song-*.mp3` and rendered **all 32 masters on disk**; only 14 are in a
+  publishable genre, so 18 renders per sweep were unuploadable by construction.
+  **Now** every lane calls `compass.songs(lane)`, and a test fails if any lane
+  goes back to a local glob.
+- `bank_publish.py` was documented as "the only way a bank clip reaches an
+  audience" but **no workflow called it**, so no bank clip had ever been
+  published. **Now** `.github/workflows/ax-bank-publish.yml` calls it, the
+  compass row names that rail, and the ledger is un-ignored so a re-run cannot
+  double-post.
+- Genre filters were duplicated in four places (`clip_lane._publishable_only`,
+  `compile_album.available_songs`, `bank_publish.genre_verdict`,
+  `story_reel.pick_music`), each with its own try/except. **Now** all four ask
+  `compass.is_publishable()` / `compass.songs()`.
+
+### The old note that the product was an MV, with no rail to make one
+
+`CHARTER` and memory both said "MV is the product". A check of
+`.github/workflows/` on 2026-11-20 found **zero** workflows calling
+`make_music_video.py` or `make_film_video.py`; the rails rendered shorts,
+exhibits, concerts, moods and product cards. That gap is why the compass records
+`rail: None` for the `mv` and `film` rows instead of pretending they ship.

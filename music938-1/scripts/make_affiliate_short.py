@@ -224,6 +224,14 @@ def render(product: dict, out_dir: Path | None = None) -> Path:
     audio = SONGS / f"song-{product['song']}.mp3"
     if not audio.exists():
         raise FileNotFoundError(f"missing {audio}")
+    # The product card is bedded on a channel song, so it is a song product and
+    # the genre rule applies to that song (K: every route, no override).
+    sys.path.insert(0, str(ROOT.parent / "ops"))
+    import compass  # noqa: PLC0415
+    if product["song"] not in compass.songs("affiliate"):
+        raise SystemExit(
+            f"{product['id']}: bed song '{product['song']}' is not publishable "
+            f"(parked or unknown genre) — pick another song for the card")
     image = _image_for(product)
 
     # Reuse make_short's chorus picker so the bed is the hook, not the intro.

@@ -68,7 +68,15 @@ def palette_for(slug: str) -> str:
 
 
 def all_slugs() -> list[str]:
-    return sorted(p.stem[len("song-"):] for p in SONGS.glob("song-*.mp3"))
+    """Songs this lane may render — decided by `ops/compass.py`.
+
+    Globbing `song-*.mp3` here is what rendered 18 of 32 clips in a parked
+    genre that could never be uploaded. The compass owns the answer.
+    """
+    sys.path.insert(0, str(ROOT.parent / "ops"))
+    import compass  # noqa: PLC0415
+
+    return compass.songs("concert")
 
 
 def plan(slug: str, *, seconds: float = concert.CLIP_SECONDS) -> dict:

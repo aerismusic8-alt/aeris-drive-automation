@@ -370,21 +370,22 @@ def pick_music() -> str | None:
     The karaoke renders are the instrumental mixes (drums+bass+other, vocal stem
     left out), so they are preferred: a sung track under a Thai narration puts
     two voices in the same band and the words stop being intelligible. A sung
-    track is only a last resort, and the gate is the same `genres.publishable()`
-    every publish path uses, so a parked genre can never leak in.
+    track is only a last resort, and the gate is the compass (one rule everywhere).
     """
     import random  # noqa: PLC0415
 
     lib = os.path.join(ROOT, "music938-1", "library", "songs")
     try:
+        sys.path.insert(0, os.path.join(ROOT, "ops"))
         sys.path.insert(0, os.path.join(ROOT, "music938-1", "scripts"))
+        import compass  # noqa: PLC0415
         import genres  # noqa: PLC0415
     except Exception:  # noqa: BLE001 - no gate available means no music
         return None
 
     def ok(t: str) -> bool:
         slug = genres.resolve_slug(os.path.basename(t))
-        return bool(slug and genres.publishable(slug)[0])
+        return bool(slug and compass.is_publishable(slug)[0])
 
     instrumental = [t for t in sorted(glob.glob(os.path.join(lib, "karaoke-*.mp3"))) if ok(t)]
     if instrumental:
