@@ -16,6 +16,7 @@ first 20 songs are unaffected.
 
     python3 scripts/genres.py --list        # the plan and what is built
     python3 scripts/genres.py --check       # exit 1 on a genre with no sound
+    python3 scripts/genres.py --report      # plan vs real masters (the truth)
 """
 from __future__ import annotations
 
@@ -28,6 +29,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 PLAN = ROOT / "channel" / "genres.json"
 LYRICS = ROOT / "lyrics"
+SONGS = ROOT / "library" / "songs"
 
 # A cover still paints from the mood palette; a genre maps onto the closest one
 # so a new genre needs no new artwork code.
@@ -199,21 +201,83 @@ def catalogue_size() -> int:
     return sum(g["planned"] for g in active())
 
 
+def master_stems() -> tuple[list[str], str]:
+    """The masters that exist, and where the list came from.
+
+    The release is the catalogue; a local cache must not narrow it (2026-11-21).
+    Counting lyric files instead reported `rock 9/9, pop 8/8` while only 13
+    masters existed — the plan looked finished with two of the five lanes empty.
+    """
+    try:
+        sys.path.insert(0, str(Path(__file__).resolve().parent))
+        import pull_media  # only this call needs the network
+
+        names = [a["name"] for a in pull_media.assets(pull_media.token())]
+        stems = sorted(n[:-4] for n in names if re.fullmatch(r"song-\d.*\.mp3", n))
+        if stems:
+            return stems, "media-938 release"
+    except Exception as exc:  # offline, no token, rate limited
+        print(f"note: release unavailable ({exc.__class__.__name__}); "
+              f"reading the local cache", file=sys.stderr)
+    return sorted(p.stem for p in SONGS.glob("*.mp3")), "local library/songs"
+
+
+def report(strict: bool = False) -> int:
+    """Plan vs masters: what the new direction has actually produced."""
+    stems, source = master_stems()
+    act = active()
+    have = {g["id"]: 0 for g in act}
+    off: dict[str, int] = {}
+    for stem in stems:
+        ok, why = publishable(stem)
+        gid = (re.search(r"genre '([^']+)'", why) or [None, ""])[1]
+        if ok and gid in have:
+            have[gid] += 1
+        else:
+            off[gid or "(no genre)"] = off.get(gid or "(no genre)", 0) + 1
+    print(f"direction: {', '.join(g['id'] for g in act)}"
+          f"  (channel/genres.json — K 2026-11-20, five lanes final)")
+    print(f"masters: {len(stems)}  (source: {source})")
+    print(f"\n  {'genre':12}{'planned':>8}{'mastered':>9}{'short':>7}")
+    short = 0
+    for g in act:
+        n, want = have[g["id"]], g["planned"]
+        short += max(want - n, 0)
+        print(f"  {g['id']:12}{want:8}{n:9}{max(want - n, 0):7}")
+    print(f"  {'TOTAL':12}{catalogue_size():8}{sum(have.values()):9}{short:7}")
+    off_n = sum(off.values())
+    print(f"\noff-direction masters: {off_n} — never publish")
+    for gid in sorted(off):
+        print(f"  {gid:12}{off[gid]:3}")
+    if strict and (short or off_n):
+        print("\nSTRICT: the catalogue is short of its plan or holds "
+              "off-direction work", file=sys.stderr)
+        return 1
+    return 0
+
+
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__,
                                  formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--list", action="store_true")
     ap.add_argument("--check", action="store_true")
+    ap.add_argument("--report", action="store_true",
+                    help="plan vs the masters that actually exist")
+    ap.add_argument("--strict", action="store_true",
+                    help="with --report: exit 1 when short of plan or holding "
+                         "off-direction work")
     args = ap.parse_args()
+    if args.report:
+        return report(strict=args.strict)
     if not (args.list or args.check):
-        ap.error("pick --list or --check")
+        ap.error("pick --list, --check or --report")
 
     built = counts()
     total = catalogue_size()
     have = sum(built.values())
     missing = [g for g in genres() if not g.get("style") or not g.get("tagline")]
     print(f"catalogue plan: {len(active())} active genres, {total} songs planned, "
-          f"{have} on disk")
+          f"{have} lyric files (not masters — see --report)")
     for g in genres():
         n = built.get(g["id"], 0)
         bar = "#" * n + "." * max(g["planned"] - n, 0)

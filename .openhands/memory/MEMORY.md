@@ -65,6 +65,8 @@ Flow Music/Gemini run on K's `aerismusic8`; K taps a QR once, then
 had 2 entries, channel 92 uploads, 4 refused by code, ledger missed 2. **A publish
 route needs the gate more than a render lane** (`song_to_page --post` had none).
 **K settled those 4: leave them** — do not unpublish or re-litigate.
+**A report must count artifacts, not inputs** (`genres.py --report` reads the
+release, not the lyric plan).
 
 
 ## Environment + platform risks

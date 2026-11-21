@@ -2834,6 +2834,51 @@ def test_youtube_quota_ledger() -> None:
           "!music938-1/work/yt-quota.json" in out.stdout, out.stdout.strip()[:100])
 
 
+def test_catalogue_report_counts_masters() -> None:
+    """The catalogue report must count masters, not lyric files.
+
+    2026-11-21: `genres.py --check` counted lyric files and printed
+    `rock 9/9, pop 8/8, edm 6/6` — "catalogue complete" — while the release
+    held only 13 masters and two of the five lanes were empty. So K's question
+    ("do the pending songs match the new direction?") could not be answered
+    from AR's own output. The report now reads the release (the catalogue) and
+    states which source it used; a local cache must not narrow it.
+    """
+    section("catalogue report (masters, not lyric files)")
+    import contextlib
+    import io
+    import tempfile
+    from pathlib import Path
+
+    import genres as G
+
+    check("the lyric plan is not empty", sum(G.counts().values()) > 0)
+    real_songs = G.SONGS
+    try:
+        with tempfile.TemporaryDirectory() as td:
+            G.SONGS = Path(td)
+            import pull_media
+
+            real_assets = pull_media.assets
+            pull_media.assets = lambda tok: (_ for _ in ()).throw(OSError("offline"))
+            try:
+                stems, source = G.master_stems()
+            finally:
+                pull_media.assets = real_assets
+            check("no masters when the release and the cache are both empty",
+                  stems == [], str(stems[:3]))
+            check("the report says where the list came from",
+                  source == "local library/songs", source)
+            out = io.StringIO()
+            with contextlib.redirect_stdout(out):
+                rc = G.report()
+            check("report exits 0 and prints the direction and the source",
+                  rc == 0 and "direction:" in out.getvalue()
+                  and "source:" in out.getvalue(), out.getvalue()[:120])
+    finally:
+        G.SONGS = real_songs
+
+
 def test_genres() -> None:
     section("genres (WIRING: catalogue is open, any genre)")
     import genres
@@ -9239,6 +9284,7 @@ def main() -> int:
     test_refresh_sleep_video()
     test_provenance()
     test_genres()
+    test_catalogue_report_counts_masters()
     test_genre_gate_blocks_parked_lanes()
     test_arrangement_no_repeat()
     test_song_analysis()
