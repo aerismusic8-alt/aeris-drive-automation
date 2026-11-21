@@ -14,5 +14,21 @@
       "ok": false,
       "skipped": "no TikTok token"
     }
+  },
+  "bank-karaoke-49-luai-mai-yut-v49-bangkok-night.mp4": {
+    "youtube": {
+      "ok": true,
+      "detail": [
+        "https://youtu.be/R_kUrvKYVRI"
+      ]
+    },
+    "facebook": {
+      "ok": true,
+      "id": "1510993547544803"
+    },
+    "tiktok": {
+      "ok": false,
+      "skipped": "no TikTok token"
+    }
   }
 }
