@@ -1747,6 +1747,12 @@ def test_the_picker_never_repeats_old_work() -> None:
     check("a song with any clip counts as used", used == {"01-a"})
     check("an untouched song is offered first",
           cl.unused_first(["01-a", "02-b"], used, log=lambda *_: None) == ["02-b"])
+    # Both mixes must survive: `karaoke-<id>` is the instrumental of `song-<id>`,
+    # and dropping it would narrow the lane for no reason.
+    both = ["karaoke-01-a", "karaoke-02-b", "song-01-a", "song-02-b"]
+    check("the two mixes of a used song both go last",
+          cl.unused_first(both, used, key=cl._song_id, log=lambda *_: None)
+          == ["karaoke-02-b", "song-02-b"])
     # Never starve: with every song used, the whole catalogue is fair game again.
     check("a fully used catalogue still offers songs",
           cl.unused_first(["01-a"], {"01-a"}, log=lambda *_: None) == ["01-a"])

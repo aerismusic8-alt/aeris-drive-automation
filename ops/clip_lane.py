@@ -567,21 +567,25 @@ def _used_ids(ids: set[str], assets: list[str]) -> set[str]:
     return {i for i in ids if any(i in c for c in clips)}
 
 
-def unused_first(ids: list[str], used: set[str], log=print) -> list[str]:
-    """Songs with no clip yet, then the rest — never only the rest.
+def unused_first(items: list[str], used: set[str], key=None, log=print) -> list[str]:
+    """Items whose song has no clip yet, then the rest — never only the rest.
 
     K (2026-11-20): the clips that had to be deleted "ค้างในระบบตั้งนานแล้ว" and
     the lane "ก็ไปวนเอาของเก่ามาทำ" — it kept re-cutting songs that already had
-    five clips each while ten songs had never been touched. Choosing from the
+    five clips each while other songs had never been touched. Choosing from the
     untouched songs first is what makes a new clip actually new; once every song
     has one, the whole catalogue is fair game again so the lane never starves.
+
+    `key` maps an item to its song id, because the release lists two mixes of the
+    same song (`song-15-x`, `karaoke-15-x`) and both must count as one song.
     """
-    fresh = [s for s in ids if s not in used]
+    key = key or (lambda s: s)
+    fresh = [s for s in items if key(s) not in used]
     if fresh:
-        log(f"songs: {len(fresh)} of {len(ids)} have no clip yet — picking from those")
+        log(f"songs: {len(fresh)} of {len(items)} have no clip yet — picking from those")
         return fresh
-    log(f"songs: every one of {len(ids)} already has a clip — picking from all")
-    return ids
+    log(f"songs: every one of {len(items)} already has a clip — picking from all")
+    return items
 
 
 def _release_assets(log=print) -> list[str] | None:
@@ -604,7 +608,7 @@ def _release_assets(log=print) -> list[str] | None:
 
 
 def available_songs(log=print) -> list[str]:
-    """Song ids usable for a render, un-clipped ones first.
+    """Song mixes usable for a render, songs with no clip yet first.
 
     The workflow needs this because a fresh runner has no music directory at all,
     and guessing a slug there costs a whole job. The list is the machine-readable
@@ -613,7 +617,12 @@ def available_songs(log=print) -> list[str]:
 
     The release is the catalogue, not the local cache: a pod holding one cached
     mp3 must not narrow the picker to that one song. Local files are added only
-    when they are not on the release at all.
+    when the release has nothing to offer.
+
+    Both mixes of a song stay in the list — `karaoke-<id>` is the instrumental of
+    `song-<id>` and the lane has always been free to use either. What changes is
+    the order: songs that already have a clip go last, so the lane stops
+    re-cutting the same 22 songs.
     """
     note = lambda m: print(m, file=sys.stderr)  # noqa: E731
     assets = _release_assets(note)
@@ -621,13 +630,12 @@ def available_songs(log=print) -> list[str]:
         local = sorted(p.stem for p in MUSIC.glob("*.mp3")) if MUSIC.exists() else []
         return _publishable_only(local, log=note)
 
-    ids = {_song_id(a[:-4]) for a in assets if a.endswith(".mp3")}
+    stems = sorted({a[:-4] for a in assets if a.endswith(".mp3")})
     if MUSIC.exists():
-        ids |= {_song_id(p.stem) for p in MUSIC.glob("*.mp3")}
-    songs = _publishable_only(sorted(ids), log=note)
-    ordered = unused_first(songs, _used_ids(set(songs), assets), log=note)
-    # `render` fetches `<song>.mp3`, so hand back the master's real stem.
-    return [f"song-{s}" for s in ordered]
+        stems = sorted(set(stems) | {p.stem for p in MUSIC.glob("*.mp3")})
+    songs = _publishable_only(stems, log=note)
+    return unused_first(songs, _used_ids({_song_id(s) for s in songs}, assets),
+                        key=_song_id, log=note)
 
 
 def _merge_to(shots: list[dict], n: int) -> list[dict]:
