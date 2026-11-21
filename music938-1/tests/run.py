@@ -6778,11 +6778,16 @@ def test_genre_gate_blocks_parked_lanes() -> None:
     # bank, so every still was a 1920-wide crop and the render upscaled.
     #
     # The pool is now built per freshness tier, widest first inside each, so a
-    # 4K row still reaches the cap even when it has been used before.
+    # 4K row still reaches the cap even when it has been used before. The
+    # leftover tier orders by `(uses, last_used)` first, so a spent query rotates
+    # instead of repeating what the last clip took.
     check("the widest rows enter the pool before the shuffle",
           'fresh.sort(key=lambda r: -int(r.get("w") or 0))' in lane_src
-          and 'stale.sort(key=lambda r: -int(r.get("w") or 0))' in lane_src
+          and 'stale.sort(key=lambda r: (_tier(r), -int(r.get("w") or 0)))' in lane_src
           and "pool = fresh[:cap]" in lane_src)
+    check("a spent query rotates by recency, not width alone",
+          'int(r.get("last_used") or 0)' in lane_src
+          and 'r["last_used"] = stamp' in lane_src)
     check("the pool cap is still bounded",
           "cap = max(want * POOL_FACTOR, want)" in lane_src)
     # Ranking has to happen over a wider pool than the clip needs. The old picker
