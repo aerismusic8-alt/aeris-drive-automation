@@ -62,12 +62,10 @@ which needs renders.
 Lifting the hold is K's call, not the agent's. Do not delete this file to make a
 test or a run pass.
 
-## Four videos are public that the current rules refuse (audit 2026-11-21)
+## Four videos are public that the current rules refuse — K said leave them
 
 The channel audit (`videos.list` on `UCm44BjAn03ruOF-WaA3ZRww`, 92 uploads) found
-four videos that went out **before** the gate that would now stop them. Nothing
-was deleted: unpublishing is a channel-level action and therefore K's, and a
-wrong removal costs watch-hours on a channel that needs them.
+four videos that went out **before** the gate that would now stop them:
 
 | published (UTC) | video | why current code refuses it |
 | --- | --- | --- |
@@ -76,11 +74,17 @@ wrong removal costs watch-hours on a channel that needs them.
 | 2026-11-19 18:23 | `fK6mxqcKkbA` ลมหนาวกับความคิดถึง | slug `19-…`, genre `lukthung` — parked |
 | 2026-11-19 18:23 | `A1IR-b8ZCcI` เดินคนเดียว | slug `06-…`, genre `indie` — parked |
 
-Provenance, verified rather than assumed: the two 2026-11-21 videos are in
-`music938-1/work/bank-publish-state.json` under their clip names
-(`bank-karaoke-43-…`, `bank-karaoke-49-…`). The 2026-11-19 pair is **not** in that
-ledger — it is the earlier incident `bank_publish.genre_verdict` was written for,
-so the ledger alone would not have found it; the channel itself did. The hold is
-why these are the last four: no upload path can run while this file exists.
+**K's ruling, 2026-11-21: "ปล่อยไปเถอะไม่เป็นไรหรอก" — leave them.** They are
+history, not a queue to clean. Do not unpublish, re-render, replace or "fix"
+these four; the gate is for what ships *next*, not for re-litigating what is
+already out. A future session that re-raises this is spending K's attention on
+a settled question.
+
+The point of recording them is narrower: they prove the gates work, and they are
+the reason a ledger is not evidence. Verified provenance — the two 2026-11-21
+videos are in `music938-1/work/bank-publish-state.json` under their clip names
+(`bank-karaoke-43-…`, `bank-karaoke-49-…`); the 2026-11-19 pair is **not** in that
+ledger, so the ledger alone would have missed it and the channel itself found it.
+
 
 

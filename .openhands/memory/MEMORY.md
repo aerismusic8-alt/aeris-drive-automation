@@ -61,10 +61,10 @@ not strict** — the verdict decides, the score is only a sanity floor.
 Flow Music/Gemini run on K's `aerismusic8`; K taps a QR once, then
 `login_vault.py save` **immediately**.
 
-**A ledger only knows what it wrote — audit the live surface.** 2026-11-21: the
-bank ledger had 2 entries, the channel 92 uploads, 4 refused by current code and
-the ledger missed 2 of them. **A publish route needs the gate more than a render
-lane does** (`song_to_page --post` had none). Never call it clean from a ledger.
+**A ledger only knows what it wrote — audit the live surface.** 2026-11-21: ledger
+had 2 entries, channel 92 uploads, 4 refused by code, ledger missed 2. **A publish
+route needs the gate more than a render lane** (`song_to_page --post` had none).
+**K settled those 4: leave them** — do not unpublish or re-litigate.
 
 
 ## Environment + platform risks
