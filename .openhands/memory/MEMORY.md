@@ -16,11 +16,10 @@ Row shape in archive; it **fails closed** (`assert_lane`, `may_render`).
 - **`compass.songs(lane)` is the only way a lane lists songs**;
   `compass.is_publishable(slug)` is the single-slug form; `--check` must be
   clean. Globbing `song-*.mp3` rendered 18 of 32 masters in a parked genre.
-- **A bed is not a song: the compass filters BOTH; a slug on argv must ask
-  `compass.require_publishable(slug)`.** The list and single-slug forms must
-  never disagree — four beds sat in every lane until 2026-11-21.
-- **`pull_media` must never overwrite a differing local file** — the release
-  lags an upload, so a newer render exists nowhere else. Report it; `--force`.
+- **A bed is not a song: the compass filters BOTH**; a slug on argv must call
+  `compass.require_publishable`. List and single-slug forms must never disagree.
+- **`pull_media` never overwrites a differing local file** (the release lags an
+  upload); report it, `--force`.
 - **The product is a SONG clip, not a narrated one** (`narration` only where K
   asked by name: `trivia`; `story` is a **tool**). Old posted clips untouched.
 - **Known gap:** `mv`/`film` have `rail: None` — no workflow renders an MV. Do
@@ -41,11 +40,9 @@ decide, execute, report; no per-step approval. Method: **PCSEV**. Advisor =
 rails stay UTC.
 
 ## What this project is (K's goal)
-"เราไม่ได้เป็นคนสร้างช่อง เราสร้าง ai openhands" — the deliverable is **the agent**,
-from free cloud tools. Scope = **4 channels** (aeris938-2 = Facebook, TikTok,
-YouTube `@aerismusicth`, Shopee Affiliate). Two goals in the task registry never
-close as ordinary tasks: a Roblox game anyone can play, and revenue from it
-(Roblox **PARKED**). **Brand = เพลงส้นทีนไรเนี่ย** — only in `branding.py`.
+"เราไม่ได้เป็นคนสร้างช่อง เราสร้าง ai openhands" — the deliverable is **the agent**.
+Scope = **4 channels** (FB, TikTok, YT `@aerismusicth`, Shopee). Roblox goals are
+**PARKED**, never closed. **Brand = เพลงส้นทีนไรเนี่ย**, only in `branding.py`.
 **Revenue gate = ch3**: 1,000 subs AND 4,000 watch-hours/12 mo; the metric is
 **followers** — end every clip with `release.FOLLOW_ASK` + `FOLLOW_PROMISE`.
 
@@ -54,9 +51,8 @@ close as ordinary tasks: a Roblox game anyone can play, and revenue from it
 **One FLOOR, every format/channel (K 2026-11-17): "ห้ามอัพขึ้นเด็ดขาด"**
 `ops/clip_standard.py` = floor + per-format profile, gated at **every** upload
 route, no override; `ops/thumb_standard.py` too (dead silence ≤3 s, VFR ≤2%).
-**Bank clips = `ops/clip_lane.py --song X --query "..." --seconds 58`** → into
-`library/bank/` (gitignored; rides media-938), QC 14/14. Picker sorts bank rows
-by width **before** the pool cap (else a 4K row never enters); detail in archive.
+**Bank clips = `ops/clip_lane.py --song <FULL STEM> --query "..." --seconds 58`**
+→ `library/bank/`, QC 14/14; picker + shot numbers in archive.
 QC is mechanical only — **Gemini review is OUT** (2026-11-20), pinned by
 `test_no_gemini_gate_in_the_video_system`. **A gate nothing can pass is broken,
 not strict** — the verdict decides, the score is only a sanity floor.
@@ -64,6 +60,12 @@ not strict** — the verdict decides, the score is only a sanity floor.
 ## Accounts (K 2026-11-14): AR's OWN mail, never K's
 Flow Music/Gemini run on K's `aerismusic8`; K taps a QR once, then
 `login_vault.py save` **immediately**.
+
+**A ledger only knows what it wrote — audit the live surface.** 2026-11-21: the
+bank ledger had 2 entries, the channel 92 uploads, 4 refused by current code and
+the ledger missed 2 of them. **A publish route needs the gate more than a render
+lane does** (`song_to_page --post` had none). Never call it clean from a ledger.
+
 
 ## Environment + platform risks
 - **Fresh pod: `scripts/bootstrap-pod.sh`**; MV links must be durable

@@ -6633,3 +6633,18 @@ any pacing change — constants alone do not prove the picture slowed down.
 `script`, `kind` (product/tool/retired), `audio` (song/bed/narration/silent),
 `profile`, `out`, `rail` / `publish_rail`, `note`. `assert_lane` refuses an
 unregistered lane; `may_render` refuses a `retired` one.
+
+## Moved from the index 2026-11-21 (clip quality detail)
+
+**Bank clips** = `ops/clip_lane.py --song <FULL STEM> --query "..." --seconds 58`
+→ `library/bank/` (gitignored; rides media-938), QC 14/14. The `--song` value is
+the full stem (`song-07-huachai-si-thao`), **not** the bare slug — the bare form
+reports "neither local nor in media-938" even when the mp3 is present.
+Picker sorts bank rows by width **before** the pool cap, or a 4K row never enters
+it (only 600/6879 rows are 4K); drop rows with no `shard` or `_materialise`
+fails silently.
+`shot_director.py` `MIN_SHOT` is **1.2 s** for the clip lane; the 2.8–5.5 s /
+≤22 cuts/min numbers belong to the **MV** lane (`make_music_video.py`). Do not
+confuse the two — a clip lane render at 1.35 s min is correct, not a bug.
+A rendered bank clip on 2026-11-21 measured 17 shots / 17.6 cuts/min / 14/14
+`clip_standard` rules.
