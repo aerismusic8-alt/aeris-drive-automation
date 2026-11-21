@@ -41,6 +41,13 @@ SOURCES = [
     ("surreal", "*.mp4"),
     ("concert", "*.mp4"),
     ("moods", "*.mp4"),
+    # The clip lane's product (`ops/clip_lane.py` -> `library/bank`). It was
+    # missing here, so a rendered bank clip never reached the release at all and
+    # `ax-bank-publish` had no input on a fresh pod — the rail's two halves
+    # disagreed about where a clip lives. The pattern is `bank-*`, not `*.mp4`,
+    # so this row can never sweep up a Short or a karaoke mix if the directory
+    # is ever misused.
+    ("bank", "bank-*.mp4"),
     # The pre-rendered real-instrument beds (K approved the six, 2026-11-09).
     # A runner cannot build sfizz + the gigabyte banks, so it must NOT re-synthesise
     # them through the rejected General-MIDI fallback; it pulls these instead and

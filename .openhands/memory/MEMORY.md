@@ -1,5 +1,5 @@
 # MEMORY — index
-**How to use.** Capped 6 KB (`ops/memory_guard.py`); rules/pointers only, detail in
+**Capped 6 KB** (`ops/memory_guard.py`): rules/pointers only, detail in
 `MEMORY-ARCHIVE.md` + daily logs. **Read `.openhands/CHARTER.md` first.**
 
 ## 🔴 กฎถาวรข้อที่ 1 (K): ฟรีเท่านั้น — free only
@@ -12,13 +12,15 @@ channel's first work; never rename a channel without K's approval.
 K: "แนวเพลงสร้างคลิป ไม่มี เข็มทิศหายแบบนี้ก็หลงทางสิ". `ops/compass.py` is the
 single answer to *which lane may produce what, at which standard, into which
 folder*. **Read it before touching a clip lane; add a row before adding a rail.**
-`LANES[lane]` = `script`, `kind` (product/tool/retired), `audio`
-(song/bed/narration/silent), `profile`, `out`, `rail`/`publish_rail`, `note`.
-It **fails closed**: `assert_lane` refuses an unregistered lane, `may_render`
-refuses a `retired` one.
+Row shape in archive; it **fails closed** (`assert_lane`, `may_render`).
 - **`compass.songs(lane)` is the only way a lane lists songs**;
   `compass.is_publishable(slug)` is the single-slug form; `--check` must be
   clean. Globbing `song-*.mp3` rendered 18 of 32 masters in a parked genre.
+- **A bed is not a song: the compass filters BOTH; a slug on argv must ask
+  `compass.require_publishable(slug)`.** The list and single-slug forms must
+  never disagree — four beds sat in every lane until 2026-11-21.
+- **`pull_media` must never overwrite a differing local file** — the release
+  lags an upload, so a newer render exists nowhere else. Report it; `--force`.
 - **The product is a SONG clip, not a narrated one** (`narration` only where K
   asked by name: `trivia`; `story` is a **tool**). Old posted clips untouched.
 - **Known gap:** `mv`/`film` have `rail: None` — no workflow renders an MV. Do
@@ -52,9 +54,8 @@ close as ordinary tasks: a Roblox game anyone can play, and revenue from it
 `ops/clip_standard.py` = floor + per-format profile, gated at **every** upload
 route, no override; `ops/thumb_standard.py` too (dead silence ≤3 s, VFR ≤2%).
 **Bank clips = `ops/clip_lane.py --song X --query "..." --seconds 58`** → into
-`library/bank/` (gitignored; rides media-938), QC 14/14. Picker must sort bank
-rows by width **before** the pool cap or a 4K row never enters it (600/6,879 are
-4K); drop rows with no `shard` or `_materialise` fails silently.
+`library/bank/` (gitignored; rides media-938), QC 14/14. Picker sorts bank rows
+by width **before** the pool cap (else a 4K row never enters); detail in archive.
 QC is mechanical only — **Gemini review is OUT** (2026-11-20), pinned by
 `test_no_gemini_gate_in_the_video_system`. **A gate nothing can pass is broken,
 not strict** — the verdict decides, the score is only a sanity floor.
@@ -74,7 +75,7 @@ Flow Music/Gemini run on K's `aerismusic8`; K taps a QR once, then
 - **A green run is not a finished job.** rc 4 + `UPLOAD_LIMIT_EXCEEDED` = the
   per-channel daily cap — a cap is a **retry**, not a failure.
 - **Never decide on missing/stale data** — a blank/stale row is `data`, never a
-  guess. **`videos.list` ≤50 ids; YPP = 1,000 subs AND 4,000 watch-hours.**
+  guess. **`videos.list` ≤50 ids.**
 - **Bound every rail:** `timeout-minutes` + `cancel-in-progress: true`;
   `OPENHANDS_RISK_REGISTER.json` + `ops/risk_audit.py --strict`.
 - **`ops/HOLD.md` decides whether rails may run** (lifted 11-13; K's
@@ -82,8 +83,8 @@ Flow Music/Gemini run on K's `aerismusic8`; K taps a QR once, then
 
 ## Art, director, and picking NEW work
 `genart.py` + `image_bank.py` → `media-938`, manifest only. `shot_director.py`
-cuts **on the music**. MV shot = a WHOLE number of beats, 2.8–5.5 s, **≤22
-cuts/min any tempo**; `ops/song_prune.py --release` keeps the newest.
+cuts **on the music**; MV shot = whole beats, 2.8–5.5 s, **≤22 cuts/min any
+tempo** (numbers in archive); `ops/song_prune.py --release` keeps the newest.
 **Pick an un-clipped song (K: "ก็ไปวนเอาของเก่ามาทำ")** — only asset filenames
 tell the truth; the **release** is the catalogue, a local cache must not narrow it.
 

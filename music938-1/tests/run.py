@@ -1157,11 +1157,22 @@ def test_compass_is_the_one_direction() -> None:
                   (ROOT / "library" / "songs").glob("song-*.mp3"))
     if real:
         import genres  # noqa: E402
+        import provenance  # noqa: E402
         kept = cp.songs("mv", available=real)
         check("the compass keeps only publishable songs",
               all(genres.publishable(s)[0] for s in kept))
-        check("the compass drops the parked ones",
-              set(kept) == {s for s in real if genres.publishable(s)[0]})
+        # Two filters, not one: a parked genre is refused, and a synthesised bed
+        # is refused even in an active genre. A bed's karaoke is the same synth
+        # (correlation ~1.0) where a real song's is 0.4-0.8, and `is_bed` is the
+        # only thing that tells them apart. On 2026-11-21 five beds sat in
+        # `library/songs/` and every song lane listed all five.
+        want = {s for s in real if genres.publishable(s)[0]
+                and not provenance.is_bed(ROOT / "library" / "songs" / f"song-{s}.mp3")}
+        check("the compass drops the parked ones", set(kept) == want,
+              f"kept {len(kept)} vs want {len(want)}")
+        check("the compass never offers a synthesised bed",
+              not any(provenance.is_bed(ROOT / "library" / "songs" / f"song-{s}.mp3")
+                      for s in kept))
         check("a lane that is not song-based has no song list",
               _raises(lambda: cp.songs("moods")))
     else:
@@ -1186,6 +1197,26 @@ def test_compass_is_the_one_direction() -> None:
     mvsrc = (ROOT.parent / cp.LANES["mv"]["script"]).read_text(encoding="utf-8")
     check("the MV refuses a parked genre through the compass",
           "compass.is_publishable(" in mvsrc)
+    # A single-slug form must refuse exactly what the list form refuses, or a
+    # lane handed one slug (a rail input, an MV build) publishes a parked song.
+    check("the single-slug form refuses a parked genre",
+          cp.is_publishable("28-khuen-thi-yang-mai-lap-v28")[0] is False)
+    # ... and a synthesised bed, which is not a song at any genre. On 2026-11-21
+    # five beds sat in library/songs/ inside active genres (pop, rock, edm).
+    if any((ROOT / "library" / "songs" / f"song-{s}.mp3").exists()
+           for s in ("34-wan-tham-mada-thi-phi-set-v34",
+                     "37-fai-thi-yang-mai-dap-v37")):
+        check("the single-slug form refuses a synthesised bed",
+              cp.is_publishable("37-fai-thi-yang-mai-dap-v37")[0] is False,
+              str(cp.is_publishable("37-fai-thi-yang-mai-dap-v37")))
+    # `make_short.py <slug>` used to skip the genre gate the `--all` path
+    # applies, so one slug could render a clip no lane would list. Every lane
+    # that takes a slug on argv must call the shared gate.
+    for lane_file in ("make_short.py", "make_surreal_short.py",
+                      "make_concert_short.py", "make_film_video.py"):
+        src = (ROOT / "scripts" / lane_file).read_text(encoding="utf-8")
+        check(f"{lane_file} gates a single slug through the compass",
+              "compass.require_publishable(args.slug)" in src)
 
     # --- no lane may re-derive the genre rule locally ------------------------
     # The duplicated `genres.publishable` loops are what let the answers drift.
@@ -1324,6 +1355,7 @@ def test_normalize_floor() -> None:
 
 def test_level_ordering() -> None:
     section("level ordering (song vs karaoke)")
+    import provenance
     songs = sorted((common.LIBRARY / "songs").glob("song-*.mp3"))
     if not songs:
         print("  skip (no songs built yet)")
@@ -1332,6 +1364,13 @@ def test_level_ordering() -> None:
         slug = song.stem.removeprefix("song-")
         kara = common.LIBRARY / "songs" / f"karaoke-{slug}.mp3"
         if not kara.exists():
+            continue
+        # A synthesised bed has no vocal, so its "karaoke" is the same mix at a
+        # different level and there is no ordering to check. Worse, a bed is not
+        # publishable at all, so a failing bed here reported a defect in a master
+        # that must never ship. Beds are covered by the compass test instead.
+        if provenance.is_bed(song):
+            note(f"{slug}: a synthesised bed, not a song — no karaoke ordering")
             continue
         s, k = common.integrated_lufs(song), common.integrated_lufs(kara)
         if s is None or k is None:
@@ -2481,6 +2520,40 @@ def test_real_instrument_guard() -> None:
           PM.group_of(f"{SF._BED_TAG}-calm-C.wav") == "ambient")
     check("pull_media still routes a song WAV to songs/",
           PM.group_of("some-song.wav") == "songs")
+    # The clip lane's own product had no routing rule and no pack row, so a bank
+    # clip reached `media-938` only by accident (the lane uploaded it directly)
+    # and a fresh pod never got it back: `library/bank` stayed empty and
+    # `bank_publish` had nothing to publish. A group is used verbatim as the
+    # destination folder, so it must equal the real directory name.
+    check("pull_media routes a bank clip to bank/",
+          PM.group_of("bank-song-34-x.mp4") == "bank",
+          PM.group_of("bank-song-34-x.mp4"))
+    check("the bank group matches the real directory",
+          (ROOT / "library" / "bank").name == PM.group_of("bank-x.mp4"))
+    # A differing local file must never be silently replaced. The release is
+    # only refreshed when a rail uploads, so a master rendered after the last
+    # upload lives nowhere else — masters are gitignored, so git cannot restore
+    # it. On 2026-11-21 this overwrote five real Flow masters with the
+    # 2026-11-18 beds and the renders were unrecoverable. The source pin below
+    # is deliberately about the *shape* of the guard, because exercising the
+    # download needs the network and a live release.
+    import inspect as _insp
+    pull_src = _insp.getsource(PM)
+    check("pull_media keeps a differing local file instead of clobbering it",
+          "conflicts.append" in pull_src and "if not args.force and local" in pull_src)
+    check("pull_media offers an explicit overwrite flag",
+          '"--force"' in pull_src)
+    check("pull_media names the conflict and exits 3 under --strict",
+          '"--strict"' in pull_src and "return 3" in pull_src)
+    check("pull_media writes through a temp file, so a cut download is not a file",
+          ".part" in pull_src and "tmp.replace(dest)" in pull_src)
+    check("the media pack ships the bank clips",
+          ("bank", "bank-*.mp4") in PB.SOURCES)
+    # A `bank-` name must never fall through to the `short-` rule: that rule
+    # points at the posting queue, and a bank clip there is captioned from a
+    # lyric file it does not have (the 2026-11-19 crash).
+    check("a bank clip is never routed into the shorts queue",
+          PM.group_of("bank-x.mp4") != "shorts")
     check("the media pack ships the beds",
           ("ambient", f"{SF._BED_TAG}-*.wav") in PB.SOURCES)
 
@@ -3571,14 +3644,29 @@ def test_themed_compilations() -> None:
     ca_src = (ROOT / "scripts" / "compile_album.py").read_text(encoding="utf-8")
     check("a theme below the floor is refused, not rendered",
           "len(slugs) < floor" in ca_src and "Nothing written." in ca_src)
-    # At least one theme must still be shippable, or the lever is dead.
-    # Only meaningful when masters are on disk: a fresh pod has none (they are
-    # gitignored, on the media-938 release), so every theme is legitimately empty
-    # and this would read as a broken picker rather than an empty catalogue.
-    if compile_album.available_songs():
-        check("at least one theme is currently shippable",
-              any(len(s) >= compile_album.MIN_THEME_TRACKS for s in picked.values()),
-              str({t: len(s) for t, s in picked.items()}))
+    # At least one theme must still be shippable, or the lever is dead. That is
+    # only a meaningful assertion when the catalogue can actually reach the
+    # floor: a theme cannot hold MIN_THEME_TRACKS songs if fewer than that exist
+    # at all, and the floor is K's and is not lowered to fit. On 2026-11-21 a
+    # pull overwrote four active-genre masters with their beds, so the honest
+    # catalogue fell to 9 and every theme was legitimately empty.
+    #
+    # The check that *is* valid at any size runs first and is stronger: the
+    # picker must take every eligible song. A picker that silently drops songs
+    # is the real defect, and it fails here whatever the catalogue holds.
+    avail = compile_album.available_songs()
+    if avail:
+        check("the picker takes every eligible song",
+              set(compile_album.pick(999)) == set(avail),
+              f"{len(compile_album.pick(999))} of {len(avail)}")
+        if len(avail) >= compile_album.MIN_TRACKS:
+            check("at least one theme is currently shippable",
+                  any(len(s) >= compile_album.MIN_THEME_TRACKS
+                      for s in picked.values()),
+                  str({t: len(s) for t, s in picked.items()}))
+        else:
+            note(f"the compilation lever is dark: {len(avail)} eligible song(s), "
+                 f"{compile_album.MIN_TRACKS} needed for a full volume")
     else:
         print("  skip at least one theme is currently shippable (no masters on disk)")
     title = compile_album.compilation_title(
@@ -3626,8 +3714,21 @@ def test_volume_series() -> None:
         skip("no song masters on disk yet")
         return
     v1, v2 = vs.pick_volume(1), vs.pick_volume(2)
-    check("a volume reaches the honest track floor",
-          len(v1) >= vs.MIN_VOLUME_TRACKS, f"{len(v1)}")
+    # A volume cannot reach a floor the catalogue itself cannot reach. The floor
+    # is K's and `build()` already refuses below it (pinned separately), so the
+    # assertion that holds at any catalogue size is that the picker is not
+    # silently dropping eligible songs.
+    eligible = vs.ca.available_songs()
+    check("the volume picker takes every eligible song",
+          set(v1) == set(eligible), f"{len(v1)} of {len(eligible)}")
+    if len(eligible) >= vs.MIN_VOLUME_TRACKS:
+        check("a volume reaches the honest track floor",
+              len(v1) >= vs.MIN_VOLUME_TRACKS, f"{len(v1)}")
+    else:
+        note(f"the volume lever is dark: {len(eligible)} eligible song(s), "
+             f"{vs.MIN_VOLUME_TRACKS} needed")
+        check("a short catalogue is refused, not rendered as a stub",
+              vs.build(1)["ok"] is False, str(vs.build(1))[:80])
     check("consecutive volumes differ", v1 != v2, f"{v1[:2]} vs {v2[:2]}")
     check("consecutive volumes open on a different song", v1[0] != v2[0],
           f"{v1[0]} vs {v2[0]}")
@@ -4039,6 +4140,12 @@ def test_crosspost_engine() -> None:
         check("photos are spread through the queue",
               idx[0] < len(q) // 3 and idx[-1] > len(q) * 2 // 3,
               f"{idx[0]}..{idx[-1]} of {len(q)}")
+        # A fixed stride spends the photos and leaves a photo-less tail: 32
+        # photos at every=3 ran out at item 138 of 279, so the last 140 items
+        # read as wall-to-wall Reels. The stride has to widen to cover the queue.
+        check("the photo stride widens to cover the whole queue",
+              "spread=True" in (ROOT / "scripts" / "crosspost.py").read_text(
+                  encoding="utf-8"))
 
     # A stored post URL carries tracking params, so the readback must compare on
     # the stable /reel/<id> part or it returns the previous post every run.
@@ -4762,6 +4869,60 @@ def test_crosspost_pace_and_captions() -> None:
           "facebook.com/reel/" in src and "/video/" in src)
     check("the ledger stores the resolved URL, not the composer page",
           '"url": real' in src)
+
+
+
+def test_an_uncaptionable_short_is_skipped() -> None:
+    """A Short with no lyric must be skipped, not crash the whole rail.
+
+    On 2026-11-19 a bank clip was stored on the release as
+    `short-bank-song-19-...mp4`. `pull_media` had no `bank-` rule, so the generic
+    `short-*` rule routed it into `library/shorts/` — the posting queue. Every
+    `short-*.mp4` there is captioned from `lyrics/<slug>.txt`, and that file does
+    not exist for a bank clip, so `caption()` raised `FileNotFoundError` inside
+    `song_items()`. `build_queue()` therefore threw, and because the suite calls
+    it too, one stray file failed the whole run with a traceback instead of a
+    readable check.
+
+    A file we cannot caption is a file we cannot post, so the queue drops it and
+    keeps the rest. The song was also `lukthung` — a parked genre — so it could
+    never have been posted anyway.
+    """
+    section("a Short with no lyric is skipped, not fatal")
+    import tempfile
+    import crosspost
+    import release
+
+    src = (ROOT / "scripts" / "crosspost.py").read_text(encoding="utf-8")
+    body = src.split("def song_items(", 1)[1].split("\ndef ", 1)[0]
+    check("song_items checks the lyric exists before captioning",
+          "release.LYRICS" in body and ".exists()" in body,
+          "caption() raises, so the guard must come first")
+    check("the guard skips rather than raising",
+          "continue" in body)
+
+    # The guard must be a real one: a Short whose lyric is missing is dropped
+    # from the queue, and its presence cannot change the items around it. The
+    # directory is made under ROOT because an item's `video` is stored relative
+    # to it.
+    with tempfile.TemporaryDirectory(dir=ROOT) as d:
+        shorts = Path(d) / "shorts"
+        shorts.mkdir()
+        good = shorts / "short-song-01-khon-di-thi-chak-pai.mp4"
+        bad = shorts / "short-bank-song-19-lom-nao-kap-khwam-khit-thueng.mp4"
+        for p in (good, bad):
+            p.write_bytes(b"")
+        real_shorts = crosspost.SHORTS
+        try:
+            crosspost.SHORTS = shorts
+            items = crosspost.song_items()
+        finally:
+            crosspost.SHORTS = real_shorts
+    stems = {it["id"].split(":", 1)[1] for it in items}
+    check("the captionable Short is queued", good.stem in stems)
+    check("the uncaptionable Short is dropped", bad.stem not in stems)
+    check("the dropped file does not empty the queue", len(items) > 0,
+          f"{len(items)}")
 
 
 def test_api_post_formats() -> None:
@@ -6913,7 +7074,12 @@ def test_a_director_cuts_on_the_music() -> None:
           sd.LOUD_TARGET < sd.QUIET_TARGET,
           f"loud {sd.LOUD_TARGET} quiet {sd.QUIET_TARGET}")
 
-    songs = sorted((ROOT.parent / "aeris938-1" / "library" / "music").glob("*.mp3"))
+    # The real masters live in `music938-1/library/songs`. `aeris938-1/library/
+    # music` is where `soundfont.render_bed` writes a synthesised bed under the
+    # same `song-<slug>.mp3` name, and commit 74a2d9a emptied it on purpose so
+    # no lane could pick a bed again. Pointing this test at the bed dir made it
+    # fail for the right reason and the wrong file.
+    songs = sorted((ROOT / "library" / "songs").glob("song-*.mp3"))
     check("there is a song to direct", bool(songs), f"{len(songs)}")
     if not songs:
         return
@@ -8194,6 +8360,15 @@ def test_clip_lane_is_its_own_job() -> None:
     check("a channel with no credential is named in the run",
           "tiktok: no credential" in _out)
 
+    # The hold blocks uploads, not inspection. A `--dry-run` must stay usable
+    # while the hold is on (it is the only way to check the pipeline then), and a
+    # real run must be refused at the door rather than after it has gated clips.
+    import hold_gate as _hg
+    check("bank_publish refuses a real run while the hold is on",
+          _hg.active() and "hold_gate.assert_open" in bp)
+    check("the hold check is skipped only for a dry run",
+          "if not a.dry_run:" in bp)
+
     # PowerShell on PC1 reads the script in the runner's codepage. A Thai title or
     # an em-dash in the body broke parsing into two tokens on 2026-11-19.
     for name in ("ax-pc1-bank-sync.yml", "ax-pc1-bank-pull.yml"):
@@ -8984,6 +9159,25 @@ def test_genart_is_original_reproducible_print_art() -> None:
         check(f"{w['id']} has its pixels somewhere",
               bool(w.get("shard")) or (ARTDIR / w["png"]).exists())
 
+    # 7b. And the *tool* must refuse to bless such a row. A check that only a
+    # test performs is not a gate: `shard()` used to return 0 with "nothing local
+    # to pack" whenever the only unpacksed rows were orphans, so the rail
+    # committed the manifest and reported success. Simulate an orphan and prove
+    # the tool exits non-zero without touching the network.
+    import tempfile as _tf
+    real_art = genart.ART
+    with _tf.TemporaryDirectory() as td:
+        genart.ART = Path(td)
+        (Path(td) / "manifest.json").write_text(json.dumps({"works": [
+            {"id": "ghost-1", "png": "abstract/ghost-1.png", "bytes": 1,
+             "sha": "0" * 16, "algo": "warp", "palette": "ash", "seed": 1},
+        ]}), encoding="utf-8")
+        try:
+            rc = genart.shard("not-a-real-token", log=lambda *_: None)
+        finally:
+            genart.ART = real_art
+    check("shard refuses a row whose pixels exist nowhere", rc != 0, f"rc={rc}")
+
     # 8. The rail exists and commits the counter, not the pixels.
     rail = ROOT.parent / ".github" / "workflows" / "ax-genart.yml"
     check("the art rail exists", rail.exists())
@@ -8995,6 +9189,11 @@ def test_genart_is_original_reproducible_print_art() -> None:
         check("the rail commits the counter", "counter.json" in text)
         check("the rail fails closed when it cannot store pixels",
               "::error::no token" in text and "shard upload skipped" not in text)
+        # A swallowed shard failure is how a manifest came to name works whose
+        # pixels were never uploaded, so the rail must not paper over it.
+        check("the rail does not warn past a failed shard upload",
+              "|| echo" not in text.split("genart.py shard", 1)[1][:120],
+              "a failed shard must stop the job, not continue to the commit")
         check("the rail does not depend on a hand-made secret",
               "secrets.GITHUB_TOKEN" in text)
 
@@ -9071,6 +9270,7 @@ def main() -> int:
     test_crosspost_blocked_vs_empty()
     test_api_posting_route()
     test_crosspost_pace_and_captions()
+    test_an_uncaptionable_short_is_skipped()
     test_engagement_feedback()
     test_api_post_formats()
     test_social_stats_parser()

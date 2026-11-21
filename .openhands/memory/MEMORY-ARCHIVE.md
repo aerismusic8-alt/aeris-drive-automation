@@ -6615,3 +6615,21 @@ exhibits, concerts, moods and product cards. That gap is why the compass records
   `story` is a **tool**. Old posted clips are untouched — the compass constrains
   new work only." / "**Known gap:** `mv`/`film` (the declared product) have
   `rail: None` — no workflow renders an MV. Do not claim an MV ships."
+
+## Moved out of the 6 KB card, 2026-11-21 (detail, still true)
+
+**Bank clip picker rules.** `ops/clip_lane.py --song X --query "..." --seconds 58`
+writes into `library/bank/` (gitignored; rides `media-938`), QC 14/14. The picker
+must sort bank rows by width **before** applying the pool cap, or a 4K row never
+enters the pool (600 of 6,879 rows are 4K). Drop rows with no `shard`, or
+`_materialise` fails silently and the clip is cut from nothing.
+
+**MV pacing numbers (still true).** A shot is a whole number of beats, 2.8–5.5 s,
+so no tempo exceeds 22 cuts/min; `OVERSIZE` 1.20 sets both the pan margin and the
+travel distance (≈6.7 %/s at 3 s); `ZOOM_RATE` 0.10 (max 1.18). Re-measure after
+any pacing change — constants alone do not prove the picture slowed down.
+
+**`compass.LANES` row shape (read the file for the live version).** Each row is
+`script`, `kind` (product/tool/retired), `audio` (song/bed/narration/silent),
+`profile`, `out`, `rail` / `publish_rail`, `note`. `assert_lane` refuses an
+unregistered lane; `may_render` refuses a `retired` one.

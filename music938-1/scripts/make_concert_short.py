@@ -224,6 +224,11 @@ def main() -> int:
         slugs = all_slugs()
     elif args.slug:
         slugs = [args.slug]
+        # A slug handed in must clear the same gate as the --all path, or one
+        # argument renders a parked-genre or bed clip no rail would ever list.
+        sys.path.insert(0, str(ROOT.parent / "ops"))
+        import compass  # noqa: PLC0415
+        compass.require_publishable(args.slug)
     else:
         ap.error("give a slug or --all")
     if not slugs:

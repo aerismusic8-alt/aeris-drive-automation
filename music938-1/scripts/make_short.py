@@ -619,6 +619,10 @@ def main() -> int:
         import compass  # noqa: PLC0415
         slugs = compass.songs("short")
     elif args.slug:
+        # A slug handed straight in must clear the same gate as the list form.
+        sys.path.insert(0, str(ROOT.parent / "ops"))
+        import compass  # noqa: PLC0415
+        compass.require_publishable(args.slug)
         slugs = [args.slug]
     else:
         ap.error("give a slug or --all")

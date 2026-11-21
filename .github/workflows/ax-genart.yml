@@ -81,10 +81,13 @@ jobs:
           if [ -z "${AX_GH_TOKEN:-}" ]; then
             echo "::error::no token — refusing to record works whose pixels cannot be stored"
             exit 1
-            exit 0
           fi
-          python3 ops/genart.py shard \
-            || echo "::warning::shard upload failed — works kept for the next tick"
+          # No `|| echo warning` here on purpose. A swallowed shard failure is
+          # how the 2026-11-19 run recorded works whose pixels were never
+          # uploaded: the manifest was committed, the runner was destroyed, and
+          # two rows then pointed at nothing. The commit step below would publish
+          # that lie, so a failed upload must stop the job instead.
+          python3 ops/genart.py shard
 
       - name: Report
         run: python3 ops/genart.py stats

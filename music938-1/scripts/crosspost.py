@@ -334,16 +334,26 @@ def _genre_ok(it: dict) -> bool:
 
 
 def interleave(primary: list[dict], secondary: list[dict], every: int,
-               chunk: int = 1) -> list[dict]:
+               chunk: int = 1, spread: bool = False) -> list[dict]:
     """Fold `secondary` into `primary` so it is reached in days, not weeks.
 
     Appending the product cards put them behind every song Short, and at
     `DAILY_CAP` per surface that is an ~11-day wait before the first
     revenue-bearing post — the opposite of the goal. One card pair is inserted
     after every `every` items of `primary`.
+
+    `spread` widens the stride so the secondary covers the *whole* primary
+    instead of running out part-way. A fixed `every` assumes the two lists grow
+    together, and they do not: with 32 cover photos and a 279-item queue a
+    stride of 3 spent every photo in the first 138 slots and left the last 140
+    items with none, so the feed's tail read as wall-to-wall Reels. Only formats
+    that must be *evenly distributed* (the cover photos) ask for it; a format
+    that must land *early* (affiliate cards) keeps the fixed stride on purpose.
     """
     if every < 1:
         raise ValueError("every must be >= 1")
+    if spread and secondary:
+        every = max(every, len(primary) // len(secondary))
     out, si = [], 0
     for i, item in enumerate(primary):
         out.append(item)
@@ -364,6 +374,15 @@ def song_items() -> list[dict]:
     items = []
     for short in sorted(SHORTS.glob("short-*.mp4")):
         slug = _slug_of(short)
+        # A Short whose song has no lyric file cannot be captioned, and
+        # `caption` raises rather than returning a placeholder. One such file
+        # took down the whole rail: `short-bank-song-19-...` (a bank clip the
+        # release routed into shorts/ on 2026-11-19) made `build_queue` throw
+        # FileNotFoundError, so nothing posted on either surface and the suite
+        # died mid-run instead of reporting. A file we cannot caption is a file
+        # we cannot post, so skip it and keep the rest of the queue.
+        if not (release.LYRICS / f"{slug}.txt").exists():
+            continue
         rel = str(short.relative_to(ROOT))
         hook = _hook_of(short.stem)
         kind = _kind_of(short)
@@ -410,8 +429,10 @@ def build_queue() -> list[dict]:
     # Facebook also gets a cover-art photo and a Shopee link post, so its feed is
     # not wall-to-wall Reels (advisor panel 2026-11-05: Reel for reach, photo for
     # identity, <=1 link a day). A photo lands after every 3 items and a link after
-    # every 8, which at the post cadence is well under one link a day.
-    base = interleave(base, photo_items(), every=3, chunk=1)
+    # every 8, which at the post cadence is well under one link a day. The photos
+    # are `spread` because there are fewer of them than queue slots: a fixed
+    # stride ran them out at item 138 of 279 and the tail carried none.
+    base = interleave(base, photo_items(), every=3, chunk=1, spread=True)
     # A plain question every 6 items: the one post that invites a comment, so the
     # feed reads as a page with a person behind it (K, 2026-11-18).
     base = interleave(base, text_items(), every=6, chunk=1)

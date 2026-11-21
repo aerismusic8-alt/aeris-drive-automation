@@ -61,6 +61,15 @@ def group_of(name: str) -> str | None:
     # and the crosspost rail has no file to post.
     if name.startswith("mood-") and name.endswith(".mp4"):
         return "moods"
+    # The clip lane's product. `ops/clip_lane.py` writes `bank-<mix>-<slug>-
+    # <theme>.mp4` and the rail stores it on `media-938` under that name. With no
+    # rule here it was ignored, so a fresh pod had an empty `library/bank` and
+    # `ops/bank_publish.py` had nothing to publish — the rail's own input was
+    # never restored. The name must be matched before the `short-` rule above,
+    # and the group name must be the real directory (`bank`), because a group is
+    # used verbatim as the destination folder.
+    if name.startswith("bank-") and name.endswith(".mp4"):
+        return "bank"
     if name.startswith("cover-") and name.endswith(".jpg"):
         return "covers"
     if name.startswith("thumb-") and name.endswith(".png"):
@@ -128,28 +137,57 @@ def assets(tok: str | None) -> list[dict]:
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument("--only", help="only this group (songs, karaoke, shorts, covers, thumbs)")
+    ap.add_argument("--force", action="store_true",
+                    help="overwrite a local file that differs from the release")
+    ap.add_argument("--strict", action="store_true",
+                    help="exit 3 when a local file conflicts with the release")
     args = ap.parse_args()
 
     tok = token()
     got = skip = 0
+    conflicts: list[tuple[str, Path, int, int]] = []
     for a in assets(tok):
         g = group_of(a["name"])
         if not g or (args.only and g != args.only):
             continue
         dest = LIB / g / a["name"]
         dest.parent.mkdir(parents=True, exist_ok=True)
-        if dest.exists() and dest.stat().st_size == a["size"]:
-            skip += 1
-            continue
+        if dest.exists():
+            local = dest.stat().st_size
+            if local == a["size"]:
+                skip += 1
+                continue
+            # A differing local file is NOT a stale copy by default. The release
+            # is only refreshed when a rail uploads, so a render made after the
+            # last upload — a new Flow master, a re-cut clip — exists nowhere but
+            # here, and overwriting it destroys it: on 2026-11-21 this replaced
+            # five real Flow masters with the 2026-11-18 beds, and the renders
+            # were gone (masters are gitignored, so git could not bring them
+            # back). Keep the local file, name the conflict, and let an operator
+            # choose with --force.
+            if not args.force and local:
+                conflicts.append((a["name"], dest, local, a["size"]))
+                continue
         # Fetch through the release-asset API, not `browser_download_url`: the
         # latter 302-redirects to a CDN host that returns transient 504s under
         # load, which is what failed the 2026-11-09 compilation run.
         blob = _get(f"{API}/repos/{REPO}/releases/assets/{a['id']}", tok,
                     accept="application/octet-stream", timeout=300)
-        dest.write_bytes(blob)
+        tmp = dest.with_suffix(dest.suffix + ".part")
+        tmp.write_bytes(blob)
+        tmp.replace(dest)   # atomic: an interrupted write never leaves a half file
         got += 1
         print(f"  got {g}/{a['name']} ({a['size'] / 1e6:.1f} MB)")
     print(f"downloaded {got}, {skip} already present")
+    if conflicts:
+        print(f"\n{len(conflicts)} local file(s) DIFFER from the release and were kept:")
+        for name, dest, local, remote in conflicts[:10]:
+            print(f"  {name}: local {local} B, release {remote} B")
+        print("  The local copy is newer work that no upload has published yet.")
+        print("  Publish it (publish_media.py) so it survives a pod, or pass")
+        print("  --force to replace it with the release copy.")
+        if args.strict:
+            return 3
     return 0
 
 

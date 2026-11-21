@@ -204,6 +204,16 @@ def main() -> int:
                     help="clips to publish this run (the pilot caps: small batches)")
     a = ap.parse_args()
 
+    # The hold blocks uploads, so it is checked here — before any clip is gated
+    # or any channel is contacted — for a real run. A `--dry-run` uploads nothing
+    # and is the one way to inspect the pipeline while the hold is on, so it is
+    # deliberately allowed through. Every uploader called below (`yt_publish`,
+    # `fb_graph`, `tiktok_api`) raises `PublishHeld` on its own, so this is the
+    # same rule stated earlier, not a second mechanism.
+    if not a.dry_run:
+        import hold_gate  # noqa: PLC0415
+        hold_gate.assert_open("bank_publish")
+
     clips = [Path(a.clip)] if a.clip else sorted(BANK.glob("*.mp4"))
     if not clips:
         raise SystemExit("no clips in the bank")

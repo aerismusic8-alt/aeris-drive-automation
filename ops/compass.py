@@ -226,14 +226,26 @@ def songs(lane: str, *, available: list[str] | None = None) -> list[str]:
             f"song list — its output is not tied to a song slug")
 
     import genres  # noqa: PLC0415  (music938-1/scripts)
+    import provenance  # noqa: PLC0415  (music938-1/scripts)
 
+    songs_dir = ROOT / "music938-1" / "library" / "songs"
     if available is None:
-        songs_dir = ROOT / "music938-1" / "library" / "songs"
         available = sorted(p.stem[len("song-"):] for p in songs_dir.glob("song-*.mp3"))
     kept: list[str] = []
     for slug in sorted(set(available)):
-        if genres.publishable(slug)[0]:
-            kept.append(slug)
+        if not genres.publishable(slug)[0]:
+            continue
+        # A synthesised bed is not a song, and `is_bed` is the only test that
+        # separates them (a bed's karaoke is the same synth, correlation ~1.0,
+        # where a real song's is 0.4-0.8). Filtering it here rather than in each
+        # lane is what makes "the single enumeration" true: on 2026-11-21 five
+        # beds sat in `library/songs/` and every song-based lane — short, mv,
+        # compilation, concert — listed all five, so a bed could have shipped as
+        # a song (the 2026-11-07 bug, reachable again).
+        path = songs_dir / f"song-{slug}.mp3"
+        if path.exists() and provenance.is_bed(path):
+            continue
+        kept.append(slug)
     return kept
 
 
@@ -256,8 +268,31 @@ def is_publishable(slug: str) -> tuple[bool, str]:
     drifted apart in the first place.
     """
     import genres  # noqa: PLC0415  (music938-1/scripts)
+    import provenance  # noqa: PLC0415  (music938-1/scripts)
 
-    return genres.publishable(slug)
+    ok, why = genres.publishable(slug)
+    if not ok:
+        return ok, why
+    # The single-slug form must answer the same question as `songs()`, or a lane
+    # handed one slug (a rail input, an MV build) publishes what the list form
+    # would have refused. A synthesised bed is not a song at any genre.
+    path = ROOT / "music938-1" / "library" / "songs" / f"song-{slug}.mp3"
+    if path.exists() and provenance.is_bed(path):
+        return False, "a synthesised bed, not a sung song"
+    return True, why
+
+
+def require_publishable(slug: str) -> None:
+    """Raise unless this one slug may be rendered and published.
+
+    A lane given a slug on the command line (`make_surreal_short.py <slug>`) used
+    to skip the gate its `--all` path applies, so one argument could render a
+    parked-genre or bed clip that no rail would ever list. Raising here keeps the
+    answer in one place instead of a copy in each lane.
+    """
+    ok, why = is_publishable(slug)
+    if not ok:
+        raise SystemExit(f"{slug} cannot be published: {why}")
 
 
 def check() -> list[tuple[str, bool, str]]:

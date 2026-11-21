@@ -522,6 +522,17 @@ def shard(tok: str, dry_run: bool = False, log=print) -> int:
     doc = load()
     packed = {w["id"] for w in doc["works"] if w.get("shard")}
     local = [w for w in doc["works"] if w["id"] not in packed and (ART / w["png"]).exists()]
+    # A row that has no shard and no local file points at pixels that exist
+    # nowhere. It can never be recovered, so it must not be carried into a commit:
+    # that is precisely how the manifest came to claim 29 works with 2 missing
+    # (2026-11-19). Failing here keeps the rail from recording a lie; the rows
+    # have to be re-rendered (`genart.make`) before the next run.
+    orphans = [w["id"] for w in doc["works"]
+               if not w.get("shard") and not (ART / w["png"]).exists()]
+    if orphans:
+        log(f"shard: {len(orphans)} row(s) have no pixels anywhere: {orphans[:5]}")
+        log("  re-render them with genart.make(); refusing to record them")
+        return 1
     if not local:
         log("shard: nothing local to pack")
         return 0
