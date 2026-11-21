@@ -210,14 +210,37 @@ def main() -> int:
 
     state = json.loads(STATE.read_text(encoding="utf-8")) if STATE.exists() else {}
     wanted = [c.strip() for c in a.channels.split(",") if c.strip()]
+
+    # A channel that cannot post right now (no credential) must not hold a clip
+    # in "pending" forever, or `--limit` re-picks the same clip every tick and the
+    # rest of the bank never advances. Drop it from *this run's* want-list; when a
+    # token appears it is retried on its own, because the other channels are
+    # already recorded `ok` and get skipped.
+    def can_post(ch: str) -> bool:
+        if ch == "youtube":
+            return True
+        if ch == "facebook":
+            import fb_graph  # noqa: PLC0415
+            return fb_graph.available()
+        if ch == "tiktok":
+            import tiktok_api  # noqa: PLC0415
+            return bool(getattr(tiktok_api, "available", lambda: True)())
+        return False
+
+    live = [ch for ch in wanted if can_post(ch)]
+    for ch in wanted:
+        if ch not in live:
+            print(f"channel {ch}: no credential, not counted for 'done' this run")
+    if not live:
+        raise SystemExit("no channel can post: nothing to do")
     rc = 0
 
     # A small batch must advance, not retry the same clip forever. A clip is
-    # "done" only when every wanted channel has posted it, so a clip that
-    # reached YouTube but not TikTok is still picked up.
+    # "done" only when every *reachable* channel has posted it, so a clip that
+    # reached YouTube but not TikTok is still picked up once TikTok works.
     def finished(c: Path) -> bool:
         rec = state.get(c.name, {})
-        return all(rec.get(ch, {}).get("ok") for ch in wanted)
+        return all(rec.get(ch, {}).get("ok") for ch in live)
 
     if a.limit and not a.clip:
         pending = [c for c in clips if not finished(c)]

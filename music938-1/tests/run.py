@@ -7882,6 +7882,48 @@ def test_clip_lane_is_its_own_job() -> None:
           "skipped" in bp and "no TikTok token" in bp)
     check("bank_publish never invents a title", "release.describe" in bp)
 
+    # A channel with no credential must not hold a clip "pending" forever. On
+    # 2026-11-21 the first real bank run posted to YouTube and Facebook, TikTok
+    # had no token, so `finished()` was never true and `--limit 1` would have
+    # re-picked that same clip every tick, publishing nothing new forever while
+    # the run stayed green. Drive main() against a temp bank to pin it.
+    import json as _json
+    import tempfile as _tempfile
+    import bank_publish as _bp
+    _td = Path(_tempfile.mkdtemp())
+    _bank = _td / "bank"
+    _bank.mkdir()
+    # Name them so the POSTED one sorts first: if the bug is back, it is the
+    # clip `--limit 1` picks, and the fresh one never gets a turn.
+    _posted, _fresh = "bank-a-posted-clip.mp4", "bank-z-fresh-clip.mp4"
+    for _n in (_posted, _fresh):
+        (_bank / _n).write_bytes(b"x")
+    _state = _td / "state.json"
+    _state.write_text(_json.dumps({_posted: {
+        "youtube": {"ok": True, "detail": ["https://youtu.be/x"]},
+        "facebook": {"ok": True, "id": "1"},
+        "tiktok": {"ok": False, "skipped": "no TikTok token"}}}), encoding="utf-8")
+    _old_bank, _old_state, _old_argv = _bp.BANK, _bp.STATE, sys.argv
+    _old_tiktok = _bp.tiktok
+    try:
+        _bp.BANK, _bp.STATE = _bank, _state
+        _bp.tiktok = lambda c: {"ok": False, "skipped": "no TikTok token"}
+        sys.argv = ["bank_publish.py", "--limit", "1", "--dry-run"]
+        import io as _io
+        import contextlib as _cl
+        _buf = _io.StringIO()
+        with _cl.redirect_stdout(_buf):
+            _bp.main()
+        _out = _buf.getvalue()
+    finally:
+        _bp.BANK, _bp.STATE, sys.argv, _bp.tiktok = (
+            _old_bank, _old_state, _old_argv, _old_tiktok)
+    check("a published clip is not re-picked when a channel has no token",
+          _fresh in _out and f"BLOCKED  {_posted}" not in _out,
+          _out.strip().splitlines()[:3])
+    check("a channel with no credential is named in the run",
+          "tiktok: no credential" in _out)
+
     # PowerShell on PC1 reads the script in the runner's codepage. A Thai title or
     # an em-dash in the body broke parsing into two tokens on 2026-11-19.
     for name in ("ax-pc1-bank-sync.yml", "ax-pc1-bank-pull.yml"):
