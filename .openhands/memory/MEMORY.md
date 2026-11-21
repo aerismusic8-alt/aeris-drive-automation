@@ -84,12 +84,11 @@ route needs the gate more than a render lane** (`song_to_page --post` had none).
 - **`ops/HOLD.md` decides whether rails may run** (lifted 11-13; K's
   **posting stop** 2026-11-20 is `ops/PUBLISH-HOLD` → `hold_gate.active()`).
 
-## Art, director, and picking NEW work
-`genart.py` + `image_bank.py` → `media-938`, manifest only. `shot_director.py`
-cuts **on the music**; MV shot = whole beats, 2.8–5.5 s, **≤22 cuts/min any
-tempo** (numbers in archive); `ops/song_prune.py --release` keeps the newest.
-**Pick an un-clipped song (K: "ก็ไปวนเอาของเก่ามาทำ")** — only asset filenames
-tell the truth; the **release** is the catalogue, a local cache must not narrow it.
+## Art, director, picking NEW work — detail in archive
+`shot_director.py` cuts **on the music**; `ops/song_prune.py --release` keeps
+the newest take. **Pick an un-clipped song** (K: "ก็ไปวนเอาของเก่ามาทำ") — only
+asset filenames tell the truth; the **release** is the catalogue, a local cache
+must not narrow it.
 
 ## Recovery
 `$AX_VAULT_BOOTSTRAP` → `ops/ax_vault.py` (`axvault:readme`); a lost `work/*.json`

@@ -6648,3 +6648,13 @@ fails silently.
 confuse the two — a clip lane render at 1.35 s min is correct, not a bug.
 A rendered bank clip on 2026-11-21 measured 17 shots / 17.6 cuts/min / 14/14
 `clip_standard` rules.
+
+## Moved from the index 2026-11-21 (art / director detail)
+
+`genart.py` + `image_bank.py` → `media-938`, **manifest only** — the binaries are
+never committed. `shot_director.py` cuts **on the music**: an MV shot is a whole
+number of beats lasting 2.8–5.5 s, so no tempo exceeds 22 cuts/min; `OVERSIZE`
+1.20 sets both the pan margin and the travel distance (≈6.7 %/s at 3 s);
+`ZOOM_RATE` 0.10 (max 1.18). `ops/song_prune.py --release` keeps the newest take
+of a family (the highest `-vNN`), not merely a deduplicated set.
+
