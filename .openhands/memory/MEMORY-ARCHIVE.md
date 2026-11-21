@@ -6530,3 +6530,21 @@ Detail: `docs/dreamina-access.md`.
 
 ## [moved 2026-11-20] synth bed has no vocal
 A synth bed has **no vocal** — Flow Music is the only real-song route.
+
+## Moved out of the index 2026-11-20 (pace + prune + genart detail)
+
+- Pace/prune block, superseded by the shorter line still in the index:
+  MV shot = a WHOLE number of beats, 2.8–5.5 s, ≤22 cuts/min any tempo;
+  `OVERSIZE` 1.20 IS the pan travel (= slide speed; 1.45/1.6 s = whip pan).
+  Re-measure the file: MV-12 median 14.8→9.5, p99 81.9→56.9, 18.1/min.
+  `ops/song_prune.py`: family = slug minus number and `-vNN`, keep newest;
+  `--release` mandatory (`pull_media` restores every asset). Repoint slug pins +
+  rebuild `review-pending.html`. Done: 47→32 songs, 145 assets.
+- Gemini-review block, detail now in AGENTS.md + `test_no_gemini_gate_in_the_video_system`:
+  K 2026-11-20 "ตัดการตรวจสอบของ gemini ออกจากระบบสร้างวีดีโอใหม่เลย" — hand tool
+  only. QC stays and blocks: `clip_standard` + `genre_gate` + `thumb_standard`
+  (they measure the file); the review needed a signed-in desktop.
+- `ops/genart.py` probe renders: a render into a temp dir used to be recorded in
+  the tracked manifest, so the manifest claimed a work whose pixels were in
+  `/tmp` and `has its pixels somewhere` failed for every session. Only art inside
+  `ART` is recorded now.

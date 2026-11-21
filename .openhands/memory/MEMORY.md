@@ -9,16 +9,15 @@ apps (K's Chromium), open APIs, self-hosted tooling. **AR never types a password
 channel's first work; never rename a channel without K's approval.
 
 ## Accounts (K 2026-11-14): AR's OWN mail, never K's
-AR mail (`ar_identity.py`) + self-creatable Nostr/Telegraph. Flow Music/Gemini run
+AR mail + self-creatable Nostr/Telegraph (`ar_identity.py`). Flow Music/Gemini run
 on K's `aerismusic8`; K taps a QR once, then `login_vault.py save` **immediately**.
 
 ## Roles and method (K 2026-10-31)
 - **K = final authority.** Every standing rule is K's.
 - **AR = me.** I administer **all** of K's work in K's place — decide, execute,
-  report; no per-step approval. Hand K only what needs a credential or authority
-  only K holds.
+  report; no per-step approval. Hand K only what needs a credential only K holds.
 - **Method: PCSEV.** **Advisor = Gemini alone** (K 2026-11-18); `ops/consult.py`
-  → `consult-log.jsonl`. Advisory only — see the gate line.
+  → `consult-log.jsonl`. Advisory only.
 - **Time to K = Thai (UTC+7) 24-hour**, never UTC or AM/PM. Rails stay UTC.
 
 ## What this project is (K's goal)
@@ -57,18 +56,12 @@ publish path (`yt_publish` needs `--song SLUG`/`--not-a-song WHY`; also
 route, no override; `ops/thumb_standard.py` too. `short` (captions → text floor) ≠
 `vertical` (MV → none). Also gates dead silence (≤3 s) + VFR (≤2%).
 ## Gemini review is OUT of the video system (K 2026-11-20)
-"ตัดการตรวจสอบของ gemini ออกจากระบบสร้างวีดีโอใหม่เลย" — hand tool only.
-**QC stays and blocks**: `clip_standard` + `genre_gate` + `thumb_standard` (they
-measure the file); the review needed a signed-in desktop. Pinned by
-`test_no_gemini_gate_in_the_video_system`. Detail: AGENTS.md.
+QC stays and blocks: `clip_standard` + `genre_gate` + `thumb_standard` measure the
+file. Pinned by `test_no_gemini_gate_in_the_video_system`; detail: AGENTS.md.
 
 ## Pace + prune (K 2026-11-20) — "ภาพเลื่อนเร็วเกิน", "เพลงเก่าลบออกให้หมด"
-MV shot = a WHOLE number of beats, 2.8–5.5 s, **≤22 cuts/min any tempo**; `OVERSIZE`
-1.20 IS the pan travel (= slide speed; 1.45/1.6 s = whip pan). Re-measure the file:
-MV-12 median 14.8→**9.5**, p99 81.9→**56.9**, 18.1/min.
-`ops/song_prune.py`: family = slug minus number and `-vNN`, keep newest; **`--release`
-mandatory** (`pull_media` restores every asset). Repoint slug pins + rebuild
-`review-pending.html`. Done: 47→32 songs, 145 assets.
+MV shot = a WHOLE number of beats, 2.8–5.5 s, **≤22 cuts/min any tempo**.
+`ops/song_prune.py --release` keeps the newest of a family. See archive.
 
 ## Retry lanes → ch3 + loop health
 `trivia_publish.py` + `reactive_publish.py` — one chokepoint; a cap = **retry**;
@@ -85,7 +78,16 @@ each `work/*` ledger must be un-ignored (`!…`) or it re-posts every tick.
 `genart.py` + `image_bank.py` shard → `media-938`; `image_library.py publish` →
 `scenes-938`; commit the manifest only. `shot_director.py` cuts **on the music**
 (onset-snapped, 1.2-6 s by energy, move never repeats). **`zoompan d` = frames per
-INPUT frame** → `d=1` at OUTPUT fps. Read a run's own log line: green ≠ it ran.
+INPUT frame** → `d=1` at OUTPUT fps.
+
+## The picker must offer NEW work (K 2026-11-20)
+"ก็ไปวนเอาของเก่ามาทำ" — 22 songs had 5-7 clips, 10 had none. **No ledger knows
+this**: `crosspost-state` named none; only asset filenames are truthful.
+`clip_lane`: `_song_id` (song-/karaoke- = one song), `_used_ids` (a `.mp4` holding
+the id), `unused_first` (un-clipped first, all when none left); the **release** is
+the catalogue — a local cache must never narrow it. `produce_loop`:
+`taken_titles` = log **+** `lyric_titles()`; `attempted_titles` stays log-only or a
+transient failure is never retried.
 
 ## Recovery
 `$AX_VAULT_BOOTSTRAP` → `ops/ax_vault.py` (`axvault:readme`); a lost `work/*.json`
