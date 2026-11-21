@@ -2879,6 +2879,51 @@ def test_catalogue_report_counts_masters() -> None:
         G.SONGS = real_songs
 
 
+def test_brief_reads_artifacts() -> None:
+    """A cold session must get the live state from a command, not from memory.
+
+    Every conversation starts with no history and the injected card is capped at
+    6 KB, so "the agent forgot" is the setup, not the model — and a bigger model
+    is not a route here (Rule #1: free only). `ops/brief.py` derives the hold,
+    the compass result, the catalogue and the saved login from the artifacts, so
+    the answer is the same on any pod and any model. This pins that it runs, that
+    it names the hold truthfully, and that an unreadable source says `unknown`
+    rather than inventing a value.
+    """
+    section("brief (state from artifacts, not memory)")
+    import contextlib
+    import io
+    import sys as _sys
+    from pathlib import Path as _P
+
+    _sys.path.insert(0, str(ROOT.parent / "ops"))
+    import brief
+    import hold_gate
+
+    out = io.StringIO()
+    with contextlib.redirect_stdout(out):
+        rc = brief.main([])
+    text = out.getvalue()
+    check("brief exits 0", rc == 0)
+    for key in ("repo", "publish hold", "compass", "login vault", "catalogue"):
+        check(f"brief prints {key}", key in text, text[:120])
+    check("brief reports the hold truthfully",
+          ("ACTIVE" in text) == hold_gate.active(), text[:160])
+    # An unreadable source is `unknown`, never a plausible-looking number.
+    real = brief.run
+    brief.run = lambda *a, **k: (False, "unknown (OSError)")
+    try:
+        out2 = io.StringIO()
+        with contextlib.redirect_stdout(out2):
+            brief.main([])
+        check("an unreadable source prints unknown",
+              "unknown" in out2.getvalue())
+    finally:
+        brief.run = real
+    check("brief is a plain file next to the other ops tools",
+          (_P(ROOT.parent / "ops" / "brief.py")).exists())
+
+
 def test_genres() -> None:
     section("genres (WIRING: catalogue is open, any genre)")
     import genres
@@ -9285,6 +9330,7 @@ def main() -> int:
     test_provenance()
     test_genres()
     test_catalogue_report_counts_masters()
+    test_brief_reads_artifacts()
     test_genre_gate_blocks_parked_lanes()
     test_arrangement_no_repeat()
     test_song_analysis()

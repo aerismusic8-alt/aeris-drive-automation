@@ -17,6 +17,12 @@ administers **all** of K's work in K's place — decide, execute, verify, record
 per-step approval. It also carries the perpetual loop and the live priority queue,
 so it is the first place to look for "what should I do next".
 
+Then run `python3 ops/brief.py`. It prints the live state — publish hold, compass
+result, the catalogue counted from the release, the last saved login — derived
+from artifacts rather than memory, because a cold session has no memory and the
+injected card is capped at 6 KB. Report numbers from a command that read the
+artifact, never from recollection; `ops/brief.py` is that command.
+
 ## AR's team (file-based sub-agents)
 
 `.agents/agents/` holds the curated sub-agents — six, each bound to a tool that
