@@ -1,10 +1,10 @@
 # เพลงส้นทีนไรเนี่ย — ความคืบหน้า (อัตโนมัติ)
 
-อัพเดท: 2026-11-20 17:06 UTC
+อัพเดท: 2026-11-21 01:39 UTC
 
 ## เป้าหมาย monetize
 - ผู้ติดตาม: 12 / 1,000   [.................... 1%]
-- ยอดดูรวม: 3508
+- ยอดดูรวม: 4266
 - วิดีโอทั้งหมด: 89
 
 ## ระบบที่รันอัตโนมัติ (GitHub Actions, ไม่ใช้ sandbox)
@@ -17,8 +17,8 @@
 - เพลย์ลิสต์: karaoke=PLYqvExU9-SLE, song=PLeA2Vf8N8O5c, short=PLKlARHtRpKkI, compilation=PLQyOtKueeTgs, naviya=PLA2A_jek56jw, mood-sad=PLEAzEDjP3vgk, mood-warm=PLUQemmr8-kPw, mood-hopeful=PLeLdgn9BjlEY
 
 ## ครอสโพสต์
-- โพสต์แล้ว: facebook=60, facebook-page=28, tiktok=44
-- คิวคงเหลือ: facebook=216, tiktok=158
+- โพสต์แล้ว: facebook=60, facebook-page=29, tiktok=45
+- คิวคงเหลือ: facebook=183, tiktok=140
 
 ## หมายเหตุ
 - ตัวเลขจาก YouTube Data API (subs/views/likes/comments).
