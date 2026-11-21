@@ -6776,9 +6776,13 @@ def test_genre_gate_blocks_parked_lanes() -> None:
     # candidate pool. Shuffling before the `want * POOL_FACTOR` cut meant a
     # random draw almost never reached one of the 600 4K rows in a 6,876-row
     # bank, so every still was a 1920-wide crop and the render upscaled.
+    #
+    # The pool is now built per freshness tier, widest first inside each, so a
+    # 4K row still reaches the cap even when it has been used before.
     check("the widest rows enter the pool before the shuffle",
-          'rows.sort(key=lambda r: -int(r.get("w") or 0))' in lane_src
-          and "pool = rows[:cap]" in lane_src)
+          'fresh.sort(key=lambda r: -int(r.get("w") or 0))' in lane_src
+          and 'stale.sort(key=lambda r: -int(r.get("w") or 0))' in lane_src
+          and "pool = fresh[:cap]" in lane_src)
     check("the pool cap is still bounded",
           "cap = max(want * POOL_FACTOR, want)" in lane_src)
     # Ranking has to happen over a wider pool than the clip needs. The old picker
@@ -6796,6 +6800,79 @@ def test_genre_gate_blocks_parked_lanes() -> None:
     for q in ("bangkok night", "band stage"):
         got = clip_lane.bank_stills(q, 8, 11, log=lambda *_: None)
         check(f"bank stills for {q!r} fill a clip", len(got) >= 3, f"{len(got)}")
+
+
+def test_ai_frames_rotate_between_clips() -> None:
+    """Two clips must not open on the same generated frame.
+
+    The gallery made this obvious (2026-11-21): seven generated frames appeared
+    in both clips, in the same order, while 36 of the 42 frames had never been
+    used. `ai_stills` shuffled the whole bank and ignored the `uses` counter that
+    `image_library.pick` maintains, and nothing recorded a use at all, so the
+    counter could only ever stay at whatever an older lane left behind.
+
+    A viewer tolerates a repeated frame inside one clip; a repeated frame across
+    two consecutive uploads reads as a template, which is the one thing a channel
+    built on generated art cannot afford.
+    """
+    sys.path.insert(0, str(ROOT.parent / "ops"))
+    import clip_lane
+    import image_library
+
+    before = image_library.load()
+    backup = json.dumps(before, ensure_ascii=False)
+    try:
+        picks = []
+        for i in range(3):
+            got = clip_lane.ai_stills(None, 6, i, log=lambda *_: None)
+            if not got:
+                return  # no generated bank on this pod; nothing to rotate
+            picks.append({s["file"] for s in got})
+            clip_lane.mark_ai_used(got, log=lambda *_: None)
+        for a, b in zip(picks, picks[1:]):
+            check("consecutive clips share no generated frame", not (a & b),
+                  f"{len(a & b)} shared")
+        after = image_library.load()
+        bumped = [r for r in after["images"]
+                  if (r.get("uses") or 0) > 0]
+        check("a rendered frame's use is recorded", bool(bumped),
+              f"{len(bumped)} frame(s) with uses > 0")
+    finally:
+        image_library.save(json.loads(backup))
+
+
+def test_photographs_rotate_between_clips() -> None:
+    """The same rule for Commons photographs, which failed the same way.
+
+    Two clips on one topic shared 8 of 16 photographs (2026-11-21) because
+    `bank_stills` never read the `uses` counter either, and when rotation was
+    added at the pool it was undone by the final sort: the same crisp frames won
+    every time. Freshness now ranks above sharpness inside the soft/not-soft
+    split, so a re-used crisp frame still loses to a never-used crisp one while
+    a soft frame loses to both.
+    """
+    sys.path.insert(0, str(ROOT.parent / "ops"))
+    import clip_lane
+    import image_bank
+
+    before = image_bank.load()
+    backup = json.dumps(before, ensure_ascii=False)
+    try:
+        query = "bangkok skytrain station"
+        picks = []
+        for i in range(3):
+            got = clip_lane.bank_stills(query, 8, i, log=lambda *_: None)
+            if len(got) < 4:
+                return  # a small pod has no shards; nothing to rotate
+            picks.append({g["path"].name for g in got})
+            clip_lane.mark_photos_used(got, log=lambda *_: None)
+        for a, b in zip(picks, picks[1:]):
+            check("consecutive clips share no photograph", not (a & b),
+                  f"{len(a & b)} shared")
+        check("a rendered photograph's use is recorded",
+              any((r.get("uses") or 0) > 0 for r in image_bank.load()["images"]))
+    finally:
+        image_bank.save(json.loads(backup))
 
 
 def test_a_director_cuts_on_the_music() -> None:
@@ -8947,6 +9024,10 @@ def main() -> int:
     test_reactive_publish()
     test_publish_hold_is_enforced()
     test_clip_standard_is_a_floor()
+    test_release_pilot_caps()
+    test_ai_frames_rotate_between_clips()
+    test_photographs_rotate_between_clips()
+    test_a_director_cuts_on_the_music()
     test_gemini_score_is_not_authoritative()
     test_metadata_ab_holds_format_fixed()
     test_login_vault_never_clobbers_a_live_surface()

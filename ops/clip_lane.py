@@ -342,9 +342,25 @@ def bank_stills(query: str, want: int, seed: int, log=print) -> list[dict]:
               or (r.get("shard") and r["shard"] in urls)]
     if usable:
         rows = usable
+
+    # Rotate before ranking, not instead of it.
+    #
+    # The manifest has carried a `uses` counter all along and nothing ever read
+    # it, so every clip drawn from the same query picked from the same 6,879
+    # never-used rows and two clips on one topic shared 8 of 16 photographs
+    # (measured 2026-11-21). Ranking still decides *quality* inside the tier;
+    # the tier decides *freshness* across clips. Widening the pool first keeps
+    # a 4K row reachable even when it is not in the least-used tier.
+    least = min(int(r.get("uses") or 0) for r in rows)
+    fresh = [r for r in rows if int(r.get("uses") or 0) == least]
+    stale = [r for r in rows if int(r.get("uses") or 0) != least]
+
     cap = max(want * POOL_FACTOR, want)
-    rows.sort(key=lambda r: -int(r.get("w") or 0))
-    pool = rows[:cap]
+    fresh.sort(key=lambda r: -int(r.get("w") or 0))
+    stale.sort(key=lambda r: -int(r.get("w") or 0))
+    pool = fresh[:cap]
+    if len(pool) < cap:
+        pool += stale[: cap - len(pool)]
     random.Random(seed).shuffle(pool)
     picked, seen = [], []
     for r in pool:
@@ -366,7 +382,8 @@ def bank_stills(query: str, want: int, seed: int, log=print) -> list[dict]:
         # left the lane with one usable still for "bangkok night" and it refused
         # to render at all (2026-11-20). A soft-but-real frame still beats no clip.
         narrow = _crop_width(p) < MIN_CROP_WIDTH
-        picked.append({"path": p, "soft": narrow, **r})
+        picked.append({"path": p, "soft": narrow,
+                       "fresh": int(r.get("uses") or 0) == least, **r})
         # Enough to rank from without hashing the whole bank: the pool only has
         # to be wider than `want`, and the cap is generous so a query with many
         # narrow rows still has sharp ones to promote.
@@ -379,13 +396,20 @@ def bank_stills(query: str, want: int, seed: int, log=print) -> list[dict]:
     # is 4K in / 720p out, and the way that reaches the screen is picking the
     # largest, crispest crop the bank has. Duplicate rejection above still wins
     # over sharpness, because a repeat shot is worse than a soft one.
-    # Width first (cheap), then the Laplacian on a shortlist only: measuring
-    # sharpness for every candidate in a 6,876-row bank costs more than the
-    # render itself.
-    picked.sort(key=lambda c: (c["soft"], -_crop_width(c["path"])))
+    #
+    # Freshness sits between the two: never-used frames come before re-used ones,
+    # then sharpness orders inside that. Without it the ranking always promoted
+    # the same handful of crisp frames, so the rotation happened in the pool and
+    # was then undone at the sort (measured 2026-11-21: 10 of 10 shared while 25
+    # unused frames sat in the tier). A "soft" flag still outranks freshness — a
+    # re-used sharp frame beats a never-used one that has to be upscaled, because
+    # K's floor is about what reaches the screen, not about bookkeeping.
+    picked.sort(key=lambda c: (c["soft"], not c["fresh"],
+                               -_crop_width(c["path"])))
     shortlist = picked[: max(want * 3, want)]
-    shortlist.sort(key=lambda c: (c["soft"], -_sharpness(c["path"]),
-                                 -_crop_width(c["path"])))
+    shortlist.sort(key=lambda c: (c["soft"], not c["fresh"],
+                                  -_sharpness(c["path"]),
+                                  -_crop_width(c["path"])))
     picked = shortlist + picked[len(shortlist):]
     sharp = [c for c in picked if not c["soft"]]
     # Report the two different shortfalls separately: a narrow crop that had to
@@ -399,6 +423,33 @@ def bank_stills(query: str, want: int, seed: int, log=print) -> list[dict]:
         log(f"bank: kept {want - len(sharp)} narrow crop(s) under "
             f"{MIN_CROP_WIDTH}px — sharp pool had only {len(sharp)} of {want}")
     return picked[:want]
+
+
+def mark_photos_used(stills: list[dict], log=print) -> None:
+    """Record rendered photographs, so the next clip on a topic rotates away.
+
+    Same rule as `mark_ai_used`: only after the floor passes, because a failed
+    render must not spend frames.
+    """
+    used = {Path(s["file"]).name for s in stills if s.get("origin") != "ai"}
+    if not used:
+        return
+    try:
+        sys.path.insert(0, str(ROOT / "ops"))
+        import image_bank  # noqa: PLC0415
+        doc = image_bank.load()
+    except Exception:  # noqa: BLE001
+        return
+    hit = 0
+    for r in doc.get("images", []):
+        if Path(r.get("file", "")).name in used:
+            r["uses"] = int(r.get("uses") or 0) + 1
+            hit += 1
+    if hit:
+        try:
+            image_bank.save(doc)
+        except Exception as exc:  # noqa: BLE001
+            log(f"bank: could not record uses ({type(exc).__name__})")
 
 
 def song_genre(song: str) -> str | None:
@@ -471,7 +522,19 @@ def ai_stills(genre: str | None, want: int, seed: int, log=print) -> list[dict]:
     if not rows:
         return []
 
-    random.Random(seed).shuffle(rows)
+    # Least-used first, then shuffle inside that tier.
+    #
+    # The manifest carries a `uses` counter that `image_library.pick` honours, but
+    # this function ignored it and shuffled the whole bank: the same seven frames
+    # landed in back-to-back clips in the same order (visible in the gallery,
+    # 2026-11-21) while 36 of the 42 frames had never been used at all. A viewer
+    # notices a repeated frame across two clips far more than a repeated frame
+    # inside one, so rotation is what keeps a channel from looking automated.
+    least = min((r.get("uses") or 0) for r in rows)
+    fresh = [r for r in rows if (r.get("uses") or 0) == least]
+    random.Random(seed).shuffle(fresh)
+    rows = fresh + [r for r in rows if (r.get("uses") or 0) != least]
+
     picked, seen = [], []
     for r in rows:
         p = image_library.LIB / r["file"]
@@ -485,8 +548,35 @@ def ai_stills(genre: str | None, want: int, seed: int, log=print) -> list[dict]:
             break
     if picked:
         log(f"ai: {len(picked)} generated still(s)"
-            + (f" for genre {genre}" if genre else " (genre unknown, mixed)"))
+            + (f" for genre {genre}" if genre else " (genre unknown, mixed)")
+            + (f" [least-used tier: {least}]" if len(fresh) < len(rows) else ""))
     return picked
+
+
+def mark_ai_used(stills: list[dict], log=print) -> None:
+    """Record that these frames were rendered, so the next clip rotates away.
+
+    Separate from the picker on purpose: a render that fails after picking must
+    not burn the frames, or a broken run would quietly exhaust the fresh tier.
+    """
+    if not stills:
+        return
+    try:
+        sys.path.insert(0, str(ROOT / "ops"))
+        import image_library  # noqa: PLC0415
+    except Exception:  # noqa: BLE001
+        return
+    doc = image_library.load()
+    used = {s["file"] for s in stills if s.get("origin") == "ai"}
+    if not used:
+        return
+    for r in doc.get("images", []):
+        if r.get("file") in used:
+            r["uses"] = (r.get("uses") or 0) + 1
+    try:
+        image_library.save(doc)
+    except Exception as exc:  # noqa: BLE001
+        log(f"ai: could not record uses ({type(exc).__name__})")
 
 
 def mixed_stills(song: str, query: str, want: int, seed: int, log=print) -> list[dict]:
@@ -849,6 +939,10 @@ def render(song: str, query: str, seconds: float, seed: int, out_dir: Path,
         log("render: below the clip floor, deleted -- " + "; ".join(failed))
         out.unlink(missing_ok=True)
         return None
+
+    # Only now is the frame genuinely spent: the clip passed the floor and exists.
+    mark_ai_used(stills, log=log)
+    mark_photos_used(stills, log=log)
 
     # Written before the Gemini gate, not after: a clip kept for review still has
     # sources to attribute, and CC BY-SA requires the credit wherever the clip
