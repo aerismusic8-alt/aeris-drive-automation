@@ -2924,6 +2924,34 @@ def test_brief_reads_artifacts() -> None:
           (_P(ROOT.parent / "ops" / "brief.py")).exists())
 
 
+def test_mv_renders_4k() -> None:
+    """K asked for 4K MVs (2026-11-21); the renderer and the floor must agree.
+
+    The MV lane shipped 1080x1920 only, and the clip floor listed that one shape,
+    so a 4K render would have been rejected as "no standard for 2160x3840" — a
+    product K asked for that no gate could ever pass. The moves are parametric,
+    but the cards and the VJ bar are absolute pixels, so a 4K frame needs every
+    overlay size scaled or the title reads as a caption.
+    """
+    section("MV at 4K (renderer + floor agree)")
+    import sys as _sys
+    _sys.path.insert(0, str(ROOT.parent / "ops"))
+    import clip_standard as cs
+
+    check("the vertical profile accepts 4K",
+          (2160, 3840) in cs.PROFILES["vertical"]["resolutions"],
+          str(cs.PROFILES["vertical"]["resolutions"]))
+    check("a 4K shape resolves to the vertical profile",
+          cs.SHAPE_DEFAULT.get((2160, 3840)) == "vertical")
+    src = (ROOT / "scripts" / "make_music_video.py").read_text(encoding="utf-8")
+    check("the renderer takes a --height", "--height" in src)
+    check("overlay sizes scale with the frame", "_k()" in src)
+    check("the VJ bar scales with the frame",
+          "int(220 * _k())" in src and "int(300 * _k())" in src)
+    check("the cards scale with the frame",
+          "int(96 * k)" in src and "int(52 * k)" in src)
+
+
 def test_genres() -> None:
     section("genres (WIRING: catalogue is open, any genre)")
     import genres
@@ -9331,6 +9359,7 @@ def main() -> int:
     test_genres()
     test_catalogue_report_counts_masters()
     test_brief_reads_artifacts()
+    test_mv_renders_4k()
     test_genre_gate_blocks_parked_lanes()
     test_arrangement_no_repeat()
     test_song_analysis()

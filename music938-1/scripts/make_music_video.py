@@ -52,6 +52,16 @@ OUT_DIR = ROOT / "library" / "musicvideo"
 
 W, H, FPS = 1080, 1920, 30
 
+
+def _k() -> float:
+    """Overlay scale: every pixel size below was drawn for a 1920-tall frame.
+
+    K asked for 4K MVs (2026-11-21). The camera moves are already parametric, but
+    the cards and the VJ bar are absolute pixels, so at 2160x3840 an unscaled 96 px
+    title reads as a caption. Everything that is a size is multiplied by this.
+    """
+    return H / 1920.0
+
 # The AI scenes. These are the "not just a still" content: a console shot for the
 # channel's signature, then places a lyric can live in. Kept text-free — Thai
 # titles are composited by Pillow, because an image model misspells Thai.
@@ -249,19 +259,22 @@ def _cut_card(text: str, sub: str, out: Path, *, fade: bool = True) -> None:
     """A Thai title/end card on a dark field, so the video opens and closes right."""
     from PIL import Image, ImageDraw, ImageFilter
 
+    k = _k()
     img = Image.new("RGB", (W, H), (10, 10, 14))
     d = ImageDraw.Draw(img)
     for i in range(60):  # a soft vertical glow, no photo needed
         c = int(10 + 40 * (1 - abs(i - 30) / 30))
         d.rectangle([0, i * H // 60, W, (i + 1) * H // 60], fill=(c // 3, c // 4, c))
-    img = img.filter(ImageFilter.GaussianBlur(8))
+    img = img.filter(ImageFilter.GaussianBlur(max(2.0, 8 * k)))
     d = ImageDraw.Draw(img)
-    f1 = _font(THAI_FONT, 96, bold=True)
-    f2 = _font(THAI_FONT, 52)
+    f1 = _font(THAI_FONT, int(96 * k), bold=True)
+    f2 = _font(THAI_FONT, int(52 * k))
     tw = d.textlength(text, font=f1)
-    d.text(((W - tw) / 2, H / 2 - 140), text, font=f1, fill=(255, 255, 255))
+    d.text(((W - tw) / 2, H / 2 - int(140 * k)), text, font=f1,
+           fill=(255, 255, 255))
     sw = d.textlength(sub, font=f2)
-    d.text(((W - sw) / 2, H / 2 + 10), sub, font=f2, fill=(180, 200, 255))
+    d.text(((W - sw) / 2, H / 2 + int(10 * k)), sub, font=f2,
+           fill=(180, 200, 255))
     img.save(out)
 
 
@@ -375,9 +388,10 @@ def build(slug: str, *, seconds: float | None = None, full: bool = False,
         f"[2:v]format=rgba,fade=t=in:st=0:d=1.2:alpha=1[ec];"
         f"[base][tc]overlay=0:0:enable='lt(t,{t_fade*2})'[b1];"
         f"[b1][ec]overlay=0:0:enable='gt(t,{length-3.0})'[b2];"
-        f"[3:a]showwaves=s={W}x220:mode=cline:colors=0x8affc1|0xff8ad8:"
+        f"[3:a]showwaves=s={W}x{int(220 * _k())}:mode=cline:"
+        f"colors=0x8affc1|0xff8ad8:"
         f"rate={FPS},format=rgba,colorchannelmixer=aa=0.30[wave];"
-        f"[b2][wave]overlay=0:H-300[b3];"
+        f"[b2][wave]overlay=0:H-{int(300 * _k())}[b3];"
         f"[b3]setsar=1,format=yuv420p[out];"
         # Normalise at the mux, as the film lane does, so every MV meets the
         # channel floor regardless of the source master's level.
@@ -420,8 +434,17 @@ def main() -> int:
     ap.add_argument("--full", action="store_true", help="the whole song, not the hook")
     ap.add_argument("--seconds", type=float, help="cap the length")
     ap.add_argument("--force-scenes", action="store_true", help="regenerate AI scenes")
+    ap.add_argument("--height", type=int, default=1920,
+                    help="output height; 3840 for a 4K vertical MV (default 1920)")
     ap.add_argument("--list", action="store_true")
     args = ap.parse_args()
+
+    global W, H
+    if args.height and args.height != H:
+        H = args.height + (args.height % 2)
+        W = int(H * 9 / 16)
+        W += W % 2
+        print(f"[mv] {W}x{H} ({H / 1920:.2f}x overlays)")
 
     if args.list:
         print("scenes:")

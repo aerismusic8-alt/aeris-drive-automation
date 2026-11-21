@@ -95,7 +95,10 @@ PROFILES: dict[str, dict] = {
     },
     "vertical": {
         "label": "vertical 9:16 (shorts, MV, affiliate, surreal, concert)",
-        "resolutions": [(1080, 1920)],
+        # 4K is a delivery size, not a different floor: K asked for 4K MVs
+        # (2026-11-21) and the same loudness/motion/bar rules apply to it. Listing
+        # it here is what lets a 4K render pass the gate it must pass.
+        "resolutions": [(1080, 1920), (2160, 3840)],
         "fps": (30,),
         "min_seconds": 5.0,
         "motion_median_min": 0.03,   # zoompan on a still is small but nonzero
@@ -161,7 +164,8 @@ LANE_PROFILE = {
 # apply to every anonymous vertical clip — including an MV, which carries no
 # text by design. An unnamed 9:16 clip gets the permissive standard; the shorts
 # lane opts into the caption floor by its path.
-SHAPE_DEFAULT = {(1080, 1920): "vertical", (720, 1280): "bank"}
+SHAPE_DEFAULT = {(1080, 1920): "vertical", (2160, 3840): "vertical",
+                 (720, 1280): "bank"}
 
 ANALYZE_W = 480
 ANALYZE_MAX_SECONDS = 120.0
