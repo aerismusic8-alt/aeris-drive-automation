@@ -7856,6 +7856,70 @@ def test_fb_page_description() -> None:
         fb.page_token, fb._get, fb._post = orig
 
 
+def test_a_bed_never_reaches_a_clip() -> None:
+    """K, 2026-11-21: "เพลงนี้เอาดนตรี bed ทิ้งไปเลยอย่าเอามาใช้อีก" -- the bed
+    under the clips K watched was the whole failure, so it is pinned shut here.
+
+    `soundfont.render_bed` writes a 44.1 kHz file to the same `song-<slug>.mp3`
+    name a Flow render uses, and the lane used to read only
+    `aeris938-1/library/music` -- where the beds live. Two holes, both closed:
+    a bed is refused at the audio chokepoint, and a bed is never offered in the
+    list the picker chooses from.
+    """
+    section("a bed never reaches a clip (K: no music bed)")
+    sys.path.insert(0, str(ROOT.parent / "ops"))
+    import clip_lane as cl  # noqa: E402
+
+    # Build the bed instead of hoping one is left on disk: the point is the
+    # verdict on the audio, and `provenance.is_bed` reads the sample rate, so a
+    # 44.1 kHz file is exactly what `soundfont.render_bed` produces.
+    import subprocess  # noqa: PLC0415
+    import tempfile  # noqa: PLC0415
+    with tempfile.TemporaryDirectory() as td:
+        fake = Path(td) / "song-fake-bed.mp3"
+        subprocess.run(["ffmpeg", "-v", "error", "-f", "lavfi", "-i",
+                        "sine=frequency=440:duration=2", "-ar", "44100",
+                        "-ac", "2", str(fake)], check=True)
+        check("a 44.1 kHz file is judged a bed", cl._is_bed(fake))
+        check("a bed is refused where the audio is chosen",
+              cl._reject_bed(fake, log=lambda *_: None) is None)
+        real = Path(td) / "song-fake-real.mp3"
+        subprocess.run(["ffmpeg", "-v", "error", "-f", "lavfi", "-i",
+                        "sine=frequency=440:duration=2", "-ar", "48000",
+                        "-ac", "2", str(real)], check=True)
+        check("a 48 kHz render is not a bed", not cl._is_bed(real))
+        check("a real render is accepted",
+              cl._reject_bed(real, log=lambda *_: None) == real)
+
+    # A karaoke file is a derived mix at 44.1 kHz, so sample rate alone called 29
+    # real karaoke files beds and they were deleted on 2026-11-21. Its verdict
+    # must follow its song.
+    with tempfile.TemporaryDirectory() as td:
+        td = Path(td)
+        for sr, expected in (("48000", False), ("44100", True)):
+            subprocess.run(["ffmpeg", "-v", "error", "-y", "-f", "lavfi", "-i",
+                            "sine=frequency=440:duration=2", "-ar", sr,
+                            "-ac", "2", str(td / "song-x.mp3")], check=True)
+            subprocess.run(["ffmpeg", "-v", "error", "-y", "-f", "lavfi", "-i",
+                            "sine=frequency=440:duration=2", "-ar", "44100",
+                            "-ac", "2", str(td / "karaoke-x.mp3")], check=True)
+            check(f"karaoke of a {sr} song is a bed: {expected}",
+                  cl._is_bed(td / "karaoke-x.mp3") is expected)
+
+    # A bed must not appear in the list a picker chooses from.
+    offered = cl.available_songs(log=lambda *_: None)
+    beds = [p for d in cl.SONG_DIRS if d.exists()
+            for p in sorted(d.glob("*.mp3")) if cl._is_bed(p)]
+    bed_stems = {p.stem for p in beds}
+    leaked = sorted(bed_stems & set(offered))
+    check("no bed is offered as a song", not leaked, ", ".join(leaked[:3]))
+
+    # The gate must reject a bed, not the whole library.
+    check("a real song is still offered", bool(offered), f"{len(offered)}")
+    check("the lane reads the real-master folder first",
+          cl.SONG_DIRS[0].name == "songs", str(cl.SONG_DIRS[0]))
+
+
 def test_clip_lane_is_its_own_job() -> None:
     """Art and clips must run as two lanes, not one (K, 2026-11-19).
 
@@ -9042,6 +9106,7 @@ def main() -> int:
     test_vault_key_fallback()
     test_fb_page_description()
     test_memory_guard()
+    test_a_bed_never_reaches_a_clip()
     test_clip_lane_is_its_own_job()
     test_keyless_lyric_drafter()
     test_lyric_meaning_gate()

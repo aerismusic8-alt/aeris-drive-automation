@@ -105,7 +105,16 @@ def is_bed(path: Path) -> bool:
     caught the ffmpeg synth, because the *sampler* bed is a real stereo mix, so
     it read as a Flow song and could be catalogued as one — the same class of bug
     K caught on 2026-11-07 (a bed shipped as a song).
+
+    **A karaoke file is never a bed.** `flow_song._karaoke` re-encodes its mix at
+    44.1 kHz, so sample rate alone called 29 real karaoke files "beds" and they
+    were deleted on 2026-11-21. Karaoke is derived from a song, so its verdict
+    follows its song: bed-derived karaoke is a bed, Flow-derived karaoke is not.
     """
+    name = Path(path).name
+    if name.startswith("karaoke-"):
+        song = Path(path).parent / f"song-{name[len('karaoke-'):]}"
+        return is_bed(song) if song.exists() else False
     try:
         sig = signature(path)
     except Exception:  # noqa: BLE001 - unreadable audio is "not a bed", not a crash

@@ -56,6 +56,14 @@ sys.path.insert(0, str(ROOT / "music938-1" / "scripts"))
 MANIFEST = ROOT / "music938-1" / "library" / "stock" / "manifest.json"
 BANK_IMG = ROOT / "music938-1" / "library" / "stock" / "img"
 MUSIC = ROOT / "aeris938-1" / "library" / "music"
+# `flow_song.py` writes a real Flow render to music938-1/library/songs, but the
+# lane used to look only in MUSIC — which is where `soundfont.render_bed` puts
+# its 44.1 kHz bed under the same file name. That is how a bed ended up under a
+# clip K watched (2026-11-21). Real masters are searched first, and every
+# candidate is checked by `_reject_bed`, so the folder order is a preference,
+# not the guard.
+SONGS = ROOT / "music938-1" / "library" / "songs"
+SONG_DIRS = (SONGS, MUSIC)
 OUT = ROOT / "music938-1" / "library" / "bank"
 FONT = ROOT / "music938-1" / "fonts" / "NotoSansThai.ttf"
 
@@ -349,15 +357,27 @@ def bank_stills(query: str, want: int, seed: int, log=print) -> list[dict]:
     # it, so every clip drawn from the same query picked from the same 6,879
     # never-used rows and two clips on one topic shared 8 of 16 photographs
     # (measured 2026-11-21). Ranking still decides *quality* inside the tier;
-    # the tier decides *freshness* across clips. Widening the pool first keeps
-    # a 4K row reachable even when it is not in the least-used tier.
-    least = min(int(r.get("uses") or 0) for r in rows)
-    fresh = [r for r in rows if int(r.get("uses") or 0) == least]
-    stale = [r for r in rows if int(r.get("uses") or 0) != least]
+    # the tier decides *freshness* across clips.
+    #
+    # `uses` alone is not enough: once every frame in a narrow query has been
+    # used once, the least-used tier becomes the whole query and the next clip
+    # repeats what the previous one just spent. `last_used` (a monotonic clip
+    # sequence written by `mark_photos_used`) breaks that tie, so the frames used
+    # most recently sort last. That is what keeps clip N+1 off clip N even after
+    # the query is exhausted (measured 2026-11-21: 2 then 7 shared frames).
+    def _tier(r: dict) -> tuple[int, int]:
+        return (int(r.get("uses") or 0), int(r.get("last_used") or 0))
+
+    best_tier = min(_tier(r) for r in rows)
+    fresh = [r for r in rows if _tier(r) == best_tier]
+    stale = [r for r in rows if _tier(r) != best_tier]
 
     cap = max(want * POOL_FACTOR, want)
     fresh.sort(key=lambda r: -int(r.get("w") or 0))
-    stale.sort(key=lambda r: -int(r.get("w") or 0))
+    # Leftovers by least-used, then least-recent, then widest: a query that has
+    # been drawn from enough times has one big `uses` tier, and ordering that
+    # tier by width alone repeated the crisp frames just spent.
+    stale.sort(key=lambda r: (_tier(r), -int(r.get("w") or 0)))
     pool = fresh[:cap]
     if len(pool) < cap:
         pool += stale[: cap - len(pool)]
@@ -383,7 +403,7 @@ def bank_stills(query: str, want: int, seed: int, log=print) -> list[dict]:
         # to render at all (2026-11-20). A soft-but-real frame still beats no clip.
         narrow = _crop_width(p) < MIN_CROP_WIDTH
         picked.append({"path": p, "soft": narrow,
-                       "fresh": int(r.get("uses") or 0) == least, **r})
+                       "fresh": _tier(r) == best_tier, **r})
         # Enough to rank from without hashing the whole bank: the pool only has
         # to be wider than `want`, and the cap is generous so a query with many
         # narrow rows still has sharp ones to promote.
@@ -441,9 +461,16 @@ def mark_photos_used(stills: list[dict], log=print) -> None:
     except Exception:  # noqa: BLE001
         return
     hit = 0
+    # A monotonic stamp, so `bank_stills` can order by *how recently* a frame was
+    # spent. `uses` only counts; after one pass over a small query every row has
+    # the same count and the counter alone cannot keep the next clip off the
+    # previous one.
+    stamp = 1 + max((int(r.get("last_used") or 0) for r in doc.get("images", [])),
+                    default=0)
     for r in doc.get("images", []):
         if Path(r.get("file", "")).name in used:
             r["uses"] = int(r.get("uses") or 0) + 1
+            r["last_used"] = stamp
             hit += 1
     if hit:
         try:
@@ -639,25 +666,68 @@ def _song_path(song: str, log=print) -> Path | None:
     it needs instead of failing — which is what makes the clip lane runnable on
     Actions at all.
     """
-    local = MUSIC / f"{song}.mp3"
-    if local.exists():
-        return local
+    for d in SONG_DIRS:
+        local = d / f"{song}.mp3"
+        if local.exists():
+            found = _reject_bed(local, log)
+            if found is not None:
+                return found
 
     import urllib.request  # noqa: PLC0415
 
     url = (f"https://github.com/{REPO}/releases/download/{RELEASE_TAG}/{song}.mp3")
-    dest = MUSIC / f"{song}.mp3"
+    dest = SONG_DIRS[0] / f"{song}.mp3"
     dest.parent.mkdir(parents=True, exist_ok=True)
     try:
         with urllib.request.urlopen(url, timeout=300) as resp, dest.open("wb") as f:
             shutil.copyfileobj(resp, f, 1 << 20)
         log(f"audio: fetched {song}.mp3 from {RELEASE_TAG}")
-        return dest
+        return _reject_bed(dest, log)
     except Exception as exc:  # noqa: BLE001
         log(f"audio: {song}.mp3 is neither local nor in {RELEASE_TAG} "
             f"({type(exc).__name__})")
         dest.unlink(missing_ok=True)
         return None
+
+
+def _is_bed(path: Path) -> bool:
+    """True for a `soundfont.render_bed` output. A failed check counts as a bed.
+
+    A bed that slips through reaches K's ears as "this is not a song", so an
+    unreadable file must not be treated as a song either.
+    """
+    try:
+        import sys  # noqa: PLC0415
+        if str(ROOT / "music938-1" / "scripts") not in sys.path:
+            sys.path.insert(0, str(ROOT / "music938-1" / "scripts"))
+        import provenance  # noqa: PLC0415
+        return provenance.is_bed(path)
+    except Exception:  # noqa: BLE001
+        return True
+
+
+def _is_bed_dir_copy(stem: str) -> bool:
+    """True when a local copy of `stem` exists and is a bed. No copy -> False."""
+    for d in SONG_DIRS:
+        p = d / f"{stem}.mp3"
+        if p.exists():
+            return _is_bed(p)
+    return False
+
+
+def _reject_bed(path: Path, log=print) -> Path | None:
+    """Refuse a synthesised bed: K rejected a bed under a clip (2026-11-21).
+
+    `soundfont.render_bed` writes to the same `song-<slug>.mp3` path a real Flow
+    render uses, so a bed is indistinguishable by name. Only the sample rate
+    separates them (`provenance.is_bed`). Returning None makes the caller stop
+    with "no audio" instead of shipping a bed as if it were a song.
+    """
+    if _is_bed(path):
+        log(f"audio: {path.name} is a synthesised bed, not a song — refusing "
+            f"it (render it through flow_song.py)")
+        return None
+    return path
 
 
 def _publishable_only(songs: list[str], log=print) -> list[str]:
@@ -766,13 +836,25 @@ def available_songs(log=print) -> list[str]:
     """
     note = lambda m: print(m, file=sys.stderr)  # noqa: E731
     assets = _release_assets(note)
+    local_stems = {p.stem for d in SONG_DIRS if d.exists() for p in d.glob("*.mp3")}
+    local_stems = {s for s in local_stems
+                   if any((d / f"{s}.mp3").exists() and not _is_bed(d / f"{s}.mp3")
+                          for d in SONG_DIRS)}
     if assets is None:
-        local = sorted(p.stem for p in MUSIC.glob("*.mp3")) if MUSIC.exists() else []
-        return _publishable_only(local, log=note)
+        return _publishable_only(sorted(local_stems), log=note)
 
     stems = {a[:-4] for a in assets if a.endswith(".mp3")}
-    if MUSIC.exists():
-        local = {p.stem for p in MUSIC.glob("*.mp3")}
+    # The release itself carries beds (song-37/song-40 were packed while the
+    # offline lane was still writing to that name), so a stem on the release is
+    # not proof of a song. Drop any stem whose local copy is a bed; a stem with
+    # no local copy is left in and checked by `_song_path` at render time.
+    beds = {s for s in stems if _is_bed_dir_copy(s)}
+    if beds:
+        note(f"songs: {len(beds)} release stem(s) are synthesised beds, not songs — "
+             f"skipped: {', '.join(sorted(beds)[:3])}")
+        stems -= beds
+    if local_stems:
+        local = local_stems
         if not stems:
             stems = local          # the release lists no audio: the cache is all we have
         elif local - stems:
