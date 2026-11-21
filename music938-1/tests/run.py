@@ -2952,6 +2952,58 @@ def test_mv_renders_4k() -> None:
           "int(96 * k)" in src and "int(52 * k)" in src)
 
 
+def test_mv_rail_renders_the_product() -> None:
+    """K (2026-11-21): "คาโอเกะไม่ต้องทำแล้ว ... แล้วเอาเพลงมาทำ mv 4k".
+
+    The declared product (K 2026-11-20) had no rail at all — the compass carried
+    the `mv` lane with `rail: None` while five rails rendered Shorts — so "make a
+    music video" was a job only an agent session could do. This pins the rail,
+    and pins the split that keeps one song from being posted twice: the MV rail
+    renders and puts the file on `media-938`; `ax-music-release.yml` publishes.
+    """
+    section("the MV rail (song -> 4K MV -> media store)")
+    sys.path.insert(0, str(ROOT.parent / "ops"))
+    import compass as cp  # noqa: E402
+
+    rail = cp.LANES["mv"].get("rail")
+    check("the MV lane names a rail", bool(rail), str(rail))
+    path = ROOT.parent / (rail or "")
+    check("the MV rail exists", path.exists(), rail)
+    src = path.read_text(encoding="utf-8") if path.exists() else ""
+    check("the MV rail renders the MV script",
+          "make_music_video.py" in src)
+    check("the MV rail renders at 4K",
+          "--height" in src and "3840" in src)
+    check("the MV rail renders the long form, not the Short cut",
+          "--full" in src)
+    check("the MV rail pulls the masters first",
+          src.index("pull_media.py") < src.index("make_music_video.py"))
+    # The MV lands on the finished shelf, and `publish_media` reads
+    # `library/musicvideo`. Pointing the shelf at that dir is what stops the two
+    # halves disagreeing (the bug that once left every bank clip off the release).
+    check("the shelf and the uploader agree where an MV lives",
+          "AX_FINISHED_DIR" in src and "library/musicvideo" in src)
+    check("the MV rail puts the render on the media store",
+          "publish_media.py" in src and "musicvideo" in src)
+    # Publishing stays in one place: `release.py` -> `yt_publish.py` measures the
+    # clip and the thumbnail. A second uploader here would double-post a song.
+    # (`release.has_mv` is read here only to skip a slug that already has an MV.)
+    check("the MV rail does not publish",
+          "yt_publish.py" not in src
+          and "scripts/release.py" not in src
+          and "song_to_page" not in src)
+    check("the MV rail only apt-installs ffmpeg when it is missing",
+          "command -v ffmpeg" in src)
+    # K's order: karaoke is not a thing we make any more, and the Short rail that
+    # produced karaoke Shorts must not come back as a lane's producer.
+    check("the karaoke Short rail is gone",
+          not (ROOT.parent / ".github" / "workflows"
+               / "ax-music-karaoke-render.yml").exists())
+    check("no lane points at the deleted karaoke rail",
+          not any((r.get("rail") or "").endswith("ax-music-karaoke-render.yml")
+                  for r in cp.LANES.values()))
+
+
 def test_genres() -> None:
     section("genres (WIRING: catalogue is open, any genre)")
     import genres
@@ -9050,8 +9102,14 @@ def test_render_workflow_deps() -> None:
     check("the concert render installs numpy",
           "pip install" in concert and "numpy" in concert)
     # ffmpeg ships with ubuntu-latest, so the install must be conditional; a bare
-    # `apt-get install ffmpeg` makes a DNS blip fatal to the render.
-    for name in ("ax-music-concert-render.yml", "ax-music-karaoke-render.yml"):
+    # `apt-get install ffmpeg` makes a DNS blip fatal to the render. The karaoke
+    # Short rail that used to be checked here was deleted with karaoke
+    # (K 2026-11-21); the MV rail is its successor and is the rail that now
+    # carries the render, so it is the one that must install its deps.
+    mv_rail = (wf / "ax-music-mv.yml").read_text()
+    check("the MV rail installs numpy and pillow",
+          "pip install" in mv_rail and "numpy" in mv_rail and "pillow" in mv_rail)
+    for name in ("ax-music-concert-render.yml", "ax-music-mv.yml"):
         src = (wf / name).read_text()
         check(f"{name} only apt-installs ffmpeg when it is missing",
               "command -v ffmpeg" in src)
@@ -9360,6 +9418,7 @@ def main() -> int:
     test_catalogue_report_counts_masters()
     test_brief_reads_artifacts()
     test_mv_renders_4k()
+    test_mv_rail_renders_the_product()
     test_genre_gate_blocks_parked_lanes()
     test_arrangement_no_repeat()
     test_song_analysis()

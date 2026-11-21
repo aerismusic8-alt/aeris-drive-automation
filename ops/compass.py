@@ -70,8 +70,9 @@ LANES: dict[str, dict] = {
         "script": "music938-1/scripts/make_music_video.py",
         "kind": PRODUCT, "audio": SONG, "profile": "vertical",
         "out": "music938-1/library/musicvideo", "name": "mv-<slug>-full.mp4",
-        "rail": None,
-        "note": "THE declared product (K 2026-11-20). No rail renders it yet.",
+        "rail": ".github/workflows/ax-music-mv.yml",
+        "note": "THE declared product (K 2026-11-20); rendered at 4K by "
+                "ax-music-mv (K 2026-11-21) and published through release.py.",
     },
     "film": {
         "script": "music938-1/scripts/make_film_video.py",
@@ -84,8 +85,10 @@ LANES: dict[str, dict] = {
         "script": "music938-1/scripts/make_short.py",
         "kind": PRODUCT, "audio": SONG, "profile": "short",
         "out": "music938-1/library/shorts", "name": "short-song-<slug>.mp4",
-        "rail": ".github/workflows/ax-music-karaoke-render.yml",
-        "note": "discovery Short; burns captions, so it carries the text floor.",
+        "rail": None,
+        "note": "discovery Short; burns captions, so it carries the text floor. "
+                "Its rail was the karaoke Short rail, deleted with karaoke "
+                "(K 2026-11-21: 'คาโอเกะไม่ต้องทำแล้ว').",
     },
     "surreal": {
         "script": "music938-1/scripts/make_surreal_short.py",

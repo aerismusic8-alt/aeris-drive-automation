@@ -1,0 +1,129 @@
+name: AX Music MV (มิวสิควีดีโอ 4K)
+
+# K (2026-11-21): "คาโอเกะไม่ต้องทำแล้ว ... แล้วเอาเพลงมาทำ mv 4k"
+#
+# The declared product (K 2026-11-20) had no rail: `ops/compass.py` carried the
+# `mv` lane with `rail: None`, so five rails rendered Shorts and none rendered a
+# music video. This is that rail — it renders the long-form MV at 4K and puts it
+# on `media-938`, where `release.py` finds it through `mv_files()`. A song with
+# an MV on the release is uploaded as the MV, with the MV title.
+#
+# It does not publish. `ax-music-release.yml` stays the single publish
+# chokepoint, so two rails can never post the same song and the clip floor is
+# measured on the way out. The render is gated on the way in as well: the
+# compass refuses a parked genre, and `make_music_video.build` deletes a render
+# below the floor instead of shelving it.
+
+on:
+  schedule:
+    # One MV a day at 05:40 UTC, before the release rail's 09:00 window, so a
+    # fresh MV can be that day's upload.
+    - cron: '40 5 * * *'
+  workflow_dispatch:
+    inputs:
+      slug:
+        description: "song slug (blank = first publishable song without an MV)"
+        default: ""
+      count:
+        description: "how many songs this run"
+        default: "1"
+      height:
+        description: "output height (3840 = 4K)"
+        default: "3840"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: ax-music-mv
+  # A 4K render is 20-40 minutes, so a stuck run would hold the slot for the
+  # GitHub default of 360 minutes. Cancelling is safe: the render is keyed by
+  # slug and re-running it simply redoes that slug.
+  cancel-in-progress: true
+
+jobs:
+  render:
+    runs-on: ubuntu-latest
+    timeout-minutes: 180
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Tools
+        run: |
+          set -euo pipefail
+          # ffmpeg ships with ubuntu-latest; installing it again needs apt to
+          # reach security.ubuntu.com, and a DNS blip there has already killed a
+          # render. Only install when it is truly absent.
+          if ! command -v ffmpeg >/dev/null 2>&1; then
+            sudo apt-get update -qq
+            sudo apt-get install -y -qq ffmpeg fonts-thai-tlwg
+          fi
+          python -m pip install --quiet --disable-pip-version-check pillow numpy
+
+      - name: Pull the masters and covers
+        env:
+          AX_GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          python3 music938-1/scripts/pull_media.py --only songs
+          python3 music938-1/scripts/pull_media.py --only covers
+
+      - name: Render
+        env:
+          SLUG: ${{ github.event.inputs.slug }}
+          COUNT: ${{ github.event.inputs.count || '1' }}
+          HEIGHT: ${{ github.event.inputs.height || '3840' }}
+          # `shelve()` parks a finished MV on the media-home shelf, which
+          # `publish_media` does not scan — the same two-halves-disagree bug that
+          # once left every bank clip off the release. Pointing the shelf at the
+          # MV output dir keeps them in agreement.
+          AX_FINISHED_DIR: ${{ github.workspace }}/music938-1/library/musicvideo
+        run: |
+          set -euo pipefail
+          if [ -z "$SLUG" ]; then
+            # The compass decides which songs an MV may use; `has_mv` skips the
+            # songs that already have one, so a re-run never re-renders a slug.
+            SLUGS=$(python3 - <<'PY'
+          import os
+          import sys
+          sys.path.insert(0, "ops")
+          sys.path.insert(0, "music938-1/scripts")
+          import compass
+          import release
+          todo = [s for s in compass.songs("mv") if not release.has_mv(s)]
+          print("\n".join(todo[: int(os.environ.get("COUNT", "1"))]))
+          PY
+            )
+          else
+            SLUGS="$SLUG"
+          fi
+          if [ -z "$SLUGS" ]; then
+            echo "no publishable song without an MV — nothing to do"
+            exit 0
+          fi
+          for slug in $SLUGS; do
+            echo "::group::render $slug at ${HEIGHT}px"
+            # The 4K picture shelf first: an AI scene answers at 1024 px and
+            # softens the moment the camera moves. Filling the song's own theme
+            # keeps every shot a real 3840 px still.
+            theme=$(python3 - "$slug" <<'PY'
+          import sys
+          sys.path.insert(0, "music938-1/scripts")
+          import make_music_video as mv
+          meta, _ = mv.load_lyrics(sys.argv[1])
+          print(mv.MOOD_THEMES.get((meta.get("mood") or "").lower(), "city"))
+          PY
+            )
+            python3 ops/picture_library.py fill --theme "$theme" --want 10 || true
+            python3 music938-1/scripts/make_music_video.py "$slug" \
+              --height "$HEIGHT" --full
+            echo "::endgroup::"
+          done
+
+      - name: Push the MVs to the media store
+        env:
+          AX_GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          python3 music938-1/scripts/publish_media.py --only musicvideo
