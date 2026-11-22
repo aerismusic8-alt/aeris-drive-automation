@@ -710,6 +710,24 @@ def _song_path(song: str, log=print) -> Path | None:
         return None
 
 
+def _bed_state(path: Path) -> bool | None:
+    """True = measured a bed, False = measured a song, None = could not measure.
+
+    `None` is not `True`. `provenance` needs numpy; without it every local copy
+    read as a bed and the picker dropped two real songs (2026-11-22). The render
+    still fails closed on `None`, but the *picker* must not hide a song it never
+    measured.
+    """
+    try:
+        import sys  # noqa: PLC0415
+        if str(ROOT / "music938-1" / "scripts") not in sys.path:
+            sys.path.insert(0, str(ROOT / "music938-1" / "scripts"))
+        import provenance  # noqa: PLC0415
+        return bool(provenance.is_bed(path))
+    except Exception:  # noqa: BLE001
+        return None
+
+
 def _is_bed(path: Path) -> bool:
     """True for a `soundfont.render_bed` output. A failed check counts as a bed.
 
@@ -717,11 +735,7 @@ def _is_bed(path: Path) -> bool:
     unreadable file must not be treated as a song either.
     """
     try:
-        import sys  # noqa: PLC0415
-        if str(ROOT / "music938-1" / "scripts") not in sys.path:
-            sys.path.insert(0, str(ROOT / "music938-1" / "scripts"))
-        import provenance  # noqa: PLC0415
-        return provenance.is_bed(path)
+        return _bed_state(path) is not False
     except Exception:  # noqa: BLE001
         return True
 
@@ -869,11 +883,24 @@ def available_songs(log=print) -> list[str]:
     # offline lane was still writing to that name), so a stem on the release is
     # not proof of a song. Drop any stem whose local copy is a bed; a stem with
     # no local copy is left in and checked by `_song_path` at render time.
-    beds = {s for s in stems if _is_bed_dir_copy(s)}
+    beds, unmeasured = set(), set()
+    for stem in stems:
+        for d in SONG_DIRS:
+            p = d / f"{stem}.mp3"
+            if p.exists():
+                state = _bed_state(p)
+                if state is True:
+                    beds.add(stem)
+                elif state is None:
+                    unmeasured.add(stem)
+                break
     if beds:
         note(f"songs: {len(beds)} release stem(s) are synthesised beds, not songs — "
              f"skipped: {', '.join(sorted(beds)[:3])}")
         stems -= beds
+    if unmeasured:
+        note(f"songs: {len(unmeasured)} local copy(s) could not be measured "
+             f"(provenance/numpy missing?) — left in: {', '.join(sorted(unmeasured)[:3])}")
     if local_stems:
         local = local_stems
         if not stems:
