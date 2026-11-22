@@ -390,6 +390,31 @@ browser session from the `AERIS_STORAGE_STATE_B64` secret (exported with
 rejected the run fails and pushes a phone alert; the fix is a fresh desktop
 sign-in plus re-export — that is the one thing that can need K.
 
+### The fleet can be off without anyone noticing (2026-11-22)
+
+The publish hold (2026-11-20) was installed by disabling **every** workflow, not
+only the ones that post. On 2026-11-22 all 45 were `disabled_manually` apart from
+`ax-music-mv`, which had never run: no clips, no image harvest, no measurement for
+a day, and nothing said so. `hold_gate.py` already blocks uploads in code, so the
+hold does not need the fleet switched off.
+
+**Enabled (cannot post):** `ax-clip-lane`, `ax-image-bank`, `ax-genart`,
+`ax-music-dashboard` (measure + experiment), `ax-memory-guard`, `ax-risk-audit`.
+**Left disabled:** every rail that reaches a channel — release, crosspost,
+bank-publish, trivia, affiliate-render, compilation, concert, surreal, reactive,
+produce.
+
+Check this before concluding "the system is idle": `GET
+/repos/{owner}/{repo}/actions/workflows` and read `state`. A green run history is
+not evidence the rails are on.
+
+**The ceiling is songs, not clips.** 50 masters on `media-938` = 25 karaoke
+(vocal-removed) + 17 parked genre + **8 publishable**, so the clip lane can produce
+at most eight clips before it repeats a song. `ax-music-produce --no-flow` would
+refill it with the synth engine K already rejected; sfizz is not in apt and its
+banks are gigabytes. Moving the ceiling needs Flow Music (a signed-in desktop) or
+a runner-side sfizz install — not more clip work.
+
 ## How AR reports
 
 Short, in Thai, with numbers not adjectives. State what was done, what is
