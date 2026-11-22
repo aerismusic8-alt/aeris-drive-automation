@@ -483,6 +483,9 @@ def post_video(video: Path, caption: str, *, title: str | None = None,
     if clip_standard.needs_audio_repair(str(video)):
         video = Path(clip_standard.repair_audio(str(video)))
     clip_standard.assert_ok(str(video))
+    # A big file goes up in chunks: one 300 MB multipart POST breaks the pipe.
+    if video.stat().st_size > 40 * 1024 * 1024:
+        return post_video_resumable(video, caption, title=title, when=when, token=t)
     blob = video.read_bytes()
     fields = {"description": caption, "access_token": t}
     if title:
@@ -493,6 +496,60 @@ def post_video(video: Path, caption: str, *, title: str | None = None,
     vid = out.get("id") or out.get("video_id")
     if not vid:
         raise RuntimeError(f"videos returned {out}")
+    return vid
+
+
+def post_video_resumable(video: Path, caption: str, *, title: str | None = None,
+                         when=None, token: str | None = None,
+                         chunk_mb: int = 8) -> str | None:
+    """Upload a large video in chunks, then finish it.
+
+    `post_video` sends the whole file in one multipart POST, which reads it into
+    memory and holds a single connection open for the duration. A 308 MB MV broke
+    that with `URLError: Broken pipe` (2026-11-22), losing the upload after
+    minutes. Meta's documented resumable protocol — start / transfer / finish —
+    moves a bounded chunk per request, so a dropped connection costs one chunk
+    rather than the whole file.
+    """
+    t = page_access_token(token) if (token or page_token()) else ""
+    if not t:
+        return None
+    import genre_gate  # noqa: E402
+    genre_gate.assert_ok(str(video))
+    import clip_standard  # noqa: E402
+    if clip_standard.needs_audio_repair(str(video)):
+        video = Path(clip_standard.repair_audio(str(video)))
+    clip_standard.assert_ok(str(video))
+
+    size = video.stat().st_size
+    url = f"{GRAPH_VIDEO}/{PAGE_ID}/videos"
+    start = _post(url, {"upload_phase": "start", "file_size": str(size),
+                        "access_token": t})
+    sid = start.get("upload_session_id")
+    vid = start.get("video_id")
+    if not sid or not vid:
+        raise RuntimeError(f"resumable start returned {start}")
+    offset = int(start.get("start_offset", 0))
+    end = int(start.get("end_offset", min(size, chunk_mb * 1024 * 1024)))
+    with open(video, "rb") as f:
+        while offset < size:
+            f.seek(offset)
+            blob = f.read(max(1, end - offset))
+            out = _post_multipart(
+                url, {"upload_phase": "transfer", "upload_session_id": sid,
+                      "start_offset": str(offset), "video_id": vid,
+                      "access_token": t},
+                "video_file_chunk", video.name, blob, "application/octet-stream")
+            offset = int(out.get("start_offset", size))
+            end = int(out.get("end_offset", size))
+    fields = {"upload_phase": "finish", "upload_session_id": sid,
+              "video_id": vid, "description": caption, "access_token": t}
+    if title:
+        fields["title"] = title
+    fields = _schedule(fields, when)
+    out = _post(url, fields)
+    if out.get("success") is False:
+        raise RuntimeError(f"resumable finish returned {out}")
     return vid
 
 

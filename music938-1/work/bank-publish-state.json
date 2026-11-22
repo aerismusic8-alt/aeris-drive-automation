@@ -30,5 +30,18 @@
       "ok": false,
       "skipped": "no TikTok token"
     }
+  },
+  "mv-07-huachai-si-thao-full.mp4": {
+    "youtube": {
+      "ok": true,
+      "id": "mdnRFGciK9w",
+      "detail": [
+        "https://youtu.be/mdnRFGciK9w"
+      ]
+    },
+    "facebook": {
+      "ok": false,
+      "detail": "URLError: <urlopen error [Errno 32] Broken pipe>"
+    }
   }
 }

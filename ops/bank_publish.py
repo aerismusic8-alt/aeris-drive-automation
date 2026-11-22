@@ -21,6 +21,7 @@ missing TikTok token must not read as "posted".
 from __future__ import annotations
 
 import argparse
+import re
 import json
 import os
 import subprocess
@@ -127,18 +128,19 @@ def make_thumb(clip: Path, out: Path) -> Path:
     return out
 
 
-def youtube(clip: Path, *, when: str | None, privacy: str | None) -> dict:
+def youtube(clip: Path, *, when: str | None, privacy: str | None,
+            kind: str = "short") -> dict:
     """Upload through `yt_publish`, which enforces both gates itself."""
     with tempfile.TemporaryDirectory() as td:
         td = Path(td)
         thumb = make_thumb(clip, td / "thumb.jpg")
         desc = td / "desc.txt"
-        desc.write_text(build_caption(clip), encoding="utf-8")
+        desc.write_text(build_caption(clip, kind), encoding="utf-8")
         tags = td / "tags.txt"
-        tags.write_text(",".join(clip_tags(clip)), encoding="utf-8")
+        tags.write_text(",".join(clip_tags(clip, kind)), encoding="utf-8")
         cmd = [sys.executable, str(ROOT / "ops" / "yt_publish.py"),
                "--ch", "ch3", "--video", str(clip), "--thumb", str(thumb),
-               "--title", clip_title(clip), "--desc-file", str(desc),
+               "--title", clip_title(clip, kind), "--desc-file", str(desc),
                "--tags-file", str(tags), "--category", "10"]  # 10 = Music
         if when:
             cmd += ["--schedule", when]
@@ -147,7 +149,12 @@ def youtube(clip: Path, *, when: str | None, privacy: str | None) -> dict:
         else:
             cmd += ["--now"]
         r = subprocess.run(cmd, capture_output=True, text=True)
-        return {"ok": r.returncode == 0,
+        out = (r.stdout or "") + (r.stderr or "")
+        m = re.search(r"video id ([A-Za-z0-9_-]{6,})", out)
+        if m:
+            vid = m.group(1)
+            return {"ok": True, "id": vid, "detail": [f"https://youtu.be/{vid}"]}
+        return {"ok": False,
                 "detail": (r.stdout or r.stderr).strip().splitlines()[-1:] or [""]}
 
 
@@ -292,7 +299,8 @@ def main() -> int:
                 continue
             try:
                 if ch == "youtube":
-                    res = youtube(clip, when=a.schedule, privacy=a.privacy)
+                    res = youtube(clip, when=a.schedule, privacy=a.privacy,
+                                  kind=a.kind)
                 elif ch == "facebook":
                     res = facebook(clip, a.kind)
                 elif ch == "tiktok":
