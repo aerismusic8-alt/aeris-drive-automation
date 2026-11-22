@@ -223,14 +223,19 @@ def library_scenes(slug: str, want: int, log=print) -> list[Path]:
         rows = json.loads(idx.read_text(encoding="utf-8")).get("images", [])
     except (OSError, ValueError):
         return []
-    rows = [r for r in rows if r.get("theme") == theme and (lib / r["file"]).exists()]
-    rows.sort(key=lambda r: (r.get("uses") or 0, r.get("id") or ""))
-    picked = [lib / r["file"] for r in rows[:want]]
-    for r in rows[:want]:
+    # Keep the whole catalogue in `rows`; the theme filter is a view of it. Saving
+    # the filtered list back deleted every other theme's pictures from the index,
+    # so each MV build shrank the library it drew from (measured 2026-11-22: the
+    # slow song could only find 15 stills for 78 shots).
+    present = [r for r in rows if (lib / r["file"]).exists()]
+    mine = sorted((r for r in present if r.get("theme") == theme),
+                  key=lambda r: (r.get("uses") or 0, r.get("id") or ""))
+    picked = [lib / r["file"] for r in mine[:want]]
+    for r in mine[:want]:
         r["uses"] = (r.get("uses") or 0) + 1
     if picked:
         try:
-            idx.write_text(json.dumps({"images": rows}, ensure_ascii=False, indent=1))
+            idx.write_text(json.dumps({"images": present}, ensure_ascii=False, indent=1))
         except OSError:
             pass
         log(f"  [mv] {len(picked)} scene(s) from the 4K library ({theme})")
@@ -380,6 +385,11 @@ def build(slug: str, *, seconds: float | None = None, full: bool = False,
     # than repeat a picture. Repeating it was the old behaviour (`i % len`), and
     # with 8 sources it showed the same 8 stills eight times in a 3-minute MV.
     sources = distinct_sources(sources)
+    # A picture already stamped on another MV goes last, so a fresh build spends
+    # the unused part of a growing library before it repeats anything (K,
+    # 2026-11-22: stamp which picture went into which MV).
+    import picture_ledger  # noqa: PLC0415
+    sources = picture_ledger.rank(sources)
     if len(sources) < n_shots:
         print(f"  [mv] {len(sources)} distinct picture(s) for {n_shots} shots — "
               f"holding each longer instead of repeating one", file=sys.stderr)
@@ -450,7 +460,14 @@ def build(slug: str, *, seconds: float | None = None, full: bool = False,
         raise SystemExit("MV below the clip floor, deleted")
 
     dest = shelve(str(out), meta.get("title", slug), "mv")
-    return {"slug": slug, "path": str(dest), "shots": n_shots,
+    # Stamp after the floor gate: a rejected MV used nothing.
+    used_before = picture_ledger.uses()
+    stamped = picture_ledger.stamp(f"mv-{slug}", sources[:n_shots])
+    reused = [p for p in stamped["pictures"] if p["key"] in used_before]
+    if reused:
+        print(f"  [mv] {len(reused)} picture(s) reused from an earlier MV — "
+              f"add pictures to the library to stop that", file=sys.stderr)
+    return {"slug": slug, "path": str(dest), "shots": n_shots, "stamped": len(stamped["pictures"]),
             "seconds": round(length, 1), "bpm": bpm,
             "bytes": Path(dest).stat().st_size}
 

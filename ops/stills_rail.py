@@ -267,12 +267,18 @@ def harvest(queries, per_query=3, cache_path=None):
     return pool
 
 
-def download(items, out_dir, log=print):
+def download(items, out_dir, log=print, start=0):
+    """Download `items` as s000.jpg, s001.jpg, ... from `start`.
+
+    `start` exists because the numbering is also the identity: a second fill that
+    began at 0 found s000.jpg already on disk, kept it, and filed the new picture
+    under a row pointing at the old file — 133 city rows for 14 files.
+    """
     os.makedirs(out_dir, exist_ok=True)
     got = []
     for i, it in enumerate(items):
         ext = os.path.splitext(urllib.parse.urlparse(it["url"]).path)[1].lower() or ".jpg"
-        p = os.path.join(out_dir, f"s{i:03d}{ext}")
+        p = os.path.join(out_dir, f"s{i + start:03d}{ext}")
         if os.path.exists(p) and os.path.getsize(p) > 40000:
             it["path"] = p
             got.append(it)

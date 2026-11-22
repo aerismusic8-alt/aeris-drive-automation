@@ -1069,6 +1069,56 @@ def test_mv_pictures_are_not_repeated() -> None:
     n, shot = mv.plan_shots(222.0, 68.0)
     check("a 222 s ballad still plans watchable shots",
           shot >= mv.SHOT_MIN and n >= 3, f"{n} shots of {shot:.2f}s")
+    check("the build ranks pictures so an unused one comes first",
+          "picture_ledger.rank(sources)" in src)
+    check("the build stamps every picture it used",
+          "picture_ledger.stamp(" in src)
+
+
+def test_picture_ledger_stamps_each_mv() -> None:
+    """Every picture names the MV it went into, and the next MV prefers new ones.
+
+    K (2026-11-22): "ห้ามภาพเดิมซ้ำในแต่ละ mv อันไหนใช้กับ mv ไหนต้อง stamp ไว้เลย".
+    `distinct_sources` only protects one build, so without a ledger the second MV
+    starts from the same stills. The ledger is also the answer to "which MV used
+    this picture", which is a question a folder of jpgs cannot answer.
+    """
+    section("picture ledger (stamp per MV)")
+    import tempfile
+    sys.path.insert(0, str(ROOT.parent / "ops"))
+    import picture_ledger as pl
+
+    with tempfile.TemporaryDirectory() as td:
+        tmp = Path(td)
+        ledger = tmp / "ledger.json"
+        pics = []
+        for i in range(6):
+            f = tmp / f"p{i}.jpg"
+            f.write_bytes(b"jpg%d" % i)
+            pics.append(f)
+
+        doc = pl.load(ledger)
+        pl.stamp("mv-one", pics[:3], doc=doc, path=ledger)
+        pl.save(doc, ledger)
+        doc = pl.load(ledger)
+        check("the stamp names the MV and every shot",
+              doc["mvs"]["mv-one"]["count"] == 3
+              and [p["shot"] for p in doc["mvs"]["mv-one"]["pictures"]] == [0, 1, 2])
+        check("a picture resolves back to its MV",
+              pl.uses(doc)[pl._key(pics[0])] == ["mv-one"])
+
+        # The next MV must start on pictures the first one never touched.
+        chosen, reused = pl.claim(pics, 3, doc)
+        check("the next MV claims unused pictures first",
+              not reused and all(pl._key(p) not in pl.uses(doc) for p in chosen),
+              f"reused {len(reused)}")
+
+        # Only when the library cannot cover it is a picture reused — and that is
+        # visible, not silent.
+        chosen, reused = pl.claim(pics, 6, doc)
+        check("a short library reuses, and says so", len(reused) == 3, f"{len(reused)} reused")
+        check("one MV still never repeats a picture inside itself",
+              len({pl._key(p) for p in chosen}) == len(chosen))
 
 
 def test_mv_keeps_picture_proportions() -> None:
@@ -9769,6 +9819,7 @@ def main() -> int:
     test_media_home_falls_back()
     test_story_reel_contract()
     test_mv_pictures_are_not_repeated()
+    test_picture_ledger_stamps_each_mv()
     test_mv_keeps_picture_proportions()
     test_compass_is_the_one_direction()
     test_outputs()

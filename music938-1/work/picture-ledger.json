@@ -1,0 +1,643 @@
+{
+ "version": 1,
+ "mvs": {
+  "mv-34-wan-tham-mada-thi-phi-set-v34": {
+   "built": "2026-11-22T08:45:52Z",
+   "count": 66,
+   "pictures": [
+    {
+     "shot": 0,
+     "key": "/workspace/ax-tools/media-library/pictures/city/s014.jpg",
+     "sha1": "4d4c1d18b6bd720a234408455a7c03bebfe9984c"
+    },
+    {
+     "shot": 1,
+     "key": "/workspace/ax-tools/media-library/pictures/city/s015.jpg",
+     "sha1": "0a4e1453173a35ed220d50ed015d9e88615e740e"
+    },
+    {
+     "shot": 2,
+     "key": "/workspace/ax-tools/media-library/pictures/city/s016.jpg",
+     "sha1": "48056959b0dc60a26d045bb8608f198d9e66763b"
+    },
+    {
+     "shot": 3,
+     "key": "/workspace/ax-tools/media-library/pictures/city/s017.jpg",
+     "sha1": "dc89363f064c1c210ad7c1994693f09865a6f76e"
+    },
+    {
+     "shot": 4,
+     "key": "/workspace/ax-tools/media-library/pictures/city/s018.jpg",
+     "sha1": "0cf646d2402752202acad29d15a792c052627175"
+    },
+    {
+     "shot": 5,
+     "key": "/workspace/ax-tools/media-library/pictures/city/s019.jpg",
+     "sha1": "85ece8b1503aefe7de0f6eba8f199f4988c1231b"
+    },
+    {
+     "shot": 6,
+     "key": "/workspace/ax-tools/media-library/pictures/city/s020.jpg",
+     "sha1": "ad9218e288b1d9d3413e44530f215da3f790479e"
+    },
+    {
+     "shot": 7,
+     "key": "/workspace/ax-tools/media-library/pictures/city/s021.jpg",
+     "sha1": "bd63f45b5ae7a6e9b42b8bc1ebd1736fa4edba7f"
+    },
+    {
+     "shot": 8,
+     "key": "/workspace/ax-tools/media-library/pictures/city/s022.jpg",
+     "sha1": "7e2d4c3e9853a8bd9ae8add82f606fd691393745"
+    },
+    {
+     "shot": 9,
+     "key": "/workspace/ax-tools/media-library/pictures/city/s023.jpg",
+     "sha1": "a35ec55d119ff5e93f3a0f3fd981d9daa383ec4f"
+    },
+    {
+     "shot": 10,
+     "key": "/workspace/ax-tools/media-library/pictures/city/s024.jpg",
+     "sha1": "3ac94abe1b0e7a70f759eba074d0e71fc5498866"
+    },
+    {
+     "shot": 11,
+     "key": "/workspace/ax-tools/media-library/pictures/city/s025.jpg",
+     "sha1": "797ee604f828bf7c98e02e69e4df3383aa8f5385"
+    },
+    {
+     "shot": 12,
+     "key": "/workspace/ax-tools/media-library/pictures/city/s026.jpg",
+     "sha1": "e24dfeedd83e277ea3649288133fa7a315aead64"
+    },
+    {
+     "shot": 13,
+     "key": "/workspace/ax-tools/media-library/pictures/city/s027.jpg",
+     "sha1": "c4bed3f7baf78127470aa70c496e0c05aacd8404"
+    },
+    {
+     "shot": 14,
+     "key": "/workspace/ax-tools/media-library/pictures/city/s028.jpg",
+     "sha1": "be33ede5847a4dc9c2b0af5d14a632530763a3ee"
+    },
+    {
+     "shot": 15,
+     "key": "/workspace/ax-tools/media-library/pictures/city/s029.jpg",
+     "sha1": "e20dee66755b46fd54a5d19d77fb5516e310231c"
+    },
+    {
+     "shot": 16,
+     "key": "/workspace/ax-tools/media-library/pictures/city/s030.jpg",
+     "sha1": "21b04594c4c179ca5879d5a7e22a4192ca22430f"
+    },
+    {
+     "shot": 17,
+     "key": "/workspace/ax-tools/media-library/pictures/city/s031.jpg",
+     "sha1": "55e33b35c0b691814257b66ad0bfed4115e56ae6"
+    },
+    {
+     "shot": 18,
+     "key": "/workspace/ax-tools/media-library/pictures/city/s032.jpg",
+     "sha1": "908774028b31ea44e375352ca4edd7d9a794c188"
+    },
+    {
+     "shot": 19,
+     "key": "/workspace/ax-tools/media-library/pictures/city/s033.jpg",
+     "sha1": "816392394ed8caa870dfee3960eb20aa9c00d19e"
+    },
+    {
+     "shot": 20,
+     "key": "/workspace/ax-tools/media-library/pictures/city/s034.jpg",
+     "sha1": "e5ee4eb87c20da933f1a94b016d65838d71d64b4"
+    },
+    {
+     "shot": 21,
+     "key": "/workspace/ax-tools/media-library/pictures/city/s035.jpg",
+     "sha1": "8870343dfde4ab247030d65970cc649c0cfd6ece"
+    },
+    {
+     "shot": 22,
+     "key": "/workspace/ax-tools/media-library/pictures/city/s036.jpg",
+     "sha1": "ae8a77fdc37fcf6ef32a751f5baee21e91a3dfb0"
+    },
+    {
+     "shot": 23,
+     "key": "/workspace/ax-tools/media-library/pictures/city/s037.jpg",
+     "sha1": "4a96ee2312a6e1590b4824d27a9ab916bc1503f0"
+    },
+    {
+     "shot": 24,
+     "key": "/workspace/ax-tools/media-library/pictures/city/s038.jpg",
+     "sha1": "79a18b3ab105a492eb3cf3377d8c0de6bf9b8f6e"
+    },
+    {
+     "shot": 25,
+     "key": "/workspace/ax-tools/media-library/pictures/city/s039.jpg",
+     "sha1": "6fb0a69030e22a80e6a816d50b8e7ae6fd3444ed"
+    },
+    {
+     "shot": 26,
+     "key": "/workspace/ax-tools/media-library/pictures/city/s040.jpg",
+     "sha1": "716c691547fc176785db34e7d2e6a20e1b2be1e6"
+    },
+    {
+     "shot": 27,
+     "key": "/workspace/ax-tools/media-library/pictures/city/s041.jpg",
+     "sha1": "1887e9b646e9e2784c4bb614bf9271cb4278faa8"
+    },
+    {
+     "shot": 28,
+     "key": "/workspace/ax-tools/media-library/pictures/city/s042.jpg",
+     "sha1": "dc2d494dcbbd1e1c99692300c766b5d178429ebc"
+    },
+    {
+     "shot": 29,
+     "key": "/workspace/ax-tools/media-library/pictures/city/s043.jpg",
+     "sha1": "0b78bd952a4f7875f2d6f826ee06cf2767014180"
+    },
+    {
+     "shot": 30,
+     "key": "/workspace/ax-tools/media-library/pictures/city/s044.jpg",
+     "sha1": "431ef61a6a54abe358e30de14478c47071b936be"
+    },
+    {
+     "shot": 31,
+     "key": "/workspace/ax-tools/media-library/pictures/city/s045.jpg",
+     "sha1": "cc8b572589394d0e921c5551db96eb4c3b905102"
+    },
+    {
+     "shot": 32,
+     "key": "/workspace/ax-tools/media-library/pictures/city/s046.jpg",
+     "sha1": "9713016e6ad8d2640685f083c56a58270790c807"
+    },
+    {
+     "shot": 33,
+     "key": "/workspace/ax-tools/media-library/pictures/city/s047.jpg",
+     "sha1": "fd13a2aa8e2ecdf84e4898382140bfe5132d9386"
+    },
+    {
+     "shot": 34,
+     "key": "/workspace/ax-tools/media-library/pictures/city/s048.jpg",
+     "sha1": "6f13fd94605103d9eb8fd05a5c52b296a1bf5f18"
+    },
+    {
+     "shot": 35,
+     "key": "/workspace/ax-tools/media-library/pictures/city/s049.jpg",
+     "sha1": "a464ef26faa8915238c4e2e4abdfbca863a27772"
+    },
+    {
+     "shot": 36,
+     "key": "/workspace/ax-tools/media-library/pictures/city/s050.jpg",
+     "sha1": "690c4545f43909031d34e2c79609f25acd38e5d1"
+    },
+    {
+     "shot": 37,
+     "key": "/workspace/ax-tools/media-library/pictures/city/s051.jpg",
+     "sha1": "09f90fa3ef06a9b3def62df606408c0d4cde8624"
+    },
+    {
+     "shot": 38,
+     "key": "/workspace/ax-tools/media-library/pictures/city/s052.jpg",
+     "sha1": "a714a8f0285801c437d78f9c7c2a1ad71e4d0830"
+    },
+    {
+     "shot": 39,
+     "key": "/workspace/ax-tools/media-library/pictures/city/s053.jpg",
+     "sha1": "c53f8dc58f7c12d5972503eea7961f4e0e2597a0"
+    },
+    {
+     "shot": 40,
+     "key": "/workspace/ax-tools/media-library/pictures/city/s054.jpg",
+     "sha1": "238c3aee3e9d565ebe01f381f584f05544f44a6f"
+    },
+    {
+     "shot": 41,
+     "key": "/workspace/ax-tools/media-library/pictures/city/s055.jpg",
+     "sha1": "fb4d6ca18bec15833ff7d64b82fb799114aef81f"
+    },
+    {
+     "shot": 42,
+     "key": "/workspace/ax-tools/media-library/pictures/city/s056.jpg",
+     "sha1": "12caccd2797072e38a864c2f1596416832986e85"
+    },
+    {
+     "shot": 43,
+     "key": "/workspace/ax-tools/media-library/pictures/city/s057.jpg",
+     "sha1": "f3249c7654ad9f5889973bf87c59557a8be11117"
+    },
+    {
+     "shot": 44,
+     "key": "/workspace/ax-tools/media-library/pictures/city/s058.jpg",
+     "sha1": "21f3487a2b9492deebf8081579b832e4d5fff448"
+    },
+    {
+     "shot": 45,
+     "key": "/workspace/ax-tools/media-library/pictures/city/s059.jpg",
+     "sha1": "676d92250e3393dd97a67c4bcaaaef1fc5fe8808"
+    },
+    {
+     "shot": 46,
+     "key": "/workspace/ax-tools/media-library/pictures/city/s060.jpg",
+     "sha1": "82d3149de94087d2e146bd49ed2f3183796872ce"
+    },
+    {
+     "shot": 47,
+     "key": "/workspace/ax-tools/media-library/pictures/city/s061.jpg",
+     "sha1": "1525eeddac0eec555fe292116f48e272e0721264"
+    },
+    {
+     "shot": 48,
+     "key": "/workspace/ax-tools/media-library/pictures/city/s062.jpg",
+     "sha1": "946ed9b2ece049843fc9611eecb985d3d4fcbb18"
+    },
+    {
+     "shot": 49,
+     "key": "/workspace/ax-tools/media-library/pictures/city/s063.jpg",
+     "sha1": "58e90e4fd81d4782a0532880efb717b30cecb7e9"
+    },
+    {
+     "shot": 50,
+     "key": "/workspace/ax-tools/media-library/pictures/city/s064.jpg",
+     "sha1": "e5209d71733a7a8286de385f80c9ec642aa127a2"
+    },
+    {
+     "shot": 51,
+     "key": "/workspace/ax-tools/media-library/pictures/city/s000.jpg",
+     "sha1": "4d4c1d18b6bd720a234408455a7c03bebfe9984c"
+    },
+    {
+     "shot": 52,
+     "key": "/workspace/ax-tools/media-library/pictures/city/s001.jpg",
+     "sha1": "0a4e1453173a35ed220d50ed015d9e88615e740e"
+    },
+    {
+     "shot": 53,
+     "key": "/workspace/ax-tools/media-library/pictures/city/s002.jpg",
+     "sha1": "48056959b0dc60a26d045bb8608f198d9e66763b"
+    },
+    {
+     "shot": 54,
+     "key": "/workspace/ax-tools/media-library/pictures/city/s003.jpg",
+     "sha1": "dc89363f064c1c210ad7c1994693f09865a6f76e"
+    },
+    {
+     "shot": 55,
+     "key": "/workspace/ax-tools/media-library/pictures/city/s004.jpg",
+     "sha1": "0cf646d2402752202acad29d15a792c052627175"
+    },
+    {
+     "shot": 56,
+     "key": "/workspace/ax-tools/media-library/pictures/city/s005.jpg",
+     "sha1": "431ef61a6a54abe358e30de14478c47071b936be"
+    },
+    {
+     "shot": 57,
+     "key": "/workspace/ax-tools/media-library/pictures/city/s006.jpg",
+     "sha1": "09f90fa3ef06a9b3def62df606408c0d4cde8624"
+    },
+    {
+     "shot": 58,
+     "key": "/workspace/ax-tools/media-library/pictures/city/s007.jpg",
+     "sha1": "a714a8f0285801c437d78f9c7c2a1ad71e4d0830"
+    },
+    {
+     "shot": 59,
+     "key": "/workspace/ax-tools/media-library/pictures/city/s008.jpg",
+     "sha1": "c53f8dc58f7c12d5972503eea7961f4e0e2597a0"
+    },
+    {
+     "shot": 60,
+     "key": "/workspace/ax-tools/media-library/pictures/city/s009.jpg",
+     "sha1": "238c3aee3e9d565ebe01f381f584f05544f44a6f"
+    },
+    {
+     "shot": 61,
+     "key": "/workspace/ax-tools/media-library/pictures/city/s010.jpg",
+     "sha1": "fb4d6ca18bec15833ff7d64b82fb799114aef81f"
+    },
+    {
+     "shot": 62,
+     "key": "/workspace/ax-tools/media-library/pictures/city/s011.jpg",
+     "sha1": "12caccd2797072e38a864c2f1596416832986e85"
+    },
+    {
+     "shot": 63,
+     "key": "/workspace/ax-tools/media-library/pictures/city/s012.jpg",
+     "sha1": "f3249c7654ad9f5889973bf87c59557a8be11117"
+    },
+    {
+     "shot": 64,
+     "key": "/workspace/ax-tools/media-library/pictures/city/s013.jpg",
+     "sha1": "21f3487a2b9492deebf8081579b832e4d5fff448"
+    },
+    {
+     "shot": 65,
+     "key": "music938-1/library/covers/cover-34-wan-tham-mada-thi-phi-set-v34.jpg",
+     "sha1": "08a27309dbfc4735b671b8df514147124171ad19"
+    }
+   ]
+  },
+  "mv-51-wan-di-thi-dai-choe": {
+   "built": "2026-11-22T09:08:20Z",
+   "count": 59,
+   "pictures": [
+    {
+     "shot": 0,
+     "key": "/workspace/ax-tools/media-library/pictures/city/s065.jpg",
+     "sha1": "676d92250e3393dd97a67c4bcaaaef1fc5fe8808"
+    },
+    {
+     "shot": 1,
+     "key": "/workspace/ax-tools/media-library/pictures/city/s066.jpg",
+     "sha1": "82d3149de94087d2e146bd49ed2f3183796872ce"
+    },
+    {
+     "shot": 2,
+     "key": "/workspace/ax-tools/media-library/pictures/city/s067.jpg",
+     "sha1": "1525eeddac0eec555fe292116f48e272e0721264"
+    },
+    {
+     "shot": 3,
+     "key": "/workspace/ax-tools/media-library/pictures/city/s068.jpg",
+     "sha1": "946ed9b2ece049843fc9611eecb985d3d4fcbb18"
+    },
+    {
+     "shot": 4,
+     "key": "/workspace/ax-tools/media-library/pictures/city/s069.jpg",
+     "sha1": "58e90e4fd81d4782a0532880efb717b30cecb7e9"
+    },
+    {
+     "shot": 5,
+     "key": "/workspace/ax-tools/media-library/pictures/city/s070.jpg",
+     "sha1": "e5209d71733a7a8286de385f80c9ec642aa127a2"
+    },
+    {
+     "shot": 6,
+     "key": "/workspace/ax-tools/media-library/pictures/city/s071.jpg",
+     "sha1": "cc8b572589394d0e921c5551db96eb4c3b905102"
+    },
+    {
+     "shot": 7,
+     "key": "/workspace/ax-tools/media-library/pictures/city/s072.jpg",
+     "sha1": "9713016e6ad8d2640685f083c56a58270790c807"
+    },
+    {
+     "shot": 8,
+     "key": "/workspace/ax-tools/media-library/pictures/city/s073.jpg",
+     "sha1": "fd13a2aa8e2ecdf84e4898382140bfe5132d9386"
+    },
+    {
+     "shot": 9,
+     "key": "/workspace/ax-tools/media-library/pictures/city/s074.jpg",
+     "sha1": "6f13fd94605103d9eb8fd05a5c52b296a1bf5f18"
+    },
+    {
+     "shot": 10,
+     "key": "/workspace/ax-tools/media-library/pictures/city/s075.jpg",
+     "sha1": "a464ef26faa8915238c4e2e4abdfbca863a27772"
+    },
+    {
+     "shot": 11,
+     "key": "/workspace/ax-tools/media-library/pictures/city/s076.jpg",
+     "sha1": "690c4545f43909031d34e2c79609f25acd38e5d1"
+    },
+    {
+     "shot": 12,
+     "key": "/workspace/ax-tools/media-library/pictures/city/s077.jpg",
+     "sha1": "09f90fa3ef06a9b3def62df606408c0d4cde8624"
+    },
+    {
+     "shot": 13,
+     "key": "/workspace/ax-tools/media-library/pictures/city/s078.jpg",
+     "sha1": "a714a8f0285801c437d78f9c7c2a1ad71e4d0830"
+    },
+    {
+     "shot": 14,
+     "key": "/workspace/ax-tools/media-library/pictures/city/s079.jpg",
+     "sha1": "c53f8dc58f7c12d5972503eea7961f4e0e2597a0"
+    },
+    {
+     "shot": 15,
+     "key": "/workspace/ax-tools/media-library/pictures/city/s080.jpg",
+     "sha1": "238c3aee3e9d565ebe01f381f584f05544f44a6f"
+    },
+    {
+     "shot": 16,
+     "key": "/workspace/ax-tools/media-library/pictures/city/s081.jpg",
+     "sha1": "fb4d6ca18bec15833ff7d64b82fb799114aef81f"
+    },
+    {
+     "shot": 17,
+     "key": "/workspace/ax-tools/media-library/pictures/city/s082.jpg",
+     "sha1": "12caccd2797072e38a864c2f1596416832986e85"
+    },
+    {
+     "shot": 18,
+     "key": "/workspace/ax-tools/media-library/pictures/city/s083.jpg",
+     "sha1": "f3249c7654ad9f5889973bf87c59557a8be11117"
+    },
+    {
+     "shot": 19,
+     "key": "/workspace/ax-tools/media-library/pictures/city/s084.jpg",
+     "sha1": "21f3487a2b9492deebf8081579b832e4d5fff448"
+    },
+    {
+     "shot": 20,
+     "key": "/workspace/ax-tools/media-library/pictures/city/s085.jpg",
+     "sha1": "4d4c1d18b6bd720a234408455a7c03bebfe9984c"
+    },
+    {
+     "shot": 21,
+     "key": "/workspace/ax-tools/media-library/pictures/city/s086.jpg",
+     "sha1": "0a4e1453173a35ed220d50ed015d9e88615e740e"
+    },
+    {
+     "shot": 22,
+     "key": "/workspace/ax-tools/media-library/pictures/city/s087.jpg",
+     "sha1": "48056959b0dc60a26d045bb8608f198d9e66763b"
+    },
+    {
+     "shot": 23,
+     "key": "/workspace/ax-tools/media-library/pictures/city/s088.jpg",
+     "sha1": "dc89363f064c1c210ad7c1994693f09865a6f76e"
+    },
+    {
+     "shot": 24,
+     "key": "/workspace/ax-tools/media-library/pictures/city/s089.jpg",
+     "sha1": "0cf646d2402752202acad29d15a792c052627175"
+    },
+    {
+     "shot": 25,
+     "key": "/workspace/ax-tools/media-library/pictures/city/s090.jpg",
+     "sha1": "85ece8b1503aefe7de0f6eba8f199f4988c1231b"
+    },
+    {
+     "shot": 26,
+     "key": "/workspace/ax-tools/media-library/pictures/city/s091.jpg",
+     "sha1": "ad9218e288b1d9d3413e44530f215da3f790479e"
+    },
+    {
+     "shot": 27,
+     "key": "/workspace/ax-tools/media-library/pictures/city/s092.jpg",
+     "sha1": "bd63f45b5ae7a6e9b42b8bc1ebd1736fa4edba7f"
+    },
+    {
+     "shot": 28,
+     "key": "/workspace/ax-tools/media-library/pictures/city/s093.jpg",
+     "sha1": "7e2d4c3e9853a8bd9ae8add82f606fd691393745"
+    },
+    {
+     "shot": 29,
+     "key": "/workspace/ax-tools/media-library/pictures/city/s094.jpg",
+     "sha1": "a35ec55d119ff5e93f3a0f3fd981d9daa383ec4f"
+    },
+    {
+     "shot": 30,
+     "key": "/workspace/ax-tools/media-library/pictures/city/s095.jpg",
+     "sha1": "3ac94abe1b0e7a70f759eba074d0e71fc5498866"
+    },
+    {
+     "shot": 31,
+     "key": "/workspace/ax-tools/media-library/pictures/city/s096.jpg",
+     "sha1": "797ee604f828bf7c98e02e69e4df3383aa8f5385"
+    },
+    {
+     "shot": 32,
+     "key": "/workspace/ax-tools/media-library/pictures/city/s097.jpg",
+     "sha1": "e24dfeedd83e277ea3649288133fa7a315aead64"
+    },
+    {
+     "shot": 33,
+     "key": "/workspace/ax-tools/media-library/pictures/city/s098.jpg",
+     "sha1": "c4bed3f7baf78127470aa70c496e0c05aacd8404"
+    },
+    {
+     "shot": 34,
+     "key": "/workspace/ax-tools/media-library/pictures/city/s099.jpg",
+     "sha1": "be33ede5847a4dc9c2b0af5d14a632530763a3ee"
+    },
+    {
+     "shot": 35,
+     "key": "/workspace/ax-tools/media-library/pictures/city/s100.jpg",
+     "sha1": "e20dee66755b46fd54a5d19d77fb5516e310231c"
+    },
+    {
+     "shot": 36,
+     "key": "/workspace/ax-tools/media-library/pictures/city/s101.jpg",
+     "sha1": "21b04594c4c179ca5879d5a7e22a4192ca22430f"
+    },
+    {
+     "shot": 37,
+     "key": "/workspace/ax-tools/media-library/pictures/city/s102.jpg",
+     "sha1": "55e33b35c0b691814257b66ad0bfed4115e56ae6"
+    },
+    {
+     "shot": 38,
+     "key": "/workspace/ax-tools/media-library/pictures/city/s103.jpg",
+     "sha1": "908774028b31ea44e375352ca4edd7d9a794c188"
+    },
+    {
+     "shot": 39,
+     "key": "/workspace/ax-tools/media-library/pictures/city/s104.jpg",
+     "sha1": "816392394ed8caa870dfee3960eb20aa9c00d19e"
+    },
+    {
+     "shot": 40,
+     "key": "/workspace/ax-tools/media-library/pictures/city/s105.jpg",
+     "sha1": "e5ee4eb87c20da933f1a94b016d65838d71d64b4"
+    },
+    {
+     "shot": 41,
+     "key": "/workspace/ax-tools/media-library/pictures/city/s106.jpg",
+     "sha1": "8870343dfde4ab247030d65970cc649c0cfd6ece"
+    },
+    {
+     "shot": 42,
+     "key": "/workspace/ax-tools/media-library/pictures/city/s107.jpg",
+     "sha1": "ae8a77fdc37fcf6ef32a751f5baee21e91a3dfb0"
+    },
+    {
+     "shot": 43,
+     "key": "/workspace/ax-tools/media-library/pictures/city/s108.jpg",
+     "sha1": "4a96ee2312a6e1590b4824d27a9ab916bc1503f0"
+    },
+    {
+     "shot": 44,
+     "key": "/workspace/ax-tools/media-library/pictures/city/s109.jpg",
+     "sha1": "79a18b3ab105a492eb3cf3377d8c0de6bf9b8f6e"
+    },
+    {
+     "shot": 45,
+     "key": "/workspace/ax-tools/media-library/pictures/city/s110.jpg",
+     "sha1": "6fb0a69030e22a80e6a816d50b8e7ae6fd3444ed"
+    },
+    {
+     "shot": 46,
+     "key": "/workspace/ax-tools/media-library/pictures/city/s111.jpg",
+     "sha1": "716c691547fc176785db34e7d2e6a20e1b2be1e6"
+    },
+    {
+     "shot": 47,
+     "key": "/workspace/ax-tools/media-library/pictures/city/s112.jpg",
+     "sha1": "1887e9b646e9e2784c4bb614bf9271cb4278faa8"
+    },
+    {
+     "shot": 48,
+     "key": "/workspace/ax-tools/media-library/pictures/city/s113.jpg",
+     "sha1": "dc2d494dcbbd1e1c99692300c766b5d178429ebc"
+    },
+    {
+     "shot": 49,
+     "key": "/workspace/ax-tools/media-library/pictures/city/s114.jpg",
+     "sha1": "0b78bd952a4f7875f2d6f826ee06cf2767014180"
+    },
+    {
+     "shot": 50,
+     "key": "/workspace/ax-tools/media-library/pictures/city/s115.jpg",
+     "sha1": "431ef61a6a54abe358e30de14478c47071b936be"
+    },
+    {
+     "shot": 51,
+     "key": "music938-1/library/covers/cover-51-wan-di-thi-dai-choe.jpg",
+     "sha1": "1a9f76357b03052f6f757de4168b4be16eca23dc"
+    },
+    {
+     "shot": 52,
+     "key": "/workspace/ax-tools/media-library/pictures/city/s014.jpg",
+     "sha1": "4d4c1d18b6bd720a234408455a7c03bebfe9984c"
+    },
+    {
+     "shot": 53,
+     "key": "/workspace/ax-tools/media-library/pictures/city/s015.jpg",
+     "sha1": "0a4e1453173a35ed220d50ed015d9e88615e740e"
+    },
+    {
+     "shot": 54,
+     "key": "/workspace/ax-tools/media-library/pictures/city/s016.jpg",
+     "sha1": "48056959b0dc60a26d045bb8608f198d9e66763b"
+    },
+    {
+     "shot": 55,
+     "key": "/workspace/ax-tools/media-library/pictures/city/s017.jpg",
+     "sha1": "dc89363f064c1c210ad7c1994693f09865a6f76e"
+    },
+    {
+     "shot": 56,
+     "key": "/workspace/ax-tools/media-library/pictures/city/s018.jpg",
+     "sha1": "0cf646d2402752202acad29d15a792c052627175"
+    },
+    {
+     "shot": 57,
+     "key": "/workspace/ax-tools/media-library/pictures/city/s019.jpg",
+     "sha1": "85ece8b1503aefe7de0f6eba8f199f4988c1231b"
+    },
+    {
+     "shot": 58,
+     "key": "/workspace/ax-tools/media-library/pictures/city/s020.jpg",
+     "sha1": "ad9218e288b1d9d3413e44530f215da3f790479e"
+    }
+   ]
+  }
+ },
+ "updated": "2026-11-22T09:08:20Z"
+}

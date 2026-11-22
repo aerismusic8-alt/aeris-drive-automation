@@ -396,8 +396,12 @@ def verify_meaning(sections: list[tuple[str, list[str]]],
         f"เนื้อเพลง:\n{text}\n"
     )
     answer = ask(question, timeout_s=timeout_s)
-    first = next((ln.strip() for ln in answer.splitlines() if ln.strip()), "")
-    if first.upper().startswith("PASS"):
+    # The web reader returns the page caption with the reply ("Gemini said PASS…"),
+    # so a bare startswith() on the first line rejected every draft that passed.
+    speaker = re.compile(r"^\s*(?:gemini|you|answer)\s+(?:said|says|say)\s*[:：]?\s*", re.I)
+    lines = [speaker.sub("", ln.strip()) for ln in answer.splitlines() if ln.strip()]
+    verdict = next((ln for ln in lines if re.match(r"(?i)^(?:pass|fail)\b", ln)), lines[0] if lines else "")
+    if verdict.upper().startswith("PASS"):
         return []
     reason = " ".join(answer.split())[:300]
     return [f"meaning check did not pass: {reason}"]

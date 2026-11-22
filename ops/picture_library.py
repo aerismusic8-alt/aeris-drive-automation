@@ -31,6 +31,7 @@ import datetime
 import json
 import os
 import random
+import re
 import sys
 from pathlib import Path
 
@@ -84,8 +85,15 @@ def load_index(lib: Path) -> dict:
 
 
 def save_index(lib: Path, doc: dict) -> None:
-    (lib / "index.json").write_text(
-        json.dumps(doc, ensure_ascii=False, indent=1) + "\n", encoding="utf-8")
+    """Write via a temp file + rename: a reader must never see half an index.
+
+    A fill and an MV build run at the same time (the rail and the agent), and a
+    non-atomic write left the build reading a partial catalogue — measured
+    2026-11-22: 78 available city stills, the MV saw 15 and held every shot 15 s.
+    """
+    tmp = lib / "index.json.tmp"
+    tmp.write_text(json.dumps(doc, ensure_ascii=False, indent=1) + "\n", encoding="utf-8")
+    tmp.replace(lib / "index.json")
 
 
 def have_theme(doc: dict, theme: str) -> int:
@@ -114,7 +122,10 @@ def from_commons(theme: str, want: int, lib: Path, log=print) -> list[dict]:
         items = sr.search(q, limit=8, min_width=MIN_W)
         if not items:
             continue
-        got = sr.download(items[:want - len(rows)], str(dest_dir), log=lambda *_: None)
+        nums = [int(m.group(1)) for f in dest_dir.glob("s*")
+                if (m := re.match(r"s(\d+)", f.stem))]
+        got = sr.download(items[:want - len(rows)], str(dest_dir),
+                          log=lambda *_: None, start=(max(nums) + 1) if nums else 0)
         for it in got:
             p = Path(it["path"])
             try:
@@ -197,6 +208,51 @@ def cmd_fill(a) -> int:
     return 0
 
 
+def reindex(lib: Path, log=print) -> dict:
+    """Rebuild the index from the files on disk, one row per file.
+
+    The index can lie: a fill that reused `s000.jpg` appended a row for a picture
+    that was never written, so 133 city rows named 14 files and an MV asking for
+    78 stills got 15. Disk is the truth; a row that cannot be opened is not a
+    picture. Metadata (licence, credit, uses) is carried over from the old row
+    when the file name still matches.
+    """
+    from PIL import Image  # noqa: PLC0415
+
+    idx = lib / "index.json"
+    old_rows = {}
+    if idx.exists():
+        try:
+            for r in json.loads(idx.read_text(encoding="utf-8")).get("images", []):
+                old_rows.setdefault(r.get("file"), r)
+        except (OSError, ValueError):
+            pass
+    rows, dropped = [], 0
+    for f in sorted(lib.rglob("*")):
+        if f.suffix.lower() not in {".jpg", ".jpeg", ".png"}:
+            continue
+        rel = f.relative_to(lib).as_posix()
+        try:
+            with Image.open(f) as im:
+                w, h = im.size
+        except Exception:  # noqa: BLE001 - an unreadable file is not a picture
+            dropped += 1
+            continue
+        theme = rel.split("/")[0] if "/" in rel else "abstract"
+        prev = old_rows.get(rel) or {}
+        rows.append({
+            "id": prev.get("id") or f"{theme}-{len(rows):04d}",
+            "theme": theme, "file": rel, "w": w, "h": h,
+            "title": prev.get("title") or f.stem,
+            "licence": prev.get("licence"), "credit": prev.get("credit"),
+            "origin": prev.get("origin") or "local",
+            "uses": prev.get("uses") or 0,
+        })
+    save_index(lib, {"images": rows})
+    log(f"reindex: {len(rows)} picture(s) on disk, {dropped} unreadable dropped")
+    return {"images": rows}
+
+
 def cmd_stats(a) -> int:
     lib = library()
     doc = load_index(lib)
@@ -225,6 +281,8 @@ def main(argv=None) -> int:
     f.set_defaults(func=cmd_fill)
     s = sub.add_parser("stats", help="counts per theme")
     s.set_defaults(func=cmd_stats)
+    r = sub.add_parser("reindex", help="rebuild the index from the files on disk")
+    r.set_defaults(func=lambda a: (reindex(library()), 0)[1])
     a = ap.parse_args(argv)
     return a.func(a)
 
