@@ -1,55 +1,100 @@
 {
- "bank-karaoke-43-khuen-ni-mai-tong-khit-arai-v43-bangkok-night.mp4": {
-  "youtube": {
-   "ok": true,
-   "detail": [
-    "https://youtu.be/GuvVvc9vF_A"
-   ]
+  "bank-karaoke-43-khuen-ni-mai-tong-khit-arai-v43-bangkok-night.mp4": {
+    "youtube": {
+      "ok": true,
+      "detail": [
+        "https://youtu.be/GuvVvc9vF_A"
+      ]
+    },
+    "facebook": {
+      "ok": true,
+      "id": "1529127272424729"
+    },
+    "tiktok": {
+      "ok": false,
+      "skipped": "no TikTok token"
+    }
   },
-  "facebook": {
-   "ok": true,
-   "id": "1529127272424729"
+  "bank-karaoke-49-luai-mai-yut-v49-bangkok-night.mp4": {
+    "youtube": {
+      "ok": true,
+      "detail": [
+        "https://youtu.be/R_kUrvKYVRI"
+      ]
+    },
+    "facebook": {
+      "ok": true,
+      "id": "1510993547544803"
+    },
+    "tiktok": {
+      "ok": false,
+      "skipped": "no TikTok token"
+    }
   },
-  "tiktok": {
-   "ok": false,
-   "skipped": "no TikTok token"
+  "bank-song-20-khop-khun-thi-yang-hai-chai-bangkok-night-rain.mp4": {
+    "youtube": {
+      "ok": true,
+      "detail": [
+        "https://youtu.be/ltCxhisHpRE"
+      ]
+    },
+    "facebook": {
+      "ok": true,
+      "id": "1707872850942658"
+    }
+  },
+  "mv-07-huachai-si-thao-full.mp4": {
+    "youtube": {
+      "ok": true,
+      "id": "mdnRFGciK9w",
+      "detail": [
+        "https://youtu.be/mdnRFGciK9w"
+      ]
+    }
+  },
+  "bank-mv-07-huachai-si-thao-hook.mp4": {
+    "facebook": {
+      "ok": true,
+      "id": "1027305487056871"
+    }
+  },
+  "bank-song-07-huachai-si-thao-night-city-neon-rain.mp4": {
+    "youtube": {
+      "ok": true,
+      "id": "8wSVajxlqis",
+      "detail": [
+        "https://youtu.be/8wSVajxlqis"
+      ]
+    },
+    "facebook": {
+      "ok": true,
+      "id": "959635417005908"
+    }
+  },
+  "bank-song-09-phleng-khong-khon-nueai-city-night-rain-neon.mp4": {
+    "youtube": {
+      "ok": true,
+      "id": "Dauu0EGK9_Q",
+      "detail": [
+        "https://youtu.be/Dauu0EGK9_Q"
+      ]
+    },
+    "facebook": {
+      "ok": true,
+      "id": "1674506741073305"
+    }
+  },
+  "bank-song-10-dok-mai-rim-thang-night-city-neon-rain.mp4": {
+    "youtube": {
+      "ok": true,
+      "id": "EXfoKS3gsFk",
+      "detail": [
+        "https://youtu.be/EXfoKS3gsFk"
+      ]
+    },
+    "facebook": {
+      "ok": true,
+      "id": "2126307224679833"
+    }
   }
- },
- "bank-karaoke-49-luai-mai-yut-v49-bangkok-night.mp4": {
-  "youtube": {
-   "ok": true,
-   "detail": [
-    "https://youtu.be/R_kUrvKYVRI"
-   ]
-  },
-  "facebook": {
-   "ok": true,
-   "id": "1510993547544803"
-  },
-  "tiktok": {
-   "ok": false,
-   "skipped": "no TikTok token"
-  }
- },
- "bank-song-20-khop-khun-thi-yang-hai-chai-bangkok-night-rain.mp4": {
-  "youtube": {
-   "ok": true,
-   "detail": [
-    "https://youtu.be/ltCxhisHpRE"
-   ]
-  },
-  "facebook": {
-   "ok": true,
-   "id": "1707872850942658"
-  }
- },
- "mv-07-huachai-si-thao-full.mp4": {
-  "youtube": {
-   "ok": true,
-   "id": "mdnRFGciK9w",
-   "detail": [
-    "https://youtu.be/mdnRFGciK9w"
-   ]
-  }
- }
 }

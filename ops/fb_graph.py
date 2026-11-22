@@ -540,7 +540,10 @@ def post_video_resumable(video: Path, caption: str, *, title: str | None = None,
                       "start_offset": str(offset), "video_id": vid,
                       "access_token": t},
                 "video_file_chunk", video.name, blob, "application/octet-stream")
-            offset = int(out.get("start_offset", size))
+            nxt = int(out.get("start_offset", size))
+            if nxt <= offset:
+                raise RuntimeError(f"resumable upload made no progress at {offset}")
+            offset = nxt
             end = int(out.get("end_offset", size))
     fields = {"upload_phase": "finish", "upload_session_id": sid,
               "video_id": vid, "description": caption, "access_token": t}
