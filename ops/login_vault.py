@@ -40,6 +40,7 @@ import json
 import os
 import re
 import sys
+import time
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -179,13 +180,24 @@ def save_storage() -> int:
     b64 = base64.b64encode(gzip.compress(blob)).decode()
     chunks = [b64[i:i + CHUNK_CHARS] for i in range(0, len(b64), CHUNK_CHARS)] or [""]
     aid = ax_vault.ensure_anchor()
-    for i, c in enumerate(chunks):
-        ax_vault.kv_put(aid, LS_CHUNK_KEY.format(i=i), c)
-    ax_vault.kv_put(aid, LS_INDEX_KEY, {
+    meta = {
         "count": len(chunks),
         "origins": {o: len(v["local"]) + len(v["session"]) for o, v in collected.items()},
         "saved_at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
-    })
+    }
+    # The vault API answers 502 under load and `kv_put` only prints it, so the
+    # snapshot silently stayed stale on 2026-11-22 while the sign-in it replaced
+    # was already dead. Write, then read the index back; retry until it sticks.
+    for attempt in range(1, 4):
+        for i, c in enumerate(chunks):
+            ax_vault.kv_put(aid, LS_CHUNK_KEY.format(i=i), c)
+        ax_vault.kv_put(aid, LS_INDEX_KEY, meta)
+        if ax_vault.kv_get(aid, LS_INDEX_KEY) == meta:
+            break
+        print(f"  storage put did not stick (attempt {attempt}/3); retrying")
+        time.sleep(10)
+    else:
+        raise SystemExit("could not store the browser storage in the vault (502)")
     n = sum(len(v["local"]) + len(v["session"]) for v in collected.values())
     print(f"saved {n} storage key(s) across {len(collected)} origin(s)")
     for o, c in sorted(collected.items()):
@@ -366,13 +378,6 @@ def save() -> int:
     pw, br, ctx = _context()
     try:
         cookies = ctx.cookies()
-        # Capture the full Playwright storage_state before the browser is torn
-        # down: it carries the localStorage that a cookie-only snapshot misses,
-        # and it is what the CI rails load.
-        try:
-            state = ctx.storage_state()
-        except Exception:  # noqa: BLE001
-            state = {"cookies": cookies, "origins": []}
         account = ""
         try:
             # pages[0] may be any tab; read the email off the account page itself
@@ -400,17 +405,23 @@ def save() -> int:
     print(f"  account : {account or '(unknown)'}")
     print(f"  surfaces: {index['surfaces']}")
     print(f"  at      : {index['saved_at']}")
-    # Refresh the vault's Playwright storage_state too, so the CI rails read this
-    # sign-in on their next run with no `gh secret set` and no K action. This is
-    # the auto link: a pod sign-in heals CI. Lazy import avoids a cycle
-    # (vault_session imports login_vault at module load).
-    try:
-        import vault_session  # noqa: PLC0415
-        vault_session.save_state(state)
-    except Exception as exc:  # noqa: BLE001
-        print(f"  (vault storage_state not refreshed: {str(exc)[:60]})")
+    # The CI blob is built from the authoritative cookie set. `ctx.storage_state()`
+    # returned 41 of the 106 cookies `ctx.cookies()` saw (2026-11-22), and a rail
+    # that loads that partial set is signed out on arrival — TikTok redirected to
+    # /foryou. Storage is captured first so the origins are part of the same blob;
+    # the device-trust tokens live there.
     save_bookmarks()
     save_storage()
+    try:
+        import vault_session  # noqa: PLC0415
+        merged = {
+            "cookies": [c for c in cookies
+                        if any(w in (c.get("domain") or "") for w in vault_session.WANT)],
+            "origins": vault_session._storage_origins(aid),
+        }
+        vault_session.save_state(merged)
+    except Exception as exc:  # noqa: BLE001
+        print(f"  (vault storage_state not refreshed: {str(exc)[:60]})")
     return 0
 
 
