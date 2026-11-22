@@ -30,5 +30,17 @@
       "ok": false,
       "skipped": "no TikTok token"
     }
+  },
+  "bank-song-20-khop-khun-thi-yang-hai-chai-bangkok-night-rain.mp4": {
+    "youtube": {
+      "ok": true,
+      "detail": [
+        "https://youtu.be/ltCxhisHpRE"
+      ]
+    },
+    "facebook": {
+      "ok": true,
+      "id": "1707872850942658"
+    }
   }
 }
