@@ -1,13 +1,20 @@
 {
-  "updated": "2026-11-22T00:40:11+00:00",
+  "updated": "2026-11-22",
   "about": "Vendor registry for tools/af_advisor.py. One entry per vendor, one reason per dead vendor. Every score here was written by a bench run (af_vendor_bench.py / af_ceo_bench.py / af_pick_trading_advisor.py --write), never typed by hand.",
   "mandate": {
     "current": {
-      "date": "2026-11-18",
-      "text": "The advisor team is Gemini alone; when a step is blocked, ask Gemini and follow what it says.",
-      "authority": "K"
+      "date": "2026-11-22",
+      "text": "When a step is blocked, ask the advisor TEAM, not Gemini alone: consult every live vendor (Gemini, KiloCode, G4FSpace, Yqcloud, pollinations) and act on the answer when a quorum agrees. A single vendor is only for a quick second opinion, never for a blocker.",
+      "authority": "K",
+      "usage": "python3 tools/af_advisor.py \"<blocker + real error>\" --vendors Gemini,KiloCode,G4FSpace,Yqcloud,pollinations --quorum 3"
     },
     "superseded": [
+      {
+        "date": "2026-11-18",
+        "text": "The advisor team is Gemini alone; when a step is blocked, ask Gemini and follow what it says.",
+        "authority": "K",
+        "still_reachable": "python3 tools/af_advisor.py --advisor gemini (a single vendor is still one way to ask)"
+      },
       {
         "date": "2026-11-05",
         "text": "A non-trivial task needs a quorum of >= 5 vendor channels before acting.",

@@ -1,0 +1,18 @@
+{
+  "at": "2026-11-22T06:20:28+00:00",
+  "mode": "advise",
+  "prompt": "We ship Thai music clips to YouTube/Facebook. We have 8 publishable song masters, all 108-160 BPM rock/pop. K wants both slow and fast songs, each with a catchy hook. Lyrics for 23 publishable songs exist (5 of them 78 BPM slow) but those have no audio master. A master comes from Flow Music (flowmusic.app), a login-only web app on K's Google account, and the cloud desktop session is currently logged out. Rule: free only, no paid API. 4 more clips are queued to publish every 4 hours. What should I do next, concretely and in order? Answer in under 200 words as a numbered plan.",
+  "stuck": null,
+  "advisor": "gemini",
+  "met": true,
+  "results": [
+    {
+      "vendor": "Gemini",
+      "status": "OK",
+      "answer": "1. **Recommendation:** Pause the 4-hour publishing queue immediately, ship the 8 existing fast masters at one per day (or every 12 hours), and halt all new master generation until K manually logs back into Flow Music.\n\n2. **The numbers:** You have 8 masters and 0 slow masters (0% of K's slow-song requirement met). At 1 clip every 4 hours (6/day), you will burn through your entire inventory in 32 hours, including the 4 queued clips (16 hours of runway). Because Flow Music requires a Google login and there is no human in the loop to pass 2FA/OAuth, your autonomous audio pipeline is dead at 0 tracks/hour. Meanwhile, your 23 lyric sheets (including the 5 at 78 BPM) are stranded assets. *(Assumption: No headless Chrome session cookies or automated OAuth tokens exist to bypass the Google login).*\n\n3. **What changes the answer:** If an active, authenticated Chrome profile or session token for K's Google account exists elsewhere on the machine, restore it immediately, generate the 5 slow (78 BPM) tracks first via browser automation, and keep the 4-hour schedule running.",
+      "error": "",
+      "seconds": 160.5
+    }
+  ],
+  "consult_digest": "79de17f5836aa2d1"
+}

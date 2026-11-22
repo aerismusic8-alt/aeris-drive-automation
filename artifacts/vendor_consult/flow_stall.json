@@ -1,0 +1,46 @@
+{
+  "at": "2026-11-22T06:39:02+00:00",
+  "mode": "consult",
+  "prompt": "BLOCKER, real evidence: we generate song masters through Google Flow Music (flowmusic.app) with music938-1/scripts/flow_song.py, which drives a signed-in Chromium over CDP. Run: 'flow_song.py 34-wan-tham-mada-thi-phi-set-v34'. Its whole log after 8 minutes is one line: '[info] 34-wan-tham-mada-thi-phi-set-v34: resting 150s before extend'. The python process is still alive. The browser tab sits on https://www.flowmusic.app/magicalrepresentative (the profile route) and no session page is open; no new clip appears in the Sessions list. Account state: FREE plan, 30 credits left, 190 used. Need: 6 distinct song masters (one per song family) so the rap, hiphop and alternative lanes have any master at all, and one of the six is the only slow song (78 BPM) while K wants both slow and fast songs. Questions: (1) what most likely stalls 'resting 150s before extend' and what should the agent check next, in order? (2) how should 30 free credits be allocated across the six songs? (3) what is the fallback if the credits or the session run out? Answer in under 250 words, numbered.",
+  "stuck": null,
+  "quorum": 3,
+  "met": true,
+  "results": [
+    {
+      "vendor": "Gemini",
+      "status": "OK",
+      "answer": "Kill the hung process, force a CDP DOM dump, allocate exactly 5 credits per track, and prepare a local synthesis fallback.\n\n1. **Stall cause & checks:** The script is stuck waiting for a session editor DOM selector after errantly navigating to the profile route. Check next in order: (1) CDP screenshot and DOM tree for blocking modals or error toasts, (2) network activity for failed generation API responses, (3) process stderr for silent exception loops.\n2. **Credit allocation:** Allocate exactly 5 credits per song across all 6 tracks (30 credits total). There is zero contingency margin; reduce generation lengths to minimum viable parameters to prevent mid-run credit locks.\n3. **Fallback:** If credits or session tokens exhaust, immediately abort `flowmusic.app` automation and pipe the remaining song families through local fallback rendering or secondary burner account automation.\n\n*The one fact that changes this answer:* If account credits can be instantly refilled via an automated billing API token, you can afford multi-retry loops instead of strict 5-credit rationing.",
+      "error": "",
+      "seconds": 19.1
+    },
+    {
+      "vendor": "KiloCode",
+      "status": "OK",
+      "answer": "Assumption: 1 credit = 1 song generation; extends cost extra.\n\n1. Stall: the 150s rest means the script is throttled or never left the profile URL to open a session. Check in order: (a) CDP console/network and URL—confirm it isn’t stuck on /magicalrepresentative from a missing “New Session” click, consent dialog, or redirect; (b) on-screen credit/upgrade modal blocking the app; (c) a prior session still open and locking new session creation. If the tab stays on the profile after the rest, the session-creation selector is absent or the account is rate-limited.\n\n2. Allocation: burn 1 credit per song = 6 credits for one draft master per family. Generate the 78 BPM slow song first (K requires slow and fast), then rap, hiphop, alternative, and two fillers. Reserve 24 credits for extends/retries; extend nothing until a draft renders.\n\n3. Fallback: credits exhausted—rotate to a second signed-in Flow account or wait for the free reset. Session/CDP dead—re-authenticate and resume from the last completed song index. No accounts/credits—ship existing masters and log the missing lane families as blockers.\n\nOne fact that would change the answer: if Flow charges per extend rather than per generation, 30 credits will not cover six masters plus extends.",
+      "error": "",
+      "seconds": 25.1
+    },
+    {
+      "vendor": "G4FSpace",
+      "status": "OK",
+      "answer": "1. Stall: most likely an expired/dead session or 429 cooldown while the tab idles on the profile route. Check in order: (a) tab URL/title for login or session-expired wall; (b) CDP console/network for 429/403/redirect during the sleep; (c) script’s sessionId vs an open FlowMusic session page; (d) DOM credit balance vs script’s 30.  \nNumbers: 8 min elapsed, 0 clips, 150s sleep = 0% throughput.  \nFact changer: an active sessionId with a 200 /session response means FlowMusic’s render queue is slow, not a stall.\n\n2. Credits: Assuming 1 credit per generation, flat 5 credits per song (6 × 5 = 30). Use first-try hits on rap, hiphop, alternative; roll leftovers into the 78 BPM slow track and any fast track K requires.  \nNumbers: 30 total, 5/song, 0 reserve.  \nFact changer: if one generation costs >1 credit, shift to 3 credits on four lanes and 9 on the slow/fast pair.\n\n3. Fallback: re-auth CDP and top up FlowMusic; if still blocked, move immediately to Suno/Udio API for the six masters.  \nNumbers: 6 masters required, 0 credits left after allocation.  \nFact changer: if the client mandates FlowMusic licensing, external tools are off the table—buy credits or wait for free replenishment.",
+      "error": "",
+      "seconds": 48.5
+    },
+    {
+      "vendor": "Yqcloud",
+      "status": "OK",
+      "answer": "1. Likely stall cause & check order: The 150s rest is Flow Music’s free-tier rate-limit cooldown for generation extend calls, triggered either by no active generation session existing for the track ID, or CDP session failure. Check in order: (1) Confirm CDP WebSocket connection to the Chromium tab is active, no browser crash/tab close; (2) Verify the Flow web UI has an active in-progress generation session for the track (not just the profile page); (3) Check Flow’s status page for free-tier API throttles.\n2. Credit allocation: 30 credits total. Allocate 3 credits per song to generate initial 30-second base masters for all 6 tracks (18 credits total). Use remaining 12 credits to extend the 1 slow 78BPM track to full length (4 extra credits) and add 2 credits of extend length to each of the 5 fast rap/hiphop/alternative tracks (10 credits total), using all 30 credits to get viable masters for all required lanes.\n3. Fallback: If credits run out, wait for Flow’s daily free credit reset, or do a one-time paid top-up for the 6 critical tracks. If the session/automation stalls permanently, kill the stuck flow_song.py process, restart with a fresh CDP session, or manually trigger generation via the Flow web UI if CDP automation remains broken.",
+      "error": "",
+      "seconds": 24.3
+    },
+    {
+      "vendor": "pollinations",
+      "status": "OK",
+      "answer": "**Recommendation:**  \n1. Stop the current flowSong instance, restart the tab with fresh login, and force the “Generate” button to click every 5 s for 5 min. If no clip reaches the server, the problem is a CDP interaction bug – use a head‑less Chrome binary with `--disable-gpu` and `--no-sandbox`.  \n2. Allocate credits per family: rap 6 credits, hip‑hop 6, alternative 6, pop 5, rock 5, slow‑BPM 2 (since it needs both slow and fast, reserve 1 for fast).  \n3. Fallback: if credits exhaust or the session page fails, switch to the paid plan (Free→Pro) or use the public “auto‑loop” API (if available) that generates a single clip per request with 1 credit each.  \n\n**Numbers behind it**  \n- Current free credits: 30. Expend 30: 6×3 + 5×2 + 2 = 30.  \n- 8 min deadline: 8 min = 480 s. Our 5‑min forced‑click loop gives 300 s, leaving margin for server lag.  \n- 6 songs × 1 master per family = 6 masters.  \n\n**Fact that would change it**  \nIf FlowMusic’s server recently throttles free accounts to 1 request/min, the 5‑s click loop must slow to 1 min intervals, else credits will be wasted on failed attempts.",
+      "error": "",
+      "seconds": 5.0
+    }
+  ],
+  "consult_digest": "fbc81a9e64f77a12"
+}
