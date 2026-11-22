@@ -849,10 +849,11 @@ def available_songs(log=print) -> list[str]:
     mp3 must not narrow the picker to that one song. Local files are added only
     when the release has nothing to offer.
 
-    Both mixes of a song stay in the list — `karaoke-<id>` is the instrumental of
-    `song-<id>` and the lane has always been free to use either. What changes is
-    the order: songs that already have a clip go last, so the lane stops
-    re-cutting the same 22 songs.
+    Both mixes of a song used to stay in the list — `karaoke-<id>` is the same
+    backing with the lead vocal removed (`make_song.py`), so a clip cut from it
+    has no singer. K retired the karaoke lane (2026-11-21) and the product is the
+    song, so only the full mix is offered now. What the order changes: songs that
+    already have a clip go last, so the lane stops re-cutting the same 22 songs.
     """
     note = lambda m: print(m, file=sys.stderr)  # noqa: E731
     assets = _release_assets(note)
@@ -886,6 +887,15 @@ def available_songs(log=print) -> list[str]:
             extra = sorted(local - stems)
             note(f"songs: {len(extra)} local-only mp3(s) not offered — absent "
                  f"from {RELEASE_TAG}: {', '.join(extra[:3])}")
+    # `karaoke-<id>` is the same backing with the lead vocal removed, so a clip cut
+    # from it has no singer. The karaoke lane is retired (K 2026-11-21) and the
+    # product is the song, so it is not a song a clip may be built on — the picker
+    # offered it and the first rail run after the hold shipped an instrumental.
+    instrumental = {s for s in stems if s.startswith("karaoke-")}
+    if instrumental:
+        note(f"songs: {len(instrumental)} karaoke stem(s) are the song without its "
+             f"vocal — not offered: {', '.join(sorted(instrumental)[:3])}")
+        stems -= instrumental
     songs = _publishable_only(sorted(stems), log=note)
     return unused_first(songs, _used_ids({_song_id(s) for s in songs}, assets),
                         key=_song_id, log=note)
@@ -1095,6 +1105,10 @@ def main(argv=None) -> int:
     if _publishable_only([args.song]) != [args.song]:
         print(f"refusing --song {args.song}: its genre is parked or unknown "
               f"(see music938-1/channel/genres.json)")
+        return 1
+    if args.song.startswith("karaoke-"):
+        print(f"refusing --song {args.song}: that is the karaoke mix (the song "
+              f"without its vocal), not the song. Use the full mix.")
         return 1
     got = render(args.song, args.query, args.seconds, args.seed, Path(args.out),
                  mix=not args.photos_only, direct=not args.no_direct)

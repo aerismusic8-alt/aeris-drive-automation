@@ -7172,6 +7172,16 @@ def test_genre_gate_blocks_parked_lanes() -> None:
     check("a descriptive query still reaches the photo bank", len(got) >= 3, f"{len(got)}")
     check("a query no row carries stays empty",
           clip_lane.bank_stills("zzzz-no-such-row", 8, 11, log=lambda *_: None) == [])
+    # `karaoke-<id>` is the song without its vocal (make_song.py), so a clip cut
+    # from it has no singer. The picker offered it and the first rail run after
+    # the hold shipped an instrumental clip to media-938 (2026-11-22).
+    listed = clip_lane.available_songs()
+    check("the picker never offers a karaoke (vocal-removed) master",
+          listed and not [s for s in listed if s.startswith("karaoke-")],
+          f"{len([s for s in listed if s.startswith('karaoke-')])} karaoke in {len(listed)}")
+    lane_main = (ROOT.parent / "ops" / "clip_lane.py").read_text(encoding="utf-8")
+    check("an explicit --song karaoke-... is refused",
+          'args.song.startswith("karaoke-")' in lane_main)
 
 
 def test_ai_frames_rotate_between_clips() -> None:
