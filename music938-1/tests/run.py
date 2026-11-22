@@ -8804,6 +8804,8 @@ def test_af_advisor() -> None:
           "provider=provider" in src and 'model=""' in src)
     check("g4f installs itself after a container restart",
           "def ensure_g4f" in src and "pip" in src)
+    check("g4f is restored from the durable pylibs dir, not only by pip",
+          "AX_PYLIBS" in src and "invalidate_caches" in src)
     check("a silent vendor times out at timeout + 60", "timeout + 60" in src)
 
     check("an empty answer is not an answer", af.looks_like_error_answer(""))

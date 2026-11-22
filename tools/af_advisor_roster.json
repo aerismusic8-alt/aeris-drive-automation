@@ -1,5 +1,5 @@
 {
-  "updated": "2026-11-21T18:06:33+00:00",
+  "updated": "2026-11-22T00:40:11+00:00",
   "about": "Vendor registry for tools/af_advisor.py. One entry per vendor, one reason per dead vendor. Every score here was written by a bench run (af_vendor_bench.py / af_ceo_bench.py / af_pick_trading_advisor.py --write), never typed by hand.",
   "mandate": {
     "current": {
@@ -87,7 +87,7 @@
   },
   "bench": {
     "transport": {
-      "measured_at": "2026-11-21T18:06:33+00:00",
+      "measured_at": "2026-11-22T00:40:11+00:00",
       "tool": "tools/af_vendor_bench.py",
       "rounds": 2,
       "results": {
@@ -132,7 +132,7 @@
           "answers_wrong": 0
         }
       },
-      "raw": "artifacts/vendor_consult/vendor-bench-20261121T180633Z.json"
+      "raw": "artifacts/vendor_consult/vendor-bench-20261122T004011Z.json"
     },
     "trading": {
       "measured_at": "2026-11-21T17:41:47+00:00",

@@ -1,0 +1,160 @@
+{
+  "at": "2026-11-22T00:38:40+00:00",
+  "tool": "af_vendor_bench",
+  "prompt": "Reply with JSON only and no prose: {\"alive\": true, \"sum\": <17*3>}",
+  "rounds": 2,
+  "results": {
+    "Gemini": [
+      {
+        "vendor": "Gemini",
+        "status": "FAIL",
+        "ok": false,
+        "chars": 86,
+        "seconds": 14.5,
+        "answer": "",
+        "error": "RuntimeError: g4f is not installed and 'pip install g4f' failed: No module named 'g4f'",
+        "round": 1
+      },
+      {
+        "vendor": "Gemini",
+        "status": "FAIL",
+        "ok": false,
+        "chars": 86,
+        "seconds": 10.1,
+        "answer": "",
+        "error": "RuntimeError: g4f is not installed and 'pip install g4f' failed: No module named 'g4f'",
+        "round": 2
+      }
+    ],
+    "KiloCode": [
+      {
+        "vendor": "KiloCode",
+        "status": "FAIL",
+        "ok": false,
+        "chars": 86,
+        "seconds": 10.1,
+        "answer": "",
+        "error": "RuntimeError: g4f is not installed and 'pip install g4f' failed: No module named 'g4f'",
+        "round": 1
+      },
+      {
+        "vendor": "KiloCode",
+        "status": "FAIL",
+        "ok": false,
+        "chars": 86,
+        "seconds": 10.1,
+        "answer": "",
+        "error": "RuntimeError: g4f is not installed and 'pip install g4f' failed: No module named 'g4f'",
+        "round": 2
+      }
+    ],
+    "G4FSpace": [
+      {
+        "vendor": "G4FSpace",
+        "status": "FAIL",
+        "ok": false,
+        "chars": 86,
+        "seconds": 10.1,
+        "answer": "",
+        "error": "RuntimeError: g4f is not installed and 'pip install g4f' failed: No module named 'g4f'",
+        "round": 1
+      },
+      {
+        "vendor": "G4FSpace",
+        "status": "FAIL",
+        "ok": false,
+        "chars": 86,
+        "seconds": 10.1,
+        "answer": "",
+        "error": "RuntimeError: g4f is not installed and 'pip install g4f' failed: No module named 'g4f'",
+        "round": 2
+      }
+    ],
+    "pollinations": [
+      {
+        "vendor": "pollinations",
+        "status": "OK",
+        "ok": true,
+        "chars": 26,
+        "seconds": 0.4,
+        "answer": "{\"alive\": true, \"sum\": 51}",
+        "error": "",
+        "round": 1
+      },
+      {
+        "vendor": "pollinations",
+        "status": "OK",
+        "ok": true,
+        "chars": 26,
+        "seconds": 0.5,
+        "answer": "{\"alive\": true, \"sum\": 51}",
+        "error": "",
+        "round": 2
+      }
+    ],
+    "Yqcloud": [
+      {
+        "vendor": "Yqcloud",
+        "status": "FAIL",
+        "ok": false,
+        "chars": 86,
+        "seconds": 10.1,
+        "answer": "",
+        "error": "RuntimeError: g4f is not installed and 'pip install g4f' failed: No module named 'g4f'",
+        "round": 1
+      },
+      {
+        "vendor": "Yqcloud",
+        "status": "FAIL",
+        "ok": false,
+        "chars": 86,
+        "seconds": 10.1,
+        "answer": "",
+        "error": "RuntimeError: g4f is not installed and 'pip install g4f' failed: No module named 'g4f'",
+        "round": 2
+      }
+    ]
+  },
+  "verdicts": {
+    "Gemini": {
+      "rounds": 2,
+      "answered": 0,
+      "passed": 0,
+      "pipe_dead": 2,
+      "verdict": "dead",
+      "answers_wrong": 0
+    },
+    "KiloCode": {
+      "rounds": 2,
+      "answered": 0,
+      "passed": 0,
+      "pipe_dead": 2,
+      "verdict": "dead",
+      "answers_wrong": 0
+    },
+    "G4FSpace": {
+      "rounds": 2,
+      "answered": 0,
+      "passed": 0,
+      "pipe_dead": 2,
+      "verdict": "dead",
+      "answers_wrong": 0
+    },
+    "pollinations": {
+      "rounds": 2,
+      "answered": 2,
+      "passed": 2,
+      "pipe_dead": 0,
+      "verdict": "alive",
+      "answers_wrong": 0
+    },
+    "Yqcloud": {
+      "rounds": 2,
+      "answered": 0,
+      "passed": 0,
+      "pipe_dead": 2,
+      "verdict": "dead",
+      "answers_wrong": 0
+    }
+  }
+}

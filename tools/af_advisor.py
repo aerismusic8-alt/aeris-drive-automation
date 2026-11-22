@@ -42,7 +42,9 @@ from __future__ import annotations
 import argparse
 import concurrent.futures
 import hashlib
+import importlib
 import json
+import os
 import subprocess
 import sys
 import threading
@@ -55,6 +57,10 @@ from pathlib import Path
 HERE = Path(__file__).resolve().parent
 ROOT = HERE.parent
 ROSTER_PATH = HERE / "af_advisor_roster.json"
+# `scripts/bootstrap-pod.sh` installs the shared deps here and links them with a
+# `.pth` under $HOME. $HOME is ephemeral, so a recycle drops the link while this
+# durable copy survives; check it before spending a pip install.
+AX_PYLIBS = Path(os.environ.get("AX_PYLIBS", "/workspace/ax-tools/pylibs"))
 OUT_DIR = ROOT / "artifacts" / "vendor_consult"
 
 ATTEMPTS = 3
@@ -186,19 +192,40 @@ def dead_vendors(roster: dict | None = None) -> dict:
 # ------------------------------------------------------------- the transports
 
 def ensure_g4f():
-    """Import g4f, installing it first if a recycled container dropped it."""
-    try:
-        import g4f  # noqa: F401
-        return g4f
-    except ImportError:
-        pass
-    subprocess.run([sys.executable, "-m", "pip", "install", "-q", "g4f"],
-                   check=False, timeout=900)
+    """Import g4f, restoring it after a pod recycle.
+
+    Three routes, cheapest first: the import, the durable pylibs directory, then
+    a pip install. Measured 2026-11-22: a recycle dropped the `$HOME` `.pth`, so
+    every g4f vendor read as dead while `/workspace/ax-tools/pylibs/g4f` was
+    intact — the install was never the missing piece.
+    """
+    def _add_pylibs() -> None:
+        if AX_PYLIBS.is_dir() and str(AX_PYLIBS) not in sys.path:
+            sys.path.insert(0, str(AX_PYLIBS))
+        importlib.invalidate_caches()
+
+    for attempt in range(2):
+        try:
+            import g4f
+            return g4f
+        except ImportError:
+            if attempt:
+                break
+            _add_pylibs()
+
+    target = ["--target", str(AX_PYLIBS)] if os.access(AX_PYLIBS, os.W_OK) else ["--user"]
+    proc = subprocess.run(
+        [sys.executable, "-m", "pip", "install", "-q", *target, "g4f"],
+        capture_output=True, text=True, timeout=900)
+    _add_pylibs()
     try:
         import g4f
         return g4f
     except ImportError as exc:  # pragma: no cover - depends on the network
-        raise RuntimeError(f"g4f is not installed and 'pip install g4f' failed: {exc}")
+        tail = ((proc.stderr or proc.stdout or "").strip().splitlines() or ["no output"])[-1]
+        raise RuntimeError(
+            f"g4f is not installed and 'pip install g4f' failed "
+            f"(rc={proc.returncode}): {exc}; {tail}")
 
 
 def _with_deadline(fn, timeout: float):
@@ -578,6 +605,11 @@ def selftest() -> int:
     return 0 if not failures else 1
 
 
+def _age_hours(stamp: str) -> float:
+    then = datetime.fromisoformat(stamp)
+    return (datetime.now(timezone.utc) - then).total_seconds() / 3600.0
+
+
 def show_check() -> int:
     roster = load_roster()
     print(f"roster: {ROSTER_PATH}  (updated {roster.get('updated')})")
@@ -586,7 +618,12 @@ def show_check() -> int:
         print(f"mandate: {mandate.get('text')} ({mandate.get('date')})")
     print(f"default advisor: {roster.get('default_advisor')}")
     print(f"fallback order: {' -> '.join(roster.get('gemini_order') or [])}")
-    scores = ((roster.get("bench") or {}).get("ceo") or {}).get("scores") or {}
+    bench = roster.get("bench") or {}
+    scores = (bench.get("ceo") or {}).get("scores") or {}
+    ages = [f"{layer} {_age_hours(row['measured_at']):.1f}h"
+            for layer, row in bench.items() if row.get("measured_at")]
+    if ages:
+        print("bench age: " + ", ".join(ages) + "   (re-run past 24h)")
     print("\nadvisors:")
     for name, spec in (roster.get("advisors") or {}).items():
         score = f"  ceo={scores[name]}" if name in scores else ""
