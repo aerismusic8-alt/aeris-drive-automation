@@ -1,47 +1,55 @@
 {
-  "bank-karaoke-43-khuen-ni-mai-tong-khit-arai-v43-bangkok-night.mp4": {
-    "youtube": {
-      "ok": true,
-      "detail": [
-        "https://youtu.be/GuvVvc9vF_A"
-      ]
-    },
-    "facebook": {
-      "ok": true,
-      "id": "1529127272424729"
-    },
-    "tiktok": {
-      "ok": false,
-      "skipped": "no TikTok token"
-    }
+ "bank-karaoke-43-khuen-ni-mai-tong-khit-arai-v43-bangkok-night.mp4": {
+  "youtube": {
+   "ok": true,
+   "detail": [
+    "https://youtu.be/GuvVvc9vF_A"
+   ]
   },
-  "bank-karaoke-49-luai-mai-yut-v49-bangkok-night.mp4": {
-    "youtube": {
-      "ok": true,
-      "detail": [
-        "https://youtu.be/R_kUrvKYVRI"
-      ]
-    },
-    "facebook": {
-      "ok": true,
-      "id": "1510993547544803"
-    },
-    "tiktok": {
-      "ok": false,
-      "skipped": "no TikTok token"
-    }
+  "facebook": {
+   "ok": true,
+   "id": "1529127272424729"
   },
-  "mv-07-huachai-si-thao-full.mp4": {
-    "youtube": {
-      "ok": true,
-      "id": "mdnRFGciK9w",
-      "detail": [
-        "https://youtu.be/mdnRFGciK9w"
-      ]
-    },
-    "facebook": {
-      "ok": false,
-      "detail": "URLError: <urlopen error [Errno 32] Broken pipe>"
-    }
+  "tiktok": {
+   "ok": false,
+   "skipped": "no TikTok token"
   }
+ },
+ "bank-karaoke-49-luai-mai-yut-v49-bangkok-night.mp4": {
+  "youtube": {
+   "ok": true,
+   "detail": [
+    "https://youtu.be/R_kUrvKYVRI"
+   ]
+  },
+  "facebook": {
+   "ok": true,
+   "id": "1510993547544803"
+  },
+  "tiktok": {
+   "ok": false,
+   "skipped": "no TikTok token"
+  }
+ },
+ "bank-song-20-khop-khun-thi-yang-hai-chai-bangkok-night-rain.mp4": {
+  "youtube": {
+   "ok": true,
+   "detail": [
+    "https://youtu.be/ltCxhisHpRE"
+   ]
+  },
+  "facebook": {
+   "ok": true,
+   "id": "1707872850942658"
+  }
+ },
+ "mv-07-huachai-si-thao-full.mp4": {
+  "youtube": {
+   "ok": true,
+   "id": "mdnRFGciK9w",
+   "detail": [
+    "https://youtu.be/mdnRFGciK9w"
+   ]
+  }
+ }
 }
