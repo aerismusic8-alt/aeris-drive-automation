@@ -66,7 +66,7 @@ jobs:
           # Exit 1 means a surface is dead that only K can fix; keep the job green
           # so the *report* below carries the message, not a red X with no context.
           rc=0
-          python3 ops/session_guard.py --headless || rc=$?
+          python3 ops/session_guard.py --headless 2>&1 | tee /tmp/heal.log || rc=${PIPESTATUS[0]}
           echo "rc=$rc" >> "$GITHUB_OUTPUT"
 
       - name: Ping K only when a surface genuinely needs a human
@@ -76,5 +76,12 @@ jobs:
         run: |
           set -uo pipefail
           [ -z "${AX_NTFY_TOPIC:-}" ] && { echo "no ntfy topic"; exit 0; }
-          curl -s -o /dev/null -d "session ต้องล็อกอินเอง (TikTok/Google ไม่ revive ได้เอง). เปิด noVNC แล้วล็อกอิน surface ที่แจ้ง — Facebook ระบบกู้เองได้แล้วไม่ต้องแตะ" \
+          # Name only the surfaces that are actually dead: Google, Flow Music and
+          # Gemini revive themselves from the vault, and telling K to sign those in
+          # again is what made him sign in more often than he had to. The live view
+          # (work-2 host) is the tab K can actually see; noVNC shows a frozen X.
+          dead=$(grep -oE '[A-Za-z0-9.]+[[:space:]]+DEAD' /tmp/heal.log \
+                   | awk '{print $1}' | paste -sd, - || true)
+          curl -s -o /dev/null \
+            -d "ต้องล็อกอินด้วยมือ: ${dead:-surface}. เปิด live view (work-2 host ของ session นี้) ไม่ใช่ noVNC แล้วล็อกอินเฉพาะตัวที่แจ้ง — Google/Flow Music/Gemini ระบบกู้จาก vault เองได้" \
             "https://ntfy.sh/${AX_NTFY_TOPIC}" || true
