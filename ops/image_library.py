@@ -48,8 +48,8 @@ GENRE_PROMPTS = {
             "cinematic still, film grain, no text, no letters",
     "pop": "Thai pop, bright daylight colour, clean pastel streets, glossy and cheerful, "
            "cinematic still, no text, no letters",
-    "edm": "EDM, laser beams and haze, crowd silhouettes, saturated magenta and cyan, "
-           "cinematic still, no text, no letters",
+    "rap": "Thai rap, night soi and sodium street light, low camera, concrete texture, "
+           "cinematic still, film grain, no text, no letters",
     "hiphop": "Thai hiphop, night soi and sodium street light, low camera, concrete texture, "
               "cinematic still, film grain, no text, no letters",
     "alternative": "Thai alternative, washed-out film, empty roadside, soft haze, "

@@ -22,13 +22,13 @@ Row shape in archive; it **fails closed** (`assert_lane`, `may_render`).
   upload); report it, `--force`.
 - **The product is a SONG clip, not a narrated one** (`narration` only where K
   asked by name: `trivia`; `story` is a **tool**). Old posted clips untouched.
-- **Known gap:** `mv`/`film` have `rail: None` — no workflow renders an MV. Do
-  not claim an MV ships.
+- **`mv` has a rail** (`ax-music-mv`: 4K → media-938; publish stays in
+  `release.py`); `film` still none. Karaoke rail deleted (K 2026-11-21).
 
-## Genre = FUN ONLY — **five lanes, final** (K 2026-11-20)
-**Active: pop / edm (dance) / hiphop / rock / alternative.** Everything else is
-PARKED = ห้ามอัพ (rap, synthpop, citypop, เพื่อชีวิต … — full list = `status`
-in `channel/genres.json`).
+## Genre = FUN ONLY — **five main lanes** (K 2026-11-21)
+**Active: pop / rock / rap / hiphop / alternative** (`main_genres` in
+`channel/genres.json`). Everything else PARKED = ห้ามอัพ (edm, synthpop, citypop,
+เพื่อชีวิต …). **ทำทั้งช้าและเร็ว, ทุกเพลงต้องมีท่อนฮุกติดหู.**
 **All 20 `lyrics-original/` songs are เพื่อชีวิต — never publish them.**
 `genres.publishable()` fails closed at **every** publish path; `--list-songs`
 stdout must stay pure (a log line piped to `shuf` killed the lane once).
@@ -55,7 +55,7 @@ route, no override; `ops/thumb_standard.py` too (dead silence ≤3 s, VFR ≤2%)
 → `library/bank/`, QC 14/14; picker + shot numbers in archive.
 QC is mechanical only — **Gemini review is OUT** (2026-11-20), pinned by
 `test_no_gemini_gate_in_the_video_system`. **A gate nothing can pass is broken,
-not strict** — the verdict decides, the score is only a sanity floor.
+not strict**.
 
 ## Accounts (K 2026-11-14): AR's OWN mail, never K's
 Flow Music/Gemini run on K's `aerismusic8`; K taps a QR once, then
@@ -86,11 +86,10 @@ release, not the lyric plan).
 - **`ops/HOLD.md` decides whether rails may run** (lifted 11-13; K's
   **posting stop** 2026-11-20 is `ops/PUBLISH-HOLD` → `hold_gate.active()`).
 
-## Art, director, picking NEW work — detail in archive
-`shot_director.py` cuts **on the music**; `ops/song_prune.py --release` keeps
-the newest take. **Pick an un-clipped song** (K: "ก็ไปวนเอาของเก่ามาทำ") — only
-asset filenames tell the truth; the **release** is the catalogue, a local cache
-must not narrow it.
+## Art + picking NEW work (detail in archive)
+`shot_director.py` cuts **on the music**; `song_prune.py --release` keeps the newest
+take; **pick an un-clipped song**; the **release** is the catalogue. MV = **one
+picture per shot** (K 2026-11-21) → top up the library before rendering.
 
 ## Recovery
 `$AX_VAULT_BOOTSTRAP` → `ops/ax_vault.py` (`axvault:readme`); a lost `work/*.json`

@@ -6658,3 +6658,10 @@ number of beats lasting 2.8–5.5 s, so no tempo exceeds 22 cuts/min; `OVERSIZE`
 `ZOOM_RATE` 0.10 (max 1.18). `ops/song_prune.py --release` keeps the newest take
 of a family (the highest `-vNN`), not merely a deduplicated set.
 
+
+## Art, director, picking NEW work (moved from the card 2026-11-22)
+## Art, director, picking NEW work — detail in archive
+`shot_director.py` cuts **on the music**; `ops/song_prune.py --release` keeps
+the newest take. **Pick an un-clipped song** (K: "ก็ไปวนเอาของเก่ามาทำ") — only
+asset filenames tell the truth; the **release** is the catalogue, a local cache
+must not narrow it.

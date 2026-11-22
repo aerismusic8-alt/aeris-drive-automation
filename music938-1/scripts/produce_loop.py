@@ -63,8 +63,8 @@ THEMES = [
     ("pop", "รักที่เต้นได้ในวันธรรมดา", "หัวใจเต้นตามจังหวะ", "hopeful", "huachai-ten-tam-jang-wa"),
     ("rock", "สู้ต่อแม้ไม่มีใครเชื่อ", "ไฟที่ยังไม่ดับ", "epic", "fai-thi-yang-mai-dap"),
     ("rock", "ลุกขึ้นยืนอีกครั้ง", "ไม่ยอมแพ้ใครอีก", "epic", "mai-yom-phae-khrai-ik"),
-    ("edm", "ปลุกใจก่อนออกไปสู้", "ลุกขึ้นแล้วไป", "epic", "luk-khuen-laeo-pai"),
-    ("edm", "ปล่อยใจไปกับจังหวะ", "คืนนี้ไม่ต้องคิดอะไร", "hopeful", "khuen-ni-mai-tong-khit-arai"),
+    ("rap", "ปลุกใจก่อนออกไปสู้", "ลุกขึ้นแล้วไป", "epic", "luk-khuen-laeo-pai"),
+    ("rap", "ปล่อยใจไปกับจังหวะ", "คืนนี้ไม่ต้องคิดอะไร", "hopeful", "khuen-ni-mai-tong-khit-arai"),
     ("hiphop", "ปาร์ตี้คืนนี้ไม่หยุด", "คืนนี้มันส์สุด", "hopeful", "party-khuen-ni-mai-yut"),
     ("hiphop", "ลุยไม่หยุด", "จัดเต็มทุกบาร์", "epic", "luai-mai-yut"),
     ("alternative", "วันดีที่ได้เจอ", "ใจดีมีสไตล์", "warm", "wan-di-thi-dai-choe"),
@@ -72,7 +72,7 @@ THEMES = [
     ("hiphop", "แก๊งค์เราไม่ทิ้งกัน", "เพื่อนกันตลอด", "hopeful", "kaeng-rao-mai-thing-kan"),
     ("alternative", "ฝันใหญ่ในเมืองใหญ่", "จากศูนย์สู่ร้อย", "mystic", "fan-yai-nai-mueang-yai"),
     ("alternative", "หนีเมืองไปทะเล", "ลมทะเลกับใจเรา", "calm", "ni-mueang-pai-thale"),
-    ("edm", "แดนซ์ทั้งคืน", "ยกมือขึ้น", "hopeful", "dance-thang-khuen"),
+    ("rap", "แดนซ์ทั้งคืน", "ยกมือขึ้น", "hopeful", "dance-thang-khuen"),
 ]
 
 # Each theme yields several songs before the pool runs dry. The variant is a

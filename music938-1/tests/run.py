@@ -7920,7 +7920,7 @@ def test_produce_loop() -> None:
           not any(t[0] in parked for t in pl.THEMES),
           str([t[0] for t in pl.THEMES if t[0] in parked]))
     check("the focus genres lead the pool",
-          {t[0] for t in pl.THEMES[:6]} == {"pop", "rock", "edm"},
+          {t[0] for t in pl.THEMES[:6]} == {"pop", "rock", "rap"},
           str([t[0] for t in pl.THEMES[:6]]))
     # Rotation: a used title must not be picked again.
     first = pl.pick_theme(set())
@@ -8616,8 +8616,23 @@ def test_clip_lane_is_its_own_job() -> None:
     # while the hold is on (it is the only way to check the pipeline then), and a
     # real run must be refused at the door rather than after it has gated clips.
     import hold_gate as _hg
-    check("bank_publish refuses a real run while the hold is on",
-          _hg.active() and "hold_gate.assert_open" in bp)
+    # The hold was lifted on 2026-11-22, so assert the mechanism with a real hold
+    # file rather than the live state: create one, prove the gate refuses, remove.
+    _hold = ROOT.parent / "ops" / "PUBLISH-HOLD"
+    _had = _hold.exists()
+    if not _had:
+        _hold.write_text("test\n", encoding="utf-8")
+    try:
+        _refused = False
+        try:
+            _hg.assert_open("bank_publish")
+        except (_hg.PublishHeld, SystemExit):
+            _refused = True
+        check("bank_publish refuses a real run while the hold is on",
+              _refused and "hold_gate.assert_open" in bp)
+    finally:
+        if not _had:
+            _hold.unlink(missing_ok=True)
     check("the hold check is skipped only for a dry run",
           "if not a.dry_run:" in bp)
 
