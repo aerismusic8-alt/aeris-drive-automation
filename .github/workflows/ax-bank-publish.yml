@@ -21,9 +21,12 @@ name: AX Bank Publish (คลิปคลังภาพ → ทุกช่อ�
 
 on:
   schedule:
-    # Every 4 hours, offset from the clip lane's ':10 */3' so a freshly rendered
-    # clip is picked up within one tick and the two rails never share a minute.
-    - cron: '25 */4 * * *'
+    # Daily, offset from the clip lane's ':10 */3' so the two rails never share a
+    # minute. It was every 4 hours, which is 6 posts a day: with 8 publishable
+    # masters that is 32 hours of inventory, and a master cannot be made without
+    # K's Flow Music session. The advisor (Gemini, 2026-11-22) said to slow to
+    # about one a day so the catalogue lasts while the slow-song gap is open.
+    - cron: '25 3 * * *'
   workflow_dispatch:
     inputs:
       clip:
