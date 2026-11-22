@@ -5371,6 +5371,24 @@ def test_social_stats_parser() -> None:
     check("a missing metric is UNKNOWN, not 0",
           social_stats._first_int("no metrics here\n7\n", ["ยอดดู", "views"]) == "UNKNOWN")
 
+    # TikTok puts the follower count *above* its label, so `_first_int` (which
+    # scans after the label) read the neighbouring number: measured 2026-11-22,
+    # it reported 0 for a profile showing 2.
+    tiktok_profile = ("TikTok\nเพลงสนทีนไรเนี่ย\naeris.music4\n2\nFollowing\n2\n"
+                      "Followers\n0\nLikes\nSuggested accounts\n26.5M followers\n")
+    check("a TikTok count above its label is read",
+          social_stats._tiktok_followers(tiktok_profile) == 2)
+    check("the suggested-accounts list is not read as the count",
+          social_stats._tiktok_followers("Suggested accounts\n26.5M followers\n") == "UNKNOWN")
+    check("an unreadable TikTok profile is UNKNOWN, not 0",
+          social_stats._tiktok_followers("TikTok\nLog in\n") == "UNKNOWN")
+    # The login wall is localised: the Thai-only check let the English wall pass
+    # as a dashboard and its numbers were parsed as views.
+    check("the English TikTok login wall is caught",
+          social_stats._tiktok_signed_out("TikTok\nFeedback and help\nLog in to TikTok\n"))
+    check("the Thai TikTok login wall is caught",
+          social_stats._tiktok_signed_out("TikTok\nเข้าสู่ระบบ\nใช้รหัส QR"))
+
     # Sign-out detection: the login word is in the chrome even when signed in,
     # so the test must key on the Page's own content.
     check("a signed-in Page is not called signed out",

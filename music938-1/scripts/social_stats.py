@@ -188,6 +188,35 @@ def _followers(text: str):
     return "UNKNOWN"
 
 
+def _tiktok_signed_out(text: str) -> bool:
+    """A signed-out TikTok shows the login wall instead of analytics.
+
+    The wall is localised, so both the Thai and the English form count. Measured
+    2026-11-22: only the Thai marker was checked, so the English wall passed as a
+    dashboard and its numbers were parsed as views.
+    """
+    head = (text or "")[:600].lower()
+    return "log in to tiktok" in head or "เข้าสู่ระบบ" in head or "use qr code" in head
+
+
+def _tiktok_followers(text: str):
+    """The profile's follower total.
+
+    TikTok puts the count *above* its label ("2\nFollowers"), so `_first_int`'s
+    after-the-label scan reads the wrong number — measured 2026-11-22, it
+    reported 0 for a profile showing 2. Only the first block counts: the
+    "Suggested accounts" list below it also carries "26.5M followers".
+    """
+    import re
+    m = re.search(r"(?m)^\s*([\d.,]+)\s*([KM]?)\s*\n\s*(?:Followers|ผู้ติดตาม)\s*$",
+                  text or "")
+    if not m:
+        return "UNKNOWN"
+    num = float(m.group(1).replace(",", ""))
+    scale = {"": 1, "K": 1_000, "M": 1_000_000}[m.group(2)]
+    return int(round(num * scale))
+
+
 def _fb_signed_out(text: str) -> bool:
     """A signed-out Facebook shows the login form and no Page content.
 
@@ -365,20 +394,27 @@ def measure_tiktok(desk: Desk) -> dict:
     """
     desk.goto(TIKTOK_ANALYTICS, settle=16)
     t = desk.text()
-    if "เข้าสู่ระบบ" in t[:400] and "Video views" not in t:
-        return {"reachable": False, "note": "not signed in"}
-    # Under 100 followers TikTok shows the overview but not the detail; that is
-    # itself the finding, so it is recorded rather than treated as an error.
-    locked = "reach 100 followers" in t or "Get more insights" in t
-    stats = {
-        "reachable": True,
-        "views_7d": _first_int(t, ["Video views", "ยอดดู"]),
-        "followers_change_7d": _first_int(t, ["Followers", "ผู้ติดตาม"]),
-        "detail_locked_under_100": locked,
-    }
+    if _tiktok_signed_out(t):
+        # The profile is public even when analytics is not, so the surface stays
+        # reachable; only the fields that need a session are UNKNOWN.
+        stats = {
+            "reachable": True,
+            "views_7d": "UNKNOWN",
+            "followers_change_7d": "UNKNOWN",
+            "detail_locked_under_100": False,
+            "note": "analytics needs sign-in; the profile is public",
+        }
+    else:
+        # Under 100 followers TikTok shows the overview but not the detail; that
+        # is itself the finding, so it is recorded rather than treated as an error.
+        stats = {
+            "reachable": True,
+            "views_7d": _first_int(t, ["Video views", "ยอดดู"]),
+            "followers_change_7d": _first_int(t, ["Followers", "ผู้ติดตาม"]),
+            "detail_locked_under_100": "reach 100 followers" in t or "Get more insights" in t,
+        }
     desk.goto("https://www.tiktok.com/@aeris.music4", settle=12)
-    p = desk.text()
-    stats["followers_total"] = _first_int(p, ["Followers", "ผู้ติดตาม"])
+    stats["followers_total"] = _tiktok_followers(desk.text())
     stats["raw"] = t[:600]
     return stats
 
