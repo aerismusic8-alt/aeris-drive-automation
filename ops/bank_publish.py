@@ -73,23 +73,23 @@ def _song_slug(clip: Path) -> str | None:
     return None
 
 
-def clip_title(clip: Path) -> str:
+def clip_title(clip: Path, kind: str = "short") -> str:
     import release  # noqa: PLC0415
 
     slug = _song_slug(clip)
     if slug:
-        return release.describe(slug, "short")[0]
+        return release.describe(slug, kind)[0]
     return clip.stem.replace("-", " ").title()
 
 
-def clip_tags(clip: Path) -> list[str]:
+def clip_tags(clip: Path, kind: str = "short") -> list[str]:
     import release  # noqa: PLC0415
 
     slug = _song_slug(clip)
-    return release.describe(slug, "short")[2] if slug else []
+    return release.describe(slug, kind)[2] if slug else []
 
 
-def build_caption(clip: Path) -> str:
+def build_caption(clip: Path, kind: str = "short") -> str:
     """Description for every channel: the calibrated text plus the follow ask.
 
     K's metric is followers, so the ask closes every post — a view without a
@@ -99,7 +99,7 @@ def build_caption(clip: Path) -> str:
 
     b = _branding()
     slug = _song_slug(clip)
-    body = release.describe(slug, "short")[1] if slug else b.DESCRIPTION
+    body = release.describe(slug, kind)[1] if slug else b.DESCRIPTION
     return "\n".join([
         body,
         "",
@@ -151,7 +151,7 @@ def youtube(clip: Path, *, when: str | None, privacy: str | None) -> dict:
                 "detail": (r.stdout or r.stderr).strip().splitlines()[-1:] or [""]}
 
 
-def facebook(clip: Path) -> dict:
+def facebook(clip: Path, kind: str = "short") -> dict:
     """Post the reel to the Page through the Graph API.
 
     Browser posting is off (K, 2026-11-15: the automation is detectable), so the
@@ -161,16 +161,22 @@ def facebook(clip: Path) -> dict:
 
     if not fb_graph.available():
         return {"ok": False, "skipped": "no Page token"}
-    vid = fb_graph.post_reel(clip, build_caption(clip))
+    caption = build_caption(clip, kind)
+    if kind == "short":
+        vid = fb_graph.post_reel(clip, caption)
+    else:
+        # A full MV is minutes long: a reel would truncate it, so it goes up as
+        # a Page video with the same caption.
+        vid = fb_graph.post_video(clip, caption, title=clip_title(clip, kind))
     return {"ok": bool(vid), "id": vid}
 
 
-def tiktok(clip: Path) -> dict:
+def tiktok(clip: Path, kind: str = "short") -> dict:
     import tiktok_api  # noqa: PLC0415
 
     if not getattr(tiktok_api, "available", lambda: True)():
         return {"ok": False, "skipped": "no TikTok token"}
-    res = tiktok_api.post_video(clip, build_caption(clip))
+    res = tiktok_api.post_video(clip, build_caption(clip, kind))
     return {"ok": bool(res), "id": res}
 
 
@@ -200,6 +206,8 @@ def main() -> int:
     ap.add_argument("--schedule", help="ISO8601 UTC for YouTube")
     ap.add_argument("--privacy", help="explicit YouTube privacy instead of --now")
     ap.add_argument("--dry-run", action="store_true", help="gate and build, upload nothing")
+    ap.add_argument("--kind", default="short",
+                    help="metadata shape: short (default), karaoke, or full for a full MV")
     ap.add_argument("--limit", type=int, default=1,
                     help="clips to publish this run (the pilot caps: small batches)")
     a = ap.parse_args()
@@ -274,7 +282,7 @@ def main() -> int:
             continue
         print(f"GENRE OK {clip.name}  ({why})")
         if a.dry_run:
-            print(f"  title: {clip_title(clip)}")
+            print(f"  title: {clip_title(clip, a.kind)}")
             continue
 
         done = state.setdefault(clip.name, {})
@@ -286,9 +294,9 @@ def main() -> int:
                 if ch == "youtube":
                     res = youtube(clip, when=a.schedule, privacy=a.privacy)
                 elif ch == "facebook":
-                    res = facebook(clip)
+                    res = facebook(clip, a.kind)
                 elif ch == "tiktok":
-                    res = tiktok(clip)
+                    res = tiktok(clip, a.kind)
                 else:
                     res = {"ok": False, "skipped": f"unknown channel {ch}"}
             except SystemExit as e:

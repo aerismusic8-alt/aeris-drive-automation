@@ -156,6 +156,25 @@ def shot_seconds(bpm: float) -> float:
     return SHOT_MAX
 
 
+def distinct_sources(paths: list[Path]) -> list[Path]:
+    """The pictures, each one once, in order (K, 2026-11-21).
+
+    "ภาพ mv ห้ามซ้ำกันในแต่ละ mv" — a still may appear only once in a video.
+    Two entries can resolve to the same file (a cover that is also in the
+    library), and a caller may hand the same path twice, so dedupe on the
+    resolved path rather than on the string.
+    """
+    seen: set[Path] = set()
+    out: list[Path] = []
+    for p in paths:
+        key = p.resolve()
+        if key in seen:
+            continue
+        seen.add(key)
+        out.append(p)
+    return out
+
+
 def plan_shots(length: float, bpm: float) -> tuple[int, float]:
     """How many shots the video has, and the evened-out length of each.
 
@@ -343,7 +362,7 @@ def build(slug: str, *, seconds: float | None = None, full: bool = False,
     # The AI scenes only fill what the library cannot cover for this mood, and
     # they are never mixed in when the library already has enough pictures —
     # a 1024 px scene next to a 3840 px one reads as a soft shot.
-    sources: list[Path] = list(library_scenes(slug, want=8))
+    sources: list[Path] = list(library_scenes(slug, want=n_shots))
     if len(sources) < 4:
         for name, _ in SCENE_PROMPTS:
             try:
@@ -357,8 +376,18 @@ def build(slug: str, *, seconds: float | None = None, full: bool = False,
     if not sources:
         raise SystemExit(f"no art at all for {slug}")
 
+    # No picture twice in one video: dedupe, then hold each shot longer rather
+    # than repeat a picture. Repeating it was the old behaviour (`i % len`), and
+    # with 8 sources it showed the same 8 stills eight times in a 3-minute MV.
+    sources = distinct_sources(sources)
+    if len(sources) < n_shots:
+        print(f"  [mv] {len(sources)} distinct picture(s) for {n_shots} shots — "
+              f"holding each longer instead of repeating one", file=sys.stderr)
+        n_shots = len(sources)
+        shot = length / n_shots
+
     for i in range(n_shots):
-        src = sources[i % len(sources)]
+        src = sources[i]
         move = MOVE_ORDER[i % len(MOVE_ORDER)]
         out = WORK / f"shot-{slug}-{i:02d}.mp4"
         render_shot(src, move, shot, out, ffmpeg=ffmpeg)

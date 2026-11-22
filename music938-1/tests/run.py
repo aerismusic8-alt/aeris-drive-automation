@@ -1039,6 +1039,38 @@ def test_story_reel_contract() -> None:
     check("the bed still runs the genre gate", "publishable" in pm)
 
 
+def test_mv_pictures_are_not_repeated() -> None:
+    """One picture appears once per MV (K, 2026-11-21).
+
+    "ภาพ mv ห้ามซ้ำกันในแต่ละ mv". The build loop used `sources[i % len(sources)]`,
+    so a 3-minute MV built from 8 stills showed each one about eight times —
+    the video looked like a slideshow on repeat. A picture may now appear once;
+    when the library cannot supply one per shot, the shot gets longer instead.
+    """
+    section("MV (no repeated picture)")
+    import importlib.util
+    spec = importlib.util.spec_from_file_location("make_music_video",
+                                                  ROOT / "scripts" / "make_music_video.py")
+    mv = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mv)
+
+    a, b = ROOT / "scripts" / "make_music_video.py", ROOT / "scripts" / "clip_lane.py"
+    check("the same path handed twice is kept once",
+          mv.distinct_sources([a, b, a]) == [a, b])
+    src = Path(mv.__file__).read_text(encoding="utf-8")
+    check("the shot loop cannot wrap around the picture list",
+          "% len(sources)" not in src,
+          "a modulo over the sources repeats every picture")
+    check("a short picture pool shortens the shot count, not the pool",
+          "n_shots = len(sources)" in src)
+    check("the library is asked for one picture per shot",
+          "library_scenes(slug, want=n_shots)" in src)
+    # The plan itself must still keep the pace rule (K, 2026-11-20: ภาพเลื่อนเร็วเกิน).
+    n, shot = mv.plan_shots(222.0, 68.0)
+    check("a 222 s ballad still plans watchable shots",
+          shot >= mv.SHOT_MIN and n >= 3, f"{n} shots of {shot:.2f}s")
+
+
 def test_mv_keeps_picture_proportions() -> None:
     """A camera move must not squash the picture into the 9:16 frame.
 
@@ -3051,14 +3083,18 @@ def test_genres() -> None:
           genres.catalogue_size() ==
           sum(g["planned"] for g in genres.active()))
     check("the focus genres are active",
-          {"pop", "edm", "rock"} <= active, str(sorted(active)))
-    # K (2026-11-20) fixed the lane list at five: pop / dance (id `edm`) /
-    # hiphop / rock / alternative. Anything else is parked, so a sixth active
-    # genre would quietly re-open a lane K closed. `rap` in particular was in
-    # the plan and is out now, and `dance` is K's word for the `edm` id.
-    check("exactly the five lanes K named are active",
-          active == {"pop", "edm", "hiphop", "rock", "alternative"},
+          {"pop", "rock", "rap"} <= active, str(sorted(active)))
+    # K (2026-11-21) reset the main lanes: "แนวเพลงหลัก ฝังไว้ด้วยนะ 1.pop 2.rock
+    # 3.rap 4.hiphop 5.alternative". `rap` is back in and `edm` is out — the
+    # previous list (2026-11-20) had edm and no rap. Anything else is parked, so
+    # a sixth active genre would quietly re-open a lane K closed.
+    check("exactly the five main lanes K named are active",
+          active == {"pop", "rock", "rap", "hiphop", "alternative"},
           str(sorted(active)))
+    check("K's five main lanes are written into the genre file itself",
+          json.loads((Path(__file__).resolve().parent.parent / "channel" /
+                      "genres.json").read_text(encoding="utf-8"))["main_genres"]
+          == ["pop", "rock", "rap", "hiphop", "alternative"])
     check("K's word 'dance' resolves to the edm id",
           genres.canonical("dance") == "edm"
           and genres.canonical("แดนซ์") == "edm"
@@ -9717,6 +9753,7 @@ def main() -> int:
     test_picture_library_is_4k()
     test_media_home_falls_back()
     test_story_reel_contract()
+    test_mv_pictures_are_not_repeated()
     test_mv_keeps_picture_proportions()
     test_compass_is_the_one_direction()
     test_outputs()
