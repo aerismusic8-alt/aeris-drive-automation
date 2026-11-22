@@ -327,8 +327,28 @@ def bank_stills(query: str, want: int, seed: int, log=print) -> list[dict]:
     """
     doc = json.loads(MANIFEST.read_text(encoding="utf-8"))
     terms = [t for t in query.lower().split() if t]
-    rows = [r for r in doc.get("images", [])
-            if all(t in json.dumps(r, ensure_ascii=False).lower() for t in terms)]
+    rows = doc.get("images", [])
+    if terms:
+        # A descriptive query is an AND of every word, and almost no row carries
+        # all of them ("night city neon rain street" matched 0 of 6,879 while the
+        # bank held 603 4K frames), so the lane fell back to generated stills and
+        # the 4K bank never reached a clip. Score instead: keep the rows that
+        # match the most terms, which is the exact match when one exists and the
+        # closest tier when it does not.
+        scored = []
+        for r in rows:
+            blob = json.dumps(r, ensure_ascii=False).lower()
+            hits = sum(1 for t in terms if t in blob)
+            if hits:
+                scored.append((hits, r))
+        if not scored:
+            log(f"bank: nothing matches {query!r}")
+            return []
+        best = max(h for h, _ in scored)
+        rows = [r for h, r in scored if h == best]
+        if best < len(terms):
+            log(f"bank: no row matches all of {query!r}; "
+                f"using the {best}-of-{len(terms)} tier ({len(rows)} row(s))")
     rows, dropped = _safe_rows(rows, log=log)
     if not rows:
         log(f"bank: nothing matches {query!r}")

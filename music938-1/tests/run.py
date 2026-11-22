@@ -7165,6 +7165,13 @@ def test_genre_gate_blocks_parked_lanes() -> None:
     for q in ("bangkok night", "band stage"):
         got = clip_lane.bank_stills(q, 8, 11, log=lambda *_: None)
         check(f"bank stills for {q!r} fill a clip", len(got) >= 3, f"{len(got)}")
+    # Every term used to be required, so a descriptive query matched nothing and
+    # the lane fell back to generated stills while the bank held 603 4K frames
+    # ("night city neon rain street" → 0 of 6,879 rows, measured 2026-11-22).
+    got = clip_lane.bank_stills("night city neon rain street", 8, 11, log=lambda *_: None)
+    check("a descriptive query still reaches the photo bank", len(got) >= 3, f"{len(got)}")
+    check("a query no row carries stays empty",
+          clip_lane.bank_stills("zzzz-no-such-row", 8, 11, log=lambda *_: None) == [])
 
 
 def test_ai_frames_rotate_between_clips() -> None:

@@ -76,6 +76,15 @@ floor from the style:
   false failure.
 - **Not frozen** belongs to trivia and the vertical lanes. A karaoke lyric sheet
   is meant to be almost still (measured 0.0).
+
+  Read it as "the picture moves at all", not as "the camera moved enough". The
+  number is the mean frame-to-frame difference, so it tracks *texture* as much as
+  movement: a smooth synthetic still panning 52 px over 2.4 s scored 0.066 while
+  a detailed photograph panning scored 8.7 (measured 2026-11-22, both from the
+  clip lane). A near-zero median on a stills clip is not proof of a frozen
+  picture — measure the displacement before deleting the render, and judge the
+  material by where it came from (a 1024 px still upscaled to 720×1280 is soft
+  even while it pans).
 - **Caption present** is checked on trivia (white Thai on footage) and on the
   `short` lane, which is watched muted so text is mandatory. It is **not** checked
   on `vertical`: an MV shows artwork, not subtitles, and holding it to a text

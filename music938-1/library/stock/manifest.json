@@ -33,9 +33,9 @@
 "bytes": 240414,
 "sha": "3daa19a7d9863164d266",
 "at": "2026-11-19T13:16:06+00:00",
-"uses": 1,
+"uses": 2,
 "shard": "bank-0001.tar",
-"last_used": 3
+"last_used": 7
 },
 {
 "id": "st-000005",
@@ -51,9 +51,9 @@
 "bytes": 258942,
 "sha": "042c8280a0da2bfb2947",
 "at": "2026-11-19T13:16:07+00:00",
-"uses": 1,
+"uses": 2,
 "shard": "bank-0001.tar",
-"last_used": 3
+"last_used": 7
 },
 {
 "id": "st-000007",
@@ -138,8 +138,9 @@
 "bytes": 307168,
 "sha": "087e4fc8f5db28fd7dd2",
 "at": "2026-11-19T13:16:31+00:00",
-"uses": 0,
-"shard": "bank-0001.tar"
+"uses": 1,
+"shard": "bank-0001.tar",
+"last_used": 7
 },
 {
 "id": "st-000022",
@@ -895,8 +896,9 @@
 "bytes": 1403928,
 "sha": "340d6bca74b644483a4e",
 "at": "2026-11-19T13:19:54+00:00",
-"uses": 0,
-"shard": "bank-0001.tar"
+"uses": 1,
+"shard": "bank-0001.tar",
+"last_used": 4
 },
 {
 "id": "st-000053",
@@ -929,8 +931,9 @@
 "bytes": 910120,
 "sha": "c9a836d02199aacf6d59",
 "at": "2026-11-19T13:19:54+00:00",
-"uses": 0,
-"shard": "bank-0001.tar"
+"uses": 1,
+"shard": "bank-0001.tar",
+"last_used": 5
 },
 {
 "id": "st-000055",
@@ -946,8 +949,9 @@
 "bytes": 1170716,
 "sha": "e97907bcfe19f22c6d95",
 "at": "2026-11-19T13:19:55+00:00",
-"uses": 0,
-"shard": "bank-0001.tar"
+"uses": 1,
+"shard": "bank-0001.tar",
+"last_used": 4
 },
 {
 "id": "st-000056",
@@ -3110,8 +3114,9 @@
 "bytes": 515910,
 "sha": "df0164e79925e71b8046",
 "at": "2026-11-19T13:22:57+00:00",
-"uses": 0,
-"shard": "bank-0001.tar"
+"uses": 1,
+"shard": "bank-0001.tar",
+"last_used": 5
 },
 {
 "id": "st-000183",
@@ -3127,8 +3132,9 @@
 "bytes": 503006,
 "sha": "88bca7787447491c1467",
 "at": "2026-11-19T13:23:05+00:00",
-"uses": 0,
-"shard": "bank-0001.tar"
+"uses": 1,
+"shard": "bank-0001.tar",
+"last_used": 4
 },
 {
 "id": "st-000184",
@@ -3178,8 +3184,9 @@
 "bytes": 528382,
 "sha": "a42add8605807cf03a77",
 "at": "2026-11-19T13:23:06+00:00",
-"uses": 0,
-"shard": "bank-0001.tar"
+"uses": 1,
+"shard": "bank-0001.tar",
+"last_used": 4
 },
 {
 "id": "st-000187",
@@ -3195,8 +3202,9 @@
 "bytes": 568648,
 "sha": "fe98f94b69945d3111d2",
 "at": "2026-11-19T13:23:07+00:00",
-"uses": 0,
-"shard": "bank-0001.tar"
+"uses": 1,
+"shard": "bank-0001.tar",
+"last_used": 6
 },
 {
 "id": "st-000188",
@@ -3246,8 +3254,9 @@
 "bytes": 678270,
 "sha": "efda38048cccbb55d113",
 "at": "2026-11-19T13:23:08+00:00",
-"uses": 0,
-"shard": "bank-0001.tar"
+"uses": 1,
+"shard": "bank-0001.tar",
+"last_used": 4
 },
 {
 "id": "st-000191",
@@ -3314,8 +3323,9 @@
 "bytes": 559600,
 "sha": "99274a79459f5d4910d2",
 "at": "2026-11-19T13:23:09+00:00",
-"uses": 0,
-"shard": "bank-0001.tar"
+"uses": 1,
+"shard": "bank-0001.tar",
+"last_used": 4
 },
 {
 "id": "st-000195",
@@ -3450,8 +3460,9 @@
 "bytes": 433338,
 "sha": "8683cdbba569df2abc5c",
 "at": "2026-11-19T13:23:10+00:00",
-"uses": 0,
-"shard": "bank-0001.tar"
+"uses": 1,
+"shard": "bank-0001.tar",
+"last_used": 5
 },
 {
 "id": "st-000203",
@@ -3484,8 +3495,9 @@
 "bytes": 422064,
 "sha": "8a44978f3e1f29d0f580",
 "at": "2026-11-19T13:23:11+00:00",
-"uses": 0,
-"shard": "bank-0001.tar"
+"uses": 1,
+"shard": "bank-0001.tar",
+"last_used": 7
 },
 {
 "id": "st-000205",
@@ -3501,8 +3513,9 @@
 "bytes": 538696,
 "sha": "866b316f126019ee013c",
 "at": "2026-11-19T13:23:11+00:00",
-"uses": 0,
-"shard": "bank-0001.tar"
+"uses": 1,
+"shard": "bank-0001.tar",
+"last_used": 4
 },
 {
 "id": "st-000206",
@@ -3518,8 +3531,9 @@
 "bytes": 401494,
 "sha": "4cb48918e7f40ef54996",
 "at": "2026-11-19T13:23:12+00:00",
-"uses": 0,
-"shard": "bank-0001.tar"
+"uses": 1,
+"shard": "bank-0001.tar",
+"last_used": 5
 },
 {
 "id": "st-000207",
@@ -3637,8 +3651,9 @@
 "bytes": 301212,
 "sha": "0433051500a58723fc2f",
 "at": "2026-11-19T13:23:13+00:00",
-"uses": 0,
-"shard": "bank-0001.tar"
+"uses": 1,
+"shard": "bank-0001.tar",
+"last_used": 5
 },
 {
 "id": "st-000214",
@@ -3705,8 +3720,9 @@
 "bytes": 320898,
 "sha": "3c13ac7dc7102ea1d9af",
 "at": "2026-11-19T13:23:14+00:00",
-"uses": 0,
-"shard": "bank-0001.tar"
+"uses": 1,
+"shard": "bank-0001.tar",
+"last_used": 5
 },
 {
 "id": "st-000218",
@@ -8321,8 +8337,9 @@
 "bytes": 264950,
 "sha": "5d6438b7a8dd76553ac7",
 "at": "2026-11-19T15:43:35+00:00",
-"uses": 0,
-"shard": "bank-0002.tar"
+"uses": 1,
+"shard": "bank-0002.tar",
+"last_used": 4
 },
 {
 "id": "st-000493",
@@ -8338,8 +8355,9 @@
 "bytes": 267458,
 "sha": "3312ac46c0dabc983836",
 "at": "2026-11-19T15:43:35+00:00",
-"uses": 0,
-"shard": "bank-0002.tar"
+"uses": 1,
+"shard": "bank-0002.tar",
+"last_used": 6
 },
 {
 "id": "st-000494",
@@ -8355,8 +8373,9 @@
 "bytes": 343752,
 "sha": "efc9549138651512a274",
 "at": "2026-11-19T15:43:35+00:00",
-"uses": 0,
-"shard": "bank-0002.tar"
+"uses": 1,
+"shard": "bank-0002.tar",
+"last_used": 6
 },
 {
 "id": "st-000495",
@@ -8423,8 +8442,9 @@
 "bytes": 549174,
 "sha": "b229ee536130ef4d99f8",
 "at": "2026-11-19T15:43:36+00:00",
-"uses": 0,
-"shard": "bank-0002.tar"
+"uses": 1,
+"shard": "bank-0002.tar",
+"last_used": 5
 },
 {
 "id": "st-000499",
@@ -72784,8 +72804,9 @@
 "bytes": 510112,
 "sha": "e660f48487a198de0e53",
 "at": "2026-11-19T23:08:26+00:00",
-"uses": 0,
-"shard": "bank-0003.tar"
+"uses": 1,
+"shard": "bank-0003.tar",
+"last_used": 6
 },
 {
 "id": "st-004506",
@@ -73022,8 +73043,9 @@
 "bytes": 487518,
 "sha": "b145ba66f770871e5cd3",
 "at": "2026-11-19T23:08:46+00:00",
-"uses": 0,
-"shard": "bank-0003.tar"
+"uses": 1,
+"shard": "bank-0003.tar",
+"last_used": 4
 },
 {
 "id": "st-004520",
@@ -73073,8 +73095,9 @@
 "bytes": 803392,
 "sha": "b6faed6ed5a644800247",
 "at": "2026-11-19T23:08:47+00:00",
-"uses": 0,
-"shard": "bank-0003.tar"
+"uses": 1,
+"shard": "bank-0003.tar",
+"last_used": 5
 },
 {
 "id": "st-004523",
@@ -73124,8 +73147,9 @@
 "bytes": 572758,
 "sha": "e16053e1526872c96e8e",
 "at": "2026-11-19T23:08:48+00:00",
-"uses": 0,
-"shard": "bank-0003.tar"
+"uses": 1,
+"shard": "bank-0003.tar",
+"last_used": 6
 },
 {
 "id": "st-004526",
@@ -73141,8 +73165,9 @@
 "bytes": 951310,
 "sha": "1b8e9cb52ef3be9e093d",
 "at": "2026-11-19T23:08:48+00:00",
-"uses": 0,
-"shard": "bank-0003.tar"
+"uses": 1,
+"shard": "bank-0003.tar",
+"last_used": 6
 },
 {
 "id": "st-004527",
@@ -73158,8 +73183,9 @@
 "bytes": 544286,
 "sha": "4da87eae28b4834155a9",
 "at": "2026-11-19T23:08:48+00:00",
-"uses": 0,
-"shard": "bank-0003.tar"
+"uses": 1,
+"shard": "bank-0003.tar",
+"last_used": 6
 },
 {
 "id": "st-004528",
@@ -73175,8 +73201,9 @@
 "bytes": 715748,
 "sha": "9fb3e0fe4c064506a99a",
 "at": "2026-11-19T23:08:49+00:00",
-"uses": 0,
-"shard": "bank-0003.tar"
+"uses": 1,
+"shard": "bank-0003.tar",
+"last_used": 5
 },
 {
 "id": "st-004529",
@@ -85517,8 +85544,9 @@
 "bytes": 402780,
 "sha": "63db5c87ab848e6449e0",
 "at": "2026-11-20T07:40:29+00:00",
-"uses": 0,
-"shard": "bank-0004.tar"
+"uses": 1,
+"shard": "bank-0004.tar",
+"last_used": 6
 },
 {
 "id": "st-005255",
@@ -85551,8 +85579,9 @@
 "bytes": 492444,
 "sha": "aa1064b72b05b10acc2e",
 "at": "2026-11-20T07:40:29+00:00",
-"uses": 0,
-"shard": "bank-0004.tar"
+"uses": 1,
+"shard": "bank-0004.tar",
+"last_used": 6
 },
 {
 "id": "st-005257",
@@ -86061,8 +86090,9 @@
 "bytes": 794176,
 "sha": "59d1c39ee916bc8b1f11",
 "at": "2026-11-20T07:40:39+00:00",
-"uses": 0,
-"shard": "bank-0004.tar"
+"uses": 1,
+"shard": "bank-0004.tar",
+"last_used": 6
 },
 {
 "id": "st-005287",
@@ -92266,8 +92296,9 @@
 "bytes": 1070746,
 "sha": "db506c35462527581a52",
 "at": "2026-11-20T07:46:45+00:00",
-"uses": 0,
-"shard": "bank-0004.tar"
+"uses": 1,
+"shard": "bank-0004.tar",
+"last_used": 6
 },
 {
 "id": "st-005652",
@@ -92283,8 +92314,9 @@
 "bytes": 927558,
 "sha": "990d0d82e77043e84996",
 "at": "2026-11-20T07:46:45+00:00",
-"uses": 0,
-"shard": "bank-0004.tar"
+"uses": 1,
+"shard": "bank-0004.tar",
+"last_used": 6
 },
 {
 "id": "st-005653",
@@ -93371,8 +93403,9 @@
 "bytes": 765692,
 "sha": "3418005d334b2afbb812",
 "at": "2026-11-20T17:09:34+00:00",
-"uses": 0,
-"shard": "bank-0005.tar"
+"uses": 1,
+"shard": "bank-0005.tar",
+"last_used": 6
 },
 {
 "id": "st-005717",
@@ -98352,8 +98385,9 @@
 "bytes": 455680,
 "sha": "5d1c6e0b6d707cf3fb80",
 "at": "2026-11-20T17:15:23+00:00",
-"uses": 0,
-"shard": "bank-0005.tar"
+"uses": 1,
+"shard": "bank-0005.tar",
+"last_used": 6
 },
 {
 "id": "st-006010",
@@ -102908,8 +102942,9 @@
 "bytes": 750490,
 "sha": "c9eb543faadc9477c741",
 "at": "2026-11-21T01:36:28+00:00",
-"uses": 0,
-"shard": "bank-0006.tar"
+"uses": 1,
+"shard": "bank-0006.tar",
+"last_used": 6
 },
 {
 "id": "st-006278",
@@ -103605,8 +103640,9 @@
 "bytes": 1887212,
 "sha": "dd7a07894845b1a6879d",
 "at": "2026-11-21T01:43:47+00:00",
-"uses": 0,
-"shard": "bank-0006.tar"
+"uses": 1,
+"shard": "bank-0006.tar",
+"last_used": 6
 },
 {
 "id": "st-006319",
@@ -103639,8 +103675,9 @@
 "bytes": 2364218,
 "sha": "2303cf77ae416eb2b080",
 "at": "2026-11-21T01:43:49+00:00",
-"uses": 0,
-"shard": "bank-0006.tar"
+"uses": 1,
+"shard": "bank-0006.tar",
+"last_used": 6
 },
 {
 "id": "st-006321",
@@ -105798,8 +105835,9 @@
 "bytes": 1054510,
 "sha": "8eac713b7fc8d0e5dba8",
 "at": "2026-11-21T01:49:20+00:00",
-"uses": 0,
-"shard": "bank-0006.tar"
+"uses": 1,
+"shard": "bank-0006.tar",
+"last_used": 6
 },
 {
 "id": "st-006448",
@@ -110014,8 +110052,9 @@
 "bytes": 1325974,
 "sha": "1110b31cee0dd79c5180",
 "at": "2026-11-21T02:04:57+00:00",
-"uses": 0,
-"shard": "bank-0007.tar"
+"uses": 1,
+"shard": "bank-0007.tar",
+"last_used": 6
 },
 {
 "id": "st-006696",
