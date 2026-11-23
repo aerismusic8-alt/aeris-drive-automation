@@ -1,0 +1,69 @@
+name: "AX PC1 Music Pull (อ่าน D:\\music1)"
+
+# K (2026-11-23): "pc1 D:\music1 เข้าไปดูในนี้ได้เลย".
+#
+# The sandbox has no route to PC1's D:, so the listing and the copies happen on
+# PC1 and come back as an artifact. `list` is free and answers "what is in the
+# library"; `pull` copies the matches so the sandbox can measure them
+# (ops/reference_profile.py) instead of guessing from a title.
+#
+#   python3 ops/pc1_music.py list --root 'D:\music1' --out out
+#
+# Audio stays on PC1 unless a pull is asked for: this repository is public and
+# copyrighted music must never be committed to it.
+
+on:
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: "list (index only) or pull (copy matching files)"
+        required: true
+        default: "list"
+        type: choice
+        options: ["list", "pull"]
+      root:
+        description: "folder on PC1"
+        required: true
+        default: 'D:\music1'
+      query:
+        description: "pull: case-insensitive match on the file path"
+        default: ""
+      want:
+        description: "pull: how many files at most (0 = all matches)"
+        default: "0"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ax-pc1-music-pull
+  cancel-in-progress: true
+
+jobs:
+  music:
+    runs-on: [self-hosted, Windows, X64]
+    timeout-minutes: 40
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: "Read the library on D:"
+        shell: powershell
+        env:
+          MODE: ${{ github.event.inputs.mode || 'list' }}
+          ROOT: ${{ github.event.inputs.root || 'D:\music1' }}
+          QUERY: ${{ github.event.inputs.query || '' }}
+          WANT: ${{ github.event.inputs.want || '0' }}
+        run: |
+          $ErrorActionPreference = 'Stop'
+          python ops/pc1_music.py $env:MODE --root "$env:ROOT" --query $env:QUERY --want $env:WANT --out out
+          if ($LASTEXITCODE -ne 0) { throw "PC1_MUSIC_EXIT:$LASTEXITCODE" }
+          Get-ChildItem out | Select-Object Name, Length | Format-Table -AutoSize
+
+      - name: Hand the result to the sandbox
+        uses: actions/upload-artifact@v4
+        with:
+          name: pc1-music
+          path: out/
+          retention-days: 14
+          if-no-files-found: error
