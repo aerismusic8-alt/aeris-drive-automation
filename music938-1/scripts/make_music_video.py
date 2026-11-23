@@ -52,6 +52,14 @@ OUT_DIR = ROOT / "library" / "musicvideo"
 
 W, H, FPS = 1080, 1920, 30
 
+# K, 2026-11-21: "รูปคลื่นตามจังหวะเพลงทำให้ใหญ่เพิ่มขึ้นอีก". The audio-reactive
+# bar is the one element that answers the song, and at 220 px it read as a thin
+# ribbon along the foot. Height, opacity and the gap under it are one decision,
+# so they are kept together rather than scattered through the filter string.
+WAVE_H = 520        # px at a 1920-tall frame, scaled by _k()
+WAVE_ALPHA = 0.55
+WAVE_MARGIN = 40
+
 
 def _k() -> float:
     """Overlay scale: every pixel size below was drawn for a 1920-tall frame.
@@ -427,10 +435,10 @@ def build(slug: str, *, seconds: float | None = None, full: bool = False,
         f"[2:v]format=rgba,fade=t=in:st=0:d=1.2:alpha=1[ec];"
         f"[base][tc]overlay=0:0:enable='lt(t,{t_fade*2})'[b1];"
         f"[b1][ec]overlay=0:0:enable='gt(t,{length-3.0})'[b2];"
-        f"[3:a]showwaves=s={W}x{int(220 * _k())}:mode=cline:"
+        f"[3:a]showwaves=s={W}x{int(WAVE_H * _k())}:mode=cline:scale=sqrt:"
         f"colors=0x8affc1|0xff8ad8:"
-        f"rate={FPS},format=rgba,colorchannelmixer=aa=0.30[wave];"
-        f"[b2][wave]overlay=0:H-{int(300 * _k())}[b3];"
+        f"rate={FPS},format=rgba,colorchannelmixer=aa={WAVE_ALPHA}[wave];"
+        f"[b2][wave]overlay=0:H-{int((WAVE_H + WAVE_MARGIN) * _k())}[b3];"
         f"[b3]setsar=1,format=yuv420p[out];"
         # Normalise at the mux, as the film lane does, so every MV meets the
         # channel floor regardless of the source master's level.
