@@ -97,6 +97,49 @@ def load_audio(path: Path) -> tuple[np.ndarray, int]:
     return x, sr
 
 
+def tempo_drift(x: np.ndarray, sr: int) -> list[tuple[float, float]]:
+    """Blocks whose local tempo leaves the song's own median.
+
+    K, 2026-11-21: "เพลง54 สะดุด". The extend joins two takes, and when the
+    second one runs at a different tempo the join is a hiccup rather than a
+    chorus — yet every section is present, so the form checks all pass. The
+    median is the song's own, not the lyric's header, because the model rarely
+    lands on the number it was asked for.
+    """
+    hop, n = 256, 1024
+    frames = np.array([x[i:i + n] * np.hanning(n) for i in range(0, len(x) - n, hop)])
+    S = np.abs(np.fft.rfft(frames, axis=1))
+    flux = np.maximum(0, np.diff(S, axis=0)).sum(1)
+    env = flux - flux.mean()
+    fps = sr / hop
+    dt = hop / sr
+    W, H = int(4 * fps), int(2 * fps)
+    lo, hi = int(0.3 / dt), int(1.0 / dt)
+    blocks: list[tuple[float, float]] = []
+    for i in range(0, len(env) - W, H):
+        seg = env[i:i + W]
+        ac = np.correlate(seg, seg, "full")[len(seg) - 1:]
+        k = lo + int(np.argmax(ac[lo:hi]))
+        if k > 0:
+            blocks.append((round(i / fps, 1), 60.0 / (k * dt)))
+    if len(blocks) < 6:
+        return []
+    med = float(np.median([v for _, v in blocks]))
+    folded = [v * 2 if v < med * 0.6 else (v / 2 if v > med * 1.7 else v) for _, v in blocks]
+    out: list[tuple[float, float]] = []
+    run: list[tuple[float, float]] = []
+    for (t, _), v in zip(blocks, folded):
+        if abs(v - med) > med * 0.25:
+            run.append((t, round(float(v), 1)))
+        else:
+            if len(run) >= 2:
+                out.append(run[0])
+            run = []
+    if len(run) >= 2:
+        out.append(run[0])
+    return out
+
+
 def measure(slug: str) -> dict:
     meta_path = CLIPMETA / f"clipmeta-{slug}.json"
     song = SONGS / f"song-{slug}.mp3"
@@ -146,7 +189,18 @@ def measure(slug: str) -> dict:
         report["problems"].append(
             f"{worst_pair[0]} at {worst_pair[1]}s and {worst_pair[2]}s are the same audio "
             f"(waveform correlation {worst:.2f}) — the take was extended by pasting it back")
-    report["verdict"] = "LONG_TAIL" if report["problems"] else "CLEAN"
+    drift = tempo_drift(x, sr)
+    report["tempo_drift"] = drift
+    if drift:
+        report["problems"].append(
+            "the tempo leaves the song's own median at "
+            + ", ".join(f"{t:.0f}s" for t, _ in drift)
+            + " — a spliced take, heard as a stutter")
+        report["verdict"] = "STUTTER"
+    elif report["problems"]:
+        report["verdict"] = "LONG_TAIL"
+    else:
+        report["verdict"] = "CLEAN"
     return report
 
 
