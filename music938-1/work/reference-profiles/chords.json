@@ -1,0 +1,476 @@
+{
+  "songs": [
+    {
+      "query": {
+        "title": "ไม่เอาคืน",
+        "artist": "ดัง พันกร"
+      },
+      "matched": {
+        "id": 4913,
+        "title": "ไม่เอาคืน",
+        "artist": "ดัง พันกร"
+      },
+      "chart_url": "https://www.guitarthai.com/chords/files/4913.png",
+      "lines": 9,
+      "syllables_median": 20,
+      "syllables_p10_p90": [
+        3,
+        22
+      ],
+      "chord_count": 37,
+      "chords_per_line": 4.11,
+      "chord_vocabulary": [
+        "A",
+        "B",
+        "C#m",
+        "E",
+        "G#m"
+      ],
+      "loops": [
+        {
+          "len": 2,
+          "loop": [
+            "A",
+            "E"
+          ],
+          "times": 9
+        },
+        {
+          "len": 3,
+          "loop": [
+            "C#m",
+            "A",
+            "E"
+          ],
+          "times": 5
+        },
+        {
+          "len": 4,
+          "loop": [
+            "E",
+            "C#m",
+            "A",
+            "E"
+          ],
+          "times": 4
+        }
+      ],
+      "bar_loop": {
+        "len": 4,
+        "loop": [
+          "E",
+          "C#m",
+          "A",
+          "E"
+        ],
+        "times": 4
+      },
+      "sections": [
+        "INTRO /E/C#m/A/E/",
+        "* ใจฉันทีให้เธอ มันก็เป็นของเธอ และฉันอย",
+        "** ให้มันจมลงไปสุดใจ ปล่อยไว้ไม่ต้องดูแล",
+        "INSTRU / E/C#m/A/E/",
+        "INSTRU / E/C#m/A/E/",
+        "INSTRU / E/C#m/A/E/E/"
+      ],
+      "ocr_lines": [
+        "ไม่เอาคืน",
+        "ดัง พันกร",
+        "อยากให้รับรู้ เมื่อเธอจะทิ้งฉันไป คงไม่เป็นไร หากเธอนั้นคิดมาดี"
+      ]
+    },
+    {
+      "query": {
+        "title": "เลิกรา",
+        "artist": "แมว จิรศักดิ์"
+      },
+      "matched": {
+        "id": 3831,
+        "title": "เลิกรา",
+        "artist": "แมว จิรศักดิ์"
+      },
+      "chart_url": "https://www.guitarthai.com/chords/files/3831.png",
+      "lines": 10,
+      "syllables_median": 19,
+      "syllables_p10_p90": [
+        3,
+        20
+      ],
+      "chord_count": 40,
+      "chords_per_line": 4.0,
+      "chord_vocabulary": [
+        "Am",
+        "C",
+        "C7",
+        "Dm",
+        "Dm7",
+        "E",
+        "Em",
+        "F",
+        "G"
+      ],
+      "loops": [
+        {
+          "len": 3,
+          "loop": [
+            "G",
+            "Em",
+            "Am"
+          ],
+          "times": 7
+        },
+        {
+          "len": 2,
+          "loop": [
+            "G",
+            "Em"
+          ],
+          "times": 7
+        },
+        {
+          "len": 4,
+          "loop": [
+            "Dm7",
+            "G",
+            "Em",
+            "Am"
+          ],
+          "times": 4
+        }
+      ],
+      "bar_loop": {
+        "len": 4,
+        "loop": [
+          "Dm7",
+          "G",
+          "Em",
+          "Am"
+        ],
+        "times": 4
+      },
+      "sections": [
+        "INTRO /C/F/Dm7/G/",
+        "* เจ็บปวดที่เราไว้ใจ ยอมทนเหนื่อยใจเรื่อ",
+        "** ขอให้ทิ้ง ทิ้งกันอย่ามีเยื่อใย ตัดใจใ",
+        "INSTRU / E / Am / Dm7 / 6 / (2 Times)"
+      ],
+      "ocr_lines": [
+        "เลิกรา",
+        "แมว จิรศัก",
+        "เธอกับเขา เกินเลยไม่เคยได้คิด ปล่อยความใกล้ชิด ทําร้ายใจเราเรื่อยมา"
+      ]
+    },
+    {
+      "query": {
+        "title": "หัวใจกระดาษ",
+        "artist": "อู๋ ธรรพ์ณธร"
+      },
+      "matched": {
+        "id": 3828,
+        "title": "หัวใจกระดาษ",
+        "artist": "อู๋ ธรรพ์ณธร"
+      },
+      "chart_url": "https://www.guitarthai.com/chords/files/3828.png",
+      "lines": 12,
+      "syllables_median": 23,
+      "syllables_p10_p90": [
+        4,
+        28
+      ],
+      "chord_count": 44,
+      "chords_per_line": 3.67,
+      "chord_vocabulary": [
+        "Am",
+        "Bb",
+        "C",
+        "Dm",
+        "F",
+        "Gm"
+      ],
+      "loops": [
+        {
+          "len": 2,
+          "loop": [
+            "Dm",
+            "Bb"
+          ],
+          "times": 9
+        },
+        {
+          "len": 3,
+          "loop": [
+            "F",
+            "Dm",
+            "Bb"
+          ],
+          "times": 7
+        },
+        {
+          "len": 5,
+          "loop": [
+            "Dm",
+            "Bb",
+            "F",
+            "Dm",
+            "Bb"
+          ],
+          "times": 4
+        }
+      ],
+      "bar_loop": {},
+      "sections": [
+        "INTRO / ท / Dm/Bb/ 6 / (2 Times) / 6 /",
+        "* ก็เติมลงไปแต่ใจของเธอไม่ยอมรับ ก็ให้เธ",
+        "** เธอ หัวใจกระดาษ เบาๆ ก็ขาด เบาๆ ก็ปลิ",
+        "*** เคว้งคว้างล่องลอยตามสายลมรักของคนเรื",
+        "INSTRU / F/Dm/Bb/C/C/",
+        "INSTRU / F/Dm/ Bb /C/"
+      ],
+      "ocr_lines": [
+        "หัวใจกระดาษ",
+        "ธรรพ์ณธร",
+        "ตะเกียกตะกายทุ่มเท ทุ่มเทให้เธอทุกอย่าง เห็นรักของเราจืดจางช่องว่างตรงกลางหัวใจ"
+      ]
+    },
+    {
+      "query": {
+        "title": "ไหนว่าจะไม่หลอกกัน",
+        "artist": "Silly Fools"
+      },
+      "matched": {
+        "id": 3519,
+        "title": "ไหนว่าจะไม่หลอกกัน",
+        "artist": "Silly Fools"
+      },
+      "chart_url": "https://www.guitarthai.com/chords/files/3519.png",
+      "lines": 15,
+      "syllables_median": 16,
+      "syllables_p10_p90": [
+        3,
+        23
+      ],
+      "chord_count": 32,
+      "chords_per_line": 2.13,
+      "chord_vocabulary": [
+        "C#m",
+        "Csus2",
+        "D",
+        "Eb",
+        "Em7",
+        "F#",
+        "G"
+      ],
+      "loops": [
+        {
+          "len": 2,
+          "loop": [
+            "D",
+            "F#"
+          ],
+          "times": 7
+        },
+        {
+          "len": 4,
+          "loop": [
+            "D",
+            "F#",
+            "D",
+            "F#"
+          ],
+          "times": 5
+        },
+        {
+          "len": 3,
+          "loop": [
+            "D",
+            "F#",
+            "D"
+          ],
+          "times": 5
+        }
+      ],
+      "bar_loop": {
+        "len": 4,
+        "loop": [
+          "D",
+          "F#",
+          "D",
+          "F#"
+        ],
+        "times": 5
+      },
+      "sections": [
+        "INSTRU / G / D / Em7 / Csus2 /",
+        "* อาจ เป็น เพียง คําพูดลมๆ แล้งๆ เท่านั้",
+        "** ไหนว่า จะไม่หลอกกัน ไหนว่า เธอจะมีฉัน",
+        "INSTRU / 6 / D/F# / Em7 / 0รนร2 / (2 Tim"
+      ],
+      "ocr_lines": [
+        "“ไหนว่าจะไม่หลอกกัน",
+        "เซ ก 1ส",
+        "เธอบอกว่าวันนี้ เป็นวันที่สวยงาม เธอบอกว่าวันนี้ เป็นวันของเรา"
+      ]
+    },
+    {
+      "query": {
+        "title": "ก็พอ",
+        "artist": "เต็ม วุฒิสิทธิ์"
+      },
+      "matched": {
+        "id": 4916,
+        "title": "ก็พอ",
+        "artist": "เต็ม วุฒิสิทธิ์"
+      },
+      "chart_url": "https://www.guitarthai.com/chords/files/4916.png",
+      "lines": 11,
+      "syllables_median": 18,
+      "syllables_p10_p90": [
+        3,
+        22
+      ],
+      "chord_count": 54,
+      "chords_per_line": 4.91,
+      "chord_vocabulary": [
+        "Am7",
+        "Bbm",
+        "Bbmaj7",
+        "C",
+        "C#",
+        "C7",
+        "Dm",
+        "Dm7",
+        "F",
+        "F7",
+        "Fmaj7",
+        "Gm",
+        "Gm7"
+      ],
+      "loops": [
+        {
+          "len": 2,
+          "loop": [
+            "F",
+            "Am7"
+          ],
+          "times": 5
+        },
+        {
+          "len": 5,
+          "loop": [
+            "F7",
+            "Bbmaj7",
+            "Am7",
+            "Gm7",
+            "F"
+          ],
+          "times": 2
+        },
+        {
+          "len": 4,
+          "loop": [
+            "F7",
+            "Bbmaj7",
+            "Am7",
+            "Gm7"
+          ],
+          "times": 2
+        }
+      ],
+      "bar_loop": {
+        "len": 4,
+        "loop": [
+          "F7",
+          "Bbmaj7",
+          "Am7",
+          "Gm7"
+        ],
+        "times": 2
+      },
+      "sections": [
+        "INTRO / F / เท7 Dm7 / Gm7 / C7/",
+        "* ฉันขอแค่ฝันเท่านั้นเอง ไม่มากมาย ขอฝัน",
+        "** ก็ไม่มีอะไรดี ไม่ดีพอสักอย่าง อย่างฉั",
+        "INSTRU / F / Am7 Dm7 / Gm7 / C# 67 /",
+        "INSTRU / Bbmaj7 / Fmaj7 / Bbmaj7 / Fmaj7",
+        "INSTRU / F / เท7 Dm7 / ๕7 /"
+      ],
+      "ocr_lines": [
+        "ก็พอ",
+        "เต็ม วุฒิสิทธิ์",
+        "เธอบอกว่าฉันคงผิดหวัง ไม่มีทางใดที่เรา จะรักจะผูกพัน"
+      ]
+    },
+    {
+      "query": {
+        "title": "ใจหายไปเลย",
+        "artist": "Mr.Team"
+      },
+      "matched": {
+        "id": 12345,
+        "title": "ใจหายไปเลย",
+        "artist": "Mr Team"
+      },
+      "chart_url": "https://www.guitarthai.com/chords/files/12345.png",
+      "lines": 19,
+      "syllables_median": 15,
+      "syllables_p10_p90": [
+        3,
+        18
+      ],
+      "chord_count": 52,
+      "chords_per_line": 2.74,
+      "chord_vocabulary": [
+        "A",
+        "Bm",
+        "D",
+        "E",
+        "F#m",
+        "G"
+      ],
+      "loops": [
+        {
+          "len": 2,
+          "loop": [
+            "F#m",
+            "E"
+          ],
+          "times": 6
+        },
+        {
+          "len": 3,
+          "loop": [
+            "E",
+            "D",
+            "E"
+          ],
+          "times": 4
+        },
+        {
+          "len": 6,
+          "loop": [
+            "E",
+            "D",
+            "E",
+            "E",
+            "D",
+            "E"
+          ],
+          "times": 2
+        }
+      ],
+      "bar_loop": {},
+      "sections": [
+        "INTRO / F#m /E/F#m/E/",
+        "INSTRU / F#m /E/F#m/E/",
+        "* ใจ หาย ไปเลยหายไปในอจิก๊าศ ลอยไป กับสา",
+        "INSTRU / A/ ที#เท / ธิทท / 5 / (2 Times)",
+        "INSTRU / DE / AF#m / (2 Times) / ธิท 5 /"
+      ],
+      "ocr_lines": [
+        "'ใจหายไปเลย",
+        "เธอ ไม่เคยบอก บอกให้รู้เรื่องราวในใจ",
+        "เธอ ไม่เคยเปลี่ยน ปล่อยฉัน ให้เดาให้หวันไหว"
+      ]
+    }
+  ]
+}
