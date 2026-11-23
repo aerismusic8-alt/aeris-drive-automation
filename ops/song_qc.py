@@ -40,10 +40,12 @@ MUSIC = ROOT / "music938-1"
 CLIPMETA = MUSIC / "library" / "songs"
 SONGS = MUSIC / "library" / "songs"
 
-# A chorus may legitimately come back three times in a 4-minute song. A fourth
-# means an extend pasted it. An outro is sung once, twice at most.
-MAX_CHORUS = 3
-MAX_OUTRO = 2
+# A chorus four times is a normal pop/rock form, so counting choruses cannot
+# separate a good take from a stitched one: song 53 (four choruses, written that
+# way) and song 52 (five choruses, three outros) differ by the tail, not by the
+# count. The labels are also the model's own and are noisy — it emits "Section12".
+# So the gate keeps only what it can measure reliably: a tail that eats the song,
+# and two blocks that are literally the same audio.
 MAX_TAIL_SHARE = 0.16
 SAME_AUDIO = 0.90
 
@@ -132,22 +134,19 @@ def measure(slug: str) -> dict:
     report["same_section_correlation"] = round(worst, 3)
     report["same_section_pair"] = worst_pair
 
-    if counts.get("Chorus", 0) > MAX_CHORUS:
-        report["problems"].append(f"{counts['Chorus']} choruses (max {MAX_CHORUS})")
-    if counts.get("Outro", 0) > MAX_OUTRO:
-        report["problems"].append(f"{counts['Outro']} outros (max {MAX_OUTRO})")
-    longest = max(secs, key=lambda s: s[2] - s[1])
-    share = (longest[2] - longest[1]) / total
-    report["longest_section"] = {"name": longest[0], "seconds": round(longest[2] - longest[1], 1),
-                                 "share": round(share, 3)}
+    tail_name, tail_start, tail_end = secs[-1]
+    share = (tail_end - tail_start) / total
+    report["tail"] = {"name": tail_name, "seconds": round(tail_end - tail_start, 1),
+                      "share": round(share, 3)}
     if share > MAX_TAIL_SHARE:
         report["problems"].append(
-            f"{longest[0]} runs {longest[2] - longest[1]:.0f}s ({share:.0%} of the song)")
+            f"the last section ({tail_name}) runs {tail_end - tail_start:.0f}s, "
+            f"{share:.0%} of the song")
     if worst >= SAME_AUDIO:
         report["problems"].append(
             f"{worst_pair[0]} at {worst_pair[1]}s and {worst_pair[2]}s are the same audio "
             f"(waveform correlation {worst:.2f}) — the take was extended by pasting it back")
-    report["verdict"] = "REPEAT_FORM" if report["problems"] else "CLEAN"
+    report["verdict"] = "LONG_TAIL" if report["problems"] else "CLEAN"
     return report
 
 
