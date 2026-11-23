@@ -179,5 +179,22 @@
       "ok": true,
       "id": "1199269162427188"
     }
+  },
+  "bank-song-07-huachai-si-thao-bangkok-night.mp4": {
+    "youtube": {
+      "ok": true,
+      "id": "EN4nYhqpGJs",
+      "detail": [
+        "https://youtu.be/EN4nYhqpGJs"
+      ]
+    },
+    "facebook": {
+      "ok": true,
+      "id": "1474878147940013"
+    },
+    "tiktok": {
+      "ok": false,
+      "skipped": "no TikTok token"
+    }
   }
 }
