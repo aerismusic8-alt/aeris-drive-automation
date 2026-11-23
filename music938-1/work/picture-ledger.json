@@ -637,7 +637,283 @@
      "sha1": "ad9218e288b1d9d3413e44530f215da3f790479e"
     }
    ]
+  },
+  "mv-49-luai-mai-yut-v49": {
+   "built": "2026-11-22T13:44:25Z",
+   "count": 54,
+   "pictures": [
+    {
+     "shot": 0,
+     "key": "/workspace/ax-tools/media-library/pictures/temple/s000.jpg",
+     "sha1": "45608b5ca2d58459f8c98f4ce359def57a401227"
+    },
+    {
+     "shot": 1,
+     "key": "/workspace/ax-tools/media-library/pictures/temple/s013.jpg",
+     "sha1": "17f553850da53519d18d69bab8b7998539b902f5"
+    },
+    {
+     "shot": 2,
+     "key": "/workspace/ax-tools/media-library/pictures/temple/s001.jpg",
+     "sha1": "e38420dc21527bbafc30968060b7ccccb21be636"
+    },
+    {
+     "shot": 3,
+     "key": "/workspace/ax-tools/media-library/pictures/temple/s014.jpg",
+     "sha1": "36534524524c84d817b0c51bca5127127988a246"
+    },
+    {
+     "shot": 4,
+     "key": "/workspace/ax-tools/media-library/pictures/temple/s002.jpg",
+     "sha1": "e907840ec9d117f2f4af4929f29b82ecab763646"
+    },
+    {
+     "shot": 5,
+     "key": "/workspace/ax-tools/media-library/pictures/temple/s015.jpg",
+     "sha1": "73aa30562a88d25ff12735c10237aafe03ebd17c"
+    },
+    {
+     "shot": 6,
+     "key": "/workspace/ax-tools/media-library/pictures/temple/s003.jpg",
+     "sha1": "d0a86e3f1ab758ac693c5fabf1e2f04cfb127407"
+    },
+    {
+     "shot": 7,
+     "key": "/workspace/ax-tools/media-library/pictures/temple/s016.jpg",
+     "sha1": "a470085ea6e4fe7a081349cefd1936eb5da1ec8e"
+    },
+    {
+     "shot": 8,
+     "key": "/workspace/ax-tools/media-library/pictures/temple/s004.jpg",
+     "sha1": "c45aec56998e03a813a409b3db88fb7115d5f30d"
+    },
+    {
+     "shot": 9,
+     "key": "/workspace/ax-tools/media-library/pictures/temple/s017.jpg",
+     "sha1": "2cb8850bb561be719140e8e5abba91f803526edc"
+    },
+    {
+     "shot": 10,
+     "key": "/workspace/ax-tools/media-library/pictures/temple/s005.jpg",
+     "sha1": "468eef3a2562477304174b3deb4bcc7d9c99c9eb"
+    },
+    {
+     "shot": 11,
+     "key": "/workspace/ax-tools/media-library/pictures/temple/s018.jpg",
+     "sha1": "c148b635f531347a3d2713e1a31dcc9fe9b8544b"
+    },
+    {
+     "shot": 12,
+     "key": "/workspace/ax-tools/media-library/pictures/temple/s006.jpg",
+     "sha1": "4a1ec33c5e74732e9cb5fc6d1a24f9cb268fc1b9"
+    },
+    {
+     "shot": 13,
+     "key": "/workspace/ax-tools/media-library/pictures/temple/s019.jpg",
+     "sha1": "1de7429d87fd7d7ac1d81f49357e43d0b6698913"
+    },
+    {
+     "shot": 14,
+     "key": "/workspace/ax-tools/media-library/pictures/temple/s007.jpg",
+     "sha1": "cd430a9b2091408a4048eb8f9f4e623d730e5943"
+    },
+    {
+     "shot": 15,
+     "key": "/workspace/ax-tools/media-library/pictures/temple/s020.jpg",
+     "sha1": "9029b65b69fdf0b67b3ec7767f9565343e0bec10"
+    },
+    {
+     "shot": 16,
+     "key": "/workspace/ax-tools/media-library/pictures/temple/s008.jpg",
+     "sha1": "8b2665f0365c42237dac41a2fcbbf2a5b9327f9b"
+    },
+    {
+     "shot": 17,
+     "key": "/workspace/ax-tools/media-library/pictures/temple/s021.jpg",
+     "sha1": "34ddf1ab109554725223935e3a1989cf8fcf9050"
+    },
+    {
+     "shot": 18,
+     "key": "/workspace/ax-tools/media-library/pictures/temple/s022.jpg",
+     "sha1": "5d187ce7fdcf9fd55ec1c9b3dde33a81f016d250"
+    },
+    {
+     "shot": 19,
+     "key": "/workspace/ax-tools/media-library/pictures/temple/s023.jpg",
+     "sha1": "0278819b9c874bd17b439624cac84199f4e21a32"
+    },
+    {
+     "shot": 20,
+     "key": "/workspace/ax-tools/media-library/pictures/temple/s024.jpg",
+     "sha1": "ad082055153d010c3bd2744ab6d5df6c0dc27360"
+    },
+    {
+     "shot": 21,
+     "key": "/workspace/ax-tools/media-library/pictures/temple/s025.jpg",
+     "sha1": "64c9e1435510d2f8f67a89088b4a9a40a81cc348"
+    },
+    {
+     "shot": 22,
+     "key": "/workspace/ax-tools/media-library/pictures/temple/s026.jpg",
+     "sha1": "58e1b340b7c05968bc60a60529d1440f00362d47"
+    },
+    {
+     "shot": 23,
+     "key": "/workspace/ax-tools/media-library/pictures/temple/s027.jpg",
+     "sha1": "fcc0b478fdb02dcb11985bf93c495770d3d1db90"
+    },
+    {
+     "shot": 24,
+     "key": "/workspace/ax-tools/media-library/pictures/temple/s028.jpg",
+     "sha1": "d92cd675079858e2c413eb23cf68c55475b86e5d"
+    },
+    {
+     "shot": 25,
+     "key": "/workspace/ax-tools/media-library/pictures/temple/s029.jpg",
+     "sha1": "bfc174a76ec60e7bac62b0c37c9043f359b8233e"
+    },
+    {
+     "shot": 26,
+     "key": "/workspace/ax-tools/media-library/pictures/temple/s030.jpg",
+     "sha1": "336083bc5dedd27b0615278717299df00134aa73"
+    },
+    {
+     "shot": 27,
+     "key": "/workspace/ax-tools/media-library/pictures/temple/s031.jpg",
+     "sha1": "9a2aa706e975ae49c9231ee03bb85124b336b35f"
+    },
+    {
+     "shot": 28,
+     "key": "/workspace/ax-tools/media-library/pictures/temple/s032.jpg",
+     "sha1": "9c5a8391551813b3a6b41b5b43ff6cb14a907139"
+    },
+    {
+     "shot": 29,
+     "key": "/workspace/ax-tools/media-library/pictures/temple/s033.jpg",
+     "sha1": "f54cb06cac191bc58f74bff5edfb9e8819a62514"
+    },
+    {
+     "shot": 30,
+     "key": "/workspace/ax-tools/media-library/pictures/temple/s034.jpg",
+     "sha1": "0f5bc8bbc5f34ca2df156a69c5962b2abaf17fe4"
+    },
+    {
+     "shot": 31,
+     "key": "/workspace/ax-tools/media-library/pictures/temple/s009.jpg",
+     "sha1": "f1aa266ffbedfda39a9114423257115c87bb0737"
+    },
+    {
+     "shot": 32,
+     "key": "/workspace/ax-tools/media-library/pictures/temple/s035.jpg",
+     "sha1": "17d90f0ca47ffdc5341252b43cd2121bb8f27df6"
+    },
+    {
+     "shot": 33,
+     "key": "/workspace/ax-tools/media-library/pictures/temple/s010.jpg",
+     "sha1": "7e28971fb809b77d98417627f4e56b5180c0ec80"
+    },
+    {
+     "shot": 34,
+     "key": "/workspace/ax-tools/media-library/pictures/temple/s036.jpg",
+     "sha1": "1467a4cb80062379d77255fef353cba851417ca9"
+    },
+    {
+     "shot": 35,
+     "key": "/workspace/ax-tools/media-library/pictures/temple/s011.jpg",
+     "sha1": "de3b9b7a07871dbc878500a42e4686708a29b870"
+    },
+    {
+     "shot": 36,
+     "key": "/workspace/ax-tools/media-library/pictures/temple/s037.jpg",
+     "sha1": "c90e6cb51c710cb25ac7469da022065f2be1e77d"
+    },
+    {
+     "shot": 37,
+     "key": "/workspace/ax-tools/media-library/pictures/temple/s012.jpg",
+     "sha1": "2bc83378b02c70d2fdd381e1ea64f6d4c6c6a831"
+    },
+    {
+     "shot": 38,
+     "key": "/workspace/ax-tools/media-library/pictures/temple/s038.jpg",
+     "sha1": "1a977ecb8fa145e5849880c2e54e4b2e117f41f0"
+    },
+    {
+     "shot": 39,
+     "key": "/workspace/ax-tools/media-library/pictures/temple/s039.jpg",
+     "sha1": "094423fa5f1f97c642e22e743a28b9cdd3e78045"
+    },
+    {
+     "shot": 40,
+     "key": "/workspace/ax-tools/media-library/pictures/temple/s040.jpg",
+     "sha1": "f1aa266ffbedfda39a9114423257115c87bb0737"
+    },
+    {
+     "shot": 41,
+     "key": "/workspace/ax-tools/media-library/pictures/temple/s041.jpg",
+     "sha1": "7e28971fb809b77d98417627f4e56b5180c0ec80"
+    },
+    {
+     "shot": 42,
+     "key": "/workspace/ax-tools/media-library/pictures/temple/s042.jpg",
+     "sha1": "de3b9b7a07871dbc878500a42e4686708a29b870"
+    },
+    {
+     "shot": 43,
+     "key": "/workspace/ax-tools/media-library/pictures/temple/s043.jpg",
+     "sha1": "2bc83378b02c70d2fdd381e1ea64f6d4c6c6a831"
+    },
+    {
+     "shot": 44,
+     "key": "/workspace/ax-tools/media-library/pictures/temple/s044.jpg",
+     "sha1": "45608b5ca2d58459f8c98f4ce359def57a401227"
+    },
+    {
+     "shot": 45,
+     "key": "/workspace/ax-tools/media-library/pictures/temple/s045.jpg",
+     "sha1": "e38420dc21527bbafc30968060b7ccccb21be636"
+    },
+    {
+     "shot": 46,
+     "key": "/workspace/ax-tools/media-library/pictures/temple/s046.jpg",
+     "sha1": "e907840ec9d117f2f4af4929f29b82ecab763646"
+    },
+    {
+     "shot": 47,
+     "key": "/workspace/ax-tools/media-library/pictures/temple/s047.jpg",
+     "sha1": "d0a86e3f1ab758ac693c5fabf1e2f04cfb127407"
+    },
+    {
+     "shot": 48,
+     "key": "/workspace/ax-tools/media-library/pictures/temple/s048.jpg",
+     "sha1": "c45aec56998e03a813a409b3db88fb7115d5f30d"
+    },
+    {
+     "shot": 49,
+     "key": "/workspace/ax-tools/media-library/pictures/temple/s049.jpg",
+     "sha1": "468eef3a2562477304174b3deb4bcc7d9c99c9eb"
+    },
+    {
+     "shot": 50,
+     "key": "/workspace/ax-tools/media-library/pictures/temple/s050.jpg",
+     "sha1": "4a1ec33c5e74732e9cb5fc6d1a24f9cb268fc1b9"
+    },
+    {
+     "shot": 51,
+     "key": "/workspace/ax-tools/media-library/pictures/temple/s051.jpg",
+     "sha1": "cd430a9b2091408a4048eb8f9f4e623d730e5943"
+    },
+    {
+     "shot": 52,
+     "key": "/workspace/ax-tools/media-library/pictures/temple/s052.jpg",
+     "sha1": "8b2665f0365c42237dac41a2fcbbf2a5b9327f9b"
+    },
+    {
+     "shot": 53,
+     "key": "music938-1/library/covers/cover-49-luai-mai-yut-v49.jpg",
+     "sha1": "2d58ddcab1076e993577fa6ad1c29f5193d27a57"
+    }
+   ]
   }
  },
- "updated": "2026-11-22T09:08:20Z"
+ "updated": "2026-11-22T13:44:25Z"
 }
