@@ -339,17 +339,22 @@
    ]
   },
   "2026-11-23": {
-   "units": 500,
+   "units": 550,
    "calls": {
     "thumbnails.set": 9,
-    "channels.update": 1
+    "channels.update": 2
    },
-   "updated": "2026-11-23T11:30:46+00:00",
+   "updated": "2026-11-23T11:37:39+00:00",
    "reserves": [
     {
      "purpose": "release 0 item(s)",
      "units": 0,
      "at": "2026-11-23T11:30:46+00:00"
+    },
+    {
+     "purpose": "release 1 item(s)",
+     "units": 100,
+     "at": "2026-11-23T11:37:39+00:00"
     }
    ]
   }
