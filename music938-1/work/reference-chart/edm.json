@@ -1,0 +1,212 @@
+{
+  "genre": "edm",
+  "min_views": 200000000,
+  "queries": [
+    "edm dance hit",
+    "thai edm",
+    "dance music hit"
+  ],
+  "written": "2026-11-23T06:45:55+00:00",
+  "songs": [
+    {
+      "id": "YyepU5ztLf4",
+      "title": "Shararat | Dhurandhar | Ranveer, Aditya Dhar, Shashwat Sachdev, Jasmine, Madhubanti, Ayesha, Krystle",
+      "channel": "Saregama Music",
+      "published": "2025-12-09",
+      "views": 972986362,
+      "views_per_year": 1020517305,
+      "duration_s": 229,
+      "likes": 3171604
+    },
+    {
+      "id": "hxMNYkLN7tI",
+      "title": "Aaj Ki Raat - Full Song | Stree 2| Tamannaah Bhatia, Rajkummar Rao, Sachin-Jigar, Madhubanti,Divya K",
+      "channel": "Saregama Music",
+      "published": "2024-10-24",
+      "views": 1076927285,
+      "views_per_year": 517889933,
+      "duration_s": 287,
+      "likes": 3254872
+    },
+    {
+      "id": "OPf0YbXqDm0",
+      "title": "Mark Ronson - Uptown Funk (Official Video) ft. Bruno Mars",
+      "channel": "MarkRonsonVEVO",
+      "published": "2014-11-19",
+      "views": 5946014348,
+      "views_per_year": 494823355,
+      "duration_s": 271,
+      "likes": 23641440
+    },
+    {
+      "id": "ixkoVwKQaJg",
+      "title": "DJ Snake - Taki Taki ft. Selena Gomez, Ozuna, Cardi B (Official Music Video)",
+      "channel": "DJSnakeVEVO",
+      "published": "2018-10-10",
+      "views": 2858817683,
+      "views_per_year": 351809998,
+      "duration_s": 232,
+      "likes": 20897506
+    },
+    {
+      "id": "gdZLi9oWNZg",
+      "title": "BTS (방탄소년단) 'Dynamite' Official MV",
+      "channel": "HYBE LABELS",
+      "published": "2020-08-21",
+      "views": 2170169257,
+      "views_per_year": 346657234,
+      "duration_s": 224,
+      "likes": 39755062
+    },
+    {
+      "id": "YqeW9_5kURI",
+      "title": "Major Lazer & DJ Snake - Lean On (feat. MØ) [Official 4K Music Video]",
+      "channel": "Major Lazer Official",
+      "published": "2015-03-23",
+      "views": 3993282656,
+      "views_per_year": 341906678,
+      "duration_s": 179,
+      "likes": 18614771
+    },
+    {
+      "id": "PT2_F-1esPk",
+      "title": "The Chainsmokers - Closer (Lyric) ft. Halsey",
+      "channel": "ChainsmokersVEVO",
+      "published": "2016-07-29",
+      "views": 3493458980,
+      "views_per_year": 338405660,
+      "duration_s": 262,
+      "likes": 15130960
+    },
+    {
+      "id": "lp-EO5I60KA",
+      "title": "Ed Sheeran - Thinking Out Loud (Official Music Video)",
+      "channel": "Ed Sheeran",
+      "published": "2014-10-07",
+      "views": 4066593054,
+      "views_per_year": 335133544,
+      "duration_s": 290,
+      "likes": 16137726
+    },
+    {
+      "id": "papuvlVeZg8",
+      "title": "Clean Bandit - Rockabye (feat. Sean Paul & Anne-Marie) [Official Video]",
+      "channel": "Clean Bandit",
+      "published": "2016-10-21",
+      "views": 3236082796,
+      "views_per_year": 320621667,
+      "duration_s": 254,
+      "likes": 15098016
+    },
+    {
+      "id": "FZLadzn5i6Q",
+      "title": "Uyi Amma - Azaad | Aaman D, Rasha Thadani| Madhubanti Bagchi,Amit Trivedi,Amitabh| Bosco| Abhishek K",
+      "channel": "Zee Music Company",
+      "published": "2025-01-04",
+      "views": 568635458,
+      "views_per_year": 302113453,
+      "duration_s": 195,
+      "likes": 2050271
+    },
+    {
+      "id": "gh3FyLT7WVg",
+      "title": "Kurchi Madathapetti Full Video Song | Guntur Kaaram | Mahesh Babu | Sreeleela | Trivikram | Thaman S",
+      "channel": "Aditya Music",
+      "published": "2024-02-01",
+      "views": 848351175,
+      "views_per_year": 302095784,
+      "duration_s": 283,
+      "likes": 4017234
+    },
+    {
+      "id": "pRpeEdMmmQ0",
+      "title": "Shakira - Waka Waka (This Time for Africa) (The Official 2010 FIFA World Cup™ Song)",
+      "channel": "shakiraVEVO",
+      "published": "2010-06-04",
+      "views": 4827745425,
+      "views_per_year": 292955458,
+      "duration_s": 211,
+      "likes": 26599493
+    },
+    {
+      "id": "kOkQ4T5WO9E",
+      "title": "Calvin Harris, Rihanna - This Is What You Came For (Official Video)",
+      "channel": "CalvinHarrisVEVO",
+      "published": "2016-06-17",
+      "views": 2981933908,
+      "views_per_year": 285595874,
+      "duration_s": 240,
+      "likes": 11872821
+    },
+    {
+      "id": "FM7MFYoylVs",
+      "title": "The Chainsmokers & Coldplay - Something Just Like This (Official Lyric Video)",
+      "channel": "ChainsmokersVEVO",
+      "published": "2017-02-22",
+      "views": 2571254213,
+      "views_per_year": 263625783,
+      "duration_s": 248,
+      "likes": 11575978
+    },
+    {
+      "id": "LK7-_dgAVQE",
+      "title": "Tauba Tauba | Bad Newz | Vicky Kaushal | Triptii Dimri | Karan Aujla",
+      "channel": "Saregama Music",
+      "published": "2024-07-02",
+      "views": 614092573,
+      "views_per_year": 256751190,
+      "duration_s": 222,
+      "likes": 2769338
+    },
+    {
+      "id": "QcQpqWhTBCE",
+      "title": "Chikni Chameli - 8K/4k Music Video | Katrina Kaif, Hrithik | Agneepath | Shreya Ghoshal | Ajay-Atul",
+      "channel": "Sony Music India",
+      "published": "2024-09-27",
+      "views": 540510916,
+      "views_per_year": 251000616,
+      "duration_s": 330,
+      "likes": 2048765
+    },
+    {
+      "id": "Io0fBr1XBUA",
+      "title": "The Chainsmokers - Don't Let Me Down (Official Video) ft. Daya",
+      "channel": "ChainsmokersVEVO",
+      "published": "2016-04-29",
+      "views": 2376211062,
+      "views_per_year": 224751759,
+      "duration_s": 218,
+      "likes": 13919924
+    },
+    {
+      "id": "IcrbM1l_BoI",
+      "title": "Avicii - Wake Me Up (Official Video)",
+      "channel": "AviciiOfficialVEVO",
+      "published": "2013-07-29",
+      "views": 2561496045,
+      "views_per_year": 192217528,
+      "duration_s": 273,
+      "likes": 13087080
+    },
+    {
+      "id": "kTlv5_Bs8aw",
+      "title": "BTS (방탄소년단) 'MIC Drop (Steve Aoki Remix)' Official MV",
+      "channel": "HYBE LABELS",
+      "published": "2017-11-24",
+      "views": 1619684772,
+      "views_per_year": 179964975,
+      "duration_s": 274,
+      "likes": 21962848
+    },
+    {
+      "id": "tOM-nWPcR4U",
+      "title": "Illuminati|Aavesham|Jithu Madhavan|Fahadh Faasil|Sushin Shyam,Dabzee,Vinayak| Nazriya|Anwar Rasheed",
+      "channel": "Think Music India",
+      "published": "2024-04-03",
+      "views": 466408542,
+      "views_per_year": 176779977,
+      "duration_s": 149,
+      "likes": 2560797
+    }
+  ]
+}

@@ -211,3 +211,5 @@ music938-1/library/art/*.tar
 # aiart-000N.tar.gz shards; the manifest is the committed index.
 music938-1/library/aiart/*.jpg
 !music938-1/library/aiart/manifest.json
+!music938-1/work/reference-chart/
+!music938-1/work/reference-chart/*.json

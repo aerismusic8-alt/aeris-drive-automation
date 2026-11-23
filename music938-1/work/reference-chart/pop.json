@@ -1,0 +1,182 @@
+{
+  "genre": "pop",
+  "min_views": 200000000,
+  "queries": [
+    "เพลงไทย เพราะๆ",
+    "เพลงไทยยอดนิยม",
+    "thai pop hit"
+  ],
+  "written": "2026-11-23T06:45:44+00:00",
+  "songs": [
+    {
+      "id": "FyS5dAywkEo",
+      "title": "LISA - SaWaDiKa (Official Music Video)",
+      "channel": "LISAOfficialVEVO",
+      "published": "2026-09-04",
+      "views": 243624767,
+      "views_per_year": 1111537999,
+      "duration_s": 187,
+      "likes": 3305400
+    },
+    {
+      "id": "L051YSpEEYU",
+      "title": "BOWKYLION Ft. NONT TANONT - ที่คั่นหนังสือ (Sometimes) [Official MV]",
+      "channel": "Whattheduck",
+      "published": "2025-04-25",
+      "views": 221824528,
+      "views_per_year": 140322275,
+      "duration_s": 326,
+      "likes": 380044
+    },
+    {
+      "id": "AZ_t9iAJRDw",
+      "title": "ดึงดัน - COCKTAIL X ตั๊ก ศิริพร (JOOX 100x100 SEASON 2)「Official MV」",
+      "channel": "Genierock",
+      "published": "2020-10-22",
+      "views": 427130066,
+      "views_per_year": 70163130,
+      "duration_s": 313,
+      "likes": 1484232
+    },
+    {
+      "id": "rPzC1o8E4t0",
+      "title": "สลักจิต - ป๊อบ ปองกูล (POP PONGKOOL) FEAT.DA ENDORPHINE [Official MV]",
+      "channel": "OfficialWhiteMusic",
+      "published": "2022-07-14",
+      "views": 263008553,
+      "views_per_year": 60300328,
+      "duration_s": 375,
+      "likes": 637781
+    },
+    {
+      "id": "Ei1XTuWjoa8",
+      "title": "สองใจ [เพลงจากละครวันทอง] - ดา เอ็นโดรฟิน【OFFICIAL MV】",
+      "channel": "ช่อง one31",
+      "published": "2021-02-18",
+      "views": 323894660,
+      "views_per_year": 56188950,
+      "duration_s": 271,
+      "likes": 1145614
+    },
+    {
+      "id": "oMwm_Km9YhU",
+      "title": "Timemachine [ไทม์แมชชีน]   | ปอน นิพนธ์ x โต๋เหน่อ「Official MV」",
+      "channel": "เสียงเพลงของโจร",
+      "published": "2022-09-20",
+      "views": 232086712,
+      "views_per_year": 55548623,
+      "duration_s": 328,
+      "likes": 794670
+    },
+    {
+      "id": "2dg9oc78Kv4",
+      "title": "เชือกวิเศษ - LABANOON「Official MV」",
+      "channel": "Genierock",
+      "published": "2015-08-26",
+      "views": 572717158,
+      "views_per_year": 50911291,
+      "duration_s": 343,
+      "likes": 1549028
+    },
+    {
+      "id": "ILU9NbWn4t0",
+      "title": "PARIS, PEARWAH - รักติดไซเรน (My Ambulance) [Official MV]",
+      "channel": "Nadao Music",
+      "published": "2019-08-14",
+      "views": 290985008,
+      "views_per_year": 39973477,
+      "duration_s": 376,
+      "likes": 2054683
+    },
+    {
+      "id": "R10mrTJpqPw",
+      "title": "คนมีเสน่ห์ - ป้าง นครินทร์「Official MV」",
+      "channel": "Genierock",
+      "published": "2016-06-21",
+      "views": 399968405,
+      "views_per_year": 38357453,
+      "duration_s": 320,
+      "likes": 1038068
+    },
+    {
+      "id": "dJ9uVVNWClk",
+      "title": "คิด(แต่ไม่)ถึง [Same Page?] - Tilly Birds |Official MV|",
+      "channel": "GeneLab",
+      "published": "2020-03-20",
+      "views": 240692809,
+      "views_per_year": 36034813,
+      "duration_s": 276,
+      "likes": 733430
+    },
+    {
+      "id": "M7ovvi6UdcI",
+      "title": "ซ่อนกลิ่น - PALMY「Official Audio」",
+      "channel": "Genierock",
+      "published": "2018-10-09",
+      "views": 268876173,
+      "views_per_year": 33088268,
+      "duration_s": 252,
+      "likes": 798786
+    },
+    {
+      "id": "qSvheEoBr4A",
+      "title": "ไม่ไหวบอกไหว - BOY PEACEMAKER [MUSIC VIDEO]",
+      "channel": "GMM GRAMMY OFFICIAL",
+      "published": "2019-01-30",
+      "views": 208675261,
+      "views_per_year": 26696975,
+      "duration_s": 284,
+      "likes": 1053269
+    },
+    {
+      "id": "wqJsZYibWcI",
+      "title": "ซ่อนกลิ่น - PALMY「Official MV」",
+      "channel": "Genierock",
+      "published": "2018-10-19",
+      "views": 214924721,
+      "views_per_year": 26538404,
+      "duration_s": 315,
+      "likes": 792896
+    },
+    {
+      "id": "3mYVyVY-lU4",
+      "title": "คู่ชีวิต - COCKTAIL「Official MV (Cut Version)」",
+      "channel": "Genierock",
+      "published": "2015-03-12",
+      "views": 301696296,
+      "views_per_year": 25770922,
+      "duration_s": 348,
+      "likes": 985663
+    },
+    {
+      "id": "TMr6subvuQI",
+      "title": "ความเงียบดังที่สุด - Getsunova [Official MV]",
+      "channel": "OfficialWhiteMusic",
+      "published": "2018-07-31",
+      "views": 203609693,
+      "views_per_year": 24478767,
+      "duration_s": 351,
+      "likes": 729962
+    },
+    {
+      "id": "krk9TTf_Ez8",
+      "title": "คิดถึงฉันไหมเวลาที่เธอ - TAXI 【OFFICIAL MV】",
+      "channel": "GMM GRAMMY OFFICIAL",
+      "published": "2014-09-20",
+      "views": 217805583,
+      "views_per_year": 17877004,
+      "duration_s": 298,
+      "likes": 739584
+    },
+    {
+      "id": "ICI3eKRzr6M",
+      "title": "[Official MV] เตือนแล้วนะ (Love Warning) – Third KAMIKAZE",
+      "channel": "welovekamikaze",
+      "published": "2016-01-28",
+      "views": 282722668,
+      "views_per_year": 26118394,
+      "duration_s": 424,
+      "likes": 3814254
+    }
+  ]
+}
