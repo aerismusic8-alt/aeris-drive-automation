@@ -126,4 +126,7 @@ jobs:
           AX_GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           set -euo pipefail
-          python3 music938-1/scripts/publish_media.py --only musicvideo
+          # `songs` too: the release planner reads the media release, not the
+          # runner's disk, so an MV whose master was never pushed is invisible
+          # and the daily release plans 0 items while staying green (2026-11-23).
+          python3 music938-1/scripts/publish_media.py --only musicvideo,songs
