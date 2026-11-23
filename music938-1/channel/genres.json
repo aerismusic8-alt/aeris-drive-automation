@@ -1,251 +1,257 @@
 {
- "_comment": "The catalogue plan. K, 2026-11-01: unlimited songs, any genre, AR plans the catalogue. Each genre carries its own Flow Music style prompt and its own Thai tagline, so a new song needs only a lyric file with `# GENRE: <id>` in its header. mood stays the fallback for the original 20 Thai songs. K, 2026-11-20 (the five lanes, final): pop / dance (id `edm`) / hiphop / rock / alternative. Every other genre is PARKED (no new songs, excluded from the total). A parked genre keeps its style and tagline because its existing songs still resolve their sound and tagline through it.",
- "genres": [
-  {
-   "id": "lukthung",
-   "name_th": "ลูกทุ่ง",
-   "name_en": "Thai luk-thung",
-   "status": "parked",
-   "tagline": "เพลงลูกทุ่งไทย อารมณ์ดี ฟังแล้วได้ใจ",
-   "style": "Thai traditional luk-thung, steady 4/4 two-step drum groove, consistent kick and snare, phin and khaen playing in tight synchronization with the rhythm section, warm melodic bass, vocals tightly locked to the instrumental beat, syllabic Thai vocal delivery with even note spacing, short balanced vocal phrases, smooth legato transitions between lines, constant tempo, no tempo changes, live band feel",
-   "hashtags": [
-    "เพลงลูกทุ่ง",
-    "ลูกทุ่งไทย",
-    "หมอลำ"
-   ],
-   "planned": 6
-  },
-  {
-   "id": "morlam",
-   "name_th": "หมอลำ",
-   "name_en": "Mor lam",
-   "status": "parked",
-   "tagline": "หมอลำสนุก ๆ จังหวะมันส์ ฟังแล้วอยากเต้น",
-   "style": "Thai mor-lam, driving khaen and long drum, upbeat dance groove, energetic call-and-response lead vocal singing in Thai",
-   "hashtags": [
-    "หมอลำ",
-    "เพลงหมอลำ",
-    "หมอลำสนุก"
-   ],
-   "planned": 5
-  },
-  {
-   "id": "citypop",
-   "name_th": "ซิตี้ป็อป",
-   "name_en": "City pop",
-   "tagline": "ซิตี้ป็อป ฟังสบาย ๆ ยามค่ำคืน",
-   "style": "city pop, warm electric piano, groovy bass and clean guitar, soft chorus, smooth lead vocal singing in Thai",
-   "hashtags": [
-    "citypop",
-    "เพลงฟังสบาย",
-    "เพลงชิล"
-   ],
-   "planned": 4,
-   "status": "parked"
-  },
-  {
-   "id": "synthpop",
-   "name_th": "ซินธ์ป็อป",
-   "name_en": "Synth pop",
-   "tagline": "ซินธ์ป็อป จังหวะสดใส ฟังแล้วมีพลัง",
-   "style": "synth-pop, bright analog synth arpeggios, punchy drum machine, catchy hook, clear lead vocal singing in Thai",
-   "hashtags": [
-    "synthpop",
-    "เพลงป็อป",
-    "เพลงใหม่"
-   ],
-   "planned": 4,
-   "status": "parked"
-  },
-  {
-   "id": "rnb",
-   "name_th": "อาร์แอนด์บี",
-   "name_en": "R&B",
-   "tagline": "อาร์แอนด์บี นุ่ม ๆ ฟังแล้วใจละลาย",
-   "style": "contemporary R&B, lush chords, finger-snap groove, layered harmonies, soulful lead vocal singing in Thai",
-   "hashtags": [
-    "rnb",
-    "เพลงนุ่ม",
-    "เพลงเพราะ"
-   ],
-   "planned": 4,
-   "status": "parked"
-  },
-  {
-   "id": "lofi",
-   "name_th": "โลไฟ",
-   "name_en": "Lo-fi",
-   "tagline": "โลไฟ ฟังเพลิน ๆ เหมาะกับการทำงาน",
-   "style": "lo-fi hip hop, dusty piano, soft vinyl crackle, laid-back beat, mellow vocal humming in Thai",
-   "hashtags": [
-    "lofi",
-    "เพลงทำงาน",
-    "เพลงผ่อนคลาย"
-   ],
-   "planned": 4,
-   "status": "parked"
-  },
-  {
-   "id": "rock",
-   "name_th": "ร็อก",
-   "name_en": "Rock",
-   "tagline": "ร็อกไทย กระแทกใจ ปลุกพลังในตัวคุณ",
-   "style": "Thai fast-paced rock, driving straight eighth-note drums, energetic double-time feel, tight bass and drums, aggressive distorted electric guitars, urgent fast vocal phrasing, anthemic chorus, gritty lead vocal singing in Thai",
-   "hashtags": [
-    "เพลงร็อก",
-    "ร็อกไทย",
-    "เพลงมันส์"
-   ],
-   "planned": 9,
-   "status": "active"
-  },
-  {
-   "id": "pop",
-   "name_th": "ป็อป",
-   "name_en": "Pop",
-   "tagline": "ป็อปไทย ฟังง่าย ติดหู ฟังได้ทุกวัน",
-   "style": "Thai pop, bright piano or synth hook, steady 4/4 beat, clap on 2 and 4, memorable singable chorus, clear lead vocal singing in Thai",
-   "hashtags": [
-    "เพลงป็อป",
-    "ป็อปไทย",
-    "เพลงใหม่"
-   ],
-   "planned": 8,
-   "status": "active"
-  },
-  {
-   "id": "indie",
-   "name_th": "อินดี้",
-   "name_en": "Indie",
-   "tagline": "อินดี้ อบอุ่น จริงใจ ฟังได้ทุกวัน",
-   "style": "Thai indie folk, fingerpicked guitar, brush drums, intimate close-mic lead vocal singing in Thai",
-   "hashtags": [
-    "indie",
-    "เพลงอินดี้",
-    "เพลงฟังสบาย"
-   ],
-   "planned": 6,
-   "status": "parked"
-  },
-  {
-   "id": "edm",
-   "name_th": "แดนซ์",
-   "name_en": "Dance",
-   "tagline": "อีดีเอ็ม จังหวะมันส์ ปลุกทุกงานปาร์ตี้",
-   "style": "EDM dance pop, four-on-the-floor kick, big synth lead, euphoric drop, bright lead vocal singing in Thai",
-   "hashtags": [
-    "edm",
-    "เพลงแดนซ์",
-    "เพลงมันส์"
-   ],
-   "planned": 6,
-   "status": "parked"
-  },
-  {
-   "id": "jazz",
-   "name_th": "แจ๊ส",
-   "name_en": "Jazz",
-   "tagline": "แจ๊สอุ่น ๆ เหมาะกับค่ำคืนสบาย ๆ",
-   "style": "jazz pop, upright bass, brushed drums, warm electric piano, smooth crooning lead vocal singing in Thai",
-   "hashtags": [
-    "jazz",
-    "เพลงแจ๊ส",
-    "เพลงฟังสบาย"
-   ],
-   "planned": 3,
-   "status": "parked"
-  },
-  {
-   "id": "acoustic",
-   "name_th": "อะคูสติก",
-   "name_en": "Acoustic",
-   "tagline": "อะคูสติก เรียบง่าย จริงใจ ฟังแล้วอบอุ่น",
-   "style": "acoustic pop, single guitar and light percussion, unadorned arrangement, honest lead vocal singing in Thai",
-   "hashtags": [
-    "acoustic",
-    "เพลงอะคูสติก",
-    "เพลงจริงใจ"
-   ],
-   "planned": 3,
-   "status": "parked"
-  },
-  {
-   "id": "country",
-   "name_th": "คันทรี",
-   "name_en": "Country",
-   "tagline": "คันทรีไทย เล่าเรื่องราว ฟังแล้วใจดี",
-   "style": "country folk, acoustic guitar and slide, walking bass, warm harmonized lead vocal singing in Thai",
-   "hashtags": [
-    "country",
-    "เพลงคันทรี",
-    "เพลงเล่าเรื่อง"
-   ],
-   "planned": 3,
-   "status": "parked"
-  },
-  {
-   "id": "symphonic",
-   "name_th": "ซิมโฟนิกร็อก",
-   "name_en": "Symphonic Rock",
-   "tagline": "ซิมโฟนิกร็อก อลังการ ดุดัน ทรงพลัง",
-   "style": "epic symphonic rock, rock orchestra, aggressive distorted electric guitar riff, soaring orchestral strings, dramatic brass fanfare, powerful choir, driving double-kick drums, theatrical and dark, powerful gritty lead vocal singing in Thai",
-   "hashtags": [
-    "เพลงร็อก",
-    "ซิมโฟนิกร็อก",
-    "RockOrchestra"
-   ],
-   "planned": 3,
-   "status": "parked"
-  },
-  {
-   "id": "hiphop",
-   "name_th": "ฮิปฮอป",
-   "name_en": "Hip hop",
-   "tagline": "ฮิปฮอปสนุก จังหวะโขยก มันส์ทุกท่อน",
-   "style": "Thai hip hop, boom-bap drums with heavy 808 sub bass, confident rhythmic rapped lead vocal in Thai, catchy sung hook, turntable scratches, head-nodding groove, energetic and fun",
-   "hashtags": [
-    "ฮิปฮอป",
-    "hiphop",
-    "เพลงสนุก"
-   ],
-   "planned": 8,
-   "status": "active"
-  },
-  {
-   "id": "rap",
-   "name_th": "แรพ",
-   "name_en": "Rap",
-   "tagline": "แรพไทย จังหวะจัดจ้าน คำคมทุกบาร์",
-   "style": "Thai rap, hard-hitting trap beat, rolling hi-hats, deep 808 sub bass, fast articulate rapped vocal in Thai, punchy ad-libs, hype high-energy delivery",
-   "hashtags": [
-    "แรพ",
+  "_comment": "The catalogue plan. K, 2026-11-01: unlimited songs, any genre, AR plans the catalogue. Each genre carries its own Flow Music style prompt and its own Thai tagline, so a new song needs only a lyric file with `# GENRE: <id>` in its header. mood stays the fallback for the original 20 Thai songs. K, 2026-11-20 (the five lanes, final): pop / dance (id `edm`) / hiphop / rock / alternative. Every other genre is PARKED (no new songs, excluded from the total). A parked genre keeps its style and tagline because its existing songs still resolve their sound and tagline through it.",
+  "genres": [
+    {
+      "id": "lukthung",
+      "name_th": "ลูกทุ่ง",
+      "name_en": "Thai luk-thung",
+      "status": "parked",
+      "tagline": "เพลงลูกทุ่งไทย อารมณ์ดี ฟังแล้วได้ใจ",
+      "style": "Thai traditional luk-thung, steady 4/4 two-step drum groove, consistent kick and snare, phin and khaen playing in tight synchronization with the rhythm section, warm melodic bass, vocals tightly locked to the instrumental beat, syllabic Thai vocal delivery with even note spacing, short balanced vocal phrases, smooth legato transitions between lines, constant tempo, no tempo changes, live band feel",
+      "hashtags": [
+        "เพลงลูกทุ่ง",
+        "ลูกทุ่งไทย",
+        "หมอลำ"
+      ],
+      "planned": 6
+    },
+    {
+      "id": "morlam",
+      "name_th": "หมอลำ",
+      "name_en": "Mor lam",
+      "status": "parked",
+      "tagline": "หมอลำสนุก ๆ จังหวะมันส์ ฟังแล้วอยากเต้น",
+      "style": "Thai mor-lam, driving khaen and long drum, upbeat dance groove, energetic call-and-response lead vocal singing in Thai",
+      "hashtags": [
+        "หมอลำ",
+        "เพลงหมอลำ",
+        "หมอลำสนุก"
+      ],
+      "planned": 5
+    },
+    {
+      "id": "citypop",
+      "name_th": "ซิตี้ป็อป",
+      "name_en": "City pop",
+      "tagline": "ซิตี้ป็อป ฟังสบาย ๆ ยามค่ำคืน",
+      "style": "city pop, warm electric piano, groovy bass and clean guitar, soft chorus, smooth lead vocal singing in Thai",
+      "hashtags": [
+        "citypop",
+        "เพลงฟังสบาย",
+        "เพลงชิล"
+      ],
+      "planned": 4,
+      "status": "parked"
+    },
+    {
+      "id": "synthpop",
+      "name_th": "ซินธ์ป็อป",
+      "name_en": "Synth pop",
+      "tagline": "ซินธ์ป็อป จังหวะสดใส ฟังแล้วมีพลัง",
+      "style": "synth-pop, bright analog synth arpeggios, punchy drum machine, catchy hook, clear lead vocal singing in Thai",
+      "hashtags": [
+        "synthpop",
+        "เพลงป็อป",
+        "เพลงใหม่"
+      ],
+      "planned": 4,
+      "status": "parked"
+    },
+    {
+      "id": "rnb",
+      "name_th": "อาร์แอนด์บี",
+      "name_en": "R&B",
+      "tagline": "อาร์แอนด์บี นุ่ม ๆ ฟังแล้วใจละลาย",
+      "style": "contemporary R&B, lush chords, finger-snap groove, layered harmonies, soulful lead vocal singing in Thai",
+      "hashtags": [
+        "rnb",
+        "เพลงนุ่ม",
+        "เพลงเพราะ"
+      ],
+      "planned": 4,
+      "status": "parked"
+    },
+    {
+      "id": "lofi",
+      "name_th": "โลไฟ",
+      "name_en": "Lo-fi",
+      "tagline": "โลไฟ ฟังเพลิน ๆ เหมาะกับการทำงาน",
+      "style": "lo-fi hip hop, dusty piano, soft vinyl crackle, laid-back beat, mellow vocal humming in Thai",
+      "hashtags": [
+        "lofi",
+        "เพลงทำงาน",
+        "เพลงผ่อนคลาย"
+      ],
+      "planned": 4,
+      "status": "parked"
+    },
+    {
+      "id": "rock",
+      "name_th": "ร็อก",
+      "name_en": "Rock",
+      "tagline": "ร็อกไทย กระแทกใจ ปลุกพลังในตัวคุณ",
+      "style": "Thai fast-paced rock, driving straight eighth-note drums, energetic double-time feel, tight bass and drums, aggressive distorted electric guitars, urgent fast vocal phrasing, anthemic chorus, gritty lead vocal singing in Thai",
+      "hashtags": [
+        "เพลงร็อก",
+        "ร็อกไทย",
+        "เพลงมันส์"
+      ],
+      "planned": 9,
+      "status": "active",
+      "tempo": 150
+    },
+    {
+      "id": "pop",
+      "name_th": "ป็อป",
+      "name_en": "Pop",
+      "tagline": "ป็อปไทย ฟังง่าย ติดหู ฟังได้ทุกวัน",
+      "style": "Thai modern pop, bright piano or synth hook, steady 4/4 beat, tight modern drums and bass, memorable singable chorus, clear lead vocal singing in Thai",
+      "hashtags": [
+        "เพลงป็อป",
+        "ป็อปไทย",
+        "เพลงใหม่"
+      ],
+      "planned": 8,
+      "status": "active",
+      "tempo": 118
+    },
+    {
+      "id": "indie",
+      "name_th": "อินดี้",
+      "name_en": "Indie",
+      "tagline": "อินดี้ อบอุ่น จริงใจ ฟังได้ทุกวัน",
+      "style": "Thai indie folk, fingerpicked guitar, brush drums, intimate close-mic lead vocal singing in Thai",
+      "hashtags": [
+        "indie",
+        "เพลงอินดี้",
+        "เพลงฟังสบาย"
+      ],
+      "planned": 6,
+      "status": "parked"
+    },
+    {
+      "id": "edm",
+      "name_th": "แดนซ์",
+      "name_en": "Dance",
+      "tagline": "อีดีเอ็ม จังหวะมันส์ ปลุกทุกงานปาร์ตี้",
+      "style": "EDM dance pop, four-on-the-floor kick, big synth lead, euphoric drop, bright lead vocal singing in Thai",
+      "hashtags": [
+        "edm",
+        "เพลงแดนซ์",
+        "เพลงมันส์"
+      ],
+      "planned": 6,
+      "status": "parked",
+      "tempo": 124
+    },
+    {
+      "id": "jazz",
+      "name_th": "แจ๊ส",
+      "name_en": "Jazz",
+      "tagline": "แจ๊สอุ่น ๆ เหมาะกับค่ำคืนสบาย ๆ",
+      "style": "jazz pop, upright bass, brushed drums, warm electric piano, smooth crooning lead vocal singing in Thai",
+      "hashtags": [
+        "jazz",
+        "เพลงแจ๊ส",
+        "เพลงฟังสบาย"
+      ],
+      "planned": 3,
+      "status": "parked"
+    },
+    {
+      "id": "acoustic",
+      "name_th": "อะคูสติก",
+      "name_en": "Acoustic",
+      "tagline": "อะคูสติก เรียบง่าย จริงใจ ฟังแล้วอบอุ่น",
+      "style": "acoustic pop, single guitar and light percussion, unadorned arrangement, honest lead vocal singing in Thai",
+      "hashtags": [
+        "acoustic",
+        "เพลงอะคูสติก",
+        "เพลงจริงใจ"
+      ],
+      "planned": 3,
+      "status": "parked"
+    },
+    {
+      "id": "country",
+      "name_th": "คันทรี",
+      "name_en": "Country",
+      "tagline": "คันทรีไทย เล่าเรื่องราว ฟังแล้วใจดี",
+      "style": "country folk, acoustic guitar and slide, walking bass, warm harmonized lead vocal singing in Thai",
+      "hashtags": [
+        "country",
+        "เพลงคันทรี",
+        "เพลงเล่าเรื่อง"
+      ],
+      "planned": 3,
+      "status": "parked"
+    },
+    {
+      "id": "symphonic",
+      "name_th": "ซิมโฟนิกร็อก",
+      "name_en": "Symphonic Rock",
+      "tagline": "ซิมโฟนิกร็อก อลังการ ดุดัน ทรงพลัง",
+      "style": "epic symphonic rock, rock orchestra, aggressive distorted electric guitar riff, soaring orchestral strings, dramatic brass fanfare, powerful choir, driving double-kick drums, theatrical and dark, powerful gritty lead vocal singing in Thai",
+      "hashtags": [
+        "เพลงร็อก",
+        "ซิมโฟนิกร็อก",
+        "RockOrchestra"
+      ],
+      "planned": 3,
+      "status": "parked"
+    },
+    {
+      "id": "hiphop",
+      "name_th": "ฮิปฮอป",
+      "name_en": "Hip hop",
+      "tagline": "ฮิปฮอปสนุก จังหวะโขยก มันส์ทุกท่อน",
+      "style": "Thai hip hop, boom-bap drums with heavy 808 sub bass, confident rhythmic rapped lead vocal in Thai, catchy sung hook, turntable scratches, head-nodding groove, energetic and fun",
+      "hashtags": [
+        "ฮิปฮอป",
+        "hiphop",
+        "เพลงสนุก"
+      ],
+      "planned": 8,
+      "status": "active",
+      "tempo": 90
+    },
+    {
+      "id": "rap",
+      "name_th": "แรพ",
+      "name_en": "Rap",
+      "tagline": "แรพไทย จังหวะจัดจ้าน คำคมทุกบาร์",
+      "style": "Thai rap, hard-hitting trap beat, rolling hi-hats, deep 808 sub bass, fast articulate rapped vocal in Thai, punchy ad-libs, hype high-energy delivery",
+      "hashtags": [
+        "แรพ",
+        "rap",
+        "แรพไทย"
+      ],
+      "planned": 8,
+      "status": "active",
+      "tempo": 88
+    },
+    {
+      "id": "alternative",
+      "name_th": "อัลเทอร์นาทีฟ",
+      "name_en": "Alternative",
+      "tagline": "อัลเทอร์นาทีฟ ใจดีแต่มีสไตล์",
+      "style": "Thai alternative rock, jangly clean guitars with a fuzzy chorus, driving live drums, punchy bass, charismatic slightly gritty lead vocal singing in Thai, catchy indie-anthem chorus, upbeat",
+      "hashtags": [
+        "อัลเทอร์นาทีฟ",
+        "alternative",
+        "เพลงร็อก"
+      ],
+      "planned": 8,
+      "status": "active",
+      "tempo": 135
+    }
+  ],
+  "main_genres": [
+    "pop",
+    "rock",
     "rap",
-    "แรพไทย"
-   ],
-   "planned": 8,
-   "status": "active"
-  },
-  {
-   "id": "alternative",
-   "name_th": "อัลเทอร์นาทีฟ",
-   "name_en": "Alternative",
-   "tagline": "อัลเทอร์นาทีฟ ใจดีแต่มีสไตล์",
-   "style": "Thai alternative rock, jangly clean guitars with a fuzzy chorus, driving live drums, punchy bass, charismatic slightly gritty lead vocal singing in Thai, catchy indie-anthem chorus, upbeat",
-   "hashtags": [
-    "อัลเทอร์นาทีฟ",
-    "alternative",
-    "เพลงร็อก"
-   ],
-   "planned": 8,
-   "status": "active"
-  }
- ],
- "main_genres": [
-  "pop",
-  "rock",
-  "rap",
-  "hiphop",
-  "alternative"
- ],
- "main_genres_note": "K, 2026-11-21 (Thai): 'แนวเพลงหลัก ฝังไว้ด้วยนะ 1.pop 2.rock 3.rap 4.hiphop 5.alternative' — these five are the channel's core; every other genre in this file is parked and may not publish."
+    "hiphop",
+    "alternative"
+  ],
+  "main_genres_note": "K, 2026-11-21 (Thai): 'แนวเพลงหลัก ฝังไว้ด้วยนะ 1.pop 2.rock 3.rap 4.hiphop 5.alternative' — these five are the channel's core; every other genre in this file is parked and may not publish."
 }

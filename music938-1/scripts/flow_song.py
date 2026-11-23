@@ -59,26 +59,33 @@ LYRICS_DIR = ROOT / "lyrics"
 # A full verse/chorus form with a real vocal settles near 3.5-4.5 min, inside
 # the 3.5-5 min target.
 STYLE = {
-    "sad": "Thai luk-thung ballad, warm acoustic guitar, phin and khaen, slow "
-           "sway, emotional lead vocal singing in Thai, gentle strings",
-    "warm": "Thai folk-pop, acoustic guitar and khaen, mid-tempo, warm lead "
-            "vocal singing in Thai",
+    # K, 2026-11-23: "ขอป๊อปช้า ซอนฟร็อก" — and before that, "ลูกทุ่งไม่ได้ขอ".
+    # Every style that named khaen, phin or mor-lam is gone, including the ones
+    # used by the older pack: a song headed "sad" or "warm" came back as
+    # luk-thung no matter what the lyric said, because the style asked for it.
+    "slowpop": "Thai slow pop ballad, grand piano and clean electric guitar, "
+               "soft strings and brushed drums, slow heartbeat pulse, intimate "
+               "emotive lead vocal singing in Thai, no khaen, no phin, "
+               "no folk instruments",
+    "sad": "Thai slow pop ballad, piano and strings, sparse clean electric "
+           "guitar, slow heartbeat drums, heartbroken lead vocal singing in "
+           "Thai, no khaen, no phin, no folk instruments",
+    "warm": "Thai pop, warm clean electric guitar and soft piano, mid-tempo, "
+            "warm lead vocal singing in Thai, no khaen, no phin, "
+            "no folk instruments",
     "hopeful": "Thai pop ballad, piano and strings, uplifting, clear lead vocal "
-               "singing in Thai",
-    "fun": "Thai mor-lam pop, upbeat, khaen and drums, cheerful lead vocal "
-           "singing in Thai",
-    # calm/epic/mystic are used by the pack, so they need their own sound. Without
-    # an entry each fell back to "sad" and eight of the twenty songs would have
-    # come out as the same ballad regardless of the mood in their header.
-    "calm": "Thai acoustic folk, gentle fingerpicked guitar, soft khaen, "
-            "slow and unhurried, tender lead vocal singing in Thai",
+               "singing in Thai, no khaen, no phin, no folk instruments",
+    "fun": "Thai dance-pop, four-on-the-floor drums, bright synths and clean "
+           "guitar, cheerful lead vocal singing in Thai, no khaen, no phin, "
+           "no folk instruments",
+    "calm": "Thai acoustic pop, gentle fingerpicked acoustic guitar, soft "
+            "piano, slow and unhurried, tender lead vocal singing in Thai, "
+            "no khaen, no phin, no folk instruments",
     "epic": "Thai cinematic pop, big drums and strings, soaring build, powerful "
-            "lead vocal singing in Thai",
+            "lead vocal singing in Thai, no khaen, no phin, no folk instruments",
     "mystic": "Thai dream-pop, reverb-drenched guitar, sparse piano, atmospheric "
-              "and nocturnal, airy lead vocal singing in Thai",
-    # K, 2026-11-23: the first two lanes to produce are rock and pop. Every
-    # earlier style named khaen or phin, so a song headed "warm" or "sad" came
-    # back as luk-thung no matter what the lyric said — K heard it immediately.
+              "and nocturnal, airy lead vocal singing in Thai, no khaen, "
+              "no phin, no folk instruments",
     "rock": "Thai rock, distorted electric guitars, driving live drums and bass, "
             "gritty powerful lead vocal singing in Thai, anthemic chorus, "
             "no khaen, no phin, no folk instruments",
@@ -138,7 +145,14 @@ def style_for(meta: dict, slug: str = "") -> str:
     ("ดนตรีห้ามซ้ำกัน"), both from `scripts/arrangement.py`.
     """
     mood = (meta.get("mood") or "").lower()
-    base = genres.style_for(slug, mood, STYLE.get(mood, STYLE["sad"]))
+    # A lyric that names a mood says how it must sound; the genre still decides
+    # the lane, the palette and the hashtags. Without this, song 55 (GENRE pop,
+    # MOOD slowpop, TEMPO 72) took the genre's bright piano-pop sound and K heard
+    # it as luk-thung at double time.
+    explicit = STYLE.get(mood)
+    base = genres.style_for(slug, mood, explicit or STYLE["sad"],
+                            tempo=meta_bpm(meta)) if not explicit else \
+        f"{explicit}, {meta_bpm(meta) or genres.tempo_for(slug) or ''} bpm, {genres.EXCLUDE}"
     if slug:
         try:
             import arrangement  # noqa: PLC0415

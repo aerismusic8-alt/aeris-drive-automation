@@ -83,10 +83,32 @@ def genre_of(slug: str) -> dict | None:
     return by_id().get(g) if g else None
 
 
-def style_for(slug: str, mood: str, fallback: str) -> str:
-    """The Flow Music style prompt: the genre's, else the caller's mood style."""
+# K, 2026-11-23: "ลูกทุ่งไม่ได้ขอ". The genre styles are the one place a sound is
+# described, so the refusal lives here and every song inherits it.
+EXCLUDE = "no khaen, no phin, no folk instruments, no mor-lam, no luk-thung"
+
+
+def tempo_for(slug: str) -> int | None:
     g = genre_of(slug)
-    return g["style"] if g else fallback
+    return (g or {}).get("tempo")
+
+
+def style_for(slug: str, mood: str, fallback: str, tempo=None) -> str:
+    """The Flow Music style prompt: the genre's, else the caller's mood style.
+
+    The tempo goes in the prompt, not only in the Advanced panel: song 55 asked
+    for 72 bpm, the panel was set to 72, and the take came back at a walking
+    pace the lyric did not want. A number the model can read is a number it can
+    follow.
+    """
+    g = genre_of(slug)
+    base = g["style"] if g else fallback
+    bpm = tempo or tempo_for(slug)
+    parts = [base]
+    if bpm:
+        parts.append(f"{bpm} bpm")
+    parts.append(EXCLUDE)
+    return ", ".join(parts)
 
 
 def tagline_for(slug: str, mood: str, mood_taglines: dict[str, str]) -> str:
