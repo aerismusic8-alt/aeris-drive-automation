@@ -76,6 +76,15 @@ STYLE = {
             "lead vocal singing in Thai",
     "mystic": "Thai dream-pop, reverb-drenched guitar, sparse piano, atmospheric "
               "and nocturnal, airy lead vocal singing in Thai",
+    # K, 2026-11-23: the first two lanes to produce are rock and pop. Every
+    # earlier style named khaen or phin, so a song headed "warm" or "sad" came
+    # back as luk-thung no matter what the lyric said — K heard it immediately.
+    "rock": "Thai rock, distorted electric guitars, driving live drums and bass, "
+            "gritty powerful lead vocal singing in Thai, anthemic chorus, "
+            "no khaen, no phin, no folk instruments",
+    "pop": "Thai pop, bright synth pads and clean electric guitar, punchy modern "
+           "drums and bass, catchy melodic lead vocal singing in Thai, "
+           "radio-ready chorus, no khaen, no phin, no folk instruments",
 }
 
 
@@ -862,6 +871,24 @@ def main() -> int:
                 print(f"  {n:3} lines  {slug}", file=sys.stderr)
             return 1
         print(f"all lyrics have {MIN_SUNG_LINES}+ sung lines")
+        # K, 2026-11-23: "เพอร์เฟกต์" came back with the wrong stress — the model
+        # reads a Latin word as English and bends the Thai line around it. A sung
+        # line must be Thai only; the loanword goes, not the note.
+        latin = []
+        for f in sorted(LYRICS_DIR.glob("*.txt")):
+            for n, line in enumerate(f.read_text(encoding="utf-8").splitlines(), 1):
+                t = line.strip()
+                if not t or t.startswith("#") or (t.startswith("[") and t.endswith("]")):
+                    continue
+                if re.search(r"[A-Za-z]", t):
+                    latin.append((f.stem, n, t))
+        if latin:
+            print(f"\n{len(latin)} sung line(s) carry a Latin word the model will "
+                  f"sing as English:", file=sys.stderr)
+            for slug, n, t in latin[:10]:
+                print(f"  {slug}:{n}  {t}", file=sys.stderr)
+            return 1
+        print("every sung line is Thai only")
         return 0
     if args.list:
         for f in sorted(LYRICS_DIR.glob("*.txt")):
