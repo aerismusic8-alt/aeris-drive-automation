@@ -1,10 +1,10 @@
 {
-  "at": "2026-11-23T01:01:09+00:00",
+  "at": "2026-11-23T20:27:12+00:00",
   "channel": "ch3",
   "channel_stats": {
     "subs": 13,
-    "views": 4719,
-    "videos": 89
+    "views": 4711,
+    "videos": 105
   },
   "videos": {
     "TISzvF9AQig": {
@@ -355,7 +355,7 @@
       "public": true,
       "title": "ตะโกนก้องฟ้า — ซิมโฟนิกร็อก อลังการ ดุดัน ทรงพลัง",
       "published": "2026-11-08T14:59:40Z",
-      "views": 2,
+      "views": 3,
       "likes": 0,
       "comments": 0
     },
@@ -663,7 +663,7 @@
       "public": true,
       "title": "เพลงของคนเหนื่อย — เพลงปลุกใจ ออกกำลังกาย",
       "published": "2026-11-14T23:51:09Z",
-      "views": 1,
+      "views": 2,
       "likes": 0,
       "comments": 0
     },
@@ -741,6 +741,28 @@
       "title": "เพลงกล่อมของแม่ — เพลงอบอุ่น ฟังอยู่บ้าน",
       "published": "2026-11-18T18:48:30Z",
       "views": 2,
+      "likes": 0,
+      "comments": 0
+    },
+    "-OafPEPrAS0": {
+      "video_id": "-OafPEPrAS0",
+      "slug": "49-luai-mai-yut-v49",
+      "kind": "song",
+      "public": true,
+      "title": "จัดเต็มทุกบาร์ในฝัน — มิวสิควีดีโอ เพลงปลุกใจ ออกกำลังกาย",
+      "published": "2026-11-23T11:40:49Z",
+      "views": 1,
+      "likes": 0,
+      "comments": 0
+    },
+    "HXvjCSx0WtQ": {
+      "video_id": "HXvjCSx0WtQ",
+      "slug": "34-wan-tham-mada-thi-phi-set-v34",
+      "kind": "song",
+      "public": true,
+      "title": "วันธรรมดาที่พิเศษยามค่ำ — เพลงอบอุ่น ฟังอยู่บ้าน",
+      "published": "2026-11-23T11:46:35Z",
+      "views": 1,
       "likes": 0,
       "comments": 0
     },

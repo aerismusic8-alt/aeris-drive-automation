@@ -1,11 +1,11 @@
 # เพลงส้นทีนไรเนี่ย — ความคืบหน้า (อัตโนมัติ)
 
-อัพเดท: 2026-11-23 01:01 UTC
+อัพเดท: 2026-11-23 20:27 UTC
 
 ## เป้าหมาย monetize
 - ผู้ติดตาม: 13 / 1,000   [.................... 1%]
-- ยอดดูรวม: 4719
-- วิดีโอทั้งหมด: 89
+- ยอดดูรวม: 4711
+- วิดีโอทั้งหมด: 105
 
 ## ระบบที่รันอัตโนมัติ (GitHub Actions, ไม่ใช้ sandbox)
 - `ax-music-release` 09:00Z — ปล่อย 6 คลิป/วัน (ตั้งเวลา public กระจาย)
@@ -13,7 +13,7 @@
 - `ax-music-dashboard` 07:20Z — เขียนหน้านี้ + รายงาน
 
 ## เนื้อหาที่ปล่อยแล้ว (ledger)
-- รวม 88 รายการ: affiliate=5, karaoke=6, short=49, song=28
+- รวม 90 รายการ: affiliate=5, karaoke=6, short=49, song=30
 - เพลย์ลิสต์: karaoke=PLYqvExU9-SLE, song=PLeA2Vf8N8O5c, short=PLKlARHtRpKkI, compilation=PLQyOtKueeTgs, naviya=PLA2A_jek56jw, mood-sad=PLEAzEDjP3vgk, mood-warm=PLUQemmr8-kPw, mood-hopeful=PLeLdgn9BjlEY
 
 ## ครอสโพสต์
