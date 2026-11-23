@@ -1,0 +1,34 @@
+{
+  "summary": {
+    "songs": 2,
+    "duration_s": 238.6,
+    "bpm": 74.9,
+    "lufs": -13.8,
+    "peak_dbfs": -2.4,
+    "centroid_hz": 2117.5,
+    "onset_rate": 2.3,
+    "crest_db": 13.3
+  },
+  "songs": [
+    {
+      "file": "mv-46-party-khuen-ni-mai-yut-v46-full.mp4",
+      "duration_s": 239.4,
+      "bpm": 74.9,
+      "lufs": -14.1,
+      "peak_dbfs": -2.3,
+      "centroid_hz": 2076,
+      "onset_rate": 2.43,
+      "crest_db": 12.8
+    },
+    {
+      "file": "mv-34-wan-tham-mada-thi-phi-set-v34-full.mp4",
+      "duration_s": 237.8,
+      "bpm": 74.9,
+      "lufs": -13.6,
+      "peak_dbfs": -2.5,
+      "centroid_hz": 2159,
+      "onset_rate": 2.1,
+      "crest_db": 13.8
+    }
+  ]
+}

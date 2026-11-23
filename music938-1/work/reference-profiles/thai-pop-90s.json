@@ -1,0 +1,264 @@
+{
+  "summary": {
+    "songs": 25,
+    "duration_s": 256.3,
+    "bpm": 89.1,
+    "lufs": -9.6,
+    "peak_dbfs": 1.0,
+    "centroid_hz": 2047,
+    "onset_rate": 2.4,
+    "crest_db": 12.9
+  },
+  "songs": [
+    {
+      "file": "001 ไม่เอาคืน - ดัง พันกร.mp3",
+      "duration_s": 271.4,
+      "bpm": 143.6,
+      "lufs": -10.9,
+      "peak_dbfs": 1.2,
+      "centroid_hz": 2204,
+      "onset_rate": 2.4,
+      "crest_db": 13.8
+    },
+    {
+      "file": "002 เลิกรา - แมว จิรศักดิ์.mp3",
+      "duration_s": 244.4,
+      "bpm": 136.0,
+      "lufs": -9.3,
+      "peak_dbfs": 0.6,
+      "centroid_hz": 2320,
+      "onset_rate": 1.71,
+      "crest_db": 13.5
+    },
+    {
+      "file": "003 หัวใจกระดาษ - อู๋ ธรรพ์ณธร.mp3",
+      "duration_s": 250.6,
+      "bpm": 80.7,
+      "lufs": -10.6,
+      "peak_dbfs": 1.1,
+      "centroid_hz": 2214,
+      "onset_rate": 2.38,
+      "crest_db": 13.6
+    },
+    {
+      "file": "004 เปลือง - Girl.mp3",
+      "duration_s": 278.0,
+      "bpm": 73.8,
+      "lufs": -8.7,
+      "peak_dbfs": 1.0,
+      "centroid_hz": 2097,
+      "onset_rate": 2.3,
+      "crest_db": 12.1
+    },
+    {
+      "file": "005 ไหนว่าจะไม่หลอกกัน - Silly Fools.mp3",
+      "duration_s": 308.1,
+      "bpm": 129.2,
+      "lufs": -8.8,
+      "peak_dbfs": -0.8,
+      "centroid_hz": 2163,
+      "onset_rate": 2.18,
+      "crest_db": 11.6
+    },
+    {
+      "file": "006 รอ - Kala.mp3",
+      "duration_s": 258.5,
+      "bpm": 136.0,
+      "lufs": -12.4,
+      "peak_dbfs": 0.8,
+      "centroid_hz": 1841,
+      "onset_rate": 2.12,
+      "crest_db": 15.1
+    },
+    {
+      "file": "007 ก็พอ - เต็ม วุฒิสิทธิ์.mp3",
+      "duration_s": 276.0,
+      "bpm": 83.4,
+      "lufs": -7.1,
+      "peak_dbfs": 1.5,
+      "centroid_hz": 2457,
+      "onset_rate": 2.41,
+      "crest_db": 10.6
+    },
+    {
+      "file": "008 ใจหายไปเลย - Mr.Team.mp3",
+      "duration_s": 271.1,
+      "bpm": 89.1,
+      "lufs": -7.2,
+      "peak_dbfs": 1.7,
+      "centroid_hz": 2430,
+      "onset_rate": 2.72,
+      "crest_db": 11.0
+    },
+    {
+      "file": "009 ความลับ - Project H.mp3",
+      "duration_s": 276.8,
+      "bpm": 120.2,
+      "lufs": -9.9,
+      "peak_dbfs": 2.9,
+      "centroid_hz": 1620,
+      "onset_rate": 2.55,
+      "crest_db": 11.8
+    },
+    {
+      "file": "010 (เก็บใจใส่) กุญแจ - Oho.mp3",
+      "duration_s": 256.3,
+      "bpm": 132.5,
+      "lufs": -11.6,
+      "peak_dbfs": 0.9,
+      "centroid_hz": 2047,
+      "onset_rate": 2.11,
+      "crest_db": 14.6
+    },
+    {
+      "file": "011 ใจสั่งมา - Loso.mp3",
+      "duration_s": 208.4,
+      "bpm": 136.0,
+      "lufs": -9.6,
+      "peak_dbfs": 0.8,
+      "centroid_hz": 1597,
+      "onset_rate": 1.91,
+      "crest_db": 12.3
+    },
+    {
+      "file": "012 ข้อความ - Pause.mp3",
+      "duration_s": 264.9,
+      "bpm": 89.1,
+      "lufs": -10.2,
+      "peak_dbfs": 0.4,
+      "centroid_hz": 1491,
+      "onset_rate": 2.44,
+      "crest_db": 13.1
+    },
+    {
+      "file": "013 บังอาจรักเธอ - Labanoon.mp3",
+      "duration_s": 233.0,
+      "bpm": 71.8,
+      "lufs": -9.5,
+      "peak_dbfs": 1.1,
+      "centroid_hz": 1993,
+      "onset_rate": 2.37,
+      "crest_db": 13.2
+    },
+    {
+      "file": "014 ทำไมเป็นคนแบบนี้ - นิโคล เทริโอ.mp3",
+      "duration_s": 281.9,
+      "bpm": 74.9,
+      "lufs": -10.6,
+      "peak_dbfs": 2.2,
+      "centroid_hz": 2397,
+      "onset_rate": 2.14,
+      "crest_db": 14.3
+    },
+    {
+      "file": "015 อย่ากลับไป - Briohny.mp3",
+      "duration_s": 266.9,
+      "bpm": 139.7,
+      "lufs": -9.4,
+      "peak_dbfs": 0.7,
+      "centroid_hz": 2165,
+      "onset_rate": 2.23,
+      "crest_db": 13.3
+    },
+    {
+      "file": "016 ลอยกระทงวันสงกรานต์ - อ่ำ อัมรินทร์.mp3",
+      "duration_s": 249.6,
+      "bpm": 80.7,
+      "lufs": -9.8,
+      "peak_dbfs": 2.5,
+      "centroid_hz": 2109,
+      "onset_rate": 2.76,
+      "crest_db": 12.3
+    },
+    {
+      "file": "017 อดใจไม่ไหว - มาช่า วัฒนพานิช.mp3",
+      "duration_s": 232.6,
+      "bpm": 139.7,
+      "lufs": -9.3,
+      "peak_dbfs": 0.5,
+      "centroid_hz": 2112,
+      "onset_rate": 2.31,
+      "crest_db": 12.8
+    },
+    {
+      "file": "018 ยังไงก็ขอบใจ - โดม ปกรณ์ ลัม.mp3",
+      "duration_s": 217.6,
+      "bpm": 79.5,
+      "lufs": -7.8,
+      "peak_dbfs": 1.4,
+      "centroid_hz": 1776,
+      "onset_rate": 2.6,
+      "crest_db": 10.0
+    },
+    {
+      "file": "019 หยุดตรงนี้ที่เธอ - ฟอร์ด.mp3",
+      "duration_s": 258.8,
+      "bpm": 78.3,
+      "lufs": -6.7,
+      "peak_dbfs": 2.2,
+      "centroid_hz": 1991,
+      "onset_rate": 2.58,
+      "crest_db": 10.0
+    },
+    {
+      "file": "020 ถ่านไฟเก่า - เบิร์ด ธงไชย.mp3",
+      "duration_s": 278.6,
+      "bpm": 139.7,
+      "lufs": -8.1,
+      "peak_dbfs": 1.9,
+      "centroid_hz": 1916,
+      "onset_rate": 2.44,
+      "crest_db": 11.2
+    },
+    {
+      "file": "021 แพ้ใจ - ใหม่ เจริญปุระ.mp3",
+      "duration_s": 221.2,
+      "bpm": 73.8,
+      "lufs": -12.0,
+      "peak_dbfs": 0.5,
+      "centroid_hz": 1715,
+      "onset_rate": 2.34,
+      "crest_db": 14.6
+    },
+    {
+      "file": "022 ดูโง่โง่ - เสือ ธนพล.mp3",
+      "duration_s": 254.2,
+      "bpm": 71.8,
+      "lufs": -11.9,
+      "peak_dbfs": 0.6,
+      "centroid_hz": 2018,
+      "onset_rate": 1.91,
+      "crest_db": 15.2
+    },
+    {
+      "file": "023 ใช่เลย - ไท ธนาวุฒิ.mp3",
+      "duration_s": 245.3,
+      "bpm": 95.7,
+      "lufs": -9.1,
+      "peak_dbfs": 0.9,
+      "centroid_hz": 1576,
+      "onset_rate": 2.84,
+      "crest_db": 11.9
+    },
+    {
+      "file": "024 อยากให้รู้ว่าเหงา - เจ เจตริน.mp3",
+      "duration_s": 234.3,
+      "bpm": 74.9,
+      "lufs": -9.7,
+      "peak_dbfs": 3.0,
+      "centroid_hz": 2235,
+      "onset_rate": 2.36,
+      "crest_db": 13.8
+    },
+    {
+      "file": "025 ชายคนหนึ่ง - ปีเตอร์ คอร์ป ไดเรนดัล.mp3",
+      "duration_s": 157.9,
+      "bpm": 107.7,
+      "lufs": -10.4,
+      "peak_dbfs": 0.6,
+      "centroid_hz": 1105,
+      "onset_rate": 2.58,
+      "crest_db": 12.9
+    }
+  ]
+}

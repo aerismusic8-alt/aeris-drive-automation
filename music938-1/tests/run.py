@@ -1379,6 +1379,35 @@ def _raises(fn) -> bool:
     return False
 
 
+def test_reference_profile_measures_a_known_track() -> None:
+    """The measurement has to be right, or the profile is a confident guess.
+
+    A click track at 120 bpm and a known length is the only case where the true
+    answer is known without ears, so it is the case that pins the estimator.
+    """
+    section("reference profile (measured, not assumed)")
+    import subprocess
+    import tempfile
+    sys.path.insert(0, str(ROOT.parent / "ops"))
+    import reference_profile as rp
+
+    with tempfile.TemporaryDirectory() as td:
+        wav = Path(td) / "click.wav"
+        # 8 s of 1 kHz clicks every 0.5 s = 120 bpm.
+        subprocess.run([rp.ffmpeg(), "-v", "error", "-f", "lavfi", "-i",
+                        "aevalsrc='if(lt(mod(t,0.5),0.02),0.8*sin(2*PI*1000*t),0)':s=44100:d=8",
+                        "-ac", "1", str(wav)], check=True, capture_output=True, timeout=120)
+        row = rp.measure(wav)
+        check("duration read", abs(row["duration_s"] - 8.0) < 0.3,
+              f"{row['duration_s']}s")
+        check("bpm within 10% of 120", abs(row["bpm"] - 120) <= 12, f"{row['bpm']} bpm")
+        check("loudness is a real number", -40 < row["lufs"] < 0, f"{row['lufs']} LUFS")
+        summary = rp.summarise([row, row])
+        check("summary is the median of the set", summary["songs"] == 2
+              and summary["bpm"] == row["bpm"], str(summary))
+
+
+
 def test_outputs() -> None:
     section("rendered output")
     songs = sorted((common.LIBRARY / "songs").glob("song-*.mp3"))
@@ -9851,6 +9880,7 @@ def main() -> int:
     test_picture_ledger_stamps_each_mv()
     test_desktop_watch_names_the_failure()
     test_mv_keeps_picture_proportions()
+    test_reference_profile_measures_a_known_track()
     test_compass_is_the_one_direction()
     test_outputs()
     print(f"\n{PASS} passed, {FAIL} failed")

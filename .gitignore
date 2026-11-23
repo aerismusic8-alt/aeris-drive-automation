@@ -213,3 +213,5 @@ music938-1/library/aiart/*.jpg
 !music938-1/library/aiart/manifest.json
 !music938-1/work/reference-chart/
 !music938-1/work/reference-chart/*.json
+!music938-1/work/reference-profiles/
+!music938-1/work/reference-profiles/*.json
