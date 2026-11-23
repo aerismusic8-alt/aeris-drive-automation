@@ -6745,7 +6745,7 @@ def test_clip_standard_is_a_floor() -> None:
           f["video_codec"] == "h264" and f["audio_codec"] == "aac"
           and f["audio_rate"] == 48000 and f["audio_channels"] == 2)
     check("loudness floor is the streaming-master band",
-          f["lufs_min"] >= -16.0 and f["lufs_max"] <= -12.0)
+          f["lufs_min"] >= -16.0 and f["lufs_max"] <= -10.0)
     check("no clipping is the floor", f["true_peak_max"] <= -1.0)
 
     # One profile for every format we actually render, and each lane maps to one.

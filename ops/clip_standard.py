@@ -50,7 +50,11 @@ FLOOR = {
     "pix_fmt": ("yuv420p", "yuvj420p"),
     "min_seconds": 1.0,
     "lufs_min": -16.0,
-    "lufs_max": -12.0,
+    # Ceiling raised -12 -> -10 (K, 2026-11-23). Measured on 25 Thai pop hits:
+    # -12.4..-6.7 LUFS, median -9.6, so the old ceiling forbade a commercial
+    # master outright and our songs sat 4.2 dB under the market. The peak rule
+    # below is what keeps that loudness from clipping.
+    "lufs_max": -10.0,
     "true_peak_max": -1.0,
 }
 

@@ -17,12 +17,14 @@ Everything is free (Rule #1): ffprobe + ffmpeg only. No key, no account.
 | Video codec | h264 |
 | Pixel format | yuv420p (or yuvj420p) |
 | Audio codec | aac, 48 kHz, stereo |
-| Loudness | −16.0 .. −12.0 LUFS (target −14) |
+| Loudness | −16.0 .. −10.0 LUFS (target −11; ceiling raised 2026-11-23) |
 | True peak | ≤ −1.0 dBTP — no clipping |
 | Length | ≥ 1 s |
 
 The loudness band is the streaming-master norm (YouTube normalises playback to
-about −14 LUFS). The true-peak ceiling is what stops the distortion that makes a
+about −14 LUFS). The ceiling was −12 until 2026-11-23: 25 measured Thai pop hits
+sit at −12.4 .. −6.7 LUFS (median −9.6), so the old ceiling forbade a commercial
+master and our songs played 4.2 dB under the market. The true-peak ceiling is what stops the distortion that makes a
 phone speaker buzz. A clip outside the band is not "loud", it is unmastered.
 
 ## 2. One profile per format we actually render
