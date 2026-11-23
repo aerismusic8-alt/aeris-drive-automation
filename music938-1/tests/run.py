@@ -1075,6 +1075,35 @@ def test_mv_pictures_are_not_repeated() -> None:
           "picture_ledger.stamp(" in src)
 
 
+def test_desktop_watch_names_the_failure() -> None:
+    """A 200 is not proof the desktop works, and a dead login is not a dead desktop.
+
+    Measured 2026-11-22: after a container restart the desktop was gone but the
+    container's port map still answered, and `vnc.html` answers 200 with no VNC
+    backend at all. A check on the HTTP code alone reports healthy. The watchdog
+    reads the page's own title instead, and separates "the browser is down"
+    (ours to repair) from "the session expired" (K signs in once).
+    """
+    section("desktop watchdog (identity, not a status code)")
+    sys.path.insert(0, str(ROOT.parent / "ops"))
+    import desktop_watch as w
+
+    src = (ROOT.parent / "ops" / "desktop_watch.py").read_text()
+    assert "LIVE_VIEW_TITLE in body" in src, "the live view must be identified by title"
+    assert "AERIS — Live View" in src, "the identity marker must be the real title"
+    assert "--heal" in src and "bootstrap.py" in src, "a down surface must be repairable"
+
+    lv, br = {"ok": True}, {"ok": True}
+    assert w.verdict_of(lv, br, {"state": "signed_in", "ok": True}) == "HEALTHY"
+    assert w.verdict_of({"ok": False}, br, {"state": "signed_in", "ok": True}) == "DOWN"
+    assert w.verdict_of(lv, {"ok": False}, {"state": "signed_in", "ok": True}) == "DOWN"
+    assert w.verdict_of(lv, br, {"state": "signed_out", "ok": False}) == "SIGNED_OUT"
+    assert w.verdict_of(lv, br, {"state": "wrong_account", "ok": False}) == "WRONG_ACCOUNT"
+    # An unreadable login is never reported as healthy.
+    assert w.verdict_of(lv, br, {"state": "unknown", "ok": False}) == "UNKNOWN_LOGIN"
+    check("verdict names the failing surface, not just 'not 200'", True)
+
+
 def test_picture_ledger_stamps_each_mv() -> None:
     """Every picture names the MV it went into, and the next MV prefers new ones.
 
@@ -9820,6 +9849,7 @@ def main() -> int:
     test_story_reel_contract()
     test_mv_pictures_are_not_repeated()
     test_picture_ledger_stamps_each_mv()
+    test_desktop_watch_names_the_failure()
     test_mv_keeps_picture_proportions()
     test_compass_is_the_one_direction()
     test_outputs()

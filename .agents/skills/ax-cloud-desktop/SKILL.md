@@ -236,3 +236,53 @@ python3 .../ax-cloud-desktop/scripts/check_login.py   # expect: signed in
 If `check_login.py` says signed out, the profile was not where this skill keeps it, or
 the profile directory was wiped. Re-do the operator sign-in once. It should be rare —
 that is the whole point of `/workspace`.
+
+## One command: is the desktop usable right now? (2026-11-22)
+
+```bash
+python3 ops/desktop_watch.py          # verdict, rc 1 only when a surface is down
+python3 ops/desktop_watch.py --heal   # bootstrap.py, then re-check
+python3 ops/desktop_watch.py --json artifacts/desktop.json
+```
+
+It checks each surface by **what it says**, never by an HTTP code alone:
+
+| Surface | Proof it uses | Why a code is not enough |
+|---|---|---|
+| live view :12001 | the page contains `<title>AERIS — Live View</title>` | any squatter on the port answers 200 |
+| Chromium :9222 | `/json/version` returns a `Browser` string **and** `/json/list` has a page | a dead Chrome can leave the port mapped |
+| login | `check_login.py` → `RESULT=SIGNED_IN account=…` | cookie presence was measured wrong twice (Facebook served the logged-out page while holding `c_user`) |
+
+Verdicts: `HEALTHY` · `DOWN` (ours to repair, `--heal`) · `SIGNED_OUT` ·
+`WRONG_ACCOUNT` · `UNKNOWN_LOGIN`. Only `DOWN` fails the command: a dead login is
+not a dead desktop, and a check that conflates them sends the agent to fix the
+wrong thing.
+
+Measured 2026-11-22 after a container restart: `DOWN` → `--heal` → live view and
+Chromium back (`Chrome/156.0.8078.79`, 1 page), `SIGNED_OUT`. The vault snapshot
+saved 06:31 the same day restored 102 cookies and reported
+`SESSION REJECTED — sign in again` for Google, Facebook and TikTok while
+`.flowmusic.app` stayed signed in. That is the cookie lifetime, not a bug in the
+restore: judge it by identity, and ask K for one sign-in when identity says so.
+
+## Two tiers of session state — and what we deliberately do NOT do
+
+| Tier | Where | Survives |
+|---|---|---|
+| Browser profile | `/workspace/ax-tools/aeris938-state/` | a container recycle |
+| Sealed cookies + storage | the durable KV vault (`ops/login_vault.py save/restore`) | a **replaced** sandbox |
+
+A third tier was proposed elsewhere: an encrypted `accounts.enc.json` committed
+to the repo. **This repository is public, so cookies do not go in it** — an
+encrypted blob of live session cookies is a credential with extra steps, and a
+single leaked key is a full account takeover. The KV vault is already outside
+git and outside `/workspace`.
+
+## The honest limitation
+
+If the whole container dies, this watchdog dies with it; nothing inside the pod
+can wake the pod. What makes that survivable here is that **the posting rails do
+not use the desktop** — they run on GitHub Actions with OAuth/Graph tokens
+(`yt_publish.py`, `fb_graph.py`, `tiktok_api.py`). The desktop is only needed for
+Flow Music and Gemini web, which are used inside a session that is already
+alive. Keep it that way: never make a rail depend on `:9222`.
