@@ -25,6 +25,7 @@ BOTTOM = (110, 247, 200)
 TOP = (255, 138, 216)
 FLOOR_DB = -58.0
 ATTACK = 0.55
+MAX_STEP = 0.14     # a bar may not jump more than this in one frame
 RELEASE = 0.14
 
 
@@ -55,8 +56,9 @@ def levels(x: np.ndarray, sr: int, start: float, seconds: float, fps: int,
         db = 20 * np.log10(mag / (win / 2) + 1e-9)
         v = np.clip((np.array([db[a:b].max() for a, b in idx]) - FLOOR_DB)
                     / -FLOOR_DB, 0.0, 1.0)
-        v = v ** 0.85
-        prev = np.where(v > prev, prev + (v - prev) * ATTACK, prev + (v - prev) * RELEASE)
+        v = np.clip(v ** 0.70 * 1.12, 0.0, 1.0)
+        nxt = np.where(v > prev, prev + (v - prev) * ATTACK, prev + (v - prev) * RELEASE)
+        prev = prev + np.clip(nxt - prev, -MAX_STEP, MAX_STEP)
         out.append(prev.copy())
     return np.array(out)
 

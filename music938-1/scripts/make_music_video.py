@@ -271,6 +271,19 @@ def make_scene(slug: str, name: str, *, force: bool = False) -> Path:
 
 def _shot_filter(move: str, frames: int, dur: float) -> str:
     ow, oh = int(W * OVERSIZE), int(H * OVERSIZE)
+    # A zoom that moves less than one output pixel per frame rounds to the same
+    # pixel twice, and the picture freezes for a frame or two (measured: 3
+    # duplicates in a 420-frame sample). Rendering the move oversized and scaling
+    # down keeps every frame different without speeding the move up.
+    if "zoompan" in MOVES[move]:
+        ss = 1.5
+        return (MOVES[move].format(w=int(W * ss), h=int(H * ss),
+                                   ow=int(ow * ss), oh=int(oh * ss),
+                                   n=frames, d=f"{dur:.3f}", fps=FPS,
+                                   zr=ZOOM_RATE, zmax=ZOOM_MAX,
+                                   zdmax=ZOOM_DRIFT_MAX,
+                                   zmin=ZOOM_MIN_ROTATE)
+                + f",scale={W}:{H}:flags=lanczos")
     return MOVES[move].format(w=W, h=H, ow=ow, oh=oh, n=frames, d=f"{dur:.3f}",
                               fps=FPS, zr=ZOOM_RATE, zmax=ZOOM_MAX,
                               zdmax=ZOOM_DRIFT_MAX, zmin=ZOOM_MIN_ROTATE)
@@ -283,7 +296,7 @@ def render_shot(src: Path, move: str, dur: float, out: Path,
     vf = _shot_filter(move, frames, dur) + ",setsar=1,format=yuv420p"
     subprocess.run(
         [ffmpeg, "-y", "-v", "error", "-loop", "1", "-framerate", str(FPS),
-         "-i", str(src), "-t", f"{dur:.3f}", "-vf", vf, "-r", str(FPS),
+         "-i", str(src), "-frames:v", str(frames), "-vf", vf, "-r", str(FPS),
          "-c:v", "libx264", "-preset", "veryfast", "-crf", "20", str(out)],
         check=True)
 
