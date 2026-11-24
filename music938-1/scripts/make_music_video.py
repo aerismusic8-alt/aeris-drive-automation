@@ -59,6 +59,7 @@ W, H, FPS = 1080, 1920, 30
 WAVE_H = 520        # px at a 1920-tall frame, scaled by _k()
 WAVE_ALPHA = 0.55
 WAVE_MARGIN = 40
+EQ_H = 620          # the drawn equalizer, same units; see ops/eq_overlay.py
 
 
 def _k() -> float:
@@ -338,7 +339,8 @@ def shelve(clip: str, title: str, theme: str) -> str:
 
 
 def build(slug: str, *, seconds: float | None = None, full: bool = False,
-          ffmpeg: str = "ffmpeg", force_scenes: bool = False) -> dict:
+          ffmpeg: str = "ffmpeg", force_scenes: bool = False,
+          equalizer: bool = False) -> dict:
     song = SONGS / f"song-{slug}.mp3"
     if not song.exists():
         raise SystemExit(f"no song: {song}")
@@ -420,6 +422,17 @@ def build(slug: str, *, seconds: float | None = None, full: bool = False,
     _cut_card(meta.get("title", slug), release.FOLLOW_ASK, title)
     _cut_card(meta.get("title", slug), release.FOLLOW_PROMISE, endc)
 
+    eq_dir = None
+    if equalizer:
+        eq_dir = WORK / f"eq-{slug}"
+        for stale in eq_dir.glob("frame-*.png") if eq_dir.exists() else []:
+            stale.unlink()
+        subprocess.run([sys.executable, str(ROOT.parent / "ops" / "eq_overlay.py"), str(song),
+                        "--out", str(eq_dir), "--start", f"{start:.3f}",
+                        "--seconds", f"{length:.3f}", "--fps", str(FPS),
+                        "--width", str(W), "--height", str(int(EQ_H * _k())),
+                        "--bars", "72"], check=True)
+
     listfile = WORK / f"concat-{slug}.txt"
     listfile.write_text("".join(f"file '{p.resolve()}'\n" for p in shots),
                         encoding="utf-8")
@@ -428,6 +441,16 @@ def build(slug: str, *, seconds: float | None = None, full: bool = False,
     # foot (showwaves reacts to the real song, so the picture answers the music),
     # and mux the chorus.
     t_fade = 1.5
+    if equalizer:
+        overlay_fc = (f"[4:v]format=rgba[eq];"
+                      f"[b2][eq]overlay=0:H-{int((EQ_H + WAVE_MARGIN) * _k())}[b3];")
+    else:
+        overlay_fc = (f"[3:a]showwaves=s={W}x{int(WAVE_H * _k())}:mode=cline:scale=sqrt:"
+                      f"colors=0x8affc1|0xff8ad8:"
+                      f"rate={FPS},format=rgba,colorchannelmixer=aa={WAVE_ALPHA}[wave];"
+                      f"[b2][wave]overlay=0:H-{int((WAVE_H + WAVE_MARGIN) * _k())}[b3];")
+
+    t_fade = 1.5
     fc = (
         f"[0:v]fps={FPS},format=yuv420p[base];"
         f"[1:v]format=rgba,fade=t=in:st=0:d={t_fade}:alpha=1,"
@@ -435,10 +458,7 @@ def build(slug: str, *, seconds: float | None = None, full: bool = False,
         f"[2:v]format=rgba,fade=t=in:st=0:d=1.2:alpha=1[ec];"
         f"[base][tc]overlay=0:0:enable='lt(t,{t_fade*2})'[b1];"
         f"[b1][ec]overlay=0:0:enable='gt(t,{length-3.0})'[b2];"
-        f"[3:a]showwaves=s={W}x{int(WAVE_H * _k())}:mode=cline:scale=sqrt:"
-        f"colors=0x8affc1|0xff8ad8:"
-        f"rate={FPS},format=rgba,colorchannelmixer=aa={WAVE_ALPHA}[wave];"
-        f"[b2][wave]overlay=0:H-{int((WAVE_H + WAVE_MARGIN) * _k())}[b3];"
+        + overlay_fc +
         f"[b3]setsar=1,format=yuv420p[out];"
         # Normalise at the mux, as the film lane does, so every MV meets the
         # channel floor regardless of the source master's level.
@@ -450,6 +470,7 @@ def build(slug: str, *, seconds: float | None = None, full: bool = False,
          "-loop", "1", "-i", str(title),
          "-loop", "1", "-i", str(endc),
          "-ss", f"{start:.3f}", "-t", f"{length:.3f}", "-i", str(song),
+         *(["-framerate", str(FPS), "-i", str(eq_dir / "frame-%05d.png")] if eq_dir else []),
          "-filter_complex", fc, "-map", "[out]", "-map", "[aout]",
          "-t", f"{length:.3f}", "-c:v", "libx264", "-preset", "medium",
          "-crf", "20", "-pix_fmt", "yuv420p", "-r", str(FPS),
@@ -488,6 +509,8 @@ def main() -> int:
     ap.add_argument("--full", action="store_true", help="the whole song, not the hook")
     ap.add_argument("--seconds", type=float, help="cap the length")
     ap.add_argument("--force-scenes", action="store_true", help="regenerate AI scenes")
+    ap.add_argument("--eq", action="store_true",
+                    help="draw the equalizer from the song instead of the wave bar")
     ap.add_argument("--height", type=int, default=1920,
                     help="output height; 3840 for a 4K vertical MV (default 1920)")
     ap.add_argument("--list", action="store_true")
@@ -521,7 +544,7 @@ def main() -> int:
     for slug in slugs:
         try:
             info = build(slug, seconds=args.seconds, full=args.full,
-                         force_scenes=args.force_scenes)
+                         force_scenes=args.force_scenes, equalizer=args.eq)
             print(f"{slug}: {info['path']} "
                   f"({info['shots']} shots, {info['seconds']}s, {info['bpm']:.0f} bpm)")
         except Exception as e:  # noqa: BLE001
