@@ -237,8 +237,23 @@ def library_scenes(slug: str, want: int, log=print) -> list[Path]:
     # so each MV build shrank the library it drew from (measured 2026-11-22: the
     # slow song could only find 15 stills for 78 shots).
     present = [r for r in rows if (lib / r["file"]).exists()]
+    # Drop what another MV already used *before* choosing, otherwise the picker
+    # hands back spent pictures and the no-repeat gate can only refuse the build.
+    try:
+        import no_repeat  # noqa: PLC0415
+        spent = no_repeat.spent(slug)
+        present = [r for r in present if no_repeat.sha(lib / r["file"], "sha1") not in spent]
+    except Exception:  # noqa: BLE001
+        pass
     mine = sorted((r for r in present if r.get("theme") == theme),
                   key=lambda r: (r.get("uses") or 0, r.get("id") or ""))
+    if len(mine) < want:
+        # The mood's shelf is finite and other MVs spend it too. Falling back to
+        # the other themes keeps the "no picture twice, ever" rule intact when
+        # the preferred theme runs dry, instead of failing the render.
+        others = sorted((r for r in present if r.get("theme") != theme),
+                        key=lambda r: (r.get("uses") or 0, r.get("id") or ""))
+        mine = mine + others
     picked = [lib / r["file"] for r in mine[:want]]
     for r in mine[:want]:
         r["uses"] = (r.get("uses") or 0) + 1
@@ -351,9 +366,38 @@ def shelve(clip: str, title: str, theme: str) -> str:
     return str(dest)
 
 
+PALETTE_LEDGER = WORK / "palette-ledger.json"
+PALETTE_ROTATION = ["candy", "tide", "ember", "orchid", "moss", "brass", "neon", "dusk"]
+
+
+def palette_for(slug: str) -> str:
+    """The MV's own colour, fixed for the life of that MV.
+
+    K, 2026-11-21: "เปลี่ยนสีไม่ให้ซ้ำกันนะ". A rotation rather than a hash, so
+    two MVs in a row never share a palette and the channel keeps moving through
+    the whole set before it comes back round.
+    """
+    import json  # noqa: PLC0415
+    ledger = {}
+    if PALETTE_LEDGER.exists():
+        try:
+            ledger = json.loads(PALETTE_LEDGER.read_text(encoding="utf-8"))
+        except ValueError:
+            ledger = {}
+    if slug in ledger and ledger[slug] in PALETTE_ROTATION:
+        return ledger[slug]
+    used = set(ledger.values())
+    pick = next((p for p in PALETTE_ROTATION if p not in used), PALETTE_ROTATION[0])
+    ledger[slug] = pick
+    PALETTE_LEDGER.parent.mkdir(parents=True, exist_ok=True)
+    PALETTE_LEDGER.write_text(json.dumps(ledger, ensure_ascii=False, indent=1, sort_keys=True),
+                              encoding="utf-8")
+    return pick
+
+
 def build(slug: str, *, seconds: float | None = None, full: bool = False,
           ffmpeg: str = "ffmpeg", force_scenes: bool = False,
-          equalizer: bool = False) -> dict:
+          equalizer: bool = False, palette: str | None = None) -> dict:
     song = SONGS / f"song-{slug}.mp3"
     if not song.exists():
         raise SystemExit(f"no song: {song}")
@@ -390,7 +434,9 @@ def build(slug: str, *, seconds: float | None = None, full: bool = False,
     # The AI scenes only fill what the library cannot cover for this mood, and
     # they are never mixed in when the library already has enough pictures —
     # a 1024 px scene next to a 3840 px one reads as a soft shot.
-    sources: list[Path] = list(library_scenes(slug, want=n_shots))
+    # Ask for several times what the MV needs: the no-repeat gate below drops
+    # every picture another MV already used, and a theme has a finite shelf.
+    sources: list[Path] = list(library_scenes(slug, want=max(n_shots * 4, 24)))
     if len(sources) < 4:
         for name, _ in SCENE_PROMPTS:
             try:
@@ -412,12 +458,29 @@ def build(slug: str, *, seconds: float | None = None, full: bool = False,
     # the unused part of a growing library before it repeats anything (K,
     # 2026-11-22: stamp which picture went into which MV).
     import picture_ledger  # noqa: PLC0415
+    import no_repeat  # noqa: PLC0415
+    # K, 2026-11-21: no picture, sound or lyric may repeat in any MV, and a
+    # renamed file must not slip past. Only pictures no other MV has used are
+    # eligible; if that runs out the render stops instead of recycling one.
+    fresh, spent = no_repeat.fresh_pictures(sources, slug)
+    if spent:
+        print(f"  [mv] {len(spent)} picture(s) already used by another MV — dropped",
+              file=sys.stderr)
+    sources = fresh
+    if len(sources) < 8:
+        raise SystemExit(
+            f"only {len(sources)} unused picture(s) left; an MV needs at least 8. "
+            "Fill the library first: python3 ops/picture_library.py")
     sources = picture_ledger.rank(sources)
     if len(sources) < n_shots:
         print(f"  [mv] {len(sources)} distinct picture(s) for {n_shots} shots — "
               f"holding each longer instead of repeating one", file=sys.stderr)
         n_shots = len(sources)
         shot = length / n_shots
+
+    repeats = no_repeat.check(slug, sources[:n_shots])
+    if repeats:
+        raise SystemExit("no-repeat gate refuses this MV: " + "; ".join(repeats))
 
     for i in range(n_shots):
         src = sources[i]
@@ -444,7 +507,8 @@ def build(slug: str, *, seconds: float | None = None, full: bool = False,
                         "--out", str(eq_dir), "--start", f"{start:.3f}",
                         "--seconds", f"{length:.3f}", "--fps", str(FPS),
                         "--width", str(W), "--height", str(int(EQ_H * _k())),
-                        "--bars", "72"], check=True)
+                        "--bars", "72", "--palette", palette or palette_for(slug)],
+                       check=True)
 
     listfile = WORK / f"concat-{slug}.txt"
     listfile.write_text("".join(f"file '{p.resolve()}'\n" for p in shots),
@@ -522,6 +586,7 @@ def main() -> int:
     ap.add_argument("--full", action="store_true", help="the whole song, not the hook")
     ap.add_argument("--seconds", type=float, help="cap the length")
     ap.add_argument("--force-scenes", action="store_true", help="regenerate AI scenes")
+    ap.add_argument("--palette", help="equalizer palette; default is this MV's own")
     ap.add_argument("--eq", action="store_true",
                     help="draw the equalizer from the song instead of the wave bar")
     ap.add_argument("--height", type=int, default=1920,
@@ -557,7 +622,8 @@ def main() -> int:
     for slug in slugs:
         try:
             info = build(slug, seconds=args.seconds, full=args.full,
-                         force_scenes=args.force_scenes, equalizer=args.eq)
+                         force_scenes=args.force_scenes, equalizer=args.eq,
+                         palette=args.palette)
             print(f"{slug}: {info['path']} "
                   f"({info['shots']} shots, {info['seconds']}s, {info['bpm']:.0f} bpm)")
         except Exception as e:  # noqa: BLE001

@@ -21,8 +21,20 @@ from pathlib import Path
 import numpy as np
 from PIL import Image, ImageDraw, ImageFilter
 
-BOTTOM = (110, 247, 200)
-TOP = (255, 138, 216)
+# One palette per MV, never the same two MVs running. The hues are the channel's
+# own (ops/genart.PALETTES) so the equalizer belongs to the same look as the art.
+EQ_PALETTES: dict[str, tuple[tuple[int, int, int], tuple[int, int, int]]] = {
+    "candy":  ((110, 247, 200), (255, 138, 216)),
+    "tide":   ((30, 150, 170), (140, 225, 235)),
+    "ember":  ((200, 70, 40), (255, 190, 90)),
+    "orchid": ((140, 60, 140), (235, 140, 215)),
+    "moss":   ((60, 120, 70), (185, 225, 120)),
+    "brass":  ((150, 110, 45), (245, 205, 120)),
+    "neon":   ((60, 120, 255), (120, 230, 255)),
+    "dusk":   ((120, 60, 110), (255, 150, 140)),
+}
+BOTTOM = EQ_PALETTES["candy"][0]
+TOP = EQ_PALETTES["candy"][1]
 FLOOR_DB = -58.0
 ATTACK = 0.55
 MAX_STEP = 0.14     # a bar may not jump more than this in one frame
@@ -106,7 +118,11 @@ def main() -> int:
     ap.add_argument("--width", type=int, default=2160)
     ap.add_argument("--height", type=int, default=620)
     ap.add_argument("--bars", type=int, default=72)
+    ap.add_argument("--palette", default="candy", choices=sorted(EQ_PALETTES))
     args = ap.parse_args()
+
+    global BOTTOM, TOP
+    BOTTOM, TOP = EQ_PALETTES[args.palette]
 
     sr = 44100
     x = load(args.song, sr)
