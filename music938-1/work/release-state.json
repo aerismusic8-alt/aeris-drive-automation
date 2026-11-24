@@ -869,6 +869,26 @@
    "public": true,
    "thumb_ok": null,
    "playlist_ok": true
+  },
+  {
+   "slug": "51-wan-di-thi-dai-choe",
+   "kind": "song",
+   "variant": "",
+   "video_id": "AfWVHZQLKoU",
+   "at": "2026-11-24T19:29:59+00:00",
+   "public": true,
+   "thumb_ok": true,
+   "playlist_ok": true
+  },
+  {
+   "slug": "53-mai-mi-wan-yom",
+   "kind": "song",
+   "variant": "",
+   "video_id": "8eJo3rKmm78",
+   "at": "2026-11-24T19:33:23+00:00",
+   "public": true,
+   "thumb_ok": true,
+   "playlist_ok": true
   }
  ],
  "playlists": {
