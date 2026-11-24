@@ -6665,3 +6665,12 @@ of a family (the highest `-vNN`), not merely a deduplicated set.
 the newest take. **Pick an un-clipped song** (K: "ก็ไปวนเอาของเก่ามาทำ") — only
 asset filenames tell the truth; the **release** is the catalogue, a local cache
 must not narrow it.
+
+## moved from MEMORY.md 2026-11-24
+- **`pull_media` never overwrites a differing local file** (the release lags an
+  upload); report it, `--force`.
+
+**A ledger only knows what it wrote — audit the live surface.** 2026-11-21: ledger
+had 2 entries, channel 92 uploads, 4 refused by code, ledger missed 2. **A publish
+route needs the gate more than a render lane** (`song_to_page --post` had none).
+**K settled those 4: leave them** — do not unpublish or re-litigate.

@@ -18,8 +18,6 @@ Row shape in archive; it **fails closed** (`assert_lane`, `may_render`).
   clean. Globbing `song-*.mp3` rendered 18 of 32 masters in a parked genre.
 - **A bed is not a song: the compass filters BOTH**; a slug on argv must call
   `compass.require_publishable`. List and single-slug forms must never disagree.
-- **`pull_media` never overwrites a differing local file** (the release lags an
-  upload); report it, `--force`.
 - **The product is a SONG clip, not a narrated one** (`narration` only where K
   asked by name: `trivia`; `story` is a **tool**). Old posted clips untouched.
 - **`mv` has a rail** (`ax-music-mv`: 4K → media-938; publish stays in
@@ -61,10 +59,8 @@ not strict**.
 Flow Music/Gemini run on K's `aerismusic8`; K taps a QR once, then
 `login_vault.py save` **immediately**.
 
-**A ledger only knows what it wrote — audit the live surface.** 2026-11-21: ledger
-had 2 entries, channel 92 uploads, 4 refused by code, ledger missed 2. **A publish
-route needs the gate more than a render lane** (`song_to_page --post` had none).
-**K settled those 4: leave them** — do not unpublish or re-litigate.
+**A ledger only knows what it wrote — audit the live surface** (2026-11-21, detail
+in archive). **K settled those 4: leave them** — do not unpublish or re-litigate.
 **A report must count artifacts, not inputs** (`genres.py --report` reads the
 release, not the lyric plan).
 
@@ -86,10 +82,13 @@ release, not the lyric plan).
 - **`ops/HOLD.md` decides whether rails may run** (lifted 11-13; K's
   **posting stop** 2026-11-20 is `ops/PUBLISH-HOLD` → `hold_gate.active()`).
 
-## Art + picking NEW work (detail in archive)
-`shot_director.py` cuts **on the music**; `song_prune.py --release` keeps the newest
-take; **pick an un-clipped song**; the **release** is the catalogue. MV = **one
-picture per shot** (K 2026-11-21) → top up the library before rendering.
+## Art + NEW work (detail in archive)
+`shot_director.py` cuts **on the music**; `song_prune.py --release`
+keeps the newest take; **pick an un-clipped song**; the **release** is the catalogue.
+**NO REPEATS, EVER (K 2026-11-21) — content, not names.** `ops/no_repeat.py` gates
+every MV: audio SHA-256, lyric shingle ≥90%, picture SHA-1 vs `picture-ledger.json`;
+<8 unused → refuse (fill the library). One palette per MV from 8. Pinned by 4 tests;
+keep `music938-1/tests/run.py` green (3891 pass).
 
 ## Recovery
 `$AX_VAULT_BOOTSTRAP` → `ops/ax_vault.py` (`axvault:readme`); a lost `work/*.json`
