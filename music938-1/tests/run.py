@@ -7622,6 +7622,11 @@ def test_mv_palettes_never_repeat() -> None:
           set(mv.PALETTE_ROTATION) == set(pals))
     check("palette: the rotation has no duplicate step",
           len(set(mv.PALETTE_ROTATION)) == len(mv.PALETTE_ROTATION))
+    # The ledger is the only memory of which colour an MV already used, so a
+    # clone that ignores it hands the next MV a palette it may have just spent.
+    ignore = (ROOT.parent / ".gitignore").read_text(encoding="utf-8")
+    check("palette: the ledger survives a clone",
+          "!music938-1/work/palette-ledger.json" in ignore)
 
 
 def test_eq_overlay_is_drawn_from_the_song() -> None:

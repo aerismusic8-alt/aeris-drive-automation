@@ -45,6 +45,11 @@ music938-1/work/*
 # stops the next MV from opening on the same stills, so it must survive a clone;
 # ignored, every MV on a fresh pod restarts from picture one.
 !music938-1/work/picture-ledger.json
+# The palette ledger (K, 2026-11-21: "เปลี่ยนสีไม่ให้ซ้ำกันนะ"). It is the only
+# record of which colour each MV already used, so it must survive a clone;
+# ignored, the next MV on a fresh pod restarts at the first palette and can
+# repeat the colour of the MV before it.
+!music938-1/work/palette-ledger.json
 # The Gemini calibration report is the evidence for "its score is not the
 # judge" (K, 2026-11-19) and the test reads it. The probe MP4s are built on
 # demand, so only the 28 KB JSON is kept.
