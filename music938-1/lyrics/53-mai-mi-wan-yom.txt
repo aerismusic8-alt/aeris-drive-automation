@@ -1,7 +1,7 @@
 # TITLE: ไม่มีวันยอม
 # SUBTITLE: เพลงที่ 53 · ร็อก
 # GENRE: rock
-# MOOD: rock
+# MOOD: epic
 # TEMPO: 138
 # KEY: E
 # VOICE: female

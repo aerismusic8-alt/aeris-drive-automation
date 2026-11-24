@@ -1,7 +1,7 @@
 # TITLE: ยังคิดถึง
 # SUBTITLE: เพลงที่ 55 · ป๊อปช้า
 # GENRE: pop
-# MOOD: slowpop
+# MOOD: sad
 # TEMPO: 72
 # KEY: A
 # VOICE: female

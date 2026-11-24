@@ -39,3 +39,4 @@ eth-account
 
 # --- tests ---
 pytest
+faster-whisper       # optional local ASR for ops/lyric_text.py; no rail calls it

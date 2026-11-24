@@ -1,7 +1,7 @@
 # TITLE: แค่เธอยิ้ม
 # SUBTITLE: เพลงที่ 54 · ป็อป
 # GENRE: pop
-# MOOD: pop
+# MOOD: warm
 # TEMPO: 118
 # KEY: D
 # VOICE: female

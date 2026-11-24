@@ -240,6 +240,46 @@ Rules learned the hard way:
 - A red test run must never reach players, so the dispatch sits after the last
   test step and only runs for a push to `ax-arena-roblox-game`.
 
+## Nothing repeats, and the picture must not stutter (K, 2026-11-21)
+
+> "ภาพ เสียง เนื้อร้องห้ามซ้ำกันเด็ดขาด ทุก mv"
+> "จะเปลี่ยนชื่อมาลอกก็ไม่ได้ ห้ามเด็ดขาด"
+> "ตอนเลื่อนฉากอย่าให้ส่งผลกับคลื่น"
+
+Three standing rules, each held by code rather than by care:
+
+**1. No repeat — judged by content, never by name.** `ops/no_repeat.py`:
+audio by SHA-256 of the master, lyrics by 4-character shingles (≥ 90% overlap =
+the same lyric), pictures by content SHA-1 against every MV in
+`music938-1/work/picture-ledger.json`. `make_music_video.build()` refuses to
+render on a repeat, and refuses to start with fewer than 8 unused pictures —
+recycling one is not an option, filling the library is
+(`ops/picture_library.py fill --theme <t> --want N`). A rename defeats nothing:
+the checks read the bytes. When the mood's shelf runs dry the picker falls back
+to the other themes rather than repeating a picture.
+
+**2. One colour per MV.** `ops/eq_overlay.py` carries eight palettes; the rail
+assigns one per song through `work/palette-ledger.json` and walks the whole set
+before it comes back round, so two MVs in a row never share one. The palette is
+fixed for the life of that MV — a re-render keeps its colour.
+
+**3. Continuity floor.** Measured on a 420-frame 4K sample:
+- **No duplicate frames.** A zoom step under one output pixel rounded to the same
+  pixel twice and the picture froze for 1–2 frames (3 duplicates measured). Zoom
+  moves now render 1.5× oversized and scale down (lanczos), and every shot is cut
+  with `-frames:v`, not `-t`.
+- **The equalizer cannot be moved by a camera move.** It is its own RGBA overlay
+  at a constant y, drawn from the song at the video's own frame rate; its frame
+  count must equal the video's (420 == 420). Verified across a hard cut.
+- **No bar may jump.** `MAX_STEP = 0.14` caps the per-frame change, and
+  attack/release makes a bar fall like a meter. Measured after the fix: largest
+  step 0.16, zero frozen bar pairs, level mean 0.40 / peak 0.77.
+
+`music938-1/tests/run.py` pins all three: `test_no_repeat_gate` (both disguises),
+`test_mv_palettes_never_repeat`, `test_eq_overlay_is_drawn_from_the_song`,
+`test_mv_shots_cannot_freeze`. Changing a constant means changing what those
+tests prove, so a regression fails the suite instead of shipping.
+
 ## The product is a MUSIC VIDEO (K, 2026-11-20)
 
 > "วีดีโอผ่านใช้ได้ แต่เราทำเพลงนะไม่ใช่คลิปบรรยาย แก้ไขคำสั่ง k ด้วย ทำเป็น mv"

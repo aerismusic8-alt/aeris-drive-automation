@@ -89,15 +89,22 @@ def _now() -> str:
     return datetime.now(timezone.utc).replace(microsecond=0).isoformat()
 
 
+def manifest_path() -> Path:
+    """Resolved per call: `ART` is repointable (tests point it at a temp dir),
+    and a path captured at import time silently reads the real manifest."""
+    return ART / "manifest.json"
+
+
 def load() -> dict:
-    if MANIFEST.exists():
-        return json.loads(MANIFEST.read_text())
+    mp = manifest_path()
+    if mp.exists():
+        return json.loads(mp.read_text())
     return {"version": 1, "works": []}
 
 
 def save(doc: dict) -> None:
     ART.mkdir(parents=True, exist_ok=True)
-    MANIFEST.write_text(json.dumps(doc, ensure_ascii=False, indent=0) + "\n")
+    manifest_path().write_text(json.dumps(doc, ensure_ascii=False, indent=0) + "\n")
 
 
 

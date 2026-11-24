@@ -29,6 +29,7 @@ REGISTER = ROOT / "AKATH_CORE" / "OPENHANDS_RISK_REGISTER.json"
 # import name -> distribution name in requirements.txt. Only the ones whose
 # names differ; everything else is matched by the import name itself.
 DIST = {
+    "faster_whisper": "faster-whisper",   # the PyPI name has a hyphen
     "PIL": "pillow", "websocket": "websocket-client", "nacl": "PyNaCl",
     "eth_account": "eth-account", "edge_tts": "edge-tts",
     "imageio_ffmpeg": "imageio-ffmpeg", "fontTools": "fonttools",

@@ -280,7 +280,11 @@ def is_publishable(slug: str) -> tuple[bool, str]:
     # handed one slug (a rail input, an MV build) publishes what the list form
     # would have refused. A synthesised bed is not a song at any genre.
     path = ROOT / "music938-1" / "library" / "songs" / f"song-{slug}.mp3"
-    if path.exists() and provenance.is_bed(path):
+    if not path.exists():
+        # Fail closed: a slug whose master is not on disk cannot be published,
+        # and calling it publishable is how a missing asset ships as a broken clip.
+        return False, "no master on disk (run music938-1/scripts/pull_media.py)"
+    if provenance.is_bed(path):
         return False, "a synthesised bed, not a sung song"
     return True, why
 

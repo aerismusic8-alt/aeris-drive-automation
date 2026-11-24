@@ -1,7 +1,7 @@
 # TITLE: วิ่งไปให้สุด
 # SUBTITLE: เพลงที่ 56 · ร็อก
 # GENRE: rock
-# MOOD: rock
+# MOOD: hopeful
 # TEMPO: 152
 # KEY: E
 # VOICE: female

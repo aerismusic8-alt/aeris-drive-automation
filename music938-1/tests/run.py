@@ -1063,8 +1063,11 @@ def test_mv_pictures_are_not_repeated() -> None:
           "a modulo over the sources repeats every picture")
     check("a short picture pool shortens the shot count, not the pool",
           "n_shots = len(sources)" in src)
-    check("the library is asked for one picture per shot",
-          "library_scenes(slug, want=n_shots)" in src)
+    # Asked per shot, with headroom: the no-repeat gate then drops every picture
+    # another MV used, and a theme shelf that runs dry falls back to the others.
+    call = src.split("library_scenes(slug, want=", 1)[-1][:40]
+    check("the library is asked for at least one picture per shot",
+          "n_shots" in call, call)
     # The plan itself must still keep the pace rule (K, 2026-11-20: ภาพเลื่อนเร็วเกิน).
     n, shot = mv.plan_shots(222.0, 68.0)
     check("a 222 s ballad still plans watchable shots",
@@ -3087,7 +3090,9 @@ def test_mv_renders_4k() -> None:
     check("the renderer takes a --height", "--height" in src)
     check("overlay sizes scale with the frame", "_k()" in src)
     check("the VJ bar scales with the frame",
-          "int(220 * _k())" in src and "int(300 * _k())" in src)
+          "(WAVE_H + WAVE_MARGIN) * _k()" in src and "WAVE_H * _k()" in src,
+          "the bar is 520 px at 1080p (K 2026-11-21: make it bigger)")
+    check("the equalizer scales with the frame", "EQ_H * _k()" in src)
     check("the cards scale with the frame",
           "int(96 * k)" in src and "int(52 * k)" in src)
 
@@ -7544,6 +7549,130 @@ def test_a_director_cuts_on_the_music() -> None:
           str(safe))
 
 
+
+def test_no_repeat_gate() -> None:
+    """K (2026-11-21): "ภาพ เสียง เนื้อร้องห้ามซ้ำกันเด็ดขาด ทุก mv" and
+    "จะเปลี่ยนชื่อมาลอกก็ไม่ได้".
+
+    Every check has to look at the bytes, because a name proves nothing. Both
+    disguises below are real: a copy of a master under a new file name, and a
+    copy of a lyric with a new TITLE line.
+    """
+    import tempfile
+
+    import no_repeat
+
+    # a renamed master is still the same master
+    with tempfile.TemporaryDirectory() as td:
+        a = Path(td) / "one.mp3"
+        b = Path(td) / "totally-new-name.mp3"
+        a.write_bytes(b"x" * 4096)
+        b.write_bytes(b"x" * 4096)
+        check("no-repeat: a renamed copy hashes the same",
+              no_repeat.sha(a) == no_repeat.sha(b))
+
+    lyric = no_repeat.lyric_text("55-yang-khit-thueng")
+    check("no-repeat: the fixture lyric exists", bool(lyric))
+    retitled = "# TITLE: เพลงใหม่ชื่ออื่น\n" + lyric
+    check("no-repeat: a retitled copy is >= 90% the same words",
+          no_repeat.similarity(lyric, retitled) >= no_repeat.SIMILAR)
+    check("no-repeat: two different songs read as different",
+          no_repeat.similarity(lyric, no_repeat.lyric_text("53-mai-mi-wan-yom"))
+          < no_repeat.SIMILAR)
+
+    # end to end: a copy of a shipped master under a new slug is refused
+    songs = ROOT / "library" / "songs"
+    src = songs / "song-53-mai-mi-wan-yom.mp3"
+    if src.exists():
+        fake = songs / "song-99-renamed-lookalike.mp3"
+        fake.write_bytes(src.read_bytes())
+        try:
+            bad = no_repeat.check("99-renamed-lookalike")
+        finally:
+            fake.unlink(missing_ok=True)
+        check("no-repeat: the gate refuses a renamed master",
+              any("audio" in b for b in bad), "; ".join(bad)[:120])
+
+    check("no-repeat: a genuinely new song passes",
+          no_repeat.check("53-mai-mi-wan-yom") == [])
+
+
+def test_mv_palettes_never_repeat() -> None:
+    """K (2026-11-21): "เปลี่ยนสีไม่ให้ซ้ำกันนะ".
+
+    One palette per MV, and the rotation must walk the whole set before it comes
+    back round, so two MVs in a row can never share a colour.
+    """
+    import importlib.util
+
+    import eq_overlay
+
+    spec = importlib.util.spec_from_file_location(
+        "mv_mod", ROOT / "scripts" / "make_music_video.py")
+    mv = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mv)
+
+    pals = eq_overlay.EQ_PALETTES
+    check("palette: at least eight colours", len(pals) >= 8)
+    check("palette: every pair is two different colours",
+          all(top != bottom for bottom, top in pals.values()))
+    check("palette: no two palettes are the same pair",
+          len({(b, t) for b, t in pals.values()}) == len(pals))
+    check("palette: the rotation covers every palette",
+          set(mv.PALETTE_ROTATION) == set(pals))
+    check("palette: the rotation has no duplicate step",
+          len(set(mv.PALETTE_ROTATION)) == len(mv.PALETTE_ROTATION))
+
+
+def test_eq_overlay_is_drawn_from_the_song() -> None:
+    """The equalizer must move with the audio and never jump a frame.
+
+    K (2026-11-21): "ความราบรื่นต่อเนื่องต้องขอเช็คละเอียดด้วย". A bar that leaps
+    a third of the box between two frames reads as flicker, so MAX_STEP caps the
+    per-frame change; and a silent bar must still be drawn (not dropped).
+    """
+    import eq_overlay
+
+    sr = 44100
+    t = np.arange(sr * 2) / sr
+    tone = (0.5 * np.sin(2 * np.pi * 440 * t)).astype(np.float32)
+    tone[sr:sr + sr // 2] = 0.0                     # a silent half second
+    rows = eq_overlay.levels(tone, sr, 0.0, 2.0, 30, 24)
+    check("eq: one row per frame", len(rows) == 60)
+    check("eq: levels stay inside 0..1", float(rows.min()) >= 0.0 and float(rows.max()) <= 1.0)
+    step = float(np.abs(np.diff(rows, axis=0)).max())
+    check("eq: no bar jumps more than MAX_STEP in a frame",
+          step <= eq_overlay.MAX_STEP + 1e-6, f"max step {step:.3f}")
+    check("eq: the bars react (not a flat line)", float(rows.max()) > 0.2,
+          f"peak {float(rows.max()):.2f}")
+
+    frame = eq_overlay.draw(rows[len(rows) // 2], 120, 60)
+    check("eq: draws an RGBA frame", frame.mode == "RGBA" and frame.size == (120, 60))
+    check("eq: the background is transparent", frame.getpixel((0, 0))[3] == 0)
+
+    names = sorted(eq_overlay.EQ_PALETTES)
+    a = eq_overlay.EQ_PALETTES[names[0]]
+    b = eq_overlay.EQ_PALETTES[names[1]]
+    eq_overlay.BOTTOM, eq_overlay.TOP = a
+    one = eq_overlay.draw(rows[10], 120, 60).convert("RGB").getdata()
+    eq_overlay.BOTTOM, eq_overlay.TOP = b
+    two = eq_overlay.draw(rows[10], 120, 60).convert("RGB").getdata()
+    check("eq: a different palette really paints different colours", list(one) != list(two))
+
+
+def test_mv_shots_cannot_freeze() -> None:
+    """A duplicate frame is a visible stutter (measured: 3 in a 420-frame sample).
+
+    The cause was a zoom step smaller than one output pixel, which rounded to the
+    same pixel twice. Two source facts keep that fixed: zoom moves render
+    oversized and scale down, and every shot is cut by frame count, not by -t.
+    """
+    src = (ROOT / "scripts" / "make_music_video.py").read_text(encoding="utf-8")
+    check("shots: zoom moves are supersampled", "flags=lanczos" in src)
+    check("shots: shots are cut by frame count", '"-frames:v"' in src)
+    check("shots: the equalizer is its own overlay layer",
+          "[b2][eq]overlay=0:H-" in src)
+
 def test_no_gemini_gate_in_the_video_system() -> None:
     """The Gemini review is out of the video system (K, 2026-11-20).
 
@@ -9767,6 +9896,10 @@ def main() -> int:
     test_song_analysis()
     test_thumb_contrast()
     test_thumb_standard_is_a_floor()
+    test_no_repeat_gate()
+    test_mv_palettes_never_repeat()
+    test_eq_overlay_is_drawn_from_the_song()
+    test_mv_shots_cannot_freeze()
     test_no_gemini_gate_in_the_video_system()
     test_a_refused_clip_does_not_kill_the_queue()
     test_gemini_review_reads_a_prose_verdict()
