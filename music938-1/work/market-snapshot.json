@@ -1,10 +1,10 @@
 {
-  "at": "2026-11-24T04:58:39+00:00",
+  "at": "2026-11-24T19:38:34+00:00",
   "channel": "ch3",
   "channel_stats": {
     "subs": 13,
-    "views": 4751,
-    "videos": 105
+    "views": 5247,
+    "videos": 106
   },
   "videos": {
     "TISzvF9AQig": {
@@ -762,7 +762,29 @@
       "public": true,
       "title": "วันธรรมดาที่พิเศษยามค่ำ — เพลงอบอุ่น ฟังอยู่บ้าน",
       "published": "2026-11-23T11:46:35Z",
-      "views": 1,
+      "views": 2,
+      "likes": 0,
+      "comments": 0
+    },
+    "AfWVHZQLKoU": {
+      "video_id": "AfWVHZQLKoU",
+      "slug": "51-wan-di-thi-dai-choe",
+      "kind": "song",
+      "public": true,
+      "title": "วันดีที่ได้เจอ — มิวสิควีดีโอ เพลงอบอุ่น ฟังอยู่บ้าน",
+      "published": "2026-11-24T19:30:22Z",
+      "views": 0,
+      "likes": 0,
+      "comments": 0
+    },
+    "8eJo3rKmm78": {
+      "video_id": "8eJo3rKmm78",
+      "slug": "53-mai-mi-wan-yom",
+      "kind": "song",
+      "public": true,
+      "title": "ไม่มีวันยอม — มิวสิควีดีโอ เพลงปลุกใจ ออกกำลังกาย",
+      "published": "2026-11-24T19:33:15Z",
+      "views": 0,
       "likes": 0,
       "comments": 0
     },
