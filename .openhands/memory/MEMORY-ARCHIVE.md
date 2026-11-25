@@ -6674,3 +6674,6 @@ must not narrow it.
 had 2 entries, channel 92 uploads, 4 refused by code, ledger missed 2. **A publish
 route needs the gate more than a render lane** (`song_to_page --post` had none).
 **K settled those 4: leave them** — do not unpublish or re-litigate.
+
+## Moved out of the card 2026-11-25 (Art + NEW work)
+`ops/song_prune.py --release` keeps the newest take of a song family.

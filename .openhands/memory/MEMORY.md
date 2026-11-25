@@ -46,12 +46,14 @@ Scope = **4 channels** (FB, TikTok, YT `@aerismusicth`, Shopee). Roblox goals ar
 **followers** — end every clip with `release.FOLLOW_ASK` + `FOLLOW_PROMISE`.
 
 ## Sound + clip quality (K)
-**sfizz** not GM; `AX_REQUIRE_REAL_INSTRUMENTS=1` → a fallback **raises**.
+**sfizz** not GM; `AX_REQUIRE_REAL_INSTRUMENTS=1` → fallback **raises**.
 **One FLOOR, every format/channel (K 2026-11-17): "ห้ามอัพขึ้นเด็ดขาด"**
 `ops/clip_standard.py` = floor + per-format profile, gated at **every** upload
-route, no override; `ops/thumb_standard.py` too (dead silence ≤3 s, VFR ≤2%).
-**Bank clips = `ops/clip_lane.py --song <STEM> --query ... --seconds 58`**
-→ `library/bank/`, QC 14/14; detail in archive.
+route, no override; `ops/thumb_standard.py` too (silence ≤3 s, VFR ≤2%).
+**Bank clips = `ops/clip_lane.py --song <STEM> --query ... --seconds 58`** →
+`library/bank/`, QC 14/14.
+**A blank picture can still have ink** (`picture_std_min` 3.0/4.0); 19 clips
+exceed the 6 % bar limit → fix shorts/karaoke/concert scrims.
 QC is mechanical only — **Gemini review is OUT** (2026-11-20), pinned by
 `test_no_gemini_gate_in_the_video_system`. **A gate nothing can pass is broken,
 not strict**.
@@ -83,8 +85,8 @@ settled those 4: leave them.** **A report counts artifacts, not inputs**
   **posting stop** 2026-11-20 is `ops/PUBLISH-HOLD` → `hold_gate.active()`).
 
 ## Art + NEW work
-`shot_director.py` cuts **on the music**; `song_prune.py --release`
-keeps the newest take; **pick an un-clipped song**; the **release** is the catalogue.
+`shot_director.py` cuts **on the music**; **pick an un-clipped song**; the
+**release** is the catalogue.
 **NO REPEATS, EVER (K 2026-11-21) — content, not names.** `ops/no_repeat.py` gates
 every MV: audio SHA-256, lyric shingle ≥90%, picture SHA-1 vs `picture-ledger.json`;
 <8 unused → refuse (fill the library). One palette per MV from 8. Pinned by 4 tests;
