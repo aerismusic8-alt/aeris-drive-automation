@@ -1270,7 +1270,53 @@
      "sha1": "8de6f538b4e161fd2f6fd2f1320d1c65abc02b47"
     }
    ]
+  },
+  "mv-15-thanon-sai-kao": {
+   "built": "2026-11-25T16:36:03Z",
+   "count": 8,
+   "pictures": [
+    {
+     "shot": 0,
+     "key": "music938-1/library/pictures/nature/s004.jpg",
+     "sha1": "ae6d57e57d1d32d8bcf0a012b0697d151b4d0919"
+    },
+    {
+     "shot": 1,
+     "key": "music938-1/library/pictures/nature/s005.jpg",
+     "sha1": "1891b952ad4208955c1d1f0f89995be263bb6292"
+    },
+    {
+     "shot": 2,
+     "key": "music938-1/library/pictures/nature/s006.jpg",
+     "sha1": "bfd49e662257feb6f26ccfbd434c931e2b627045"
+    },
+    {
+     "shot": 3,
+     "key": "music938-1/library/pictures/nature/s007.jpg",
+     "sha1": "99a18140285e26b27e7f53a55224cf77cfd65e44"
+    },
+    {
+     "shot": 4,
+     "key": "music938-1/library/pictures/nature/s008.jpg",
+     "sha1": "36b5c0828fd8f13c076444f9627956482ae94362"
+    },
+    {
+     "shot": 5,
+     "key": "music938-1/library/pictures/nature/s009.jpg",
+     "sha1": "f80f2388bd8f44edc8c1eaeca160f809f890ba4a"
+    },
+    {
+     "shot": 6,
+     "key": "music938-1/library/covers/cover-15-thanon-sai-kao.jpg",
+     "sha1": "14cce3c6c9bdd1d7c5d72d55de9e018ff518defa"
+    },
+    {
+     "shot": 7,
+     "key": "music938-1/library/stories/story-15-thanon-sai-kao.jpg",
+     "sha1": "20aed0a9ce9d241180150294515eaa97ab2d23bc"
+    }
+   ]
   }
  },
- "updated": "2026-11-24T02:05:07Z"
+ "updated": "2026-11-25T16:36:03Z"
 }
