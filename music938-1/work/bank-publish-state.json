@@ -196,5 +196,22 @@
       "ok": false,
       "skipped": "no TikTok token"
     }
+  },
+  "bank-song-09-phleng-khong-khon-nueai-bangkok-night.mp4": {
+    "youtube": {
+      "ok": true,
+      "id": "nnmSVeNh7yI",
+      "detail": [
+        "https://youtu.be/nnmSVeNh7yI"
+      ]
+    },
+    "facebook": {
+      "ok": true,
+      "id": "1662397205424682"
+    },
+    "tiktok": {
+      "ok": false,
+      "skipped": "no TikTok token"
+    }
   }
 }
