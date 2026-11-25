@@ -65,13 +65,20 @@ jobs:
         # The clip lane uploads every render to `media-938`; this pulls the mp4s
         # back rather than re-rendering, which would cost 80 s per clip and could
         # pick a different song than the one that was published.
+        #
+        # Only `bank-*.mp4`: the release also carries 145 Shorts, MVs, concerts
+        # and surreal clips, and downloading those into library/bank/ made this
+        # rail treat them as bank clips (2026-11-24: 162 "pending" clips, 17 real).
+        # The masters are not fetched here — `bank_publish` restores the one
+        # master a clip needs, because the genre gate fails closed without it.
         env:
           GH_TOKEN: ${{ secrets.AX_GH_TOKEN || secrets.GITHUB_TOKEN }}
+          AX_GH_TOKEN: ${{ secrets.AX_GH_TOKEN || secrets.GITHUB_TOKEN }}
         run: |
           set -euo pipefail
           mkdir -p music938-1/library/bank
           gh release download media-938 --dir music938-1/library/bank \
-            --pattern '*.mp4' --clobber || echo "no mp4 assets in media-938 yet"
+            --pattern 'bank-*.mp4' --clobber || echo "no bank clips in media-938 yet"
           n=$(ls music938-1/library/bank/*.mp4 2>/dev/null | wc -l)
           echo "bank clips available: $n"
           if [ "$n" -eq 0 ]; then
@@ -81,6 +88,9 @@ jobs:
 
       - name: Publish through the gate
         env:
+          # `bank_publish` restores a missing master from the release so the
+          # genre gate can prove it is not a bed.
+          AX_GH_TOKEN: ${{ secrets.AX_GH_TOKEN || secrets.GITHUB_TOKEN }}
           YT_CLIENT_ID: ${{ secrets.YT_CLIENT_ID }}
           YT_CLIENT_SECRET: ${{ secrets.YT_CLIENT_SECRET }}
           YT_CH3_REFRESH_TOKEN: ${{ secrets.YT_CH3_REFRESH_TOKEN }}

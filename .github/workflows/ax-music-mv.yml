@@ -144,5 +144,10 @@ jobs:
             echo "ledger unchanged"
           else
             git commit -m "data(mv): picture ledger $(date -u +%FT%TZ)"
+            # Another rail (the dashboard, the crosspost ledger) can commit while
+            # this 20-40 minute render runs; a bare push then loses the race and
+            # the job goes red with "fetch first" after the MV already uploaded
+            # (2026-11-24). Rebase the one-file commit onto whatever landed.
+            git pull --rebase --autostash origin "${GITHUB_REF_NAME}"
             git push
           fi

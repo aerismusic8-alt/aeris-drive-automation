@@ -197,13 +197,34 @@ def genre_verdict(clip: Path) -> tuple[bool, str]:
 
     The rule itself lives in `ops/compass.py`; asking it here rather than calling
     `genres` directly is what keeps one answer for the whole account.
+
+    The gate needs the master on disk, because `compass.is_publishable` fails
+    closed without it: it cannot prove a song is not a synthesised bed from the
+    file name alone. A fresh runner has no masters (gitignored), so the one this
+    clip needs is restored from the release first. Pulling all 79 audio assets
+    (695 MB) to publish one clip is not an option.
     """
     import compass  # noqa: PLC0415
 
     slug = _song_slug(clip)
     if not slug:
         return False, "no song slug in the file name — cannot check its genre"
+    _ensure_master(slug)
     return compass.is_publishable(slug)
+
+
+def _ensure_master(slug: str) -> None:
+    """Restore `song-<slug>.mp3` from the durable release when it is missing."""
+    path = ROOT / "music938-1" / "library" / "songs" / f"song-{slug}.mp3"
+    if path.exists():
+        return
+    try:
+        import pull_media  # noqa: PLC0415  (music938-1/scripts)
+
+        if pull_media.fetch(path.name, pull_media.token()):
+            print(f"  restored {path.name} from {pull_media.REPO}")
+    except Exception as exc:  # noqa: BLE001 - the gate reports the absence
+        print(f"  could not restore {path.name}: {type(exc).__name__}: {exc}")
 
 
 def main() -> int:

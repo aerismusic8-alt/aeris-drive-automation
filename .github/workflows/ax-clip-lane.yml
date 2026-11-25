@@ -65,6 +65,10 @@ jobs:
           SONG: ${{ github.event.inputs.song }}
           QUERY: ${{ github.event.inputs.query || 'bangkok night' }}
           SECONDS: ${{ github.event.inputs.seconds || '58' }}
+          # `--list-songs` reads the release. Without a token that call shares a
+          # 60/hour pool with every job on the runner IP and answers 403, which
+          # is how the 2026-11-24 tick died before picking a song.
+          AX_GH_TOKEN: ${{ secrets.AX_GH_TOKEN || secrets.GITHUB_TOKEN }}
         run: |
           set -o pipefail
           if [ -z "$SONG" ]; then

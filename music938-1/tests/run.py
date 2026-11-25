@@ -8665,6 +8665,27 @@ def test_clip_lane_is_its_own_job() -> None:
     check("stills fall back to the shards", "shard" in src and "_materialise" in src)
     check("a shard is fetched once, not per still", "_SHARD_CACHE" in src)
     check("the lane can list songs on a bare runner", hasattr(cl, "available_songs"))
+    # A listing that reads the release needs a token: unauthenticated it shares a
+    # 60-request/hour pool with the whole runner IP, and the 2026-11-24 tick died
+    # with `could not list the release (HTTPError)` before it picked a song.
+    check("the clip lane authenticates its release listing",
+          "AX_GH_TOKEN" in text
+          and "AX_GH_TOKEN: ${{ secrets.AX_GH_TOKEN || secrets.GITHUB_TOKEN }}" in text)
+
+    # The bank rail must fetch bank clips only. `--pattern '*.mp4'` pulled all 162
+    # mp4 assets (Shorts, MVs, concerts, surreal) into library/bank and reported
+    # 162 pending bank clips where the release holds 17.
+    bank_yml = (wf / "ax-bank-publish.yml").read_text(encoding="utf-8")
+    check("the bank rail downloads bank clips only",
+          "--pattern 'bank-*.mp4'" in bank_yml and "--pattern '*.mp4'" not in bank_yml)
+    # The genre gate fails closed without the master, and a runner has none. The
+    # rail restores just the one it needs instead of all 695 MB of audio.
+    bp_src = (ROOT.parent / "ops" / "bank_publish.py").read_text(encoding="utf-8")
+    check("bank_publish restores the one master its gate needs",
+          "_ensure_master" in bp_src and "pull_media.fetch" in bp_src)
+    check("the bank rail hands the token to that restore",
+          "AX_GH_TOKEN: ${{ secrets.AX_GH_TOKEN || secrets.GITHUB_TOKEN }}"
+          in bank_yml)
 
     # K (2026-11-20): "เราใช้ผสมกันได้ไม่ใช่เหรอ ขึ้นกับไอเดียในการสร้างวีดีโอ" —
     # a clip may mix real photographs with generated frames, and the channel says
@@ -9590,6 +9611,13 @@ def test_render_workflow_deps() -> None:
         src = (wf / name).read_text()
         check(f"{name} only apt-installs ffmpeg when it is missing",
               "command -v ffmpeg" in src)
+    # A 4K render runs 20-40 minutes, so another rail commits to main while it
+    # works. A bare `git push` of the picture ledger then loses the race and the
+    # job goes red *after* the MV is already on the release (2026-11-24). Every
+    # other ledger commit rebases first; the MV rail was the one that did not.
+    check("the MV rail rebases its ledger commit before pushing",
+          "git pull --rebase --autostash" in mv_rail
+          and mv_rail.index("git pull --rebase") < mv_rail.rindex("git push"))
 
 
 def test_ax_team_is_well_formed() -> None:

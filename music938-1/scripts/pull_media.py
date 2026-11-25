@@ -134,6 +134,42 @@ def assets(tok: str | None) -> list[dict]:
     return out
 
 
+_ASSET_INDEX: dict[str, dict] | None = None
+
+
+def asset_index(tok: str | None) -> dict[str, dict]:
+    """name -> asset record for the media release, listed once per process."""
+    global _ASSET_INDEX
+    if _ASSET_INDEX is None:
+        _ASSET_INDEX = {a["name"]: a for a in assets(tok)}
+    return _ASSET_INDEX
+
+
+def fetch(name: str, tok: str | None = None) -> Path | None:
+    """Restore one asset by name into its library group.
+
+    Returns the path, or None when the release does not carry that name. An
+    existing local file is never replaced, for the same reason `main()` keeps a
+    differing one: a render made after the last upload lives nowhere else.
+    """
+    group = group_of(name)
+    if not group:
+        return None
+    rec = asset_index(tok).get(name)
+    if rec is None:
+        return None
+    dest = LIB / group / name
+    if dest.exists():
+        return dest
+    dest.parent.mkdir(parents=True, exist_ok=True)
+    blob = _get(f"{API}/repos/{REPO}/releases/assets/{rec['id']}", tok,
+                accept="application/octet-stream", timeout=300)
+    tmp = dest.with_suffix(dest.suffix + ".part")
+    tmp.write_bytes(blob)
+    tmp.replace(dest)
+    return dest
+
+
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument("--only", help="only this group (songs, karaoke, shorts, covers, thumbs)")

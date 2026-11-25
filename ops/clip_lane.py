@@ -833,22 +833,40 @@ def unused_first(items: list[str], used: set[str], key=None, log=print) -> list[
 
 
 def _release_assets(log=print) -> list[str] | None:
-    """Asset filenames on the media release, or None when it cannot be listed."""
+    """Asset filenames on the media release, or None when it cannot be listed.
+
+    Unauthenticated this endpoint draws on a 60-request/hour pool shared by the
+    whole runner IP, and the rail went red with a bare `HTTPError` on 2026-11-24
+    for exactly that. The workflow passes `AX_GH_TOKEN`; 429 and 5xx are retried
+    because the release API hiccups under load (`pull_media` retries for the same
+    reason), while a 4xx is real and answers at once.
+    """
+    import time  # noqa: PLC0415
+    import urllib.error  # noqa: PLC0415
     import urllib.request  # noqa: PLC0415
 
+    headers = {"Accept": "application/vnd.github+json",
+               "User-Agent": "ax-clip-lane"}
+    tok = os.environ.get("AX_GH_TOKEN") or os.environ.get("GH_TOKEN")
+    if tok:
+        headers["Authorization"] = f"Bearer {tok}"
     req = urllib.request.Request(
         f"https://api.github.com/repos/{REPO}/releases/tags/{RELEASE_TAG}",
-        headers={"Accept": "application/vnd.github+json"})
-    tok = os.environ.get("AX_GH_TOKEN")
-    if tok:
-        req.add_header("Authorization", f"Bearer {tok}")
-    try:
-        with urllib.request.urlopen(req, timeout=120) as r:
-            doc = json.load(r)
-        return [a["name"] for a in doc.get("assets", [])]
-    except Exception as exc:  # noqa: BLE001
-        log(f"songs: could not list the release ({type(exc).__name__})")
-        return None
+        headers=headers)
+    for attempt in range(3):
+        try:
+            with urllib.request.urlopen(req, timeout=120) as r:
+                doc = json.load(r)
+            return [a["name"] for a in doc.get("assets", [])]
+        except urllib.error.HTTPError as exc:
+            if exc.code not in (429, 500, 502, 503, 504) or attempt == 2:
+                log(f"songs: could not list the release (HTTP {exc.code})")
+                return None
+            time.sleep(2 * (attempt + 1))
+        except Exception as exc:  # noqa: BLE001
+            log(f"songs: could not list the release ({type(exc).__name__})")
+            return None
+    return None
 
 
 def available_songs(log=print) -> list[str]:
