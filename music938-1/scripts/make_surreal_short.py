@@ -75,8 +75,11 @@ RECIPES: dict[str, str] = {
     "wave": "geq=r='r(clip(X+8*sin(Y/22+T*2),0,W-1),Y)':"
             "g='g(clip(X+8*sin(Y/22+T*2),0,W-1),Y)':"
             "b='b(X,Y)',hue=H=t*0.2",
-    # A hard glitch: negative, chroma tearing sideways.
-    "glitch": "negate,hue=H=t*0.5,rgbashift=rh=16:bh=-16",
+    # A hard glitch: chroma tearing sideways. It must not negate the frame — an
+    # inverted picture is 95 % bright, which the thumbnail floor refuses as a
+    # failed flood fill.
+    "glitch": "hue=H=t*0.5,rgbashift=rh=16:bh=-16,eq=contrast=1.12,"
+              "rotate='PI/120*sin(t*0.5)':fillcolor=black",
     # A ghost trail of darker pixels, smearing the frame over time. It must add
     # its own motion: `tblend=grainextract` on a looped still subtracts a frame
     # from an identical frame and paints nothing — measured 2026-11-25 at luma
@@ -92,7 +95,7 @@ RECIPE_ORDER = ("melt", "topsy", "wave", "glitch", "ghost")
 # How far past the frame a recipe's own motion reaches, as a scale factor. A
 # 9:16 frame rotated by θ uncovers its corners until the scale passes
 # 1080 / (1080·cosθ − 1920·sinθ), which is why the tilt angles stay small.
-RECIPE_MARGIN = {"melt": 1.35, "topsy": 1.28, "ghost": 1.10}
+RECIPE_MARGIN = {"melt": 1.35, "topsy": 1.28, "glitch": 1.06, "ghost": 1.10}
 
 
 def recipe_for(slug: str) -> str:
@@ -213,15 +216,15 @@ def render(slug: str, out_dir: Path | None = None) -> Path:
         # 9:16 sliced the words mid-glyph ("...กไม้ริมทา"). Show the whole
         # painting, centred, over a blurred copy of itself.
         f"[0:v]scale={W}:{H}:force_original_aspect_ratio=increase,crop={W}:{H},"
-        f"gblur=sigma=40,eq=brightness=-0.32:saturation=0.8[bg];"
+        f"gblur=sigma=40,eq=brightness=0.08:saturation=0.75[bg];"
         f"[0:v]scale={cw}:-1[fg];"
         f"[bg][fg]overlay=(W-w)/2:(H-h)/2[base];"
         f"[base]eq=saturation=1.25:brightness=-0.02,{recipe}[fx];"
         f"[fx]scale={bw}:{bh},crop={W}:{H},eq=brightness=-0.06[art];"
         # A soft dark band top and bottom so the label and the ask stay legible
         # over whatever the effect is doing underneath.
-        f"[art]drawbox=x=0:y=0:w={W}:h=560:color=black@0.34:t=fill,"
-        f"drawbox=x=0:y={H-380}:w={W}:h=380:color=black@0.34:t=fill[band];"
+        f"[art]drawbox=x=0:y=0:w={W}:h=560:color=black@0.30:t=fill,"
+        f"drawbox=x=0:y={H-380}:w={W}:h=380:color=black@0.30:t=fill[band];"
         f"[band]{ass_filter(ass_path)}[v];"
         # The clip floor is per-file, not per-lane: a master muxed raw inherits
         # whatever peak it was cut with (surreal-01 measured -0.7 dBTP against a
