@@ -41,6 +41,9 @@ THUMBS = ROOT / "library" / "thumbs"
 WORK = ROOT / "work" / "concert"
 
 W, H, FPS = 1080, 1920, 30
+COVER_FRAC = 0.92           # of the frame width; the whole cover, never cropped
+COVER_Y = 870               # top of the cover band, under the venue card
+COVER_H = round(int(W * COVER_FRAC) * 9 / 16)   # 16:9 artwork at that width
 MAX_SECONDS = 42.0          # a live hook, well under the 60 s Shorts ceiling
 CARD_SECONDS = 3.2
 CARD_FADE = 0.4
@@ -128,31 +131,31 @@ Style: Note,{FONT},38,&H00CCCCCC,&H00CCCCCC,{OUTLINE},&H64000000,0,0,0,0,100,100
 Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
 """
     ev = []
-    # The venue card, on screen from frame 0: the wordmark, the promise, and the
-    # song it is playing live.
-    ev.append(f"Dialogue: 0,{ts(0)},{ts(CARD_SECONDS)},Card,,0,0,0,,"
-              f"{pos(540, 800)}{{\\fad({int(CARD_FADE*1000)},{int(CARD_FADE*1000)})}}"
+    # The venue card holds for the whole take: the cover is a 16:9 poster inside
+    # a 9:16 frame, so the band above it needs the identity or it is empty blur.
+    ev.append(f"Dialogue: 0,{ts(0)},{ts(seconds)},Card,,0,0,0,,"
+              f"{pos(540, 430)}{{\\fad({int(CARD_FADE*1000)},{int(CARD_FADE*1000)})}}"
               f"{_escape(concert.NAME)}")
-    ev.append(f"Dialogue: 0,{ts(0.3)},{ts(CARD_SECONDS)},Tag,,0,0,0,,"
-              f"{pos(540, 940)}{{\\fad({int(CARD_FADE*1000)},{int(CARD_FADE*1000)})}}"
+    ev.append(f"Dialogue: 0,{ts(0.3)},{ts(seconds)},Tag,,0,0,0,,"
+              f"{pos(540, 560)}{{\\fad({int(CARD_FADE*1000)},{int(CARD_FADE*1000)})}}"
               f"{_escape(concert.SHOW_LINE)}")
     if song_title:
-        ev.append(f"Dialogue: 0,{ts(0.6)},{ts(CARD_SECONDS)},Song,,0,0,0,,"
-                  f"{pos(540, 1040)}{{\\fad({int(CARD_FADE*1000)},{int(CARD_FADE*1000)})}}"
+        ev.append(f"Dialogue: 0,{ts(0.6)},{ts(seconds)},Song,,0,0,0,,"
+                  f"{pos(540, 690)}{{\\fad({int(CARD_FADE*1000)},{int(CARD_FADE*1000)})}}"
                   f"{_escape(song_title)}")
     # The brand mark and the AI disclosure, steady and low.
     ev.append(f"Dialogue: 0,{ts(0)},{ts(seconds)},Brand,,0,0,0,,"
-              f"{pos(540, 1780)}{{\\fad(300,300)}}{concert.NAME}")
+              f"{pos(540, 1730)}{{\\fad(300,300)}}{concert.NAME}")
     ev.append(f"Dialogue: 0,{ts(0.6)},{ts(seconds)},Note,,0,0,0,,"
-              f"{pos(540, 1850)}{{\\fad(300,300)}}{_escape(concert.AI_NOTE)}")
+              f"{pos(540, 1810)}{{\\fad(300,300)}}{_escape(concert.AI_NOTE)}")
     # The follow end card, held briefly and released a beat before the end.
     hold = min(FOLLOW_CARD_SECONDS, max(0.0, seconds - FOLLOW_CARD_LEAD))
     if hold >= 0.5:
         start_at = max(0.0, seconds - FOLLOW_CARD_LEAD - hold)
         ev.append(f"Dialogue: 0,{ts(start_at)},{ts(start_at + hold)},Follow,,0,0,0,,"
-                  f"{pos(540, 1500)}{{\\fad(200,300)}}{_escape(release.FOLLOW_ASK)}")
+                  f"{pos(540, 1520)}{{\\fad(200,300)}}{_escape(release.FOLLOW_ASK)}")
         ev.append(f"Dialogue: 0,{ts(start_at)},{ts(start_at + hold)},FollowSub,,0,0,0,,"
-                  f"{pos(540, 1610)}{{\\fad(200,300)}}{_escape(release.FOLLOW_PROMISE)}")
+                  f"{pos(540, 1620)}{{\\fad(200,300)}}{_escape(release.FOLLOW_PROMISE)}")
     return head + "\n".join(ev) + "\n"
 
 
@@ -182,14 +185,23 @@ def render(slug: str, out_dir: Path | None = None) -> Path:
 
     lights = (f"gradients=s={W}x{H}:{PALETTES[p['palette']]}:n=3:"
               f"speed=0.015:d={length:.3f}")
+    # The cover is 16:9 and the frame is 9:16, so cropping it to fill slices the
+    # song title printed on the artwork in half. Show the whole cover instead,
+    # under the drifting lights, over a blurred copy of itself.
+    art_w = int(W * COVER_FRAC)
     chain = (
         f"[0:v]scale={W}:{H}:force_original_aspect_ratio=increase,crop={W}:{H},"
-        f"eq=brightness=-0.42:saturation=1.12,"
-        f"zoompan=z='min(zoom+0.0006,1.12)':d=1:s={W}x{H}:fps={FPS}[base];"
+        f"gblur=sigma=40,eq=brightness=0.08:saturation=0.75,"
+        f"zoompan=z='min(zoom+0.0006,1.12)':d=1:s={W}x{H}:fps={FPS}[bg];"
+        f"[0:v]scale={art_w}:-2[art];"
+        f"[bg][art]overlay=x=(W-w)/2:y={COVER_Y}[base];"
+        f"[base]drawbox=x=0:y=0:w={W}:h={COVER_Y - 20}:color=black@0.28:t=fill,"
+        f"drawbox=x=0:y={COVER_Y + COVER_H + 20}:w={W}:h={H - COVER_Y - COVER_H - 20}:"
+        f"color=black@0.28:t=fill[stage];"
         f"[1:v]format=rgba[light];"
-        f"[base][light]blend=all_mode=screen:all_opacity=0.85,"
-        f"vignette=PI/3.2,eq=brightness=0.02[art];"
-        f"[art]{ass_filter(ass_path)}[v]"
+        f"[stage][light]blend=all_mode=screen:all_opacity=0.55,"
+        f"vignette=PI/5,eq=brightness=0.02[lit];"
+        f"[lit]{ass_filter(ass_path)}[v]"
     )
     subprocess.run(
         ["ffmpeg", "-y", "-hide_banner", "-loglevel", "error",
@@ -201,6 +213,10 @@ def render(slug: str, out_dir: Path | None = None) -> Path:
          "-t", f"{length:.3f}",
          "-c:v", "libx264", "-preset", "veryfast", "-crf", "20",
          "-pix_fmt", "yuv420p", "-r", str(FPS),
+         # The live master is 44.1 kHz and mastered to -1.5 dBTP; the AAC encode
+         # overshoots that by about a decibel, so the mux normalises again with
+         # 2.5 dB of headroom and delivers the 48 kHz the clip floor requires.
+         "-af", "loudnorm=I=-14:TP=-2.5:LRA=11", "-ar", "48000",
          "-c:a", "aac", "-b:a", "192k", "-shortest",
          "-movflags", "+faststart", str(out)],
         check=True)
