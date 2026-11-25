@@ -38,6 +38,10 @@ from make_karaoke import (  # noqa: E402  reuse the lyric engine
 import release  # noqa: E402  the hook titles live with the rest of the copy
 
 W, H = 1080, 1920
+# The picture-band floor a cover frame must clear before it is saved. Same value
+# as `ops/thumb_standard.FLOOR["picture_std_min"]`, which gates the upload; a
+# test pins the two together so they cannot drift.
+MIN_PICTURE_STD = 4.0
 FPS = 30
 MAX_SECONDS = 58.0        # under the 60s Shorts ceiling, with margin
 HOOK_PAD = 0.6            # a beat of lead-in so the hook does not start on frame 0
@@ -578,25 +582,75 @@ def render(slug: str, *, mix: str = "song", out_dir: Path | None = None,
 
 
 def thumb_for(short: Path, cover: Path):
-    """Save a Short's thumbnail next to the other thumbs, in 9:16.
+    """Save the frame that actually shows the picture, and refuse a blank one.
 
-    release.py looks for `thumb-short-<slug>.png` and, finding nothing, falls
-    back to the square cover - which YouTube then pillarboxes, so the one image
-    a scroller sees is a small box with black bars either side. The Short's own
-    first seconds already are the thumbnail: blurred art, the cover and a Thai
-    caption, composed for exactly this frame.
+    A cover is a frame of the clip, so a clip whose picture failed ships a cover
+    that failed with it. On 2026-11-25 four surreal covers measured a
+    mathematically flat picture (luma std 0.00) and the old floor passed them
+    anyway: a grey panel with a title and a caption has range, edges and ink.
+    Sampling several frames, taking the most detailed one and refusing a flat
+    clip stops the defect at the render instead of at the channel.
+
+    The floor is the same one `ops/thumb_standard.py` applies at upload.
     """
     dest = ROOT / "library" / "thumbs" / f"thumb-{short.stem}.png"
     dest.parent.mkdir(parents=True, exist_ok=True)
-    # The Short's own frame is dark by construction: a blurred, scrimmed copy of
-    # the cover fills the frame, so the mean luma lands near 18 and the title
-    # reads as "no title" on the thumbnail floor. A gamma lift plus a light
-    # unsharp makes the caption legible without touching the clip itself.
-    subprocess.run(
-        ["ffmpeg", "-y", "-loglevel", "error", "-ss", "1.5", "-i", str(short),
-         "-frames:v", "1", "-vf", "eq=gamma=1.6,unsharp=5:5:0.8", str(dest)],
-        check=True)
+    picks: list[tuple[float, Path]] = []
+    for t in _sample_times(short):
+        cand = dest.with_name(f".pick-{short.stem}-{t:.1f}.png")
+        # The Short's own frame is dark by construction: a blurred, scrimmed copy
+        # of the cover fills it, so a gamma lift plus a light unsharp makes the
+        # caption legible without touching the clip itself.
+        subprocess.run(
+            ["ffmpeg", "-y", "-loglevel", "error", "-ss", f"{t:.2f}",
+             "-i", str(short), "-frames:v", "1",
+             "-vf", "eq=gamma=1.6,unsharp=5:5:0.8", str(cand)],
+            check=False)
+        if cand.exists() and cand.stat().st_size:
+            picks.append((_picture_score(cand), cand))
+    if not picks:
+        short.unlink(missing_ok=True)
+        raise SystemExit(f"{short.name}: no frame could be read — clip deleted")
+    picks.sort(key=lambda x: -x[0])
+    best_score, best = picks[0]
+    if best_score < MIN_PICTURE_STD:
+        for _, p in picks:
+            p.unlink(missing_ok=True)
+        short.unlink(missing_ok=True)
+        raise SystemExit(
+            f"{short.name}: the picture is blank (band std {best_score:.2f} < "
+            f"{MIN_PICTURE_STD}) — clip deleted, not published")
+    best.replace(dest)
+    for _, p in picks[1:]:
+        p.unlink(missing_ok=True)
     return dest
+
+
+def _sample_times(short: Path) -> list[float]:
+    """Where to look for a cover: early (the hook) plus across the clip."""
+    dur = 0.0
+    try:
+        out = subprocess.run(
+            ["ffprobe", "-v", "error", "-show_entries", "format=duration",
+             "-of", "default=nw=1:nk=1", str(short)],
+            capture_output=True, text=True, check=True).stdout.strip()
+        dur = float(out)
+    except Exception:  # noqa: BLE001  a probe failure just narrows the search
+        pass
+    times = [1.5]
+    if dur > 2:
+        times += [round(dur * f, 2) for f in (0.25, 0.45, 0.65, 0.85)]
+    return times
+
+
+def _picture_score(png: Path) -> float:
+    """Luma std of the picture band — 0 for a frame with no picture at all."""
+    import numpy as np
+    from PIL import Image
+
+    a = np.asarray(Image.open(png).convert("L"), dtype=np.float32)
+    h = a.shape[0]
+    return float(a[int(h * 0.32):int(h * 0.68)].std())
 
 
 def main() -> int:

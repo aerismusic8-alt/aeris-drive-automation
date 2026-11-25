@@ -6805,6 +6805,32 @@ def test_clip_standard_is_a_floor() -> None:
           any(n == "is a publishable format" and not ok for n, ok, _ in _rows),
           str([n for n, ok, _ in _rows if not ok]))
 
+    # A clip whose picture failed is a flat panel with a caption on it: it has
+    # motion, text and a tonal range, so every older rule passed it. Three
+    # shipped surreal clips measured a picture-band std of 0.00 on 2026-11-25
+    # (K: "หน้าปก thumnail คลิปเพี้ยนแล้ว"). The floor now measures the picture
+    # itself, and this proves it discriminates rather than rejecting everything.
+    check("the floor requires a real picture", f["picture_std_min"] > 0)
+    _d2 = _tf.mkdtemp()
+    _flat = os.path.join(_d2, "flat.mp4")
+    _sp.run([_ff, "-y", "-v", "error", "-f", "lavfi", "-i",
+             "color=c=gray:s=270x480:d=2",
+             "-vf", "drawtext=text='EXHIBIT':fontcolor=white:fontsize=28:"
+                    "x=(w-tw)/2:y=h*0.55",
+             "-pix_fmt", "yuv420p", "-c:v", "libx264", _flat], check=True)
+    check("a grey panel with a caption fails the picture rule",
+          any(n == "the picture is really there" and not ok
+              for n, ok, _ in cs.check(_flat, profile="vertical")),
+          str([(n, d) for n, ok, d in cs.check(_flat, profile="vertical")
+               if not ok][:3]))
+    _real = os.path.join(_d2, "real.mp4")
+    _sp.run([_ff, "-y", "-v", "error", "-f", "lavfi", "-i",
+             "testsrc2=s=270x480:d=2", "-pix_fmt", "yuv420p",
+             "-c:v", "libx264", _real], check=True)
+    check("a clip with a real picture passes it",
+          {n: ok for n, ok, _ in cs.check(_real, profile="vertical")}
+          .get("the picture is really there") is True)
+
     # The renderer enforces it, and so does the upload chokepoint.
     check("trivia_reel runs the gate",
           "clip_standard.check" in (ops / "trivia_reel.py").read_text())
@@ -6914,7 +6940,7 @@ def test_clip_standard_is_a_floor() -> None:
     # 48 kHz pin is mandatory because loudnorm upsamples to 192k and aac would
     # otherwise pick 96k, which the floor rejects.
     for lane in ("make_short.py", "make_karaoke.py", "make_music_video.py",
-                 "make_film_video.py"):
+                 "make_film_video.py", "make_surreal_short.py"):
         src = (ROOT / "scripts" / lane).read_text()
         check(f"{lane} normalises the muxed song",
               "loudnorm=I=-14:TP=-2.0:LRA=11" in src and "[aout]" in src, lane)
@@ -7149,6 +7175,102 @@ def test_thumb_standard_is_a_floor() -> None:
     Image.new("RGB", (1280, 1280), (10, 10, 12)).save(square)
     check("gate rejects the wrong aspect",
           {n: ok for n, ok, _ in ts.check(square)}.get("16:9 or 9:16") is False)
+
+
+def test_a_blank_picture_can_never_ship() -> None:
+    """A cover whose picture failed must not be saved, and must not pass upload.
+
+    K (2026-11-25): "หน้าปก thumnail คลิปเพี้ยนแล้ว ทำยังไงมาตรฐานการตรวจสอบมันจะไม่
+    เกิดข้อผิดพลาด". Four surreal covers on the channel were a flat grey panel
+    with a title and a caption — luma std 0.00 in the picture band, 88 % flat
+    rows — and every rule in the old floor passed them, because statistics taken
+    over the whole frame cannot tell "a picture" from "a grey panel with ink on
+    it". Three things are pinned here: the floor measures the picture band, the
+    renderer refuses to save a blank frame (and deletes the clip), and no surreal
+    recipe can paint nothing.
+    """
+    section("no clip ships a blank picture")
+    import importlib.util
+    import tempfile
+    import numpy as np
+    from PIL import Image, ImageDraw
+    ops = ROOT.parent / "ops"
+    spec = importlib.util.spec_from_file_location(
+        "thumb_standard_band", ops / "thumb_standard.py")
+    ts = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(ts)
+    import make_short
+    import make_surreal_short as ms
+
+    check("the frame gate and the upload floor are the same number",
+          make_short.MIN_PICTURE_STD == ts.FLOOR["picture_std_min"],
+          f"{make_short.MIN_PICTURE_STD} vs {ts.FLOOR['picture_std_min']}")
+
+    d = Path(tempfile.mkdtemp())
+    im = Image.new("RGB", (1080, 1920), (128, 128, 128))
+    dr = ImageDraw.Draw(im)
+    dr.text((420, 300), "EXHIBIT-113", fill=(255, 255, 255))
+    dr.text((380, 1620), "comment below", fill=(255, 255, 0))
+    grey = d / "grey.png"
+    im.save(grey)
+    rows = {n: ok for n, ok, _ in ts.check(grey)}
+    check("the floor rejects a grey panel with a title on it",
+          rows.get("the picture is really there") is False)
+    check("...and names it a flat panel", rows.get("not a flat panel") is False)
+
+    blank_clip = d / "short-blank.mp4"
+    subprocess.run(
+        ["ffmpeg", "-y", "-loglevel", "error", "-f", "lavfi",
+         "-i", "color=c=gray:s=270x480:d=2", "-pix_fmt", "yuv420p",
+         str(blank_clip)], check=True)
+    raised = None
+    try:
+        make_short.thumb_for(blank_clip, d / "cover.png")
+    except SystemExit as exc:
+        raised = str(exc)
+    check("a blank clip is refused, and the clip is deleted",
+          raised is not None and not blank_clip.exists(), raised or "no refusal")
+
+    # A cover whose top edge is bright, so the "no black edge" comparison has a
+    # baseline to be measured against (a dark cover would hide the defect).
+    cover = (ROOT / "library" / "covers" / "cover-10-dok-mai-rim-thang.jpg")
+    if not cover.exists():
+        note("cover fixture absent — recipe render skipped")
+        return
+    for name, recipe in ms.RECIPES.items():
+        # The same shape the renderer uses: the whole cover centred over a
+        # blurred fill, then the recipe, then the margin scale and crop that
+        # fills whatever corners the motion uncovered. A rotation or an
+        # off-the-plane sample paints black against the frame edge, which the
+        # clip floor rejects as wasted bars, so the two ways a recipe can do that
+        # are pinned here rather than measured on a stand-in cover.
+        mg = ms.RECIPE_MARGIN.get(name, 1.0)
+        out = d / f"recipe-{name}.png"
+        subprocess.run(
+            ["ffmpeg", "-y", "-loglevel", "error", "-loop", "1", "-i", str(cover),
+             "-filter_complex",
+             f"[0:v]scale=270:480:force_original_aspect_ratio=increase,"
+             f"crop=270:480,gblur=sigma=20,eq=brightness=-0.2[bg];"
+             f"[0:v]scale={int(270 * 0.92)}:-1[fg];"
+             f"[bg][fg]overlay=(W-w)/2:(H-h)/2,{recipe},"
+             f"scale={int(270 * mg)}:{int(480 * mg)},crop=270:480,"
+             f"eq=brightness=-0.06[v]",
+             "-map", "[v]", "-t", "3", "-r", "24", "-pix_fmt", "yuv420p",
+             "-c:v", "libx264", str(d / f"recipe-{name}.mp4")], check=True)
+        subprocess.run(
+            ["ffmpeg", "-y", "-loglevel", "error", "-ss", "1.2",
+             "-i", str(d / f"recipe-{name}.mp4"), "-frames:v", "1", str(out)],
+            check=True)
+        a = np.asarray(Image.open(out).convert("L"), dtype=np.float32)
+        std = float(a[int(480 * 0.32):int(480 * 0.68)].std())
+        check(f"surreal recipe {name} paints a picture",
+              std >= ts.FLOOR["picture_std_min"], f"band std {std:.1f}")
+        if "rotate" in recipe:
+            check(f"surreal recipe {name} covers its rotation corners",
+                  mg > 1.0, f"margin {mg}")
+        if "geq" in recipe:
+            check(f"surreal recipe {name} clamps its sample to the frame",
+                  "clip(" in recipe)
 
 
 def test_genre_gate_blocks_parked_lanes() -> None:
@@ -9977,6 +10099,7 @@ def main() -> int:
     test_song_analysis()
     test_thumb_contrast()
     test_thumb_standard_is_a_floor()
+    test_a_blank_picture_can_never_ship()
     test_no_repeat_gate()
     test_mv_palettes_never_repeat()
     test_eq_overlay_is_drawn_from_the_song()

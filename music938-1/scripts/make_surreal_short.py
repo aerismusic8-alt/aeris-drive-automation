@@ -37,7 +37,8 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from make_karaoke import FONT, OUTLINE, ass_filter, _duration  # noqa: E402
+from make_karaoke import (FONT, OUTLINE, ass_filter, _duration,
+                          song_title)  # noqa: E402
 from make_short import _pick_window, load_lyrics, thumb_for  # noqa: E402
 import release  # noqa: E402
 import surreal  # noqa: E402
@@ -64,18 +65,34 @@ RECIPES: dict[str, str] = {
     # A slow melting sway, colour drifting through the wheel.
     "melt": "rotate='PI/24*sin(t*0.6)':fillcolor=black@0,hue=H=t*0.15",
     # Upside-down and tilting: the gallery's "hanging the wrong way up" joke.
-    "topsy": "vflip,rotate='PI/12*sin(t*0.4)':fillcolor=black@0,"
+    # The tilt stays small because a 9:16 frame loses its corners fast: 15° left
+    # the whole top edge pure black.
+    "topsy": "vflip,rotate='PI/30*sin(t*0.4)':fillcolor=black,"
              "hue=H=t*0.1,vignette=PI/3",
-    # A horizontal colour wave, like the painting is breathing.
-    "wave": "geq=r='r(X+8*sin(Y/22+T*2),Y)':g='g(X+8*sin(Y/22+T*2),Y)':"
+    # A horizontal colour wave, like the painting is breathing. The sample must be
+    # clamped to the frame: at the right edge `X+8*sin(...)` runs past the plane
+    # and ffmpeg reads black, which painted a 33 % black band down the side.
+    "wave": "geq=r='r(clip(X+8*sin(Y/22+T*2),0,W-1),Y)':"
+            "g='g(clip(X+8*sin(Y/22+T*2),0,W-1),Y)':"
             "b='b(X,Y)',hue=H=t*0.2",
     # A hard glitch: negative, chroma tearing sideways.
     "glitch": "negate,hue=H=t*0.5,rgbashift=rh=16:bh=-16",
-    # A ghost trail of darker pixels, smearing the frame over time.
-    "ghost": "tblend=all_mode=grainextract,hue=H=t*0.3",
+    # A ghost trail of darker pixels, smearing the frame over time. It must add
+    # its own motion: `tblend=grainextract` on a looped still subtracts a frame
+    # from an identical frame and paints nothing — measured 2026-11-25 at luma
+    # std 0.00 and zero frame-to-frame change, a blank grey cover on the channel.
+    # The rotation leaves black corners, which the floor reads as wasted bars, so
+    # the chain scales past them and crops back (`RECIPE_MARGIN`).
+    "ghost": "rotate='PI/90*sin(t*0.4)':fillcolor=black,"
+             "tmix=frames=5:weights='1 1 2 2 3',hue=H=t*0.25",
 }
 
 RECIPE_ORDER = ("melt", "topsy", "wave", "glitch", "ghost")
+
+# How far past the frame a recipe's own motion reaches, as a scale factor. A
+# 9:16 frame rotated by θ uncovers its corners until the scale passes
+# 1080 / (1080·cosθ − 1920·sinθ), which is why the tilt angles stay small.
+RECIPE_MARGIN = {"melt": 1.35, "topsy": 1.28, "ghost": 1.10}
 
 
 def recipe_for(slug: str) -> str:
@@ -163,7 +180,7 @@ def render(slug: str, out_dir: Path | None = None) -> Path:
         raise SystemExit(f"{slug} is an offline bed, not a sung song")
 
     meta, _lines = load_lyrics(slug)
-    song_title = meta.get("TITLE", slug)
+    title_th = song_title(meta, slug)
     # Guard the copy *we* author — the exhibit premise and the ask. The song's own
     # title is the artist's and is only quoted, so a normal word in a sad lyric
     # ("ตาย") must not be treated as a claim of ours and block the clip.
@@ -178,33 +195,49 @@ def render(slug: str, out_dir: Path | None = None) -> Path:
 
     WORK.mkdir(parents=True, exist_ok=True)
     ass_path = WORK / f"surreal-{slug}.ass"
-    ass_path.write_text(build_ass(slug, song_title, length), encoding="utf-8")
+    ass_path.write_text(build_ass(slug, title_th, length), encoding="utf-8")
 
     out_dir = out_dir or OUT_DIR
     out_dir.mkdir(parents=True, exist_ok=True)
     out = out_dir / f"surreal-{slug}.mp4"
 
-    recipe = RECIPES[recipe_for(slug)]
+    name = recipe_for(slug)
+    recipe = RECIPES[name]
+    # A recipe that rotates needs a margin to fill the corners it uncovers;
+    # cropping the margin back leaves no black edge for the floor to call a bar.
+    margin = RECIPE_MARGIN.get(name, 1.0)
+    cw = int(W * 0.92)
+    bw, bh = int(W * margin) // 2 * 2, int(H * margin) // 2 * 2
     chain = (
+        # The cover is landscape and carries its own title, so cropping it to
+        # 9:16 sliced the words mid-glyph ("...กไม้ริมทา"). Show the whole
+        # painting, centred, over a blurred copy of itself.
         f"[0:v]scale={W}:{H}:force_original_aspect_ratio=increase,crop={W}:{H},"
-        f"eq=saturation=1.25:brightness=-0.02,{recipe},"
-        f"eq=brightness=-0.06[art];"
+        f"gblur=sigma=40,eq=brightness=-0.32:saturation=0.8[bg];"
+        f"[0:v]scale={cw}:-1[fg];"
+        f"[bg][fg]overlay=(W-w)/2:(H-h)/2[base];"
+        f"[base]eq=saturation=1.25:brightness=-0.02,{recipe}[fx];"
+        f"[fx]scale={bw}:{bh},crop={W}:{H},eq=brightness=-0.06[art];"
         # A soft dark band top and bottom so the label and the ask stay legible
         # over whatever the effect is doing underneath.
         f"[art]drawbox=x=0:y=0:w={W}:h=560:color=black@0.34:t=fill,"
         f"drawbox=x=0:y={H-380}:w={W}:h=380:color=black@0.34:t=fill[band];"
-        f"[band]{ass_filter(ass_path)}[v]"
+        f"[band]{ass_filter(ass_path)}[v];"
+        # The clip floor is per-file, not per-lane: a master muxed raw inherits
+        # whatever peak it was cut with (surreal-01 measured -0.7 dBTP against a
+        # -1.0 limit), so every lane normalises at the mux the same way.
+        f"[1:a]loudnorm=I=-14:TP=-2.0:LRA=11,alimiter=limit=0.7:level=0[aout]"
     )
     subprocess.run(
         ["ffmpeg", "-y", "-loglevel", "error",
          "-loop", "1", "-i", str(cover),
          "-ss", f"{start:.3f}", "-i", str(audio),
          "-filter_complex", chain,
-         "-map", "[v]", "-map", "1:a",
+         "-map", "[v]", "-map", "[aout]",
          "-t", f"{length:.3f}",
          "-c:v", "libx264", "-preset", "veryfast", "-crf", "20",
          "-pix_fmt", "yuv420p", "-r", str(FPS),
-         "-c:a", "aac", "-b:a", "192k", "-shortest",
+         "-c:a", "aac", "-ar", "48000", "-b:a", "192k", "-shortest",
          "-movflags", "+faststart", str(out)],
         check=True)
     thumb_for(out, cover)

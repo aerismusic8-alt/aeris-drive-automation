@@ -39,10 +39,25 @@ FLOOR = {
     "bright_pct_max": 45.0,      # all-white = a failed flood fill
     "dark_pct_max": 97.0,        # all-black = a failed render
     "bright_luma": 165,          # title ink is gold (~192) or cream, not just white
+    # The picture band: the middle of the frame, between the label at the top and
+    # the ask at the foot. Every statistical rule above can pass on a frame whose
+    # *picture* is missing — a flat grey panel with a title and a caption has
+    # range, edges and ink — so the band is measured on its own. 2026-11-25: four
+    # shipped surreal covers measured luma std 0.00 here (a mathematically flat
+    # picture) while the worst legitimate cover measured 7.01, so the floor sits
+    # at 4.0: it catches "no picture" without touching a dark, moody poster.
+    "picture_std_min": 4.0,
+    # A frame that is mostly one tone, row after row, is a failed render rather
+    # than a design. Broken covers measured 88 % flat rows; the flattest real one
+    # measured 52 %.
+    "flat_rows_pct_max": 80.0,
 }
 
 # Vertical art is allowed for Shorts (1080x1920) but must still be real.
 VERTICAL_ASPECT = 9 / 16
+# The picture band, as a fraction of height: below this is the label band, above
+# it is the ask band (see `make_surreal_short.build_ass`).
+PICTURE_BAND = (0.32, 0.68)
 
 
 def _deps():
@@ -60,6 +75,8 @@ def measure(path: str) -> dict:
     a = np.asarray(g, dtype=np.float32)
     blur = np.asarray(g.filter(ImageFilter.GaussianBlur(4)), dtype=np.float32)
     p5, p95 = float(np.percentile(a, 5)), float(np.percentile(a, 95))
+    top, bot = int(h * PICTURE_BAND[0]), int(h * PICTURE_BAND[1])
+    band = a[top:bot]
     return {
         "format": (im.format or "").upper(),
         "width": w,
@@ -70,6 +87,8 @@ def measure(path: str) -> dict:
         "detail_pct": round(float((np.abs(a - blur) > 45).mean()) * 100, 2),
         "bright_pct": round(float((a > FLOOR["bright_luma"]).mean()) * 100, 2),
         "dark_pct": round(float((a < 35).mean()) * 100, 2),
+        "picture_std": round(float(band.std()), 2),
+        "flat_rows_pct": round(float((a.std(axis=1) < 6).mean()) * 100, 1),
     }
 
 
@@ -116,6 +135,11 @@ def check(path: str) -> list[tuple[str, bool, str]]:
         f"{m['bright_pct']}% bright (max {FLOOR['bright_pct_max']})")
     add("not a black frame", m["dark_pct"] <= FLOOR["dark_pct_max"],
         f"{m['dark_pct']}% dark")
+    add("the picture is really there",
+        m["picture_std"] >= FLOOR["picture_std_min"],
+        f"picture band std {m['picture_std']} (min {FLOOR['picture_std_min']})")
+    add("not a flat panel", m["flat_rows_pct"] <= FLOOR["flat_rows_pct_max"],
+        f"{m['flat_rows_pct']}% flat rows (max {FLOOR['flat_rows_pct_max']})")
     return res
 
 

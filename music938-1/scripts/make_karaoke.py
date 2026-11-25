@@ -70,6 +70,17 @@ def _duration(path: Path) -> float:
     return float(out)
 
 
+def song_title(meta: dict, slug: str) -> str:
+    """The Thai title of a song, from either header parser.
+
+    `load_lyrics` lowercases its keys, `release.parse_lyrics` keeps them upper.
+    Reading only `TITLE` off a `load_lyrics` dict always missed and shipped the
+    slug — "เพลง: 10-dok-mai-rim-thang" was printed on every surreal and concert
+    Short until 2026-11-25.
+    """
+    return meta.get("title") or meta.get("TITLE") or slug
+
+
 def load_lyrics(slug: str) -> tuple[dict, list[str]]:
     """Read the header block and the sung lines out of lyrics/<slug>.txt."""
     text = (ROOT / "lyrics" / f"{slug}.txt").read_text(encoding="utf-8")

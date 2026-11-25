@@ -30,7 +30,8 @@ ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import concert  # noqa: E402  the identity + the mix
 import release  # noqa: E402  the follow copy
-from make_karaoke import FONT, OUTLINE, ass_filter, _duration  # noqa: E402
+from make_karaoke import (FONT, OUTLINE, ass_filter, _duration,
+                          song_title)  # noqa: E402
 from make_short import _pick_window, load_lyrics, thumb_for  # noqa: E402
 
 SONGS = ROOT / "library" / "songs"
@@ -162,7 +163,7 @@ def render(slug: str, out_dir: Path | None = None) -> Path:
             raise FileNotFoundError(f"missing {path}; pull media first")
 
     meta, _lines = load_lyrics(slug)
-    song_title = meta.get("TITLE", slug)
+    title_th = song_title(meta, slug)
 
     dur = _duration(p["song"])
     start, length = _pick_window(slug, dur)
@@ -173,7 +174,7 @@ def render(slug: str, out_dir: Path | None = None) -> Path:
     concert.render(slug, live, start=start, seconds=length)
 
     ass_path = WORK / f"concert-{slug}.ass"
-    ass_path.write_text(build_ass(slug, song_title, length), encoding="utf-8")
+    ass_path.write_text(build_ass(slug, title_th, length), encoding="utf-8")
 
     out_dir = out_dir or OUT_DIR
     out_dir.mkdir(parents=True, exist_ok=True)

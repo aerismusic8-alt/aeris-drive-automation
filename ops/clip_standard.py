@@ -56,6 +56,17 @@ FLOOR = {
     # below is what keeps that loudness from clipping.
     "lufs_max": -10.0,
     "true_peak_max": -1.0,
+    # The picture band (middle 32-68 % of height) must carry real detail. A clip
+    # whose art failed is a flat panel with a caption on it: it has motion, text
+    # and a tonal range, so every other rule passes. Measured 2026-11-25 on three
+    # shipped surreal clips: 0.00 across every frame, while the dimmest real clip
+    # on disk (a night-scene Short) read 5.09, so the floor sits at 3.0 — far
+    # from every real picture and far above a panel with no picture at all. The
+    # same idea as `thumb_standard.FLOOR["picture_std_min"]`, at clip scale.
+    "picture_std_min": 3.0,
+    # ...and the band must not be one flat tone with a caption drawn on it. The
+    # dimmest legitimate clip measured 89 %, a grey panel with a caption 97 %.
+    "picture_flat_pct_max": 92.0,
 }
 
 # --- Per-format profiles ----------------------------------------------------
@@ -296,6 +307,46 @@ def motion(path: str):
             round(float(max(diffs)), 3))
 
 
+def picture(path: str) -> tuple[float, float]:
+    """(median band std, median % of the band within ±6 of its median), 4 fps.
+
+    Two numbers because "no picture" has two shapes: a frame with nothing at all
+    (std 0) and a flat fill with a small caption on it (std 14, but 97 % of the
+    band is one tone). Real clips measured std 5-71 and 7-31 % flat; the dimmest
+    legitimate one (a night-scene Short) was 5.11 / 89 %.
+    """
+    import numpy as np
+    info = probe(path)
+    if not info["width"]:
+        return 0.0, 100.0
+    w = ANALYZE_W
+    h = int(round(ANALYZE_W * info["height"] / info["width"]))
+    if h % 2:
+        h += 1
+    args = [ffmpeg(), "-v", "error", "-i", path,
+            "-t", f"{min(info['seconds'], ANALYZE_MAX_SECONDS):.3f}",
+            "-vf", f"fps=4,scale={w}:{h},format=gray", "-f", "rawvideo", "-"]
+    proc = subprocess.Popen(args, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL)
+    n = w * h
+    stds: list[float] = []
+    flats: list[float] = []
+    try:
+        while True:
+            buf = proc.stdout.read(n)
+            if len(buf) < n:
+                break
+            f = np.frombuffer(buf, dtype=np.uint8).reshape(h, w).astype(np.float32)
+            band = f[int(h * 0.32):int(h * 0.68)]
+            stds.append(float(band.std()))
+            flats.append(float((np.abs(band - np.median(band)) <= 6).mean() * 100))
+    finally:
+        proc.stdout.close()
+        proc.wait()
+    if not stds:
+        return 0.0, 100.0
+    return round(float(np.median(stds)), 2), round(float(np.median(flats)), 1)
+
+
 def text_pixels(path: str) -> int:
     """Median count of bright pixels touching a dark pixel, in the middle band."""
     import numpy as np
@@ -487,6 +538,13 @@ def check(path: str, profile: str | None = None) -> list[tuple[str, bool, str]]:
         bf = bar_frac(path)
         add("no wasted black bars", bf <= p["bar_max_frac"],
             f"tallest black band {bf:.1%} of height (max {p['bar_max_frac']:.0%})")
+    ps = _thresh(p, "picture_std_min")
+    if ps is not None:
+        std, flat = picture(path)
+        add("the picture is really there",
+            std >= ps and flat <= FLOOR["picture_flat_pct_max"],
+            f"picture band std {std} (min {ps}), {flat}% one tone "
+            f"(max {FLOOR['picture_flat_pct_max']}%)")
     return res
 
 
