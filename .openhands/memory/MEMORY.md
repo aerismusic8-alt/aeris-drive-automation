@@ -35,7 +35,8 @@ stdout must stay pure (a log line piped to `shuf` killed the lane once).
 **K = final authority.** **AR = me**: I administer all of K's work in K's place —
 decide, execute, report; no per-step approval. Method: **PCSEV**. Advisor =
 **Gemini alone** (`ops/consult.py`, advisory). **Time to K = Thai (UTC+7) 24h**;
-rails stay UTC.
+rails stay UTC. **A diagnosis with no method = "exhausted" forever** (2026-11-25):
+every constraint `goal_watch` can name needs a `LIBRARY` entry — pinned by test.
 
 ## What this project is (K's goal)
 "เราไม่ได้เป็นคนสร้างช่อง เราสร้าง ai openhands" — the deliverable is **the agent**.
@@ -49,8 +50,8 @@ Scope = **4 channels** (FB, TikTok, YT `@aerismusicth`, Shopee). Roblox goals ar
 **One FLOOR, every format/channel (K 2026-11-17): "ห้ามอัพขึ้นเด็ดขาด"**
 `ops/clip_standard.py` = floor + per-format profile, gated at **every** upload
 route, no override; `ops/thumb_standard.py` too (dead silence ≤3 s, VFR ≤2%).
-**Bank clips = `ops/clip_lane.py --song <FULL STEM> --query "..." --seconds 58`**
-→ `library/bank/`, QC 14/14; picker + shot numbers in archive.
+**Bank clips = `ops/clip_lane.py --song <STEM> --query ... --seconds 58`**
+→ `library/bank/`, QC 14/14; detail in archive.
 QC is mechanical only — **Gemini review is OUT** (2026-11-20), pinned by
 `test_no_gemini_gate_in_the_video_system`. **A gate nothing can pass is broken,
 not strict**.
@@ -59,10 +60,9 @@ not strict**.
 Flow Music/Gemini run on K's `aerismusic8`; K taps a QR once, then
 `login_vault.py save` **immediately**.
 
-**A ledger only knows what it wrote — audit the live surface** (2026-11-21, detail
-in archive). **K settled those 4: leave them** — do not unpublish or re-litigate.
-**A report must count artifacts, not inputs** (`genres.py --report` reads the
-release, not the lyric plan).
+**A ledger only knows what it wrote — audit the live surface** (archive). **K
+settled those 4: leave them.** **A report counts artifacts, not inputs**
+(`genres.py --report` reads the release).
 
 
 ## Environment + platform risks
@@ -82,13 +82,13 @@ release, not the lyric plan).
 - **`ops/HOLD.md` decides whether rails may run** (lifted 11-13; K's
   **posting stop** 2026-11-20 is `ops/PUBLISH-HOLD` → `hold_gate.active()`).
 
-## Art + NEW work (detail in archive)
+## Art + NEW work
 `shot_director.py` cuts **on the music**; `song_prune.py --release`
 keeps the newest take; **pick an un-clipped song**; the **release** is the catalogue.
 **NO REPEATS, EVER (K 2026-11-21) — content, not names.** `ops/no_repeat.py` gates
 every MV: audio SHA-256, lyric shingle ≥90%, picture SHA-1 vs `picture-ledger.json`;
 <8 unused → refuse (fill the library). One palette per MV from 8. Pinned by 4 tests;
-keep `music938-1/tests/run.py` green (3891 pass).
+keep `music938-1/tests/run.py` green.
 
 ## Recovery
 `$AX_VAULT_BOOTSTRAP` → `ops/ax_vault.py` (`axvault:readme`); a lost `work/*.json`

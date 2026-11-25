@@ -215,6 +215,14 @@ lever the competitor scan measured (actives ship 3.89/week; ours was 1.01).
 Ordered. Update it each session; it is the answer to "what next". Scope is the
 four jobs above — nothing else appears here.
 
+**State 2026-11-25 (measured, not remembered).** Publish hold lifted; compass
+72/72; catalogue 34 masters. The three rails that were red on 11-24 are fixed and
+the clip lane is green on a live dispatch (`45529926396`). The daily experiment
+loop had been answering `exhausted` for `retention` because the hypothesis library
+had no entry for it — now it does (see item 6). Next: the 05:40 UTC MV tick and the
+03:25 UTC bank-publish tick are the first unattended proof of the MV-rebase and
+bank-pattern fixes.
+
 **Tracking (2026-11-09).** The canonical registry
 (`AKATH_CORE/CANONICAL_TASK_REGISTRY.json`) had drifted to 2026-09-19 and did not
 contain the four jobs at all. Reconciled by `AKATH_CORE/reconcile_growth_scope.py`
@@ -311,6 +319,15 @@ chose PARKED). A parked goal is inert until it is moved back to `IN_PROGRESS`.
      hypothesis similarity, and reporting exhaustion rather than re-running a
      loser. Ledger: `aeris938-2/work/experiments.jsonl`. First experiment opened
      2026-11-09 (`shorts-hook-framing`, 14 days, floor 200 views).
+     **Fixed 2026-11-25:** it reported `exhausted` for `retention` — the library
+     had reach/conversion/offer/income and no `retention` or `mixed` entry, so a
+     real bottleneck produced no experiment for as long as it lasted. Added 3
+     retention hypotheses (continuous long-form mix, playlist hand-off, 8h sleep
+     loop) and 2 mixed ones; a retention verdict now reads **watch-hours per 1,000
+     views** (`report.flatten` records `yt_hours`/`yt_hours_at` from the newest
+     Studio scrape, 7-day freshness because the number is a 28-day rolling total).
+     `test_experiment_loop_answers_every_diagnosis` fails if the judge can name a
+     constraint the library cannot answer.
    `fix_compilation_cta.py` now delegates to `refresh_description` so there is one
    description writer, not two that can drift.
 

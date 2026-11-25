@@ -61,6 +61,11 @@ DUP_THRESHOLD = 0.6
 WINDOW_DAYS = 14.0
 # Below this many views on the tested videos the result cannot be read as a loss.
 EXPOSURE_FLOOR = 200
+# A 28-day rolling watch-hours total ages in days, not hours: the Studio scrape
+# is written by hand on K's desktop, so a 2-hour window would make every
+# retention verdict permanently inconclusive. A week is still a real reading of
+# a slow metric, and both ends of the comparison carry their own date.
+HOURS_MAX_AGE_MINUTES = 7 * 24 * 60
 
 # The hypothesis library, keyed by the constraint `goal_watch` names. Each entry
 # is a real, free, in-repo experiment with the ONE variable it changes, the peer
@@ -164,6 +169,61 @@ LIBRARY: dict[str, list[dict]] = {
             "guardrail": "คำสั่งซื้อจริง (คลิกเยอะแต่ออเดอร์ศูนย์ = ยังไม่พอ)",
         },
     ],
+    "mixed": [
+        {
+            "key": "follow-ask-every-format",
+            "title": "วางคำขอติดตามในทุกฟอร์แมต ไม่ใช่แค่บางคลิป",
+            "variable": "การมีคำขอติดตามบนจอ (ทุกคลิป vs บางคลิป)",
+            "hypothesis": ("เมื่อทุกฟอร์แมตมีคำขอติดตามสั้น ๆ ท้ายคลิป ผู้ติดตามต่อ "
+                           "1,000 วิวจะสูงกว่าแบบที่บางคลิปไม่ขอเลย"),
+            "peer": "ช่องที่โตเร็วขอติดตามสม่ำเสมอทุกคลิป ไม่ใช่เป็นครั้งคราว",
+            "metric": "ผู้ติดตามต่อ 1,000 วิว",
+            "guardrail": "อัตราดูจบไม่ตก (ถ้าคำขอกันเพลง = ไม่ดี)",
+        },
+        {
+            "key": "winner-repost-all-channels",
+            "title": "เอาคลิปที่ชนะไปลงซ้ำบนทุกช่อง (FB Reels / TikTok) พร้อม hook เดิม",
+            "variable": "ช่องทางที่โพสต์คลิปที่ชนะ",
+            "hypothesis": ("คลิปที่แปลงผู้ติดตามได้บน YouTube จะแปลงได้บน FB/TikTok ด้วย "
+                           "เพราะ hook เดียวกัน ผู้ติดตามรวมต่อ 1,000 วิวจะสูงกว่า "
+                           "การปล่อยให้แต่ละช่องเลือกคลิปเอง"),
+            "peer": "ช่องที่โตพร้อมกันหลายแพลตฟอร์ม เอาเนื้อหาที่ชนะไปลงทุกที่",
+            "metric": "ผู้ติดตามรวม (YT+FB+TK) ต่อ 1,000 วิว",
+            "guardrail": "ห้ามลงซ้ำช่องเดิม (crosspost state) และห้ามทำคลิปซ้ำเนื้อหา",
+        },
+    ],
+    "retention": [
+        {
+            "key": "longform-continuous-mix",
+            "title": "ทดลองคลิปยาวแบบมิกซ์ต่อเนื่อง ไม่หยุดระหว่างเพลง",
+            "variable": "การต่อเพลงในคลิปยาว (มีช่วงคั่น vs มิกซ์ไหลต่อเนื่อง)",
+            "hypothesis": ("เมื่อเพลงไหลต่อเนื่องโดยไม่หยุด คนดูปล่อยให้เล่นยาวขึ้น "
+                           "ชั่วโมงดูต่อ 1,000 วิวจะสูงกว่าคลิปยาวที่มีช่วงเงียบระหว่างเพลง"),
+            "peer": "ช่องเพลงที่ทำ watch-hours สูง ใช้มิกซ์ต่อเนื่อง/อัลบั้มเต็ม",
+            "metric": "ชั่วโมงดูต่อ 1,000 วิว (Studio)",
+            "guardrail": "วิวต่อคลิปไม่ตก และไม่ใช้เพลงซ้ำ (no_repeat ยังบังคับ)",
+        },
+        {
+            "key": "playlist-handoff",
+            "title": "ชี้ไปเพลงถัดไปท้ายคลิป + วางในเพลย์ลิสต์ต่อเนื่อง",
+            "variable": "เส้นทางไปคลิปถัดไป (ไม่มี vs เพลย์ลิสต์/ลิงก์ฟังต่อ)",
+            "hypothesis": ("การชี้ไปเพลงถัดไปทันทีท้ายคลิป ทำให้ผู้ชมเล่นต่อเนื่อง "
+                           "ชั่วโมงดูต่อ 1,000 วิวจึงสูงกว่าคลิปที่จบแล้วจบเลย"),
+            "peer": "ช่องเพลงที่ watch-hours สูง ปิดท้ายด้วยการชวนฟังเพลงต่อไป",
+            "metric": "ชั่วโมงดูต่อ 1,000 วิว + วิวที่มาจากเพลย์ลิสต์",
+            "guardrail": "อัตราดูจบของคลิปเดิมไม่ตก",
+        },
+        {
+            "key": "sleep-loop-long",
+            "title": "ทดลองคลิปกล่อมนอน/บรรเลงยาว 8 ชม. เทียบกับลูปสั้น",
+            "variable": "ความยาวของคลิปบรรเลงกล่อมนอน",
+            "hypothesis": ("คลิปกล่อมนอน 8 ชม. ที่ไม่สะดุดทำให้เครื่องเล่นเล่นยาวทั้งคืน "
+                           "ชั่วโมงดูต่อ 1,000 วิวจะสูงกว่าลูป 1 ชม. ที่วนซ้ำ"),
+            "peer": "ช่อง lofi/กล่อมนอนที่ watch-hours สูง ใช้คลิปยาวข้ามคืน",
+            "metric": "ชั่วโมงดูต่อ 1,000 วิว (Studio)",
+            "guardrail": "ผ่าน clip floor เดิมทุกข้อ (ไม่ลดมาตรฐานเสียง/ภาพ)",
+        },
+    ],
     "income": [
         {
             "key": "scale-winning-video",
@@ -225,6 +285,19 @@ def is_duplicate(cand: dict, past: list[dict]) -> dict | None:
             return p
         if similarity(cand.get("hypothesis", ""), p.get("hypothesis", "")) >= DUP_THRESHOLD:
             return p
+    return None
+
+
+def _hours_per_1k(row: dict) -> float | None:
+    """Watch-hours per 1,000 views — the retention number, not the reach one.
+
+    Total hours rise with views, so a reach spike alone would look like better
+    retention. Dividing by views asks the question the experiment actually
+    tests: does a viewer stay longer?
+    """
+    h, v = row.get("yt_hours"), row.get("yt_views")
+    if isinstance(h, (int, float)) and isinstance(v, (int, float)) and v > 0:
+        return 1000.0 * h / v
     return None
 
 
@@ -293,9 +366,19 @@ def evaluate(exp: dict, rows: list[dict], now=None) -> tuple[str, str]:
     # day (missing) or too old, the honest outcome is INCONCLUSIVE — never a WIN
     # or a FAILED built on no data. This is why an offer test cannot be closed
     # while the Shopee dashboard is unreadable.
-    required = {"income": "sp_commission", "offer": "sp_clicks"}.get(
-        exp.get("constraint"), "yt_subs")
-    st = evidence.status(last.get(required), last.get("at"), now)
+    constraint = exp.get("constraint")
+    if constraint == "retention":
+        # Watch-hours come from the Studio scrape, which is written by hand on
+        # K's desktop, not by a 4-hourly rail. The number is a 28-day rolling
+        # total, so it ages in days, not hours; judging it by the 2-hour window
+        # would make every retention verdict permanently inconclusive.
+        required = "yt_hours"
+        st = evidence.status(last.get("yt_hours"), last.get("yt_hours_at"), now,
+                             max_age_minutes=HOURS_MAX_AGE_MINUTES)
+    else:
+        required = {"income": "sp_commission", "offer": "sp_clicks"}.get(
+            constraint, "yt_subs")
+        st = evidence.status(last.get(required), last.get("at"), now)
     if st != "fresh":
         return ("INCONCLUSIVE",
                 f"หลักฐาน '{required}' ล่าสุด {st} (ไม่สด/ขาด) — ยังตัดสินไม่ได้ "
@@ -313,6 +396,18 @@ def evaluate(exp: dict, rows: list[dict], now=None) -> tuple[str, str]:
     d_views = delta("yt_views")
     exposure = d_views if isinstance(d_views, (int, float)) else 0
 
+    if constraint == "retention":
+        before, after_h = _hours_per_1k(base), _hours_per_1k(last)
+        if before is not None and after_h is not None and after_h > before:
+            return "WIN", (f"ชั่วโมงดูต่อ 1,000 วิวเพิ่ม {after_h - before:.2f} "
+                           f"({before:.2f} → {after_h:.2f}) — คนดูอยู่ยาวขึ้น")
+        if exposure < exp.get("exposure_floor", EXPOSURE_FLOOR):
+            return ("INCONCLUSIVE",
+                    f"วิวเพิ่มแค่ {exposure:g} (ต่ำกว่าพื้น "
+                    f"{exp.get('exposure_floor', EXPOSURE_FLOOR)}) — หลักฐานไม่พอ "
+                    "ตัดสิน ยังไม่นับเป็นแพ้")
+        return "FAILED", (f"วิวเพิ่ม {exposure:g} แต่ชั่วโมงดูต่อ 1,000 วิวไม่ขยับ — "
+                          "สมมติฐานนี้ไม่ทำให้คนดูอยู่ยาวขึ้น")
     if (d_comm or 0) > 0:
         return "WIN", f"ค่าคอมเพิ่ม {d_comm:g} — สิ่งที่ทำได้ผล"
     if (d_subs or 0) > 0:

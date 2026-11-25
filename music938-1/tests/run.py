@@ -7907,6 +7907,54 @@ def test_metadata_ab_holds_format_fixed() -> None:
               for c in loop.LIBRARY["reach"]))
 
 
+def test_experiment_loop_answers_every_diagnosis() -> None:
+    """Every bottleneck the daily judge can name must have a method to try.
+
+    2026-11-24: the judge named `retention` and the loop answered `exhausted`.
+    The library held reach/conversion/offer/income only, so a real bottleneck
+    produced no experiment for as long as it stayed the bottleneck — the loop
+    silently stopped doing the one thing K asked of it. The vocabulary lives in
+    `goal_watch.diagnose()`; this pins that the library answers all of it, and
+    that a retention verdict reads watch-hours instead of subscribers.
+    """
+    section("experiment loop answers every diagnosis")
+    import importlib.util
+    import time as _time
+    sys.path.insert(0, str(ROOT.parent / "aeris938-2" / "scripts"))
+    path = ROOT.parent / "aeris938-2" / "scripts" / "experiment_loop.py"
+    spec = importlib.util.spec_from_file_location("experiment_loop", path)
+    loop = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(loop)
+
+    for constraint in ("reach", "retention", "conversion", "offer", "income", "mixed"):
+        check(f"'{constraint}' has a method to try", bool(loop.LIBRARY.get(constraint)))
+    check("every library entry names one variable and one metric",
+          all(e.get("variable") and e.get("metric") and e.get("guardrail")
+              for entries in loop.LIBRARY.values() for e in entries))
+
+    now = _time.strftime("%Y-%m-%dT%H:%M:%SZ", _time.gmtime())
+    start = _time.strftime("%Y-%m-%dT%H:%M:%SZ", _time.gmtime(_time.time() - 86400))
+    exp = {"constraint": "retention", "start": start, "exposure_floor": 200}
+
+    def rows(hours):
+        return [
+            {"at": now, "yt_views": 1000, "yt_subs": 5, "yt_hours": hours[0],
+             "yt_hours_at": now},
+            {"at": now, "yt_views": 2000, "yt_subs": 5, "yt_hours": hours[1],
+             "yt_hours_at": now},
+        ]
+
+    status, _ = loop.evaluate(exp, rows((1.0, 4.0)))
+    check("longer viewing wins a retention test without new subscribers", status == "WIN")
+    status, _ = loop.evaluate(exp, rows((1.0, 2.0)))
+    check("flat hours per view is a loss once exposure is there", status == "FAILED")
+    blind = rows((1.0, 4.0))
+    for r in blind:
+        r["yt_hours"], r["yt_hours_at"] = None, None
+    status, _ = loop.evaluate(exp, blind)
+    check("a blind Studio reading is never a verdict", status == "INCONCLUSIVE")
+
+
 def test_studio_read_parses_analytics() -> None:
     """The Studio scrape must read what the Data API cannot expose.
 
@@ -10003,6 +10051,7 @@ def main() -> int:
     test_ar_identity_survives_a_lost_pod()
     test_login_check_reads_evidence()
     test_studio_read_parses_analytics()
+    test_experiment_loop_answers_every_diagnosis()
     test_heartbeat_repair_signal()
     test_consult_gate()
     test_af_advisor()

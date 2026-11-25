@@ -269,6 +269,28 @@ def _cell(d: dict | None, key: str) -> str:
     return "UNKNOWN" if v is None else str(v)
 
 
+def studio_hours() -> tuple[float | None, str | None]:
+    """Newest watch-hours reading from the Studio scrape, with the date it was read.
+
+    The Data API does not expose watch-hours, so only the signed-in Studio has
+    them (`ops/studio_read.py`). The date comes from the file name because the
+    report runs on a different clock than the scrape: judging a week-old scrape
+    as today's number would turn a blind day into a verdict.
+    """
+    files = sorted(surfaces.WORK.glob("studio-*.json"))
+    if not files:
+        return None, None
+    try:
+        data = json.loads(files[-1].read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return None, None
+    v = data.get("watch_hours_28d")
+    if not isinstance(v, (int, float)):
+        return None, None
+    stamp = files[-1].stem.removeprefix("studio-")
+    return float(v), f"{stamp}T00:00:00Z"
+
+
 def flatten(yt: dict, dash: dict) -> dict:
     """The six tracked numbers as a flat {name: value-or-None} map."""
     fb = dash.get("facebook") or {}
@@ -279,10 +301,13 @@ def flatten(yt: dict, dash: dict) -> dict:
         v = d.get(key)
         return v if isinstance(v, (int, float)) else None
 
+    hours, hours_at = studio_hours()
     return {
         "yt_subs": num(yt, "subs"),
         "yt_views": num(yt, "views"),
         "yt_videos": num(yt, "videos"),
+        "yt_hours": hours,
+        "yt_hours_at": hours_at,
         "fb_followers": num(fb, "followers"),
         "fb_views_28d": num(fb, "views_28d"),
         "tk_followers": num(tk, "followers_total"),

@@ -42,15 +42,7 @@ def studio_hours() -> float | None:
     and stayed silent about the half that is actually further from opening
     (23.5 h on 2026-11-13, 0.6% of the gate). None means "not read", never 0.
     """
-    files = sorted(surfaces.WORK.glob("studio-*.json"))
-    if not files:
-        return None
-    try:
-        data = json.loads(files[-1].read_text(encoding="utf-8"))
-    except (OSError, json.JSONDecodeError):
-        return None
-    v = data.get("watch_hours_28d")
-    return float(v) if isinstance(v, (int, float)) else None
+    return report.studio_hours()[0]
 
 
 def load(path: Path | None = None) -> list[dict]:
