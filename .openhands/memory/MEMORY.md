@@ -15,19 +15,18 @@ folder*. **Read it before touching a clip lane; add a row before adding a rail.*
 Row shape in archive; it **fails closed** (`assert_lane`, `may_render`).
 - **`compass.songs(lane)` is the only way a lane lists songs**;
   `compass.is_publishable(slug)` is the single-slug form; `--check` must be
-  clean. Globbing `song-*.mp3` rendered 18 of 32 masters in a parked genre.
-- **A bed is not a song: the compass filters BOTH**; a slug on argv must call
-  `compass.require_publishable`. List and single-slug forms must never disagree.
+- **A bed is not a song: the compass filters BOTH**; argv slugs call
+  `compass.require_publishable`; list and single-slug must agree.
 - **The product is a SONG clip, not a narrated one** (`narration` only where K
-  asked by name: `trivia`; `story` is a **tool**). Old posted clips untouched.
+  named it: `trivia`; `story` = **tool**). Old posted clips untouched.
 - **`mv` has a rail** (`ax-music-mv`: 4K → media-938; publish stays in
-  `release.py`); `film` still none. Karaoke rail deleted (K 2026-11-21).
+  `release.py`); `film` still none. karaoke rail deleted.
 
 ## Genre = FUN ONLY — **five main lanes** (K 2026-11-21)
 **Active: pop / rock / rap / hiphop / alternative** (`main_genres` in
 `channel/genres.json`). Everything else PARKED = ห้ามอัพ (edm, synthpop, citypop,
 เพื่อชีวิต …). **ทำทั้งช้าและเร็ว, ทุกเพลงต้องมีท่อนฮุกติดหู.**
-**All 20 `lyrics-original/` songs are เพื่อชีวิต — never publish them.**
+**`lyrics-original/` (เพื่อชีวิต) — never publish.**
 `genres.publishable()` fails closed at **every** publish path; `--list-songs`
 stdout must stay pure (a log line piped to `shuf` killed the lane once).
 
@@ -35,15 +34,13 @@ stdout must stay pure (a log line piped to `shuf` killed the lane once).
 **K = final authority.** **AR = me**: I administer all of K's work in K's place —
 decide, execute, report; no per-step approval. Method: **PCSEV**. Advisor =
 **Gemini alone** (`ops/consult.py`, advisory). **Time to K = Thai (UTC+7) 24h**;
-rails stay UTC. **A diagnosis with no method = "exhausted" forever** (2026-11-25):
-every constraint `goal_watch` can name needs a `LIBRARY` entry — pinned by test.
+rails stay UTC. **A diagnosis with no method = "exhausted" forever** (2026-11-25).
 
 ## What this project is (K's goal)
 "เราไม่ได้เป็นคนสร้างช่อง เราสร้าง ai openhands" — the deliverable is **the agent**.
-Scope = **4 channels** (FB, TikTok, YT `@aerismusicth`, Shopee). Roblox goals are
-**PARKED**, never closed. **Brand = เพลงส้นทีนไรเนี่ย**, only in `branding.py`.
-**Revenue gate = ch3**: 1,000 subs AND 4,000 watch-hours/12 mo; the metric is
-**followers** — end every clip with `release.FOLLOW_ASK` + `FOLLOW_PROMISE`.
+Scope = **4 channels** (FB, TikTok, YT `@aerismusicth`, Shopee). Roblox = **PARKED**. **Brand = เพลงส้นทีนไรเนี่ย**, only in `branding.py`.
+**Revenue gate = ch3**: 1,000 subs AND 4,000 watch-hours/12 mo; clips end with
+`release.FOLLOW_ASK` + `FOLLOW_PROMISE`.
 
 ## Sound + clip quality (K)
 **sfizz** not GM; `AX_REQUIRE_REAL_INSTRUMENTS=1` → fallback **raises**.
@@ -62,14 +59,13 @@ not strict**.
 Flow Music/Gemini run on K's `aerismusic8`; K taps a QR once, then
 `login_vault.py save` **immediately**.
 
-**A ledger only knows what it wrote — audit the live surface** (archive). **K
-settled those 4: leave them.** **A report counts artifacts, not inputs**
+**A ledger only knows what it wrote — audit the live surface** (archive). **A report counts artifacts, not inputs**
 (`genres.py --report` reads the release).
 
 
 ## Environment + platform risks
 - **Fresh pod: `scripts/bootstrap-pod.sh`**; MV links must be durable
-  (`ops/mv_page.py --all`). Judge rail health from the **run history**.
+  (`ops/mv_page.py --all`).
 - **FB = Graph API only** (K 2026-11-15); browser posting is off.
 - **Vault = truth; a secret injects only when the command *names* it.**
 - **Writes:** `GITHUB_TOKEN` is 403; push via KV `axsecrets:gh-workflow-token`
@@ -81,17 +77,22 @@ settled those 4: leave them.** **A report counts artifacts, not inputs**
   guess. **`videos.list` ≤50 ids.**
 - **Bound every rail:** `timeout-minutes` + `cancel-in-progress: true`;
   `OPENHANDS_RISK_REGISTER.json` + `ops/risk_audit.py --strict`.
-- **`ops/HOLD.md` decides whether rails may run** (lifted 11-13; K's
-  **posting stop** 2026-11-20 is `ops/PUBLISH-HOLD` → `hold_gate.active()`).
+- **`ops/HOLD.md` decides whether rails may run**; K's **posting stop**
+  (2026-11-20) is `ops/PUBLISH-HOLD` → `hold_gate.active()`.
+- **11-26: the image bank was dead for 3 days** (6×120-min cancels, newest
+  row 11-23): a stale page reset the exit test and cursors were saved only on
+  a kept batch (PR #59). **Judge a harvest by the manifest, not the run
+  list.** Volume preflight also needs `pull_media --only covers`;
+  **TikTok has no token** — it needs K's developer app.
 
 ## Art + NEW work
 `shot_director.py` cuts **on the music**; **pick an un-clipped song**; the
 **release** is the catalogue.
 **NO REPEATS, EVER (K 2026-11-21) — content, not names.** `ops/no_repeat.py` gates
 every MV: audio SHA-256, lyric shingle ≥90%, picture SHA-1 vs `picture-ledger.json`;
-<8 unused → refuse (fill the library). One palette per MV from 8. Pinned by 4 tests;
-keep `music938-1/tests/run.py` green.
+<8 unused → refuse (fill the library). One palette per MV from 8. Keep
+`music938-1/tests/run.py` green.
 
 ## Recovery
-`$AX_VAULT_BOOTSTRAP` → `ops/ax_vault.py` (`axvault:readme`); a lost `work/*.json`
+`$AX_VAULT_BOOTSTRAP` → `ops/ax_vault.py`; a lost `work/*.json`
 is in the event log.
