@@ -1062,6 +1062,47 @@ def test_image_bank_skips_spent_queries() -> None:
           src.count('spent[q] = _now()[:10]') == 2)
 
 
+def test_crosslink_appends_once_and_keeps_the_snippet() -> None:
+    """A description edit must not cost the video its title, tags or language.
+
+    `videos.update` replaces the whole snippet, so the payload is the whole
+    contract: miss a field and the video loses it. And the line must be added
+    exactly once - a backfill that runs twice must not stack the same link.
+    """
+    section("the retro cross-link edits the description and nothing else")
+    import yt_crosslink  # noqa: PLC0415
+
+    line = "\U0001F3A7 \u0e1f\u0e31\u0e07\u0e23\u0e27\u0e21: https://youtu.be/OWrIFAz2sK8"
+    check("the line is appended below the existing text",
+          yt_crosslink.new_description("body text", line) == "body text\n\n" + line)
+    check("an empty description becomes just the line",
+          yt_crosslink.new_description("", line) == line)
+
+    item = {"id": "abc", "snippet": {
+        "title": "T", "description": "old", "categoryId": "10",
+        "tags": ["a", "b"], "defaultLanguage": "th"}}
+    pay = yt_crosslink.snippet_payload(item, line)
+    check("the title survives", pay["snippet"]["title"] == "T")
+    check("the tags survive", pay["snippet"]["tags"] == ["a", "b"])
+    check("the category survives", pay["snippet"]["categoryId"] == "10")
+    check("the language survives", pay["snippet"]["defaultLanguage"] == "th")
+    check("the id is carried for the PUT", pay["id"] == "abc")
+
+    def vid(i, views, desc="x", privacy="public"):
+        return {"id": i, "snippet": {"description": desc},
+                "statistics": {"viewCount": str(views)},
+                "status": {"privacyStatus": privacy}}
+
+    picked = yt_crosslink.plan(
+        [vid("a", 5), vid("b", 50), vid("c", 500, desc=line), vid("d", 900, privacy="private")],
+        line, top=2)
+    check("the most-viewed unlinked public clips are picked",
+          [p["id"] for p in picked] == ["b", "a"])
+    check("a video that already has the link is skipped",
+          all(p["id"] != "c" for p in picked))
+    check("a private video is never touched", all(p["id"] != "d" for p in picked))
+
+
 def test_yt_audit_reads_the_features_it_can_change() -> None:
     """The audit must measure what the pipeline can act on, and measure it right.
 
@@ -10418,6 +10459,7 @@ def main() -> int:
     test_picture_library_is_4k()
     test_image_bank_harvest_is_bounded()
     test_image_bank_skips_spent_queries()
+    test_crosslink_appends_once_and_keeps_the_snippet()
     test_yt_audit_reads_the_features_it_can_change()
     test_clip_caption_points_at_the_long_form_volume()
     test_tiktok_auth_is_one_tap_and_offline_checkable()
