@@ -184,6 +184,11 @@ def build(volume: int, *, render: bool = False) -> dict:
     ca.COMPILED.mkdir(parents=True, exist_ok=True)
     (ca.COMPILED / f"{stem}.title").write_text(volume_title(volume),
                                                encoding="utf-8")
+    # The uploader runs the genre gate on every song the volume carries and
+    # refuses (exit 4) when it cannot name them — that missing sidecar is what
+    # stopped the series after Vol.2.
+    (ca.COMPILED / f"{stem}.songs").write_text("\n".join(slugs) + "\n",
+                                               encoding="utf-8")
     (ca.COMPILED / f"{stem}.txt").write_text(
         volume_description(slugs, volume), encoding="utf-8")
     out = None
