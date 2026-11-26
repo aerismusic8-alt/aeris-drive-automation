@@ -15,6 +15,7 @@ import re
 import subprocess
 import sys
 import unicodedata
+import urllib.parse
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -1059,6 +1060,37 @@ def test_image_bank_skips_spent_queries() -> None:
           "live = [q for q in queries if not is_spent" in src)
     check("an exhausted page marks the query",
           src.count('spent[q] = _now()[:10]') == 2)
+
+
+def test_tiktok_auth_is_one_tap_and_offline_checkable() -> None:
+    """TikTok blocks nothing but its own authorization; the rest must be ready.
+
+    `tiktok_api.available()` is False on every tick because no app token exists,
+    so `bank_publish` skips TikTok entirely. `ops/tiktok_auth.py` makes the one
+    step K has to do a single tap: print the authorize URL, then take the pasted
+    redirect back. The URL and the parser are the parts that must not be wrong.
+    """
+    section("the TikTok authorization is one tap and checked offline")
+    import importlib  # noqa: PLC0415
+    sys.path.insert(0, str(ROOT.parent / "ops"))
+    t = importlib.import_module("tiktok_auth")
+    verifier, challenge = t.pkce()
+    check("the PKCE verifier is 43-128 chars", 43 <= len(verifier) <= 128)
+    check("the challenge is URL-safe base64", set(challenge) <= set(
+        "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_"))
+    url = t.authorize_url("key123", "https://example.test/cb", challenge, "st")
+    q = urllib.parse.parse_qs(urllib.parse.urlparse(url).query)
+    check("it points at TikTok's authorize endpoint",
+          url.startswith("https://www.tiktok.com/v2/auth/authorize/?"))
+    check("it asks for the publishing scope",
+          "video.publish" in (q.get("scope") or [""])[0])
+    check("it is a code flow with S256",
+          q.get("response_type") == ["code"] and q.get("code_challenge_method") == ["S256"])
+    check("it carries the redirect URI unchanged",
+          q.get("redirect_uri") == ["https://example.test/cb"])
+    check("a pasted redirect URL yields its code",
+          t.code_from("https://example.test/cb?code=C0DE&state=st") == "C0DE")
+    check("a bare code is accepted", t.code_from(" 'C0DE' ") == "C0DE")
 
 
 def test_volume_ships_its_tracklist_to_the_gate() -> None:
@@ -10322,6 +10354,7 @@ def main() -> int:
     test_picture_library_is_4k()
     test_image_bank_harvest_is_bounded()
     test_image_bank_skips_spent_queries()
+    test_tiktok_auth_is_one_tap_and_offline_checkable()
     test_volume_ships_its_tracklist_to_the_gate()
     test_media_home_falls_back()
     test_story_reel_contract()
