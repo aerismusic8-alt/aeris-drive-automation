@@ -194,11 +194,17 @@ def commons_page(query: str, min_width: int, offset: int, limit: int = 500) -> t
 
 
 def harvest(queries: list[str], want: int, per_query: int, min_width: int,
-            sleep_s: float, log=print) -> int:
+            sleep_s: float, log=print, budget_s: float = 0.0) -> int:
     """Walk each query's Commons pages, keep what is new, stop at `want`.
 
     Each query records the offset it reached, so the next run resumes there
     instead of re-fetching page 1 and finding every title already held.
+
+    Three limits bound the walk, because an unbounded one is not a harvest: the
+    `want` count, two consecutive "nothing new" pages per query, and a wall-clock
+    `budget_s`. Without them, once page 1 of every query was already in the bank
+    the loop kept advancing cursors that were never persisted — six runs in a row
+    spent the full 120-minute cap and committed nothing.
     """
     import stills_rail  # noqa: PLC0415
 
@@ -210,7 +216,12 @@ def harvest(queries: list[str], want: int, per_query: int, min_width: int,
     made = 0
     qi = 0
     exhausted = 0
+    stale: dict[str, int] = {}
+    deadline = time.monotonic() + budget_s if budget_s else None
     while made < want and exhausted < len(queries):
+        if deadline and time.monotonic() >= deadline:
+            log(f"  budget {budget_s:.0f}s reached — stopping at {made} new")
+            break
         q = queries[qi % len(queries)]
         qi += 1
         offset = int(cursors.get(q, 0))
@@ -219,12 +230,19 @@ def harvest(queries: list[str], want: int, per_query: int, min_width: int,
             exhausted += 1
             log(f"  {q}: exhausted at offset {offset}")
             continue
-        exhausted = 0
         cursors[q] = nxt if nxt is not None else offset
+        # Persist the advance even when it finds nothing: a cursor saved only on
+        # a successful batch is a cursor the next run throws away.
+        save(doc)
         batch = [it for it in items if it["title"] not in seen_titles][:per_query]
         if not batch:
-            log(f"  {q}: offset {offset}, nothing new")
+            stale[q] = stale.get(q, 0) + 1
+            log(f"  {q}: offset {offset}, nothing new ({stale[q]})")
+            if stale[q] >= 2:
+                exhausted += 1
             continue
+        stale[q] = 0
+        exhausted = 0
         got = stills_rail.download(batch, "/tmp/bank-raw", log=lambda m: None)
         for it in got:
             if made >= want:
@@ -256,6 +274,7 @@ def harvest(queries: list[str], want: int, per_query: int, min_width: int,
         save(doc)
         if sleep_s:
             time.sleep(sleep_s)
+    save(doc)
     log(f"harvest: {made} new, bank {started} -> {len(doc['images'])}")
     return made
 
@@ -364,6 +383,9 @@ def main() -> int:
     h.add_argument("--per-query", type=int, default=6)
     h.add_argument("--min-width", type=int, default=MIN_W)
     h.add_argument("--sleep", type=float, default=0.0)
+    h.add_argument("--budget-s", type=float, default=0.0,
+                   help="wall-clock seconds for the walk (0 = no limit); the rail "
+                        "must leave time to shard and commit before its job cap")
 
     s = sub.add_parser("shard", help="pack + upload + free local disk")
     s.add_argument("--dry-run", action="store_true")
@@ -380,7 +402,9 @@ def main() -> int:
               if ln.strip() and not ln.startswith("#")]
         if not qs:
             raise SystemExit("no queries in that file")
-        return 0 if harvest(qs, a.want, a.per_query, a.min_width, a.sleep) >= 0 else 1
+        return 0 if harvest(qs, a.want, a.per_query, a.min_width, a.sleep,
+                            log=lambda m: print(m, flush=True),
+                            budget_s=a.budget_s) >= 0 else 1
 
     if a.cmd == "shard":
         return shard(token(), a.dry_run)

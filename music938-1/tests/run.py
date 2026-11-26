@@ -980,6 +980,62 @@ def test_picture_library_is_4k() -> None:
           ga.SIZES["print"][0] >= 3840, f"print={ga.SIZES['print']}")
 
 
+def test_image_bank_harvest_is_bounded() -> None:
+    """Six image-bank runs spent the full 120-minute cap and committed nothing.
+
+    Cause: once page 1 of every query was already in the bank, each page came
+    back "nothing new", which reset the exhaustion counter, so the walk kept
+    paging until the job was killed; and a cursor was persisted only when a batch
+    was kept, so the next run restarted at offset 0 and repeated the whole thing.
+    The walk is now bounded (two stale pages per query, optional wall-clock
+    budget) and the cursor is saved on every page, kept or not.
+    """
+    section("image bank harvest is bounded")
+    import importlib.util
+    import json as _json
+    import tempfile
+    ops = ROOT.parent / "ops"
+    spec = importlib.util.spec_from_file_location("image_bank_bounded",
+                                                 ops / "image_bank.py")
+    ib = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(ib)
+
+    tmp = Path(tempfile.mkdtemp())
+    ib.LIB = tmp
+    ib.MANIFEST = tmp / "manifest.json"
+    seen = {"version": 1, "shards": [], "cursors": {},
+            "images": [{"title": "File:already-held.jpg", "sha": "x"}]}
+    ib.MANIFEST.write_text(_json.dumps(seen))
+
+    calls = []
+
+    def page_of_known_titles(query, min_width, offset, limit=500):
+        calls.append((query, offset))
+        return [{"title": "File:already-held.jpg"}], offset + 500
+
+    ib.commons_page = page_of_known_titles
+    made = ib.harvest(["q1", "q2"], want=100, per_query=10, min_width=1600,
+                      sleep_s=0, log=lambda m: None)
+    check("a bank whose pages hold only known titles returns, not loops", made == 0)
+    check("two stale pages end a query", len(calls) == 4, f"pages fetched: {len(calls)}")
+    cursors = _json.loads(ib.MANIFEST.read_text())["cursors"]
+    check("a cursor that found nothing is still persisted",
+          cursors.get("q1") == 1000 and cursors.get("q2") == 1000, str(cursors))
+
+    calls.clear()
+    ib.MANIFEST.write_text(_json.dumps(seen))
+    ib.commons_page = page_of_known_titles
+    made = ib.harvest(["q1"], want=100, per_query=10, min_width=1600, sleep_s=0,
+                      log=lambda m: None, budget_s=1e-9)
+    check("a spent wall-clock budget stops the walk before a request",
+          made == 0 and not calls)
+
+    src = Path(ib.__file__).read_text(encoding="utf-8")
+    check("the CLI exposes the budget", '"--budget-s"' in src)
+    wf = (ROOT.parent / ".github" / "workflows" / "ax-image-bank.yml").read_text(encoding="utf-8")
+    check("the rail leaves time to shard and commit", "--budget-s 5400" in wf)
+
+
 def test_media_home_falls_back() -> None:
     """K (2026-11-20): when PC1's D: is unreachable, a new library must be made.
 
@@ -10212,6 +10268,7 @@ def main() -> int:
     test_stock_bank_scales_and_stays_licensed()
     test_genart_is_original_reproducible_print_art()
     test_picture_library_is_4k()
+    test_image_bank_harvest_is_bounded()
     test_media_home_falls_back()
     test_story_reel_contract()
     test_mv_pictures_are_not_repeated()

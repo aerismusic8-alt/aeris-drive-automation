@@ -68,7 +68,8 @@ jobs:
           set -uo pipefail
           python3 ops/image_bank.py harvest \
             --queries ops/bank-queries.txt \
-            --want "$WANT" --per-query "$PER_QUERY" --min-width 1600 --sleep 0.2
+            --want "$WANT" --per-query "$PER_QUERY" --min-width 1600 --sleep 0.2 \
+            --budget-s 5400
 
       - name: Pack + upload a shard, free the runner's disk
         env:
