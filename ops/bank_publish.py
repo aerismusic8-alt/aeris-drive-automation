@@ -35,6 +35,7 @@ sys.path.insert(0, str(ROOT / "music938-1" / "scripts"))
 
 BANK = ROOT / "music938-1" / "library" / "bank"
 STATE = ROOT / "music938-1" / "work" / "bank-publish-state.json"
+VOLUMES = ROOT / "music938-1" / "work" / "volume-series-state.json"
 
 
 def _branding():
@@ -90,7 +91,30 @@ def clip_tags(clip: Path, kind: str = "short") -> list[str]:
     return release.describe(slug, kind)[2] if slug else []
 
 
-def build_caption(clip: Path, kind: str = "short") -> str:
+def long_form_line(state: Path | None = None) -> str:
+    """A pointer from a clip to the newest long-form volume, or "".
+
+    Clips and the volume series were publishing into separate worlds: a viewer
+    who liked a 58-second clip had no route to the hour of music behind it. Only
+    YouTube descriptions can carry a clickable link, so the line is added there
+    and nowhere else.
+    """
+    path = state or VOLUMES
+    try:
+        s = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return ""
+    vols = s.get("volumes") or {}
+    if not vols:
+        return ""
+    n = max(vols, key=lambda k: int(k))
+    vid = (vols[n] or {}).get("video_id")
+    if not vid:
+        return ""
+    return f"🎧 ฟังเวอร์ชันยาวทั้งชุด — Vol.{n}: https://youtu.be/{vid}"
+
+
+def build_caption(clip: Path, kind: str = "short", long_form: str = "") -> str:
     """Description for every channel: the calibrated text plus the follow ask.
 
     K's metric is followers, so the ask closes every post — a view without a
@@ -106,6 +130,7 @@ def build_caption(clip: Path, kind: str = "short") -> str:
         "",
         f"{b.FOLLOW_ASK} — {b.FOLLOW_PROMISE}",
         b.CHANNEL_URL,
+        *(["", long_form] if long_form else []),
         "",
         b.HASHTAGS,
         "",
@@ -135,7 +160,8 @@ def youtube(clip: Path, *, when: str | None, privacy: str | None,
         td = Path(td)
         thumb = make_thumb(clip, td / "thumb.jpg")
         desc = td / "desc.txt"
-        desc.write_text(build_caption(clip, kind), encoding="utf-8")
+        desc.write_text(build_caption(clip, kind, long_form_line()),
+                        encoding="utf-8")
         tags = td / "tags.txt"
         tags.write_text(",".join(clip_tags(clip, kind)), encoding="utf-8")
         cmd = [sys.executable, str(ROOT / "ops" / "yt_publish.py"),

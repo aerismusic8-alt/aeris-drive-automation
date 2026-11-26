@@ -1062,6 +1062,32 @@ def test_image_bank_skips_spent_queries() -> None:
           src.count('spent[q] = _now()[:10]') == 2)
 
 
+def test_clip_caption_points_at_the_long_form_volume() -> None:
+    """A clip and the hour of music behind it must not be separate worlds.
+
+    Nothing linked the two surfaces: a viewer who liked a 58-second clip had no
+    route to Vol.N, and Vol.N is the only artefact with hours in it. Only a
+    YouTube description can carry a clickable link, so the pointer lives there.
+    """
+    section("a clip's YouTube caption points at the newest volume")
+    import bank_publish  # noqa: PLC0415
+    import tempfile  # noqa: PLC0415
+    td = Path(tempfile.mkdtemp())
+    (td / "s.json").write_text(json.dumps({
+        "volumes": {"1": {"video_id": "aaa"}, "3": {"video_id": "OWrIFAz2sK8"}},
+        "next_volume": 4}), encoding="utf-8")
+    line = bank_publish.long_form_line(td / "s.json")
+    check("the newest volume is the one linked", "Vol.3" in line)
+    check("it is a real watch URL", "https://youtu.be/OWrIFAz2sK8" in line)
+    (td / "e.json").write_text("{}", encoding="utf-8")
+    check("no volumes means no dead line", bank_publish.long_form_line(td / "e.json") == "")
+    check("a missing state file is not an error",
+          bank_publish.long_form_line(td / "nope.json") == "")
+    src = (ROOT.parent / "ops" / "bank_publish.py").read_text(encoding="utf-8")
+    check("the YouTube poster passes it in, the others do not",
+          "build_caption(clip, kind, long_form_line())" in src)
+
+
 def test_tiktok_auth_is_one_tap_and_offline_checkable() -> None:
     """TikTok blocks nothing but its own authorization; the rest must be ready.
 
@@ -10354,6 +10380,7 @@ def main() -> int:
     test_picture_library_is_4k()
     test_image_bank_harvest_is_bounded()
     test_image_bank_skips_spent_queries()
+    test_clip_caption_points_at_the_long_form_volume()
     test_tiktok_auth_is_one_tap_and_offline_checkable()
     test_volume_ships_its_tracklist_to_the_gate()
     test_media_home_falls_back()
