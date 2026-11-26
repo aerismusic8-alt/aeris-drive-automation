@@ -213,5 +213,22 @@
       "ok": false,
       "skipped": "no TikTok token"
     }
+  },
+  "bank-song-15-thanon-sai-kao-bangkok-night.mp4": {
+    "youtube": {
+      "ok": true,
+      "id": "OCDQsLH_onA",
+      "detail": [
+        "https://youtu.be/OCDQsLH_onA"
+      ]
+    },
+    "facebook": {
+      "ok": true,
+      "id": "1683482840040499"
+    },
+    "tiktok": {
+      "ok": false,
+      "skipped": "no TikTok token"
+    }
   }
 }
