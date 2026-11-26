@@ -1,0 +1,434 @@
+{
+ "channel": "ch3",
+ "generated": "2026-11-26T22:59:13+00:00",
+ "uploads": 112,
+ "public": 112,
+ "ranked_pool": 66,
+ "min_age_days": 14.0,
+ "n": 20,
+ "totals": {
+  "views": 5340,
+  "shorts": 101,
+  "shorts_views": 5043,
+  "long": 11,
+  "long_views": 297
+ },
+ "median_all": {
+  "views": 6.0,
+  "views_per_day": 0.46,
+  "seconds": 59.0,
+  "t_len": 41.0,
+  "t_thai_share": 0.71,
+  "tags_n": 14.0,
+  "desc_len": 997.5,
+  "likes": 0.0,
+  "th_bright": 53.1,
+  "th_contrast": 53.2,
+  "th_saturation": 0.36,
+  "th_busy": 0.05,
+  "t_digit_lead_share": 0.02,
+  "t_emoji_share": 0.03,
+  "t_pipe_share": 0.54,
+  "t_hashtag_share": 0.61
+ },
+ "median_top": {
+  "views": 44.0,
+  "views_per_day": 2.09,
+  "seconds": 59.0,
+  "t_len": 43.0,
+  "t_thai_share": 0.66,
+  "tags_n": 12.0,
+  "desc_len": 701.5,
+  "likes": 0.0,
+  "th_bright": 38.05,
+  "th_contrast": 47.3,
+  "th_saturation": 0.36,
+  "th_busy": 0.04,
+  "t_digit_lead_share": 0.05,
+  "t_emoji_share": 0.0,
+  "t_pipe_share": 0.35,
+  "t_hashtag_share": 0.9
+ },
+ "median_bottom": {
+  "views": 1.0,
+  "views_per_day": 0.07,
+  "seconds": 214.0,
+  "t_len": 43.5,
+  "t_thai_share": 0.78,
+  "tags_n": 14.0,
+  "desc_len": 1021.5,
+  "likes": 0.0,
+  "th_bright": 50.0,
+  "th_contrast": 51.1,
+  "th_saturation": 0.41,
+  "th_busy": 0.04,
+  "t_digit_lead_share": 0.0,
+  "t_emoji_share": 0.0,
+  "t_pipe_share": 0.65,
+  "t_hashtag_share": 0.4
+ },
+ "top": [
+  {
+   "id": "vjzxRMkZtao",
+   "title": "สัญญาจากใจ | ร้องต่อไหม? #Shorts",
+   "views": 243,
+   "views_per_day": 14.72,
+   "age_days": 16.513583432766204,
+   "seconds": 59,
+   "tags_n": 14
+  },
+  {
+   "id": "3Yz2jxZnKmM",
+   "title": "รวมเพลงไทยเพื่อชีวิต 15 เพลง (เลือกเพลงฟังได้)",
+   "views": 269,
+   "views_per_day": 10.46,
+   "age_days": 25.707669080914354,
+   "seconds": 3402,
+   "tags_n": 12
+  },
+  {
+   "id": "-6RdLKwxykk",
+   "title": "คิดถึงเธอทุกคืน (ท่อนที่ 2) #เพลงไทย #Shorts",
+   "views": 241,
+   "views_per_day": 9.42,
+   "age_days": 25.575284821655092,
+   "seconds": 59,
+   "tags_n": 11
+  },
+  {
+   "id": "TISzvF9AQig",
+   "title": "คนดีที่จากไป (ท่อนที่ 1) #เพลงไทย #Shorts",
+   "views": 185,
+   "views_per_day": 7.23,
+   "age_days": 25.575886673506947,
+   "seconds": 59,
+   "tags_n": 11
+  },
+  {
+   "id": "iLwzR8A_1uw",
+   "title": "คิดถึงเธอทุกคืน (ท่อนที่ 3) #เพลงไทย #Shorts",
+   "views": 157,
+   "views_per_day": 6.18,
+   "age_days": 25.408618154988428,
+   "seconds": 50,
+   "tags_n": 11
+  },
+  {
+   "id": "OrXLDpIq7s4",
+   "title": "รักที่จากไป | ร้องต่อไหม? #Shorts",
+   "views": 52,
+   "views_per_day": 3.2,
+   "age_days": 16.274729266099538,
+   "seconds": 59,
+   "tags_n": 15
+  },
+  {
+   "id": "1T3kibOPyXM",
+   "title": "คิดถึงเธอทุกคืน | ท่อนนี้คิดถึงใคร? #Shorts",
+   "views": 61,
+   "views_per_day": 3.0,
+   "age_days": 20.34404639572917,
+   "seconds": 59,
+   "tags_n": 12
+  },
+  {
+   "id": "PEds64ntVlQ",
+   "title": "รักที่ไม่มีวันจบ (ท่อนที่ 2) #เพลงไทย #Shorts",
+   "views": 56,
+   "views_per_day": 2.63,
+   "age_days": 21.328861210543984,
+   "seconds": 59,
+   "tags_n": 12
+  },
+  {
+   "id": "26NljlQecXk",
+   "title": "ฝนตกในใจ | ร้องต่อไหม? #Shorts",
+   "views": 46,
+   "views_per_day": 2.38,
+   "age_days": 19.31890750684028,
+   "seconds": 59,
+   "tags_n": 12
+  },
+  {
+   "id": "msgz1QSlw6s",
+   "title": "รักที่ไม่มีวันจบ — เพลงอบอุ่น ฟังแล้วใจนุ่ม",
+   "views": 50,
+   "views_per_day": 2.21,
+   "age_days": 22.628051025358797,
+   "seconds": 214,
+   "tags_n": 12
+  },
+  {
+   "id": "EVJhOaQHfmc",
+   "title": "รักที่ไม่มีวันจบ (ท่อนที่ 3) #เพลงไทย #Shorts",
+   "views": 42,
+   "views_per_day": 1.97,
+   "age_days": 21.32873389572917,
+   "seconds": 40,
+   "tags_n": 12
+  },
+  {
+   "id": "R1ciTRG9gk0",
+   "title": "ฝนตกในใจ | ร้องต่อท่อนต่อไป #Shorts",
+   "views": 34,
+   "views_per_day": 1.76,
+   "age_days": 19.318421395729168,
+   "seconds": 40,
+   "tags_n": 12
+  },
+  {
+   "id": "Rfu36NBYdTQ",
+   "title": "ฝนตกในใจ | ท่อนนี้คิดถึงใคร? #Shorts",
+   "views": 33,
+   "views_per_day": 1.71,
+   "age_days": 19.318618154988428,
+   "seconds": 59,
+   "tags_n": 12
+  },
+  {
+   "id": "snpnSF5Y_U0",
+   "title": "แสงเช้าวันใหม่ (ท่อนที่ 3) #เพลงไทย #Shorts",
+   "views": 39,
+   "views_per_day": 1.63,
+   "age_days": 23.994810284618058,
+   "seconds": 50,
+   "tags_n": 11
+  },
+  {
+   "id": "X3A5PMMNgfU",
+   "title": "3 จุดที่ควรดู ก่อนซื้อหูฟังบลูทูธ #ของน่าซื้อ #Shorts",
+   "views": 27,
+   "views_per_day": 1.33,
+   "age_days": 20.34328250684028,
+   "seconds": 59,
+   "tags_n": 8
+  },
+  {
+   "id": "Dmmvl07DkVw",
+   "title": "ฝนตกในใจ (ท่อนที่ 2) #เพลงไทย #Shorts",
+   "views": 30,
+   "views_per_day": 1.29,
+   "age_days": 23.209092692025465,
+   "seconds": 59,
+   "tags_n": 11
+  },
+  {
+   "id": "jIOB8FWExlA",
+   "title": "คิดถึงเธอทุกคืน (ท่อนที่ 1) #เพลงไทย #Shorts",
+   "views": 27,
+   "views_per_day": 1.27,
+   "age_days": 21.328444543877314,
+   "seconds": 59,
+   "tags_n": 12
+  },
+  {
+   "id": "y-Y2DNmopHk",
+   "title": "หูฟังตัดเสียงรบกวน คุ้มกับเงินที่จ่ายไหม #ของน่าซื้อ #Shorts",
+   "views": 25,
+   "views_per_day": 1.24,
+   "age_days": 20.176731580914353,
+   "seconds": 59,
+   "tags_n": 8
+  },
+  {
+   "id": "STQsMvhb0yk",
+   "title": "แสงเช้าวันใหม่ (ท่อนที่ 2) #เพลงไทย #Shorts",
+   "views": 30,
+   "views_per_day": 1.24,
+   "age_days": 24.16183574758102,
+   "seconds": 59,
+   "tags_n": 11
+  },
+  {
+   "id": "XSDoniGA4nk",
+   "title": "ดอกไม้ริมทาง | ร้องต่อไหม? #Shorts",
+   "views": 19,
+   "views_per_day": 1.14,
+   "age_days": 16.68005334017361,
+   "seconds": 59,
+   "tags_n": 15
+  }
+ ],
+ "bottom": [
+  {
+   "id": "n8At2UBF5Aw",
+   "title": "จัดโต๊ะฟังเพลง งบหลักร้อย ทำได้จริง | #Shorts",
+   "views": 3,
+   "views_per_day": 0.17,
+   "age_days": 17.179972321655093,
+   "seconds": 59,
+   "tags_n": 9
+  },
+  {
+   "id": "wDvzfG9XDfk",
+   "title": "อกหัก คิดถึงคนเก่า ฟังตอนดึก | รวมเพลงเศร้าไทย 8 เพลง (เลือกเพลงฟังได้)",
+   "views": 3,
+   "views_per_day": 0.17,
+   "age_days": 17.698525562395833,
+   "seconds": 1775,
+   "tags_n": 12
+  },
+  {
+   "id": "pFEZLvawdEY",
+   "title": "หัวใจสีเทา | ร้องต่อไหม? #Shorts",
+   "views": 3,
+   "views_per_day": 0.17,
+   "age_days": 17.889694543877315,
+   "seconds": 59,
+   "tags_n": 15
+  },
+  {
+   "id": "-v2y3BWIww8",
+   "title": "เพลงกล่อมนอน 8 ชั่วโมง | เพลงผ่อนคลายหลับสบาย AERIS Music",
+   "views": 2,
+   "views_per_day": 0.14,
+   "age_days": 14.230967692025464,
+   "seconds": 28801,
+   "tags_n": 6
+  },
+  {
+   "id": "7OP5JOK9R2w",
+   "title": "หัวใจสีเทา | ท่อนนี้คิดถึงใคร? #Shorts",
+   "views": 2,
+   "views_per_day": 0.14,
+   "age_days": 14.455273247581019,
+   "seconds": 59,
+   "tags_n": 15
+  },
+  {
+   "id": "0odhiX5ZS94",
+   "title": "ยืนหยัดไม่ยอม — เพลงปลุกใจ ออกกำลังกาย",
+   "views": 2,
+   "views_per_day": 0.14,
+   "age_days": 14.788606580914353,
+   "seconds": 214,
+   "tags_n": 15
+  },
+  {
+   "id": "2pte2hsHtGg",
+   "title": "สาวนาคอยพี่ — เพลงให้กำลังใจ เริ่มวันใหม่",
+   "views": 2,
+   "views_per_day": 0.13,
+   "age_days": 14.955307969803242,
+   "seconds": 235,
+   "tags_n": 15
+  },
+  {
+   "id": "VszxlNEpS_w",
+   "title": "เพลงกล่อมของแม่ | ร้องต่อไหม? #Shorts",
+   "views": 2,
+   "views_per_day": 0.12,
+   "age_days": 16.108132043877315,
+   "seconds": 59,
+   "tags_n": 14
+  },
+  {
+   "id": "RCUcjb7i_Xo",
+   "title": "เพลงผ่อนคลาย 8 ชั่วโมง | ทำงาน อ่านหนังสือ นั่งสมาธิ AERIS Music",
+   "views": 1,
+   "views_per_day": 0.07,
+   "age_days": 14.231569543877315,
+   "seconds": 28801,
+   "tags_n": 8
+  },
+  {
+   "id": "9LxRp_Wkkxw",
+   "title": "กลับบ้านเรา | ท่อนนี้คิดถึงใคร? #Shorts",
+   "views": 1,
+   "views_per_day": 0.07,
+   "age_days": 14.26001861795139,
+   "seconds": 59,
+   "tags_n": 15
+  },
+  {
+   "id": "_PTmc1GJo1Y",
+   "title": "เดินคนเดียว | ท่อนนี้คิดถึงใคร? #Shorts",
+   "views": 1,
+   "views_per_day": 0.07,
+   "age_days": 14.622090377210649,
+   "seconds": 59,
+   "tags_n": 14
+  },
+  {
+   "id": "-x5O8EJAoqQ",
+   "title": "ขอบคุณที่ยังหายใจ — เพลงให้กำลังใจ เริ่มวันใหม่",
+   "views": 1,
+   "views_per_day": 0.07,
+   "age_days": 15.121963062395833,
+   "seconds": 239,
+   "tags_n": 15
+  },
+  {
+   "id": "d0LS47XbbQo",
+   "title": "วันที่ฟ้าเป็นใจ — เพลงให้กำลังใจ เริ่มวันใหม่",
+   "views": 1,
+   "views_per_day": 0.06,
+   "age_days": 15.601280192025463,
+   "seconds": 211,
+   "tags_n": 14
+  },
+  {
+   "id": "k0Px6Gf2h4c",
+   "title": "ถนนสายเก่า | ร้องต่อไหม? #Shorts",
+   "views": 1,
+   "views_per_day": 0.06,
+   "age_days": 15.93464824758102,
+   "seconds": 59,
+   "tags_n": 15
+  },
+  {
+   "id": "cxATfEGoD0Q",
+   "title": "หูฟังใส่นอน ไม่เจ็บ เลือกแบบไหนดี | #Shorts",
+   "views": 1,
+   "views_per_day": 0.06,
+   "age_days": 17.013386673506947,
+   "seconds": 59,
+   "tags_n": 9
+  },
+  {
+   "id": "pwFBLQRRiAw",
+   "title": "เริ่มวันใหม่ สู้ต่อ ไม่ยอมแพ้ | เพลงไทยให้กำลังใจ 9 เพลง (เลือกเพลงฟังได้)",
+   "views": 1,
+   "views_per_day": 0.06,
+   "age_days": 17.108745469803242,
+   "seconds": 1945,
+   "tags_n": 12
+  },
+  {
+   "id": "iv0tvVxLEX0",
+   "title": "ลมหนาวกับความคิดถึง — เพลงชิลล์ ฟังยามค่ำคืน",
+   "views": 0,
+   "views_per_day": 0.0,
+   "age_days": 15.288641303136576,
+   "seconds": 214,
+   "tags_n": 15
+  },
+  {
+   "id": "MGg7ngnaff0",
+   "title": "คนที่ฉันเคยรัก — เพลงเศร้าอกหัก ฟังตอนดึก",
+   "views": 0,
+   "views_per_day": 0.0,
+   "age_days": 15.434856580914353,
+   "seconds": 237,
+   "tags_n": 14
+  },
+  {
+   "id": "i0f6B26luaw",
+   "title": "ความฝันที่ยังไม่ตาย — เพลงปลุกใจ ออกกำลังกาย",
+   "views": 0,
+   "views_per_day": 0.0,
+   "age_days": 15.768178340173613,
+   "seconds": 240,
+   "tags_n": 15
+  },
+  {
+   "id": "1HBzZv9J-2g",
+   "title": "ขับรถ ทำงาน อ่านหนังสือ คาเฟ่ | เพลงไทยฟังสบาย 9 เพลง (เลือกเพลงฟังได้)",
+   "views": 0,
+   "views_per_day": 0.0,
+   "age_days": 17.367657506840278,
+   "seconds": 1924,
+   "tags_n": 12
+  }
+ ]
+}
