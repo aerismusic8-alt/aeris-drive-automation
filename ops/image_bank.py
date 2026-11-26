@@ -76,6 +76,30 @@ def _now() -> str:
     return datetime.now(timezone.utc).replace(microsecond=0).isoformat()
 
 
+SPENT_DAYS = 7
+
+
+def is_spent(mark: str | None, today: str | None = None,
+             days: int = SPENT_DAYS) -> bool:
+    """True when `mark` (a `spent` date) is recent enough to skip that query.
+
+    Commons search gives *one* page per query: `gsrlimit=500` comes back with
+    13-49 usable hits and no `continue` token, so there is no second page to
+    walk. Once a query's hits are in the bank it can only return new material
+    when Commons indexes new files, which is why a spent query is re-tried after
+    a week rather than every tick.
+    """
+    if not mark:
+        return False
+    try:
+        stamp = datetime.fromisoformat(mark).date()
+    except ValueError:
+        return False
+    ref = datetime.fromisoformat(today).date() if today else \
+        datetime.now(timezone.utc).date()
+    return (ref - stamp).days < days
+
+
 def load() -> dict:
     if MANIFEST.exists():
         return json.loads(MANIFEST.read_text())
@@ -205,11 +229,25 @@ def harvest(queries: list[str], want: int, per_query: int, min_width: int,
     `budget_s`. Without them, once page 1 of every query was already in the bank
     the loop kept advancing cursors that were never persisted — six runs in a row
     spent the full 120-minute cap and committed nothing.
+
+    A query with nothing left is marked `spent` for a week. With 332 queries
+    saturated the bank re-walked all of them every tick for 90 minutes to gain a
+    few dozen newly-indexed files; the honest answer is "this search surface is
+    spent", said in seconds.
     """
     import stills_rail  # noqa: PLC0415
 
     doc = load()
     cursors = doc.setdefault("cursors", {})
+    spent = doc.setdefault("spent", {})
+    live = [q for q in queries if not is_spent(spent.get(q))]
+    if not live:
+        log(f"  all {len(queries)} queries are spent — the bank needs new "
+            f"search terms, not another walk")
+        return 0
+    if len(live) < len(queries):
+        log(f"  {len(queries) - len(live)} spent queries skipped")
+    queries = live
     seen_titles = {r["title"] for r in doc["images"]}
     seen_sha = {r["sha"] for r in doc["images"]}
     started = len(doc["images"])
@@ -227,6 +265,7 @@ def harvest(queries: list[str], want: int, per_query: int, min_width: int,
         offset = int(cursors.get(q, 0))
         items, nxt = commons_page(q, min_width, offset)
         if not items and nxt is None:
+            spent[q] = _now()[:10]
             exhausted += 1
             log(f"  {q}: exhausted at offset {offset}")
             continue
@@ -239,6 +278,8 @@ def harvest(queries: list[str], want: int, per_query: int, min_width: int,
             stale[q] = stale.get(q, 0) + 1
             log(f"  {q}: offset {offset}, nothing new ({stale[q]})")
             if stale[q] >= 2:
+                spent[q] = _now()[:10]
+                save(doc)
                 exhausted += 1
             continue
         stale[q] = 0

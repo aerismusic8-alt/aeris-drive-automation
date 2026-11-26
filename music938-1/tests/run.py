@@ -1036,6 +1036,31 @@ def test_image_bank_harvest_is_bounded() -> None:
     check("the rail leaves time to shard and commit", "--budget-s 5400" in wf)
 
 
+def test_image_bank_skips_spent_queries() -> None:
+    """Commons search has one page per query, so a spent query must not be walked.
+
+    The 2026-11-26 verification run (45833958408) did commit 64 new images, but
+    it spent 90 minutes to do it: `gsrlimit=500` comes back with 13-49 usable
+    hits and **no `continue` token**, so all 332 queries are exhausted after
+    page 1 and every tick re-walks them. The bank now marks a spent query and
+    skips it for a week, so a saturated surface says so in seconds.
+    """
+    section("the image bank stops walking spent queries")
+    sys.path.insert(0, str(ROOT.parent / "ops"))
+    import image_bank as ib  # noqa: PLC0415
+    check("a fresh query is not spent", ib.is_spent(None) is False)
+    check("today's mark is spent", ib.is_spent("2026-11-26", today="2026-11-26"))
+    check("yesterday's mark is spent", ib.is_spent("2026-11-25", today="2026-11-26"))
+    check("a week-old mark is live again",
+          ib.is_spent("2026-11-19", today="2026-11-26") is False)
+    check("a broken mark never hides a query", ib.is_spent("nonsense") is False)
+    src = (ROOT.parent / "ops" / "image_bank.py").read_text(encoding="utf-8")
+    check("harvest filters on the mark",
+          "live = [q for q in queries if not is_spent" in src)
+    check("an exhausted page marks the query",
+          src.count('spent[q] = _now()[:10]') == 2)
+
+
 def test_volume_ships_its_tracklist_to_the_gate() -> None:
     """Vol.3 rendered fine and then died at the uploader: "no volume-003.songs".
 
@@ -10296,6 +10321,7 @@ def main() -> int:
     test_genart_is_original_reproducible_print_art()
     test_picture_library_is_4k()
     test_image_bank_harvest_is_bounded()
+    test_image_bank_skips_spent_queries()
     test_volume_ships_its_tracklist_to_the_gate()
     test_media_home_falls_back()
     test_story_reel_contract()
