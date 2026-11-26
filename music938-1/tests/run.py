@@ -1036,6 +1036,33 @@ def test_image_bank_harvest_is_bounded() -> None:
     check("the rail leaves time to shard and commit", "--budget-s 5400" in wf)
 
 
+def test_volume_ships_its_tracklist_to_the_gate() -> None:
+    """Vol.3 rendered fine and then died at the uploader: "no volume-003.songs".
+
+    `upload_compilation.py` runs the genre gate on every song a compilation
+    carries and refuses (exit 4) when the render left no `<stem>.songs` sidecar.
+    `compile_album` writes one; `volume_series.build` did not, so the numbered
+    long-form series could not publish a volume at all — it stopped after Vol.2.
+    """
+    section("the volume series names its tracks to the gate")
+    scripts = ROOT / "scripts"
+    sys.path.insert(0, str(scripts))
+    import volume_series as vs  # noqa: PLC0415
+    slugs = vs.pick_volume(3)
+    if len(slugs) < vs.MIN_VOLUME_TRACKS:
+        print("  skip (no song catalogue on this pod)")
+        return
+    res = vs.build(3)
+    check("a build that clears the floor reports ok", res.get("ok") is True)
+    side = vs.ca.COMPILED / "volume-003.songs"
+    check("build writes the sidecar the uploader reads", side.exists())
+    check("the sidecar names every track",
+          side.read_text(encoding="utf-8").split() == slugs)
+    src = (scripts / "upload_compilation.py").read_text(encoding="utf-8")
+    check("the uploader still refuses to guess a tracklist",
+          "songs_file.exists()" in src and "return 4" in src)
+
+
 def test_media_home_falls_back() -> None:
     """K (2026-11-20): when PC1's D: is unreachable, a new library must be made.
 
@@ -10269,6 +10296,7 @@ def main() -> int:
     test_genart_is_original_reproducible_print_art()
     test_picture_library_is_4k()
     test_image_bank_harvest_is_bounded()
+    test_volume_ships_its_tracklist_to_the_gate()
     test_media_home_falls_back()
     test_story_reel_contract()
     test_mv_pictures_are_not_repeated()
