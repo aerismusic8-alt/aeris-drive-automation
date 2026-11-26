@@ -1,10 +1,10 @@
 {
-  "at": "2026-11-25T18:45:12+00:00",
+  "at": "2026-11-26T02:59:01+00:00",
   "channel": "ch3",
   "channel_stats": {
     "subs": 13,
     "views": 5271,
-    "videos": 109
+    "videos": 110
   },
   "videos": {
     "TISzvF9AQig": {
@@ -785,6 +785,28 @@
       "title": "ไม่มีวันยอม — มิวสิควีดีโอ เพลงปลุกใจ ออกกำลังกาย",
       "published": "2026-11-25T03:29:15Z",
       "views": 1,
+      "likes": 0,
+      "comments": 0
+    },
+    "wyzqBYgtWNc": {
+      "video_id": "wyzqBYgtWNc",
+      "slug": "54-khae-thoe-yim",
+      "kind": "song",
+      "public": true,
+      "title": "แค่เธอยิ้ม — มิวสิควีดีโอ เพลงอบอุ่น ฟังอยู่บ้าน",
+      "published": "2026-11-25T18:42:20Z",
+      "views": 0,
+      "likes": 0,
+      "comments": 0
+    },
+    "hN_V36vMqlM": {
+      "video_id": "hN_V36vMqlM",
+      "slug": "15-thanon-sai-kao",
+      "kind": "song",
+      "public": true,
+      "title": "ถนนสายเก่า — มิวสิควีดีโอ เพลงฟังสบาย ขับรถ ทำงาน",
+      "published": "2026-11-26T02:37:34Z",
+      "views": 0,
       "likes": 0,
       "comments": 0
     },
