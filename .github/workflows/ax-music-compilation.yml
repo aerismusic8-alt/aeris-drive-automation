@@ -219,6 +219,18 @@ jobs:
           # Builds the render + the volume title/description (chapters, subscribe
           # ask, next-volume breadcrumb). Refuses under 12 tracks / 45 min so the
           # "ฟังยาว" title stays honest.
+          # K vetoed a "new" volume that is the previous one's songs reordered
+          # (2026-11-26). The plan runs first: when the guard holds the volume,
+          # say so in the run summary and stop green - a hold is a decision, not
+          # a failure - instead of publishing duplicate content.
+          plan=$(python3 scripts/volume_series.py --volume "$vol")
+          echo "$plan"
+          if ! printf '%s' "$plan" | grep -q '"ok": true'; then
+            echo "::notice::long-form volume Vol.${vol} held: $plan"
+            { echo "### Vol.${vol} held"; echo '```json'; echo "$plan"; echo '```'; } \
+              >> "${GITHUB_STEP_SUMMARY:-/dev/null}"
+            exit 0
+          fi
           python3 scripts/volume_series.py --volume "$vol" --render
           # No `|| echo` on the upload: a swallowed skip leaves the volume
           # unpublished while the run stays green. A real failure must be red.

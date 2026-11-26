@@ -54,6 +54,13 @@ MIN_VOLUME_MINUTES = 45.0
 # carry dozens. 12 keeps the shape honest while the catalogue is still small.
 MIN_VOLUME_TRACKS = 12
 
+# K (2026-11-26): a "new volume" that is the previous volume's songs reordered is
+# duplicate content - it competes with the volume that already works instead of
+# extending it, and YouTube can read the pair as a repost. Above this share of
+# the previous volume's tracklist the build refuses unless the caller says, in
+# the title, that it is a remaster.
+REPEAT_LIMIT = 0.8
+
 # The scan's winners lead with a music emoji, the channel tagline, "Vol.N | ",
 # then "รวมเพลงใหม่ ฟังยาว ไม่มีสะดุด เปิดฟังทั้งวัน". Keep every piece.
 VOLUME_TAGLINE = "เพลงเพราะๆ ฟังสบาย"
@@ -169,9 +176,60 @@ def volume_description(slugs: list[str], volume: int,
     )
 
 
-def build(volume: int, *, render: bool = False) -> dict:
+def previous_tracks(volume: int) -> list[str]:
+    """The tracklist of `volume` as it shipped, or [] when it cannot be known.
+
+    Read from the committed sidecar (`compilation-state-*.json` carries no
+    tracklist; `library/compilations/volume-00N.songs` does). A missing sidecar
+    returns [] and the guard then has nothing to compare against, which fails
+    open on purpose: refusing to build because history is missing would stop the
+    series for a reason that is not about content.
+    """
+    path = ca.COMPILED / f"volume-{volume:03d}.songs"
+    try:
+        return [ln.strip() for ln in path.read_text(encoding="utf-8").splitlines()
+                if ln.strip()]
+    except OSError:
+        return []
+
+
+def overlap(prev: list[str], new: list[str]) -> float:
+    """Share of the new tracklist that the previous volume already carried."""
+    if not prev or not new:
+        return 0.0
+    return len(set(prev) & set(new)) / len(set(new))
+
+
+def remaster_title(volume: int) -> str:
+    """The title for a re-release of an existing volume, saying so plainly.
+
+    A viewer who already has Vol.N must not be offered the same songs under a
+    new number; the title has to be honest enough that the difference is visible
+    before the click.
+    """
+    title = f"🎵 {VOLUME_TAGLINE} Vol.{volume} ฉบับปรับปรุง (Remaster) | {VOLUME_PROMISE}"
+    if len(title) + len(" (เลือกเพลงฟังได้)") <= 100:
+        title += " (เลือกเพลงฟังได้)"
+    return title[:100]
+
+
+def build(volume: int, *, render: bool = False, remaster: bool = False) -> dict:
     """Prepare (and optionally render) one volume. Returns a summary dict."""
     slugs = pick_volume(volume)
+    if remaster:
+        prev = previous_tracks(volume - 1) or previous_tracks(volume)
+        if not prev:
+            return {"volume": volume, "ok": False,
+                    "reason": "remaster needs the earlier volume's sidecar"}
+        slugs = prev
+    else:
+        prev = previous_tracks(volume - 1)
+        share = overlap(prev, slugs)
+        if share >= REPEAT_LIMIT:
+            return {"volume": volume, "ok": False, "overlap": round(share, 2),
+                    "reason": (f"{share:.0%} of Vol.{volume - 1}'s songs are back; "
+                               "wait for new publishable songs, or ship it as a "
+                               "remaster (--remaster) with a title that says so")}
     if len(slugs) < MIN_VOLUME_TRACKS:
         return {"volume": volume, "ok": False,
                 "reason": f"only {len(slugs)} eligible; need {MIN_VOLUME_TRACKS}"}
@@ -180,10 +238,11 @@ def build(volume: int, *, render: bool = False) -> dict:
     if total < MIN_VOLUME_MINUTES * 60:
         return {"volume": volume, "ok": False,
                 "reason": f"{total/60:.1f} min < {MIN_VOLUME_MINUTES} floor"}
-    stem = f"volume-{volume:03d}"
+    stem = (f"volume-{volume:03d}-remaster" if remaster
+            else f"volume-{volume:03d}")
+    title = remaster_title(volume) if remaster else volume_title(volume)
     ca.COMPILED.mkdir(parents=True, exist_ok=True)
-    (ca.COMPILED / f"{stem}.title").write_text(volume_title(volume),
-                                               encoding="utf-8")
+    (ca.COMPILED / f"{stem}.title").write_text(title, encoding="utf-8")
     # The uploader runs the genre gate on every song the volume carries and
     # refuses (exit 4) when it cannot name them — that missing sidecar is what
     # stopped the series after Vol.2.
@@ -200,7 +259,8 @@ def build(volume: int, *, render: bool = False) -> dict:
             volume_description(slugs, volume), encoding="utf-8")
     return {"volume": volume, "ok": True, "stem": stem,
             "tracks": len(slugs), "minutes": round(total / 60, 1),
-            "title": volume_title(volume), "path": str(out) if out else None}
+            "title": title, "remaster": remaster,
+            "path": str(out) if out else None}
 
 
 def record(volume: int, video_id: str | None) -> None:
@@ -220,6 +280,8 @@ def main() -> int:
     ap.add_argument("--next", action="store_true", help="build the next volume")
     ap.add_argument("--list", action="store_true")
     ap.add_argument("--render", action="store_true")
+    ap.add_argument("--remaster", action="store_true",
+                    help="re-release the previous volume's songs, labelled as a remaster")
     args = ap.parse_args()
 
     volume = args.volume if args.volume else next_volume()
@@ -235,7 +297,7 @@ def main() -> int:
         print(f"{len(slugs)} tracks, ~{total/60:.1f} min")
         print(ca.build_tracklist(slugs))
         return 0
-    res = build(volume, render=args.render)
+    res = build(volume, render=args.render, remaster=args.remaster)
     print(json.dumps(res, ensure_ascii=False))
     return 0 if res.get("ok") else 1
 
