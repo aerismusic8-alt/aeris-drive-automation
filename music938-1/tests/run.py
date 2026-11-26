@@ -1062,6 +1062,44 @@ def test_image_bank_skips_spent_queries() -> None:
           src.count('spent[q] = _now()[:10]') == 2)
 
 
+def test_yt_audit_reads_the_features_it_can_change() -> None:
+    """The audit must measure what the pipeline can act on, and measure it right.
+
+    K's rule: a diagnosis with no method is "exhausted" forever. The audit's
+    parsers are the method, so they are pinned offline - duration parsing, title
+    shape, and the thumbnail cache key that once made every upload share one
+    image, because every YouTube thumbnail URL ends in `hqdefault.jpg`.
+    """
+    section("the YouTube audit parses durations and title shape")
+    import yt_audit  # noqa: PLC0415
+
+    check("minutes and seconds", yt_audit.iso_duration("PT57M2S") == 3422)
+    check("hours roll into seconds", yt_audit.iso_duration("PT1H") == 3600)
+    check("days roll into seconds", yt_audit.iso_duration("P1DT2H") == 93600)
+    check("a broken duration is zero, not a crash", yt_audit.iso_duration("") == 0)
+
+    hook = yt_audit.title_features("\u0e2a\u0e31\u0e0d\u0e0d\u0e32 | \u0e23\u0e49\u0e2d\u0e07\u0e15\u0e48\u0e2d\u0e44\u0e2b\u0e21? #Shorts")
+    check("a question hook is seen", hook["question"] is True)
+    check("the pipe separator is seen", hook["pipe"] is True)
+    check("the hashtag is seen", hook["hashtag"] is True)
+
+    plain = yt_audit.title_features("\u0e40\u0e1e\u0e25\u0e07\u0e2d\u0e1a\u0e2d\u0e38\u0e48\u0e19 \u2014 \u0e1f\u0e31\u0e07\u0e41\u0e25\u0e49\u0e27\u0e43\u0e08\u0e19\u0e38\u0e48\u0e21")
+    check("a plain descriptive title has no hook", plain["question"] is False)
+    check("Thai share is a fraction", 0.0 < plain["thai_share"] <= 1.0)
+
+    rows = [{"views": 4, "seconds": 60, "t_len": 40, "t_thai_share": 0.5,
+             "tags_n": 12, "desc_len": 700, "likes": 0, "t_pipe": True},
+            {"views": 8, "seconds": 40, "t_len": 50, "t_thai_share": 0.4,
+             "tags_n": 10, "desc_len": 900, "likes": 0, "t_pipe": False}]
+    med = yt_audit.summarise(rows)
+    check("summarise reports medians", med["views"] == 6)
+    check("booleans become shares", med["t_pipe_share"] == 0.5)
+
+    src = (ROOT.parent / "ops" / "yt_audit.py").read_text(encoding="utf-8")
+    check("the thumbnail cache key carries the video id",
+          "vid or 'x'" in src)
+
+
 def test_clip_caption_points_at_the_long_form_volume() -> None:
     """A clip and the hour of music behind it must not be separate worlds.
 
@@ -10380,6 +10418,7 @@ def main() -> int:
     test_picture_library_is_4k()
     test_image_bank_harvest_is_bounded()
     test_image_bank_skips_spent_queries()
+    test_yt_audit_reads_the_features_it_can_change()
     test_clip_caption_points_at_the_long_form_volume()
     test_tiktok_auth_is_one_tap_and_offline_checkable()
     test_volume_ships_its_tracklist_to_the_gate()
