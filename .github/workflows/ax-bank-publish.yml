@@ -38,6 +38,9 @@ on:
       channels:
         description: "comma list: youtube,facebook,tiktok"
         default: "youtube,facebook,tiktok"
+      title_arm:
+        description: "hook (default) or numbered — the title A/B arms"
+        default: "hook"
 
 permissions:
   contents: write
@@ -104,6 +107,9 @@ jobs:
           set -o pipefail
           CLIP="${{ github.event.inputs.clip }}"
           LIMIT="${{ github.event.inputs.limit || '1' }}"
+          # The title A/B needs the same clip publishable under either shape;
+          # release.describe() reads this and nothing else changes.
+          export AX_TITLE_ARM="${{ github.event.inputs.title_arm || 'hook' }}"
           CHANNELS="${{ github.event.inputs.channels || 'youtube,facebook,tiktok' }}"
           ARGS=(--channels "$CHANNELS" --limit "$LIMIT")
           if [ -n "$CLIP" ]; then

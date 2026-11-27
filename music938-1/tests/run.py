@@ -1121,6 +1121,35 @@ def test_the_volume_hold_has_a_deadline() -> None:
           vs.deadline_decision(4, "2026-12-16", min_new=0)["decision"] == "hold")
 
 
+def test_a_short_can_be_published_under_either_title_arm() -> None:
+    """Both A/B shapes must come from the one renderer that ships clips.
+
+    A renderer that can only say the hook prompt makes the test impossible: the
+    numbered arm would have to be hand-edited at upload time, which is exactly
+    the kind of manual step that silently stops happening.
+    """
+    section("a short can be published under either title arm")
+    import release  # noqa: PLC0415
+    import os  # noqa: PLC0415
+
+    variant = "x-h2-y"
+    saved = os.environ.pop("AX_TITLE_ARM", None)
+    try:
+        hook_title = release.describe("15-thanon-sai-kao", "short", variant)[0]
+        check("the default arm is the hook prompt",
+              hook_title.endswith("| " + release.hook_title(2) + " #Shorts"))
+        os.environ["AX_TITLE_ARM"] = "numbered"
+        numbered = release.describe("15-thanon-sai-kao", "short", variant)[0]
+        check("the numbered arm carries the series label",
+              numbered.endswith("| ท่อนที่ 2 #Shorts"))
+        check("only the label differs between the arms",
+              numbered.rsplit("|", 1)[0] == hook_title.rsplit("|", 1)[0])
+    finally:
+        os.environ.pop("AX_TITLE_ARM", None)
+        if saved is not None:
+            os.environ["AX_TITLE_ARM"] = saved
+
+
 def test_the_title_ab_keeps_one_song_in_both_arms() -> None:
     """K's clean test: same song in both arms, paired, seven days apart.
 
@@ -10672,6 +10701,7 @@ def main() -> int:
     test_image_bank_skips_spent_queries()
     test_a_long_single_song_needs_a_registered_special_release()
     test_the_volume_hold_has_a_deadline()
+    test_a_short_can_be_published_under_either_title_arm()
     test_the_title_ab_keeps_one_song_in_both_arms()
     test_title_experiment_compares_like_with_like()
     test_a_volume_refuses_to_repeat_the_previous_one()
