@@ -1121,6 +1121,38 @@ def test_the_volume_hold_has_a_deadline() -> None:
           vs.deadline_decision(4, "2026-12-16", min_new=0)["decision"] == "hold")
 
 
+def test_a_chorus_is_never_published_twice() -> None:
+    """A re-render of the same chorus is a new file name but the same audio.
+
+    The 2026-11-27 channel scan found 8 (song, chorus) pairs published two or
+    three times, all identical in length: the file-name ledger could not see
+    them. The chorus ledger keys on the audio's identity instead.
+    """
+    section("a chorus is never published twice")
+    import bank_publish as bp  # noqa: PLC0415
+    from pathlib import Path  # noqa: PLC0415
+
+    k1 = bp.chorus_key(Path("bank-song-07-huachai-si-thao-night-city-neon-rain.mp4"))
+    check("a clip with no hook marker is chorus 1", k1 == "07-huachai-si-thao#h1")
+    k2 = bp.chorus_key(Path("bank-song-07-huachai-si-thao-h2-x.mp4"))
+    check("the hook marker names the chorus", k2 == "07-huachai-si-thao#h2")
+    check("an unknown file has no key",
+          bp.chorus_key(Path("random.mp4")) is None)
+
+    ledger = {k1: {"first": "an earlier upload"}}
+    why = bp.chorus_blocked(Path("bank-song-07-huachai-si-thao-h1-new.mp4"), ledger)
+    check("a second upload of the same chorus is refused", "repeat" in why)
+    check("a different chorus of the same song is allowed",
+          bp.chorus_blocked(Path("bank-song-07-huachai-si-thao-h2-x.mp4"), ledger) == "")
+    check("a chorus not in the ledger is allowed",
+          bp.chorus_blocked(Path("bank-song-09-phleng-khong-khon-nueai-x.mp4"), ledger) == "")
+
+    live = bp.load_choruses()
+    check("the shipped ledger is not empty", len(live) > 20)
+    check("the shipped ledger keys look like slug#hook",
+          all("#h" in k and k.rsplit("#h", 1)[1].isdigit() for k in live))
+
+
 def test_a_short_can_be_published_under_either_title_arm() -> None:
     """Both A/B shapes must come from the one renderer that ships clips.
 
@@ -10701,6 +10733,7 @@ def main() -> int:
     test_image_bank_skips_spent_queries()
     test_a_long_single_song_needs_a_registered_special_release()
     test_the_volume_hold_has_a_deadline()
+    test_a_chorus_is_never_published_twice()
     test_a_short_can_be_published_under_either_title_arm()
     test_the_title_ab_keeps_one_song_in_both_arms()
     test_title_experiment_compares_like_with_like()
