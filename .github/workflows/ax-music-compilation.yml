@@ -227,8 +227,17 @@ jobs:
           echo "$plan"
           if ! printf '%s' "$plan" | grep -q '"ok": true'; then
             echo "::notice::long-form volume Vol.${vol} held: $plan"
-            { echo "### Vol.${vol} held"; echo '```json'; echo "$plan"; echo '```'; } \
-              >> "${GITHUB_STEP_SUMMARY:-/dev/null}"
+            # K's deadline (2026-12-15): the hold ends when enough new songs
+            # exist, or when the date passes - then the earlier volume ships as
+            # a labelled remaster rather than the channel going silent.
+            decision=$(python3 scripts/volume_series.py --decision)
+            echo "deadline decision: $decision"
+            { echo "### Vol.${vol} held"; echo '```json'; echo "$plan"; echo '```';
+              echo "Deadline: $decision"; } >> "${GITHUB_STEP_SUMMARY:-/dev/null}"
+            if printf '%s' "$decision" | grep -q '"decision": "remaster"'; then
+              python3 scripts/volume_series.py --volume "$vol" --remaster --render
+              echo "::warning::built Vol.${vol} as a remaster; publish the stem volume-$(printf '%03d' "$vol")-remaster by hand (no series number is advanced)"
+            fi
             exit 0
           fi
           python3 scripts/volume_series.py --volume "$vol" --render

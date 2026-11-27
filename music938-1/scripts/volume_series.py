@@ -36,6 +36,7 @@ import argparse
 import json
 import re
 import sys
+from datetime import datetime, timezone
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -60,6 +61,13 @@ MIN_VOLUME_TRACKS = 12
 # the previous volume's tracklist the build refuses unless the caller says, in
 # the title, that it is a remaster.
 REPEAT_LIMIT = 0.8
+
+# K (2026-11-26): hold the next volume until new songs exist, but do not let the
+# channel go silent. If this date arrives with fewer than MIN_NEW_SONGS songs
+# that Vol.N-1 did not carry, ship the earlier tracklist as a labelled remaster
+# instead of waiting indefinitely.
+VOLUME_DEADLINE = "2026-12-15"
+MIN_NEW_SONGS = 5
 
 # The scan's winners lead with a music emoji, the channel tagline, "Vol.N | ",
 # then "รวมเพลงใหม่ ฟังยาว ไม่มีสะดุด เปิดฟังทั้งวัน". Keep every piece.
@@ -200,6 +208,35 @@ def overlap(prev: list[str], new: list[str]) -> float:
     return len(set(prev) & set(new)) / len(set(new))
 
 
+def new_songs_since(volume: int) -> list[str]:
+    """Publishable songs the volume did not carry."""
+    shipped = set(previous_tracks(volume))
+    return [s for s in ca.available_songs() if s not in shipped]
+
+
+def deadline_decision(volume: int, today: str | None = None,
+                      min_new: int = MIN_NEW_SONGS) -> dict:
+    """What the series does today: wait, or ship a labelled remaster.
+
+    Returns {"decision": "hold"|"remaster", "reason": ..., "new": [...]}. Before
+    the deadline the answer is always "hold"; on or after it, only a real supply
+    of new songs keeps the hold.
+    """
+    new = new_songs_since(volume - 1)
+    day = today or datetime.now(timezone.utc).date().isoformat()
+    if day < VOLUME_DEADLINE:
+        return {"decision": "hold", "new": new,
+                "reason": f"{len(new)} new song(s); deadline is {VOLUME_DEADLINE}"}
+    if len(new) >= min_new:
+        return {"decision": "hold", "new": new,
+                "reason": f"{len(new)} new songs since Vol.{volume - 1}; "
+                          f"build the real volume"}
+    return {"decision": "remaster", "new": new,
+            "reason": f"deadline {VOLUME_DEADLINE} passed with {len(new)} new "
+                      f"songs (need {min_new}); ship Vol.{volume - 1} as a "
+                      f"labelled remaster so the channel does not go silent"}
+
+
 def remaster_title(volume: int) -> str:
     """The title for a re-release of an existing volume, saying so plainly.
 
@@ -282,9 +319,14 @@ def main() -> int:
     ap.add_argument("--render", action="store_true")
     ap.add_argument("--remaster", action="store_true",
                     help="re-release the previous volume's songs, labelled as a remaster")
+    ap.add_argument("--decision", action="store_true",
+                    help="print hold|remaster for today and exit")
     args = ap.parse_args()
 
     volume = args.volume if args.volume else next_volume()
+    if args.decision:
+        print(json.dumps(deadline_decision(volume), ensure_ascii=False))
+        return 0
     if not (args.volume or args.next):
         print(f"next volume would be Vol.{volume} "
               f"(pass --next or --volume N)", file=sys.stderr)

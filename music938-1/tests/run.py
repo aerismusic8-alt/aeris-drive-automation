@@ -1062,6 +1062,108 @@ def test_image_bank_skips_spent_queries() -> None:
           src.count('spent[q] = _now()[:10]') == 2)
 
 
+def test_a_long_single_song_needs_a_registered_special_release() -> None:
+    """K's rule: 90-600s is the worst duration bucket and may not ship unearned.
+
+    An MV in that band is still allowed, but only as a registered exception - two
+    per quarter, with a stated reason - because the alternative is either killing
+    a lane K wants or letting a 0.07 views/day format run unchecked.
+    """
+    section("a 3-4 minute upload needs a registered special release")
+    import json as _json  # noqa: PLC0415
+    import tempfile  # noqa: PLC0415
+    import clip_standard as cs  # noqa: PLC0415
+
+    with tempfile.TemporaryDirectory() as d:
+        reg = Path(d) / "specials.json"
+        check("a missing registry allows nothing",
+              cs.duration_verdict("mv-song-a.mp4", 212, quarter="2026-Q4",
+                                  registry=reg)[0] is False)
+
+        reg.write_text(_json.dumps({"releases": [
+            {"slug": "song-a", "quarter": "2026-Q4", "reason": "debut"},
+            {"slug": "song-b", "quarter": "2026-Q4", "reason": "collab"},
+            {"slug": "song-c", "quarter": "2026-Q4", "reason": "third"},
+        ]}), encoding="utf-8")
+        ok, why = cs.duration_verdict("mv-song-a.mp4", 212, quarter="2026-Q4",
+                                      registry=reg)
+        check("a registered special is allowed", ok is True)
+        check("the reason is quoted back", "debut" in why)
+        check("the third registration of the quarter is refused",
+              cs.duration_verdict("mv-song-c.mp4", 212, quarter="2026-Q4",
+                                  registry=reg)[0] is False)
+        check("another quarter's registration does not help",
+              cs.duration_verdict("mv-song-a.mp4", 212, quarter="2027-Q1",
+                                  registry=reg)[0] is False)
+
+    check("a 58-second clip never needs a registration",
+          cs.duration_verdict("clip-x.mp4", 58, quarter="2026-Q4")[0] is True)
+    check("a long-form volume is outside the band",
+          cs.duration_verdict("volume-003.mp4", 3714, quarter="2026-Q4")[0] is True)
+    check("the live registry ships empty, so nothing is grandfathered",
+          cs.special_releases("2026-Q4") == [])
+
+
+def test_the_volume_hold_has_a_deadline() -> None:
+    """K's deadline: never a duplicate volume, but never three silent weeks either."""
+    section("the volume hold ends at its deadline")
+    import volume_series as vs  # noqa: PLC0415
+
+    before = vs.deadline_decision(4, "2026-11-26")
+    check("before the deadline the answer is hold", before["decision"] == "hold")
+    check("the reason names the deadline", vs.VOLUME_DEADLINE in before["reason"])
+
+    after = vs.deadline_decision(4, "2026-12-16")
+    check("with no new songs the deadline ships a remaster",
+          after["decision"] == "remaster")
+    check("the deadline is 2026-12-15", vs.VOLUME_DEADLINE == "2026-12-15")
+    check("five new songs keep the real volume",
+          vs.deadline_decision(4, "2026-12-16", min_new=0)["decision"] == "hold")
+
+
+def test_the_title_ab_keeps_one_song_in_both_arms() -> None:
+    """K's clean test: same song in both arms, paired, seven days apart.
+
+    Two choruses rather than one chorus twice, because identical audio is what
+    `no_repeat` refuses; the arm order alternates so a weekday cannot sit on one
+    shape; and the verdict needs three settled pairs before it will answer.
+    """
+    section("the title A/B keeps one song in both arms")
+    import title_ab as ab  # noqa: PLC0415
+    from datetime import date, datetime, timedelta, timezone
+
+    plan = ab.plan_round(["01-a", "02-b", "03-c"], date(2026, 12, 1))
+    check("every song gets both arms", len(plan) == 6)
+    check("the arms are seven days apart",
+          sorted({e["date"] for e in plan}) == ["2026-12-01", "2026-12-08"])
+    first = [e for e in plan if e["date"] == "2026-12-01"]
+    check("the leading arm alternates by song",
+          [e["arm"] for e in first] == ["numbered", "hook", "numbered"])
+    check("a song's two entries use different choruses",
+          all(len({e["hook"] for e in plan if e["song"] == s}) == 2
+              for s in ("01-a", "02-b", "03-c")))
+
+    now = datetime(2026, 12, 30, tzinfo=timezone.utc)
+    def item(title, views, days):
+        at = (now - timedelta(days=days)).isoformat().replace("+00:00", "Z")
+        return {"snippet": {"title": title, "publishedAt": at},
+                "statistics": {"viewCount": str(views)}}
+
+    items = []
+    for e in plan:
+        views = 300 if e["arm"] == "numbered" else 30
+        items.append(item(e["title"], views, 20))
+    rep = ab.pair_report(items, plan, now=now)
+    check("both arms are measured", rep["settled_pairs"] == 3)
+    check("the paired delta is positive for numbered", rep["median_delta"] > 0)
+    check("a numbered win says to make it the default",
+          "numbered wins" in rep["verdict"])
+
+    young = [item(e["title"], 300, 3) for e in plan]
+    check("unsettled arms do not answer",
+          ab.pair_report(young, plan, now=now)["verdict"].startswith("not yet"))
+
+
 def test_title_experiment_compares_like_with_like() -> None:
     """A staged title test must not be won by the age of the clips.
 
@@ -10543,6 +10645,9 @@ def main() -> int:
     test_picture_library_is_4k()
     test_image_bank_harvest_is_bounded()
     test_image_bank_skips_spent_queries()
+    test_a_long_single_song_needs_a_registered_special_release()
+    test_the_volume_hold_has_a_deadline()
+    test_the_title_ab_keeps_one_song_in_both_arms()
     test_title_experiment_compares_like_with_like()
     test_a_volume_refuses_to_repeat_the_previous_one()
     test_crosslink_appends_once_and_keeps_the_snippet()
