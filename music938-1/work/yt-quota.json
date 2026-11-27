@@ -412,16 +412,21 @@
    ]
   },
   "2026-11-26": {
-   "units": 50,
+   "units": 100,
    "calls": {
-    "channels.update": 1
+    "channels.update": 2
    },
-   "updated": "2026-11-26T18:21:04+00:00",
+   "updated": "2026-11-27T02:45:46+00:00",
    "reserves": [
     {
      "purpose": "release 0 item(s)",
      "units": 0,
      "at": "2026-11-26T18:21:04+00:00"
+    },
+    {
+     "purpose": "release 0 item(s)",
+     "units": 0,
+     "at": "2026-11-27T02:45:46+00:00"
     }
    ]
   }
