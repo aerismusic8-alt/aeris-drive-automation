@@ -43,6 +43,9 @@ music938-1/work/*
 # The chorus ledger is what stops a re-render of the same chorus shipping again.
 # Ignored, a fresh clone re-posts everything the channel already has.
 !music938-1/work/published-choruses.json
+# The Page report and plan are the record the weekly rail is judged by.
+!music938-1/work/fb-page-report.json
+!music938-1/work/fb-page-plan.json
 # The release ledger is the only record of what is already on YouTube, and
 # release.py writes it under work/. If it is ignored, a fresh clone re-uploads
 # every song as a duplicate.

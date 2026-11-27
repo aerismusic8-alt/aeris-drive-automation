@@ -1,0 +1,76 @@
+name: AX Facebook Page (weekly read + plan)
+
+# The Page's operator, on a schedule. `ops/fb_page.py` reads the Page through the
+# Graph API, writes the diagnosis, and plans the week from choruses the Page has
+# never published.
+#
+# Why a rail and not a habit: the token lives only in Actions secrets (K's rule is
+# Graph API only, so there is no browser session to borrow), and a Page that is
+# checked when someone remembers is a Page nobody checks. The report is committed
+# so the numbers have a history rather than a single reading.
+#
+# It does not post. Posting stays in `ax-bank-publish`, which carries the genre,
+# clip-standard and thumb-standard gates; a planner that also posted would be a
+# second door past those gates.
+
+on:
+  schedule:
+    # 06:10 UTC on Mondays, before the compilation run at 10:00.
+    - cron: '10 6 * * 1'
+  workflow_dispatch:
+    inputs:
+      apply_about:
+        description: "write the Page description from branding.py"
+        type: boolean
+        default: false
+
+permissions:
+  contents: write
+
+concurrency:
+  group: ax-fb-page
+  cancel-in-progress: true
+
+jobs:
+  page:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Read the Page and plan the week
+        env:
+          FB_PAGE_TOKEN: ${{ secrets.FB_PAGE_TOKEN }}
+          FB_APP_ID: ${{ secrets.FB_APP_ID }}
+          FB_APP_SECRET: ${{ secrets.FB_APP_SECRET }}
+        run: |
+          set -euo pipefail
+          python3 ops/fb_page.py --report --plan | tee fb-page.log
+          {
+            echo "### Facebook Page"
+            echo '```'
+            tail -20 fb-page.log
+            echo '```'
+          } >> "${GITHUB_STEP_SUMMARY:-/dev/null}"
+
+      - name: Write the Page description (opt-in)
+        if: ${{ github.event.inputs.apply_about == 'true' }}
+        env:
+          FB_PAGE_TOKEN: ${{ secrets.FB_PAGE_TOKEN }}
+          FB_APP_ID: ${{ secrets.FB_APP_ID }}
+          FB_APP_SECRET: ${{ secrets.FB_APP_SECRET }}
+        run: python3 ops/fb_page.py --about --apply
+
+      - name: Commit the report and the plan
+        run: |
+          set -euo pipefail
+          git config user.name "ax-fb"
+          git config user.email "ax-fb@users.noreply.github.com"
+          git add music938-1/work/fb-page-report.json music938-1/work/fb-page-plan.json
+          if git diff --cached --quiet; then
+            echo "no change since the last report"
+            exit 0
+          fi
+          git commit -m "data(fb): page report and week plan $(date -u +%F)"
+          git push

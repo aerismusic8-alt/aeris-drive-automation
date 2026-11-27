@@ -1121,6 +1121,46 @@ def test_the_volume_hold_has_a_deadline() -> None:
           vs.deadline_decision(4, "2026-12-16", min_new=0)["decision"] == "hold")
 
 
+def test_the_fb_page_never_plans_a_repeat() -> None:
+    """The Page is the smallest surface, so a wasted post there costs most.
+
+    Three things are pinned: an unpublished chorus is planned and a published one
+    is not, the caption comes from `branding.py` rather than a second voice, and an
+    unread number is reported as unread instead of a zero.
+    """
+    section("the facebook page never plans a repeat")
+    import fb_page as fp  # noqa: PLC0415
+    from pathlib import Path  # noqa: PLC0415
+
+    bank = [("07-huachai-si-thao", 1, Path("a.mp4")),
+            ("07-huachai-si-thao", 2, Path("b.mp4"))]
+    ledger = {"07-huachai-si-thao#h1": {"first": "already posted"}}
+    free = fp.unused(bank, ledger)
+    check("a published chorus is not offered again",
+          [(s_, h) for s_, h, _ in free] == [("07-huachai-si-thao", 2)])
+    check("the same chorus is refused by key, not by file name",
+          all(f"{s_}#h{h}" not in ledger for s_, h, _ in free))
+
+    copy = fp.post_copy("07-huachai-si-thao", 2)
+    import release  # noqa: PLC0415
+    from branding import FOLLOW_ASK, FOLLOW_PROMISE  # noqa: PLC0415
+    check("the caption asks for the follow", FOLLOW_ASK in copy)
+    check("the caption promises the cadence", FOLLOW_PROMISE in copy)
+    check("the caption names the hook the clip plays",
+          release.hook_title(2) in copy)
+
+    about = fp.about_text()
+    check("the page description fits the field", len(about) <= fp.ABOUT_MAX)
+    from branding import NAME  # noqa: PLC0415
+    check("the description carries the brand", NAME in about)
+
+    notes = fp.diagnose({"reachable": False}, {"unused": 0, "short": 0})
+    check("an unread page is reported as unread",
+          any("unavailable" in n for n in notes))
+    check("no fresh chorus is called out",
+          any("needs new renders" in n for n in notes))
+
+
 def test_a_chorus_is_never_published_twice() -> None:
     """A re-render of the same chorus is a new file name but the same audio.
 
@@ -10330,6 +10370,7 @@ def test_ax_team_is_well_formed() -> None:
                           "aeris938-2/scripts/goal_watch.py"],
         "ax-session": ["ops/login_vault.py"],
         "ax-hygiene": ["ops/memory_guard.py", "ops/memory_search.py"],
+        "ax-fb": ["ops/fb_page.py", "ops/fb_graph.py", "ops/bank_publish.py"],
     }
     for path in files:
         text = path.read_text(encoding="utf-8")
@@ -10733,6 +10774,7 @@ def main() -> int:
     test_image_bank_skips_spent_queries()
     test_a_long_single_song_needs_a_registered_special_release()
     test_the_volume_hold_has_a_deadline()
+    test_the_fb_page_never_plans_a_repeat()
     test_a_chorus_is_never_published_twice()
     test_a_short_can_be_published_under_either_title_arm()
     test_the_title_ab_keeps_one_song_in_both_arms()
