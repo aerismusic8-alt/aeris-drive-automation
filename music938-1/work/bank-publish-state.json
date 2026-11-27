@@ -247,5 +247,18 @@
       "ok": false,
       "skipped": "no TikTok token"
     }
+  },
+  "bank-song-56-wing-pai-hai-sut-h1-night-city-neon-rain-street.mp4": {
+    "youtube": {
+      "ok": true,
+      "id": "MRyC9LvxBwE",
+      "detail": [
+        "https://youtu.be/MRyC9LvxBwE"
+      ]
+    },
+    "facebook": {
+      "ok": true,
+      "id": "1855955262073004"
+    }
   }
 }

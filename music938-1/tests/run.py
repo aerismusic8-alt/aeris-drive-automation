@@ -1179,9 +1179,20 @@ def test_a_chorus_is_never_published_twice() -> None:
     check("an unknown file has no key",
           bp.chorus_key(Path("random.mp4")) is None)
 
-    ledger = {k1: {"first": "an earlier upload"}}
+    ledger = {k1: {"first": "an earlier upload on youtube",
+                   "channels": ["youtube"]}}
     why = bp.chorus_blocked(Path("bank-song-07-huachai-si-thao-h1-new.mp4"), ledger)
     check("a second upload of the same chorus is refused", "repeat" in why)
+    check("the same chorus may still go to another channel",
+          bp.chorus_blocked(Path("bank-song-07-huachai-si-thao-h1-new.mp4"),
+                            ledger, "facebook") == "")
+    check("the same channel is refused by name",
+          "youtube" in bp.chorus_blocked(
+              Path("bank-song-07-huachai-si-thao-h1-new.mp4"), ledger, "youtube"))
+    check("a legacy entry with no channel list blocks every channel",
+          all(bp.chorus_blocked(Path("bank-song-07-huachai-si-thao-h1-new.mp4"),
+                                {k1: {"first": "?"}}, ch)
+              for ch in ("youtube", "facebook", "tiktok")))
     check("a different chorus of the same song is allowed",
           bp.chorus_blocked(Path("bank-song-07-huachai-si-thao-h2-x.mp4"), ledger) == "")
     check("a chorus not in the ledger is allowed",

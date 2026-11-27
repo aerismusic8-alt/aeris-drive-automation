@@ -110,15 +110,41 @@ def load_choruses(path: Path | None = None) -> dict:
         return {}
 
 
-def chorus_blocked(clip: Path, ledger: dict) -> str:
-    """Why this clip may not be published again, or "" when it may."""
+def chorus_channels(hit: dict) -> list[str]:
+    """Which channels a ledger entry has already been posted to.
+
+    An entry written before the channel was recorded is read from its `first`
+    text ("... on youtube"); an entry with no readable channel is treated as
+    posted everywhere, because refusing a post is recoverable and a duplicate is
+    not.
+    """
+    if isinstance(hit.get("channels"), list):
+        return [c for c in hit["channels"] if isinstance(c, str)]
+    first = str(hit.get("first", ""))
+    for ch in ("youtube", "facebook", "tiktok"):
+        if f" on {ch}" in first:
+            return [ch]
+    return ["youtube", "facebook", "tiktok"]
+
+
+def chorus_blocked(clip: Path, ledger: dict, channel: str | None = None) -> str:
+    """Why this clip may not be published again, or "" when it may.
+
+    `channel` scopes the question: one chorus reaches several audiences, so a
+    YouTube post must not stop the Facebook one. Without a channel the question
+    is "has this chorus been used at all", which is what a planner asks.
+    """
     key = chorus_key(clip)
     if not key:
         return ""
     hit = ledger.get(key)
     if not hit:
         return ""
-    return (f"{key} is already on the channel ({hit.get('first', '?')}); "
+    used = chorus_channels(hit)
+    if channel and channel not in used:
+        return ""
+    where = ", ".join(used)
+    return (f"{key} is already on {where} ({hit.get('first', '?')}); "
             f"a second upload of the same chorus is a repeat")
 
 
@@ -374,7 +400,7 @@ def main() -> int:
             rc = 1
             continue
         print(f"GENRE OK {clip.name}  ({why})")
-        blocked = chorus_blocked(clip, choruses)
+        blocked = chorus_blocked(clip, choruses, wanted[0] if len(wanted) == 1 else None)
         if blocked:
             print(f"SKIP     {clip.name}: {blocked}")
             continue
@@ -412,11 +438,14 @@ def main() -> int:
                              encoding="utf-8")
             if res.get("ok"):
                 key = chorus_key(clip)
-                if key and key not in choruses:
-                    choruses[key] = {
+                if key:
+                    entry = choruses.setdefault(key, {
                         "first": f"{clip.name} on {ch}",
                         "at": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%MZ"),
-                    }
+                    })
+                    used = chorus_channels(entry)
+                    if ch not in used:
+                        entry["channels"] = used + [ch]
                     CHORUS_LEDGER.parent.mkdir(parents=True, exist_ok=True)
                     CHORUS_LEDGER.write_text(
                         json.dumps(choruses, ensure_ascii=False, indent=1, sort_keys=True),
