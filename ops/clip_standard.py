@@ -40,6 +40,8 @@ import os
 import re
 import shutil
 import subprocess
+from datetime import datetime, timezone
+from pathlib import Path
 
 # --- Universal floor: no format may go below this ---------------------------
 FLOOR = {
@@ -444,6 +446,67 @@ def _thresh(p: dict, key: str, default=None):
     return default if v is None else v
 
 
+# K (2026-11-26): a 3-4 minute single song is the channel's worst duration
+# bucket (0.07 views/day against 1.31 under 90 s) - too long for the Shorts feed,
+# too short to earn watch time. It is still allowed for a registered "special
+# release" (at most two a quarter, each with a stated reason and a companion
+# 60-second hook cut), because an MV can be a piece of art rather than a
+# discovery unit. Everything else in that window is refused at the gate.
+DURATION_BAND_MIN = 90.0
+DURATION_BAND_MAX = 600.0
+SPECIALS_PER_QUARTER = 2
+SPECIAL_REGISTRY = (Path(__file__).resolve().parents[1] / "music938-1"
+                    / "channel" / "special-releases.json")
+
+
+def current_quarter(today=None) -> str:
+    d = today or datetime.now(timezone.utc).date()
+    return f"{d.year}-Q{(d.month - 1) // 3 + 1}"
+
+
+def special_releases(quarter: str | None = None,
+                     registry: Path | None = None) -> list[dict]:
+    """The quarter's registered specials, in registration order.
+
+    A missing or unreadable registry means *no* specials, never "all allowed":
+    the gate fails closed like every other publish gate in this repo.
+    """
+    path = registry or SPECIAL_REGISTRY
+    try:
+        data = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return []
+    entries = data.get("releases", data) if isinstance(data, dict) else data
+    if not isinstance(entries, list):
+        return []
+    q = quarter or current_quarter()
+    return [e for e in entries if isinstance(e, dict) and e.get("quarter") == q]
+
+
+def slug_in(name: str, slug: str) -> bool:
+    return bool(slug) and slug in name
+
+
+def duration_verdict(path: str, seconds: float, *, quarter: str | None = None,
+                     registry: Path | None = None) -> tuple[bool, str]:
+    """Whether a clip of this length may be published, and why not."""
+    if not (DURATION_BAND_MIN <= seconds <= DURATION_BAND_MAX):
+        return True, f"{seconds:.0f}s is outside the 90-600s band"
+    q = quarter or current_quarter()
+    allowed = special_releases(q, registry)[:SPECIALS_PER_QUARTER]
+    name = os.path.basename(path)
+    for e in allowed:
+        if slug_in(name, str(e.get("slug", ""))):
+            return True, (f"{seconds:.0f}s allowed: {q} special release "
+                          f"({e.get('reason', 'registered')})")
+    total = len(special_releases(q, registry))
+    if total >= SPECIALS_PER_QUARTER and not allowed:
+        return False, (f"{seconds:.0f}s refused: {q} already spent its "
+                       f"{SPECIALS_PER_QUARTER} special releases")
+    return False, (f"{seconds:.0f}s refused: 90-600s needs a registered special "
+                   f"release for {q} in {SPECIAL_REGISTRY.name}")
+
+
 def check(path: str, profile: str | None = None) -> list[tuple[str, bool, str]]:
     """Return [(name, ok, detail)] for every rule. Never raises on a bad clip."""
     res: list[tuple[str, bool, str]] = []
@@ -466,6 +529,8 @@ def check(path: str, profile: str | None = None) -> list[tuple[str, bool, str]]:
         return res
     p = PROFILES[name]
     add("known format", True, f"{name} ({p['label']})")
+    ok_len, why_len = duration_verdict(path, info.get("seconds") or 0.0)
+    add("clip length is publishable", ok_len, why_len)
     # An intermediate asset can satisfy every numeric rule and still be the wrong
     # thing to publish: `motion` is silent 832x480 by design. The rule is reported
     # so `check()` stays a pure reader, but it fails, so `assert_ok()` and every

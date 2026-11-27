@@ -1,0 +1,11 @@
+{
+  "_doc": [
+    "Special releases: the only way a 90-600 second upload may be published.",
+    "K (2026-11-26): that duration band is the channel's worst bucket (0.07",
+    "views/day), so an MV in it must be a deliberate exception - at most two per",
+    "quarter, each with a stated reason and a companion <=60s hook cut that",
+    "points at the volume. ops/clip_standard.duration_verdict() reads this file",
+    "and fails closed: a missing or empty list allows nothing."
+  ],
+  "releases": []
+}
