@@ -975,11 +975,54 @@ def _merge_to(shots: list[dict], n: int) -> list[dict]:
     return out
 
 
+def chorus_start(song: str) -> float | None:
+    """Where the first chorus begins, in seconds, for a `song-<slug>` stem.
+
+    The clip opens on the vocal instead of an instrumental intro. A Short has
+    about one second to earn the next three, and every clip the channel rendered
+    until 2026-11-27 opened on the intro: median 6 views over 112 uploads says
+    that is the wrong three seconds to spend.
+    """
+    slug = song[len("song-"):] if song.startswith("song-") else song
+    try:
+        import make_short  # noqa: PLC0415
+        import release  # noqa: PLC0415
+
+        start_frac, _ = make_short.chorus_span(slug)
+        audio = _song_path(song, log=lambda *_: None)
+        if audio is None:
+            return None
+        seconds = release.duration(slug) if hasattr(release, "duration") else None
+        if not seconds:
+            import subprocess  # noqa: PLC0415
+            out = subprocess.run(
+                ["ffprobe", "-v", "error", "-show_entries", "format=duration",
+                 "-of", "default=nw=1:nk=1", str(audio)],
+                capture_output=True, text=True, check=False).stdout.strip()
+            seconds = float(out) if out else 0.0
+        return max(0.0, seconds * start_frac - 0.5)
+    except Exception:  # noqa: BLE001 - a missing span is not a reason to fail a render
+        return None
+
+
 def render(song: str, query: str, seconds: float, seed: int, out_dir: Path,
-           log=print, mix: bool = True, direct: bool = True) -> Path | None:
+           log=print, mix: bool = True, direct: bool = True,
+           start: float = 0.0) -> Path | None:
     audio = _song_path(song, log=log)
     if audio is None:
         return None
+    if start > 0:
+        # Trim first, then plan on the trimmed file, so the shot boundaries are
+        # the ones a viewer actually hears rather than a shifted copy of them.
+        import subprocess  # noqa: PLC0415
+        import tempfile  # noqa: PLC0415
+
+        trimmed = Path(tempfile.mkdtemp(prefix="chorus-")) / f"{audio.stem}-from{int(start)}.wav"
+        subprocess.run(["ffmpeg", "-y", "-loglevel", "error", "-ss", f"{start:.2f}",
+                        "-t", f"{seconds + 4:.2f}", "-i", str(audio), str(trimmed)],
+                       check=True)
+        log(f"audio: starting at the chorus ({start:.1f}s) -> {trimmed.name}")
+        audio = trimmed
 
     import shot_director as director  # noqa: PLC0415
 
@@ -1136,6 +1179,8 @@ def main(argv=None) -> int:
     ap.add_argument("--out", default=str(OUT))
     ap.add_argument("--photos-only", action="store_true",
                     help="skip the generated bank and use photographs alone")
+    ap.add_argument("--from-chorus", action="store_true",
+                    help="open on the first chorus instead of the intro")
     ap.add_argument("--no-direct", action="store_true",
                     help="cut on an even grid instead of on the music")
     args = ap.parse_args(argv)
@@ -1155,8 +1200,15 @@ def main(argv=None) -> int:
         print(f"refusing --song {args.song}: that is the karaoke mix (the song "
               f"without its vocal), not the song. Use the full mix.")
         return 1
+    start = 0.0
+    if args.from_chorus:
+        found = chorus_start(args.song)
+        if found is None:
+            print(f"--from-chorus: no chorus span for {args.song}; rendering from 0")
+        else:
+            start = found
     got = render(args.song, args.query, args.seconds, args.seed, Path(args.out),
-                 mix=not args.photos_only, direct=not args.no_direct)
+                 mix=not args.photos_only, direct=not args.no_direct, start=start)
     return 0 if got else 1
 
 

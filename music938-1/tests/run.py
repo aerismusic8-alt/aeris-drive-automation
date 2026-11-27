@@ -1121,6 +1121,29 @@ def test_the_volume_hold_has_a_deadline() -> None:
           vs.deadline_decision(4, "2026-12-16", min_new=0)["decision"] == "hold")
 
 
+def test_a_clip_can_open_on_the_chorus() -> None:
+    """The first three seconds must carry a vocal, and the tool must know where it is.
+
+    Every clip the channel rendered until 2026-11-27 opened on the intro: the first
+    chorus of these songs starts at 37-51 s, so a 58 s Short spent most of itself
+    before the hook. That is the likeliest reason the median is 6 views.
+    """
+    section("a clip can open on the chorus")
+    import inspect  # noqa: PLC0415
+    import clip_lane as cl  # noqa: PLC0415
+
+    for slug in ("song-52-phuean-kan-talot-pai", "song-53-mai-mi-wan-yom"):
+        start = cl.chorus_start(slug)
+        check(f"{slug} has a chorus start", start is not None and 10 < start < 180,
+              f"{start}")
+    check("an unknown song has no chorus start",
+          cl.chorus_start("song-99-not-a-song") is None)
+    params = inspect.signature(cl.render).parameters
+    check("render accepts a start offset", "start" in params)
+    check("the start defaults to the beginning of the song",
+          params["start"].default == 0.0)
+
+
 def test_the_world_map_never_guesses_a_level() -> None:
     """A level is cleared by a measurement, never by optimism.
 
@@ -10818,6 +10841,7 @@ def main() -> int:
     test_image_bank_skips_spent_queries()
     test_a_long_single_song_needs_a_registered_special_release()
     test_the_volume_hold_has_a_deadline()
+    test_a_clip_can_open_on_the_chorus()
     test_the_world_map_never_guesses_a_level()
     test_the_fb_page_never_plans_a_repeat()
     test_a_chorus_is_never_published_twice()
