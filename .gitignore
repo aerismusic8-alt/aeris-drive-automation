@@ -40,6 +40,9 @@ music938-1/work/*
 # The title A/B plan is the contract between the two arms: if it is ignored, a
 # fresh clone cannot tell which chorus carries which title, and the pair is lost.
 !music938-1/work/title-ab-plan.json
+# The chorus ledger is what stops a re-render of the same chorus shipping again.
+# Ignored, a fresh clone re-posts everything the channel already has.
+!music938-1/work/published-choruses.json
 # The release ledger is the only record of what is already on YouTube, and
 # release.py writes it under work/. If it is ignored, a fresh clone re-uploads
 # every song as a duplicate.

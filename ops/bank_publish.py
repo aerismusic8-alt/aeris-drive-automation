@@ -27,6 +27,7 @@ import os
 import subprocess
 import sys
 import tempfile
+from datetime import datetime, timezone
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -82,6 +83,43 @@ def clip_title(clip: Path, kind: str = "short") -> str:
     if slug:
         return release.describe(slug, kind)[0]
     return clip.stem.replace("-", " ").title()
+
+
+CHORUS_LEDGER = Path(__file__).resolve().parent.parent / "music938-1" / "work" / "published-choruses.json"
+
+
+def chorus_key(clip: Path) -> str | None:
+    """`<slug>#h<n>` — the identity of the audio inside a clip.
+
+    A re-render of the same chorus with a new picture is a new file name but the
+    same audio, so the file-name ledger cannot see it. Eight (song, chorus) pairs
+    were published twice or three times that way before this existed.
+    """
+    slug = _song_slug(clip)
+    if not slug:
+        return None
+    m = re.search(r"-h(\d+)-", clip.name)
+    return f"{slug}#h{int(m.group(1)) if m else 1}"
+
+
+def load_choruses(path: Path | None = None) -> dict:
+    p = path or CHORUS_LEDGER
+    try:
+        return json.loads(p.read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return {}
+
+
+def chorus_blocked(clip: Path, ledger: dict) -> str:
+    """Why this clip may not be published again, or "" when it may."""
+    key = chorus_key(clip)
+    if not key:
+        return ""
+    hit = ledger.get(key)
+    if not hit:
+        return ""
+    return (f"{key} is already on the channel ({hit.get('first', '?')}); "
+            f"a second upload of the same chorus is a repeat")
 
 
 def clip_tags(clip: Path, kind: str = "short") -> list[str]:
@@ -281,6 +319,7 @@ def main() -> int:
         raise SystemExit("no clips in the bank")
 
     state = json.loads(STATE.read_text(encoding="utf-8")) if STATE.exists() else {}
+    choruses = load_choruses()
     wanted = [c.strip() for c in a.channels.split(",") if c.strip()]
 
     # A channel that cannot post right now (no credential) must not hold a clip
@@ -335,6 +374,10 @@ def main() -> int:
             rc = 1
             continue
         print(f"GENRE OK {clip.name}  ({why})")
+        blocked = chorus_blocked(clip, choruses)
+        if blocked:
+            print(f"SKIP     {clip.name}: {blocked}")
+            continue
         if a.dry_run:
             print(f"  title: {clip_title(clip, a.kind)}")
             continue
@@ -367,6 +410,17 @@ def main() -> int:
             STATE.parent.mkdir(parents=True, exist_ok=True)
             STATE.write_text(json.dumps(state, ensure_ascii=False, indent=2),
                              encoding="utf-8")
+            if res.get("ok"):
+                key = chorus_key(clip)
+                if key and key not in choruses:
+                    choruses[key] = {
+                        "first": f"{clip.name} on {ch}",
+                        "at": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%MZ"),
+                    }
+                    CHORUS_LEDGER.parent.mkdir(parents=True, exist_ok=True)
+                    CHORUS_LEDGER.write_text(
+                        json.dumps(choruses, ensure_ascii=False, indent=1, sort_keys=True),
+                        encoding="utf-8")
     return rc
 
 
