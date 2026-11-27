@@ -1,0 +1,57 @@
+name: AX YouTube Audit (weekly)
+
+# Re-reads the channel and rewrites ops/audits/yt-audit-<date>.md every week.
+#
+# K's standing order (2026-11-26): the audit may re-run weekly without asking.
+# It is read-only against YouTube (videos.list only) and writes one file, so a
+# failure costs a run and nothing else. The point is drift: the 2026-11-26
+# report found one compilation carrying 55.5% of watch time, and that share
+# moves as clips are added - a number nobody re-measures is a number nobody can
+# act on.
+
+on:
+  schedule:
+    # 07:00 UTC on Tuesdays: after Monday's compilation run, so the report
+    # describes what actually shipped that week.
+    - cron: '0 7 * * 2'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: ax-yt-audit
+  cancel-in-progress: true
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Audit the channel
+        env:
+          YT_CLIENT_ID: ${{ secrets.YT_CLIENT_ID }}
+          YT_CLIENT_SECRET: ${{ secrets.YT_CLIENT_SECRET }}
+          YT_CH3_REFRESH_TOKEN: ${{ secrets.YT_CH3_REFRESH_TOKEN }}
+        run: |
+          set -euo pipefail
+          out="ops/audits/yt-audit-$(date -u +%F).md"
+          python3 ops/yt_audit.py --ch ch3 --out "$out"
+          { echo "### Audit written"; echo '```'; tail -20 "$out"; echo '```'; } \
+            >> "${GITHUB_STEP_SUMMARY:-/dev/null}"
+
+      - name: Commit the report
+        run: |
+          set -euo pipefail
+          git config user.name "ax-audit"
+          git config user.email "ax-audit@users.noreply.github.com"
+          git add ops/audits
+          if git diff --cached --quiet; then
+            echo "no change since the last report"
+            exit 0
+          fi
+          git commit -m "chore(audit): weekly channel audit $(date -u +%F)"
+          git push
