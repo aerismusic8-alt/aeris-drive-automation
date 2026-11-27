@@ -93,6 +93,23 @@ every MV: audio SHA-256, lyric shingle ≥90%, picture SHA-1 vs `picture-ledger.
 <8 unused → refuse (fill the library). One palette per MV from 8. Keep
 `music938-1/tests/run.py` green.
 
+## Standing orders (K, 2026-11-26) — do not re-ask
+**MV: ≤60 s or >600 s only.** 90–600 s is refused by `clip_standard.check()` via
+`duration_verdict()` unless the slug is a registered special release
+(`channel/special-releases.json`, **max 2/quarter**, reason + a ≤60 s hook cut
+required; ships empty, unreadable = nothing allowed).
+**Vol.4: hold until 2026-12-15** or ≥5 new publishable songs, then
+`volume_series.deadline_decision()` → remaster (labelled, series number not
+advanced). **Overlap >0.8 = absolute veto, every case, no date exempts it.**
+A new publishable single ships as a ≤60 s clip immediately — never held for a
+volume. **Title A/B ends 2026-12-18**: numbered wins → default single; hook wins
+or ties → hook. A gap under 20% is **not** a result — run round 2.
+**TikTok = pipeline test only**, no discovery credit until the app review passes;
+`TT_POLICY_EMAIL` is an OpenHands secret K populates — if absent, stop and wait,
+never substitute another address, never publish the policy. **The weekly audit may
+re-run without asking** (`ax-yt-audit-weekly.yml`). Report if the pod recycles
+more than 3× in a day (2 is tolerated).
+
 ## Recovery
 `$AX_VAULT_BOOTSTRAP` → `ops/ax_vault.py`; a lost `work/*.json`
 is in the event log.

@@ -137,24 +137,53 @@ def pair_report(items: list[dict], plan: list[dict], *,
                            for a, v in by_arm.items()},
         "pairs": pairs,
         "settled_pairs": len(settled),
+        "gap_pct": None,
         "median_delta": (round(statistics.median(p["delta"] for p in settled), 2)
                          if settled else None),
     }
+    out["gap_pct"] = gap_pct(out)
     out["verdict"] = _verdict(out)
     return out
 
 
+MIN_GAP_PCT = 20.0
+
+
+def gap_pct(r: dict) -> float | None:
+    """The two arms' medians as a percentage of the larger one."""
+    m = r["median_per_day"]
+    if m.get("numbered") is None or m.get("hook") is None:
+        return None
+    hi = max(m["numbered"], m["hook"])
+    if hi <= 0:
+        return None
+    return round(abs(m["numbered"] - m["hook"]) / hi * 100.0, 1)
+
+
 def _verdict(r: dict) -> str:
+    """A direction, never a proof: five pairs is a small sample.
+
+    K's rule (2026-11-26): a gap under 20% is not a result - run a second round on
+    other songs before changing the default. Reporting a win here at that size
+    would be following noise.
+    """
     if r["settled_pairs"] < 3:
         return (f"not yet: {r['settled_pairs']} of {SONGS_PER_ROUND} pairs have "
                 f"both arms past {SETTLE_DAYS} days")
     d = r["median_delta"]
     if d is None:
         return "not yet: no paired result"
-    if d > 0:
-        return (f"numbered wins by {d} views/day across {r['settled_pairs']} "
-                f"songs; make it the default for singles")
-    return (f"hook wins or ties ({d}); keep hook - it generalises beyond a series")
+    gap = gap_pct(r)
+    n = r["settled_pairs"]
+    if gap is None or gap < MIN_GAP_PCT:
+        return (f"no clear winner: {gap}% apart across {n} pairs, under K's "
+                f"{MIN_GAP_PCT:.0f}% bar; keep the current default and run a "
+                f"second round on other songs")
+    leader = "numbered" if d > 0 else "hook"
+    tail = ("make it the default for singles" if leader == "numbered"
+            else "keep hook - it generalises beyond a series")
+    return (f"direction ({n} pairs, not proof): {leader} leads by {d} views/day "
+            f"({gap}%); {tail}")
 
 
 def main(argv: list[str] | None = None) -> int:

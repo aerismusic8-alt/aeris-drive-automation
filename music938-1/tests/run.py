@@ -1157,7 +1157,17 @@ def test_the_title_ab_keeps_one_song_in_both_arms() -> None:
     check("both arms are measured", rep["settled_pairs"] == 3)
     check("the paired delta is positive for numbered", rep["median_delta"] > 0)
     check("a numbered win says to make it the default",
-          "numbered wins" in rep["verdict"])
+          "numbered leads" in rep["verdict"] and "default for singles" in rep["verdict"])
+    check("a result is called a direction, not a proof",
+          "not proof" in rep["verdict"])
+
+    close = []
+    for e in plan:
+        close.append(item(e["title"], 100 if e["arm"] == "numbered" else 95, 20))
+    narrow = ab.pair_report(close, plan, now=now)
+    check("a gap under 20% is not a result",
+          narrow["verdict"].startswith("no clear winner"))
+    check("a narrow gap asks for a second round", "second round" in narrow["verdict"])
 
     young = [item(e["title"], 300, 3) for e in plan]
     check("unsettled arms do not answer",
