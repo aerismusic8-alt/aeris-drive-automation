@@ -1062,6 +1062,57 @@ def test_image_bank_skips_spent_queries() -> None:
           src.count('spent[q] = _now()[:10]') == 2)
 
 
+def test_title_experiment_compares_like_with_like() -> None:
+    """A staged title test must not be won by the age of the clips.
+
+    views/day falls as a video ages, so a fresh group always looks different from
+    an old one. The verdict has to refuse to answer while the groups' ages differ,
+    compare the pattern with the channel's control rather than its top 20, and
+    call a loss a loss.
+    """
+    section("the title experiment compares like with like")
+    import title_experiment as te  # noqa: PLC0415
+    from datetime import datetime, timedelta, timezone
+
+    check("a question is a hook", te.style_of("\u0e40\u0e14\u0e34\u0e19\u0e04\u0e19\u0e40\u0e14\u0e35\u0e22\u0e27 | \u0e23\u0e49\u0e2d\u0e07\u0e15\u0e48\u0e2d\u0e44\u0e2b\u0e21? #Shorts") == "hook")
+    check("an em-dash title is a dash title",
+          te.style_of("\u0e23\u0e31\u0e01\u0e17\u0e35\u0e48\u0e44\u0e21\u0e48\u0e21\u0e35\u0e27\u0e31\u0e19\u0e08\u0e1a \u2014 \u0e40\u0e1e\u0e25\u0e07\u0e2d\u0e1a\u0e2d\u0e38\u0e48\u0e19") == "dash")
+    check("a numbered part is numbered",
+          te.style_of("\u0e04\u0e34\u0e14\u0e16\u0e36\u0e07\u0e40\u0e18\u0e2d\u0e17\u0e38\u0e01\u0e04\u0e37\u0e19 (\u0e17\u0e48\u0e2d\u0e19\u0e17\u0e35\u0e48 2) #\u0e40\u0e1e\u0e25\u0e07\u0e44\u0e17\u0e22") == "numbered")
+    check("anything else is plain", te.style_of("\u0e40\u0e1e\u0e25\u0e07\u0e02\u0e2d\u0e07\u0e04\u0e19\u0e40\u0e2b\u0e19\u0e37\u0e48\u0e2d\u0e22") == "plain")
+
+    now = datetime(2026, 11, 26, tzinfo=timezone.utc)
+    def item(i, title, views, days):
+        at = (now - timedelta(days=days)).isoformat().replace("+00:00", "Z")
+        return {"id": i, "snippet": {"title": title, "publishedAt": at},
+                "statistics": {"viewCount": str(views)}}
+
+    rs = te.rows([item("a", "x | \u0e23\u0e49\u0e2d\u0e07\u0e15\u0e48\u0e2d\u0e44\u0e2b\u0e21?", 30, 10),
+                  item("b", "x | \u0e23\u0e49\u0e2d\u0e07\u0e15\u0e48\u0e2d\u0e44\u0e2b\u0e21?", 10, 10),
+                  item("c", "x \u2014 y", 4, 10)], now=now)
+    check("views per day is per day of age",
+          [r["per_day"] for r in rs] == [3.0, 1.0, 0.4])
+
+    table = te.summarise(te.rows([item("a", "x | \u0e23\u0e49\u0e2d\u0e07\u0e15\u0e48\u0e2d\u0e44\u0e2b\u0e21?", 30, 20),
+                                  item("b", "x | \u0e23\u0e49\u0e2d\u0e07\u0e15\u0e48\u0e2d\u0e44\u0e2b\u0e21?", 10, 20),
+                                  item("c", "x \u2014 y", 4, 20)], now=now))
+    check("a clip younger than the settle window is not counted yet",
+          set(te.summarise(rs)) == set())
+    check("only settled clips are counted", set(table) == {"dash", "hook"})
+    check("the hook group has both clips", table["hook"]["n"] == 2)
+    check("the control pools the other styles", te.control(table) == 0.2)
+    check("a clear win rolls out", te.verdict(table, min_n=1).startswith("roll out"))
+    check("a thin sample is not a win", te.verdict(table).startswith("not yet"))
+
+    older = te.summarise(te.rows([item("d", "x | \u0e23\u0e49\u0e2d\u0e07\u0e15\u0e48\u0e2d\u0e44\u0e2b\u0e21?", 100, 90),
+                                  item("e", "x \u2014 y", 4, 15)], now=now))
+    check("an age gap is not an answer", te.verdict(older).startswith("not yet"))
+
+    losing = te.summarise(te.rows([item("f", "x | \u0e23\u0e49\u0e2d\u0e07\u0e15\u0e48\u0e2d\u0e44\u0e2b\u0e21?", 1, 20),
+                                   item("g", "x \u2014 y", 40, 20)], now=now))
+    check("a loss is called a loss", te.verdict(losing, min_n=1).startswith("stop"))
+
+
 def test_a_volume_refuses_to_repeat_the_previous_one() -> None:
     """K's veto, as code: a reordered copy of last week's songs is not a volume.
 
@@ -10492,6 +10543,7 @@ def main() -> int:
     test_picture_library_is_4k()
     test_image_bank_harvest_is_bounded()
     test_image_bank_skips_spent_queries()
+    test_title_experiment_compares_like_with_like()
     test_a_volume_refuses_to_repeat_the_previous_one()
     test_crosslink_appends_once_and_keeps_the_snippet()
     test_yt_audit_reads_the_features_it_can_change()
