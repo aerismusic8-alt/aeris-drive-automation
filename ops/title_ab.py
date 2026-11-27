@@ -48,20 +48,46 @@ def title_of(slug: str) -> str:
         return slug
 
 
+def label_for(arm: str, hook: int) -> str:
+    return release.hook_title(hook) if arm == "hook" else f"ท่อนที่ {hook}"
+
+
+def used_hooks(slug: str, published: list[str]) -> set[int]:
+    """Choruses of this song that already have a clip on the channel.
+
+    Re-releasing a chorus means identical audio, which `no_repeat` refuses and
+    YouTube can read as a repost, so a pair is built from choruses not yet used.
+    """
+    t = title_of(slug)
+    used = set()
+    for h in (1, 2, 3):
+        if any(f"{t} | {label_for(a, h)}" in x for x in published
+               for a in ("numbered", "hook")):
+            used.add(h)
+    return used
+
+
 def plan_round(songs: list[str], start: date, *, gap_days: int = GAP_DAYS,
-               per_round: int = SONGS_PER_ROUND) -> list[dict]:
+               per_round: int = SONGS_PER_ROUND,
+               published: list[str] | None = None) -> list[dict]:
     """One entry per (song, arm): which chorus, which title, which day.
 
     Arm order alternates by song index so a weekday effect cannot sit on one arm:
     even songs lead with the numbered title, odd songs with the hook.
     """
     entries: list[dict] = []
-    for i, slug in enumerate(songs[:per_round]):
+    planned = 0
+    for i, slug in enumerate(songs):
+        if planned >= per_round:
+            break
+        free = [h for h in (1, 2, 3) if h not in used_hooks(slug, published or [])]
+        if len(free) < 2:
+            continue          # no clean pair left in this song
+        planned += 1
         order = ARMS if i % 2 == 0 else ARMS[::-1]
         for j, arm in enumerate(order):
-            hook = 1 + j          # chorus 1 for the first arm, chorus 2 for the second
-            label = (release.hook_title(hook) if arm == "hook"
-                     else f"ท่อนที่ {hook}")
+            hook = free[j]
+            label = label_for(arm, hook)
             entries.append({
                 "song": slug,
                 "arm": arm,
@@ -145,8 +171,17 @@ def main(argv: list[str] | None = None) -> int:
         if not songs:
             import compass  # noqa: PLC0415
             songs = compass.songs("bank") or []
+        published: list[str] = []
+        if songs:
+            tok = yt_auth.access_token(a.ch)
+            st, items = yt_auth.get_videos(tok, yt_auth.all_upload_ids(tok),
+                                           part="snippet")
+            if st == 200:
+                published = [i["snippet"]["title"] for i in items]
         start = date.fromisoformat(a.start) if a.start else date.today()
-        entries = plan_round(songs, start)
+        entries = plan_round(songs, start, published=published)
+        if not entries:
+            raise SystemExit("no song has two unused choruses; nothing to plan")
         PLAN.parent.mkdir(parents=True, exist_ok=True)
         PLAN.write_text(json.dumps({"start": start.isoformat(), "entries": entries},
                                    ensure_ascii=False, indent=1) + "\n",

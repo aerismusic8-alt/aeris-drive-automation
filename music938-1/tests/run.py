@@ -1163,6 +1163,21 @@ def test_the_title_ab_keeps_one_song_in_both_arms() -> None:
     check("unsettled arms do not answer",
           ab.pair_report(young, plan, now=now)["verdict"].startswith("not yet"))
 
+    # A chorus already on the channel may not be re-released: identical audio is
+    # what no_repeat refuses, so the pair moves to the choruses still unused.
+    check("a published chorus is detected",
+          ab.used_hooks("01-a", ["01-a | ท่อนที่ 1 #Shorts", "01-a | ร้องต่อไหม? #Shorts"])
+          == {1})
+    moved = ab.plan_round(["01-a"], date(2026, 12, 1),
+                          published=["01-a | ท่อนที่ 1 #Shorts"])
+    check("the pair moves to the free choruses",
+          sorted(e["hook"] for e in moved) == [2, 3])
+    check("a song with one free chorus is skipped",
+          ab.plan_round(["01-a"], date(2026, 12, 1),
+                        published=["01-a | ท่อนที่ 1 #Shorts",
+                                   "01-a | ท่อนที่ 2 #Shorts",
+                                   "01-a | ร้องต่อท่อนต่อไป #Shorts"]) == [])
+
 
 def test_title_experiment_compares_like_with_like() -> None:
     """A staged title test must not be won by the age of the clips.
