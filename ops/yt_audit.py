@@ -30,6 +30,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 import yt_auth  # noqa: E402
 
 OUT_DIR = Path(__file__).resolve().parent / "out"
+ROOT = Path(__file__).resolve().parent.parent
 THAI = re.compile(r"[\u0e00-\u0e7f]")
 EMOJI = re.compile("[\U0001F300-\U0001FAFF\u2600-\u27BF]")
 
@@ -197,6 +198,19 @@ def main(argv: list[str] | None = None) -> int:
         p.write_text(json.dumps(report, ensure_ascii=False, indent=1) + "\n",
                      encoding="utf-8")
         print(f"wrote {p}")
+    # A running experiment is read by the audit that already holds the token, so
+    # the verdict needs no rail of its own. A failure here must not cost the
+    # report that carries the rest of the week's numbers.
+    exp = ROOT / "music938-1" / "work" / "hook-experiment.json"
+    if exp.exists():
+        try:
+            import hook_verdict  # noqa: PLC0415
+
+            v = hook_verdict.main(["--write", "--channel", a.ch])
+            print(f"hook experiment: {'read' if v == 0 else f'rc {v}'}")
+        except Exception as exc:  # noqa: BLE001
+            print(f"hook experiment skipped ({type(exc).__name__}: {exc})")
+
     print(f"public {len(public)}  ranked {len(ranked)}  top/bottom n={n}")
     for label in ("median_top", "median_bottom"):
         print(label, json.dumps(report[label], ensure_ascii=False))

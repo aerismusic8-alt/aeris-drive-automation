@@ -43,6 +43,7 @@ import shutil
 import subprocess
 import sys
 import tempfile
+from datetime import datetime, timezone
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -577,10 +578,29 @@ def ai_stills(genre: str | None, want: int, seed: int, log=print) -> list[dict]:
     # 2026-11-21) while 36 of the 42 frames had never been used at all. A viewer
     # notices a repeated frame across two clips far more than a repeated frame
     # inside one, so rotation is what keeps a channel from looking automated.
+    # The `uses` counter alone is not enough to keep two uploads apart: it is a
+    # tie-broken count, so a frame used once can sit in the same tier as a frame
+    # used never. The batch that the previous clip rendered is therefore excluded
+    # by name, from a small state file that `mark_ai_used` writes only after a
+    # render succeeds.
+    previous = _last_ai_batch()
+    if previous:
+        kept = [r for r in rows if r["file"] not in previous]
+        if len(kept) >= want:
+            rows = kept
     least = min((r.get("uses") or 0) for r in rows)
     fresh = [r for r in rows if (r.get("uses") or 0) == least]
     random.Random(seed).shuffle(fresh)
-    rows = fresh + [r for r in rows if (r.get("uses") or 0) != least]
+    # The tier can run short (the near-duplicate filter below drops frames), and
+    # then the fallback used to reach straight into the batch the previous clip
+    # just rendered -- one shared frame between consecutive clips, which is what
+    # the rotation exists to prevent. Frames stamped with the newest batch go
+    # last, so they are only reached when nothing else is left.
+    newest = max((r.get("last_used_at") or "" for r in rows), default="")
+    rest = [r for r in rows if (r.get("uses") or 0) != least]
+    just_used = [r for r in rest if newest and r.get("last_used_at") == newest]
+    rest = [r for r in rest if r not in just_used]
+    rows = fresh + rest + just_used
 
     picked, seen = [], []
     for r in rows:
@@ -600,6 +620,17 @@ def ai_stills(genre: str | None, want: int, seed: int, log=print) -> list[dict]:
     return picked
 
 
+LAST_AI_BATCH = ROOT / "music938-1" / "work" / "last-ai-batch.json"
+
+
+def _last_ai_batch() -> set[str]:
+    try:
+        doc = json.loads(LAST_AI_BATCH.read_text(encoding="utf-8"))
+        return {f for f in doc.get("files", []) if isinstance(f, str)}
+    except (OSError, ValueError):
+        return set()
+
+
 def mark_ai_used(stills: list[dict], log=print) -> None:
     """Record that these frames were rendered, so the next clip rotates away.
 
@@ -617,11 +648,19 @@ def mark_ai_used(stills: list[dict], log=print) -> None:
     used = {s["file"] for s in stills if s.get("origin") == "ai"}
     if not used:
         return
+    stamp = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
     for r in doc.get("images", []):
         if r.get("file") in used:
             r["uses"] = (r.get("uses") or 0) + 1
+            r["last_used_at"] = stamp
     try:
         image_library.save(doc)
+        LAST_AI_BATCH.parent.mkdir(parents=True, exist_ok=True)
+        LAST_AI_BATCH.write_text(
+            json.dumps({"files": sorted(used),
+                        "at": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%MZ")},
+                       ensure_ascii=False, indent=1),
+            encoding="utf-8")
     except Exception as exc:  # noqa: BLE001
         log(f"ai: could not record uses ({type(exc).__name__})")
 

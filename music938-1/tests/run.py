@@ -1121,6 +1121,37 @@ def test_the_volume_hold_has_a_deadline() -> None:
           vs.deadline_decision(4, "2026-12-16", min_new=0)["decision"] == "hold")
 
 
+def test_the_hook_verdict_refuses_an_early_winner() -> None:
+    """A fresh upload always looks good; 72 hours is the minimum to believe it.
+
+    The channel's first hour of hook data read chorus +82% - and every video was
+    8 hours old, when YouTube is still showing a new Short to a warm audience. A
+    verdict tool that reports that as a win would teach the wrong lesson.
+    """
+    section("the hook verdict refuses an early winner")
+    from datetime import datetime, timezone  # noqa: PLC0415
+    import hook_verdict as hv  # noqa: PLC0415
+
+    now = datetime(2026, 11, 27, tzinfo=timezone.utc)
+    fresh = {"intro": {"a": 23.0}, "chorus": {"b": 41.9}}
+    early = hv.verdict(fresh, now, {"a": 0.35, "b": 0.35})
+    check("an 8-hour-old pair is not settled", early["settled"] is False)
+    check("the verdict says so", "not settled" in early["verdict"])
+    check("the gap is still reported", early["gap_pct"] is not None)
+
+    aged = {"a": 3.2, "b": 3.2}
+    big = hv.verdict({"intro": {"a": 10.0}, "chorus": {"b": 16.0}}, now, aged)
+    check("a 60% gap after 72h is a win", big["settled"] and "wins" in big["verdict"])
+    check("the winner is the chorus", "chorus-first" in big["verdict"])
+
+    thin = hv.verdict({"intro": {"a": 10.0}, "chorus": {"b": 11.0}}, now, aged)
+    check("a 10% gap is not a winner", "no clear winner" in thin["verdict"])
+
+    back = hv.verdict({"intro": {"a": 10.0}, "chorus": {"b": 4.0}}, now, aged)
+    check("the intro can win too", "intro-first" in back["verdict"])
+    check("the bar is 20%", hv.MIN_GAP_PCT == 20.0)
+
+
 def test_a_clip_can_open_on_the_chorus() -> None:
     """The first three seconds must carry a vocal, and the tool must know where it is.
 
@@ -10841,6 +10872,7 @@ def main() -> int:
     test_image_bank_skips_spent_queries()
     test_a_long_single_song_needs_a_registered_special_release()
     test_the_volume_hold_has_a_deadline()
+    test_the_hook_verdict_refuses_an_early_winner()
     test_a_clip_can_open_on_the_chorus()
     test_the_world_map_never_guesses_a_level()
     test_the_fb_page_never_plans_a_repeat()
