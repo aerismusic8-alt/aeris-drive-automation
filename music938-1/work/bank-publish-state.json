@@ -230,5 +230,22 @@
       "ok": false,
       "skipped": "no TikTok token"
     }
+  },
+  "bank-song-15-thanon-sai-kao-night-city-neon-rain.mp4": {
+    "youtube": {
+      "ok": true,
+      "id": "z3ixjn8JN9A",
+      "detail": [
+        "https://youtu.be/z3ixjn8JN9A"
+      ]
+    },
+    "facebook": {
+      "ok": true,
+      "id": "1684428923328377"
+    },
+    "tiktok": {
+      "ok": false,
+      "skipped": "no TikTok token"
+    }
   }
 }
