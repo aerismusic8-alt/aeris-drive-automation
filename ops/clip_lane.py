@@ -975,7 +975,7 @@ def _merge_to(shots: list[dict], n: int) -> list[dict]:
     return out
 
 
-def chorus_start(song: str) -> float | None:
+def chorus_start(song: str, which: int = 1) -> float | None:
     """Where the first chorus begins, in seconds, for a `song-<slug>` stem.
 
     The clip opens on the vocal instead of an instrumental intro. A Short has
@@ -988,7 +988,8 @@ def chorus_start(song: str) -> float | None:
         import make_short  # noqa: PLC0415
         import release  # noqa: PLC0415
 
-        start_frac, _ = make_short.chorus_span(slug)
+        spans = make_short.chorus_spans(slug)
+        start_frac, _ = spans[max(0, min(which, len(spans)) - 1)]
         audio = _song_path(song, log=lambda *_: None)
         if audio is None:
             return None
@@ -1180,7 +1181,9 @@ def main(argv=None) -> int:
     ap.add_argument("--photos-only", action="store_true",
                     help="skip the generated bank and use photographs alone")
     ap.add_argument("--from-chorus", action="store_true",
-                    help="open on the first chorus instead of the intro")
+                    help="open on a chorus instead of the intro")
+    ap.add_argument("--chorus", type=int, default=1,
+                    help="which chorus to open on (1 of 3, default 1)")
     ap.add_argument("--no-direct", action="store_true",
                     help="cut on an even grid instead of on the music")
     args = ap.parse_args(argv)
@@ -1202,7 +1205,7 @@ def main(argv=None) -> int:
         return 1
     start = 0.0
     if args.from_chorus:
-        found = chorus_start(args.song)
+        found = chorus_start(args.song, args.chorus)
         if found is None:
             print(f"--from-chorus: no chorus span for {args.song}; rendering from 0")
         else:

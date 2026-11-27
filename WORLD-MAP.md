@@ -1,4 +1,4 @@
-# AR — world map (2026-11-27 14:58Z)
+# AR — world map (2026-11-27 15:48Z)
 
 Every number below was read from a file or an API at the time above. An unreadable field says so; nothing here is inferred.
 
@@ -23,9 +23,9 @@ Every number below was read from a file or an API at the time above. An unreadab
 ## Inventory
 
 - publishable masters: **17**
-- clips in the bank: **4** (1 waiting)
-- choruses published: **38**
-- songs never used: 17-wan-thi-fa-pen-chai, 52-phuean-kan-talot-pai, 53-mai-mi-wan-yom
+- clips in the bank: **6** (1 waiting)
+- choruses published: **41**
+- songs never used: none
 
 ## Blocked, and by what
 
