@@ -1121,6 +1121,39 @@ def test_the_volume_hold_has_a_deadline() -> None:
           vs.deadline_decision(4, "2026-12-16", min_new=0)["decision"] == "hold")
 
 
+def test_the_world_map_never_guesses_a_level() -> None:
+    """A level is cleared by a measurement, never by optimism.
+
+    K handed the map over on 2026-11-27. The failure mode of a map is a level that
+    looks cleared because nobody measured it, so L1 requires a readable surface and
+    L2 requires a median that actually reaches the bar.
+    """
+    section("the world map never guesses a level")
+    import world_map as wm  # noqa: PLC0415
+
+    dark = wm.levels({}, {})
+    check("an unread channel has not cleared L1", dark[0]["passed"] is False)
+    check("an unread median has not cleared L2", dark[1]["passed"] is False)
+
+    lit = wm.levels({"uploads": 112, "median_views": 6.0},
+                    {"read": True, "about_set": True})
+    check("a readable surface clears L1", lit[0]["passed"] is True)
+    check("6 views/video does not clear L2", lit[1]["passed"] is False)
+    check("the L2 bar is stated in the row", str(wm.L2_MEDIAN_VIEWS) in lit[1]["target"])
+
+    win = wm.levels({"uploads": 1, "median_views": wm.L2_MEDIAN_VIEWS},
+                    {"read": True, "about_set": True})
+    check("the median at the bar clears L2", win[1]["passed"] is True)
+    check("L3 and L4 stay open until measured",
+          [r["passed"] for r in win[2:]] == [False, False])
+
+    notes = wm.blocked({"read": True}, {"policy_email": False})
+    check("a missing TikTok policy email is named as a block",
+          any("TT_POLICY_EMAIL" in n for n in notes))
+    check("the long-form duration gate is named as a block",
+          any("90" in n and "600" in n for n in notes))
+
+
 def test_the_fb_page_never_plans_a_repeat() -> None:
     """The Page is the smallest surface, so a wasted post there costs most.
 
@@ -10785,6 +10818,7 @@ def main() -> int:
     test_image_bank_skips_spent_queries()
     test_a_long_single_song_needs_a_registered_special_release()
     test_the_volume_hold_has_a_deadline()
+    test_the_world_map_never_guesses_a_level()
     test_the_fb_page_never_plans_a_repeat()
     test_a_chorus_is_never_published_twice()
     test_a_short_can_be_published_under_either_title_arm()
