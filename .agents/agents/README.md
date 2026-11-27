@@ -13,6 +13,7 @@ from `.agents/agents/` at conversation start (README.md is skipped by the loader
 | `ax-session` | Keeps/recoveries the free browser session without asking K | `check_login.py`, `ops/login_vault.py`, `fb_relogin.py`, `bootstrap.py` |
 | `ax-delivery` | Gets an artifact to a reachable destination and proves it | `gh-api.py`, `use-app-token.sh`, `vault_session.py`, `ffprobe` |
 | `ax-hygiene` | Keeps the repo guards green (memory cap, tests, wiring, risk) | `memory_guard.py`, `memory_search.py`, tests, `check-hud-wiring.py` |
+| `ax-fb` | Grows the Facebook Page on the Graph API only: real numbers, no repeats, Page settings | `ops/fb_page.py`, `ops/fb_graph.py`, `ops/bank_publish.py` |
 
 ## Rules that bind all of them
 
