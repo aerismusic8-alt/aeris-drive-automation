@@ -1062,6 +1062,39 @@ def test_image_bank_skips_spent_queries() -> None:
           src.count('spent[q] = _now()[:10]') == 2)
 
 
+def test_a_volume_refuses_to_repeat_the_previous_one() -> None:
+    """K's veto, as code: a reordered copy of last week's songs is not a volume.
+
+    Vol.3 shipped all 17 publishable songs. Vol.4 built from the same catalogue
+    would be 100% the same listening under a new number - it competes with the
+    volume that works and reads as a repost. The build must refuse, and the only
+    way through must be a title that says "remaster".
+    """
+    section("a volume may not repeat the previous volume")
+    import volume_series as vs  # noqa: PLC0415
+
+    check("identical tracklists are a full overlap",
+          vs.overlap(["a", "b"], ["b", "a"]) == 1.0)
+    check("no shared song is no overlap", vs.overlap(["a"], ["b"]) == 0.0)
+    check("missing history fails open", vs.overlap([], ["a"]) == 0.0)
+    check("half the songs shared is half",
+          vs.overlap(["a", "b"], ["a", "c"]) == 0.5)
+
+    shipped = vs.previous_tracks(3)
+    check("Vol.3's tracklist is readable from its sidecar", len(shipped) >= 12)
+
+    res = vs.build(vs.next_volume(), render=False)
+    check("the next volume is held when it repeats", res.get("ok") is False)
+    check("the hold names the overlap", res.get("overlap") == 1.0)
+    check("the hold says what to do instead",
+          "--remaster" in str(res.get("reason", "")))
+
+    title = vs.remaster_title(4)
+    check("a remaster says so in the title", "ฉบับปรับปรุง" in title)
+    check("a remaster keeps the volume number", "Vol.4" in title)
+    check("a remaster stays inside YouTube's 100-char title", len(title) <= 100)
+
+
 def test_crosslink_appends_once_and_keeps_the_snippet() -> None:
     """A description edit must not cost the video its title, tags or language.
 
@@ -10459,6 +10492,7 @@ def main() -> int:
     test_picture_library_is_4k()
     test_image_bank_harvest_is_bounded()
     test_image_bank_skips_spent_queries()
+    test_a_volume_refuses_to_repeat_the_previous_one()
     test_crosslink_appends_once_and_keeps_the_snippet()
     test_yt_audit_reads_the_features_it_can_change()
     test_clip_caption_points_at_the_long_form_volume()
