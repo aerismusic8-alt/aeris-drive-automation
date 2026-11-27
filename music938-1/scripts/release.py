@@ -571,7 +571,12 @@ def describe(slug: str, kind: str, variant: str = "") -> tuple[str, str, list[st
         # comment box something answerable to ask for.
         hm = re.search(r"-h(\d+)-", variant)
         hk = int(hm.group(1)) if hm else 1
-        title = f"{title_th} | {hook_title(hk)} #Shorts"
+        # AX_TITLE_ARM=numbered swaps the hook prompt for the series label. The
+        # title A/B (`ops/title_ab.py`) needs both shapes from the same renderer,
+        # and a renderer that can only say one of them makes the test impossible.
+        label = (f"ท่อนที่ {hk}" if os.environ.get("AX_TITLE_ARM") == "numbered"
+                 else hook_title(hk))
+        title = f"{title_th} | {label} #Shorts"
         angle = hook_angle(hk)
         desc = (
             f"🎵 {title_th} — {hook_title(hk)}\n"
