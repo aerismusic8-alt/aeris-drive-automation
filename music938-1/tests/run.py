@@ -8455,13 +8455,57 @@ def test_mv_shots_cannot_freeze() -> None:
     check("shots: the equalizer is its own overlay layer",
           "[b2][eq]overlay=0:H-" in src)
 
+def test_no_advisor_is_left_in_the_system() -> None:
+    """K, 2026-11-27: the advisors are out, AR decides.
+
+    "พวก chat gpt หรือระบบ advisor อื่นที่ทำงานในระบบเราตอนนี้ ยกเลิกออกไปให้หมด"
+    Every module that asked another model for an opinion or a decision is deleted,
+    and nothing may import one again — a module left on disk is a module the next
+    rail will find. Generative tools that make pictures or sound are not advisors
+    and stay.
+    """
+    section("no advisor left in the system (K, 2026-11-27)")
+    gone = ["ops/consult.py", "ops/consult10.py", "ops/gemini_ask.py",
+            "ops/gemini_api.py", "ops/gemini_gate.py", "ops/gemini_review.py",
+            "ops/gemini_calibrate.py", "ops/chatgpt_ask.py", "ops/duck_ask.py",
+            "ops/pollinations_ask.py", "ops/ask_agents.py",
+            "music938-1/scripts/run_panel.py", "music938-1/scripts/forge_song.py",
+            "tools/af_advisor.py", "tools/af_vendor_bench.py",
+            "tools/af_ceo_bench.py", "tools/af_pick_trading_advisor.py",
+            ".agents/agents/ax-advisor.md"]
+    present = [g for g in gone if (ROOT.parent / g).exists()]
+    check("every advisor module is deleted", not present, ", ".join(present))
+
+    import subprocess  # noqa: PLC0415
+
+    hits = subprocess.run(
+        ["grep", "-rln", "-E", r"import (consult|consult10|gemini_ask|gemini_api|"
+         r"gemini_gate|gemini_review|chatgpt_ask|duck_ask|pollinations_ask|ask_agents)",
+         "ops", "music938-1/scripts", "aeris938-1/scripts", "aeris938-2/scripts",
+         "scripts"], cwd=ROOT.parent, capture_output=True, text=True)
+    check("no runtime file imports an advisor", hits.stdout.strip() == "",
+          hits.stdout.strip()[:200])
+
+    # The one thing that replaced them: the lyric is a file AR writes, and the
+    # lint that judged a model's draft still judges it.
+    ly = (ROOT / "scripts" / "ai_lyrics.py").read_text(encoding="utf-8")
+    check("the lyric module has no drafter left",
+          not any(k in ly for k in ("DRAFTERS", "_drive_", "verify_meaning",
+                                    "chatgpt", "gemini")))
+    check("the lyric module still lints", "def lint_sections" in ly
+          and "def load_ar" in ly)
+    pl = (ROOT / "scripts" / "produce_loop.py").read_text(encoding="utf-8")
+    check("the produce rail reads AR's lyric or stops",
+          "no-lyric" in pl and "inbox" in pl)
+
+
 def test_no_gemini_gate_in_the_video_system() -> None:
     """The Gemini review is out of the video system (K, 2026-11-20).
 
     K: "ตอนนี้ตัดการตรวจสอบของ gemini ออกจากระบบสร้างวีดีโอใหม่เลย". The review
     used to be a hard, fail-closed gate on every render and every upload route.
-    It is now optional: `ops/gemini_gate.py` still exists and can be run by hand,
-    but nothing in the pipeline may block on it.
+    K removed the advisors outright on 2026-11-27, so the module is deleted as
+    well: nothing in the pipeline may block on a review, and nothing may offer it.
 
     This is a source check because the rule is about wiring, not behaviour: a
     gate that is silently still called from one route is exactly the failure
@@ -8494,9 +8538,9 @@ def test_no_gemini_gate_in_the_video_system() -> None:
     check("the clip lane workflow has no awaiting-review branch",
           "AWAITING GEMINI" not in yml and "awaiting-gemini-review" not in yml)
 
-    # The module itself stays: it is a tool K can still use by hand.
-    check("the gate module is kept as an optional tool",
-          (ROOT.parent / "ops" / "gemini_gate.py").exists())
+    # And the module is gone, not merely unwired (K, 2026-11-27: advisors out).
+    check("the gate module no longer exists",
+          not (ROOT.parent / "ops" / "gemini_gate.py").exists())
 
 
 def test_a_refused_clip_does_not_kill_the_queue() -> None:
@@ -8565,77 +8609,8 @@ def test_a_refused_clip_does_not_kill_the_queue() -> None:
         shutil.rmtree(d, ignore_errors=True)
 
 
-def test_gemini_review_reads_a_prose_verdict() -> None:
-    """The reviewer's answer must be readable whether or not it follows the form.
-
-    Gemini routinely ignores the requested `SCORE:` block and answers in prose.
-    The first version of the parser only accepted the labelled form, so every
-    review recorded "could not parse a SCORE" and no clip could ever pass — a
-    gate that blocks everything is broken, not strict. The prose form must parse,
-    and a reply with no score at all must still fail closed.
-    """
-    section("gemini review parses prose")
-    import importlib.util
-    path = ROOT.parent / "ops" / "gemini_review.py"
-    spec = importlib.util.spec_from_file_location("gemini_review", path)
-    m = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(m)
-
-    s, v, r = m.parse("SCORE: 9\nVERDICT: PASS\nREASON1: ok\nREASON2: ok")
-    check("the labelled form parses", (s, v) == (9.0, "PASS"), f"{s} {v}")
-
-    s, v, r = m.parse("ภาพรวมดีมาก ใช้พื้นที่เต็มจอ ไม่มีแถบดำ\n"
-                      "ให้ 9 คะแนน ผ่านเกณฑ์ทุกข้อ")
-    check("a Thai prose pass parses", (s, v) == (9.0, "PASS"), f"{s} {v}")
-
-    s, v, r = m.parse("ผมให้ 8/10 ผ่านครับ")
-    check("a bare fraction parses", s == 8.0, s)
-
-    s, v, r = m.parse("สรุปผลการตรวจ: ปรับปรุง ยังไม่ผ่านเกณฑ์\n"
-                      "จุดที่พบ: การวนซ้ำของภาพชัดเจนมาก\n"
-                      "สรุปสถานะ: ยังไม่ผ่าน (Needs Revision)")
-    check("a Thai prose fail parses as FAIL", v == "FAIL", v)
-
-    s, v, r = m.parse("ผมดูแล้วรู้สึกว่าโอเคนะ แต่ยังไม่แน่ใจ")
-    check("a reply with no score fails closed", s is None, s)
-    check("a reply with no score records no pass", v != "PASS", v)
 
 
-def test_gemini_score_is_not_authoritative() -> None:
-    """Gemini's score does not detect real defects, so it cannot be the judge.
-
-    K (2026-11-19): "ถ้า gemini ให้ผ่านแต่ K ไม่ผ่าน อันนี้จะต้องรื้อระบบตรวจสอบ
-    ของ gemini ด้วยนะ ว่ามาตรฐานอยู่ระดับไหน". A blind run on 2026-11-19 measured
-    the scale against clips whose defects are *known* (a clean clip, no captions,
-    frozen picture, letterbox, clipped audio):
-
-        clean 5 · no-captions 7 (PASS) · black-bars 7 (PASS)
-        frozen 2 · clipped-audio 5
-
-    A clip with the caption band painted out scored *higher* than the finished
-    clip and was called PASS. So the score is a second opinion, never a gate: a
-    publish decision rests on measured rules (clip_standard) and K's judgement.
-    This test pins that ordering so the reviewer cannot quietly regain authority.
-    """
-    section("gemini score is not authoritative")
-    report = ROOT / "work" / "gemini-calibration" / "report.json"
-    if not report.exists():
-        print("  skip: no calibration report yet (run ops/gemini_calibrate.py --run)")
-        return
-    rows = json.loads(report.read_text(encoding="utf-8"))
-    by = {r["probe"]: r for r in rows}
-    clean = by.get("clean", {}).get("score")
-    check("the clean clip was scored as a baseline", clean is not None, clean)
-    if clean is None:
-        return
-    missed = [n for n, r in by.items()
-              if n != "clean" and r.get("score") is not None
-              and r["score"] >= clean]
-    check("the calibration found at least one undetected defect", bool(missed),
-          f"{missed}")
-    check("a captionless clip is not scored below a finished one",
-          by.get("no-captions", {}).get("score", 0) >= clean,
-          f"{by.get('no-captions', {}).get('score')} vs clean {clean}")
 
 
 def test_metadata_ab_holds_format_fixed() -> None:
@@ -8957,10 +8932,11 @@ def test_produce_loop() -> None:
     """
     section("produce loop (continuous, keyless)")
     src = (ROOT / "scripts" / "produce_loop.py").read_text()
-    check("drafts the lyric on a keyless channel",
-          '"duck"' in src and '"pollinations"' in src and "for drafter in" in src)
-    check("a browser-less channel is available (CI has no desktop)",
-          "_drive_pollinations" in (ROOT / "scripts" / "ai_lyrics.py").read_text())
+    check("reads the lyric AR wrote, keyed by the theme",
+          'lyrics" / "inbox"' in src and "A.load_ar" in src)
+    check("no AI drafter is left in the lyric module",
+          not any(k in (ROOT / "scripts" / "ai_lyrics.py").read_text()
+                  for k in ("DRAFTERS", "_drive_", "verify_meaning")))
     check("makes the master offline before trying Flow",
           src.index("--offline") < src.index('"--force"]'))
     check("a Flow render is opt-in, not required", "--flow" in src)
@@ -9591,41 +9567,15 @@ def test_clip_lane_is_its_own_job() -> None:
     check("a shot's still is looped at the output framerate",
           '"-loop", "1", "-framerate", str(FPS)' in src)
 
-    # Two frames of one held still are not a repeated shot, but the sheet could
-    # not say so and Gemini failed a correct clip for "ช็อตซ้ำ".
-    sys.path.insert(0, str(ROOT.parent / "ops"))
-    import gemini_review as gr  # noqa: E402
-    check("the review sheet labels each sample with its shot id",
-          "_shot_ids" in Path(gr.__file__).read_text(encoding="utf-8"))
-    check("the review prompt explains that a shared shot id is one still",
-          "ไม่ใช่ช็อตซ้ำ" in gr.PROMPT)
-
     # Near-identical stills must not be selected in the first place. The hash is
     # taken on the 9:16 crop, because that is the picture the viewer sees.
     check("still selection rejects near-duplicates", hasattr(cl, "_dhash"))
     check("the duplicate check measures the 9:16 crop",
           "cover-crops to 9:16" in src)
 
-    # A gate nobody can pass is a broken gate. On 2026-11-19 the bar was 8.0 and
-    # Gemini had never returned above 6.0, so the 24/7 loop would have stalled
-    # forever while every clip reported FAIL. The bar must sit at a score Gemini
-    # actually gives to a clip it calls PASS.
-    import gemini_gate as gg  # noqa: E402
-    check("the pass bar is one Gemini actually reaches", gg.PASS_SCORE <= 6.5,
-          f"PASS_SCORE={gg.PASS_SCORE:g}")
-    # The verdict is the gate, the score only a sanity floor: Gemini's score is
-    # noisy (clean clip 5 FAIL, captionless 7 PASS), so the floor must sit below
-    # the PASS band or a good clip is blocked by a number that does not track
-    # quality.
-    check("the score floor sits below the PASS band", gg.PASS_SCORE <= 6.0)
-
-    # ...and it must still be a gate: the verdict, not a stored flag, decides.
-    gate_src = Path(gg.__file__).read_text(encoding="utf-8")
-    check("the gate reads the verdict, not a stale stored flag",
-          'verdict != "PASS"' in gate_src)
-    check("the gate is hash-bound", "sha256" in gate_src and "want != have" in gate_src)
-    check("there is no override on the publish path",
-          "no override" in gate_src.lower() or "No override" in gate_src)
+    # The gate itself is gone (K, 2026-11-27): no score, no bar, no override.
+    check("the gate module is deleted, not merely unwired",
+          not (ROOT.parent / "ops" / "gemini_gate.py").exists())
 
     # Sharpness is measured on the crop, because that is what the viewer sees and
     # what Gemini judged when it called the night clips grainy.
@@ -9773,400 +9723,12 @@ def test_memory_guard() -> None:
           s.stdout[-200:] or s.stderr[-200:])
 
 
-def test_keyless_lyric_drafter() -> None:
-    """The lyric rail must not depend on K's Google session.
-
-    The drafting step used to need the signed-in ChatGPT/Gemini web app, so a
-    signed-out desktop meant no new song at all — a K-dependency in the content
-    engine itself. Duck.ai needs no login and no key, so it is now the drafter,
-    with the lint as the quality gate. Two things make that safe and are pinned
-    here: Duck.ai's "Nth opinion" chrome must be stripped or the last lyric line
-    fails the Latin-text lint, and both drafters must share the same prompt/parse
-    /lint path so a weaker channel costs a retry rather than a bad render.
-    """
-    section("keyless lyric drafter (no Google session needed)")
-    sys.path.insert(0, str(ROOT / "scripts"))
-    sys.path.insert(0, str(ROOT.parent / "ops"))
-    import ai_lyrics as A  # noqa: E402
-
-    check("duck is a registered drafter", "duck" in A.DRAFTERS)
-    check("chatgpt stays as the fallback drafter", "chatgpt" in A.DRAFTERS)
-    # The chrome is stripped where every answer is read, not just for lyrics.
-    check("duck_ask strips the 'Nth opinion' marker",
-          "opinion" in (ROOT.parent / "ops" / "duck_ask.py").read_text()
-          and re.search(r"st\|nd\|rd\|th", (ROOT.parent / "ops" / "duck_ask.py").read_text())
-          is not None)
-    # A draft carrying the marker fails the lint — which is why the strip matters.
-    bad = [("chorus", ["คิดถึงบ้านยามฝนตกทุกครา", "2nd opinion"])]
-    check("the marker would fail the lint",
-          any("Latin" in p for p in A.lint_sections(bad)))
-    # The Thai-length ceiling must accept a real singable line and still catch a
-    # fused answer. 2026-11-14: a 34-char ceiling rejected the 36-39 char lines
-    # Duck.ai actually writes, and a produce run lost every draft to it.
-    ok39 = [("chorus", ["ฟุ้งกรามเสียงกระตุ้นกล้ามเนื้อพยายามวัน"])]
-    check("a 39-char Thai line passes the lint",
-          not any("Thai chars" in p for p in A.lint_sections(ok39)))
 
 
-    check("a fused runaway line still fails the lint",
-          any("Thai chars" in p for p in A.lint_sections([("chorus", ["ก" * 90])])))
-    # Pollinations returns `output_token_limit_exceeded` (HTTP 400) on a long
-    # lyric brief unless the caller raises the ceiling; a produce run lost every
-    # draft to it (measured 2026-11-14, and again 2026-11-18). The models are
-    # reasoning LLMs, so the ceiling must cover hidden reasoning + answer, and a
-    # transient 400/402/429 still needs a retry. The ceiling *doubles* on the
-    # token-limit error so the loop self-heals instead of repeating a doomed call.
-    poll = (ROOT.parent / "ops" / "pollinations_ask.py").read_text()
-    check("pollinations sends max_tokens (the output-limit fix)",
-          "max_tokens" in poll and "output_token_limit_exceeded" in poll)
-    check("pollinations raises the ceiling on the token-limit error",
-          "max_tokens *= 2" in poll)
-    check("pollinations retries a transient 400/402/429",
-          "in (400, 402, 429)" in poll and "FREE_LIMIT_WAIT" in poll)
-    # A keyless drafter refuses a Thai rap brief outright when it reads as
-    # aggression ("I'm sorry, but I can't help with that" — measured 2026-11-18
-    # on the exact #48 brief). Naming the positive, no-violence tone up front
-    # clears the filter: same brief then returns all 6 sections with no lint
-    # problem. rap also had no GENRE_BRIEF, so its brief was empty.
-    al = (ROOT / "scripts" / "ai_lyrics.py").read_text()
-    check("the prompt states the positive, no-violence tone",
-          "POSITIVE_TONE" in al and "ไม่มีความรุนแรง" in al)
-    check("POSITIVE_TONE is injected into every prompt",
-          "+ POSITIVE_TONE" in al)
-    check("rap has a genre brief", '"rap": (' in al)
-    rap_meta = {"TITLE": "จัดเต็มทุกบาร์อีกครั้ง", "GENRE": "rap", "TEMPO": "95"}
-    check("a rap prompt carries the positive tone",
-          "ไม่มีความรุนแรง" in A.build_prompt(rap_meta, "ลุยไม่หยุด"))
-    # --plan must list N distinct songs, not the same theme N times.
-    check("the plan advances the picker",
-          "seen.add(t[2])" in (ROOT / "scripts" / "produce_loop.py").read_text())
-    # Gemini's own advice (2026-11-18), after the keyless channels refused the
-    # Thai rap prompt: draft through the Gemini API free tier. It is the only
-    # drafter that both runs headless in CI and answers the content, so the loop
-    # tries it first. Pinned so a refactor cannot quietly drop it back to a
-    # channel that cannot run on a runner.
-    check("the gemini-api drafter is registered", "gemini-api" in A.DRAFTERS)
-    ploop = (ROOT / "scripts" / "produce_loop.py").read_text()
-    check("the produce loop tries gemini-api first",
-          'for drafter in ("gemini-api", "duck", "pollinations")' in ploop)
-    gapi = (ROOT.parent / "ops" / "gemini_api.py").read_text()
-    check("gemini_api uses the free generateContent endpoint",
-          "generativelanguage.googleapis.com" in gapi and ":generateContent" in gapi)
-    check("gemini_api reads the key from the environment",
-          "GEMINI_API_KEY" in gapi)
-    check("gemini_api fails soft with no key (falls through)",
-          "GeminiUnavailable" in gapi and "is not set" in gapi)
-    # It must parse a real response shape and report a blocked/empty one as an
-    # error rather than returning "" (an empty draft once looked like a reply).
-    import gemini_api as GA  # noqa: E402
-    text = GA._extract_text({"candidates": [
-        {"content": {"parts": [{"text": "บรรทัดหนึ่ง"}, {"text": "บรรทัดสอง"}]}}]})
-    check("gemini_api joins the candidate's text parts",
-          text == "บรรทัดหนึ่งบรรทัดสอง", text)
-    for payload, why in (({"candidates": []}, "no candidate"),
-                         ({"candidates": [{"content": {"parts": []},
-                                           "finishReason": "SAFETY"}]}, "empty")):
-        try:
-            GA._extract_text(payload)
-            check(f"gemini_api raises on {why}", False)
-        except RuntimeError:
-            check(f"gemini_api raises on {why}", True)
-    forge = (ROOT / "scripts" / "forge_song.py").read_text()
-    check("the forge tries the keyless drafter first",
-          forge.index('for drafter in ("duck", "chatgpt")') > 0)
-
-    # The song master itself must not depend on Flow Music's login either.
-    flow = (ROOT / "scripts" / "flow_song.py").read_text()
-    check("flow_song has a keyless offline master path",
-          "--offline" in flow and "def _offline_bed" in flow)
-    check("the offline path uses the offline synth, not Flow",
-          "make_music" in flow and 'status": "OFFLINE_BED' in flow)
-    # The real-instrument renderer returns ~11 s less than it is asked for, so a
-    # 210 s request lands at ~199 s — under the pack's 3.5-minute floor (measured
-    # 2026-11-14). The offline bed must ask for enough headroom, and the bed cache
-    # must not reuse a take built for a different length.
-    check("the offline bed asks for enough headroom for the floor",
-          "duration=240.0" in flow)
-    mk = (ROOT.parent / "aeris938-1" / "scripts" / "make_music.py").read_text()
-    check("the bed cache is duration-aware",
-          'existing.get("duration_seconds") == duration' in mk)
-    check("the offline path reads the lyric header",
-          'parse_lyric(lyric)["meta"]' in flow)
-    # A normal run must never silently downgrade a Flow render to a synth bed.
-    check("the offline master is opt-in, not automatic",
-          "if args.offline" in flow and "except B.LoginRequired" in flow)
 
 
-def test_lyric_meaning_gate() -> None:
-    """A lyric must read as Thai, not merely be shaped like it.
-
-    On 2026-11-19 eight lyrics shipped as syllable salad — real Thai syllables
-    in no grammatical order ("บวยบอยในใจทำไมดี", "ฝันบีบไหม้ไปดอกไม้ซุ่มดา").
-    Every structural check passed them: correct line lengths, no Latin, no
-    chrome. Two cheaper checks were tried and measured useless:
-    `thai_words` coverage scored 1.00 on the worst lines (every token is a
-    genuine word), and a function-word count scored a salad line 2.0 against a
-    correct line's 0.0 — backwards. So the gate asks a reader of the language.
-
-    Pinned here without the network: the reader is injected.
-    """
-    section("lyric meaning gate")
-    sys.path.insert(0, str(ROOT / "scripts"))
-    import ai_lyrics as A  # noqa: E402
-
-    salad = [("verse", ["คลิกสองสติกแสงไฟเคลื่อนไหว", "บวยบอยในใจทำไมดี",
-                        "สุดที่เราคุยเสียงจ้องแน่นเบา", "ส่องไฟพลุเต็มฟ้าเม่น"])]
-    real = [("verse", ["ปิดไฟห้องแล้วเดินออกไป", "ทิ้งเรื่องวุ่นวายไว้ข้างหลัง",
-                       "แสงไฟยามค่ำส่องนำทาง", "เปิดใจรับความสุขเต็มแรง"])]
-
-    seen: list[str] = []
-
-    def reader(prompt: str, timeout_s: int = 240) -> str:
-        seen.append(prompt)
-        return "FAIL บรรทัดนี้ไม่ใช่ประโยคไทย" if "บวยบอย" in prompt else "PASS"
-
-    check("a syllable salad is rejected",
-          bool(A.verify_meaning(salad, ask=reader)))
-    check("a real lyric passes", A.verify_meaning(real, ask=reader) == [])
-    check("the check is shown the whole lyric, not a line",
-          all("เปิดใจรับความสุขเต็มแรง" in p for p in seen if "บวยบอย" not in p))
-    check("a refusal that is neither PASS nor FAIL still blocks",
-          bool(A.verify_meaning(real, ask=lambda p, timeout_s=240: "ขอโทษครับ")))
-    check("the gate is wired into main",
-          "verify_meaning(sections)" in (ROOT / "scripts" / "ai_lyrics.py").read_text())
-    # Page chrome fused onto the last section would otherwise be sung.
-    check("the Gemini footer is rejected as chrome",
-          any("chrome" in p for p in A.lint_sections(
-              [("chorus", ["รักเธอหมดใจแล้ววันนี้", "Gemini เป็น AI และอาจทำผิดพลาดได้"])])))
 
 
-def test_af_advisor() -> None:
-    """The AF advisor: several free vendors, keyless, and fail-closed.
-
-    `ops/consult.py` drives a signed-in browser, which a rail does not have. The
-    AF advisor reaches the same kind of vendor over g4f and plain HTTPS, so it is
-    the one an autonomous loop can actually use. Its whole value is that a
-    missing answer stays missing, so the guards below are the contract:
-
-    * `looks_like_error_answer` rejects an error page served as HTTP 200.
-    * `MIN_CHARS` is 20: a terse correct answer is not a dead pipe.
-    * a rate hint waits out the 45 s pollinations window instead of burning the
-      three attempts in nine seconds.
-    * a bench never overwrites its raw answers, so a regrade can re-score them.
-    """
-    section("af advisor (multi-vendor, keyless, fail-closed)")
-    tools = ROOT.parent / "tools"
-    for name in ("af_advisor.py", "af_advisor_roster.json", "af_vendor_bench.py",
-                 "af_pick_trading_advisor.py", "af_ceo_bench.py"):
-        check(f"{name} exists", (tools / name).exists())
-
-    sys.path.insert(0, str(tools))
-    import af_advisor as af  # noqa: E402
-    import af_ceo_bench as ceo  # noqa: E402
-    import af_pick_trading_advisor as trading  # noqa: E402
-
-    src = (tools / "af_advisor.py").read_text()
-    check("three attempts per vendor", af.ATTEMPTS == 3)
-    check("the backoff is 3s, 6s", af.BACKOFF_SECONDS == 3)
-    check("a rate hint waits out the free-tier window",
-          af.RATE_BACKOFF_SECONDS >= 45, str(af.RATE_BACKOFF_SECONDS))
-    check("pollinations gets a 4000-token ceiling",
-          af.POLLINATIONS_MAX_TOKENS == 4000)
-    check("pollinations asks for low reasoning effort",
-          '"reasoning_effort": "low"' in src)
-    check("g4f is called by provider, never by model name",
-          "provider=provider" in src and 'model=""' in src)
-    check("g4f installs itself after a container restart",
-          "def ensure_g4f" in src and "pip" in src)
-    check("g4f is restored from the durable pylibs dir, not only by pip",
-          "AX_PYLIBS" in src and "invalidate_caches" in src)
-    check("a silent vendor times out at timeout + 60", "timeout + 60" in src)
-
-    check("an empty answer is not an answer", af.looks_like_error_answer(""))
-    check("an error page served as 200 is not an answer",
-          af.looks_like_error_answer(
-              "Sorry, I'm having a hard time fulfilling this request."))
-    check("a terse correct answer is not a dead pipe",
-          not af.looks_like_error_answer(
-              "Opportunity cost: 6.75 / Net loss: 5.25 / DECLINE"))
-    advert = ("### Copilot moved to a new app\n- Install the new Copilot app "
-              + "filler " * 80 + "\n[Install now](https://unifiedlink.svc.cloud"
-              ".microsoft/app/copilot/?openAppStoreOnLoad=true)")
-    check("an advert is not an answer even past the 400-char bound",
-          len(advert) > 500 and af.looks_like_error_answer(advert))
-    check("a long real answer is not mistaken for an advert",
-          not af.is_advert("The publish step ran at 18:02 and the live place "
-                           "version moved, so the rail shipped."))
-    check("the short-answer floor is 20 chars, not 200", af.MIN_CHARS == 20)
-    check("a chat envelope is unwrapped, not returned",
-          af._text_from_chat_json('{"choices":[{"message":{"content":"x"}}]}') == "x")
-
-    roster = af.load_roster()
-    advisors = roster["advisors"]
-    check("five live vendors are registered", len(advisors) == 5, str(sorted(advisors)))
-    check("the pool names only live vendors",
-          all(v in advisors for v in roster["default_pool"]))
-    check("dead vendors are out of the pool",
-          "LLM7" not in roster["default_pool"]
-          and "CohereForAI_C4AI_Command" not in roster["default_pool"])
-    check("every dead vendor keeps its reason",
-          all(info.get("reason") for info in af.dead_vendors(roster).values()))
-    check("the default advisor resolves to a real vendor",
-          af.resolve_vendor(roster["default_advisor"], roster) in advisors)
-    check("advise() starts at the default advisor",
-          af.advise_order()[0] == af.resolve_vendor(roster["default_advisor"], roster))
-    check("pollinations is the keyless, g4f-free fallback",
-          af.vendor_spec("pollinations", roster).get("transport") == "http")
-    check("--advisor gemini resolves to the Gemini provider",
-          af.resolve_vendor("gemini", roster) == "Gemini")
-
-    check("the trading bench is worth 11 points",
-          sum(q["max"] for q in trading.QUESTIONS) == 11)
-    check("the CEO bench is worth 12 points",
-          sum(q["max"] for q in ceo.QUESTIONS) == 12)
-
-    ceo_gold = {
-        "kill": '{"kill": "A", "net_a": -0.3, "net_b": 1.4, '
-                '"reasoning": "A loses 0.3/h, B makes 1.4/h"}',
-        "allocate": '{"hours_x": 6, "hours_y": 4, "hours_z": 0, "total_ev": 54, '
-                    '"reasoning": "highest EV per hour first, up to capacity"}',
-        "sayno": '{"call": "DECLINE", "opportunity_cost_per_hour": 4.5, '
-                 '"net": -18, "reasoning": "12 - 4 x 7.5 = -18"}',
-        "price": '{"revenue_025": 0.2, "revenue_150": 0.3, "revenue_300": 0.6, '
-                 '"price": 3.0, "reasoning": "revenue is highest at 3.00"}',
-    }
-    total = sum(ceo.score_answer(q, ceo_gold[q["id"]])["points"] for q in ceo.QUESTIONS)
-    check("gold CEO answers score 12/12", total == 12, str(total))
-    trading_gold = {
-        "expectancy": '{"value": 0.4, "reasoning": "0.40 * 2.5 + 0.60 * -1.0", '
-                      '"call": "TAKE"}',
-        "friction": '{"value": 62, "reasoning": "100 - 30 - 3 - 5 = 62", '
-                    '"margin": "62%"}',
-        "growth": '{"value": 1771.56, "reasoning": "1000 * 1.10^6, compounded"}',
-        "reconcile": '{"value": 350, "reasoning": "the 30 is a receivable held '
-                     'by the platform"}',
-    }
-    total = sum(trading.score_answer(q, trading_gold[q["id"]])["points"]
-                for q in trading.QUESTIONS)
-    check("gold trading answers score 11/11", total == 11, str(total))
-    check("a wrong price is not full marks",
-          ceo.score_answer(ceo.QUESTIONS[3],
-                           ceo_gold["price"].replace('"price": 3.0',
-                                                     '"price": 0.25'))["points"] < 3)
-    check("an uppercase KILL A still matches the lower-case pattern",
-          ceo.score_answer(ceo.QUESTIONS[0],
-                           "KILL A. Net -0.3 vs +1.4.")["points"] == 2)
-    check("a terse prose answer scores full marks",
-          ceo.score_answer(ceo.QUESTIONS[2],
-                           "Opportunity cost 4.5/hour. Net -18. Decline.")["points"] == 3)
-
-    import tempfile
-    with tempfile.TemporaryDirectory() as tmp:
-        target = Path(tmp) / "raw.json"
-        first = af.write_json(target, {"run": 1})
-        second = af.write_json(target, {"run": 2})
-        check("a second write never overwrites the raw capture",
-              first != second
-              and json.loads(first.read_text(encoding="utf-8"))["run"] == 1)
-
-    import contextlib
-    import io
-    quiet = io.StringIO()
-    with contextlib.redirect_stdout(quiet), contextlib.redirect_stderr(quiet):
-        selftest_rc = af.main(["--selftest"])
-        unknown_rc = af.main(["--vendors", "NoSuchVendor", "q"])
-    check("--selftest passes", selftest_rc == 0)
-    check("an unknown vendor is a usage error, not a silent answer",
-          unknown_rc == 2)
-
-    for rel in ("tools/af_advisor.py", "tools/af_advisor_roster.json"):
-        try:
-            r = subprocess.run(["git", "check-ignore", "-q", "--no-index", rel],
-                               cwd=str(ROOT.parent), capture_output=True)
-        except (OSError, FileNotFoundError):
-            break
-        check(f"{Path(rel).name} is tracked, not swallowed by tools/",
-              r.returncode != 0, "git check-ignore says it is ignored")
-
-
-def test_consult_gate() -> None:
-    """K's standing rule: consult the advisors BEFORE acting.
-
-    A written rule gets skipped under time pressure, so the rule is also a gate:
-    `require()` raises unless a recent, actually-answered consultation for the
-    same brief is on disk. This test pins the gate's behaviour, not just its
-    existence.
-    """
-    section("consult-before-acting gate")
-    sys.path.insert(0, str(ROOT.parent / "ops"))
-    import consult  # noqa: E402
-    import tempfile
-
-    src = (ROOT.parent / "ops" / "consult.py").read_text()
-    check("chatgpt/gemini/duck stay available via --only",
-          all(v in consult.VENDORS for v in ("chatgpt", "gemini", "duck")))
-    # K (2026-11-18): the advisor team is Gemini alone, and when blocked we ask
-    # Gemini and follow its advice. So the default panel is exactly ["gemini"].
-    check("the default panel is Gemini alone (K, 2026-11-18)",
-          consult.PANEL == ["gemini"], str(consult.PANEL))
-    check("gemini is its own vendor family",
-          consult.family("gemini") == "gemini")
-    # The keyless HTTP channels are no longer the panel, but stay reachable.
-    check("a keyless HTTP channel stays reachable via --only",
-          "pollinations" in consult.VENDORS and "duck" in consult.VENDORS)
-    check("duck channels collapse to one vendor",
-          consult.family("duck-luna") == consult.family("duck-oss") == "duck")
-    # A single Gemini answer IS a quorum now (K narrowed the panel to one).
-    check("the floor is one advisor / one family",
-          consult.MIN_ADVISORS == 1 and consult.MIN_FAMILIES == 1,
-          f"{consult.MIN_ADVISORS}/{consult.MIN_FAMILIES}")
-    check("the floor matches the one-channel default",
-          consult.MIN_ADVISORS == len(consult.PANEL),
-          f"{consult.MIN_ADVISORS} vs {len(consult.PANEL)}")
-    check("duck needs no login", "duck" in consult.VENDORS)
-    check("records the problem and answers", "consult-log.jsonl" in src)
-    check("records what was applied, not just what was asked",
-          "applied" in src and "def note_applied" in src)
-    check("retries a failed channel", "retries" in src)
-
-    with tempfile.TemporaryDirectory() as tmp:
-        consult.LOG = Path(tmp) / "consult-log.jsonl"
-        brief = "how do we get the first Shopee order"
-        # Nothing recorded yet -> the gate must refuse.
-        try:
-            consult.require(brief)
-            check("gate refuses an unconsulted brief", False)
-        except consult.NotConsulted:
-            check("gate refuses an unconsulted brief", True)
-        check("gate reports not consulted", consult.consulted(brief) is None)
-
-        # A consultation where nobody answered is not a consultation.
-        consult.record(brief, {"gemini": {"ok": False, "error": "signed out"}})
-        check("an unanswered consultation does not satisfy the gate",
-              consult.consulted(brief) is None)
-
-        # One answered Gemini channel is a quorum now (K's one-advisor rule).
-        consult.record(brief, {"gemini": {"ok": True, "answer": "x"}})
-        row = consult.require(brief)
-        check("a single Gemini answer satisfies the gate", bool(row))
-        check("the row records gemini as the family",
-              "gemini" in row.get("families", []), str(row.get("families")))
-        check("the quorum reason names the vendor",
-              "gemini" in consult.quorum(row["answers"])[1])
-        check("the digest is stable across whitespace",
-              consult.digest(brief) == consult.digest("  " + brief + "  "))
-        check("a different brief is a different gate",
-              consult.consulted("some other brief") is None)
-        # Staleness: an old consultation must not authorise today's action.
-        check("gate rejects a stale consultation",
-              consult.consulted(brief, max_age_hours=-1) is None)
-
-        # "Which advice did we use" must be answerable after the fact.
-        n = consult.note_applied(brief, ["raise FACEBOOK_DAILY_CAP to 2",
-                                         "read each Reel's insights"])
-        check("note_applied records on the matching row", n >= 1)
-        got = [r for r in consult.consulted(brief, max_age_hours=48)["applied"]]
-        check("the applied list is stored", len(got) == 2)
 
 
 def test_watchdog() -> None:
@@ -10462,7 +10024,6 @@ def test_ax_team_is_well_formed() -> None:
     # Files each member claims to drive; a missing path means a persona without
     # hands, so it must fail here rather than at run time.
     required_tools = {
-        "ax-advisor": ["ops/consult.py", "ops/duck_ask.py", "ops/pollinations_ask.py"],
         "ax-evidence": ["aeris938-2/scripts/evidence.py", "aeris938-2/scripts/surfaces.py"],
         "ax-experiment": ["aeris938-2/scripts/experiment_loop.py",
                           "aeris938-2/scripts/goal_watch.py"],
@@ -10760,9 +10321,9 @@ def main() -> int:
     test_mv_palettes_never_repeat()
     test_eq_overlay_is_drawn_from_the_song()
     test_mv_shots_cannot_freeze()
+    test_no_advisor_is_left_in_the_system()
     test_no_gemini_gate_in_the_video_system()
     test_a_refused_clip_does_not_kill_the_queue()
-    test_gemini_review_reads_a_prose_verdict()
     test_ai_covers()
     test_thumbnail_repair()
     test_nostr_identity()
@@ -10824,7 +10385,6 @@ def main() -> int:
     test_ai_frames_rotate_between_clips()
     test_photographs_rotate_between_clips()
     test_a_director_cuts_on_the_music()
-    test_gemini_score_is_not_authoritative()
     test_metadata_ab_holds_format_fixed()
     test_login_vault_never_clobbers_a_live_surface()
     test_ar_identity_survives_a_lost_pod()
@@ -10832,8 +10392,6 @@ def main() -> int:
     test_studio_read_parses_analytics()
     test_experiment_loop_answers_every_diagnosis()
     test_heartbeat_repair_signal()
-    test_consult_gate()
-    test_af_advisor()
     test_produce_loop()
     test_share_pack()
     test_k_free_status()
@@ -10842,8 +10400,6 @@ def main() -> int:
     test_memory_guard()
     test_a_bed_never_reaches_a_clip()
     test_clip_lane_is_its_own_job()
-    test_keyless_lyric_drafter()
-    test_lyric_meaning_gate()
     test_brand_identity()
     test_watchdog()
     test_fill_playlists()

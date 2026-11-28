@@ -31,7 +31,6 @@ them red; you run them **before a push** and repair the cause, not the symptom.
 - `python3 scripts/check-hud-wiring.py` — source-level wiring checks (WIRING 7d
   cadence, WIRING 10 enemy damage gates).
 - `python3 ops/risk_audit.py --strict` — the platform risk register.
-- `python3 ops/consult-log.jsonl` is append-only history — read it, do not truncate.
 
 ## Procedure
 

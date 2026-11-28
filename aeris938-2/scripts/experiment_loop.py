@@ -9,7 +9,7 @@ keep experimenting until we find the point that works."
 `goal_watch.py` already names the constraint each day (reach / conversion /
 offer / income). This module is the missing *response*: it turns that diagnosis
 into a decision, records the experiment, and refuses to repeat a loser. The
-design is the 2026-11-09 advisor panel's (duck + pollinations, quorum PASS):
+design is the 2026-11-09 advisor panel's, kept because it works:
 
   * If an experiment is already RUNNING and inside its evaluation window, keep it
     — update its metrics and wait. A flat day is a signal to *review*, not
@@ -24,7 +24,7 @@ design is the 2026-11-09 advisor panel's (duck + pollinations, quorum PASS):
 
 Why a ledger and not prose: a rule that lives only in a document gets skipped.
 The ledger is read back on every run, so the loop cannot "forget" and re-try a
-loser — the 2026-11-06 panel's lesson (a gate the worker cannot bypass).
+loser — a gate the worker cannot bypass.
 
     python3 scripts/experiment_loop.py --plan      # decide, print, do not write
     python3 scripts/experiment_loop.py --run       # decide and record
@@ -52,7 +52,7 @@ LEDGER = WORK / "experiments.jsonl"
 STATE = WORK / "experiment-state.json"
 
 # A hypothesis is a duplicate of a past one when this share of its content words
-# is shared. 0.6 is the panel's suggestion: high enough that a genuine re-test
+# is shared. 0.6: high enough that a genuine re-test
 # with a new variable passes, low enough that a reworded loser is caught.
 DUP_THRESHOLD = 0.6
 # How long a test runs before it is judged. Shorts reach is fast, so a fortnight
@@ -71,7 +71,7 @@ HOURS_MAX_AGE_MINUTES = 7 * 24 * 60
 # is a real, free, in-repo experiment with the ONE variable it changes, the peer
 # evidence that motivated it, and how it is judged. The loop walks the list in
 # order and takes the first that is neither done nor a duplicate. Order is the
-# panel's priority: the first Shorts-framing test is first because YouTube's own
+# priority: the first Shorts-framing test is first because YouTube's own
 # data says Shorts drove >50% of new subscribers for active artists.
 LIBRARY: dict[str, list[dict]] = {
     "reach": [
@@ -125,7 +125,7 @@ LIBRARY: dict[str, list[dict]] = {
             "peer": "ช่องเพลงที่โตมีคำเชิญกดติดตามบนจอเสมอ",
             "metric": "ซับต่อ 1,000 วิว Short",
             "guardrail": ("อัตราดูจบเทียบ Short ที่เทียบเคียงได้ — ถ้าตก "
-                          "แปลว่าคำเชิญรบกวนเพลง (ที่ปรึกษา 2026-11-09 เตือนไว้)"),
+                          "แปลว่าคำเชิญรบกวนเพลง"),
         },
         {
             "key": "sing-along-karaoke",
@@ -337,7 +337,7 @@ def pick(constraint: str, rows: list[dict]) -> dict | None:
 def evaluate(exp: dict, rows: list[dict], now=None) -> tuple[str, str]:
     """Judge a finished experiment from the metrics history.
 
-    The panel was explicit: do not call a test a loss before its exposure
+    The rule stands: do not call a test a loss before its exposure
     threshold, and — added 2026-11-12 — do not judge on data that is missing or
     stale. So the verdict is:
       * WIN — the primary goal metric (subscribers, then commission) rose during
@@ -432,7 +432,7 @@ def decide(rows: list[dict], constraint: str, history: list[dict] | None = None,
            now=None) -> dict:
     """The one decision for today: keep, close, or start.
 
-    Order follows the panel: never switch away from a running test before its
+    Order: never switch away from a running test before its
     window (a flat day is a review, not a reason to churn); once the window is
     done, close it, judge it from the metrics, and pick the next untried
     experiment for the constraint. On a blind day the constraint is "data", and
@@ -465,7 +465,7 @@ def decide(rows: list[dict], constraint: str, history: list[dict] | None = None,
     if not nxt:
         return {"action": "exhausted",
                 "why": (f"ไม่มีสมมติฐานใหม่สำหรับคอนสตรนต์ '{constraint}' — "
-                        "ทุกตัวถูกลองแล้ว ต้องให้ที่ปรึกษาคิดชุดใหม่")}
+                        "ทุกตัวถูกลองแล้ว — AR ต้องเติม LIBRARY เอง")}
     return {"action": "start", "experiment": nxt,
             "why": f"ยังไม่มีการทดลองที่รันอยู่ — เปิดสมมติฐานแรกของ '{constraint}'"}
 
@@ -555,7 +555,8 @@ def render(decision: dict, scan: dict | None = None) -> str:
                   f"- เหตุผล: {decision['why']}"]
     elif act == "exhausted":
         lines += [f"**คลังสมมติฐานหมดสำหรับคอนสตรนต์นี้** — {decision['why']}",
-                  "ต้องให้ที่ปรึกษา (consult.py) คิดชุดสมมติฐานใหม่"]
+                  "AR ต้องเติม LIBRARY เอง — ที่ปรึกษาถูกถอดออกแล้ว (K 2026-11-27), "
+                  "และคำวินิจฉัยที่ไม่มีวิธี = ค้างตลอดกาล"]
     if scan:
         lines += ["", "## สัญญาณคู่แข่ง (สแกนฟรี ไม่ใช้ quota)"]
         for p in scan.get("peers", []):

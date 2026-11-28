@@ -222,30 +222,21 @@ def make_one(theme: tuple[str, str, str, str, str, str], *, flow: bool) -> dict:
             "GENRE": genre, "MOOD": mood, "TEMPO": MOOD_TEMPO.get(mood, "80"),
             "KEY": MOOD_KEY.get(mood, "C"), "VOICE": "female"}
 
-    print(f"[{slug}] {title} ({genre}/{mood}) — drafting lyric…", flush=True)
-    # Gemini API first: it is the drafter of record (Gemini's own advice,
-    # 2026-11-18) and the only one that both runs headless in CI and does not
-    # refuse the Thai rap prompt. duck.ai needs a desktop tab (absent on a
-    # runner), pollinations now refuses the content; both stay as fallbacks and
-    # the lint decides either way.
-    secs, problems = [], []
-    for drafter in ("gemini-api", "duck", "pollinations"):
-        try:
-            secs, problems = A.draft(meta, angle, drafter=drafter)
-        except Exception as exc:  # noqa: BLE001
-            problems = [f"{drafter}: {type(exc).__name__}: {exc}"]
-            # Print each channel's failure as it happens: the final `problems`
-            # only keeps the last drafter, so on 2026-11-18 the log showed only
-            # "pollinations: HTTP 400" and hid why duck (the primary) failed.
-            print(f"  {drafter} failed: {problems[0][:200]}", flush=True)
-            continue
-        print(f"  {drafter}: sections={len(secs)} problems={problems[:2]}", flush=True)
-        if secs and not problems:
-            break
-    if not secs or problems:
-        print(f"  draft rejected: {problems[:3]}", flush=True)
+    print(f"[{slug}] {title} ({genre}/{mood}) — reading AR's lyric…", flush=True)
+    # AR writes the lyric (K, 2026-11-27: advisors out). The file is keyed by the
+    # theme's slug word so the rail knows which words belong to which song, and
+    # the same lint that used to judge a model's draft still judges AR's text.
+    inbox = ROOT / "lyrics" / "inbox" / f"{slug_word or _slugify(title)}.txt"
+    if not inbox.exists():
+        print(f"  no lyric at {inbox.relative_to(ROOT)} — AR has to write it",
+              flush=True)
         return {"slug": slug, "title": title, "genre": genre, "mood": mood,
-                "result": "no-draft", "problems": problems[:3]}
+                "result": "no-lyric", "needs": str(inbox.relative_to(ROOT))}
+    secs, problems = A.load_ar(inbox)
+    if not secs or problems:
+        print(f"  lyric rejected by the lint: {problems[:3]}", flush=True)
+        return {"slug": slug, "title": title, "genre": genre, "mood": mood,
+                "result": "no-lyric", "problems": problems[:3]}
     (ROOT / "lyrics" / f"{slug}.txt").write_text(A.render_file(meta, secs), encoding="utf-8")
     print(f"  lyric written: lyrics/{slug}.txt ({sum(len(l) for _, l in secs)} lines)", flush=True)
 

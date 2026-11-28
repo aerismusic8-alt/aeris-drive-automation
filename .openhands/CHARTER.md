@@ -87,9 +87,9 @@ Gemini review from the video system now.
 The review was a hard, fail-closed gate: `ops/gemini_gate.py` had to hold a verdict
 hash-bound to the exact file before any render counted as finished or any upload
 route would run. It blocked a render for "no verdict", a re-render for "not the
-file Gemini saw", and every channel behind one unreviewed clip. It is now
-**optional** — the module stays so K or AR can run a review by hand, but nothing
-in the pipeline waits on it.
+file Gemini saw", and every channel behind one unreviewed clip. K removed the
+advisors outright on 2026-11-27, so the module is **deleted**, not merely
+unwired: nothing in the pipeline waits on a review and nothing offers one.
 
 What still gates a clip, and why it is not the same thing:
 
@@ -128,56 +128,38 @@ precise, one-action ask.
 
 Everything else: AR's call.
 
-## Consult the advisors first (K, 2026-11-05 — a standing principle)
+## Think before acting — and decide yourself (K, 2026-11-05 → 2026-11-27)
 
 > "ar พอเจอปัญหาหรือมีโจทย์ ยังไม่ได้ใช้ที่ปรึกษาก่อนตัดสินใจลงมือทำ
 > ควรสร้างหลักการนี้ไว้ตลอด"
 
-AR was jumping straight from a problem to an implementation and consulting the
-outside advisors only after, if at all. That is the behaviour this rule corrects,
-and it applies to **every** non-trivial problem or brief, for the life of the
-account — not just when K is watching.
+The original rule said: consult the outside advisors before deciding. The
+behaviour it corrected was real — AR jumped from a problem straight to an
+implementation without thinking it through — and that part still stands.
+
+What changed on 2026-11-27 is *who* does the thinking. K removed every advisor
+from the system ("พวก chat gpt หรือระบบ advisor อื่นที่ทำงานในระบบเราตอนนี้
+ยกเลิกออกไปให้หมด"). There is no `ops/consult.py` any more. **AR decides.**
 
 **The step, in order, before writing any code or starting any non-trivial job:**
 
 1. State the problem in one paragraph, plainly.
-2. Run `python3 ops/consult.py "<problem>"` (or `--file`). It asks the panel and
-   appends the answer to `ops/consult-log.jsonl`.
-
-   **The panel is Gemini alone (K, 2026-11-18): "ทีมที่ปรึกษาให้ใช้ gemini คนเดียวพอ
-   แล้วต้องทำตามคำสั่งและแนะนำของ gemini เมื่อติดปัญหา"** — one advisor, and **when a
-   problem blocks the work, ask Gemini and follow what it says**. The other
-   vendors (`duck`, `pollinations`, `chatgpt`) stay reachable with `--only` for a
-   one-off second opinion, but they are out of the default. The earlier history:
-   K cut the slow seats (2026-11-07, "the advisors are slow and give weak
-   answers"); before that the panel was two keyless HTTP channels, and before
-   *that* five seats of which three were the same Duck.ai page. That is the
-   standing instruction in action — adopt whichever advisor actually solves it
-   and drop the rest — and it landed on Gemini.
-
-   Gemini needs the Google session on the cloud desktop. **If it is signed out,
-   recover it; never ask K for a Google login** (K, 2026-11-13): run
-   `bootstrap.py`, then `python3 ops/login_vault.py restore`, then
-   `check_login.py` (judge by the account email, not by cookie presence). Only if
-   the vault cannot restore it is K needed.
-
-   The gate floor is now `MIN_ADVISORS` / `MIN_FAMILIES` = 1, so one Gemini answer
-   passes. The gate is wired into a real runner (`aeris938-2/scripts/admin.py`
-   fails closed without a quorum); it is not enforced in CI, so on a pod-side
-   decision it is still on you to call it.
-3. **Follow Gemini.** Where a problem blocks us, its advice is the instruction.
-   If its advice is impossible (a paid tool, a login only K holds), say which part
-   is impossible and why rather than silently ignoring it. Where a Gemini answer
-   contradicts a number the repo measured, the number wins — report the conflict.
-4. **Then** act. Record which advice was followed (`ops/consult.py --applied`) or
-   in the memory log, so the decision is auditable.
+2. Write down what the repo already measures about it — the numbers, the file,
+   the last run. A diagnosis with no data is a guess with a confident voice.
+3. Write down the options and pick one, with the reason. If the reason is "this
+   is the only free route", say so.
+4. Act, then check the result against the numbers from step 2. A fix that cannot
+   be measured was not a fix.
+5. Record the decision where the next session will find it — the commit message,
+   the daily log, or the doc that governs that lane — so it is auditable.
 
 Trivial, mechanical work — a typo, a version bump, a doc fix, a command already
-known to be right — does not need a consultation. Judgement calls do: a new
-feature, a strategy, a "why is this failing" that has already resisted one fix.
+known to be right — needs none of this. Judgement calls do: a new feature, a
+strategy, a "why is this failing" that has already resisted one fix.
 
-The `--only <vendor>` flag exists for a quick check; it is not an excuse to skip
-the consultation on a real decision.
+The one thing AR still takes to K: the four items listed above (a Google sign-in,
+an account-level action, money, a physical PC1 action). Everything else is AR's
+call, and AR answers for it.
 
 A vendor that repeatedly gives the better answer becomes the default advisor for
 that class of problem — K's standing instruction is to adopt whichever one
@@ -340,7 +322,7 @@ chose PARKED). A parked goal is inert until it is moved back to `IN_PROGRESS`.
   after it AR runs `ops/login_vault.py save` and `ops/save_storage_state.py`
   (both now cover Flow Music and YouTube) and every rail runs unattended again.
   **This is now an upgrade, not a blocker (2026-11-07):** the content engine is
-  K-free. Lyrics draft on Duck.ai (`forge_song.py`) and the song master has a
+  K-free. AR writes the lyric (`lyrics/inbox/`) and the song master has a
   keyless path (`flow_song.py --offline`), so a song can be produced with no
   session at all — the sign-in only gets a *real* Flow render instead of a synth
   bed. See `ops/k_free_status.py` (5/11 rails K-free).

@@ -128,7 +128,10 @@ def test_api_only_facebook_is_skipped_by_every_browser_consumer():
     sg = (Path(ROOT).parent / "ops" / "session_guard.py").read_text(encoding="utf-8")
     assert "surface_status" in sg and "def _no_browser_domains" in sg
     assert "surface_status.no_browser()" in sg
-    assert 'AUTO_REVIVE = {"flow"}' in sg, "Facebook must not be browser-revived"
+    import re
+    m = re.search(r"^AUTO_REVIVE = \{([^}]*)\}", sg, re.M)
+    assert m, "session_guard must declare AUTO_REVIVE"
+    assert "facebook" not in m.group(1), "Facebook must not be browser-revived"
     assert "import fb_relogin" not in sg, "the healer must not import the FB revive"
 
 
@@ -380,34 +383,19 @@ def test_admin_warning_detection():
     assert not admin.is_warning("ขอบคุณมากครับ เพราะมาก")
 
 
-def test_admin_is_gated_on_the_consultation():
-    """The rail must not run the work the consultation is supposed to authorise.
+def test_admin_has_no_consult_gate():
+    """K, 2026-11-27: the advisors are out, AR decides.
 
-    The rule "consult before acting" was prose, so it got skipped — the failure
-    the advisors themselves warned about. `run()` now calls the gate and fails
-    closed (return 2) when the brief has no quorum, with `--no-gate` as the only
-    escape hatch. Pin both halves: the gate exists and it is wired into run().
+    The rail used to refuse to run until a recorded quorum authorised the brief.
+    That gate is gone with the advisors, so the pin is the opposite: no gate, no
+    quorum lookup, and nothing left that can only ever fail. What keeps the rail
+    safe is its shape — it reads, drafts and alerts, and it never sends.
     """
     src = (ROOT / "scripts" / "admin.py").read_text(encoding="utf-8")
-    assert "def check_gate" in src
-    assert "consult.consulted(" in src, "admin must ask the gate, not remember it"
-    assert "--no-gate" in src, "the escape hatch must be explicit"
-    # Fails closed: no brief on disk, or no quorum, is a FAIL not a pass.
-    assert "no admin brief file on disk" in src
-    assert "return 2" in src
-
-    # The gate reads the committed brief, so the digest can match the consultation.
-    saved = admin.WORK
-    try:
-        import tempfile
-        with tempfile.TemporaryDirectory() as tmp:
-            admin.WORK = Path(tmp)
-            assert admin._gate_brief() == ""          # missing -> empty -> FAIL
-            p = Path(tmp) / "consult-brief-fb-admin-agent-2026-11-06.md"
-            p.write_text("hello brief", encoding="utf-8")
-            assert admin._gate_brief() == "hello brief"
-    finally:
-        admin.WORK = saved
+    assert "check_gate" not in src
+    assert "consult." not in src
+    assert "import consult" not in src
+    assert "admin-gate-alert" not in src
 
 
 def test_inbox_count_does_not_count_the_filter_label():

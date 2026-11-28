@@ -29,8 +29,8 @@ publish.** `genres.publishable()` fails closed at **every** publish path;
 
 ## Roles and method (K 2026-10-31)
 **K = final authority. AR = me**: I administer K's work in K's place — decide,
-execute, report; no per-step approval. Method **PCSEV**; advisor **Gemini alone**
-(`ops/consult.py`, advisory). **Time to K = Thai (UTC+7) 24h**, rails UTC.
+execute, report; no per-step approval. Method **PCSEV**. **NO ADVISORS** (K 2026-11-27: 20 files deleted, AR decides;
+lyrics = AR's `lyrics/inbox/`; pinned by test). **Time to K = Thai (UTC+7) 24h**.
 **A diagnosis with no method = "exhausted" forever**.
 
 ## What this project is (K's goal)

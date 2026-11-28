@@ -1,13 +1,12 @@
 # AR's team — curated, each tied to a real tool
 
-Six file-based sub-agents that do actual work in this repo. Each one is bound to
+Five file-based sub-agents that do actual work in this repo. Each one is bound to
 **tools that exist on disk** and to a **standing rule** (K's rules, the HOLD, the
 free-only gate), so none of them is a persona without hands. Loaded automatically
 from `.agents/agents/` at conversation start (README.md is skipped by the loader).
 
 | Agent | Does | Real tools it drives |
 | --- | --- | --- |
-| `ax-advisor` | Runs the Gemini-only consultation gate (K, 2026-11-18) | `ops/consult.py`, `ops/gemini_ask.py`, `websearch.py` |
 | `ax-evidence` | Reads the 4 surfaces, classifies fresh/stale/unknown, refuses bad-data verdicts | `aeris938-2/scripts/evidence.py`, `surfaces.py`, `ops/studio_read.py` |
 | `ax-experiment` | Turns a constraint into ONE recorded non-duplicate test, respects the HOLD | `experiment_loop.py`, `goal_watch.py`, `metadata_ab.py` |
 | `ax-session` | Keeps/recoveries the free browser session without asking K | `check_login.py`, `ops/login_vault.py`, `fb_relogin.py`, `bootstrap.py` |
@@ -23,7 +22,8 @@ from `.agents/agents/` at conversation start (README.md is skipped by the loader
 3. **Never ask K for a Google login.** Recover it yourself; a 2FA challenge is the
    only thing that goes back to K.
 4. **Never decide on stale/missing data** — `evidence.py` is the contract.
-5. **Consult before deciding** — `ax-advisor` asks Gemini (K, 2026-11-18); when blocked, follow its advice.
+5. **Decide yourself** (K, 2026-11-27: advisors out) — write the reason down
+   in the commit or the daily log, and answer for the outcome.
 
 ## Adding a member
 

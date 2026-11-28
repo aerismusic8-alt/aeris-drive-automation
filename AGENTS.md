@@ -25,13 +25,12 @@ artifact, never from recollection; `ops/brief.py` is that command.
 
 ## AR's team (file-based sub-agents)
 
-`.agents/agents/` holds the curated sub-agents — six, each bound to a tool that
+`.agents/agents/` holds the curated sub-agents — five, each bound to a tool that
 exists on disk and to a standing rule, so none is a persona without hands. The
 loader scans that directory at conversation start (README.md is skipped).
 
 | Agent | Job | Drives |
 | --- | --- | --- |
-| `ax-advisor` | Gemini-only consultation gate (K, 2026-11-18); follow its advice when blocked | `ops/consult.py`, `ops/gemini_ask.py`, `websearch.py` |
 | `ax-evidence` | the 4 surfaces, fresh/stale/unknown, no bad-data verdicts | `aeris938-2/scripts/evidence.py`, `ops/studio_read.py` |
 | `ax-experiment` | one recorded non-duplicate test per constraint, respects HOLD | `experiment_loop.py`, `goal_watch.py` |
 | `ax-session` | keeps/recoveries the free browser session without asking K | `check_login.py`, `ops/login_vault.py` |
@@ -39,7 +38,8 @@ loader scans that directory at conversation start (README.md is skipped).
 | `ax-hygiene` | keeps the guards green (memory cap, tests, wiring, risk) | `memory_guard.py`, `memory_search.py` |
 
 Every member is bound by: free only; the HOLD (no upload/render/enable); never ask K
-for a Google login; never decide on stale data; consult before deciding.
+for a Google login; never decide on stale data. There is no advisor to consult any
+more (K, 2026-11-27): AR decides, writes the reason down, and answers for it.
 `music938-1/tests/run.py::test_ax_team_is_well_formed` pins the format (name ==
 filename, >=2 `<example>` tags, tools present) and that each member's tools exist,
 so a broken file fails the suite instead of silently doing nothing.
@@ -487,48 +487,30 @@ a Thai string lives; every screen, sign and notification reads from it.
   `%d` placeholders, and that each line actually contains a Thai codepoint
   (U+0E00-U+0E7F). Add a key to the checked list when you add a string.
 
-## The AF advisor (advice without a browser)
+## No advisors (K, 2026-11-27)
 
-The standing panel in `ops/consult.py` drives a signed-in browser. That is the
-right tool for K's own desktop and the wrong one for a rail: on a runner the
-desktop is absent, so a gate built on it can never go green.
-`tools/af_advisor.py` is the rail-side advisor, free and keyless:
+K ordered every outside advisor out of the system: "พวก chat gpt หรือระบบ advisor
+อื่นที่ทำงานในระบบเราตอนนี้ ยกเลิกออกไปให้หมด". Twenty files were deleted —
+`ops/consult.py`, `consult10`, `consult-log.jsonl`, `gemini_ask/api/gate/review/
+calibrate`, `chatgpt_ask`, `duck_ask`, `pollinations_ask`, `ask_agents`,
+`run_panel.py`, `forge_song.py`, the four `tools/af_*` modules and the roster, and
+`.agents/agents/ax-advisor.md`. `test_no_advisor_is_left_in_the_system` fails if
+any comes back or is imported again; `docs/system-audit-2026-11-28.md` is the
+inventory.
 
-| Transport | Vendors | Note |
-| --- | --- | --- |
-| g4f provider classes | Gemini, KiloCode, G4FSpace, Yqcloud | call `create(provider=...)`; a *model* name returns the same advert for every model |
-| plain HTTPS | pollinations | `text.pollinations.ai/openai`, `max_tokens=4000`, `reasoning_effort=low` |
+What replaced each one:
 
-```bash
-python3 tools/af_advisor.py "question" --advisor gemini --json artifacts/vendor_consult/x.json
-python3 tools/af_advisor.py "blocker" --stuck "<the real error>"
-python3 tools/af_advisor.py "question" --vendors Gemini,KiloCode,pollinations --quorum 2
-python3 tools/af_advisor.py --check      # roster + last bench
-python3 tools/af_advisor.py --selftest   # the guards, offline
-```
+- **Lyrics**: AR writes the words. `music938-1/scripts/ai_lyrics.py` keeps the
+  brief, the parser and the lint; `load_ar()` reads a file and lints it. The
+  produce rail reads `lyrics/inbox/<slug-word>.txt` and stops with `no-lyric`
+  when it is missing — it never asks a model to fill the gap.
+- **Admin rail**: the consult gate is gone. It reads, drafts and alerts; it never
+  sends.
+- **Experiments**: an exhausted diagnosis names the `LIBRARY` entry AR must
+  write, because a diagnosis with no method stays exhausted forever.
 
-The rules that make it safe, and must not be removed:
-
-- **Fail closed.** `consult()` returns `met = ok_count >= quorum`; a vendor that
-  does not answer is `FAIL`, never filled in from another vendor, and `main()`
-  exits non-zero when the quorum is not met.
-- **A 200 response is not an answer.** `looks_like_error_answer` rejects an error
-  page or a refusal ("having a hard time fulfilling") that arrives as HTTP 200.
-- **A short answer is an answer.** `MIN_CHARS` is 20. "Opportunity cost: 4.5 /
-  DECLINE" is correct; a high floor deleted exactly those rows.
-- **A rate hint waits.** 3 s then 6 s normally, 50 s when the error mentions a
-  quota or 429 — pollinations allows one call per 45 s per IP.
-- **The roster is the registry** (`tools/af_advisor_roster.json`): mandate,
-  advisors, dead vendors with a reason, the last bench, the trading advisor. A
-  vendor is never dropped because one call failed; a dead pipe is a retry.
-- Every consultation is appended to `ops/consult-log.jsonl` in the shape
-  `ops/consult.py` writes, so the "consult before acting" gate sees it even on a
-  pod with no playwright.
-
-Changing the vendor list means running all three benches and writing the result
-back (`--write`). Scores swing about ±2 between rounds, so the CEO bench defaults
-to three rounds and reports the median. `--regrade <raw.json>` re-scores saved
-answers into a new file; it never overwrites the raw capture.
+Generative tools stay because they produce sound and pictures, not opinions:
+Flow Music, Pollinations HTTP and `gemini_image` for cover art and stills.
 
 ## Workflows
 

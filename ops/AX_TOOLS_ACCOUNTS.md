@@ -54,11 +54,10 @@ Grouped by what they do. Every file lives in `ops/`.
 - `ar_promo_site.py` — generate and publish the landing page (GitHub Pages).
 - `shopee_mint.py`, `social_cleanup.py`.
 
-### Free AI advisors + search
+### Search (no advisors)
 
-- `pollinations_ask.py` — free, keyless text model.
-- `duck_ask.py`, `gemini_ask.py`, `chatgpt_ask.py`, `ask_agents.py` — web advisors.
-- `consult.py`, `consult10.py` — the consult gate before deciding.
+The advisor modules were removed on 2026-11-27 (K: advisors out, AR decides).
+
 - `websearch.py` — free web search + page reading (the no-quota Tavily replacement).
 
 ### AR identity + accounts
