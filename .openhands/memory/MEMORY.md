@@ -70,11 +70,12 @@ audit the live surface. A report counts artifacts, not inputs** (`genres.py
   `OPENHANDS_RISK_REGISTER.json` + `ops/risk_audit.py --strict`.
 - **`ops/HOLD.md` decides whether rails may run**; K's **posting stop**
   (2026-11-20) is `ops/PUBLISH-HOLD` → `hold_gate.active()`.
-- **11-26: the image bank was dead for 3 days** (6×120-min cancels, newest
-  row 11-23): a stale page reset the exit test and cursors were saved only on
-  a kept batch (PR #59). **Judge a harvest by the manifest, not the run
-  list.** Volume preflight also needs `pull_media --only covers`;
-  **TikTok has no token** — it needs K's developer app.
+- **11-26: the image bank was dead for 3 days** (a stale page reset the exit
+  test; cursors saved only on a kept batch, PR #59). **Judge a harvest by the
+  manifest, not the run list.**
+- **A hold leaves rails `disabled_manually`: read the workflow `state`, not only
+  the marker.** **TikTok has no `TT_*` token** — needs K's app review (`privacy.html`,
+  `terms.html` are live).
 
 ## Art + NEW work
 `shot_director.py` cuts **on the music**; **pick an un-clipped song**; the
