@@ -145548,6 +145548,74 @@
 "at": "2026-11-28T01:10:51+00:00",
 "uses": 0,
 "shard": "bank-0022.tar"
+},
+{
+"id": "st-008784",
+"file": "img/st-008784.webp",
+"title": "Dülmen, Dreifaltigkeitskirmes -- 2018 -- 2788.jpg",
+"query": "night sky",
+"licence": "CC BY-SA 4.0",
+"origin": "Wikimedia Commons",
+"credit": "Dietmar Rabich",
+"source": "https://commons.wikimedia.org/wiki/File:D%C3%BClmen,_Dreifaltigkeitskirmes_--_2018_--_2788.jpg",
+"w": 3840,
+"h": 5760,
+"bytes": 3868002,
+"sha": "b12b61db7b0354a7e2dc",
+"at": "2026-11-28T07:58:20+00:00",
+"uses": 0,
+"shard": "bank-0023.tar"
+},
+{
+"id": "st-008785",
+"file": "img/st-008785.webp",
+"title": "Corner restaurant with outdoor tables at night, Greenpoint, Brooklyn, October 2025.jpg",
+"query": "restaurant night",
+"licence": "CC BY-SA 4.0",
+"origin": "Wikimedia Commons",
+"credit": "NevinThompson",
+"source": "https://commons.wikimedia.org/wiki/File:Corner_restaurant_with_outdoor_tables_at_night,_Greenpoint,_Brooklyn,_October_2025.jpg",
+"w": 3840,
+"h": 2880,
+"bytes": 548208,
+"sha": "474aea6040ddd230626e",
+"at": "2026-11-28T07:59:20+00:00",
+"uses": 0,
+"shard": "bank-0023.tar"
+},
+{
+"id": "st-008786",
+"file": "img/st-008786.webp",
+"title": "Beige butterfly on tiny flowers (Unsplash).jpg",
+"query": "bokeh light",
+"licence": "CC0",
+"origin": "Wikimedia Commons",
+"credit": "Boris  Smokrovic borisworkshop",
+"source": "https://commons.wikimedia.org/wiki/File:Beige_butterfly_on_tiny_flowers_(Unsplash).jpg",
+"w": 3840,
+"h": 2559,
+"bytes": 502256,
+"sha": "d7f04cf363fde50523f4",
+"at": "2026-11-28T08:06:31+00:00",
+"uses": 0,
+"shard": "bank-0023.tar"
+},
+{
+"id": "st-008787",
+"file": "img/st-008787.webp",
+"title": "Amulet (AM 1928.15-3).jpg",
+"query": "amulet thai",
+"licence": "CC BY 4.0",
+"origin": "Wikimedia Commons",
+"credit": "Unknown authorUnknown author",
+"source": "https://commons.wikimedia.org/wiki/File:Amulet_(AM_1928.15-3).jpg",
+"w": 3840,
+"h": 2560,
+"bytes": 107202,
+"sha": "5779a0f0fee88b3ddbc0",
+"at": "2026-11-28T08:08:17+00:00",
+"uses": 0,
+"shard": "bank-0023.tar"
 }
 ],
 "shards": [
@@ -150704,6 +150772,19 @@
 "st-008781",
 "st-008782",
 "st-008783"
+]
+},
+{
+"name": "bank-0023.tar",
+"url": "https://github.com/aerismusic8-alt/aeris-drive-automation/releases/download/media-938/bank-0023.tar",
+"images": 4,
+"bytes": 5038080,
+"at": "2026-11-28T09:26:05+00:00",
+"ids": [
+"st-008784",
+"st-008785",
+"st-008786",
+"st-008787"
 ]
 }
 ],
