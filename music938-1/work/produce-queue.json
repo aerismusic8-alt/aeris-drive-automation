@@ -535,6 +535,14 @@
       "problems": [
         "pollinations: RuntimeError: no reader available: api=GEMINI_API_KEY is not set; web=<urlopen error [Errno 111] Connection refused>"
       ]
+    },
+    {
+      "slug": "57-khuen-ni-mai-tong-khit-arai-v57",
+      "title": "คืนนี้ไม่ต้องคิดอะไรในฝัน",
+      "genre": "rap",
+      "mood": "hopeful",
+      "result": "no-lyric",
+      "needs": "lyrics/inbox/khuen-ni-mai-tong-khit-arai.txt"
     }
   ],
   "total_made": 22
