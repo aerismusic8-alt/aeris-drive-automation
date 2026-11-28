@@ -1,5 +1,5 @@
 {
-  "made": 23,
+  "made": 24,
   "log": [
     {
       "slug": "25-thai-5bcb50c5",
@@ -543,6 +543,18 @@
       "mood": "hopeful",
       "result": "no-lyric",
       "needs": "lyrics/inbox/khuen-ni-mai-tong-khit-arai.txt"
+    },
+    {
+      "slug": "57-khuen-ni-mai-tong-khit-arai-v57",
+      "title": "คืนนี้ไม่ต้องคิดอะไรในฝัน",
+      "genre": "rap",
+      "mood": "hopeful",
+      "result": "lyric",
+      "flow": false,
+      "audio": "synth-bed",
+      "offline_rc": 0,
+      "remaster_rc": 0,
+      "instrumental": true
     }
   ],
   "total_made": 22
