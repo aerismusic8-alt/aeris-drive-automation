@@ -5581,6 +5581,28 @@ def test_api_posting_route() -> None:
     check("tiktok poster follows tiktok_api.available()",
           (crosspost.api_poster("tiktok") is not None) == crosspost.tiktok_api.available())
 
+    # The first tokens come from a human tap on the publisher page, and the code
+    # lands on our own domain — so the exchange has to work with nothing but the
+    # code and the redirect URI, and the tokens must survive a pod recycle in a
+    # file (the vault is unreachable in a fresh pod). Both pinned offline.
+    import tempfile  # noqa: PLC0415
+
+    check("the exchange redirect matches the page the site serves",
+          crosspost.tiktok_api.DEFAULT_REDIRECT.endswith("/tiktok-callback.html"))
+    src_api = (ops / "tiktok_api.py").read_text()
+    check("the exchange is an authorization_code grant",
+          '"authorization_code"' in src_api)
+    saved_state = crosspost.tiktok_api.STATE_FILE
+    try:
+        crosspost.tiktok_api.STATE_FILE = Path(tempfile.mkdtemp()) / "tt.json"
+        crosspost.tiktok_api._save_state(access_token="a1", refresh_token="r1",
+                                         open_id="o1", client_key="ck")
+        os.environ.pop("TT_CLIENT_KEY", None)
+        got = crosspost.tiktok_api.client_key(), crosspost.tiktok_api.refresh_token()
+        check("tokens round-trip through the local state file", got == ("ck", "r1"))
+    finally:
+        crosspost.tiktok_api.STATE_FILE = saved_state
+
     # A Reel is a three-call flow; the finish call must PUBLISH, not just upload.
     fb = (ops / "fb_graph.py").read_text()
     check("fb_graph starts a reel upload", "upload_phase" in fb and '"start"' in fb)

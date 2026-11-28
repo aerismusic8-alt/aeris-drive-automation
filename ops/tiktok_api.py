@@ -36,6 +36,8 @@ from pathlib import Path
 API = "https://open.tiktokapis.com/v2"
 OAUTH = f"{API}/oauth/token/"
 TIMEOUT = 180
+DEFAULT_REDIRECT = (
+    "https://aerismusic8-alt.github.io/site-aeris-music/tiktok-callback.html")
 CHUNK = 10 * 1024 * 1024  # TikTok requires 5–64 MB chunks; 10 MB is safe.
 
 
@@ -70,28 +72,87 @@ def _put(key: str, value: str) -> bool:
         return False
 
 
-def _env(name: str, vault_key: str) -> str:
-    return (os.environ.get(name) or "").strip() or _get(vault_key)
+STATE_FILE = Path(os.environ.get(
+    "TT_STATE_FILE", "/workspace/ax-tools/ar-identity/tiktok.json"))
+
+
+def _state() -> dict:
+    """Tokens captured on this machine, for pods where the vault is unreachable."""
+    try:
+        return json.loads(STATE_FILE.read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return {}
+
+
+def _save_state(**kv: str) -> None:
+    d = _state()
+    d.update({k: v for k, v in kv.items() if v})
+    STATE_FILE.parent.mkdir(parents=True, exist_ok=True)
+    STATE_FILE.write_text(json.dumps(d, ensure_ascii=False, indent=1), encoding="utf-8")
+    STATE_FILE.chmod(0o600)
+
+
+def _env(name: str, vault_key: str, *state_keys: str) -> str:
+    if os.environ.get(name):
+        return os.environ[name].strip()
+    v = _get(vault_key)
+    if v:
+        return v
+    d = _state()
+    for k in state_keys or (vault_key.rsplit(":", 1)[-1].replace("-", "_"),):
+        if d.get(k):
+            return str(d[k]).strip()
+    return ""
 
 
 def client_key() -> str:
-    return _env("TT_CLIENT_KEY", "axsecrets:tiktok-client-key")
+    return _env("TT_CLIENT_KEY", "axsecrets:tiktok-client-key", "client_key")
 
 
 def client_secret() -> str:
-    return _env("TT_CLIENT_SECRET", "axsecrets:tiktok-client-secret")
+    return _env("TT_CLIENT_SECRET", "axsecrets:tiktok-client-secret", "client_secret")
 
 
 def refresh_token() -> str:
-    return _env("TT_REFRESH_TOKEN", "axsecrets:tiktok-refresh-token")
+    return _env("TT_REFRESH_TOKEN", "axsecrets:tiktok-refresh-token", "refresh_token")
+
+
+def open_id() -> str:
+    return _env("TT_OPEN_ID", "axsecrets:tiktok-open-id", "open_id")
 
 
 def access_token() -> str:
-    return (os.environ.get("TT_ACCESS_TOKEN") or "").strip() or _get("axsecrets:tiktok-access-token")
+    return (os.environ.get("TT_ACCESS_TOKEN") or "").strip() or _get(
+        "axsecrets:tiktok-access-token") or str(_state().get("access_token") or "")
 
 
 def available() -> bool:
     return bool(client_key() and client_secret() and refresh_token())
+
+
+def exchange_code(code: str, redirect_uri: str) -> dict:
+    """Trade the authorization code from our redirect page for the first tokens."""
+    body = urllib.parse.urlencode({
+        "client_key": client_key(),
+        "client_secret": client_secret(),
+        "code": code,
+        "grant_type": "authorization_code",
+        "redirect_uri": redirect_uri,
+    }).encode()
+    req = urllib.request.Request(
+        OAUTH, data=body,
+        headers={"Content-Type": "application/x-www-form-urlencoded"}, method="POST")
+    with urllib.request.urlopen(req, timeout=60) as r:
+        d = json.loads(r.read().decode() or "{}")
+    if d.get("access_token"):
+        _save_state(access_token=d["access_token"], refresh_token=d.get("refresh_token", ""),
+                    open_id=d.get("open_id", ""))
+        _put("axsecrets:tiktok-access-token", d["access_token"])
+        if d.get("refresh_token"):
+            _put("axsecrets:tiktok-refresh-token", d["refresh_token"])
+        if d.get("open_id"):
+            _put("axsecrets:tiktok-open-id", d["open_id"])
+    return d
 
 
 def _req(url: str, body: dict | None, token: str = "", *, method: str = "POST") -> dict:
@@ -255,7 +316,19 @@ def _main(argv: list[str]) -> int:
     if cmd == "refresh":
         print("refreshed" if refresh() else "no token to refresh")
         return 0
-    print(f"unknown command {cmd!r}; use status|refresh", file=sys.stderr)
+    if cmd == "exchange":
+        code = argv[1] if len(argv) > 1 else ""
+        if not code:
+            print("usage: exchange <code> [redirect_uri]", file=sys.stderr)
+            return 2
+        redirect = argv[2] if len(argv) > 2 else DEFAULT_REDIRECT
+        d = exchange_code(code, redirect)
+        ok = bool(d.get("access_token"))
+        print(json.dumps({"ok": ok, "open_id": d.get("open_id", ""),
+                          "scope": d.get("scope", ""), "error": d.get("error_description", "")},
+                         ensure_ascii=False))
+        return 0 if ok else 1
+    print(f"unknown command {cmd!r}; use status|refresh|exchange", file=sys.stderr)
     return 2
 
 
