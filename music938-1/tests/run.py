@@ -8499,6 +8499,26 @@ def test_no_advisor_is_left_in_the_system() -> None:
           "no-lyric" in pl and "inbox" in pl)
 
 
+def test_ar_lyrics_in_the_inbox_pass_the_lint() -> None:
+    """AR writes the words now, so AR's words are what the lint must judge.
+
+    The produce rail reads `lyrics/inbox/<slug-word>.txt` and renders nothing if
+    the lint fails, so a hand-written line that is too long or carries a stray
+    Latin word stops the lane at the same gate a model's draft used to hit.
+    """
+    section("AR lyrics in the inbox pass the lint")
+    sys.path.insert(0, str(ROOT / "scripts"))
+    import ai_lyrics as A  # noqa: E402
+
+    inbox = ROOT / "lyrics" / "inbox"
+    files = sorted(inbox.glob("*.txt")) if inbox.is_dir() else []
+    check("the inbox has lyrics for the rail", len(files) >= 1, f"{len(files)} files")
+    for f in files:
+        secs, problems = A.load_ar(f)
+        check(f"{f.name} has sections", bool(secs))
+        check(f"{f.name} passes the lint", not problems, "; ".join(problems)[:160])
+
+
 def test_no_gemini_gate_in_the_video_system() -> None:
     """The Gemini review is out of the video system (K, 2026-11-20).
 
@@ -10322,6 +10342,7 @@ def main() -> int:
     test_eq_overlay_is_drawn_from_the_song()
     test_mv_shots_cannot_freeze()
     test_no_advisor_is_left_in_the_system()
+    test_ar_lyrics_in_the_inbox_pass_the_lint()
     test_no_gemini_gate_in_the_video_system()
     test_a_refused_clip_does_not_kill_the_queue()
     test_ai_covers()

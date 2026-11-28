@@ -105,5 +105,6 @@ cover art and the AI stills in the clip lanes.
 2. TikTok publishing is blocked: `TT_POLICY_EMAIL` is unset (K's order).
 3. L3 (1,000 subs / 4,000 watch-hours) is not measured — the Analytics read has
    not been run against the live channel.
-4. The lyric lane has no new songs queued: `lyrics/inbox/` is empty, so the next
-   produce run will stop with `no-lyric` until AR writes the words.
+4. The lyric lane: AR seeded `lyrics/inbox/` with three lyrics (pop ×2, rock ×1),
+   all passing the lint. The other eleven themes have no words yet, so a run that
+   reaches one of them stops with `no-lyric` — by design, and it names the file.
